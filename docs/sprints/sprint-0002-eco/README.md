@@ -61,7 +61,7 @@ Jogo em `-debug`, mod ativo, save novo com defaults. Log em `~/Zomboid/console.t
 ## Pendências que a próxima sprint herda
 
 - **Roteiro in-game e MP inteiros** (passos 1–10 acima).
-- **Eco lento e de dano baixo:** só a vida é baixa. Velocidade e força pedem o swap de `ZombieLore` + `DoZombieStats` (pz-api-notes §2.1), que a sprint 0003 cria pra noite agressiva; reaproveitar no Eco.
+- **Eco lento e de dano baixo:** lento resolvido na sprint 0003 (perfil "eco" do `NOM_NightStats`). Dano baixo segue pendente: o jogo não tem dano por zumbi ([sprint 0003](../sprint-0003-noite-agressiva/README.md#pendências-que-a-próxima-sprint-herda)).
 - **Textura do Eco é placeholder:** outfit `NOM_Eco` com `Gown_Hospital` + `Hat_WeddingVeil` vanilla. Textura própria fica pra quando houver arte.
 - Varredura só no andar do jogador: corpo no porão ou no andar de cima não solta Eco enquanto o jogador não estiver no mesmo `z`.
 - Corpo pego no colo e largado de novo (`ISGrabCorpseAction`) pode virar `IsoDeadBody` novo sem o `NOM_ecoReleased`: conferir no jogo se o `modData` sobrevive.
