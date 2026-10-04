@@ -75,8 +75,9 @@ git push origin --delete sprint/0001-estado-e-clima
 ## Desenvolvimento
 
 - Project Zomboid **Build 42** (desenvolvido contra 42.20.4).
-- Lua do mod em `mod/42/` + `mod/common/` (estrutura de mod do B42).
-- Lógica pura testável com `lua` no terminal (`./run-tests.sh`, a partir da sprint 0001).
+- Lua do mod em `mod/42/media/` + `mod/common/` (estrutura de mod do B42.20).
+- Dev local: `ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`.
+- Testes: `brew install luajit`, depois `./run-tests.sh`.
 - Teste in-game com o jogo em modo `-debug`.
 
 ## Acordo de trabalho

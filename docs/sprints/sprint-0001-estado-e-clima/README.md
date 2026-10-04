@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | planejada |
+| Status | em teste |
 | Branch | `sprint/0001-estado-e-clima` |
 | Plano | [plan.md](plan.md) |
 | GDD | [world-states.md](../../gdd/world-states.md), [atmosphere.md](../../gdd/atmosphere.md#clima), [sandbox.md](../../gdd/sandbox.md) |
@@ -28,8 +28,13 @@ em solo e em MP.
 ## Checkpoints
 
 - **04/10** — Design aprovado em brainstorming; GDD, ADRs e roadmap escritos.
+- **04/10** — Tasks 1-5 implementadas na branch: runner `luajit` (exit 0/1 provado nas duas direções), `NOM_Rules` (18 testes), `NOM_Config` + sandbox + traduções PT-BR/EN (22 testes), `NOM_World`, `NOM_Atmosphere`. Falta o roteiro in-game e o MP.
 
 ## Aprendizados
+
+1. **Nascer e pôr do sol ficam na estação, não no `ClimateManager`.** É `getClimateManager():getSeason():getDawn()` / `getDusk()` — é o que o próprio jogo usa em `Foraging/forageSystem.lua`. O plano tinha `clim:getDawn()`.
+2. **Layout de mod do B42.20:** `mod.info` e `media/` dentro de `42/`, pasta `common/` existindo do lado, e tradução em **JSON** (`Translate/<LANG>/Sandbox.json`), não mais `.txt`. Tooltip de sandbox é a chave com sufixo `_tooltip`.
+3. **`ClimateManager.FLOAT_GLOBAL_LIGHT_INTENSITY` e `ClimateColorInfo.new` nunca aparecem no Lua vanilla**, então não há garantia de que o Kahlua os exponha. O código usa id numérico de fallback e `pcall` com caminho alternativo; o teste in-game diz qual dos dois rodou (procurar `[NOM] ClimateColorInfo.new indisponível` no console).
 
 ## Pendências que a próxima sprint herda
 
