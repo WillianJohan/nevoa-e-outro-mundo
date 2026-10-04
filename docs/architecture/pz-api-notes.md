@@ -61,9 +61,9 @@ carregada voltam `nil`; trate. Animais mortos também são `IsoDeadBody`: filtre
 | API | Status | Evidência |
 |---|---|---|
 | `body:getModData()` | CONFIRMED | `ISBuryCorpse.lua:59` (`body:getModData()["lastPlayerGrabbed"]`) |
-| persiste no save | EXISTS | bytecode `IsoDeadBody.save` → `IsoMovingObject.save` → `IsoObject.save` grava `IsoObject.table` via `KahluaTable.save` |
+| persiste no save | EXISTS | bytecode `IsoDeadBody.save` → `IsoMovingObject.save` (offsets 104–133) grava `table` (campo de `IsoObject`) via `KahluaTable.save`; `IsoMovingObject.load` (89–118) relê. Chave numérica também salva (`KahluaTableImpl.save` grava `Double`) |
 
-Basta `body:getModData().nevoaEcoDone = true` no servidor. Em MP o flag só precisa existir no
+Basta `body:getModData().NOM_ecoReleased = true` no servidor (sprint 0002). Em MP o flag só precisa existir no
 servidor (quem decide o spawn), e é o servidor que salva o chunk.
 
 **Pegadinha:** o construtor de `IsoDeadBody(IsoGameCharacter, ...)` **copia o modData do
@@ -86,6 +86,13 @@ Corpos queimados/enterrados somem de verdade: enterrar chama `sq:removeCorpse(ta
 | `zombie:dressInNamedOutfit(name)` / `dressInPersistentOutfit(name)` | EXISTS | bytecode `IsoZombie.dressInNamedOutfit(String)`; `addZombiesInOutfit` usa `dressInPersistentOutfit` |
 
 Todos acabam em `VirtualZombieManager.createRealZombieAlways`, que dispara `OnZombieCreate`.
+
+**Ordem no spawn (sprint 0002, bytecode `addZombiesInOutfit(...ZZ)`):** `createRealZombieAlways`
+(offset 136, **dispara `OnZombieCreate`** com o outfit de zona) → `dressInPersistentOutfit(outfit)`
+(314) → `DoZombieStats` (382) → `setHealth(health)` (410; a versão de 6 args passa 1.0). Quem
+quer marcar o zumbi spawnado marca depois da chamada, não no evento. E `createRealZombieAlways`
+só põe o zumbi em `getZombieList()` **depois** do evento (offsets 39–79): remover dentro do
+`OnZombieCreate` deixa o zumbi meio removido.
 
 **MP:** o debug do vanilla, em cliente MP, **não** chama `addZombiesInOutfit`; manda
 `/createhorde2` para o servidor (`ISSpawnHordeUI.lua:254`). Ou seja, spawn é coisa de servidor.
@@ -128,10 +135,13 @@ Recomendado (servidor):
    corpo; no próximo `OnTick`, `body:getSquare():removeCorpse(body, false)`. Enfileirar porque o
    evento roda dentro do construtor, antes de `becomeCorpse` terminar (`invokeOnDiedListeners`).
 
-UNKNOWN: se `OnDeadBodySpawn` dispara no servidor dedicado para morte de zumbi (o construtor
-roda onde o corpo é criado; o cliente também constrói corpos ao receber pacote, então guarde
-com `isClient()`). Se não disparar no servidor, fallback: em `OnZombieDead` guardar `(x,y,z)` e
-procurar o corpo no square nos ticks seguintes.
+**Resolvido na sprint 0002: `OnDeadBodySpawn` não dispara no servidor dedicado** (bytecode
+`IsoDeadBody.<init>` offsets 1298–1311: `if (... && !GameServer.server) triggerEvent`). O mod usa
+o fallback: em `OnZombieDead` guardar `(x,y,z)` e procurar o corpo no 3×3 nos ticks seguintes
+(o construtor copia o `modData` do zumbi pro corpo, offsets 1121–1128, e o `persistentOutfitID`,
+906). `removeCorpse(body, false)` no servidor manda `RemoveCorpseFromMap` por `sendToRelative`
+(bytecode `IsoGridSquare.removeCorpse` 45–74). Queimar corpo (`IsoDeadBody.Burn`) troca por
+`burnedCorpse` e chama `removeCorpse`.
 
 ### 1.6 Sumir com o Eco vivo (amanhecer)
 
@@ -144,8 +154,10 @@ procurar o corpo no square nos ticks seguintes.
 célula, mas não envia `ZombieDeleteOnClient`. UNKNOWN se os clientes descartam o fantasma
 sozinhos. Recomendado em camadas:
 1. Solo: `removeFromWorld()` + `removeFromSquare()` resolve.
-2. MP: servidor remove e manda `sendServerCommand("Nevoa", "ecoGone", { id = z:getOnlineID() })`;
-   cada cliente acha o zumbi por `getOnlineID()` em `getCell():getZombieList()` e remove localmente.
+2. MP: servidor remove e manda `sendServerCommand("NevoaEOutroMundo", "ecoGone", { ids = {...} })`;
+   cada cliente acha o zumbi por `getOnlineID()` em `getCell():getZombieList()` e remove localmente
+   (no cliente, `removeFromWorld` chama `GameClient.removeZombieFromCache`, bytecode 146–167).
+   Implementado na sprint 0002; UNKNOWN se o cliente dono recria o zumbi.
 3. Fallback: `z:Kill(nil)` (morte sincronizada) + remoção do corpo da 1.5. Tem animação de queda,
    o que pode ser aceitável como "desfazer".
 
@@ -245,6 +257,14 @@ se o servidor vê lanternas presas no corpo.
 Fato transversal 3: `zombie:getModData()` existe e funciona em memória, mas morre quando o zumbi
 vira virtual e não sincroniza no MP. O que sobrevive é `z:getPersistentOutfitID()` (EXISTS;
 `ZombiePopulationManager` lê esse valor ao virtualizar).
+
+**Formato do `persistentOutfitID` (sprint 0002, bytecode `PersistentOutfits.pickOutfitMale/getOutfit/applyOutfit`):**
+bit 31 = feminino, bits 16–30 = índice do outfit na lista `all` (ordenada por nome, refeita a
+cada boot, então muda se a lista de mods muda), bits 0–15 = semente (0 se o outfit não usa
+semente, senão 1..500). Outfit inexistente → 0. No `OnZombieCreate` de um zumbi recarregado o
+visual está limpo e `getOutfitName()` volta `nil`; `z:dressInPersistentOutfitID(id)` (público)
+veste pelo ID e aí o nome responde. `IsoZombie.resetForReuse` faz `getModData():wipe()`, então
+`modData` em memória de zumbi reaproveitado não vaza.
 
 Recomendado: **variante derivada, não armazenada.**
 `variant = f(persistentOutfitID, worldSeed)` determinístico, reaplicado em:
@@ -441,8 +461,8 @@ Validar cada nome com `getSprite(name) ~= nil` (CONFIRMED `server/ClientCommands
 | `EveryOneMinute`, `EveryTenMinutes`, `EveryHours`, `EveryDays` | — | onde `GameTime` roda (ambos) | CONFIRMED | `server/XpSystem/XpUpdate.lua:375`, `server/Camping/SCampfireSystem.lua:183` |
 | `OnDawn`, `OnDusk` | — | **nunca** | morto | só disparados em `server/Seasons/season.lua:314,318`, dentro de bloco comentado; nenhuma classe Java dispara |
 | `OnZombieDead` | (zombie) | `IsoZombie.onKilled`, antes do corpo | CONFIRMED | `Steps.lua:840` |
-| `OnDeadBodySpawn` | (body) | construtor de `IsoDeadBody` | CONFIRMED | `ISWorldObjectContextMenu.lua:2782` |
-| `OnZombieCreate` | (zombie) | `VirtualZombieManager.createRealZombieAlways` | EXISTS | bytecode |
+| `OnDeadBodySpawn` | (body) | construtor de `IsoDeadBody`, **nunca no servidor dedicado** | CONFIRMED | `ISWorldObjectContextMenu.lua:2782`; bytecode `IsoDeadBody.<init>` 1298–1311 |
+| `OnZombieCreate` | (zombie) | `VirtualZombieManager.createRealZombieAlways`, antes de entrar em `getZombieList()` e, no spawn por Lua, antes de vestir | EXISTS | bytecode |
 | `OnZombieUpdate` | (zombie) | `IsoZombie.updateInternal` | EXISTS | bytecode; caro, filtre cedo |
 | `OnHitZombie` | (zombie, attacker, bodyPart, weapon) | `IsoZombie` | EXISTS | bytecode (params não verificados) |
 | `OnPlayerUpdate` | (player) | `IsoPlayer` | EXISTS | bytecode |
