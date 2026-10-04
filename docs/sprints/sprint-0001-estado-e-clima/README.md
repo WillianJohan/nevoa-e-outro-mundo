@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | planejada |
 | Branch | `sprint/0001-estado-e-clima` |
-| Plano | a escrever (`plan.md`) |
+| Plano | [plan.md](plan.md) |
 | GDD | [world-states.md](../../gdd/world-states.md), [atmosphere.md](../../gdd/atmosphere.md#clima), [sandbox.md](../../gdd/sandbox.md) |
 
 ## Objetivo
