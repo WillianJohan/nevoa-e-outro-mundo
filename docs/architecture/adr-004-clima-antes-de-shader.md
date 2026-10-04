@@ -30,4 +30,7 @@ bloqueia nenhuma sprint. Se funcionar, vira camada extra.
 ## Consequências
 
 - O mod nunca depende de shader pra ter o tom certo.
+- O clima é escrito só no servidor, uma vez por minuto de jogo, com valor
+  absoluto e `setModdedInterpolate(1)` (motivo no Aprendizado 3 da
+  [sprint 0001](../sprints/sprint-0001-estado-e-clima/README.md#aprendizados)).
 - O spike precisa do jogo instalado na máquina de desenvolvimento.

@@ -15,22 +15,25 @@ entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
 ```
 mod/
   42/mod.info
-  common/media/
-    lua/shared/NOM_Config.lua      sandbox + constantes
-    lua/shared/NOM_Rules.lua       lógica pura (sem API do jogo), testável
-    lua/server/NOM_World.lua       flags night/fog, emite eventos
-    lua/server/NOM_Variants.lua    marca/desmarca, spawn/despawn de Ecos
-    lua/server/NOM_Behaviors.lua   comportamento por variante + noite agressiva
-    lua/client/NOM_Atmosphere.lua  clima, som, rádio
-    lua/client/NOM_Overlays.lua    sangue/ferrugem locais
-    clothing/ textures/ sound/
+  42/media/
     sandbox-options.txt
-tests/                             asserts de NOM_Rules.lua em lua puro
+    lua/shared/NOM_Rules.lua        lógica pura (sem API do jogo), testável
+    lua/shared/NOM_Config.lua       sandbox + defaults
+    lua/shared/NOM_World.lua        flags night/fog derivadas do clima vanilla
+    lua/shared/Translate/<LANG>/    traduções em JSON (B42.20)
+    lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor
+    lua/server/NOM_Variants.lua     (sprint 0002+) marca/desmarca, spawn de Ecos
+    lua/server/NOM_Behaviors.lua    (sprint 0003+) comportamento
+    lua/client/NOM_Atmosphere.lua   (sprint 0005) som de névoa, rádio
+    lua/client/NOM_Overlays.lua     (sprint 0005) sangue/ferrugem locais
+  common/                           exigida pelo B42
+tests/                              asserts de lua puro (./run-tests.sh, luajit)
 ```
 
-Fluxo: `World` decide o estado → `Variants` marca/desmarca/spawna →
-`Behaviors` aplica o comportamento em lotes por tick → cliente só renderiza e
-toca som.
+Fluxo (tudo no servidor): `World` deriva o estado do clima vanilla →
+`ClimateLook` escurece o clima, que o jogo sincroniza → `Variants`
+marca/desmarca/spawna → `Behaviors` aplica o comportamento em lotes por tick.
+O cliente só renderiza e toca som.
 
 ## Robustez
 
