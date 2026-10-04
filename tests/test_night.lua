@@ -180,6 +180,17 @@ return {
         G3.minutes(10)
         assert(math.abs(G3.reach(G3.sounds[1]) - 25) <= 1.5)
     end,
+    -- getSoundAttract devolve volume × queda: volume = alcance configurado, só o raio é dividido,
+    -- pra caça e lanterna não perderem pra som vanilla mais alto
+    sound_volume_is_configured_reach = function()
+        local G = setup({ tod = 23, zombieHearing = 1, sandbox = { HuntIntervalMinutes = 10, HuntRadius = 30, NightHunt = true },
+            players = { { x = 10, y = 20, z = 0, light = true } } })
+        G.minutes(10)
+        assert(#G.sounds == 3, "sons: " .. #G.sounds)
+        for _, s in ipairs(G.sounds) do
+            assert(s.volume == 30 and s.radius == 10, "raio " .. s.radius .. " volume " .. s.volume)
+        end
+    end,
     -- lanterna ligada ao ar livre à noite: alcance de 20 × NightSenseMult, a cada 5 minutos
     torch_outside_at_night_attracts = function()
         local G = setup({ tod = 23, zombieHearing = 1, sandbox = { NightHunt = false },

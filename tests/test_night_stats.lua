@@ -432,6 +432,24 @@ return {
         G.converge()
         assert(not z.inactive and z.speedType == 2 and z.sight == 1, "não reaplicou os sentidos depois da fase")
     end,
+    -- Speed aleatória + ActiveOnly: a 1ª passada da noite pega o zumbi inativo (3).
+    -- Não pode guardar 3 como degrau do dia: no amanhecer o jogo sorteia de novo.
+    stats_inactive_random_speed_not_captured = function()
+        local G = setup({ lore = { Speed = 4 }, inactivePhase = true })
+        local zs = {}
+        for i = 1, 20 do zs[i] = G.spawn() end
+        G.tick()
+        NOM_NightStats.setNight(true)
+        G.converge()
+        for _, z in ipairs(zs) do assert(z.md.NOM_dayTier == nil, "guardou o degrau do zumbi inativo") end
+        G.inactivePhase = false
+        NOM_NightStats.setNight(false)
+        G.converge()
+        local slow = 0
+        for _, z in ipairs(zs) do if z.speedType == 3 then slow = slow + 1 end end
+        assert(slow < 20, "todo zumbi aleatório ficou arrastado o dia inteiro")
+        assert(G.lore.Speed == 4)
+    end,
     -- velocidade aleatória no sandbox: a base é a do zumbi e volta igual
     stats_random_speed_keeps_own_tier = function()
         local G = setup({ lore = { Speed = 4 } })

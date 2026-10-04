@@ -22,7 +22,8 @@ próprio no sandbox e tudo volta ao normal ao amanhecer.
    zumbis a até `HuntRadius` tiles recebem um som na posição de cada jogador e vão
    até lá, mesmo sem vê-lo.
 4. **Variantes só noturnas** — Estalador, Corredor e Eco ([monsters.md](monsters.md)).
-   O Eco **não** recebe o bônus: fica lento.
+   O Eco **não** recebe o bônus: fica lento e com a audição do dia, então ouve a
+   caça e a lanterna a 1/3 do alcance (de propósito: alma fraca, não caçadora).
 
 O alcance da caça e da lanterna é o configurado: o jogo multiplica o raio de todo
 som pela audição do zumbi (×3 na apurada da noite), e o mod compensa.

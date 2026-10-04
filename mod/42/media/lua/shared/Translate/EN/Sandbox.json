@@ -13,7 +13,7 @@
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Echo radius (tiles)",
     "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distance from the player within which a body can release an Echo.",
     "Sandbox_NevoaEOutroMundo.NightFaster": "Night: faster zombies",
-    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "At night every zombie moves faster (see the multiplier). Per-zombie strength and damage are not possible yet.",
+    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "At night every zombie moves faster (see the multiplier).",
     "Sandbox_NevoaEOutroMundo.NightSharperSenses": "Night: sharper senses",
     "Sandbox_NevoaEOutroMundo.NightSharperSenses_tooltip": "At night zombies see and hear farther, and a lit flashlight outdoors draws zombies from afar.",
     "Sandbox_NevoaEOutroMundo.NightHunt": "Night: active hunt",

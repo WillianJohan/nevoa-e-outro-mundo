@@ -13,7 +13,7 @@
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Raio dos Ecos (tiles)",
     "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distância do jogador até onde um corpo pode soltar Eco.",
     "Sandbox_NevoaEOutroMundo.NightFaster": "Noite: zumbis mais rápidos",
-    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "À noite todo zumbi sobe de velocidade (veja o multiplicador). Força e dano por zumbi ainda não são possíveis.",
+    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "À noite todo zumbi sobe de velocidade (veja o multiplicador).",
     "Sandbox_NevoaEOutroMundo.NightSharperSenses": "Noite: sentidos aguçados",
     "Sandbox_NevoaEOutroMundo.NightSharperSenses_tooltip": "À noite os zumbis enxergam e ouvem mais longe, e lanterna ligada ao ar livre chama zumbis de longe.",
     "Sandbox_NevoaEOutroMundo.NightHunt": "Noite: caça ativa",

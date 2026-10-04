@@ -49,13 +49,15 @@ end
 -- → GameServer.sendWorldSound): o zumbi reage onde é simulado. O jogo multiplica
 -- o raio pela audição do zumbi (getSoundAttract), que a noite aguça: reach é o
 -- alcance efetivo e o raio passado é dividido de volta (NOM_NightRules.soundRadius).
+-- O volume fica no alcance: getSoundAttract devolve volume × queda e o zumbi
+-- segue o som mais forte; volume baixo perderia pra barulho vanilla.
 local function call(p, reach)
     local radius = NOM_NightRules.soundRadius(reach, {
         sensesOn = NOM_Config.get("NightSharperSenses"),
         senseMult = NOM_Config.get("NightSenseMult"),
         hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
     })
-    addSound(p, math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()), radius, radius)
+    addSound(p, math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()), radius, reach)
 end
 
 -- O vanilla sincroniza o liga/desliga da luz (syncItemActivated, client/ISUI/

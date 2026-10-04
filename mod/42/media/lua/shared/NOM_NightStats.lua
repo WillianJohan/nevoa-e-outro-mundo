@@ -74,15 +74,19 @@ end
 -- inactive: fase inativa do ActiveOnly. A velocidade fica com o jogo:
 -- doZombieSpeed(t) ignora o inactive com t ≠ -1 (determineZombieSpeed) e acordaria
 -- o zumbi. O doZombieSpeed() de dentro do DoZombieStats usa o speedType atual (3).
+-- dayTier nil: degrau do dia desconhecido (sandbox aleatório visto só inativo);
+-- no dia o jogo sorteia com doZombieSpeed(-1), sem trocar o Speed.
 local function apply(z, md, w, dayTier, key, inactive)
     local values = { [LORE.cognition] = COGNITION_KEEP, [LORE.memory] = MEMORY_KEEP }
-    if not inactive then values[LORE.speed] = w.speed end
+    local speed = w.speed
+    if key == "day" and dayTier == nil then speed = -1 end
+    if not inactive and speed ~= -1 then values[LORE.speed] = speed end
     if w.sight then values[LORE.sight] = w.sight end
     if w.hearing then values[LORE.hearing] = w.hearing end
     local crawl = z:isCanCrawlUnderVehicle() -- DoZombieStats re-sorteia
     withLore(values, function()
         z:DoZombieStats()
-        if not inactive then z:doZombieSpeed(w.speed) end
+        if not inactive then z:doZombieSpeed(speed) end
     end)
     z:setCanCrawlUnderVehicle(crawl)
     -- Cache só em memória: modData de zumbi não é salvo e é zerado no
@@ -102,8 +106,13 @@ local function process(z, c)
     local md = z:getModData()
     local cur = md.NOM_night
     if cur == nil and not NOM_NightStats.night then return false end -- dia, intocado
-    local dayTier = NOM_NightRules.dayTier(c.speed, md.NOM_dayTier or z:getSpeedType())
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, isEco(z, md), dayTier, c)
+    -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
+    -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.
+    local dayTier = md.NOM_dayTier
+    if dayTier == nil and not (c.inactive and c.speed == 4) then
+        dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
+    end
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, isEco(z, md), dayTier or z:getSpeedType(), c)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key
