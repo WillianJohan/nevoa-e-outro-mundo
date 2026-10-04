@@ -23,13 +23,18 @@ Como (sprint 0002, evidência em [pz-api-notes §1](pz-api-notes.md#1-eco-sprint
   teto. `NOM_Eco` é um outfit do mod (`media/clothing/clothing.xml`) feito só de
   itens vanilla referenciados por GUID.
 - **Identidade:** o `modData` do zumbi não é salvo. O `ModData` global guarda o
-  `persistentOutfitID` **exato** (com a semente) de cada Eco e o número da noite
-  em que nasceu (`{ [id] = noite }`). No `OnZombieCreate`, ID conhecido é
+  `persistentOutfitID` **exato** (com a semente) de cada Eco e as noites em que
+  um Eco com esse ID nasceu (`{ [id] = { [noite] = true } }`). Conjunto porque a
+  semente é `Rand.Next(500)+1`: dois Ecos do mesmo sexo dividem o ID em ~19% das
+  noites, e um não pode apagar o outro. No `OnZombieCreate`, ID conhecido é
   confirmado vestindo o zumbi pelo próprio ID (`getOutfitName() == "NOM_Eco"`).
   Em memória, `modData.NOM_eco = true`, que o corpo herda. Noite se conta pelo
   estado salvo (`inNight`), não pela borda, pra reinício no meio da noite não
-  abrir noite nova. IDs de mais de 7 noites são podados; Eco morto ou removido
-  sai da lista.
+  abrir noite nova. Noites com mais de 7 noites saem do conjunto e
+  conjunto vazio sai da lista; **morte e remoção não apagam o ID** (o gêmeo
+  descarregado ainda precisa dele). Só sai antes da poda o ID cujo outfit não
+  bate mais. Custo dos gêmeos: um gêmeo de noite passada que volta na noite em
+  que o outro nasceu conta como da noite atual e só some no amanhecer.
 - **Morte:** `OnZombieDead` limpa o inventário; o `OnTick` procura o corpo com
   `NOM_eco` no 3×3 e chama `removeCorpse(body, false)`. A varredura periódica
   remove o que escapar. (`OnDeadBodySpawn` não dispara no dedicado.)

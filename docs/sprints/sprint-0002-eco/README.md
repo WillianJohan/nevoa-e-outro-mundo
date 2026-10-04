@@ -19,10 +19,10 @@
 - [x] Corpo queimado ou enterrado não solta Eco — deixa de ser `IsoDeadBody`, sem regra extra: enterrar chama `removeCorpse` (`shared/TimedActions/ISBuryCorpse.lua:73`), queimar troca o corpo por `burnedCorpse` e chama `removeCorpse` (bytecode `IsoDeadBody.Burn` 142–204)
 - [x] Teto `EcoMaxPerPlayer` respeitado — testado com uma pilha de 60+ corpos: `eco_cap_respected_with_60_bodies` (60 corpos, teto 30, repõe só o que morreu), `eco_overlapping_players_share_nearby_ecos_in_cap`, `rules_pick_nearest_first_up_to_quota`. No jogo: Roteiro passo 3
 - [ ] Eco morto não deixa cadáver nem loot — lógica coberta (`eco_death_clears_inventory_and_removes_corpse`, `eco_corpse_on_neighbor_square_is_removed`, `eco_corpse_is_swept_and_never_releases`, `eco_normal_zombie_keeps_corpse`); falta o jogo: Roteiro passos 4 e 8
-- [ ] Ao amanhecer, todos os Ecos somem — lógica coberta (`eco_dawn_removes_all`, `eco_dawn_mp_sends_ids`, `eco_dawn_mp_skips_unassigned_online_id`, `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_on_later_night_is_removed`, `eco_restart_mid_night_keeps_same_night`, `client_removes_ghosts_by_online_id`, `client_skips_unassigned_online_id`); falta o jogo, principalmente o fantasma no cliente de MP: Roteiro passos 5, 7 e 9
+- [ ] Ao amanhecer, todos os Ecos somem — lógica coberta (`eco_dawn_removes_all`, `eco_dawn_mp_sends_ids`, `eco_dawn_mp_skips_unassigned_online_id`, `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_on_later_night_is_removed`, `eco_restart_mid_night_keeps_same_night`, `eco_twin_death_keeps_unloaded_twin`, `eco_twin_dawn_removal_keeps_unloaded_twin_known`, `eco_twin_later_night_keeps_both_nights`, `client_removes_ghosts_by_online_id`, `client_skips_unassigned_online_id`); falta o jogo, principalmente o fantasma no cliente de MP: Roteiro passos 5, 7 e 9
 - [ ] Textura fantasmagórica aplicada (final ou placeholder registrado em Pendências) — placeholder: outfit `NOM_Eco` (camisola de hospital + véu de noiva vanilla), registrado em Pendências; falta ver no jogo: Roteiro passo 2
 - [x] Toggle e números do Eco no sandbox — `EcoEnabled`, `EcoMaxPerPlayer`, `EcoRadius`: `config_eco_defaults`, `config_every_option_has_default_and_translations` (PTBR e EN), `eco_disabled_spawns_nothing`. No jogo: Roteiro passo 1
-- [x] `./run-tests.sh` cobre a elegibilidade do corpo (raio, já liberado, teto) — `tests/test_eco_rules.lua` (9 testes) e `tests/test_eco.lua` (inclui `eco_overlapping_players_scan_each_square_once`); `total=84 passou=84 falhou=0`
+- [x] `./run-tests.sh` cobre a elegibilidade do corpo (raio, já liberado, teto) — `tests/test_eco_rules.lua` (9 testes) e `tests/test_eco.lua` (inclui `eco_overlapping_players_scan_each_square_once`); `total=86 passou=86 falhou=0`
 
 ## Roteiro in-game
 
@@ -46,6 +46,7 @@ Jogo em `-debug`, mod ativo, save novo com defaults. Log em `~/Zomboid/console.t
 - **04/10/2026** — Tasks 1–4 na branch: sandbox (3 opções, PTBR/EN), `NOM_EcoRules`, borda de flag no `NOM_World`, `server/NOM_Eco.lua`, outfit `NOM_Eco`, `client/NOM_EcoClient.lua`. 73 testes passando, com um jogo falso que imita o bytecode. Falta o roteiro in-game e o MP.
 
 - **04/10/2026** — Rodada de review: Eco reconhecido pelo ID exato + noite em que nasceu (Eco de outra noite some ao voltar, regra do GDD), `onlineID -1` fora do `ecoGone`, varredura lê cada square uma vez e conta os Ecos numa passada, `EcoRadius` máximo 60. 84 testes.
+- **04/10/2026** — Review 2: IDs exatos colidem (semente 1..500, ~19% das noites com gêmeos). Lista virou conjunto de noites por ID; morte e remoção não apagam mais o ID. 86 testes.
 
 ## Aprendizados
 
@@ -55,6 +56,7 @@ Jogo em `-debug`, mod ativo, save novo com defaults. Log em `~/Zomboid/console.t
 4. **`removeFromWorld` no servidor não avisa o cliente.** O comando de admin usa `NetworkZombiePacker.deleteZombie`, que o Lua não alcança. O servidor manda `ecoGone` com os `onlineID`s e o cliente remove o local (`removeFromWorld` no cliente limpa o cache de zumbis do `GameClient`).
 5. **Outfit de mod com nome próprio evita uma armadilha e abre outra.** Outfit vanilla pode ser trocado pelo "estágio" do apocalipse (`ZombiesStageDefinitions.getAdvancedOutfitName`); um nome nosso não. Mas o outfit entra no sorteio de fallback: quando uma definição de zona nomeia um outfit que não existe pro sexo sorteado, `ZombiesZoneDefinition.applyDefinition` cai em `OutfitManager.GetRandomOutfit`, que sorteia entre **todos** os outfits (bytecode `applyDefinition` 16–45). No vanilla isso acontece com `Hunter`, `GuitarGuy` e `Stripclub`: um punhado de zumbis por mundo pode nascer de camisola e véu. Eles **não** viram Eco: o reconhecimento é pelo ID exato (com semente), que só o spawn do mod grava (`eco_random_outfit_zombie_is_not_eco`).
 6. **Noite se conta pelo estado salvo, não pela borda.** A primeira leitura do clima depois de subir o servidor já é uma borda `night → true`; contar noite pela borda faria um reinício no meio da noite abrir noite nova e apagar os Ecos dela. O mod salva `inNight` no `ModData` e só conta noite nova quando ele estava `false` (`rules_night_counts_once_per_night`, `eco_restart_mid_night_keeps_same_night`).
+7. **ID "exato" não é único.** A semente do `persistentOutfitID` é `Rand.Next(500)+1` (bytecode `PersistentOutfits.pickOutfitMale`): com 30 Ecos do mesmo sexo numa noite, a chance de dois dividirem o ID é ~19%. Apagar o ID quando um morre deixava o gêmeo descarregado virar zumbi comum. A lista guarda um conjunto de noites por ID e só a poda apaga (`eco_twin_death_keeps_unloaded_twin`, `eco_twin_later_night_keeps_both_nights`). O fake dos testes tem semente sequencial, mais gentil que o jogo; `G.fixedSeed` força os gêmeos.
 
 ## Pendências que a próxima sprint herda
 
@@ -66,6 +68,8 @@ Jogo em `-debug`, mod ativo, save novo com defaults. Log em `~/Zomboid/console.t
 - Cadáver de Eco cuja remoção falhou só é varrido à noite.
 - ID de Eco fica guardado 7 noites (`NOM_EcoRules.KEEP_NIGHTS`): Eco descarregado que volta depois disso é zumbi comum de camisola e véu.
 - Mudar a lista de outfits (outro mod, update do jogo) desloca o índice do `NOM_Eco`: Ecos virtuais naquele momento voltam como zumbis comuns (ver ADR-003).
+- Gêmeos (mesmo ID): um gêmeo de noite passada que volta na noite em que o outro nasceu conta como da noite atual e só some no amanhecer.
+- Contador de noites salvo no `ModData` global: se o servidor cair entre gravar o contador e salvar o mundo, a mesma noite pode ser contada duas vezes, e os Ecos dela que voltarem de chunk descarregado somem como se fossem de outra noite.
 
 ## Sessões
 
