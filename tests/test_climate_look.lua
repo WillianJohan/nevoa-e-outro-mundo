@@ -39,6 +39,8 @@ local function setup(opts)
         function f:getInternalValue() return self.internal end
         function f:getFinalValue() return self.final end
         function f:isEnableOverride() return self.override ~= nil end
+        function f:getOverride() return self.override end
+        function f:getOverrideInterpolate() return self.overrideInterp end
         function f:setEnableModded(on) self.isModded = on; calls[#calls + 1] = name .. (on and ":on" or ":off") end
         function f:setModdedValue(v) self.modded = v end
         function f:setModdedInterpolate(w) self.interp = w end
@@ -47,8 +49,14 @@ local function setup(opts)
             if self.isModded and self.interp > 0 then
                 self.internal = lerp(self.interp, self.internal, self.modded)
             end
-            -- FogCycle do sandbox: override de valor, final ignora o interno
-            self.final = self.override or self.internal
+            if self.override and self.overrideInterp > 0 then
+                -- override de valor (FogCycle/ClimateCycle do sandbox) ignora o interno;
+                -- o do WeatherPeriod (setOverride(0, t)) mistura em cima do interno
+                local base = self.overrideValue and self.overrideInternal or self.internal
+                self.final = lerp(self.overrideInterp, base, self.override)
+            else
+                self.final = self.internal
+            end
         end
         return f
     end
@@ -84,7 +92,7 @@ local function setup(opts)
     ClimateColorInfo = {
         new = function(r, g, b, a, r2, g2, b2, a2) return newColorInfo({ r, g, b, a }, { r2, g2, b2, a2 }) end,
     }
-    SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
+    SandboxVars = { NevoaEOutroMundo = opts.sandbox or {}, FogCycle = opts.fogCycle or 1, ClimateCycle = 1 }
     isClient = function() return opts.client == true end
     getDebug = function() return false end
     local ms = 0
@@ -185,6 +193,21 @@ return {
         assert(NOM_World.fog == false, "névoa travou ligada")
     end,
 
+    -- (c2) período de clima (WeatherPeriod) puxando a névoa pra 0 com override
+    -- que não é de valor: o final mistura o interno, onde mora a névoa do mod
+    look_fog_flag_exits_during_weather_period_override = function()
+        local env = setup({ tod = 12, fog = 0.9, K = 10, sandbox = { FogThreshold = 0.35, DarkIntensity = 2 } })
+        local f = env.floats[5]
+        f.override, f.overrideInterp, f.overrideValue = 0, 0.2, false
+        local sawFog = false
+        env.run(200, function()
+            sawFog = sawFog or NOM_World.fog
+            env.world.fog = math.max(0, env.world.fog - 0.01)
+        end)
+        assert(sawFog, "névoa nunca ligou")
+        assert(NOM_World.fog == false, "névoa travou ligada no período de clima")
+    end,
+
     -- (d) dia sem névoa: nenhuma chamada no clima
     look_idle_day_touches_nothing = function()
         local env = setup({ tod = 12, K = 10 })
@@ -219,9 +242,11 @@ return {
 
     -- (g) FogCycle do sandbox: a detecção usa o valor efetivo e não fica piscando
     look_fog_override_uses_final_without_flapping = function()
-        local env = setup({ tod = 12, fog = 0.1, K = 10, sandbox = { FogThreshold = 0.5 } })
-        env.floats[5].override = 0.6
-        env.floats[5].final = 0.6
+        local env = setup({ tod = 12, fog = 0.1, K = 10, sandbox = { FogThreshold = 0.5 }, fogCycle = 3 })
+        local f = env.floats[5]
+        -- final = lerp(0.5, 0.5, 0.7) = 0.6; a fórmula do WeatherPeriod daria 0.4
+        f.override, f.overrideInterp, f.overrideValue, f.overrideInternal = 0.7, 0.5, true, 0.5
+        f.final = 0.6
         local changes, last = 0, false
         env.run(100, function()
             if NOM_World.fog ~= last then changes = changes + 1; last = NOM_World.fog end

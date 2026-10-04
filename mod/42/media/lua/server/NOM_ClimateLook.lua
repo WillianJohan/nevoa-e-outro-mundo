@@ -39,13 +39,30 @@ local function apply(ch, target, weight, setValue)
     target:setModdedInterpolate(1)
 end
 
--- FogCycle do sandbox liga um override de valor: aí o efetivo é o final, e a
--- nossa camada modded não chega na tela.
+-- Override de valor do sandbox (bytecode: updateSandboxOverrides liga quando
+-- FogCycle é "sem névoa"/"névoa eterna" ou ClimateCycle é "nevasca eterna"):
+-- o final ignora o interno, e a nossa camada modded não chega na tela.
+local function fogValueOverride()
+    local sv = SandboxVars or {}
+    return (sv.FogCycle or 1) >= 2 or sv.ClimateCycle == 6
+end
+
+-- Névoa vanilla efetiva, sem a do mod. O WeatherPeriod usa setOverride(0, t)
+-- sem ser de valor: o jogo mistura em cima do interno (onde mora a nossa
+-- névoa), então a mistura é refeita aqui com o interno limpo.
 local function vanillaFog(f)
-    if f:isEnableOverride() then
+    local internal = f:getInternalValue()
+    if not f:isEnableOverride() then
+        return internal
+    end
+    if fogValueOverride() then
         return f:getFinalValue()
     end
-    return f:getInternalValue()
+    local t = f:getOverrideInterpolate()
+    if t <= 0 then
+        return internal
+    end
+    return NOM_Rules.blend(internal, f:getOverride(), t)
 end
 
 local function blendColor(c, rgb, w)
