@@ -3,6 +3,7 @@
 --   fora da faixa é ignorado (IntegerConfigOption.setValue) e não avisa ninguém.
 -- * DoZombieStats(): relê sight/hearing (4 = Rand(3)+1, 5 = Rand(2)+2), mexe na
 --   cognition só com sandbox 1 ou 4, NÃO mexe em strength (só com campo -1),
+--   memory: campo -1 + sandbox 1..4, OU sandbox 5/6 (aleatório: re-sorteia sempre),
 --   chama doZombieSpeed() com o speedType atual e re-sorteia canCrawlUnderVehicle.
 -- * doZombieSpeed(t): t = -1 relê o sandbox; o sandbox manda ANTES do argumento:
 --   lore 3 ou t 3 → arrastado; 2/3 de chance de "fake shambler" (speedType = t);
@@ -11,7 +12,7 @@
 require "NOM_NightRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_NightStats.lua"
-local LORE_RANGE = { Speed = 4, Sight = 5, Hearing = 5, Cognition = 4 }
+local LORE_RANGE = { Speed = 4, Sight = 5, Hearing = 5, Cognition = 4, Memory = 6 }
 
 local function jlist()
     local l = { items = {} }
@@ -29,7 +30,7 @@ end
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = jlist(), seed = opts.seed or 0, calls = { stats = 0, speedReads = 0 } }
-    G.lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 3 }
+    G.lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 3, Memory = 2 }
     for k, v in pairs(opts.lore or {}) do G.lore[k] = v end
     local handlers = {}
     local function fire(name, ...)
@@ -62,7 +63,7 @@ local function setup(opts)
 
     function G.zombie(o)
         o = o or {}
-        local z = { md = {}, speedType = -1, cognition = -1, strength = -1, crawling = o.crawling or false,
+        local z = { md = {}, speedType = -1, cognition = -1, strength = -1, memory = -1, crawling = o.crawling or false,
             remote = o.remote or false, dead = false, outfitName = o.outfit, canCrawl = true }
         function z:getModData() return self.md end
         function z:hasModData() return next(self.md) ~= nil end
@@ -100,6 +101,13 @@ local function setup(opts)
             if l.Cognition == 1 then self.cognition = 1 end
             if l.Cognition == 4 then self.cognition = (G.rand(2) == 0) and 1 or 0 end
             if self.strength == -1 then self.strength = 3 end
+            local r = -1
+            if l.Memory == 5 then r = G.rand(4) elseif l.Memory == 6 then r = G.rand(3) + 1 end
+            local unset = self.memory == -1
+            if (unset and l.Memory == 1) or r == 0 then self.memory = 1250 end
+            if (unset and l.Memory == 2) or r == 1 then self.memory = 800 end
+            if (unset and l.Memory == 3) or r == 2 then self.memory = 500 end
+            if (unset and l.Memory == 4) or r == 3 then self.memory = 25 end
             local function sense(v)
                 if v == 4 then return G.rand(3) + 1 end
                 if v == 5 then return G.rand(2) + 2 end
@@ -338,6 +346,22 @@ return {
         NOM_NightStats.setNight(true)
         G.converge()
         for i, z in ipairs(zs) do assert(z.cognition == before[i], "re-sorteou cognition") end
+    end,
+    -- memória aleatória (5/6) re-sorteia em todo DoZombieStats, mesmo com o campo setado
+    stats_memory_not_rerolled = function()
+        for _, m in ipairs({ 5, 6 }) do
+            local G = setup({ lore = { Memory = m } })
+            local zs = {}
+            for i = 1, 10 do zs[i] = G.spawn() end
+            local before = {}
+            for i, z in ipairs(zs) do before[i] = z.memory end
+            NOM_NightStats.setNight(true)
+            G.converge()
+            NOM_NightStats.setNight(false)
+            G.converge()
+            for i, z in ipairs(zs) do assert(z.memory == before[i], "re-sorteou memory com sandbox " .. m) end
+            assert(G.lore.Memory == m, "sandbox de memória não voltou")
+        end
     end,
     -- velocidade aleatória no sandbox: a base é a do zumbi e volta igual
     stats_random_speed_keeps_own_tier = function()

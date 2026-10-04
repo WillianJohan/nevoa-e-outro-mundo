@@ -184,7 +184,7 @@ Não existe `setSight`, `setHearing`, `setStrength` nem `setSpeedType` públicos
 |---|---|---|
 | `getSandboxOptions():getOptionByName("ZombieLore.Speed")` (e `.Sight`, `.Hearing`, `.Cognition`) | getOptionByName CONFIRMED; nome EXISTS | `server/Farming/SFarmingSystem.lua:143`; mapa por `ConfigOption.getName()` (`SandboxOptions.addOption`), nomes em `SandboxOptions$ZombieLore.<init>`. Faixas: Speed 1–4, Sight/Hearing 1–5, Cognition 1–4 |
 | `option:setValue(v)` | EXISTS, **seguro** | `IntegerConfigOption.setValue(I)`: ignora fora da faixa, grava o campo, `invokeOnChangeEvent()` só chama callback se houver — e só `Core` registra callback (opções do jogo). **Não sincroniza nem salva**: envio é `SandboxOptions.sendToServer()`, gravação é `saveGameFile`/`saveCurrentGameBinFile`. Fica seguro se a troca e a volta acontecem na mesma chamada Lua |
-| `z:DoZombieStats()` | EXISTS | relê `sight`/`hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); **`strength` e `memory` só se o campo ainda é -1**; termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (re-sorteio) |
+| `z:DoZombieStats()` | EXISTS | relê `sight`/`hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); **`strength` só se o campo ainda é -1**; `memory` com o campo em -1 **ou sempre** que o sandbox é 5/6 (aleatório: `Rand(4)` / `Rand(3)+1` escolhe 1250/800/500/25); termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (re-sorteio) |
 | `z:doZombieSpeed(t)` | EXISTS | `determineZombieSpeed(t)` devolve `t` se `t ≠ -1` (senão relê o sandbox). `doZombieSpeedInternal`: `lore.speed==3 ou t==3` → arrastado; senão 2/3 de chance de `doFakeShambler(t)` (`speedType = t`); senão `lore==2 ou t==2` → rápido; senão `lore==1 ou t==1` → corredor. **O sandbox vence o argumento**: com sandbox "Arrastados" nenhum `t` promove sem trocar `ZombieLore.Speed` |
 | `z:getSpeedType()` | EXISTS | 1 corredor, 2 rápido, 3 arrastado (`doSprinter/doFastShambler/doShambler`) |
 | `z:isCanCrawlUnderVehicle()` / `setCanCrawlUnderVehicle(b)` | EXISTS | o mod devolve o valor que o `DoZombieStats` re-sorteia |
@@ -203,7 +203,7 @@ Visão: `getVisionRadiusAdjusted` = `20 − max(luz, chuva+névoa)`, ×1.75 se
 
 Receita usada (troca e volta na mesma chamada, volta garantida por `pcall`;
 Kahlua `pcall` pega `Throwable` em `KahluaThread.pcall`):
-`Speed = degrau, Sight/Hearing = degraus, Cognition = 2 (neutro)` →
+`Speed = degrau, Sight/Hearing = degraus, Cognition = 2, Memory = 2 (neutros)` →
 `z:DoZombieStats(); z:doZombieSpeed(degrau)` → restaura → devolve `canCrawlUnderVehicle`.
 
 **MP (resolvido por bytecode, falta o jogo):** zumbi remoto copia `walkType` e

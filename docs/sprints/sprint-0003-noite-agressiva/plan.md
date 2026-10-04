@@ -24,7 +24,7 @@
 
 | Pergunta | Resposta | Evidência |
 |---|---|---|
-| O que `DoZombieStats()` relê | `sight` e `hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); `strength` e `memory` **só se o campo ainda é -1**; termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (sorteio) | `IsoZombie.DoZombieStats` offsets 0–485 |
+| O que `DoZombieStats()` relê | `sight` e `hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); `strength` **só se o campo ainda é -1**; `memory` com o campo em -1 **ou** sempre que o sandbox é 5/6 (aleatório, re-sorteia); termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (sorteio) | `IsoZombie.DoZombieStats` offsets 0–485 |
 | Velocidade por zumbi | `doZombieSpeed(I)` é público. `determineZombieSpeed(t)` devolve `t` se `t ≠ -1`. `doZombieSpeedInternal`: `lore.speed==3 ou t==3` → arrastado; senão 2/3 de chance de `doFakeShambler(t)`; senão `lore==2 ou t==2` → rápido; senão `lore==1 ou t==1` → corredor. **O sandbox manda antes do argumento**: precisa trocar `ZombieLore.Speed` junto | `IsoZombie.doZombieSpeedInternal(I)`, `determineZombieSpeed(I)`, `doZombieSpeedInternal2(I)` |
 | `speedType` legível | `getSpeedType()` público; 1 corredor, 2 rápido, 3 arrastado | `IsoZombie.doSprinter/doFastShambler/doShambler` (putfield `speedType`) |
 | `setValue` no sandbox sincroniza ou salva? | **Não.** `IntegerConfigOption.setValue(I)`: checa faixa, grava o campo, chama `invokeOnChangeEvent()`, que só chama o callback se houver; só `Core` registra callback (opções do jogo, não do sandbox). Envio é `SandboxOptions.sendToServer()`, salvar é `saveGameFile/saveCurrentGameBinFile`, chamados à parte | `IntegerConfigOption.setValue`, `ConfigOption.invokeOnChangeEvent`; `who` de `setOnChangeCallback` |
@@ -42,7 +42,7 @@
 ## Decisões
 
 1. **"O servidor decide, quem simula aplica"** (ADR-005, emenda a ADR-002). Servidor: flag `night`, caça, lanterna. Aplicação de stats: no solo (`not isServer()`) pelo próprio servidor; no dedicado, por `client/NOM_NightClient.lua` em todas as cópias locais. Custo se errado: no MP a noite não muda a velocidade (o in-game confirma).
-2. **Troca do sandbox com restauração garantida** (`pcall`), na mesma chamada Lua. `Cognition` vai pra 2 durante a troca (neutro: não re-sorteia). `canCrawlUnderVehicle` é guardado e devolvido (o `DoZombieStats` re-sorteia).
+2. **Troca do sandbox com restauração garantida** (`pcall`), na mesma chamada Lua. `Cognition` e `Memory` vão pra 2 durante a troca (neutros: não re-sorteiam). `canCrawlUnderVehicle` é guardado e devolvido (o `DoZombieStats` re-sorteia).
 3. **Multiplicador vira degrau.** Velocidade e sentidos do jogo são 3 degraus. `degraus = floor(mult − 0.5)`: 1.0 → 0, 1.5 → 1, 2.5 → 2. Padrão 1.5: um degrau (arrastado → rápido → corredor; visão normal → águia; audição normal → apurada). Sandbox Aleatório (4/5) usa normal como base dos sentidos; velocidade aleatória usa o `speedType` que o zumbi tinha.
 4. **Dano e força ficam de fora** (pendência): não existe caminho por zumbi (tabela acima). `NightDamageMult` **não** entra no sandbox: opção que não faz nada é mentira.
 5. **Cache só em memória.** `modData.NOM_night` guarda o perfil aplicado (`nil` = intocado/dia). Não é salvo e é zerado no reaproveitamento (`resetForReuse`), exatamente quando o jogo re-sorteia os stats. De dia, zumbi intocado nunca é tocado. `OnZombieDead` apaga a chave (o corpo copia o `modData`).

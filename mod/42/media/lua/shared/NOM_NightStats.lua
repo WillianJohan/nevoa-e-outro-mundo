@@ -17,9 +17,13 @@ local LORE = {
     sight = "ZombieLore.Sight",
     hearing = "ZombieLore.Hearing",
     cognition = "ZombieLore.Cognition",
+    memory = "ZombieLore.Memory",
 }
--- DoZombieStats só mexe na cognition com sandbox 1 ou 4; 2 deixa o campo como está.
+-- Valores neutros durante a troca: DoZombieStats só mexe na cognition com sandbox
+-- 1 ou 4, e re-sorteia a memory com sandbox 5/6 (aleatório); com 2 nos dois, os
+-- campos já sorteados ficam como estão.
 local COGNITION_KEEP = 2
+local MEMORY_KEEP = 2
 local ECO_OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 
 local cursor = 0
@@ -65,7 +69,7 @@ local function isEco(z, md)
 end
 
 local function apply(z, md, w, dayTier)
-    local values = { [LORE.speed] = w.speed, [LORE.cognition] = COGNITION_KEEP }
+    local values = { [LORE.speed] = w.speed, [LORE.cognition] = COGNITION_KEEP, [LORE.memory] = MEMORY_KEEP }
     if w.sight then values[LORE.sight] = w.sight end
     if w.hearing then values[LORE.hearing] = w.hearing end
     local crawl = z:isCanCrawlUnderVehicle() -- DoZombieStats re-sorteia
