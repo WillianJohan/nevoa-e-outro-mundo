@@ -24,3 +24,7 @@ mesmo nos dois modos.
 - Overlays de névoa são deliberadamente locais (sem sync): cada jogador vê o
   próprio pesadelo, e não há custo de rede.
 - Teste de MP é obrigatório antes de fechar sprint que mexe em `server/`.
+- As flags night/fog são **derivadas do clima**, que o jogo já sincroniza: o
+  cliente calcula as próprias (`NOM_World`, em `shared/`) sem mensagem de rede.
+  O servidor continua dono de toda decisão de gameplay (sorteio, spawn); os
+  eventos de servidor nascem na sprint 0002, junto do primeiro consumidor.
