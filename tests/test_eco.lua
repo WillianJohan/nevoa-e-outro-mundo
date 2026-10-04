@@ -45,6 +45,7 @@ local function setup(opts)
         server = opts.server == true,
         sent = {},
         removedCorpses = 0,
+        squareCalls = {},
         dying = {},
         seed = 0,
         nextOnline = 1,
@@ -97,6 +98,7 @@ local function setup(opts)
         local b = { x = x, y = y, z = z or 0, md = {}, animal = false, square = sq }
         for k, v in pairs(extra or {}) do b[k] = v end
         function b:getModData() return self.md end
+        function b:hasModData() return next(self.md) ~= nil end
         function b:getSquare() return self.square end
         function b:getX() return self.x end
         function b:getY() return self.y end
@@ -216,6 +218,8 @@ local function setup(opts)
     getCell = function()
         return {
             getGridSquare = function(_, x, y, z)
+                local k = x .. "," .. y .. "," .. z
+                G.squareCalls[k] = (G.squareCalls[k] or 0) + 1
                 local sq = G.squares[x .. "," .. y .. "," .. z]
                 return sq and G.square(x, y, z) or nil
             end,
@@ -343,8 +347,8 @@ return {
         local G = setup({ outfits = { "Agent", "Priest" } })
         G.body(105, 105, 0)
         G.tenMinutes()
-        local keys = G.globalMD.NevoaEOutroMundo and G.globalMD.NevoaEOutroMundo.ecoOutfitKeys or {}
-        assert(next(keys) == nil, "aprendeu chave sem outfit")
+        local ids = G.globalMD.NevoaEOutroMundo and G.globalMD.NevoaEOutroMundo.eco and G.globalMD.NevoaEOutroMundo.eco.ids or {}
+        assert(next(ids) == nil, "guardou ID sem outfit")
         local zz = G.reload(100, 100, 0, 0)
         assert(zz.md.NOM_eco == nil, "zumbi sem outfit virou Eco")
     end,
@@ -381,6 +385,7 @@ return {
         local e = G.ecos()[1]
         G.kill(e, { delay = 30 })
         assert(e.inv == 0, "loot ficou no Eco")
+        assert(next(G.globalMD.NevoaEOutroMundo.eco.ids) == nil, "Eco morto ficou na lista de IDs")
         G.tick(40)
         assert(G.bodiesAt(105, 105) == 1, "o corpo original tem que ficar")
         assert(G.removedCorpses == 1, "cadáver do Eco ficou no chão")
@@ -487,15 +492,91 @@ return {
         G2.tick(1)
         assert(back.removed, "não removeu depois de saber que é dia")
     end,
-    -- lista de mods mudou: a chave aponta pra outro outfit, que não é Eco
-    eco_stale_key_is_dropped = function()
+    -- lista de mods mudou: o ID guardado agora veste outro outfit, que não é Eco
+    eco_stale_id_is_dropped = function()
         local G = setup()
         local agent = G.pickOutfit("Agent", false)
-        G.globalMD.NevoaEOutroMundo = { ecoOutfitKeys = { [NOM_EcoRules.outfitKey(agent)] = true } }
+        G.globalMD.NevoaEOutroMundo.eco.ids = { [agent] = G.globalMD.NevoaEOutroMundo.eco.night }
         local zz = G.reload(110, 110, 0, agent)
         G.setTime(12)
         G.tick(1)
         assert(not zz.removed and zz.md.NOM_eco == nil, "zumbi comum tratado como Eco")
-        assert(next(G.globalMD.NevoaEOutroMundo.ecoOutfitKeys) == nil, "chave velha ficou")
+        assert(next(G.globalMD.NevoaEOutroMundo.eco.ids) == nil, "ID velho ficou")
+    end,
+    -- zumbi de zona que sorteou o outfit NOM_Eco (fallback GetRandomOutfit) não
+    -- está na lista de IDs: é zumbi comum
+    eco_random_outfit_zombie_is_not_eco = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes() -- já existe um Eco de verdade com esse outfit
+        local zz = G.reload(110, 110, 0, G.pickOutfit("NOM_Eco", false))
+        G.setTime(12)
+        G.tick(1)
+        assert(not zz.removed and zz.md.NOM_eco == nil)
+    end,
+    -- regra do GDD: "ao amanhecer, todos os Ecos somem, onde quer que estejam"
+    eco_reloaded_on_later_night_is_removed = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        G.setTime(9)
+        G.setTime(22)
+        local back = G.reload(105, 105, 0, id)
+        G.tick(1)
+        assert(back.removed, "Eco da noite anterior voltou na noite seguinte")
+        assert(G.globalMD.NevoaEOutroMundo.eco.ids[id] == nil, "ID ficou depois de remover")
+    end,
+    eco_restart_mid_night_keeps_same_night = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        local G2 = setup({ squares = G.squares, globalMD = G.globalMD, tod = 2 })
+        local back = G2.reload(105, 105, 0, id)
+        G2.tick(1)
+        assert(not back.removed and back.md.NOM_eco == true, "reiniciar no meio da noite abriu noite nova")
+    end,
+    eco_ids_of_old_nights_are_pruned = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        assert(G.globalMD.NevoaEOutroMundo.eco.ids[id])
+        for _ = 1, 8 do G.setTime(9); G.setTime(22) end
+        assert(G.globalMD.NevoaEOutroMundo.eco.ids[id] == nil, "lista de IDs cresce pra sempre")
+    end,
+    eco_dawn_drops_removed_ids = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        G.setTime(7)
+        assert(next(G.globalMD.NevoaEOutroMundo.eco.ids) == nil, "Eco removido ficou na lista")
+    end,
+    -- onlineID -1 = ainda sem ID de rede: não viaja (o cliente casaria com outro sem ID)
+    eco_dawn_mp_skips_unassigned_online_id = function()
+        local G = setup({ server = true })
+        bodies(G, 2, 105, 105)
+        G.tenMinutes()
+        G.ecos()[1].onlineID = -1
+        G.setTime(7)
+        assert(#G.ecos() == 0, "Eco sem ID de rede ficou no servidor")
+        for _, id in pairs(G.sent[1].args.ids) do assert(id ~= -1, "mandou -1") end
+    end,
+    -- dois jogadores juntos: cada square é lido uma vez por varredura
+    eco_overlapping_players_scan_each_square_once = function()
+        local G = setup({ players = { { x = 100, y = 100, z = 0 }, { x = 102, y = 100, z = 0 } } })
+        bodies(G, 10, 105, 105)
+        G.tenMinutes()
+        for k, n in pairs(G.squareCalls) do assert(n == 1, k .. " lido " .. n .. " vezes") end
+        assert(#G.ecos() == 10, "Ecos: " .. #G.ecos())
+    end,
+    -- pilha no meio de dois jogadores: os Ecos perto contam no teto dos dois
+    eco_overlapping_players_share_nearby_ecos_in_cap = function()
+        local G = setup({ sandbox = { EcoMaxPerPlayer = 5 },
+            players = { { x = 100, y = 100, z = 0 }, { x = 160, y = 100, z = 0 } } })
+        bodies(G, 20, 125, 100) -- a pilha fica a até 40 dos dois
+        G.tenMinutes()
+        assert(#G.ecos() == 5, "Ecos: " .. #G.ecos())
     end,
 }
