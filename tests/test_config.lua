@@ -47,4 +47,12 @@ return {
         end
         assert(n >= 6, "esperava as opções do Eco, achou " .. n)
     end,
+    -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
+    config_eco_radius_max_is_60 = function()
+        local f = assert(io.open("mod/42/media/sandbox-options.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local block = txt:match("option NevoaEOutroMundo%.EcoRadius = {(.-)}")
+        assert(block and block:match("max = (%d+)") == "60", "max do EcoRadius")
+    end,
 }
