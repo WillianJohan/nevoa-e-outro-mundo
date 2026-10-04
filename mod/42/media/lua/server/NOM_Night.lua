@@ -10,6 +10,8 @@ require "NOM_NightStats"
 require "NOM_Players"
 
 local MODULE = "NevoaEOutroMundo"
+-- Farol da lanterna a cada N minutos de jogo: chamado todo minuto vira enxame.
+local TORCH_EVERY_MINUTES = 5
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] noite " .. msg) end
@@ -44,8 +46,15 @@ local function alive()
 end
 
 -- addSound no servidor vai pro popman e pros clientes (WorldSoundManager.addSound
--- → GameServer.sendWorldSound): o zumbi reage onde é simulado.
-local function call(p, radius)
+-- → GameServer.sendWorldSound): o zumbi reage onde é simulado. O jogo multiplica
+-- o raio pela audição do zumbi (getSoundAttract), que a noite aguça: reach é o
+-- alcance efetivo e o raio passado é dividido de volta (NOM_NightRules.soundRadius).
+local function call(p, reach)
+    local radius = NOM_NightRules.soundRadius(reach, {
+        sensesOn = NOM_Config.get("NightSharperSenses"),
+        senseMult = NOM_Config.get("NightSenseMult"),
+        hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
+    })
     addSound(p, math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()), radius, radius)
 end
 
@@ -56,7 +65,7 @@ local function torchOutside(p)
     return sq ~= nil and sq:isOutside() and p:getActiveLightItem() ~= nil
 end
 
-local huntMinutes, lastLit = 0, 0
+local huntMinutes, torchMinutes, lastLit = 0, 0, 0
 
 local function hunt(ps)
     if not NOM_Config.get("NightHunt") then
@@ -64,7 +73,7 @@ local function hunt(ps)
         return
     end
     local due
-    huntMinutes, due = NOM_NightRules.huntTick(huntMinutes, NOM_Config.get("HuntIntervalMinutes"))
+    huntMinutes, due = NOM_NightRules.countdown(huntMinutes, NOM_Config.get("HuntIntervalMinutes"))
     if not due or #ps == 0 then return end
     local radius = NOM_Config.get("HuntRadius")
     for _, p in ipairs(ps) do call(p, radius) end
@@ -74,7 +83,13 @@ end
 -- ponytail: o zumbi não tem alcance de visão ajustável por zumbi além dos
 -- degraus (e o raio é preso em 20); a lanterna vira um chamado sonoro.
 local function torches(ps)
-    if not NOM_Config.get("NightSharperSenses") then return end
+    if not NOM_Config.get("NightSharperSenses") then
+        torchMinutes = 0
+        return
+    end
+    local due
+    torchMinutes, due = NOM_NightRules.countdown(torchMinutes, TORCH_EVERY_MINUTES)
+    if not due then return end
     local radius, lit = NOM_NightRules.torchRadius(NOM_Config.get("NightSenseMult")), 0
     for _, p in ipairs(ps) do
         if torchOutside(p) then
@@ -90,7 +105,7 @@ end
 
 local function everyMinute()
     if not NOM_World.night then
-        huntMinutes = 0
+        huntMinutes, torchMinutes = 0, 0
         return
     end
     local ps = alive()

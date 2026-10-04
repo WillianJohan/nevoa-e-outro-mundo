@@ -51,12 +51,27 @@ function NOM_NightRules.wanted(night, eco, dayTier, cfg)
     return w
 end
 
+-- Multiplicador de audição por degrau (bytecode WorldSoundManager.getHearingMultiplier(I)).
+NOM_NightRules.HEARING_MULT = { 3.0, 1.0, 0.45 }
+
+-- Raio a passar pro addSound pra o alcance efetivo ser reach. O jogo multiplica o
+-- raio pela audição do zumbi (getSoundAttract); à noite com sentidos aguçados o
+-- zumbi tem o degrau da noite. Sem bônus, o raio é o do jogo (vanilla).
+-- cfg = { sensesOn, senseMult, hearing } (hearing = valor do sandbox).
+function NOM_NightRules.soundRadius(reach, cfg)
+    local R = NOM_NightRules
+    local s = cfg.sensesOn and R.steps(cfg.senseMult) or 0
+    if s == 0 then return reach end
+    local mult = R.HEARING_MULT[R.sharpen(R.baseSense(cfg.hearing), s)]
+    return math.max(1, math.floor(reach / mult + 0.5))
+end
+
 function NOM_NightRules.torchRadius(senseMult)
     return math.floor(NOM_NightRules.VISION_MAX * senseMult)
 end
 
--- Um passo por minuto de jogo; due quando completa o intervalo.
-function NOM_NightRules.huntTick(minutes, interval)
+-- Um passo por minuto de jogo; due quando completa o intervalo (caça, lanterna).
+function NOM_NightRules.countdown(minutes, interval)
     minutes = minutes + 1
     if minutes >= interval then return 0, true end
     return minutes, false

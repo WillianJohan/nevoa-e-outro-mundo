@@ -59,14 +59,26 @@ return {
         assert(s.speed == 1 and s.sight == nil and s.hearing == nil)
         assert(w.key ~= s.key)
     end,
-    night_rules_hunt_tick = function()
+    night_rules_countdown = function()
         local m, due = 0, false
         for _ = 1, 59 do
-            m, due = NOM_NightRules.huntTick(m, 60)
+            m, due = NOM_NightRules.countdown(m, 60)
             assert(not due)
         end
-        m, due = NOM_NightRules.huntTick(m, 60)
+        m, due = NOM_NightRules.countdown(m, 60)
         assert(due and m == 0)
+    end,
+    -- o jogo multiplica o raio do som pela audição do zumbi (getSoundAttract ×
+    -- getHearingMultiplier: 3.0 / 1.0 / 0.45); o mod divide pra o alcance ser o configurado
+    night_rules_sound_radius = function()
+        local R = NOM_NightRules
+        assert(R.HEARING_MULT[1] == 3.0 and R.HEARING_MULT[2] == 1.0 and R.HEARING_MULT[3] == 0.45)
+        assert(R.soundRadius(30, cfg()) == 10, "apurada à noite: 30 / 3")
+        assert(R.soundRadius(30, cfg({ sensesOn = false })) == 30, "sentidos desligados: raio do jogo")
+        assert(R.soundRadius(30, cfg({ senseMult = 1.0 })) == 30, "sem degrau: raio do jogo")
+        assert(R.soundRadius(30, cfg({ hearing = 3 })) == 30, "ruim → normal: ×1")
+        assert(R.soundRadius(25, cfg()) == 8)
+        assert(R.soundRadius(1, cfg()) == 1, "nunca zero")
     end,
     -- 20 = teto do raio de visão do zumbi (PZMath.clamp em updateVisionRadius)
     night_rules_torch_radius = function()

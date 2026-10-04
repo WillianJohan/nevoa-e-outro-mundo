@@ -4,11 +4,19 @@
 -- * getActiveLightItem(): item na mão ou preso que emite luz, senão nil (bytecode IsoPlayer).
 -- * square:isOutside() (server/Farming/SFarmingSystem.lua:156).
 -- * EveryOneMinute uma vez por minuto de jogo; a noite vem do NOM_World (borda).
+-- * quem ouve: o zumbi reage se a distância ≤ raio × getHearingMultiplier(zumbi)
+--   (WorldSoundManager.getSoundAttract), 3.0 / 1.0 / 0.45 pelo degrau de audição.
+--   opts.zombieHearing = degrau dos zumbis em volta (à noite, o que o NOM_NightStats
+--   aplica: test_night_stats cobre).
+local HEARING_MULT = { 3.0, 1.0, 0.45 }
 local FILE = "mod/42/media/lua/server/NOM_Night.lua"
 
 local function setup(opts)
     opts = opts or {}
-    local G = { sounds = {}, sent = {}, world = { tod = opts.tod or 12 }, installed = 0 }
+    local G = { sounds = {}, sent = {}, world = { tod = opts.tod or 12 }, installed = 0,
+        zombieHearing = opts.zombieHearing or 2, loreHearing = opts.loreHearing or 2 }
+    -- alcance real do som pros zumbis em volta
+    function G.reach(s) return s.radius * HEARING_MULT[G.zombieHearing] end
     G.players = opts.players or { { x = 100, y = 100, z = 0 } }
     local handlers = {}
     local function fire(name, ...)
@@ -51,6 +59,14 @@ local function setup(opts)
         end
     end
     getGameTime = function() return { getTimeOfDay = function() return G.world.tod end } end
+    getSandboxOptions = function()
+        return {
+            getOptionByName = function(_, name)
+                assert(name == "ZombieLore.Hearing", "opção inesperada: " .. name)
+                return { getValue = function() return G.loreHearing end }
+            end,
+        }
+    end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
     end
@@ -77,9 +93,9 @@ local function setup(opts)
         for _ = 1, n do fire("EveryOneMinute") end
     end
     function G.clientCommand(module, command, p, args) fire("OnClientCommand", module, command, p, args) end
-    function G.soundsOf(radius)
+    function G.soundsReaching(reach)
         local n = 0
-        for _, s in ipairs(G.sounds) do if s.radius == radius then n = n + 1 end end
+        for _, s in ipairs(G.sounds) do if G.reach(s) == reach then n = n + 1 end end
         return n
     end
     G.setTime(G.world.tod)
@@ -147,12 +163,31 @@ return {
         G2.minutes(200)
         assert(#G2.sounds == 0, "caça desligada caçou")
     end,
-    -- lanterna ligada ao ar livre à noite: chamado de 20 × NightSenseMult todo minuto
+    -- alcance efetivo = HuntRadius, mesmo com a audição apurada da noite (×3)
+    hunt_effective_reach_is_hunt_radius = function()
+        local G = setup({ tod = 23, zombieHearing = 1, sandbox = { HuntIntervalMinutes = 10, HuntRadius = 30 } })
+        G.minutes(10)
+        local hunts = {}
+        for _, s in ipairs(G.sounds) do if s.x == 100 then hunts[#hunts + 1] = s end end
+        assert(#hunts == 1 and G.reach(hunts[1]) == 30, "alcance: " .. G.reach(hunts[1]))
+        -- sentidos desligados: zumbi com a audição do dia, raio passa direto
+        local G2 = setup({ tod = 23, zombieHearing = 2,
+            sandbox = { HuntIntervalMinutes = 10, HuntRadius = 30, NightSharperSenses = false } })
+        G2.minutes(10)
+        assert(#G2.sounds == 1 and G2.reach(G2.sounds[1]) == 30)
+        -- raio que não divide por 3: arredonda, erro de no máximo 1.5 tile
+        local G3 = setup({ tod = 23, zombieHearing = 1, sandbox = { HuntIntervalMinutes = 10, HuntRadius = 25, NightHunt = true } })
+        G3.minutes(10)
+        assert(math.abs(G3.reach(G3.sounds[1]) - 25) <= 1.5)
+    end,
+    -- lanterna ligada ao ar livre à noite: alcance de 20 × NightSenseMult, a cada 5 minutos
     torch_outside_at_night_attracts = function()
-        local G = setup({ tod = 23, sandbox = { NightHunt = false },
+        local G = setup({ tod = 23, zombieHearing = 1, sandbox = { NightHunt = false },
             players = { { x = 10, y = 20, z = 0, light = true } } })
-        G.minutes(3)
-        assert(G.soundsOf(30) == 3, "farol: " .. G.soundsOf(30))
+        G.minutes(4)
+        assert(#G.sounds == 0, "farol antes de 5 minutos")
+        G.minutes(6)
+        assert(#G.sounds == 2 and G.soundsReaching(30) == 2, "farol: " .. #G.sounds)
         assert(G.sounds[1].x == 10 and G.sounds[1].y == 20)
     end,
     torch_needs_outside_light_night_and_toggle = function()
@@ -166,7 +201,7 @@ return {
             local sb = c.sandbox or {}
             sb.NightHunt = false
             local G = setup({ tod = c.tod, players = { c.p }, sandbox = sb })
-            G.minutes(5)
+            G.minutes(20)
             assert(#G.sounds == 0, "caso " .. i .. " atraiu")
         end
     end,

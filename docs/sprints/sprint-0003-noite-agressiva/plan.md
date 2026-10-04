@@ -98,9 +98,9 @@ end,
 - `NOM_NightRules.dayTier(sandboxSpeed, current) -> int` (1..3 do sandbox; senão `current`)
 - `NOM_NightRules.wanted(night, eco, dayTier, cfg) -> { key, speed, sight?, hearing? }`; `cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }`; `key == "day"` quando nada muda
 - `NOM_NightRules.ECO_SPEED = 3`, `NOM_NightRules.torchRadius(senseMult) -> int` (`floor(20 × mult)`)
-- `NOM_NightRules.huntTick(minutes, interval) -> minutes, due`
+- `NOM_NightRules.countdown(minutes, interval) -> minutes, due`
 
-- [ ] **Step 1: testes que falham** — `night_rules_steps`, `night_rules_sharpen_clamps`, `night_rules_base_sense_random_is_normal`, `night_rules_day_tier`, `night_rules_wanted_day`, `night_rules_wanted_night_default`, `night_rules_wanted_eco_slow_and_unboosted`, `night_rules_wanted_toggles_off_is_day`, `night_rules_wanted_only_senses`, `night_rules_hunt_tick`, `night_rules_torch_radius`.
+- [ ] **Step 1: testes que falham** — `night_rules_steps`, `night_rules_sharpen_clamps`, `night_rules_base_sense_random_is_normal`, `night_rules_day_tier`, `night_rules_wanted_day`, `night_rules_wanted_night_default`, `night_rules_wanted_eco_slow_and_unboosted`, `night_rules_wanted_toggles_off_is_day`, `night_rules_wanted_only_senses`, `night_rules_countdown`, `night_rules_torch_radius`.
 
 ```lua
 night_rules_wanted_night_default = function()
