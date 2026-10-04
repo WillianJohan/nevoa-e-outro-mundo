@@ -5,6 +5,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_EcoRules"
+require "NOM_Players"
 
 local OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 local HEALTH = 0.3       -- vanilla "normal" nasce com 1.5 ± 0.3 (createZombieOutsideWorld)
@@ -47,21 +48,6 @@ end
 
 local function isEco(z)
     return z:getModData().NOM_eco == true
-end
-
--- Padrão de server/XpSystem/XpUpdate.lua:294-297.
-local function players()
-    local out = {}
-    if isServer() then
-        local list = getOnlinePlayers()
-        for i = 0, list:size() - 1 do out[#out + 1] = list:get(i) end
-    else
-        for i = 0, getNumActivePlayers() - 1 do
-            local p = getSpecificPlayer(i)
-            if p then out[#out + 1] = p end
-        end
-    end
-    return out
 end
 
 local function spawnFrom(body, night)
@@ -192,7 +178,7 @@ local function scan()
     local radius = NOM_Config.get("EcoRadius")
     local cap = NOM_Config.get("EcoMaxPerPlayer")
     local ps = {}
-    for _, p in ipairs(players()) do
+    for _, p in ipairs(NOM_Players.all()) do
         if not p:isDead() then
             ps[#ps + 1] = { x = math.floor(p:getX()), y = math.floor(p:getY()), z = math.floor(p:getZ()) }
         end

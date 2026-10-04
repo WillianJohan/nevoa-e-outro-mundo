@@ -1,4 +1,4 @@
-package.path = "mod/42/media/lua/shared/?.lua;" .. package.path
+package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;" .. package.path
 
 local FILES = {
     "tests/test_smoke.lua",
