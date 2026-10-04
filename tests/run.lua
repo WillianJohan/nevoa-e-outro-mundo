@@ -10,6 +10,7 @@ local FILES = {
     "tests/test_eco.lua",
     "tests/test_eco_client.lua",
     "tests/test_night_rules.lua",
+    "tests/test_night_stats.lua",
 }
 
 local pass, fail = 0, 0
