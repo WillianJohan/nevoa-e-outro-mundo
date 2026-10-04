@@ -372,4 +372,130 @@ return {
             assert(block:find("edf2b504-261e-4baf-9440-48884d80a8bb", 1, true), tag .. " sem o véu (Hat_WeddingVeil)")
         end
     end,
+
+    -- morte: inventário limpo já no OnZombieDead; corpo removido quando nascer
+    eco_death_clears_inventory_and_removes_corpse = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local e = G.ecos()[1]
+        G.kill(e, { delay = 30 })
+        assert(e.inv == 0, "loot ficou no Eco")
+        G.tick(40)
+        assert(G.bodiesAt(105, 105) == 1, "o corpo original tem que ficar")
+        assert(G.removedCorpses == 1, "cadáver do Eco ficou no chão")
+    end,
+    eco_corpse_on_neighbor_square_is_removed = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        G.kill(G.ecos()[1], { dx = 1 })
+        G.tick(10)
+        assert(G.bodiesAt(106, 105) == 0, "cadáver no square vizinho ficou")
+    end,
+    eco_normal_zombie_keeps_corpse = function()
+        local G = setup()
+        local zz = G.normalZombie(110, 110)
+        G.kill(zz)
+        G.tick(10)
+        assert(G.bodiesAt(110, 110) == 1, "removeu cadáver de zumbi comum")
+        assert(zz.inv == 3, "limpou loot de zumbi comum")
+    end,
+    -- remoção falhou (servidor caiu, square descarregou): a varredura limpa
+    eco_corpse_is_swept_and_never_releases = function()
+        local G = setup()
+        local b = G.body(105, 105, 0)
+        b.md.NOM_eco = true
+        G.tenMinutes()
+        assert(#G.ecos() == 0, "corpo de Eco soltou Eco")
+        assert(G.bodiesAt(105, 105) == 0, "varredura não removeu corpo de Eco")
+    end,
+
+    eco_dawn_removes_all = function()
+        local G = setup()
+        bodies(G, 5, 105, 105)
+        local normal = G.normalZombie(120, 120)
+        G.tenMinutes()
+        assert(#G.ecos() == 5)
+        G.setTime(7)
+        assert(#G.ecos() == 0, "Ecos sobreviveram ao amanhecer: " .. #G.ecos())
+        assert(not normal.removed, "removeu zumbi comum")
+        assert(#G.sent == 0, "solo não manda comando")
+    end,
+    eco_dawn_mp_sends_ids = function()
+        local G = setup({ server = true })
+        bodies(G, 2, 105, 105)
+        G.tenMinutes()
+        local ids = {}
+        for _, e in ipairs(G.ecos()) do ids[e.onlineID] = true end
+        G.setTime(7)
+        assert(#G.sent == 1, "comandos: " .. #G.sent)
+        local c = G.sent[1]
+        assert(c.module == "NevoaEOutroMundo" and c.command == "ecoGone")
+        local n = 0
+        for _, id in pairs(c.args.ids) do assert(ids[id]); n = n + 1 end
+        assert(n == 2)
+    end,
+
+    -- Eco descarregado à noite que volta de dia: some no tick seguinte (dentro
+    -- do OnZombieCreate não dá: o jogo põe o zumbi na lista depois do evento)
+    eco_reloaded_by_day_is_removed_next_tick = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        G.setTime(9)
+        local back = G.reload(105, 105, 0, id)
+        G.tick(1)
+        assert(back.removed, "Eco recarregado de dia ficou no mundo")
+    end,
+    eco_reloaded_at_night_stays_weak_and_corpseless = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        local back = G.reload(105, 105, 0, id)
+        G.tick(5)
+        assert(not back.removed, "removeu Eco à noite")
+        assert(back.md.NOM_eco == true and back.health < 1.0, "voltou como zumbi comum")
+        G.kill(back)
+        G.tick(10)
+        assert(G.removedCorpses == 1, "Eco recarregado deixou cadáver")
+    end,
+    -- servidor reiniciou: as chaves vêm do ModData global
+    eco_restart_recognizes_reloaded_eco = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        local G2 = setup({ squares = G.squares, globalMD = G.globalMD, tod = 12 })
+        local back = G2.reload(105, 105, 0, id)
+        G2.tick(1)
+        assert(back.removed, "Eco não reconhecido depois de reiniciar")
+    end,
+    -- antes do primeiro OnClimateTick não se sabe se é dia: espera
+    eco_unknown_clock_waits = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        local G2 = setup({ squares = G.squares, globalMD = G.globalMD, tod = 12, noClock = true })
+        local back = G2.reload(105, 105, 0, id)
+        G2.tick(3)
+        assert(not back.removed, "removeu sem saber a hora")
+        G2.setTime(12)
+        G2.tick(1)
+        assert(back.removed, "não removeu depois de saber que é dia")
+    end,
+    -- lista de mods mudou: a chave aponta pra outro outfit, que não é Eco
+    eco_stale_key_is_dropped = function()
+        local G = setup()
+        local agent = G.pickOutfit("Agent", false)
+        G.globalMD.NevoaEOutroMundo = { ecoOutfitKeys = { [NOM_EcoRules.outfitKey(agent)] = true } }
+        local zz = G.reload(110, 110, 0, agent)
+        G.setTime(12)
+        G.tick(1)
+        assert(not zz.removed and zz.md.NOM_eco == nil, "zumbi comum tratado como Eco")
+        assert(next(G.globalMD.NevoaEOutroMundo.ecoOutfitKeys) == nil, "chave velha ficou")
+    end,
 }

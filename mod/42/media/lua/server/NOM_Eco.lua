@@ -9,6 +9,9 @@ require "NOM_EcoRules"
 local OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 local HEALTH = 0.3       -- vanilla "normal" nasce com 1.5 ± 0.3 (createZombieOutsideWorld)
 local FEMALE_CHANCE = 50
+-- Ticks procurando o cadáver depois do OnZombieDead: o corpo nasce no fim da
+-- animação de morte, não no evento. Depois disso, a varredura periódica limpa.
+local CORPSE_TICKS = 600
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] eco " .. msg) end
@@ -66,6 +69,46 @@ local function spawnFrom(body)
     return true
 end
 
+-- Mesma ordem do jogo ao trocar zumbi por corpo (bytecode IsoDeadBody.<init>
+-- 1177-1181). No MP o servidor não avisa os clientes (o /removezombies do admin
+-- usa NetworkZombiePacker.deleteZombie, que não é exposto): manda os onlineIDs
+-- e client/NOM_EcoClient.lua apaga o fantasma.
+local function removeEcos(list)
+    local ids = {}
+    for _, z in ipairs(list) do
+        ids[#ids + 1] = z:getOnlineID()
+        z:removeFromWorld()
+        z:removeFromSquare()
+    end
+    if isServer() and #ids > 0 then
+        sendServerCommand("NevoaEOutroMundo", "ecoGone", { ids = ids })
+    end
+    if #list > 0 then debugLog("removidos=" .. #list) end
+end
+
+local function loadedEcos()
+    local out, list = {}, getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if isEco(z) and not z:isDead() then out[#out + 1] = z end
+    end
+    return out
+end
+
+-- Corpo de Eco carrega o modData do Eco (o construtor do IsoDeadBody copia).
+-- removeCorpse(body, false) no servidor avisa os clientes (RemoveCorpseFromMap).
+local function removeEcoCorpses(sq)
+    local list, removed = sq:getDeadBodys(), 0
+    for i = list:size() - 1, 0, -1 do
+        local b = list:get(i)
+        if not b:isAnimal() and b:getModData().NOM_eco then
+            sq:removeCorpse(b, false)
+            removed = removed + 1
+        end
+    end
+    return removed
+end
+
 local function ecosNear(cell, px, py, radius)
     local list = cell:getZombieList()
     local r2, n = radius * radius, 0
@@ -114,7 +157,12 @@ local function scan()
         if not p:isDead() then
             local px, py, pz = p:getX(), p:getY(), math.floor(p:getZ())
             local quota = NOM_EcoRules.quota(cap, ecosNear(cell, px, py, radius))
-            for _, c in ipairs(NOM_EcoRules.pick(bodiesAround(cell, px, py, pz, radius), radius, quota)) do
+            local cands = bodiesAround(cell, px, py, pz, radius)
+            for _, c in ipairs(cands) do
+                -- rede de segurança: cadáver de Eco que escapou da remoção
+                if c.eco then removeEcoCorpses(c.body:getSquare()) end
+            end
+            for _, c in ipairs(NOM_EcoRules.pick(cands, radius, quota)) do
                 if spawnFrom(c.body) then spawned = spawned + 1 end
             end
         end
@@ -122,4 +170,77 @@ local function scan()
     if spawned > 0 then debugLog("spawn=" .. spawned) end
 end
 
+-- Eco que volta de chunk descarregado: o modData dele não foi salvo, só o
+-- persistentOutfitID. Chave conhecida → veste pelo próprio ID (o jogo faria isso
+-- depois, preguiçoso) e confirma pelo nome; chave velha (lista de mods mudou) sai.
+local toCheck = {}
+local function onZombieCreate(z)
+    local id = z:getPersistentOutfitID()
+    local key = NOM_EcoRules.outfitKey(id)
+    if not key then return end
+    local keys = outfitKeys()
+    if not keys[key] then return end
+    z:dressInPersistentOutfitID(id)
+    if z:getOutfitName() ~= OUTFIT then
+        keys[key] = nil
+        return
+    end
+    markEco(z)
+    toCheck[#toCheck + 1] = z
+end
+
+local dying = {}
+local function onZombieDead(z)
+    if not isEco(z) then return end
+    -- DoZombieInventory já rodou antes do evento (bytecode IsoZombie.onKilled)
+    z:getInventory():removeAllItems()
+    dying[#dying + 1] = { x = math.floor(z:getX()), y = math.floor(z:getY()), z = math.floor(z:getZ()), ticks = CORPSE_TICKS }
+end
+
+-- O corpo pode cair no square vizinho durante a animação de morte.
+local function sweepAround(cell, d)
+    local removed = 0
+    for x = d.x - 1, d.x + 1 do
+        for y = d.y - 1, d.y + 1 do
+            local sq = cell:getGridSquare(x, y, d.z)
+            if sq then removed = removed + removeEcoCorpses(sq) end
+        end
+    end
+    return removed
+end
+
+local function onTick()
+    -- Não dá pra remover dentro do OnZombieCreate: o jogo põe o zumbi na lista
+    -- da célula depois do evento. Hora ainda desconhecida (antes do primeiro
+    -- OnClimateTick) → espera.
+    if #toCheck > 0 and NOM_World.tod ~= nil then
+        local gone = {}
+        if not NOM_World.night then
+            for _, z in ipairs(toCheck) do
+                if isEco(z) and not z:isDead() then gone[#gone + 1] = z end
+            end
+        end
+        toCheck = {}
+        removeEcos(gone)
+    end
+    if #dying == 0 then return end
+    local cell = getCell()
+    for i = #dying, 1, -1 do
+        local d = dying[i]
+        d.ticks = d.ticks - 1
+        if sweepAround(cell, d) > 0 or d.ticks <= 0 then
+            table.remove(dying, i)
+        end
+    end
+end
+
+NOM_World.onChange(function(flag, on)
+    if flag == "night" and not on then
+        removeEcos(loadedEcos())
+    end
+end)
+
 Events.EveryTenMinutes.Add(scan)
+Events.OnZombieCreate.Add(onZombieCreate)
+Events.OnZombieDead.Add(onZombieDead)
+Events.OnTick.Add(onTick)
