@@ -31,6 +31,9 @@ mesmo nos dois modos.
   teria efeito em MP. O cliente que precisar das flags (som, overlays, sprint
   0005) recebe por evento de servidor; esses eventos nascem junto do primeiro
   consumidor de cliente.
+- **Emendada pela [ADR-005](adr-005-quem-simula-aplica.md)** para comportamento de
+  zumbi: o servidor decide e avisa, mas quem simula o zumbi (o cliente dono, no MP)
+  aplica velocidade e sentidos. `client/NOM_NightClient.lua` aplica; não decide.
 - Exceção de limpeza: `client/NOM_EcoClient.lua` apaga o Eco que o servidor já
   removeu (`ecoGone`), porque `removeFromWorld` no servidor não avisa o cliente.
   Ele não decide nada.

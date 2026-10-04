@@ -7,6 +7,13 @@ NOM_Config.DEFAULTS = {
     EcoEnabled = true,
     EcoMaxPerPlayer = 30,
     EcoRadius = 40,
+    NightFaster = true,
+    NightSharperSenses = true,
+    NightHunt = true,
+    NightSpeedMult = 1.5,
+    NightSenseMult = 1.5,
+    HuntIntervalMinutes = 60,
+    HuntRadius = 30,
 }
 
 function NOM_Config.get(key)

@@ -24,6 +24,16 @@ return {
         assert(NOM_Config.get("EcoMaxPerPlayer") == 30)
         assert(NOM_Config.get("EcoRadius") == 40)
     end,
+    config_night_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("NightFaster") == true)
+        assert(NOM_Config.get("NightSharperSenses") == true)
+        assert(NOM_Config.get("NightHunt") == true)
+        assert(NOM_Config.get("NightSpeedMult") == 1.5)
+        assert(NOM_Config.get("NightSenseMult") == 1.5)
+        assert(NOM_Config.get("HuntIntervalMinutes") == 60)
+        assert(NOM_Config.get("HuntRadius") == 30)
+    end,
     -- toda opção do sandbox tem default no Lua e rótulo + tooltip nas duas línguas
     config_every_option_has_default_and_translations = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -45,7 +55,7 @@ return {
                 assert(json:find(key .. '_tooltip"', 1, true), lang .. " sem tooltip: " .. name)
             end
         end
-        assert(n >= 6, "esperava as opções do Eco, achou " .. n)
+        assert(n >= 13, "esperava as opções da noite, achou " .. n)
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()

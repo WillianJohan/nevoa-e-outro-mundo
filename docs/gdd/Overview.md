@@ -54,3 +54,4 @@ Só viram escopo por promoção explícita.
 - **2026-10-04** — Monstros por comportamento + visual simples, sem animação nova.
 - **2026-10-04** — Eco: corpo solta Eco uma vez na vida; corpo queimado/enterrado não solta.
 - **2026-10-04** — Visual: clima via Lua como base + spike de shader.
+- **2026-10-04** — Noite sem força e sem dano a mais: o jogo não tem isso por zumbi, e trocar o `ZombieLore.Strength` global a noite inteira vazaria pro save. A noite é velocidade, sentidos e caça ([night.md](night.md#sem-força-e-sem-dano-à-noite)).

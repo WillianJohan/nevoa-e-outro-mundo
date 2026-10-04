@@ -11,5 +11,19 @@
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Max Echoes per player",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "How many Echoes can be alive near each player at the same time.",
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Echo radius (tiles)",
-    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distance from the player within which a body can release an Echo."
+    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distance from the player within which a body can release an Echo.",
+    "Sandbox_NevoaEOutroMundo.NightFaster": "Night: faster zombies",
+    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "At night every zombie moves faster (see the multiplier).",
+    "Sandbox_NevoaEOutroMundo.NightSharperSenses": "Night: sharper senses",
+    "Sandbox_NevoaEOutroMundo.NightSharperSenses_tooltip": "At night zombies see and hear farther, and a lit flashlight outdoors draws zombies from afar.",
+    "Sandbox_NevoaEOutroMundo.NightHunt": "Night: active hunt",
+    "Sandbox_NevoaEOutroMundo.NightHunt_tooltip": "At night, every so often, zombies near each player go to them even without seeing them.",
+    "Sandbox_NevoaEOutroMundo.NightSpeedMult": "Night speed multiplier",
+    "Sandbox_NevoaEOutroMundo.NightSpeedMult_tooltip": "Game speed comes in steps (shambler, fast shambler, sprinter): 1.0 keeps it, 1.5 raises one step, 2.5 raises two.",
+    "Sandbox_NevoaEOutroMundo.NightSenseMult": "Night senses multiplier",
+    "Sandbox_NevoaEOutroMundo.NightSenseMult_tooltip": "Sight and hearing come in steps: 1.0 keeps them, 1.5 raises one, 2.5 raises two. Also multiplies the flashlight range (20 tiles x value).",
+    "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes": "Hunt interval (game minutes)",
+    "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes_tooltip": "How often, at night, zombies are called to each player.",
+    "Sandbox_NevoaEOutroMundo.HuntRadius": "Hunt radius (tiles)",
+    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distance from the player within which zombies hear the hunt call."
 }

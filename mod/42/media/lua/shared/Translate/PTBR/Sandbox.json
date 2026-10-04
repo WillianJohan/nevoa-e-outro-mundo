@@ -11,5 +11,19 @@
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Máximo de Ecos por jogador",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "Quantos Ecos podem estar vivos perto de cada jogador ao mesmo tempo.",
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Raio dos Ecos (tiles)",
-    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distância do jogador até onde um corpo pode soltar Eco."
+    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distância do jogador até onde um corpo pode soltar Eco.",
+    "Sandbox_NevoaEOutroMundo.NightFaster": "Noite: zumbis mais rápidos",
+    "Sandbox_NevoaEOutroMundo.NightFaster_tooltip": "À noite todo zumbi sobe de velocidade (veja o multiplicador).",
+    "Sandbox_NevoaEOutroMundo.NightSharperSenses": "Noite: sentidos aguçados",
+    "Sandbox_NevoaEOutroMundo.NightSharperSenses_tooltip": "À noite os zumbis enxergam e ouvem mais longe, e lanterna ligada ao ar livre chama zumbis de longe.",
+    "Sandbox_NevoaEOutroMundo.NightHunt": "Noite: caça ativa",
+    "Sandbox_NevoaEOutroMundo.NightHunt_tooltip": "À noite, de tempos em tempos, os zumbis perto de cada jogador vão até ele mesmo sem vê-lo.",
+    "Sandbox_NevoaEOutroMundo.NightSpeedMult": "Multiplicador de velocidade à noite",
+    "Sandbox_NevoaEOutroMundo.NightSpeedMult_tooltip": "A velocidade do jogo anda em degraus (arrastado, rápido, corredor): 1.0 não muda, 1.5 sobe um degrau, 2.5 sobe dois.",
+    "Sandbox_NevoaEOutroMundo.NightSenseMult": "Multiplicador de sentidos à noite",
+    "Sandbox_NevoaEOutroMundo.NightSenseMult_tooltip": "Visão e audição andam em degraus: 1.0 não muda, 1.5 sobe um, 2.5 sobe dois. Também multiplica o alcance da lanterna (20 tiles x valor).",
+    "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes": "Intervalo da caça (minutos de jogo)",
+    "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes_tooltip": "De quanto em quanto tempo, à noite, os zumbis são chamados até cada jogador.",
+    "Sandbox_NevoaEOutroMundo.HuntRadius": "Raio da caça (tiles)",
+    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distância do jogador até onde os zumbis ouvem o chamado da caça."
 }

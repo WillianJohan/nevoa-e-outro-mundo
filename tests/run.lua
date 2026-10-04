@@ -1,4 +1,4 @@
-package.path = "mod/42/media/lua/shared/?.lua;" .. package.path
+package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;" .. package.path
 
 local FILES = {
     "tests/test_smoke.lua",
@@ -9,6 +9,10 @@ local FILES = {
     "tests/test_world.lua",
     "tests/test_eco.lua",
     "tests/test_eco_client.lua",
+    "tests/test_night_rules.lua",
+    "tests/test_night_stats.lua",
+    "tests/test_night.lua",
+    "tests/test_night_client.lua",
 }
 
 local pass, fail = 0, 0
