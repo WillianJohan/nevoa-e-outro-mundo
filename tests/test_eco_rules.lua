@@ -46,17 +46,20 @@ return {
         NOM_EcoRules.syncNight(s, false)
         assert(NOM_EcoRules.syncNight(s, true) == 2)
     end,
-    -- Ecos de noites com mais de KEEP_NIGHTS noites saem da lista
+    -- ids = { [id] = { [noite] = true } }: noites velhas saem, conjunto vazio sai
     rules_prune_old_nights = function()
-        local ids = { [10] = 1, [11] = 5, [12] = 9 }
+        local ids = { [10] = { [1] = true }, [11] = { [1] = true, [5] = true }, [12] = { [9] = true } }
         NOM_EcoRules.prune(ids, 9)
-        assert(ids[10] == nil, "noite velha ficou")
-        assert(ids[11] == 5 and ids[12] == 9)
+        assert(ids[10] == nil, "conjunto vazio ficou")
+        assert(ids[11][1] == nil and ids[11][5] == true, "noite velha ficou no gêmeo")
+        assert(ids[12][9] == true)
     end,
-    -- Eco recarregado: fica só se for da noite atual e ainda for noite
+    -- Eco recarregado: fica só se o ID tem a noite atual e ainda é noite
     rules_reloaded_eco_keeps_only_same_night = function()
-        assert(NOM_EcoRules.keepReloaded(3, 3, true) == true)
-        assert(NOM_EcoRules.keepReloaded(2, 3, true) == false)
-        assert(NOM_EcoRules.keepReloaded(3, 3, false) == false)
+        assert(NOM_EcoRules.keepReloaded({ [3] = true }, 3, true) == true)
+        assert(NOM_EcoRules.keepReloaded({ [2] = true }, 3, true) == false)
+        assert(NOM_EcoRules.keepReloaded({ [2] = true, [3] = true }, 3, true) == true)
+        assert(NOM_EcoRules.keepReloaded({ [3] = true }, 3, false) == false)
+        assert(NOM_EcoRules.keepReloaded(nil, 3, true) == false)
     end,
 }

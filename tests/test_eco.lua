@@ -59,7 +59,9 @@ local function setup(opts)
     function G.pickOutfit(name, female)
         for i, n in ipairs(G.outfits) do
             if n == name then
-                G.seed = G.seed % 500 + 1
+                -- o jogo usa Rand.Next(500)+1: dois Ecos com o mesmo ID acontecem
+                -- (~19% das noites); G.fixedSeed força isso no teste
+                G.seed = G.fixedSeed or (G.seed % 500 + 1)
                 local id = i * 65536 + G.seed
                 if female then id = id - 2147483648 end
                 return id
@@ -385,7 +387,6 @@ return {
         local e = G.ecos()[1]
         G.kill(e, { delay = 30 })
         assert(e.inv == 0, "loot ficou no Eco")
-        assert(next(G.globalMD.NevoaEOutroMundo.eco.ids) == nil, "Eco morto ficou na lista de IDs")
         G.tick(40)
         assert(G.bodiesAt(105, 105) == 1, "o corpo original tem que ficar")
         assert(G.removedCorpses == 1, "cadáver do Eco ficou no chão")
@@ -496,7 +497,7 @@ return {
     eco_stale_id_is_dropped = function()
         local G = setup()
         local agent = G.pickOutfit("Agent", false)
-        G.globalMD.NevoaEOutroMundo.eco.ids = { [agent] = G.globalMD.NevoaEOutroMundo.eco.night }
+        G.globalMD.NevoaEOutroMundo.eco.ids = { [agent] = { [G.globalMD.NevoaEOutroMundo.eco.night] = true } }
         local zz = G.reload(110, 110, 0, agent)
         G.setTime(12)
         G.tick(1)
@@ -525,7 +526,6 @@ return {
         local back = G.reload(105, 105, 0, id)
         G.tick(1)
         assert(back.removed, "Eco da noite anterior voltou na noite seguinte")
-        assert(G.globalMD.NevoaEOutroMundo.eco.ids[id] == nil, "ID ficou depois de remover")
     end,
     eco_restart_mid_night_keeps_same_night = function()
         local G = setup()
@@ -546,12 +546,54 @@ return {
         for _ = 1, 8 do G.setTime(9); G.setTime(22) end
         assert(G.globalMD.NevoaEOutroMundo.eco.ids[id] == nil, "lista de IDs cresce pra sempre")
     end,
-    eco_dawn_drops_removed_ids = function()
+    -- gêmeos: mesmo ID exato. Um morre; o outro, descarregado, continua Eco
+    eco_twin_death_keeps_unloaded_twin = function()
         local G = setup()
+        G.fixedSeed = 7
+        G.body(105, 105, 0)
+        G.body(106, 105, 0)
+        G.tenMinutes()
+        local a, b = G.ecos()[1], G.ecos()[2]
+        assert(a.outfitID == b.outfitID, "fake não forçou gêmeos")
+        local id = G.unload(a)
+        G.kill(b)
+        G.tick(10)
+        local back = G.reload(105, 105, 0, id)
+        G.tick(1)
+        assert(not back.removed and back.md.NOM_eco == true, "gêmeo descarregado perdeu o Eco quando o outro morreu")
+    end,
+    eco_twin_dawn_removal_keeps_unloaded_twin_known = function()
+        local G = setup()
+        G.fixedSeed = 7
+        G.body(105, 105, 0)
+        G.body(106, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        G.setTime(9) -- o carregado sai no amanhecer
+        G.setTime(22)
+        local back = G.reload(105, 105, 0, id)
+        G.tick(1)
+        assert(back.removed, "gêmeo de noite passada voltou como zumbi comum (ID apagado)")
+    end,
+    -- gêmeo nascido numa noite depois não apaga a noite do mais velho
+    eco_twin_later_night_keeps_both_nights = function()
+        local G = setup()
+        G.fixedSeed = 7
         G.body(105, 105, 0)
         G.tenMinutes()
-        G.setTime(7)
-        assert(next(G.globalMD.NevoaEOutroMundo.eco.ids) == nil, "Eco removido ficou na lista")
+        local id = G.unload(G.ecos()[1])
+        G.setTime(9)
+        G.setTime(22)
+        G.body(120, 120, 0)
+        G.tenMinutes()
+        local nights = G.globalMD.NevoaEOutroMundo.eco.ids[id]
+        assert(type(nights) == "table" and nights[1] and nights[2], "noite do gêmeo mais velho sobrescrita")
+        G.unload(G.ecos()[1])
+        G.setTime(9)
+        G.setTime(22) -- noite 3: nenhum dos dois é daqui
+        local back = G.reload(105, 105, 0, id)
+        G.tick(1)
+        assert(back.removed, "gêmeo de noite passada contou como atual")
     end,
     -- onlineID -1 = ainda sem ID de rede: não viaja (o cliente casaria com outro sem ID)
     eco_dawn_mp_skips_unassigned_online_id = function()

@@ -18,7 +18,8 @@ local function debugLog(msg)
 end
 
 -- Estado salvo no ModData global: { night, inNight, ids }. ids guarda o
--- persistentOutfitID exato (com a semente) de cada Eco e a noite em que nasceu:
+-- persistentOutfitID exato (com a semente) de cada Eco e as noites em que um Eco
+-- com esse ID nasceu (NOM_EcoRules.prune explica os gêmeos):
 -- o modData do zumbi não é salvo, e é por esse ID que um Eco que volta de chunk
 -- descarregado é reconhecido.
 local function store()
@@ -74,7 +75,9 @@ local function spawnFrom(body, night)
     markEco(z)
     local id = z:getPersistentOutfitID()
     if id ~= 0 then
-        store().ids[id] = night
+        local ids = store().ids
+        ids[id] = ids[id] or {}
+        ids[id][night] = true
     else
         debugLog("outfit " .. OUTFIT .. " não carregou (persistentOutfitID 0)")
     end
@@ -87,9 +90,9 @@ end
 -- usa NetworkZombiePacker.deleteZombie, que não é exposto): manda os onlineIDs
 -- e client/NOM_EcoClient.lua apaga o fantasma. -1 = sem ID de rede, não viaja.
 local function removeEcos(list)
-    local ids, saved = {}, store().ids
+    -- O ID fica na lista: um gêmeo descarregado pode ter o mesmo (só a poda tira).
+    local ids = {}
     for _, z in ipairs(list) do
-        saved[z:getPersistentOutfitID()] = nil
         local online = z:getOnlineID()
         if online ~= -1 then ids[#ids + 1] = online end
         z:removeFromWorld()
@@ -238,7 +241,6 @@ local function onZombieDead(z)
     if not isEco(z) then return end
     -- DoZombieInventory já rodou antes do evento (bytecode IsoZombie.onKilled)
     z:getInventory():removeAllItems()
-    store().ids[z:getPersistentOutfitID()] = nil
     dying[#dying + 1] = { x = math.floor(z:getX()), y = math.floor(z:getY()), z = math.floor(z:getZ()), ticks = CORPSE_TICKS }
 end
 

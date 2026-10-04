@@ -42,16 +42,22 @@ function NOM_EcoRules.syncNight(state, isNight)
     return state.night or 0
 end
 
--- ids = { [persistentOutfitID] = noite em que o Eco nasceu }
+-- ids = { [persistentOutfitID] = { [noite] = true } }. Conjunto de noites porque
+-- a semente é Rand.Next(500)+1: dois Ecos do mesmo sexo dividem o ID em ~19%
+-- das noites, e um não pode apagar o outro.
 function NOM_EcoRules.prune(ids, night)
-    for id, n in pairs(ids) do
-        if n <= night - NOM_EcoRules.KEEP_NIGHTS then ids[id] = nil end
+    local oldest = night - NOM_EcoRules.KEEP_NIGHTS
+    for id, nights in pairs(ids) do
+        for n in pairs(nights) do
+            if n <= oldest then nights[n] = nil end
+        end
+        if next(nights) == nil then ids[id] = nil end
     end
 end
 
 -- Regra do GDD: ao amanhecer todos os Ecos somem, onde quer que estejam.
-function NOM_EcoRules.keepReloaded(bornNight, night, isNight)
-    return isNight and bornNight == night
+function NOM_EcoRules.keepReloaded(nights, night, isNight)
+    return isNight and nights ~= nil and nights[night] == true
 end
 
 return NOM_EcoRules
