@@ -106,6 +106,7 @@ local function removeEcoCorpses(sq)
             removed = removed + 1
         end
     end
+    if removed > 0 then debugLog("cadaveres=" .. removed) end
     return removed
 end
 
