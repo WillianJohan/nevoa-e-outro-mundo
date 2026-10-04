@@ -3,6 +3,7 @@ package.path = "mod/42/media/lua/shared/?.lua;" .. package.path
 local FILES = {
     "tests/test_smoke.lua",
     "tests/test_rules.lua",
+    "tests/test_config.lua",
 }
 
 local pass, fail = 0, 0

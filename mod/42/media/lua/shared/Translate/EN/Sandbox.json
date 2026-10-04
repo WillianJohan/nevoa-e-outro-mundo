@@ -1,0 +1,9 @@
+{
+    "Sandbox_NevoaEOutroMundo": "Fog and Otherworld",
+    "Sandbox_NevoaEOutroMundo.DarkEnabled": "Dark climate at night and in fog",
+    "Sandbox_NevoaEOutroMundo.DarkEnabled_tooltip": "Darkens, desaturates and tints the world at night and in heavy fog.",
+    "Sandbox_NevoaEOutroMundo.DarkIntensity": "Dark climate intensity",
+    "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 disables the effect, 1 is default, 2 is double.",
+    "Sandbox_NevoaEOutroMundo.FogThreshold": "Fog that wakes the Otherworld",
+    "Sandbox_NevoaEOutroMundo.FogThreshold_tooltip": "Fog intensity (0 to 1) at which the Otherworld begins."
+}
