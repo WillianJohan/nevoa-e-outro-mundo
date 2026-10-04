@@ -29,6 +29,22 @@ local function apply(ch, target, weight, setValue)
     target:setModdedInterpolate(weight)
 end
 
+-- Debug: uma linha quando uma transição chega ao fim (0 = desligado, 1 = cheio).
+local lastEdge = {}
+local function logEdges()
+    if not getDebug() then return end
+    for _, k in ipairs({ "nightRamp", "fogRamp" }) do
+        local v = state[k]
+        local edge = (v == 0 or v == 1) and v or nil
+        if edge and edge ~= lastEdge[k] then
+            if lastEdge[k] ~= nil then
+                print(string.format("[NOM] %s=%d intensity=%.2f", k, edge, NOM_Config.get("DarkIntensity")))
+            end
+            lastEdge[k] = edge
+        end
+    end
+end
+
 local function onTick()
     local now = getTimestampMs()
     local dt = state.lastMs and (now - state.lastMs) / 1000 or 0
@@ -38,6 +54,7 @@ local function onTick()
     local w = NOM_World.update(state.fogWeight)
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, dt, TRANSITION_SECONDS)
     state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, dt, TRANSITION_SECONDS)
+    logEdges()
 
     local look = NOM_Rules.mix(state.nightRamp, state.fogRamp, NOM_Config.get("DarkIntensity"))
     local clim = getClimateManager()
