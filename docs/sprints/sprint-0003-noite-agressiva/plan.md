@@ -16,7 +16,7 @@
 - Kahlua: nada de `//`, `goto`, bit ops, `table.unpack` (usar `unpack`), `string.format("%d")` em float.
 - Lógica de jogo autoritativa em `lua/server/` (primeira linha `if isClient() then return end`); cliente em `lua/client/` (`if not isClient() then return end`). Regra pura em `lua/shared/` sem API do jogo.
 - Todo texto visível por chave de tradução, PTBR e EN, em `media/lua/shared/Translate/<LANG>/*.json`.
-- Sandbox: `NightFasterStronger`, `NightSharperSenses`, `NightHunt` (booleanos), `NightSpeedMult`, `NightSenseMult`, `HuntIntervalMinutes`, `HuntRadius`.
+- Sandbox: `NightFaster`, `NightSharperSenses`, `NightHunt` (booleanos), `NightSpeedMult`, `NightSenseMult`, `HuntIntervalMinutes`, `HuntRadius`.
 - Toda chamada de API com evidência (Lua vanilla arquivo:linha ou bytecode). O que só o jogo responde vira fallback + linha no roteiro in-game.
 - Nada copiado de outros mods. Comentários e docs em português do Brasil.
 
@@ -67,14 +67,14 @@
 - Modify: `mod/42/media/sandbox-options.txt`, `mod/42/media/lua/shared/NOM_Config.lua`, `mod/42/media/lua/shared/Translate/{PTBR,EN}/Sandbox.json`
 - Test: `tests/test_config.lua`
 
-**Interfaces:** Produces `NOM_Config.get("NightFasterStronger"|"NightSharperSenses"|"NightHunt"|"NightSpeedMult"|"NightSenseMult"|"HuntIntervalMinutes"|"HuntRadius")`.
+**Interfaces:** Produces `NOM_Config.get("NightFaster"|"NightSharperSenses"|"NightHunt"|"NightSpeedMult"|"NightSenseMult"|"HuntIntervalMinutes"|"HuntRadius")`.
 
 - [ ] **Step 1: teste que falha**
 
 ```lua
 config_night_defaults = function()
     SandboxVars = nil
-    assert(NOM_Config.get("NightFasterStronger") == true)
+    assert(NOM_Config.get("NightFaster") == true)
     assert(NOM_Config.get("NightSharperSenses") == true)
     assert(NOM_Config.get("NightHunt") == true)
     assert(NOM_Config.get("NightSpeedMult") == 1.5)

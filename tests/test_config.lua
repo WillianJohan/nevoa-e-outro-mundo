@@ -26,7 +26,7 @@ return {
     end,
     config_night_defaults = function()
         SandboxVars = nil
-        assert(NOM_Config.get("NightFasterStronger") == true)
+        assert(NOM_Config.get("NightFaster") == true)
         assert(NOM_Config.get("NightSharperSenses") == true)
         assert(NOM_Config.get("NightHunt") == true)
         assert(NOM_Config.get("NightSpeedMult") == 1.5)

@@ -10,7 +10,7 @@
 À noite, **todos os zumbis** ficam mais perigosos. Cada item tem toggle
 próprio no sandbox e tudo volta ao normal ao amanhecer.
 
-1. **Mais rápidos** (`NightFasterStronger`, `NightSpeedMult`) — a velocidade do
+1. **Mais rápidos** (`NightFaster`, `NightSpeedMult`) — a velocidade do
    jogo é em degraus: arrastado → rápido → corredor. `NightSpeedMult` 1.5 (padrão)
    sobe um degrau, 2.5 sobe dois.
 2. **Sentidos aguçados** (`NightSharperSenses`, `NightSenseMult`) — visão e audição

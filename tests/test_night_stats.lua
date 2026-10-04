@@ -231,7 +231,7 @@ return {
         assert(eco.speedType == 3)
     end,
     stats_toggles_respected = function()
-        local G = setup({ sandbox = { NightFasterStronger = false } })
+        local G = setup({ sandbox = { NightFaster = false } })
         local z = G.spawn()
         NOM_NightStats.setNight(true)
         G.converge()
@@ -241,7 +241,7 @@ return {
         NOM_NightStats.setNight(true)
         G2.converge()
         assert(z2.speedType == 1 and z2.sight == 2 and z2.hearing == 2, "sentidos desligados mudaram")
-        local G3 = setup({ sandbox = { NightFasterStronger = false, NightSharperSenses = false } })
+        local G3 = setup({ sandbox = { NightFaster = false, NightSharperSenses = false } })
         G3.spawn()
         NOM_NightStats.setNight(true)
         local before = G3.calls.stats

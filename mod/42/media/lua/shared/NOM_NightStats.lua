@@ -32,7 +32,7 @@ end
 
 local function config()
     return {
-        fasterOn = NOM_Config.get("NightFasterStronger"),
+        fasterOn = NOM_Config.get("NightFaster"),
         sensesOn = NOM_Config.get("NightSharperSenses"),
         speedMult = NOM_Config.get("NightSpeedMult"),
         senseMult = NOM_Config.get("NightSenseMult"),

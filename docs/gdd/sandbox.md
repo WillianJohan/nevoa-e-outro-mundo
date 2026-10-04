@@ -10,7 +10,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 ## Toggles
 
 - Clima dark
-- Noite: mais rápidos (`NightFasterStronger`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
+- Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
 - Monstros: Estalador · Corredor · Sem-rosto · Eco (`EcoEnabled`, padrão ligado)
 - Overlays de névoa
 
