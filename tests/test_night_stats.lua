@@ -9,6 +9,10 @@
 --   lore 3 ou t 3 → arrastado; 2/3 de chance de "fake shambler" (speedType = t);
 --   senão lore 2 ou t 2 → rápido; senão lore 1 ou t 1 → corredor.
 -- * zumbi que volta do virtual é objeto novo: stats do sandbox, modData vazio.
+-- * ActiveOnly: a cada update o jogo chama makeInactive(isZombieInactivityPhase())
+--   (IsoZombie.updateActiveState). makeInactive(b) volta cedo se nada mudou;
+--   true → speedType 3 + doZombieSpeed() e nunca reafirma; false → speedType -1 +
+--   DoZombieStats(). determineZombieSpeed(-1) com inactive → 3.
 require "NOM_NightRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_NightStats.lua"
@@ -29,7 +33,7 @@ end
 
 local function setup(opts)
     opts = opts or {}
-    local G = { zombies = jlist(), seed = opts.seed or 0, calls = { stats = 0, speedReads = 0 } }
+    local G = { zombies = jlist(), seed = opts.seed or 0, inactivePhase = opts.inactivePhase or false, calls = { stats = 0, speedReads = 0 } }
     G.lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 3, Memory = 2 }
     for k, v in pairs(opts.lore or {}) do G.lore[k] = v end
     local handlers = {}
@@ -81,7 +85,11 @@ local function setup(opts)
             if t == nil then t = self.speedType end
             if t == -1 then
                 t = G.lore.Speed
-                if t == 4 then t = (G.rand(100) < 20) and 1 or G.rand(2) + 2 end
+                if self.inactive then
+                    t = 3
+                elseif t == 4 then
+                    t = (G.rand(100) < 20) and 1 or G.rand(2) + 2
+                end
             end
             if self.crawling then return end
             if G.lore.Speed == 3 or t == 3 then
@@ -118,7 +126,20 @@ local function setup(opts)
             self:doZombieSpeed()
             self.canCrawl = G.rand(2) == 0
         end
-        -- createZombieOutsideWorld: DoZombieStats antes do evento
+        function z:makeInactive(b)
+            if b == self.inactive then return end
+            if b then
+                self.inactive = true
+                self.speedType = 3
+                self:doZombieSpeed()
+            else
+                self.speedType = -1
+                self.inactive = false
+                self:DoZombieStats()
+            end
+        end
+        -- createZombieOutsideWorld: inactive = isZombieInactivityPhase(), DoZombieStats antes do evento
+        z.inactive = G.inactivePhase
         z:DoZombieStats()
         return z
     end
@@ -130,8 +151,12 @@ local function setup(opts)
         return z
     end
     function G.unload(z) G.zombies:remove(z) end
+    -- update dos zumbis (updateActiveState) e depois o OnTick do Lua
     function G.tick(n)
-        for _ = 1, n or 1 do fire("OnTick", 0) end
+        for _ = 1, n or 1 do
+            for _, z in ipairs(G.zombies.items) do z:makeInactive(G.inactivePhase) end
+            fire("OnTick", 0)
+        end
     end
     function G.kill(z)
         z.dead = true
@@ -144,6 +169,9 @@ local function setup(opts)
     getDebug = function() return false end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     getCell = function() return { getZombieList = function() return G.zombies end } end
+    getGameTime = function()
+        return { isZombieInactivityPhase = function() return G.inactivePhase end }
+    end
     Events = setmetatable({}, {
         __index = function(t, name)
             local e = { Add = function(f) handlers[name] = handlers[name] or {}; table.insert(handlers[name], f) end }
@@ -362,6 +390,47 @@ return {
             for i, z in ipairs(zs) do assert(z.memory == before[i], "re-sorteou memory com sandbox " .. m) end
             assert(G.lore.Memory == m, "sandbox de memória não voltou")
         end
+    end,
+    -- ActiveOnly: zumbi inativo pela fase vanilla continua arrastado; sentidos valem
+    stats_inactive_phase_night_keeps_shamble = function()
+        local G = setup({ inactivePhase = true })
+        local zs = {}
+        for i = 1, 5 do zs[i] = G.spawn() end
+        G.tick()
+        NOM_NightStats.setNight(true)
+        G.converge()
+        for _, z in ipairs(zs) do
+            assert(z.speedType == 3 and z.inactive, "acordou zumbi inativo: " .. z.speedType)
+            assert(z.sight == 1 and z.hearing == 1, "sentidos não subiram na fase inativa")
+        end
+        local before = G.calls.stats
+        G.converge()
+        assert(G.calls.stats == before, "brigou com o makeInactive")
+    end,
+    -- fase vira inativa no meio da noite e amanhece: o mod não devolve a velocidade do dia
+    stats_inactive_phase_dawn_keeps_shamble = function()
+        local G = setup()
+        local z = G.spawn()
+        NOM_NightStats.setNight(true)
+        G.converge()
+        assert(z.speedType == 1)
+        G.inactivePhase = true
+        G.converge()
+        assert(z.speedType == 3, "promoveu zumbi inativo")
+        NOM_NightStats.setNight(false)
+        G.converge()
+        assert(z.speedType == 3 and z.sight == 2, "amanhecer acordou zumbi inativo")
+    end,
+    -- fase vira ativa à noite: o jogo re-rola (DoZombieStats) e o mod reaplica tudo
+    stats_phase_end_reapplies_night = function()
+        local G = setup({ inactivePhase = true, sandbox = { NightFaster = false } })
+        local z = G.spawn()
+        NOM_NightStats.setNight(true)
+        G.converge()
+        assert(z.sight == 1)
+        G.inactivePhase = false
+        G.converge()
+        assert(not z.inactive and z.speedType == 2 and z.sight == 1, "não reaplicou os sentidos depois da fase")
     end,
     -- velocidade aleatória no sandbox: a base é a do zumbi e volta igual
     stats_random_speed_keeps_own_tier = function()

@@ -43,6 +43,9 @@ local function config()
         speed = option(LORE.speed):getValue(),
         sight = option(LORE.sight):getValue(),
         hearing = option(LORE.hearing):getValue(),
+        -- ActiveOnly vanilla: na fase inativa o jogo deixa o zumbi arrastado
+        -- (IsoZombie.updateActiveState → makeInactive) e nunca reafirma.
+        inactive = getGameTime():isZombieInactivityPhase(),
     }
 end
 
@@ -68,23 +71,27 @@ local function isEco(z, md)
     return md.NOM_eco == true or z:getOutfitName() == ECO_OUTFIT
 end
 
-local function apply(z, md, w, dayTier)
-    local values = { [LORE.speed] = w.speed, [LORE.cognition] = COGNITION_KEEP, [LORE.memory] = MEMORY_KEEP }
+-- inactive: fase inativa do ActiveOnly. A velocidade fica com o jogo:
+-- doZombieSpeed(t) ignora o inactive com t ≠ -1 (determineZombieSpeed) e acordaria
+-- o zumbi. O doZombieSpeed() de dentro do DoZombieStats usa o speedType atual (3).
+local function apply(z, md, w, dayTier, key, inactive)
+    local values = { [LORE.cognition] = COGNITION_KEEP, [LORE.memory] = MEMORY_KEEP }
+    if not inactive then values[LORE.speed] = w.speed end
     if w.sight then values[LORE.sight] = w.sight end
     if w.hearing then values[LORE.hearing] = w.hearing end
     local crawl = z:isCanCrawlUnderVehicle() -- DoZombieStats re-sorteia
     withLore(values, function()
         z:DoZombieStats()
-        z:doZombieSpeed(w.speed)
+        if not inactive then z:doZombieSpeed(w.speed) end
     end)
     z:setCanCrawlUnderVehicle(crawl)
     -- Cache só em memória: modData de zumbi não é salvo e é zerado no
     -- reaproveitamento, que é quando o jogo re-sorteia os stats.
-    if w.key == "day" then
+    if key == "day" then
         md.NOM_night = nil
         md.NOM_dayTier = nil
     else
-        md.NOM_night = w.key
+        md.NOM_night = key
         md.NOM_dayTier = dayTier
     end
 end
@@ -97,13 +104,17 @@ local function process(z, c)
     if cur == nil and not NOM_NightStats.night then return false end -- dia, intocado
     local dayTier = NOM_NightRules.dayTier(c.speed, md.NOM_dayTier or z:getSpeedType())
     local w = NOM_NightRules.wanted(NOM_NightStats.night, isEco(z, md), dayTier, c)
-    local need = (cur or "day") ~= w.key
+    -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
+    -- chama DoZombieStats) e o mod reaplica.
+    local key = w.key
+    if key ~= "day" and c.inactive then key = key .. ":i" end
+    local need = (cur or "day") ~= key
     -- O jogo re-rola os stats às vezes (addZombiesInOutfit, makeInactive). Remoto:
     -- a velocidade vem do pacote do dono (NetworkZombieAI.parse), não briga.
-    if not need and w.key ~= "day" and not z:isRemoteZombie() and not z:isCrawling() then
+    if not need and key ~= "day" and not c.inactive and not z:isRemoteZombie() and not z:isCrawling() then
         need = z:getSpeedType() ~= w.speed
     end
-    if need then apply(z, md, w, dayTier) end
+    if need then apply(z, md, w, dayTier, key, c.inactive) end
     return need
 end
 
