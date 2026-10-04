@@ -50,6 +50,10 @@ em solo e em MP.
 
 ## Pendências que a próxima sprint herda
 
+- **Roteiro in-game e MP inteiros** (Task 6 do plano): merge feito antes do teste in-game por decisão do Johan; testar em lote depois.
+- Teste do ramo `ClimateCycle == 6` (nevasca eterna) em `tests/test_climate_look.lua` não existe — review round 4, minor.
+- Conferir no jogo o efeito da névoa do mod no combate à distância (`CombatManager` lê `getFogIntensity()`).
+
 ## Sessões
 
 - 2026-10-04 — abd764e2-7a9a-416b-b9b3-1630ab9e761f — brainstorming, GDD, ADRs, repo

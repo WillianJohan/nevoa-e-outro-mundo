@@ -48,3 +48,5 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 - Pergunta: o B42 carrega GLSL vindo da pasta do mod?
 - Probe: vinheta + grão de filme ativados só na névoa.
 - Se sim, vira camada extra. Se não, fica só o clima.
+
+O jogo trata a névoa do mod como névoa de verdade em todo lugar que lê `getFogIntensity()`: visão dos zumbis, do jogador, combate e o parâmetro de áudio de névoa. É intencional.
