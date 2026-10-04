@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `draft` |
+| Status | `accepted` |
 | Tipo | Hub do GDD (único ponto de entrada) |
 
 ## O que é o mod
@@ -22,6 +22,8 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 4. **Configurável** — tudo tem toggle e número no sandbox; o servidor escolhe o
    nível de sofrimento.
 5. **Solo = MP** — a lógica roda no servidor; o mesmo código serve os dois.
+6. **Traduzível desde o nascimento** — todo texto por chave; PT-BR desde a
+   sprint 0001, EN na publicação.
 
 ## Loop
 
@@ -33,11 +35,11 @@ névoa: fugir ou se esconder do Outro Mundo → amanhecer → repetir.
 
 | Doc | Assunto | Status |
 |-----|---------|--------|
-| [world-states.md](world-states.md) | Detecção de noite e névoa | `draft` |
-| [night.md](night.md) | Noite agressiva (todos os zumbis) | `draft` |
-| [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Eco | `draft` |
-| [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `draft` |
-| [sandbox.md](sandbox.md) | Opções de sandbox | `draft` |
+| [world-states.md](world-states.md) | Detecção de noite e névoa | `accepted` |
+| [night.md](night.md) | Noite agressiva (todos os zumbis) | `accepted` |
+| [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Eco | `accepted` |
+| [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `accepted` |
+| [sandbox.md](sandbox.md) | Opções de sandbox | `accepted` |
 
 ## Fora do MVP (`later`)
 

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `draft` |
+| Status | `accepted` |
 | Sprint | 0003 |
 
 ## O que é

@@ -14,6 +14,7 @@ em solo e em MP.
 
 ## Critérios de aceite
 
+- [ ] Ambiente de dev pronto: jogo instalado, `-debug` funcionando, pasta `mod/` linkada em `~/Zomboid/mods` (como foi feito, registrado em Aprendizados)
 - [ ] Mod aparece e ativa no menu de mods do B42 sem erro no `console.txt`
 - [ ] Flags `night` e `fog` mudam na hora certa (forçando hora e névoa no `-debug`)
 - [ ] Noite: luz menor, leve dessaturação, tint azulado
@@ -21,6 +22,7 @@ em solo e em MP.
 - [ ] Transição suave (~30s), sem corte seco
 - [ ] Toggle e `DarkIntensity` no sandbox alteram o efeito
 - [ ] Em MP (servidor local + 2 clientes), os dois clientes escurecem juntos
+- [ ] Todo texto visível sai de chave de tradução (`Translate/PTBR`), nunca string solta no Lua
 - [ ] `./run-tests.sh` cobre a máquina de estado de `NOM_Rules.lua` e devolve exit code
 
 ## Checkpoints

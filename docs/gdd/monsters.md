@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `draft` |
+| Status | `accepted` |
 | Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto) |
 
 ## Regra geral

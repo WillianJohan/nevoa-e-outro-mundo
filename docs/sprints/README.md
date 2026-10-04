@@ -8,14 +8,24 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | Sprint | Objetivo | Status |
 |--------|----------|--------|
 | [0001](sprint-0001-estado-e-clima/README.md) | Noite e névoa detectadas e com clima dark | `planejada` |
-| 0002 | Eco: corpos soltam almas à noite | `backlog` |
-| 0003 | Noite agressiva (4 toggles) | `backlog` |
-| 0004 | Estalador + Corredor noturno | `backlog` |
-| 0005 | Sem-rosto + som de névoa + overlays + rádio | `backlog` |
-| 0006 | Publicação no Workshop | `backlog` |
-| spike | Shader próprio na névoa (GLSL do mod) | `backlog` — precisa do jogo instalado |
+| [0002](sprint-0002-eco/README.md) | Eco: corpos soltam almas à noite | `backlog` |
+| [0003](sprint-0003-noite-agressiva/README.md) | Noite agressiva (todo zumbi) | `backlog` |
+| [0004](sprint-0004-estalador-corredor/README.md) | Estalador + Corredor noturno | `backlog` |
+| [0005](sprint-0005-sem-rosto-e-nevoa/README.md) | Sem-rosto + atmosfera da névoa | `backlog` |
+| [0006](sprint-0006-balanceamento-mp/README.md) | Balanceamento, MP e performance | `backlog` |
+| [0007](sprint-0007-workshop/README.md) | Publicação no Workshop | `backlog` |
+| [spike](spike-shader/README.md) | Shader próprio na névoa | `backlog` — precisa do jogo instalado |
 
-A pasta da sprint nasce quando ela sai do `backlog`, não antes.
+A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
+consome; 0002 vem antes da noite agressiva porque o Eco é o sistema mais
+isolado e o que mais testa a técnica de spawn/despawn; 0006 existe porque
+"funciona na minha máquina" não é "aguenta 3 noites de MP".
+
+O spike não tem lugar fixo: roda quando o jogo estiver instalado e o resultado
+dele decide se vira sprint.
+
+Sprint em `backlog` tem objetivo e critérios, mas **não tem `plan.md`**. O plano
+é escrito quando ela vira `planejada`, com o que as anteriores ensinaram.
 
 ## Estados
 

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `draft` |
+| Status | `accepted` |
 
 Página própria no sandbox ("Névoa e Outro Mundo"). Default entre parênteses
 quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.

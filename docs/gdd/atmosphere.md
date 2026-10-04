@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `draft` |
+| Status | `accepted` |
 | Sprints | 0001 (clima), 0005 (som de névoa, overlays) |
 
 Tudo aqui roda no **cliente**: é o que se vê e se ouve.
