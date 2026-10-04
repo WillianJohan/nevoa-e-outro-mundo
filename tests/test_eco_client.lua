@@ -54,4 +54,11 @@ return {
         local C = setup(false)
         assert(#C.handlers == 0)
     end,
+    -- -1 = zumbi ainda sem ID de rede: nunca casa com o comando
+    client_skips_unassigned_online_id = function()
+        local C = setup(true)
+        local a = C.zombie(-1)
+        C.send("NevoaEOutroMundo", "ecoGone", { ids = { -1, 4 } })
+        assert(not a.removed, "removeu zumbi sem ID de rede")
+    end,
 }
