@@ -36,13 +36,18 @@ return {
     ramp_goes_down = function()
         assert(near(NOM_Rules.ramp(1, false, 0.5, 30), 1 - 0.5 / 30))
     end,
+    ramp_keeps_slow_climate_tick = function()
+        -- um minuto de jogo pode levar vários segundos reais: não pode cortar em 1 s
+        assert(near(NOM_Rules.ramp(0, true, 2.5, 30), 2.5 / 30))
+    end,
     ramp_caps_at_bounds = function()
         assert(NOM_Rules.ramp(0.999, true, 1, 30) == 1)
         assert(NOM_Rules.ramp(0.001, false, 1, 30) == 0)
     end,
     ramp_clamps_dt = function()
         -- 10 minutos de pausa num tick não pode virar transição instantânea
-        assert(near(NOM_Rules.ramp(0, true, 600, 30), 1 / 30))
+        assert(NOM_Rules.MAX_DT == 5)
+        assert(near(NOM_Rules.ramp(0, true, 600, 30), 5 / 30))
         assert(NOM_Rules.ramp(0.5, true, -5, 30) == 0.5)
     end,
 
@@ -85,26 +90,10 @@ return {
         -- C2: limite 0.05 com histerese 0.05 nunca saía (0 >= 0)
         assert(NOM_Rules.isFog(0, 0.05, true) == false)
     end,
-    unmix_recovers_vanilla_value = function()
-        local v, m, w = 0.3, 1, 0.6
-        local final = v + (m - v) * w
-        assert(near(NOM_Rules.unmix(final, m, w), v))
-        assert(NOM_Rules.unmix(0.42, 1, 0) == 0.42)
-    end,
-    fog_feedback_loop_exits = function()
-        -- C1: a névoa lida já inclui a nossa; sem descontar, travava ligada
-        for _, intensity in ipairs({ 1, 2 }) do
-            local fog, vanilla = false, 0.9
-            local ramp = 0
-            for _ = 1, 400 do
-                local w = NOM_Rules.mix(0, ramp, intensity).fog.weight
-                local final = vanilla + (1 - vanilla) * w
-                fog = NOM_Rules.isFog(NOM_Rules.unmix(final, 1, w), 0.35, fog)
-                ramp = NOM_Rules.ramp(ramp, fog, 1, 30)
-                vanilla = math.max(0, vanilla - 0.01)
-            end
-            assert(fog == false, "névoa travou com intensity " .. intensity)
-        end
+    blend_moves_from_vanilla_toward_target = function()
+        assert(near(NOM_Rules.blend(0.2, 1, 0.25), 0.4))
+        assert(NOM_Rules.blend(0.7, 0, 0) == 0.7)
+        assert(NOM_Rules.blend(0.7, 0, 1) == 0)
     end,
     mix_tint_is_continuous_across_overlap = function()
         -- I2: cor não pode pular de azul pra sépia quando um passa o outro

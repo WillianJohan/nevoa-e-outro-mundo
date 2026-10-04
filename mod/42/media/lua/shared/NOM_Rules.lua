@@ -3,6 +3,9 @@ NOM_Rules = {}
 
 NOM_Rules.FOG_HYSTERESIS = 0.05
 NOM_Rules.FOG_EXIT_FLOOR = 0.01
+-- Teto do passo da rampa, em segundos reais. Um minuto de jogo (o tick do clima)
+-- leva alguns segundos; uma pausa longa não pode virar transição instantânea.
+NOM_Rules.MAX_DT = 5
 NOM_Rules.CHANNELS = { "desaturation", "light", "fog", "tint" }
 
 -- value = alvo da camada modded do clima; weight = quanto puxar até ele (0..1).
@@ -31,17 +34,13 @@ function NOM_Rules.isFog(intensity, threshold, wasFog)
     return intensity >= threshold
 end
 
--- O jogo devolve lerp(weight, vanilla, modded). Desfaz pra ler só o clima vanilla,
--- senão a névoa que o mod adiciona realimenta a própria detecção de névoa.
-function NOM_Rules.unmix(final, modded, weight)
-    if weight <= 0 or weight >= 1 then
-        return final
-    end
-    return (final - weight * modded) / (1 - weight)
+-- Valor absoluto que o mod escreve no clima: vanilla puxado até o alvo pelo peso.
+function NOM_Rules.blend(vanilla, target, weight)
+    return vanilla + (target - vanilla) * weight
 end
 
 function NOM_Rules.ramp(current, active, dt, duration)
-    dt = math.max(0, math.min(1, dt))
+    dt = math.max(0, math.min(NOM_Rules.MAX_DT, dt))
     local step = dt / duration
     if active then
         return math.min(1, current + step)
