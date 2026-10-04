@@ -30,25 +30,23 @@ return {
         assert(NOM_Rules.isFog(0.44, 0.5, true) == false)
     end,
 
+    -- rampa anda um passo por minuto de jogo (um OnClimateTick)
     ramp_goes_up = function()
-        assert(near(NOM_Rules.ramp(0, true, 0.5, 30), 0.5 / 30))
+        assert(near(NOM_Rules.ramp(0, true, 20), 1 / 20))
     end,
     ramp_goes_down = function()
-        assert(near(NOM_Rules.ramp(1, false, 0.5, 30), 1 - 0.5 / 30))
+        assert(near(NOM_Rules.ramp(1, false, 20), 1 - 1 / 20))
     end,
-    ramp_keeps_slow_climate_tick = function()
-        -- um minuto de jogo pode levar vários segundos reais: não pode cortar em 1 s
-        assert(near(NOM_Rules.ramp(0, true, 2.5, 30), 2.5 / 30))
+    ramp_full_after_duration_ticks = function()
+        local v = 0
+        for _ = 1, 19 do v = NOM_Rules.ramp(v, true, 20) end
+        assert(v < 1, "chegou cedo")
+        v = NOM_Rules.ramp(v, true, 20)
+        assert(near(v, 1), "não chegou em 20 minutos")
     end,
     ramp_caps_at_bounds = function()
-        assert(NOM_Rules.ramp(0.999, true, 1, 30) == 1)
-        assert(NOM_Rules.ramp(0.001, false, 1, 30) == 0)
-    end,
-    ramp_clamps_dt = function()
-        -- 10 minutos de pausa num tick não pode virar transição instantânea
-        assert(NOM_Rules.MAX_DT == 5)
-        assert(near(NOM_Rules.ramp(0, true, 600, 30), 5 / 30))
-        assert(NOM_Rules.ramp(0.5, true, -5, 30) == 0.5)
+        assert(NOM_Rules.ramp(0.99, true, 20) == 1)
+        assert(NOM_Rules.ramp(0.01, false, 20) == 0)
     end,
 
     mix_zero_when_both_off = function()

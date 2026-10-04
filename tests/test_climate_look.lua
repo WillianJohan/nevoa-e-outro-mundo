@@ -5,7 +5,6 @@
 require "NOM_Rules"
 
 local LOOK_FILE = "mod/42/media/lua/server/NOM_ClimateLook.lua"
-local MS_PER_MINUTE = 2500 -- dia de 1 hora: 1 minuto de jogo = 2,5 s reais
 
 local function lerp(t, a, b) return a + (b - a) * t end
 local function near(a, b) return math.abs(a - b) < 1e-4 end
@@ -95,8 +94,6 @@ local function setup(opts)
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {}, FogCycle = opts.fogCycle or 1, ClimateCycle = 1 }
     isClient = function() return opts.client == true end
     getDebug = function() return false end
-    local ms = 0
-    getTimestampMs = function() return ms end
     local handlers = { climate = {}, tick = {} }
     Events = {
         OnClimateTick = { Add = function(f) handlers.climate[#handlers.climate + 1] = f end },
@@ -121,7 +118,6 @@ local function setup(opts)
     -- Um minuto de jogo: updateValues + OnClimateTick no 1º frame, calculate em todo frame.
     function env.minute()
         for frame = 1, K do
-            ms = ms + MS_PER_MINUTE / K
             if frame == 1 then
                 floats[5].vanilla = world.fog
                 for _, f in pairs(floats) do f:reset() end
@@ -206,6 +202,16 @@ return {
         end)
         assert(sawFog, "névoa nunca ligou")
         assert(NOM_World.fog == false, "névoa travou ligada no período de clima")
+    end,
+
+    -- transição em minutos de jogo: 20 ticks de clima, seja qual for o tempo real
+    look_transition_takes_twenty_game_minutes = function()
+        local env = setup({ tod = 23, K = 10 })
+        local full = 0.2 + (1 - 0.2) * nightWeight("desaturation")
+        env.run(19)
+        assert(env.floats[0].final < full - 1e-4, "cheio antes de 20 minutos de jogo")
+        env.run(1)
+        assert(near(env.floats[0].final, full), "não chegou cheio em 20 minutos de jogo")
     end,
 
     -- (d) dia sem névoa: nenhuma chamada no clima

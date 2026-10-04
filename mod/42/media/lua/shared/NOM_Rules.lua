@@ -3,9 +3,6 @@ NOM_Rules = {}
 
 NOM_Rules.FOG_HYSTERESIS = 0.05
 NOM_Rules.FOG_EXIT_FLOOR = 0.01
--- Teto do passo da rampa, em segundos reais. Um minuto de jogo (o tick do clima)
--- leva alguns segundos; uma pausa longa não pode virar transição instantânea.
-NOM_Rules.MAX_DT = 5
 NOM_Rules.CHANNELS = { "desaturation", "light", "fog", "tint" }
 
 -- value = alvo da camada modded do clima; weight = quanto puxar até ele (0..1).
@@ -39,9 +36,9 @@ function NOM_Rules.blend(vanilla, target, weight)
     return vanilla + (target - vanilla) * weight
 end
 
-function NOM_Rules.ramp(current, active, dt, duration)
-    dt = math.max(0, math.min(NOM_Rules.MAX_DT, dt))
-    local step = dt / duration
+-- Um passo por minuto de jogo (cada OnClimateTick): duration em minutos de jogo.
+function NOM_Rules.ramp(current, active, duration)
+    local step = 1 / duration
     if active then
         return math.min(1, current + step)
     end

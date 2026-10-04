@@ -5,7 +5,8 @@ if isClient() then return end
 
 require "NOM_World"
 
-local TRANSITION_SECONDS = 30
+-- Em minutos de jogo: cobre pelo menos 2 pacotes de clima do MP (1 a cada 10).
+local TRANSITION_MINUTES = 20
 
 local FLOATS = {
     desaturation = ClimateManager.FLOAT_DESATURATION,
@@ -13,7 +14,7 @@ local FLOATS = {
     fog = ClimateManager.FLOAT_FOG_INTENSITY,
 }
 
-local state = { nightRamp = 0, fogRamp = 0, lastMs = nil }
+local state = { nightRamp = 0, fogRamp = 0 }
 local applied = {} -- canal -> true enquanto a camada modded dele está ligada por nós
 local tintInfo = nil
 
@@ -96,15 +97,11 @@ end
 
 -- Roda logo depois de updateValues(): os valores internos são o vanilla limpo.
 local function onClimateTick(clim)
-    local now = getTimestampMs()
-    local dt = state.lastMs and (now - state.lastMs) / 1000 or 0
-    state.lastMs = now
-
     local fogFloat = clim:getClimateFloat(FLOATS.fog)
     local enabled = NOM_Config.get("DarkEnabled")
     local w = NOM_World.update(vanillaFog(fogFloat))
-    state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, dt, TRANSITION_SECONDS)
-    state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, dt, TRANSITION_SECONDS)
+    state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
+    state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, TRANSITION_MINUTES)
     logDebug(w)
 
     local look = NOM_Rules.mix(state.nightRamp, state.fogRamp, NOM_Config.get("DarkIntensity"))
