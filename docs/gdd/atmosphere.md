@@ -18,9 +18,15 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 - Noite: luz global menor, leve dessaturação, tint azulado.
 - Névoa: dessaturação forte, tint sépia/cinza, névoa mais densa que a vanilla.
-- Transição suave de ~30 segundos reais, em degraus de um minuto de jogo
-  (alguns segundos reais cada).
+- Transição de ~20 minutos de jogo (um passo por minuto). No MP chega aos
+  clientes a cada 10 minutos de jogo com fade de ~5 s, mesma cadência do
+  anoitecer vanilla.
 - Intensidade configurável no sandbox.
+- A névoa do mod também encurta a visão dos zumbis (o jogo calcula a distância
+  de visão pelo valor final da névoa). É intencional: ninguém enxerga na névoa,
+  nem eles.
+- Névoa forçada pelo admin (painel de clima) passa por cima da nossa camada e
+  não liga o estado de névoa: o gatilho é só a névoa natural.
 
 ## Som
 
