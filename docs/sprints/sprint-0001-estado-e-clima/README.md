@@ -34,7 +34,10 @@ em solo e em MP.
 
 1. **Nascer e pôr do sol ficam na estação, não no `ClimateManager`.** É `getClimateManager():getSeason():getDawn()` / `getDusk()` — é o que o próprio jogo usa em `Foraging/forageSystem.lua`. O plano tinha `clim:getDawn()`.
 2. **Layout de mod do B42.20:** `mod.info` e `media/` dentro de `42/`, pasta `common/` existindo do lado, e tradução em **JSON** (`Translate/<LANG>/Sandbox.json`), não mais `.txt`. Tooltip de sandbox é a chave com sufixo `_tooltip`.
-3. **`ClimateManager.FLOAT_GLOBAL_LIGHT_INTENSITY` e `ClimateColorInfo.new` nunca aparecem no Lua vanilla**, então não há garantia de que o Kahlua os exponha. O código usa id numérico de fallback e `pcall` com caminho alternativo; o teste in-game diz qual dos dois rodou (procurar `[NOM] ClimateColorInfo.new indisponível` no console).
+3. **O clima que o jogo devolve já vem misturado com o nosso.** `getFogIntensity()` retorna o valor final, `lerp(peso, vanilla, modded)`. Ler isso pra decidir se tem névoa fazia a névoa do mod realimentar a própria detecção: com intensidade alta ela **nunca acabava**. A correção desfaz a mistura (`NOM_Rules.unmix`) com o peso aplicado no tick anterior. Vale pra qualquer sistema futuro que leia um canal que o mod também escreve.
+4. **A camada modded do clima é compartilhada.** Desligar (`setEnableModded(false)`) todo tick apaga o que outro mod pôs ali. Só desligamos o que nós ligamos, uma vez.
+5. **Constantes `ClimateManager.FLOAT_*` / `COLOR_*` e `ClimateColorInfo` são expostas ao Lua** (vanilla usa em `PopupColorEdit.lua` e `ClimateColorsDebug.lua`), e o construtor de 8 floats existe no bytecode.
+6. **Histerese precisa de piso.** Com limite 0.05 e histerese 0.05, a condição de saída virava `>= 0`, sempre verdadeira. Sandbox agora começa em 0.1 e a regra tem piso de 0.01.
 
 ## Pendências que a próxima sprint herda
 

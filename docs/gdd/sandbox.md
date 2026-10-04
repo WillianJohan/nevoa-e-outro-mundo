@@ -18,7 +18,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 | Opção | Sistema |
 |---|---|
-| `FogThreshold` (0.5, faixa 0.05–1) | [world-states.md](world-states.md) |
+| `FogThreshold` (0.5, faixa 0.1–1) | [world-states.md](world-states.md) |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult`, `NightDamageMult` | [night.md](night.md) |
 | `NightSenseMult`, `HuntIntervalMinutes` | [night.md](night.md) |

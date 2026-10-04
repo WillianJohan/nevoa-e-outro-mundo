@@ -4,6 +4,7 @@ local FILES = {
     "tests/test_smoke.lua",
     "tests/test_rules.lua",
     "tests/test_config.lua",
+    "tests/test_atmosphere.lua",
 }
 
 local pass, fail = 0, 0

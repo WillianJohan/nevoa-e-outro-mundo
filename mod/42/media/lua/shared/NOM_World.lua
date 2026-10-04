@@ -4,13 +4,14 @@ require "NOM_Config"
 -- Flags derivadas do clima, que o jogo já sincroniza entre servidor e clientes.
 NOM_World = { night = false, fog = false }
 
-function NOM_World.update()
+-- appliedFogWeight: peso de névoa que o cliente aplicou no tick anterior (0 no servidor).
+function NOM_World.update(appliedFogWeight)
     local clim = getClimateManager()
     local season = clim:getSeason()
     NOM_World.tod = getGameTime():getTimeOfDay()
     NOM_World.dawn = season:getDawn()
     NOM_World.dusk = season:getDusk()
-    NOM_World.fogIntensity = clim:getFogIntensity()
+    NOM_World.fogIntensity = NOM_Rules.unmix(clim:getFogIntensity(), 1, appliedFogWeight or 0)
     NOM_World.night = NOM_Rules.isNight(NOM_World.tod, NOM_World.dawn, NOM_World.dusk)
     NOM_World.fog = NOM_Rules.isFog(NOM_World.fogIntensity, NOM_Config.get("FogThreshold"), NOM_World.fog)
     return NOM_World

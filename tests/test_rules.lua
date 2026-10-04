@@ -67,7 +67,12 @@ return {
         local both = NOM_Rules.mix(1, 1, 1)
         local fog = NOM_Rules.mix(0, 1, 1)
         assert(near(both.desaturation.weight, fog.desaturation.weight))
-        assert(both.tint.value == fog.tint.value)
+        -- cor da sobreposição fica entre azul (noite) e sépia (névoa)
+        local n, f = NOM_Rules.LOOKS.night.tint.value, NOM_Rules.LOOKS.fog.tint.value
+        for i = 1, 3 do
+            local lo, hi = math.min(n[i], f[i]), math.max(n[i], f[i])
+            assert(both.tint.value[i] >= lo and both.tint.value[i] <= hi)
+        end
     end,
     mix_weight_never_exceeds_one = function()
         local look = NOM_Rules.mix(1, 1, 2)
@@ -75,4 +80,39 @@ return {
             assert(look[ch].weight <= 1, ch)
         end
     end,
+
+    fog_exits_at_minimum_threshold = function()
+        -- C2: limite 0.05 com histerese 0.05 nunca saía (0 >= 0)
+        assert(NOM_Rules.isFog(0, 0.05, true) == false)
+    end,
+    unmix_recovers_vanilla_value = function()
+        local v, m, w = 0.3, 1, 0.6
+        local final = v + (m - v) * w
+        assert(near(NOM_Rules.unmix(final, m, w), v))
+        assert(NOM_Rules.unmix(0.42, 1, 0) == 0.42)
+    end,
+    fog_feedback_loop_exits = function()
+        -- C1: a névoa lida já inclui a nossa; sem descontar, travava ligada
+        for _, intensity in ipairs({ 1, 2 }) do
+            local fog, vanilla = false, 0.9
+            local ramp = 0
+            for _ = 1, 400 do
+                local w = NOM_Rules.mix(0, ramp, intensity).fog.weight
+                local final = vanilla + (1 - vanilla) * w
+                fog = NOM_Rules.isFog(NOM_Rules.unmix(final, 1, w), 0.35, fog)
+                ramp = NOM_Rules.ramp(ramp, fog, 1, 30)
+                vanilla = math.max(0, vanilla - 0.01)
+            end
+            assert(fog == false, "névoa travou com intensity " .. intensity)
+        end
+    end,
+    mix_tint_is_continuous_across_overlap = function()
+        -- I2: cor não pode pular de azul pra sépia quando um passa o outro
+        local a = NOM_Rules.mix(1, 0.74, 1).tint.value
+        local b = NOM_Rules.mix(1, 0.76, 1).tint.value
+        for i = 1, 3 do
+            assert(math.abs(a[i] - b[i]) < 0.02, "pulo no canal " .. i)
+        end
+    end,
 }
+
