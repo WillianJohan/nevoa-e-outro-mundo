@@ -53,7 +53,7 @@
 
 ## Review Focus
 
-1. **Servidor reinicia com Ecos em chunk descarregado** → de dia, Eco recarregado some; à noite volta como Eco (vida baixa, sem cadáver). Teste `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_at_night_stays_weak` (Task 4).
+1. **Servidor reinicia com Ecos em chunk descarregado** → de dia, Eco recarregado some; à noite volta como Eco (vida baixa, sem cadáver). Teste `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_at_night_stays_weak_and_corpseless` (Task 4).
 2. **Spawn falha** (zumbis desligados, `addZombiesInOutfit` vazio) → corpo não é marcado, nada quebra. Teste `eco_spawn_failure_keeps_body_unreleased` (Task 3).
 3. **Outfit do mod não carregou** (`persistentOutfitID` 0) → nunca aprende a chave 0, senão todo zumbi sem outfit viraria Eco. Teste `eco_outfit_missing_learns_nothing` (Task 3).
 4. **Dois jogadores perto da mesma pilha** → cada corpo solta um Eco só; cada jogador tem o próprio teto. Teste `eco_two_players_share_bodies_once` (Task 3).
@@ -164,7 +164,7 @@ end
 - Create: `mod/42/media/lua/client/NOM_EcoClient.lua`
 - Test: `tests/test_eco.lua`, `tests/test_eco_client.lua`
 
-- [ ] **Step 1: testes que falham** — `eco_death_clears_inventory_and_removes_corpse`, `eco_corpse_on_neighbor_square_is_removed`, `eco_normal_zombie_keeps_corpse`, `eco_corpse_is_swept_and_never_releases`, `eco_dawn_removes_all`, `eco_dawn_mp_sends_ids`, `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_at_night_stays_weak`, `eco_stale_key_is_dropped`, `client_removes_ghosts_by_online_id`.
+- [ ] **Step 1: testes que falham** — `eco_death_clears_inventory_and_removes_corpse`, `eco_corpse_on_neighbor_square_is_removed`, `eco_normal_zombie_keeps_corpse`, `eco_corpse_is_swept_and_never_releases`, `eco_dawn_removes_all`, `eco_dawn_mp_sends_ids`, `eco_reloaded_by_day_is_removed_next_tick`, `eco_reloaded_at_night_stays_weak_and_corpseless`, `eco_stale_key_is_dropped`, `client_removes_ghosts_by_online_id`.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar (Decisões 3 e 4). **Step 4:** PASS. **Step 5:** commits `feat: Eco morre sem cadáver nem loot`, `feat: Ecos somem no amanhecer`.
 
 ### Task 5: Docs
