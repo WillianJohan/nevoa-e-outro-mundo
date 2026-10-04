@@ -69,9 +69,13 @@ A alma de um morto. Fraco sozinho; perigoso onde há muitos corpos.
 - Ao morrer: **sem cadáver e sem loot**.
 - Ao amanhecer: **todos os Ecos somem**, onde quer que estejam.
 
-Ponto técnico em aberto: "morrer sem cadáver" não é nativo. Abordagens a
-testar, nessa ordem: (1) tirar o zumbi do mundo quando a vida chegar a 0;
-(2) remover o corpo no tick seguinte ao `OnZombieDead`. Validar em MP.
+Sem cadáver: o corpo do Eco é removido pelo servidor logo depois que nasce
+(técnica na [ADR-003](../architecture/adr-003-eco-spawnado.md)). Validação em MP
+no roteiro da [sprint 0002](../sprints/sprint-0002-eco/README.md#roteiro-in-game).
+
+Visual atual (placeholder): camisola de hospital e véu de noiva vanilla, outfit
+`NOM_Eco`. Por enquanto só a vida é baixa; lento e dano baixo chegam com a
+sprint 0003.
 
 ## Sobreposição
 

@@ -20,7 +20,9 @@ São flags, não um enum: as duas podem estar ativas ao mesmo tempo.
 
 - O gatilho do Outro Mundo é **só a névoa natural do clima**. A névoa do PZ é
   global, então "tem névoa" vale pro mapa inteiro.
-- Mudança de flag dispara um evento interno (`onNightStart/End`,
-  `onFogStart/End`), consumido pelos outros sistemas e repassado aos clientes.
+- Mudança de flag dispara um evento interno (`NOM_World.onChange(fn)`,
+  `fn("night"|"fog", valor)` só na borda), consumido pelos outros sistemas no
+  servidor. O Eco usa a borda de fim da noite. Repasse aos clientes nasce com o
+  primeiro consumidor de cliente (sprint 0005).
 - Cada período (uma noite, uma névoa) tem um id próprio, usado pelo sorteio de
   variantes ([monsters.md](monsters.md)).

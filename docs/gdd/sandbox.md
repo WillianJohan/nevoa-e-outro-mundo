@@ -11,7 +11,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 - Clima dark
 - Noite: mais rápidos e fortes · sentidos aguçados · caça ativa
-- Monstros: Estalador · Corredor · Sem-rosto · Eco
+- Monstros: Estalador · Corredor · Sem-rosto · Eco (`EcoEnabled`, padrão ligado)
 - Overlays de névoa
 
 ## Números
@@ -24,4 +24,4 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult`, `HuntIntervalMinutes` | [night.md](night.md) |
 | `EstaladorChance`, `CorredorChance`, `SemRostoChance` | [monsters.md](monsters.md) |
 | `CorredorScreamRadius` | [monsters.md](monsters.md) |
-| `EcoMaxPerPlayer` (30), `EcoRadius` (40) | [monsters.md](monsters.md) |
+| `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |

@@ -5,5 +5,11 @@
     "Sandbox_NevoaEOutroMundo.DarkIntensity": "Intensidade do clima sombrio",
     "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 desliga o efeito, 1 é o padrão, 2 é o dobro.",
     "Sandbox_NevoaEOutroMundo.FogThreshold": "Névoa que acorda o Outro Mundo",
-    "Sandbox_NevoaEOutroMundo.FogThreshold_tooltip": "Intensidade de névoa (0 a 1) a partir da qual o Outro Mundo começa."
+    "Sandbox_NevoaEOutroMundo.FogThreshold_tooltip": "Intensidade de névoa (0 a 1) a partir da qual o Outro Mundo começa.",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled": "Ecos",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Corpos perto dos jogadores soltam Ecos à noite, uma vez por corpo. Queime ou enterre os mortos.",
+    "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Máximo de Ecos por jogador",
+    "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "Quantos Ecos podem estar vivos perto de cada jogador ao mesmo tempo.",
+    "Sandbox_NevoaEOutroMundo.EcoRadius": "Raio dos Ecos (tiles)",
+    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distância do jogador até onde um corpo pode soltar Eco."
 }

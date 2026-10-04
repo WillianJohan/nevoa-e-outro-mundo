@@ -4,6 +4,9 @@ NOM_Config.DEFAULTS = {
     DarkEnabled = true,
     DarkIntensity = 1.0,
     FogThreshold = 0.5,
+    EcoEnabled = true,
+    EcoMaxPerPlayer = 30,
+    EcoRadius = 40,
 }
 
 function NOM_Config.get(key)

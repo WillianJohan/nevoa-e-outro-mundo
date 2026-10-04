@@ -5,5 +5,11 @@
     "Sandbox_NevoaEOutroMundo.DarkIntensity": "Dark climate intensity",
     "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 disables the effect, 1 is default, 2 is double.",
     "Sandbox_NevoaEOutroMundo.FogThreshold": "Fog that wakes the Otherworld",
-    "Sandbox_NevoaEOutroMundo.FogThreshold_tooltip": "Fog intensity (0 to 1) at which the Otherworld begins."
+    "Sandbox_NevoaEOutroMundo.FogThreshold_tooltip": "Fog intensity (0 to 1) at which the Otherworld begins.",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Bodies near players release Echoes at night, once per body. Burn or bury the dead.",
+    "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Max Echoes per player",
+    "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "How many Echoes can be alive near each player at the same time.",
+    "Sandbox_NevoaEOutroMundo.EcoRadius": "Echo radius (tiles)",
+    "Sandbox_NevoaEOutroMundo.EcoRadius_tooltip": "Distance from the player within which a body can release an Echo."
 }

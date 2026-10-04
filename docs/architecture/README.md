@@ -21,18 +21,22 @@ mod/
     lua/shared/NOM_Config.lua       sandbox + defaults
     lua/shared/NOM_World.lua        flags night/fog derivadas do clima vanilla
     lua/shared/Translate/<LANG>/    traduções em JSON (B42.20)
+    lua/shared/NOM_EcoRules.lua     elegibilidade do corpo e chave de outfit (puro)
     lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor
-    lua/server/NOM_Variants.lua     (sprint 0002+) marca/desmarca, spawn de Ecos
+    lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
+    lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
+    lua/server/NOM_Variants.lua     (sprint 0004+) marca/desmarca variantes
     lua/server/NOM_Behaviors.lua    (sprint 0003+) comportamento
     lua/client/NOM_Atmosphere.lua   (sprint 0005) som de névoa, rádio
     lua/client/NOM_Overlays.lua     (sprint 0005) sangue/ferrugem locais
+    clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit)
 ```
 
 Fluxo (tudo no servidor): `World` deriva o estado do clima vanilla →
 `ClimateLook` escurece o clima, que o jogo sincroniza → `Variants`
-marca/desmarca/spawna → `Behaviors` aplica o comportamento em lotes por tick.
+marca/desmarca, `Eco` spawna → `Behaviors` aplica o comportamento em lotes por tick.
 O cliente só renderiza e toca som.
 
 ## Robustez

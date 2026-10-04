@@ -29,5 +29,8 @@ mesmo nos dois modos.
   modded do clima. O jogo já manda o valor final do clima pros clientes, que
   aplicam como override por cima do próprio cálculo — escrever no cliente não
   teria efeito em MP. O cliente que precisar das flags (som, overlays, sprint
-  0005) recebe por evento de servidor; esses eventos nascem na sprint 0002,
-  junto do primeiro consumidor.
+  0005) recebe por evento de servidor; esses eventos nascem junto do primeiro
+  consumidor de cliente.
+- Exceção de limpeza: `client/NOM_EcoClient.lua` apaga o Eco que o servidor já
+  removeu (`ecoGone`), porque `removeFromWorld` no servidor não avisa o cliente.
+  Ele não decide nada.

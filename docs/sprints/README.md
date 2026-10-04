@@ -8,7 +8,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | Sprint | Objetivo | Status |
 |--------|----------|--------|
 | [0001](sprint-0001-estado-e-clima/README.md) | Noite e névoa detectadas e com clima dark | `em teste` |
-| [0002](sprint-0002-eco/README.md) | Eco: corpos soltam almas à noite | `backlog` |
+| [0002](sprint-0002-eco/README.md) | Eco: corpos soltam almas à noite | `em teste` |
 | [0003](sprint-0003-noite-agressiva/README.md) | Noite agressiva (todo zumbi) | `backlog` |
 | [0004](sprint-0004-estalador-corredor/README.md) | Estalador + Corredor noturno | `backlog` |
 | [0005](sprint-0005-sem-rosto-e-nevoa/README.md) | Sem-rosto + atmosfera da névoa | `backlog` |
