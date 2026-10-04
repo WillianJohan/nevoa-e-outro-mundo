@@ -189,7 +189,9 @@ Não existe `setSight`, `setHearing`, `setStrength` nem `setSpeedType` públicos
 | `z:getSpeedType()` | EXISTS | 1 corredor, 2 rápido, 3 arrastado (`doSprinter/doFastShambler/doShambler`) |
 | `z:isCanCrawlUnderVehicle()` / `setCanCrawlUnderVehicle(b)` | EXISTS | o mod devolve o valor que o `DoZombieStats` re-sorteia |
 | `z:DoZombieSpeeds(f)` | EXISTS, **evitar** | concatena em `walkVariant` a cada chamada (cresce a string) |
-| `z:makeInactive(b)` | EXISTS | é o `ActiveOnly` vanilla; chama `doZombieSpeed`/`DoZombieStats` e desfaz ajuste do mod |
+| `z:makeInactive(b)` | EXISTS | é o `ActiveOnly` vanilla: `IsoZombie.updateActiveState` chama `makeInactive(GameTime.isZombieInactivityPhase())` a cada update; volta cedo se nada mudou; `true` → `speedType = 3` + `doZombieSpeed()`, sem reafirmar depois; `false` → `speedType = -1` + `DoZombieStats()`. `determineZombieSpeed(t)` só olha o `inactive` com `t = -1`: `doZombieSpeed(t)` acorda zumbi inativo. O mod não mexe na velocidade na fase inativa |
+| `getGameTime():isZombieInactivityPhase()` | EXISTS | público em `GameTime` |
+| `lunger` | sem getter/setter | `doFastShambler`/`doSprinter` (e `addZombiesInOutfit`) ligam; nada no dono desliga; o remoto copia do pacote (`NetworkZombieVariables.setBooleanVariables`). Zumbi promovido segue dando bote até ir pro virtual |
 
 Força: **impossível por zumbi depois de nascer.** `createZombieOutsideWorld` chama
 `DoZombieStats` (offset 421) antes do `OnZombieCreate`, e o `strength` só é sorteado
@@ -221,7 +223,8 @@ simula o zumbi (`AttackState.triggerPlayerReaction` 367–400, que antes faz
 `setAttackedBy(zumbi)`); o valor do dano em si é sorteado sem olhar o zumbi.
 `OnPlayerGetDamage` só dispara de `BodyDamage.Update`/`BodyPart.DamageUpdate`
 (veneno, fome, doença, sangramento, sede), nunca com o zumbi. Trocar o sandbox
-global a noite inteira vazaria pro save e pros Ecos. Pendência.
+global a noite inteira vazaria pro save e pros Ecos. **Decisão do autor (2026-10-04):
+não fazer** ([night.md](../gdd/night.md#sem-força-e-sem-dano-à-noite)).
 
 ### 2.3 Mandar o zumbi para um ponto
 
@@ -232,7 +235,10 @@ global a noite inteira vazaria pro save e pros Ecos. Pendência.
 | `z:pathToLocationF(x, y, z)`, `z:pathToSound(x, y, z)`, `z:setTarget(obj)` | EXISTS | só valem no dono; não usados |
 
 Usado: `addSound` no servidor (caça e lanterna). O alcance real é `raio ×
-getHearingMultiplier(zumbi)` em quem simula: a audição apurada da noite triplica.
+getHearingMultiplier(zumbi)` em quem simula (`WorldSoundManager.getSoundAttract`):
+a audição apurada da noite triplica. O mod passa `alcance / multiplicador do degrau
+noturno` (`NOM_NightRules.soundRadius`) pra o alcance efetivo ser o configurado;
+roupa e clima (também no multiplicador) não são compensados.
 
 ### 2.4 Lanterna ligada
 
@@ -244,7 +250,7 @@ getHearingMultiplier(zumbi)` em quem simula: a audição apurada da noite tripli
 
 Não há alcance de visão por zumbi além dos degraus (e o teto é 20). Aproximação
 usada: chamado sonoro (`addSound`) de `20 × NightSenseMult` na posição do jogador
-com luz ativa ao ar livre, a cada minuto de jogo à noite.
+com luz ativa ao ar livre, a cada 5 minutos de jogo à noite.
 
 ---
 

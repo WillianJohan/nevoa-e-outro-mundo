@@ -44,12 +44,13 @@
 1. **"O servidor decide, quem simula aplica"** (ADR-005, emenda a ADR-002). Servidor: flag `night`, caça, lanterna. Aplicação de stats: no solo (`not isServer()`) pelo próprio servidor; no dedicado, por `client/NOM_NightClient.lua` em todas as cópias locais. Custo se errado: no MP a noite não muda a velocidade (o in-game confirma).
 2. **Troca do sandbox com restauração garantida** (`pcall`), na mesma chamada Lua. `Cognition` e `Memory` vão pra 2 durante a troca (neutros: não re-sorteiam). `canCrawlUnderVehicle` é guardado e devolvido (o `DoZombieStats` re-sorteia).
 3. **Multiplicador vira degrau.** Velocidade e sentidos do jogo são 3 degraus. `degraus = floor(mult − 0.5)`: 1.0 → 0, 1.5 → 1, 2.5 → 2. Padrão 1.5: um degrau (arrastado → rápido → corredor; visão normal → águia; audição normal → apurada). Sandbox Aleatório (4/5) usa normal como base dos sentidos; velocidade aleatória usa o `speedType` que o zumbi tinha.
-4. **Dano e força ficam de fora** (pendência): não existe caminho por zumbi (tabela acima). `NightDamageMult` **não** entra no sandbox: opção que não faz nada é mentira.
+4. **Dano e força ficam de fora**: não existe caminho por zumbi (tabela acima). `NightDamageMult` **não** entra no sandbox: opção que não faz nada é mentira. Depois do review o autor decidiu: sem força nem dano à noite (Overview, 2026-10-04).
 5. **Cache só em memória.** `modData.NOM_night` guarda o perfil aplicado (`nil` = intocado/dia). Não é salvo e é zerado no reaproveitamento (`resetForReuse`), exatamente quando o jogo re-sorteia os stats. De dia, zumbi intocado nunca é tocado. `OnZombieDead` apaga a chave (o corpo copia o `modData`).
 6. **Laço em lotes:** `BATCH = 20` zumbis por tick, fila do `OnZombieCreate` primeiro dentro do mesmo orçamento, depois round-robin em `getCell():getZombieList()`. Reaplica se o perfil mudou ou se o `speedType` não bate (o jogo re-rolou: `addZombiesInOutfit`, `makeInactive`). Zumbi remoto não tem a velocidade conferida (o pacote manda nela).
 7. **Eco:** perfil próprio — arrastado (3), sentidos do dia. Reconhecido por `modData.NOM_eco` (solo) ou `getOutfitName() == "NOM_Eco"` (cliente de MP, onde o `modData` do servidor não chega).
 8. **Caça:** a cada `HuntIntervalMinutes` minutos de jogo à noite, `addSound(jogador, x, y, z, HuntRadius, HuntRadius)` na posição de cada jogador vivo (contador em memória de `EveryOneMinute`).
-9. **Lanterna:** o zumbi não tem alcance de visão por zumbi além dos degraus (e preso em 20). Aproximação: a cada minuto à noite, jogador com luz ativa num square `isOutside()` gera `addSound` com raio `20 × NightSenseMult` (20 = teto da visão).
+9. **Lanterna:** o zumbi não tem alcance de visão por zumbi além dos degraus (e preso em 20). Aproximação: a cada 5 minutos à noite (review), jogador com luz ativa num square `isOutside()` gera `addSound` com alcance `20 × NightSenseMult` (20 = teto da visão).
+10. **(review)** Alcance de som compensado: o jogo multiplica o raio pela audição do zumbi (`getSoundAttract`), o raio passado é `alcance / multiplicador do degrau noturno`. Na fase inativa do `ActiveOnly` a velocidade fica com o jogo.
 
 ## Review Focus
 

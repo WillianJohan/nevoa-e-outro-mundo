@@ -46,8 +46,8 @@ Como (sprint 0002, evidência em [pz-api-notes §1](pz-api-notes.md#1-eco-sprint
 - **Fraco:** vida baixa (0.3) e **lento** (arrastado, sentidos do dia, sem o
   bônus da noite), pelo perfil "eco" do `NOM_NightStats` (sprint 0003). No cliente
   de MP o Eco é reconhecido pelo outfit (`getOutfitName() == "NOM_Eco"`). Força e
-  dano baixos não existem por zumbi no jogo (ver
-  [pz-api-notes §2](pz-api-notes.md#2-agressividade-noturna-sprint-0003)).
+  dano baixos não existem por zumbi no jogo e não serão feitos (ver
+  [night.md](../gdd/night.md#sem-força-e-sem-dano-à-noite)).
 
 ## Alternativas recusadas
 
