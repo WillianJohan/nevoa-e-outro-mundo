@@ -6,6 +6,7 @@
 | [adr-002-autoridade-servidor.md](adr-002-autoridade-servidor.md) | Lógica no servidor, cliente só renderiza |
 | [adr-003-eco-spawnado.md](adr-003-eco-spawnado.md) | Eco é a exceção: spawnado |
 | [adr-004-clima-antes-de-shader.md](adr-004-clima-antes-de-shader.md) | Visual dark via clima, shader é spike |
+| [adr-005-quem-simula-aplica.md](adr-005-quem-simula-aplica.md) | O servidor decide, quem simula o zumbi aplica (emenda a ADR-002) |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -25,8 +26,12 @@ mod/
     lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
     lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
+    lua/shared/NOM_NightRules.lua   degraus de velocidade/sentidos, perfil, caça (puro)
+    lua/shared/NOM_NightStats.lua   aplica stats noturnos em lotes (onde o zumbi é simulado)
+    lua/server/NOM_Players.lua      jogadores do lado do servidor (solo e dedicado)
+    lua/server/NOM_Night.lua        decide a noite, caça e lanterna; avisa os clientes
+    lua/client/NOM_NightClient.lua  cliente de MP segue a flag e aplica os stats
     lua/server/NOM_Variants.lua     (sprint 0004+) marca/desmarca variantes
-    lua/server/NOM_Behaviors.lua    (sprint 0003+) comportamento
     lua/client/NOM_Atmosphere.lua   (sprint 0005) som de névoa, rádio
     lua/client/NOM_Overlays.lua     (sprint 0005) sangue/ferrugem locais
     clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
@@ -36,8 +41,9 @@ tests/                              asserts de lua puro (./run-tests.sh, luajit)
 
 Fluxo (tudo no servidor): `World` deriva o estado do clima vanilla →
 `ClimateLook` escurece o clima, que o jogo sincroniza → `Variants`
-marca/desmarca, `Eco` spawna → `Behaviors` aplica o comportamento em lotes por tick.
-O cliente só renderiza e toca som.
+marca/desmarca, `Eco` spawna, `Night` chama os zumbis → quem simula o zumbi
+(o próprio processo no solo, o cliente dono no MP) aplica os stats em lotes por
+tick ([ADR-005](adr-005-quem-simula-aplica.md)).
 
 ## Robustez
 

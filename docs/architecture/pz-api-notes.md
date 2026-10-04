@@ -29,8 +29,10 @@
    O `walkType` viaja nos dois sentidos: `NetworkZombiePacker` (servidor) **e** `NetworkZombieSimulator`
    (cliente) chamam `IsoZombie.setWalkType(String)`. Consequência: **a decisão** (variante, noite,
    spawn) pode ser autoritativa no servidor, mas **a aplicação** de ajustes de IA (velocidade,
-   alvo, pathing, sentidos) tem que rodar também no cliente dono. Isso afeta a ADR-002. UNKNOWN
-   o quanto um ajuste feito só no servidor sobrevive; é o risco nº 1 do projeto.
+   alvo, pathing, sentidos) tem que rodar também no cliente dono. Isso afeta a ADR-002. Sprint 0003:
+   o bytecode mostra que velocidade feita só no servidor é sobrescrita pelo pacote do
+   dono e que os sentidos são locais; a aplicação vai pra quem simula
+   ([ADR-005](adr-005-quem-simula-aplica.md)). Falta o teste no jogo.
 3. **`modData` de zumbi não persiste nem sincroniza.** `IsoZombie.save/load` só é chamado por
    `ReanimatedPlayers` (bytecode: único chamador de `IsoZombie.save(ByteBuffer)`). Quando o chunk
    descarrega, o zumbi vira virtual e o popman guarda só posição, direção, `persistentOutfitID`
@@ -174,79 +176,75 @@ do servidor (eles só existem à noite) e varrer a lista no amanhecer como rede 
 
 ### 2.1 Velocidade, força e sentidos por zumbi
 
-Não existe `setSight`, `setHearing`, `setStrength` nem `setSpeedType` públicos. Os campos
-(`speedType`, `strength`, `cognition`, `memory`, `sight`, `hearing`) são lidos do sandbox em
-`IsoZombie.DoZombieStats()`, que é **público** e termina chamando `doZombieSpeed()`.
+**Verificado na sprint 0003** (bytecode B42.20.4). Implementado em `shared/NOM_NightStats.lua`.
 
-| API | Status | Evidência |
+Não existe `setSight`, `setHearing`, `setStrength` nem `setSpeedType` públicos.
+
+| API | Status | Evidência / comportamento |
 |---|---|---|
-| `getSandboxOptions():getOptionByName("ZombieLore.Speed"):setValue(1)` | getOptionByName CONFIRMED; setValue EXISTS | `server/Farming/SFarmingSystem.lua:143`; bytecode `IntegerConfigOption.setValue(I)` (pai de `EnumSandboxOption`) |
-| `z:DoZombieStats()` | EXISTS | lê `lore.cognition/strength/memory/sight/hearing`, chama `doZombieSpeed()` |
-| `z:makeInactive(bool)` | EXISTS | também chama `doZombieSpeed()` e `DoZombieStats()` |
-| `z:doZombieSpeed(int)` | EXISTS | público; semântica do argumento UNKNOWN (`determineZombieSpeed(I)` relê `lore.speed`) |
-| `z:setWalkType("sprint1")` + `z:setSpeedTypeFromWalkType()` | EXISTS | `getSpeedTypeFromWalkType` só olha prefixo `"sprint"`/`"slow"` |
-| `z:getSpeedType()`, `z:isUseless()` | EXISTS | — |
+| `getSandboxOptions():getOptionByName("ZombieLore.Speed")` (e `.Sight`, `.Hearing`, `.Cognition`) | getOptionByName CONFIRMED; nome EXISTS | `server/Farming/SFarmingSystem.lua:143`; mapa por `ConfigOption.getName()` (`SandboxOptions.addOption`), nomes em `SandboxOptions$ZombieLore.<init>`. Faixas: Speed 1–4, Sight/Hearing 1–5, Cognition 1–4 |
+| `option:setValue(v)` | EXISTS, **seguro** | `IntegerConfigOption.setValue(I)`: ignora fora da faixa, grava o campo, `invokeOnChangeEvent()` só chama callback se houver — e só `Core` registra callback (opções do jogo). **Não sincroniza nem salva**: envio é `SandboxOptions.sendToServer()`, gravação é `saveGameFile`/`saveCurrentGameBinFile`. Fica seguro se a troca e a volta acontecem na mesma chamada Lua |
+| `z:DoZombieStats()` | EXISTS | relê `sight`/`hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); **`strength` e `memory` só se o campo ainda é -1**; termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (re-sorteio) |
+| `z:doZombieSpeed(t)` | EXISTS | `determineZombieSpeed(t)` devolve `t` se `t ≠ -1` (senão relê o sandbox). `doZombieSpeedInternal`: `lore.speed==3 ou t==3` → arrastado; senão 2/3 de chance de `doFakeShambler(t)` (`speedType = t`); senão `lore==2 ou t==2` → rápido; senão `lore==1 ou t==1` → corredor. **O sandbox vence o argumento**: com sandbox "Arrastados" nenhum `t` promove sem trocar `ZombieLore.Speed` |
+| `z:getSpeedType()` | EXISTS | 1 corredor, 2 rápido, 3 arrastado (`doSprinter/doFastShambler/doShambler`) |
+| `z:isCanCrawlUnderVehicle()` / `setCanCrawlUnderVehicle(b)` | EXISTS | o mod devolve o valor que o `DoZombieStats` re-sorteia |
+| `z:DoZombieSpeeds(f)` | EXISTS, **evitar** | concatena em `walkVariant` a cada chamada (cresce a string) |
+| `z:makeInactive(b)` | EXISTS | é o `ActiveOnly` vanilla; chama `doZombieSpeed`/`DoZombieStats` e desfaz ajuste do mod |
 
-Valores do sandbox (`shared/Translate/EN/Sandbox.json`): Speed 1 Sprinters, 2 Fast Shamblers,
-3 Shamblers, 4 Random (`:451-454`); Sight 1 Eagle, 2 Normal, 3 Poor (`:518-522`); Hearing 1 Pinpoint,
-2 Normal, 3 Poor (`:531-535`); Strength 1 Superhuman, 2 Normal, 3 Weak; Toughness 1 Tough, 2 Normal,
-3 Fragile; Cognition 1 portas, 2 navega, 3 básico; Memory 1 Long ... 4 None.
+Força: **impossível por zumbi depois de nascer.** `createZombieOutsideWorld` chama
+`DoZombieStats` (offset 421) antes do `OnZombieCreate`, e o `strength` só é sorteado
+com o campo em -1. E o campo só é lido contra porta/janela/barricada/carro
+(`IsoDoor`, `IsoWindow`, `IsoBarricade`, `AttackVehicleState`).
 
-Mudar só `SandboxVars.ZombieLore.X` no Lua **não** basta: o Java lê `SandboxOptions.instance.lore.*`.
+Visão: `getVisionRadiusAdjusted` = `20 − max(luz, chuva+névoa)`, ×1.75 se
+`sight==1` **ou sandbox==1**, ×0.35 se `sight==3` **ou sandbox==3**, ÷ item vestido;
+`updateVisionRadius` prende entre 10 e 20. Audição: `WorldSoundManager.getHearingMultiplier`
+= 3.0 / 1.0 / 0.45 pelo campo `hearing` do zumbi, × item vestido × clima.
 
-Recomendado ("swap and restore"), no servidor **e** no cliente dono (fato transversal 2):
-```lua
-local function withLore(values, fn)
-  local opts, old = getSandboxOptions(), {}
-  for k, v in pairs(values) do
-    local o = opts:getOptionByName("ZombieLore." .. k); old[k] = o:getValue(); o:setValue(v)
-  end
-  fn()
-  for k, v in pairs(old) do opts:getOptionByName("ZombieLore." .. k):setValue(v) end
-end
-withLore({ Speed = 1, Sight = 1, Hearing = 1, Strength = 1 }, function() z:DoZombieStats() end)
-```
-Rode na mesma chamada, sem `yield`, para o sandbox global não vazar para outros zumbis.
-UNKNOWN: se `setValue` dispara sync de sandbox no MP (não achei envio em `setValue`;
-`SandboxOptions.sendToServer()` é separado).
+Receita usada (troca e volta na mesma chamada, volta garantida por `pcall`;
+Kahlua `pcall` pega `Throwable` em `KahluaThread.pcall`):
+`Speed = degrau, Sight/Hearing = degraus, Cognition = 2 (neutro)` →
+`z:DoZombieStats(); z:doZombieSpeed(degrau)` → restaura → devolve `canCrawlUnderVehicle`.
 
-Alternativa vanilla para "mais ativo à noite": a opção `ZombieLore.ActiveOnly`
-(`shared/Sandbox/Apocalypse.lua`, bloco `ZombieLore`) já liga/desliga atividade por período, e
-`makeInactive` é o mecanismo dela.
+**MP (resolvido por bytecode, falta o jogo):** zumbi remoto copia `walkType` e
+`speedMod` do pacote (`NetworkZombieAI.parse` com `isRemoteZombie()`), o servidor
+aceita o do dono (`NetworkZombiePacker.applyZombie`). Mudança só no servidor é
+sobrescrita. Sentidos são campos locais, lidos por quem simula. O cliente recebe
+`OnZombieCreate` (`NetworkZombieSimulator.parseZombie` → `createRealZombieAlways`).
+Por isso a [ADR-005](adr-005-quem-simula-aplica.md).
 
 ### 2.2 Dano
 
-Não existe dano por zumbi. O dano vem de `strength` (via sandbox, acima) e da lógica de ataque em
-Java. Para dano extra: detectar `z:isAttacking()` (EXISTS) perto do alvo e aplicar dano no
-`BodyDamage` do jogador. UNKNOWN como isso sincroniza no MP (há `sendDamage(player)` e
-`syncBodyPart` no `GlobalObject`, sem uso que eu tenha validado). `OnPlayerGetDamage` existe
-(disparado por `BodyDamage.Update`, `IsoGameCharacter.Hit` etc.), mas não identifica o zumbi.
+**Não há dano por zumbi.** `BodyDamage.AddRandomDamageFromZombie` lê o
+`ZombieLore.Strength` **global** na hora do golpe (offsets 151–190), na máquina que
+simula o zumbi (`AttackState.triggerPlayerReaction` 367–400, que antes faz
+`setAttackedBy(zumbi)`); o valor do dano em si é sorteado sem olhar o zumbi.
+`OnPlayerGetDamage` só dispara de `BodyDamage.Update`/`BodyPart.DamageUpdate`
+(veneno, fome, doença, sangramento, sede), nunca com o zumbi. Trocar o sandbox
+global a noite inteira vazaria pro save e pros Ecos. Pendência.
 
 ### 2.3 Mandar o zumbi para um ponto
 
 | API | Status | Evidência |
 |---|---|---|
-| `addSound(source, x, y, z, radius, volume)` (global, atrai zumbis) | CONFIRMED | `server/Camping/SCampfireSystem.lua:162`, `server/Traps/STrapGlobalObject.lua:130` |
-| `getWorldSoundManager():addSound(src, x, y, z, radius, volume[, stressHumans, ...])` | EXISTS | bytecode `WorldSoundManager.addSound(Object,IIIII[Z...])` |
-| `z:pathToLocationF(x, y, z)` / `z:pathToLocation(x, y, z)` | EXISTS (em zumbi) | bytecode `IsoZombie.pathToLocationF(FFF)`; uso vanilla só em jogador via `getPathFindBehavior2()` (`client/TimedActions/WalkToTimedAction.lua:42`) |
-| `z:pathToSound(x, y, z)` | EXISTS | bytecode `IsoGameCharacter.pathToSound(III)` (é o que `RespondToSound` usa) |
-| `z:pathToCharacter(player)`, `z:setTarget(obj)`, `z:addAggro(obj, f)` | EXISTS | bytecode; `setTarget` chama `NetworkZombieAI.extraUpdate()` |
+| `addSound(source, x, y, z, radius, volume)` (global) | CONFIRMED | `server/Camping/SCampfireSystem.lua:162`, `server/Traps/STrapGlobalObject.lua:130`; chama `WorldSoundManager.addSound(Object,IIIII)` |
+| `addSound` no servidor dedicado | EXISTS | `WorldSoundManager.addSound(...S)` 264–330: põe na lista, no popman (`addWorldSound`) e manda `GameServer.sendWorldSound` aos clientes |
+| `z:pathToLocationF(x, y, z)`, `z:pathToSound(x, y, z)`, `z:setTarget(obj)` | EXISTS | só valem no dono; não usados |
 
-Recomendado: `addSound` no servidor (é mundo, vale para todos os zumbis e o dono simula a reação).
-`pathToSound`/`setTarget` só no cliente dono (`not z:isRemoteZombie()`), senão é sobrescrito.
+Usado: `addSound` no servidor (caça e lanterna). O alcance real é `raio ×
+getHearingMultiplier(zumbi)` em quem simula: a audição apurada da noite triplica.
 
 ### 2.4 Lanterna ligada
 
 | API | Status | Evidência |
 |---|---|---|
-| `item:canEmitLight()`, `item:getLightStrength()` | CONFIRMED | `server/Items/ItemBindingHandler.lua:4` |
-| `item:isActivated()` | CONFIRMED | `ItemBindingHandler.lua:35` |
-| `player:getActiveLightItem()` | EXISTS | olha mão direita, esquerda e itens presos com `isEmittingLight()` |
-| `player:isTorchCone()`, `player:getTorchStrength()`, `player:getLightDistance()` | EXISTS | bytecode `IsoPlayer` |
+| `player:getActiveLightItem()` | EXISTS | mão direita, esquerda ou item preso com `isEmittingLight()` (= `canEmitLight` e, se ativável, `isActivated`) |
+| liga/desliga chega ao servidor | CONFIRMED | `syncItemActivated` em `client/ISUI/ISInventoryPaneContextMenu.lua:2883`, `client/Hotbar/ISHotbar.lua:556` |
+| `square:isOutside()` | CONFIRMED | `server/Farming/SFarmingSystem.lua:156` |
 
-Recomendado: `local it = player:getActiveLightItem(); local on = it ~= nil`. No servidor o estado
-de ativação chega via `syncItemActivated` (função existe no `GlobalObject`). UNKNOWN: latência e
-se o servidor vê lanternas presas no corpo.
+Não há alcance de visão por zumbi além dos degraus (e o teto é 20). Aproximação
+usada: chamado sonoro (`addSound`) de `20 × NightSenseMult` na posição do jogador
+com luz ativa ao ar livre, a cada minuto de jogo à noite.
 
 ---
 
@@ -502,9 +500,9 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 | Spawn do Eco | `addZombiesInOutfit(...):get(0)` no servidor | `createZombie` + `dressInNamedOutfit` |
 | Sem corpo/loot | `OnZombieDead` limpa inventário; `OnDeadBodySpawn` enfileira; `removeCorpse(body,false)` no tick seguinte | procurar corpo no square guardado |
 | Sumir no amanhecer | servidor `removeFromWorld/removeFromSquare` + comando aos clientes | `Kill` + remoção de corpo |
-| Velocidade/sentidos | swap de `ZombieLore.*` + `DoZombieStats()`, no servidor e no dono | `setWalkType("sprint1")` + `setSpeedTypeFromWalkType()` |
+| Velocidade/sentidos | swap de `ZombieLore.*` + `DoZombieStats()` + `doZombieSpeed(t)` onde o zumbi é simulado (ADR-005) | — (força e dano: não existem por zumbi) |
 | Atrair | `addSound` global no servidor | `pathToSound` no cliente dono |
-| Lanterna | `player:getActiveLightItem()` | `getPrimaryHandItem():isActivated()` |
+| Lanterna | `player:getActiveLightItem()` + `square:isOutside()` → `addSound` | — |
 | Variante persistente | derivada do `persistentOutfitID`, reaplicada em `OnZombieCreate` | `ModData` global por ID |
 | Visto/iluminado | cliente detecta (`getTargetAlpha`, `isCanSee`) → comando → servidor valida com `CanSee` | só `CanSee` + cone no servidor |
 | Teleporte | `teleportTo` no servidor | remover + spawnar perto |
@@ -516,8 +514,8 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 
 ## Testes in-game prioritários (UNKNOWNs)
 
-1. Ajuste de IA feito só no servidor (DoZombieStats, walkType, setTarget) sobrevive com o cliente
-   dono simulando? Testar em dedicado com 1 cliente.
+1. ~~Ajuste de IA feito só no servidor sobrevive?~~ Não, por bytecode (§2.1): aplicado no
+   dono (ADR-005). Falta confirmar no jogo que a aplicação no cliente vale (sprint 0003).
 2. `addZombiesInOutfit` no Lua do servidor dedicado aparece para os clientes?
 3. `removeFromWorld` no servidor sem `deleteZombie`: o cliente fica com fantasma?
 4. `OnDeadBodySpawn` dispara no servidor dedicado na morte de zumbi? `removeCorpse` no tick
@@ -525,4 +523,4 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 5. `teleportTo` em zumbi no MP: teleporta, desliza ou volta?
 6. `VisionModifier` baixo em item vestido no zumbi deixa ele efetivamente cego?
 7. Override de `media/shaders/screen.frag` por mod é aplicado (ordem boot × ativação de mod)?
-8. `setValue` em opção de sandbox no servidor dispara sync ou fica local?
+8. ~~`setValue` em opção de sandbox dispara sync?~~ Não, nem salva (§2.1).

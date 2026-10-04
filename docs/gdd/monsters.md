@@ -74,8 +74,8 @@ Sem cadáver: o corpo do Eco é removido pelo servidor logo depois que nasce
 no roteiro da [sprint 0002](../sprints/sprint-0002-eco/README.md#roteiro-in-game).
 
 Visual atual (placeholder): camisola de hospital e véu de noiva vanilla, outfit
-`NOM_Eco`. Por enquanto só a vida é baixa; lento e dano baixo chegam com a
-sprint 0003.
+`NOM_Eco`. Vida baixa e lento (arrastado, sem o bônus da noite) desde a sprint
+0003. Dano baixo não é possível por zumbi no jogo: pendência.
 
 ## Sobreposição
 
