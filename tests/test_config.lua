@@ -34,6 +34,14 @@ return {
         assert(NOM_Config.get("HuntIntervalMinutes") == 60)
         assert(NOM_Config.get("HuntRadius") == 30)
     end,
+    config_variant_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("EstaladorEnabled") == true)
+        assert(NOM_Config.get("CorredorEnabled") == true)
+        assert(NOM_Config.get("EstaladorChance") == 5)
+        assert(NOM_Config.get("CorredorChance") == 10)
+        assert(NOM_Config.get("CorredorScreamRadius") == 40)
+    end,
     -- toda opção do sandbox tem default no Lua e rótulo + tooltip nas duas línguas
     config_every_option_has_default_and_translations = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -55,7 +63,7 @@ return {
                 assert(json:find(key .. '_tooltip"', 1, true), lang .. " sem tooltip: " .. name)
             end
         end
-        assert(n >= 13, "esperava as opções da noite, achou " .. n)
+        assert(n >= 18, "esperava as opções das variantes, achou " .. n)
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()

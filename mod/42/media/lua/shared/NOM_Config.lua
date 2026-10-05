@@ -14,6 +14,11 @@ NOM_Config.DEFAULTS = {
     NightSenseMult = 1.5,
     HuntIntervalMinutes = 60,
     HuntRadius = 30,
+    EstaladorEnabled = true,
+    CorredorEnabled = true,
+    EstaladorChance = 5,
+    CorredorChance = 10,
+    CorredorScreamRadius = 40,
 }
 
 function NOM_Config.get(key)

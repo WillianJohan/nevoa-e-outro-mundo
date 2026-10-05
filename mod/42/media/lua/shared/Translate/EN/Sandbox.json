@@ -25,5 +25,15 @@
     "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes": "Hunt interval (game minutes)",
     "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes_tooltip": "How often, at night, zombies are called to each player.",
     "Sandbox_NevoaEOutroMundo.HuntRadius": "Hunt radius (tiles)",
-    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distance from the player within which zombies hear the hunt call."
+    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distance from the player within which zombies hear the hunt call.",
+    "Sandbox_NevoaEOutroMundo.EstaladorEnabled": "Clickers",
+    "Sandbox_NevoaEOutroMundo.EstaladorEnabled_tooltip": "At night some zombies become Clickers: blind, guided only by sound, clicking every so often. Crouched and silent, you can walk right past them.",
+    "Sandbox_NevoaEOutroMundo.CorredorEnabled": "Runners",
+    "Sandbox_NevoaEOutroMundo.CorredorEnabled_tooltip": "At night some zombies become Runners: they sprint and, when they see a player, scream and call the zombies around.",
+    "Sandbox_NevoaEOutroMundo.EstaladorChance": "Clicker chance (%)",
+    "Sandbox_NevoaEOutroMundo.EstaladorChance_tooltip": "Percentage of zombies that become Clickers each night.",
+    "Sandbox_NevoaEOutroMundo.CorredorChance": "Runner chance (%)",
+    "Sandbox_NevoaEOutroMundo.CorredorChance_tooltip": "Percentage of zombies that become Runners each night.",
+    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius": "Runner scream radius (tiles)",
+    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius_tooltip": "Distance within which zombies hear the Runner scream and go to it."
 }
