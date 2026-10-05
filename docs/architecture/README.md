@@ -13,7 +13,7 @@
 | [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
 | [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
 | [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
-| [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit |
+| [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit. Emenda da 0016: a roupa vanilla some na variante e volta (loot exato na morte) |
 | [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |
 | [adr-015-outro-mundo-sangrento.md](adr-015-outro-mundo-sangrento.md) | Outro Mundo sangrento: chão por `IsoMarker` com camadas, paredes desenhadas no quadro (`RenderGhostTileColor`), só parede limpa, de frente e à vista; regra pura por square e período; densidade do jogador |
 
@@ -144,16 +144,17 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |
 | **Névoa vermelha** (sprint 0010; 1/4 de cada desde a 0011): ninguém é comum | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0, Carpideira 2 (calma ou furiosa; 3 a mais no primeiro frame) → ~2,25·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~2,5·N; **por varredura da Carpideira** (a cada 10 ticks) ~8 por Carpideira calma → ~2·N; as duas varreduras somam ~0,45·N por frame; **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~810 chamadas por frame. Contra a névoa normal (15% variantes): ~0,4·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `carpideira_scan_budget`, `stats_batch_bounded_with_200` |
-| **Visual das variantes** (sprint 0012) | na passada do `NightStats` (lotes de 20 por tick), solo e cada cliente | sem troca: **zero** chamada (uma consulta de tabela Lua por zumbi da passada); pôr: ≤ 9 chamadas por zumbi, uma vez por névoa; tirar: ≤ 5, na borda do fim (todos de uma vez) ou na morte (+5: item vestido e do inventário). Cada troca refaz a textura do modelo daquele zumbi (`resetModelNextFrame`): na vermelha, todo zumbi carregado entra no 1º giro dos lotes (300 zumbis ≈ 15 ticks, ≤ 180 chamadas por tick) e sai todo no mesmo tick do fim | `look_budget`, `look_common_zombie_untouched` |
+| **Visual das variantes** (sprint 0012) | na passada do `NightStats` (lotes de 20 por tick), solo e cada cliente | sem troca: **zero** chamada (uma consulta de tabela Lua por zumbi da passada); pôr: ≤ 11 + 3·N chamadas por zumbi (N = itens vanilla dele, que somem na variante, sprint 0016), uma vez por névoa; tirar: ≤ 5 + 2·N, também na passada em lotes do fim da névoa (0016; antes, todos na borda); na morte, + ~4 + 3 por vestido (o loot refeito pelo `WornItems`). Cada troca refaz a textura do modelo daquele zumbi (`resetModelNextFrame`): na vermelha, todo zumbi carregado entra no 1º giro dos lotes (300 zumbis ≈ 15 ticks; com N ≈ 6, ≤ ~580 chamadas por tick) e sai nos lotes do mesmo jeito | `look_budget`, `look_common_zombie_untouched`, `nude_fog_end_spread_in_batches` |
 | **Efeitos de tela** (sprint 0013, [ADR-013](adr-013-efeitos-de-tela.md)) | todo quadro (render da UI), solo e cada cliente; distância do Sem-rosto a cada 10 ticks | fora da névoa: **1** chamada (a hora) e nada desenhado; na névoa: ≤ 4 desenhos (grão em ladrilhos = 1 chamada, ~40 quads no Java a 1080p; vinheta, linhas, pulso) e ≤ 12 chamadas; com o mod do shader, +11 chamadas por tick enquanto o canal está tomado | `screenfx_nothing_outside_fog_cheap`, `screenfx_fog_draws_grain_and_vignette` |
 
 Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,4·N pra ~2,7·N
 chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a
 horda no jogo ([roteiro, parte 3](../teste-in-game.md#parte-3--medições-15-min)).
 
-Ponto de atenção do visual (sprint 0012): o fim da névoa refaz o modelo de todo zumbi
-com visual no mesmo tick (na vermelha, todos os carregados). A conta de chamadas é pequena;
-o custo de verdade é o do jogo recompor a textura de cada modelo. Medir o engasgo no fim de
+Ponto de atenção do visual (sprint 0012): ~~o fim da névoa refaz o modelo de todo zumbi
+com visual no mesmo tick~~ desde a sprint 0016 o fim devolve 20 zumbis por tick, como o
+começo. A conta de chamadas é pequena; o custo de verdade é o do jogo recompor a textura de
+cada modelo. Medir o engasgo no fim de
 uma névoa vermelha com horda ([roteiro da sprint](../sprints/sprint-0012-visual-variantes/README.md#roteiro-in-game)).
 
 Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561

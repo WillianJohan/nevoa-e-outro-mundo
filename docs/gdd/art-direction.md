@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros) |
+| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -35,8 +35,18 @@
   olhos da Carpideira, posta onde fica o rosto na pele de zumbi vanilla (o layout, visto a
   olho, é o mesmo no masculino e no feminino). A balaclava vanilla é um tricô uniforme, sem
   região de rosto visível: o chiado do Sem-rosto vale na cabeça inteira.
-- **Uma pele e uma peça por variante.** A roupa do zumbi fica: aquele zumbi qualquer *era* a
-  coisa. Some quando a névoa baixa.
+- **Uma pele e uma peça por variante, e nada da roupa comum (sprint 0016).** ~~A roupa do
+  zumbi fica.~~ Visto no jogo pelo Johan (05/10/2026): "os zombies quando se transformam
+  devem ficar sem roupa ... tudo que contribui pro monstro fica, mas de resto não ... tem
+  monstro que tem coisa na cabeça e fica estranho". Enquanto é variante, a roupa vanilla
+  (camiseta, calça, chapéu, óculos, atadura) some do desenho; ficam a pele e a peça do mod
+  e as feridas do corpo (camadas `ZedDmg_*` e `Wound_*`, que são carne, não roupa). Quando
+  a variante acaba (fim da névoa, troca de tipo, reaproveitamento, morte), a roupa volta, e
+  o corpo e o loot são os do zumbi comum. Exceção de roupa (o Johan gostou de "uma saia
+  estranha", sem saber qual): um padrão na lista `NOM_VariantLook.KEEP`. O Eco não muda (já
+  só veste itens do mod). **O monstro larga tudo** (Johan, 05/10/2026): a roupa escondida
+  também não vale no jogo (morde através de máscara e capacete, sem armadura nem modificador
+  de visão/audição, chapéu não cai), até a variante acabar.
 - Texturas: `scripts/gen_textures.py`. Técnica: [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Os monstros
@@ -68,9 +78,9 @@
 - **Chiado parado:** o item de roupa do B42 só aponta texturas fixas (`textureChoices`,
   `m_BaseTextures` no XML; nenhum campo de animação); trocar a peça a cada quadro refaria o
   modelo inteiro. O Sem-rosto usa um quadro de chiado.
-- **Peça por cima de peça:** o zumbi que já usa algo no mesmo lugar (chapéu, máscara, óculos)
-  fica com as duas, e elas podem atravessar uma na outra. Tirar a dele exigiria guardar e
-  devolver a roupa; não vale o risco agora. Na morte, o corpo fica com a dele (a do mod sai).
+- ~~**Peça por cima de peça.**~~ Resolvido na sprint 0016: a roupa do zumbi some enquanto ele
+  é variante, então a peça do mod não atravessa mais chapéu, máscara nem óculos. Na morte, o
+  corpo fica com a roupa dele (a do mod sai).
 - **Rosto da pele:** a pele do mod não tem olhos nem boca desenhados (o desenho não usa o mapa
   UV, fora a fuligem da Carpideira); o rosto fica coberto pela peça (Estalador, Corredor,
   Carpideira) ou é o próprio tema.

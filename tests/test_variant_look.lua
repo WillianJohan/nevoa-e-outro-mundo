@@ -16,6 +16,14 @@
 --   está nele; o DoZombieInventory veste na ordem da lista e o inventário recebe só os
 --   vestidos (addItemsToItemContainer). zeddmg, bandage e wound são multi-item
 --   (shared/NPCs/BodyLocations.lua:857-859). O lugar dos itens do mod sai do script de verdade.
+-- * Sprint 0016: a roupa vanilla some enquanto a variante dura. ItemVisual não tem flag
+--   de esconder: o mod tira da lista e devolve. Morte no solo: DoZombieInventory =
+--   inventory.removeAllItems, WornItems.setFromItemVisuals (clear + CreateItem por
+--   ItemVisual + setItem), addItemsToItemContainer, depois os itens presos; e o
+--   OnZombieDead vem depois. Fogo (FireCheck): OnZombieDead sem DoZombieInventory e o
+--   corpo direto (BurntToDeath). Cliente de MP (DeadZombiePacket → dieNetwork): os
+--   vestidos e o inventário chegam do servidor, onKilled sem DoZombieInventory, e o
+--   corpo copia pele e WornItems depois do OnZombieDead.
 -- * Rede: nada do visual viaja (ZombiePacket.set leva só outfitId e skinTextureIndex);
 --   sendClientCommand/sendServerCommand aqui explodem.
 local FILE_STATS = "mod/42/media/lua/shared/NOM_NightStats.lua"
@@ -26,7 +34,9 @@ local OUTFIT = { "Base.Tshirt_DefaultTEXTURE", "Base.Trousers_Denim" }
 
 -- BodyLocation de cada item (vanilla: generated/items/clothing.txt; mod: NOM_clothing.txt)
 local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"] = "pants",
-    ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask" }
+    ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask",
+    ["Base.ZedDmg_BACK_Slash"] = "zeddmg", ["Base.Wound_Chest_Bite_Male"] = "wound",
+    ["Base.Bandage_Chest"] = "bandage" }
 do
     local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
     for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
@@ -35,6 +45,20 @@ do
     f:close()
 end
 local MULTI = { zeddmg = true, bandage = true, wound = true }
+-- ChanceToFall (generated/items/clothing.txt): o que cai da cabeça
+local FALL = { ["Base.Hat_Army"] = 10, ["Base.Hat_SurgicalMask"] = 10 }
+LOC["Base.Tshirt_NOM_Fake"] = "tshirt" -- vanilla de mentira com "NOM_" no meio do nome
+-- IsoZombie.cantBite 0–319: máscara/capacete de cabeça (mask, maskeyes, maskfull, fullhat,
+-- fullsuithead) na lista de ItemVisual impede a mordida (BodyDamage.AddRandomDamageFromZombie
+-- 1024–1041)
+local NO_BITE = { mask = true, maskeyes = true, maskfull = true, fullhat = true, fullsuithead = true }
+local function cantBite(z)
+    for _, iv in ipairs(z.ivs.items) do
+        if NO_BITE[LOC[iv.type]] then return true end
+    end
+    return false
+end
+local HAT_FALLEN = 32768 -- PersistentOutfits.setFallenHat: bit 0x8000 do persistentOutfitID
 
 local function jlist(G)
     local l = { items = {} }
@@ -71,14 +95,33 @@ local function setup(opts)
     G.fire = fire
     local function vc() G.vcalls = G.vcalls + 1 end
 
+    -- ItemVisual: o do mod (ItemVisual.new) e os do outfit, mesma classe
+    local function mkiv(t)
+        local iv = { type = t }
+        function iv:setItemType(x) vc(); self.type = x end
+        function iv:getItemType() vc(); return self.type end
+        function iv:getScriptItem()
+            vc()
+            local t = self.type
+            return { getChanceToFall = function() vc(); return FALL[t] or 0 end }
+        end
+        return iv
+    end
     ItemVisual = { new = function()
         vc()
         if G.throwNew then error("ItemVisual.new falhou") end
-        local iv = {}
-        function iv:setItemType(t) vc(); self.type = t end
-        function iv:getItemType() vc(); return self.type end
-        return iv
+        return mkiv(nil)
     end }
+    -- WornItems.setItem: lugar comum expulsa quem já está nele
+    local function setItem(list, it)
+        if not MULTI[it.loc] then
+            for i = #list, 1, -1 do
+                if list[i].loc == it.loc then table.remove(list, i) end
+            end
+        end
+        list[#list + 1] = it
+    end
+    local function item(t) return { type = t, loc = assert(LOC[t], "sem lugar: " .. t) } end
 
     function G.zombie(o)
         o = o or {}
@@ -97,28 +140,50 @@ local function setup(opts)
         function z:dressInPersistentOutfitID(id)
             self.hv.name = nil
             self.ivs.items = {}
-            for _, t in ipairs(OUTFIT) do self.ivs.items[#self.ivs.items + 1] = { type = t } end
-            for _, t in ipairs(self.extra) do self.ivs.items[#self.ivs.items + 1] = { type = t } end
+            for _, t in ipairs(OUTFIT) do self.ivs.items[#self.ivs.items + 1] = mkiv(t) end
+            for _, t in ipairs(self.extra) do self.ivs.items[#self.ivs.items + 1] = mkiv(t) end
             self.outfitID, self.init = id, true
         end
         if z.init then z:dressInPersistentOutfitID(z.outfitID) end
+        z.attached = o.attached or {} -- item preso (faca nas costas): vai pro inventário na morte
         function z:getInventory()
             local me = self
             return {
                 FindAndReturn = function(_, t)
+                    vc()
                     for _, it in ipairs(me.inv) do if it.type == t then return it end end
                     return nil
                 end,
                 Remove = function(_, it)
+                    vc()
                     for i, v in ipairs(me.inv) do if v == it then table.remove(me.inv, i) return end end
                 end,
+                AddItem = function(_, it) vc(); me.inv[#me.inv + 1] = it; return it end,
             }
         end
         function z:getWornItems()
             local me = self
-            return { remove = function(_, it)
+            local wi = {}
+            function wi:size() vc(); return #me.worn end
+            function wi:get(i)
+                vc()
+                local it = me.worn[i + 1]
+                return { getItem = function() vc(); return it end }
+            end
+            function wi:remove(it)
+                vc()
                 for i, v in ipairs(me.worn) do if v == it then table.remove(me.worn, i) return end end
-            end }
+            end
+            function wi:setFromItemVisuals(ivs)
+                vc()
+                me.worn = {}
+                for _, iv in ipairs(ivs.items) do setItem(me.worn, item(iv.type)) end
+            end
+            function wi:addItemsToItemContainer(inv)
+                vc()
+                for _, it in ipairs(me.worn) do inv:AddItem(it) end
+            end
+            return wi
         end
         -- o que o NOM_NightStats usa (stats fora do teste)
         function z:getPersistentOutfitID() return self.outfitID end
@@ -149,24 +214,28 @@ local function setup(opts)
         z.outfitID, z.init, z.md = id, false, {}
         fire("OnZombieCreate", z)
     end
-    function G.kill(z)
+    -- how: "solo" (IsoZombie.onKilled), "fire" (FireCheck + BurntToDeath) ou
+    -- "client" (cliente de MP: server = tipos vestidos que o servidor manda)
+    function G.kill(z, how, server)
+        how = how or "solo"
         if not z.init then z:dressInPersistentOutfitID(z.outfitID) end
-        z.inv, z.worn = {}, {}
-        for _, iv in ipairs(z.ivs.items) do -- WornItems.setFromItemVisuals → setItem
-            local it = { type = iv.type, loc = assert(LOC[iv.type], "sem lugar: " .. iv.type) }
-            if not MULTI[it.loc] then
-                for i = #z.worn, 1, -1 do
-                    if z.worn[i].loc == it.loc then table.remove(z.worn, i) end
-                end
-            end
-            z.worn[#z.worn + 1] = it
+        if how == "solo" and not z.reanimated then -- DoZombieInventory
+            z.inv, z.worn = {}, {}
+            for _, iv in ipairs(z.ivs.items) do setItem(z.worn, item(iv.type)) end
+            for _, it in ipairs(z.worn) do z.inv[#z.inv + 1] = it end
+            for _, t in ipairs(z.attached) do z.inv[#z.inv + 1] = { type = t } end
+        elseif how == "client" then -- DeadZombiePacket.parseCharacterInventory
+            z.inv, z.worn = {}, {}
+            for _, t in ipairs(server) do setItem(z.worn, item(t)) end
+            for _, it in ipairs(z.worn) do z.inv[#z.inv + 1] = it end
         end
-        for _, it in ipairs(z.worn) do z.inv[#z.inv + 1] = it end
         z.dead = true
         fire("OnZombieDead", z)
         local corpse = { skin = z.hv.name, worn = {}, inv = {}, ivs = types(z) }
         for _, it in ipairs(z.worn) do corpse.worn[#corpse.worn + 1] = it.type end
         for _, it in ipairs(z.inv) do corpse.inv[#corpse.inv + 1] = it.type end
+        table.sort(corpse.worn)
+        table.sort(corpse.inv)
         G.corpses[#G.corpses + 1] = corpse
         for i, v in ipairs(G.zombies) do if v == z then table.remove(G.zombies, i) break end end
         return corpse
@@ -244,7 +313,7 @@ return {
         local look = NOM_VariantLook.LOOKS.estalador
         assert(z.hv.name == look.skin, "pele: " .. tostring(z.hv.name))
         assert(hasItem(z, look.item), "sem a peça: " .. types(z))
-        assert(hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), "tirou a roupa do zumbi")
+        assert(not hasItem(z, OUTFIT[1]) and not hasItem(z, OUTFIT[2]), "roupa vanilla à mostra (0016)")
         assert(z.outfitID == idFor("estalador", 3), "o ID do outfit mudou")
         assert(z.resets >= 1, "sem resetModelNextFrame")
         assert(NOM_VariantLook.count() == 1)
@@ -285,6 +354,7 @@ return {
         fogOn(5)
         G.converge()
         fogOff()
+        G.converge()
         for _, k in ipairs(KINDS) do
             local z = zs[k]
             assert(z.hv.name == nil, k .. ": pele ficou")
@@ -336,7 +406,7 @@ return {
         G.converge()
         assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item) and z.hv.name == NOM_VariantLook.LOOKS.corredor.skin,
             "não pintou depois de vestido")
-        assert(hasItem(z, OUTFIT[1]), "roupa do zumbi sumiu")
+        assert(not hasItem(z, OUTFIT[1]), "roupa vanilla à mostra (0016)")
     end,
 
     look_reused_object_clean = function()
@@ -394,7 +464,7 @@ return {
         for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
         fogOn(12, true)
         G.converge()
-        for _, z in ipairs(G.zombies) do assert(#z.ivs.items == #OUTFIT + 1, "vermelha: zumbi sem visual") end
+        for _, z in ipairs(G.zombies) do assert(#z.ivs.items == 1 and z.ivs.items[1].type:find("NOM_", 1, true), "vermelha: zumbi sem visual: " .. types(z)) end
         assert(NOM_VariantLook.count() == 40)
     end,
 
@@ -468,6 +538,7 @@ return {
         assert(a.md.NOM_variant == "estalador" and b.md.NOM_variant == "corredor", "os stats pararam no erro do visual")
         G.throwNew = false
         fogOff()
+        G.converge()
         assert(a.hv.name == nil and b.hv.name == nil, "pele vazou depois do erro")
         assert(NOM_VariantLook.count() == 0)
     end,
@@ -492,21 +563,227 @@ return {
             "re-vestido ficou sem visual: " .. types(z))
     end,
 
-    -- orçamento (docs/architecture/README.md): por zumbi, pôr ≤ 9 chamadas, tirar ≤ 5,
-    -- passada sem troca 0
+    -- orçamento (docs/architecture/README.md): por zumbi com N peças vanilla escondidas,
+    -- pôr ≤ 11 + 3·N chamadas, tirar ≤ 5 + 2·N (na passada), passada sem troca 0.
+    -- G.vcalls conta toda chamada de visual nos objetos falsos (zumbi, HumanVisual, lista,
+    -- cada ItemVisual), inclusive os criados no meio da chamada.
     look_budget = function()
         local G = setup()
-        local z = G.spawn({ id = idFor("estalador", 16) })
+        local z = G.spawn({ id = idFor("estalador", 16), extra = { "Base.Hat_Army" } })
+        local n = #OUTFIT + 1
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 9, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 11 + 3 * n, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
-        G.vcalls = 0
         fogOff()
-        assert(G.vcalls <= 5, "tirar custou " .. G.vcalls)
+        G.vcalls = 0
+        G.converge()
+        assert(G.vcalls <= 5 + 2 * n, "tirar custou " .. G.vcalls)
         assert(z.hv.name == nil)
+    end,
+
+    -- sprint 0016: só a pele e a peça do mod (e as feridas do corpo, KEEP) aparecem
+    nude_hidden_on_variant_start = function()
+        local G = setup()
+        local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash", "Base.Wound_Chest_Bite_Male", "Base.Bandage_Chest" }
+        local id = idFor("estalador", 21)
+        local z = G.spawn({ id = id, extra = extra })
+        fogOn(21)
+        G.converge()
+        assert(types(z) == "Base.ZedDmg_BACK_Slash,Base.Wound_Chest_Bite_Male,Base.NOM_EstaladorVenda",
+            "lista na variante: " .. types(z))
+        assert(z.hv.name == NOM_VariantLook.LOOKS.estalador.skin)
+        assert(z.outfitID == id and z.resets >= 1)
+    end,
+
+    nude_restored_on_fog_end = function()
+        local G = setup()
+        local zs, before = {}, {}
+        for _, k in ipairs(KINDS) do
+            local z = G.spawn({ id = idFor(k, 22), extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash" } })
+            zs[k], before[k] = z, { unpack(z.ivs.items) }
+        end
+        fogOn(22)
+        G.converge()
+        fogOff()
+        G.converge()
+        for _, k in ipairs(KINDS) do
+            local z, b = zs[k], before[k]
+            assert(#z.ivs.items == #b, k .. ": " .. types(z))
+            for i, iv in ipairs(b) do assert(z.ivs.items[i] == iv, k .. ": ordem/objeto " .. i .. ": " .. types(z)) end
+            assert(z.hv.name == nil)
+        end
+        assert(NOM_VariantLook.count() == 0)
+    end,
+
+    -- o jogo veste de novo (lista nova): a guardada não volta por cima
+    nude_redressed_does_not_restore_old_clothes = function()
+        local G = setup()
+        local c = NOM_VariantRules.config(NOM_Config.get)
+        local id2
+        for seed = 1, 500 do
+            local id = 11 * 65536 + seed
+            if NOM_VariantRules.variant(id, 23, c) == "estalador" then id2 = id break end
+        end
+        local z = G.spawn({ id = idFor("estalador", 23) })
+        fogOn(23)
+        G.converge()
+        z:dressInPersistentOutfitID(id2)
+        G.converge()
+        assert(types(z) == "Base.NOM_EstaladorVenda", "re-vestido não escondeu: " .. types(z))
+        fogOff()
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "roupa duplicada ou velha: " .. types(z))
+    end,
+
+    nude_api_error_hides_nothing = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 24) })
+        G.throwNew = true
+        fogOn(24)
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "escondeu sem a peça: " .. types(z))
+    end,
+
+    nude_reuse_restores_nothing_stale = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 25), extra = { "Base.Hat_Army" } })
+        fogOn(25)
+        G.converge()
+        G.reuse(z, idFor(nil, 25))
+        z.extra = {}
+        G.render(z)
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "objeto reaproveitado: " .. types(z))
+        assert(NOM_VariantLook.count() == 0)
+    end,
+
+    -- SP: o DoZombieInventory leu a lista escondida antes do OnZombieDead. O corpo e o
+    -- loot têm que ser os de um gêmeo que nunca foi variante: sem perda, sem duplicata,
+    -- sem item do mod, e o item preso (fora do WornItems) fica
+    nude_dead_loot_exact = function()
+        local extra = { "Base.Hat_Army", "Base.Glasses_SkiGoggles", "Base.ZedDmg_BACK_Slash", "Base.Bandage_Chest" }
+        local attached = { "Base.HuntingKnife" }
+        for _, k in ipairs(KINDS) do
+            local G = setup()
+            local id = idFor(k, 26)
+            local twin = G.spawn({ id = id, extra = extra, attached = attached })
+            local want = G.kill(twin)
+            local z = G.spawn({ id = id, extra = extra, attached = attached })
+            fogOn(26)
+            G.converge()
+            assert(NOM_VariantLook.count() == 1, k)
+            local c = G.kill(z)
+            assert(c.skin == nil, k .. ": pele do mod no corpo")
+            assert(table.concat(c.worn, ",") == table.concat(want.worn, ","),
+                k .. ": vestidos " .. table.concat(c.worn, ",") .. " ≠ " .. table.concat(want.worn, ","))
+            assert(table.concat(c.inv, ",") == table.concat(want.inv, ","),
+                k .. ": loot " .. table.concat(c.inv, ",") .. " ≠ " .. table.concat(want.inv, ","))
+            assert(c.ivs == want.ivs, k .. ": lista " .. c.ivs)
+            assert(NOM_VariantLook.count() == 0)
+        end
+    end,
+
+    -- fogo: OnZombieDead sem DoZombieInventory (FireCheck) e o corpo direto
+    -- (BurntToDeath). O mod devolve a lista e não inventa loot
+    nude_burn_death_no_invented_loot = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 27), extra = { "Base.Hat_Army" } })
+        fogOn(27)
+        G.converge()
+        local c = G.kill(z, "fire")
+        assert(#c.worn == 0 and #c.inv == 0, "loot inventado: " .. table.concat(c.inv, ","))
+        assert(c.ivs == table.concat(OUTFIT, ",") .. ",Base.Hat_Army", "lista não voltou: " .. c.ivs)
+        assert(c.skin == nil)
+    end,
+
+    -- cliente de MP: vestidos e inventário vêm do servidor (que nunca pinta); o mod
+    -- não refaz nada, só tira a pele (o corpo local copia a HumanVisual)
+    nude_mp_client_death_keeps_server_items = function()
+        local G = setup({ client = true })
+        local z = G.spawn({ id = idFor("estalador", 28), remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(28)
+        G.converge()
+        assert(not hasItem(z, "Base.Hat_Army"))
+        local server = { OUTFIT[1], OUTFIT[2], "Base.Hat_Army" }
+        local c = G.kill(z, "client", server)
+        table.sort(server)
+        assert(table.concat(c.worn, ",") == table.concat(server, ","), "vestidos do servidor mudaram: " .. table.concat(c.worn, ","))
+        assert(table.concat(c.inv, ",") == table.concat(server, ","), "loot do servidor mudou")
+        assert(c.skin == nil, "pele do mod no corpo do cliente")
+    end,
+
+    -- fim da névoa: nada de refazer o modelo de todo mundo no mesmo tick; a passada
+    -- do NightStats devolve em lotes de BATCH
+    nude_fog_end_spread_in_batches = function()
+        local G = setup()
+        for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
+        fogOn(29, true)
+        G.converge()
+        assert(NOM_VariantLook.count() == 40)
+        fogOff()
+        assert(NOM_VariantLook.count() == 40, "a borda tirou todos de uma vez")
+        G.tick(1)
+        local left = NOM_VariantLook.count()
+        assert(left >= 40 - NOM_NightStats.BATCH and left < 40, "um tick devolveu " .. (40 - left))
+        G.converge()
+        assert(NOM_VariantLook.count() == 0)
+        for _, z in ipairs(G.zombies) do assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil) end
+    end,
+
+    -- cliente de MP: o servidor derruba o chapéu (ZombieHelmetFallingPacket.processClient
+    -- 130–238: não acha o chapéu na lista, que está escondido, mas cria a roupa caindo e
+    -- liga o bit do chapéu caído no ID). Ao devolver, o chapéu não pode voltar pra cabeça
+    nude_fallen_hat_not_restored = function()
+        local G = setup({ client = true })
+        local z = G.spawn({ id = idFor("estalador", 30), remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(30)
+        G.converge()
+        assert(not hasItem(z, "Base.Hat_Army"))
+        z.outfitID = z.outfitID + HAT_FALLEN -- setFallenHat → setPersistentOutfitID(id | 0x8000)
+        z.ivs.items = { unpack(z.ivs.items) } -- clear + addAll da cópia (sem o chapéu)
+        G.converge()
+        fogOff()
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "chapéu caído voltou: " .. types(z))
+    end,
+
+    -- só "NOM_" depois do módulo é item do mod; vanilla com NOM_ no nome some
+    nude_keep_only_mod_module_prefix = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 31), extra = { "Base.Tshirt_NOM_Fake" } })
+        fogOn(31)
+        G.converge()
+        assert(types(z) == "Base.NOM_CorredorBoca", "sobrou: " .. types(z))
+    end,
+
+    -- status do debug: só quem está na lista da célula conta (step 4 do roteiro)
+    nude_count_only_loaded_zombies = function()
+        local G = setup()
+        local a = G.spawn({ id = idFor("estalador", 32) })
+        G.spawn({ id = idFor("corredor", 32) })
+        fogOn(32)
+        G.converge()
+        assert(NOM_VariantLook.count() == 2)
+        table.remove(G.zombies, 1) -- saiu do mundo sem evento (virou virtual)
+        assert(NOM_VariantLook.count() == 1, "contou zumbi fora da célula")
+        assert(a.hv.name ~= nil)
+    end,
+
+    -- decisão do Johan (05/10): "o monstro larga tudo". A máscara escondida não impede
+    -- a mordida enquanto é variante, e volta a impedir no fim
+    nude_monster_bites_through_hidden_mask = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 33), extra = { "Base.Hat_SurgicalMask" } })
+        assert(cantBite(z), "fake: máscara deveria impedir")
+        fogOn(33)
+        G.converge()
+        assert(not cantBite(z), "variante com a máscara ainda impede a mordida")
+        fogOff()
+        G.converge()
+        assert(cantBite(z), "a máscara não voltou a valer")
     end,
 }

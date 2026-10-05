@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Data | 2026-10-05 |
-| Emenda | [ADR-006](adr-006-variantes-deterministicas.md) ("a variante não tem roupa própria" deixa de valer: tem visual, que não é outfit) e [ADR-005](adr-005-quem-simula-aplica.md) (o visual vai em toda máquina que renderiza) |
+| Emenda | 2026-10-05, sprint 0016 (a roupa comum some na variante, [abaixo](#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante)). Emenda a [ADR-006](adr-006-variantes-deterministicas.md) ("a variante não tem roupa própria" deixa de valer: tem visual, que não é outfit) e [ADR-005](adr-005-quem-simula-aplica.md) (o visual vai em toda máquina que renderiza) |
 
 ## Contexto
 
@@ -47,7 +47,7 @@ vestir outro **outfit** troca esse ID e, com ele, a variante. O que o B42 dá
    no jogo não vaza a pele (o fim da névoa tira) nem para a passada dos stats. A marca guarda
    o `persistentOutfitID`: se o jogo vestir de novo com outro ID (lista e pele somem), pinta
    de novo.
-4. **Tirar:** na borda do fim da névoa (todos de uma vez), quando o tipo muda (debug,
+4. **Tirar:** ~~na borda do fim da névoa (todos de uma vez)~~ no fim da névoa pela passada em lotes (emenda da 0016), quando o tipo muda (debug,
    período novo), no `OnZombieCreate` (objeto reaproveitado) e no `OnZombieDead` (também o
    item vestido e o do inventário que o `DoZombieInventory` acabou de criar, por
    `WornItems.remove` e `ItemContainer.Remove`, que são locais). Tirar = `remove` do objeto
@@ -85,7 +85,7 @@ vestir outro **outfit** troca esse ID e, com ele, a variante. O que o B42 dá
 - A peça em `base:zeddmg` não tem máscara de corpo nem `setHideModel` próprios; que um
   modelo com malha renderize nesse lugar é UNKNOWN (os 77 itens vanilla dele são camadas
   sem modelo). Roteiro da sprint.
-- O zumbi que já usa algo no mesmo lugar fica com as duas peças (podem atravessar).
+- ~~O zumbi que já usa algo no mesmo lugar fica com as duas peças (podem atravessar).~~ Desde a 0016 a roupa dele some na variante (emenda abaixo).
 - **Visto no jogo (05/10/2026):** o caminho funciona (a peça do Sem-rosto renderizou com a
   textura do mod), mas o ruído fino virou lã sob a névoa. A sprint 0014 só trocou as
   texturas (contraste cheio, formas grandes; [art-direction](../gdd/art-direction.md#regra)),
@@ -93,3 +93,82 @@ vestir outro **outfit** troca esse ID e, com ele, a variante. O que o B42 dá
 - Depende de UNKNOWNs que só o jogo responde (roteiro da sprint): textura de mod pelo caminho
   em `Body/` e `NOM/`, `ItemVisual.new()` no Lua, `remove(Object)` escolhido pelo Kahlua,
   `OnZombieDead` no cliente de MP antes do corpo local.
+
+## Emenda de 2026-10-05 — sprint 0016: a roupa comum some na variante
+
+**Contexto.** Visto no jogo pelo Johan: o monstro com a roupa e o chapéu do zumbi por baixo
+da peça do mod "fica estranho". Regra nova ([art-direction](../gdd/art-direction.md#regra)):
+enquanto é variante, a roupa vanilla não aparece. O bytecode
+([pz-api-notes §14.4](pz-api-notes.md#144-esconder-a-roupa-sprint-0016)) fecha as opções do
+brief: `ItemVisual` e `HumanVisual` não têm flag de esconder item (c); nenhum evento Lua roda
+antes do `DoZombieInventory` na morte (a); sobra tirar da lista e refazer o loot (b).
+
+**Decisão.**
+
+1. **Esconder = tirar da lista e guardar.** Depois de pôr a peça, o `NOM_VariantLook` lê a
+   `ItemVisuals`, guarda a lista original (na ordem) na tabela Lua do processo e tira cada
+   `ItemVisual` que não casa com `NOM_VariantLook.KEEP` (camadas de ferida `ZedDmg_`/`Wound_`)
+   nem é do mod. Devolver = tirar a peça e pôr a lista original de volta, na ordem. Se a peça
+   do mod já não está na lista, o jogo vestiu de novo (`dressInPersistentOutfitID` limpa a
+   lista): a lista nova é a verdade e a guardada é descartada. A roupa só sai **depois** da
+   peça entrar: um erro antes não esconde nada.
+2. **Morte no solo:** o `DoZombieInventory` já fez vestidos e inventário da lista escondida.
+   No `OnZombieDead`, se a peça do mod está no inventário (prova de que ele rodou), o mod
+   devolve a lista, tira do inventário os vestidos atuais e refaz pelo próprio `WornItems`
+   (`setFromItemVisuals` + `addItemsToItemContainer`, o mesmo que o `DoZombieInventory`
+   faz). Item preso e `itemsToSpawnAtDeath` não são tocados (chamar o `DoZombieInventory` de
+   novo perderia os últimos). O corpo, criado depois, copia esses vestidos.
+3. **Fogo e cliente de MP:** `OnZombieDead` sem `DoZombieInventory` (o fogo dispara antes; o
+   cliente recebe vestidos e inventário do servidor, que nunca pinta). Só a lista e a pele
+   voltam; o loot fica o que o jogo deu. No cliente, o `OnZombieDead` vem antes do corpo local
+   (`DeadCharacterPacket.processClient` → `dieNetwork`: `Kill` e depois `becomeCorpse`): o
+   UNKNOWN da 0012 está fechado.
+4. **Fim da névoa em lotes:** a borda não tira mais todo mundo. A passada do `NightStats`
+   (acordada pela borda) chama o gancho com `nil` em cada zumbi, 20 por tick. Quem saiu da
+   lista fica na tabela até o objeto ser reaproveitado (`OnZombieCreate`) ou morrer: ninguém
+   o desenha, e ele não vai pro save (zumbi vivo vai pro popman só com o ID). Sair pro menu
+   reinicia o Lua (`IngameState.exit` 986 `LuaManager.init`): a tabela some.
+
+**Alternativas recusadas.**
+
+| Alternativa | Por que não |
+|---|---|
+| Flag de esconder no `ItemVisual` | Não existe (campos: tipo, tinta, textura, decal, sangue, sujeira, buracos, remendos). |
+| Devolver a roupa num evento antes da morte | `IsoGameCharacter.onKilled` é vazio e `Kill` só chama `onKilled`; o primeiro evento é o `OnZombieDead`, depois do inventário. |
+| Chamar `DoZombieInventory()` de novo no `OnZombieDead` | Limpa o inventário inteiro e perde os `itemsToSpawnAtDeath` (a lista é limpa no fim da primeira chamada). |
+| Lugar com `setHideModel` pra esconder os outros | É por lugar e por grupo, não por item; exigiria vestir um item vanilla de verdade e mexeria no `WornItems`. |
+| Esconder também as feridas (`ZedDmg_`, `Wound_`) | Não são roupa e contam "monstro"; ficam na `KEEP` (uma linha pra tirar). |
+
+**Consequências.**
+
+- Custo: pôr ≤ 11 + 3·N chamadas (N = itens vanilla do zumbi), devolver ≤ 5 + 2·N, morte
+  com o loot refeito ≈ 4 + 3·(vestidos) + 2. Uma vez por borda, nos lotes de sempre.
+- O zumbi que sair da lista no meio da passada do fim da névoa pode ficar pelado até a
+  passada de conferência de hora em hora do `NightStats` (rede de segurança dele).
+- O loot refeito sorteia a condição de novo (`CreateItem`), como o jogo faz em toda morte.
+- **Loot exato só pra quem não apanhou como variante.** Sangue, buraco e sujeira da luta
+  (`addBlood`/`addHole`/`addDirt`) vão pros `ItemVisual` que estão na lista: os escondidos não
+  pegam o dano. Ao voltar (fim ou morte), a roupa volta limpa daquela luta, e o item no loot
+  também. Aceito (review da 0016): não corrigir.
+- **Chapéu derrubado no MP (review da 0016):** o servidor decide a queda (`helmetFall` devolve
+  false no cliente) e manda `ZombieHelmetFallingPacket`; no cliente, `processClient` 130–238
+  não acha o chapéu escondido, mas cria a roupa caindo e chama `PersistentOutfits.setFallenHat`,
+  que liga o bit `0x8000` do `persistentOutfitID` (`isHatFallen(I)`). Ao devolver, com o bit
+  ligado, o que tem `ChanceToFall > 0` não volta (como `removeFallenHat` 18–92 faz ao vestir).
+  `PersistentOutfits` não está no `Exposer`: o mod lê o bit no ID.
+- **O monstro larga tudo (decisão do Johan, 05/10/2026).** Enquanto é variante, a roupa
+  escondida não vale como roupa pro jogo, que lê a lista de `ItemVisual` (ou os vestidos que
+  saem dela): a variante **morde através de máscara e capacete** (`IsoZombie.cantBite` 140–319
+  procura máscara/capacete de cabeça na lista; `BodyDamage.AddRandomDamageFromZombie`
+  1024–1041 só desvia a mordida com ele), **perde a armadura da roupa**
+  (`CombatManager.calculateTotalDefense` / `getBodyPartClothingDefense` × `ZombiesArmorFactor`),
+  **perde os modificadores de visão e audição** dos itens (`ModelManager.DoCharacterModelParts`
+  → `OnClothingUpdated` → `updateWornItemsVisionModifier`/`HearingModifier`) e **o chapéu
+  escondido não cai** (`helmetFallFromVisuals` só acha o que está na lista). Tudo volta quando
+  a variante acaba. Teste: `nude_monster_bites_through_hidden_mask`.
+- O bit de chapéu caído muda o `persistentOutfitID`, base do sorteio da variante (ADR-006): um
+  zumbi que perde o chapéu na névoa pode virar ou deixar de ser variante. Vem desde a 0004 (não
+  é da 0016); registrado pra decidir à parte.
+- UNKNOWN pro roteiro: `ArrayList.remove(Object)` devolvendo booleano no Kahlua (a prova do
+  re-vestir); `WornItems.setFromItemVisuals`/`addItemsToItemContainer` chamados do Lua (EXISTS,
+  sem uso vanilla); o desenho sem roupa (a pele do mod no corpo todo, sem buraco).

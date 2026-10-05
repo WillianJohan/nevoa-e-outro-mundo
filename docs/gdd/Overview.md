@@ -111,3 +111,14 @@ Só viram escopo por promoção explícita.
   ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
   [art-direction.md](art-direction.md#o-outro-mundo-sangrento-sprint-0015),
   [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)).
+- **2026-10-05** — **Monstro sem roupa comum** (sprint 0016), visto no jogo pelo Johan: "os
+  zombies quando se transformam devem ficar sem roupa ... tudo que contribui pro monstro
+  fica, mas de resto não ... tem monstro que tem coisa na cabeça e fica estranho". Enquanto é
+  variante, a roupa vanilla some; ficam a pele, a peça do mod e as feridas do corpo. Volta
+  quando a variante acaba, e o corpo e o loot são os do zumbi comum. Exceções de roupa (a
+  "saia estranha") numa lista curta, vazia por enquanto. Reverte "a roupa do zumbi fica" da
+  sprint 0012. Na mesma data, **"o monstro larga tudo"**: enquanto é variante, a roupa
+  escondida não protege (morde através de máscara e capacete, sem armadura nem modificador de
+  visão/audição da roupa, o chapéu não cai); tudo volta no fim
+  ([art-direction.md](art-direction.md#regra), [monsters.md](monsters.md),
+  [ADR-012](../architecture/adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante)).
