@@ -3,6 +3,7 @@ package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;mod/
 local FILES = {
     "tests/test_smoke.lua",
     "tests/test_kahlua_compat.lua",
+    "tests/test_math.lua",
     "tests/test_rules.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",

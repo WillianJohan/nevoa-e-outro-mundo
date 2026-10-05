@@ -48,7 +48,7 @@ function NOM_SemRostoRules.spots(px, py, faceAngle, r)
     local back = faceAngle + math.pi
     for k = 0, 8 do
         local step = math.floor((k + 1) / 2) * math.rad(30)
-        local a = back + ((k % 2 == 1) and step or -step)
+        local a = back + ((k % 2 == 1) and step or -step) -- kahlua-%-ok: k de 0 a 8
         local x = math.floor(px + r * math.cos(a))
         local y = math.floor(py + r * math.sin(a))
         local key = x .. "," .. y

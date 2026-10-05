@@ -3,6 +3,7 @@
 -- jogo, testável com ./run-tests.sh. Quem desenha é o client/NOM_ScreenFx.lua; o
 -- canal pro shader opcional (mod NevoaEOutroMundo_Shader) sai de R.channel.
 require "NOM_AtmosphereRules"
+require "NOM_Math"
 
 NOM_ScreenFxRules = {
     FADE_MS = 4000,        -- tempo real do nada à névoa cheia na tela (e de volta)
@@ -63,7 +64,7 @@ function R.flash(now, at, strength)
 end
 
 local function breath(now)
-    return 0.5 + 0.5 * math.sin(2 * math.pi * (now % R.BREATH_MS) / R.BREATH_MS)
+    return 0.5 + 0.5 * math.sin(2 * math.pi * NOM_Math.mod(now, R.BREATH_MS) / R.BREATH_MS)
 end
 
 -- Alfas das camadas (0..1) e a cor da vinheta (preta; vermelha escura na vermelha).
@@ -85,7 +86,8 @@ function R.visible(l)
 end
 
 function R.grainFrame(now)
-    return math.floor(now / R.GRAIN_FRAME_MS) % R.GRAIN_FRAMES + 1
+    -- now/60 ~ 2.9e10: o % do Kahlua saturaria o (int) e o índice sairia da tabela
+    return NOM_Math.mod(math.floor(now / R.GRAIN_FRAME_MS), R.GRAIN_FRAMES) + 1
 end
 
 -- Floats do SearchMode do jogador pro shader (com override ligado e enabled

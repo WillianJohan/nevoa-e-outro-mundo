@@ -65,11 +65,10 @@ local function hide(list, w)
 end
 
 -- Chapéu caído: PersistentOutfits.setFallenHat liga o bit 0x8000 do persistentOutfitID
--- (isHatFallen(I) testa esse bit). Sem operador de bit no Kahlua: divisão e resto. Aqui
--- o ID cru: o bit é o que se quer ler (o sorteio e o worn.id usam o ID sem ele).
-local HAT_FALLEN = NOM_VariantRules.HAT_FALLEN
+-- (isHatFallen(I) testa esse bit). O baseId tira o bit; se tirou, estava ligado. Aqui o
+-- ID cru: o bit é o que se quer ler (o sorteio e o worn.id usam o ID sem ele).
 local function hatFallen(id)
-    return id ~= nil and math.floor(id / HAT_FALLEN) % 2 == 1
+    return id ~= nil and NOM_VariantRules.baseId(id) ~= id
 end
 
 -- Devolve a lista original, na ordem. Se a peça do mod já não está lá, o jogo vestiu

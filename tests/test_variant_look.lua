@@ -283,10 +283,11 @@ local function setup(opts)
 end
 
 -- ID no formato do jogo que dá a variante pedida no período (nil = zumbi comum)
-local function idFor(want, period, red)
+local function idFor(want, period, red, female)
     local c = NOM_VariantRules.config(NOM_Config.get)
     for seed = 1, 500 do
         local id = 9 * 65536 + seed
+        if female then id = id - 2147483648 end -- bit 31 (PersistentOutfits.pickOutfitFemale)
         if NOM_VariantRules.variant(id, period, c, red) == want then return id end
     end
     error("nenhum ID dá " .. tostring(want))
@@ -749,6 +750,19 @@ return {
         fogOff()
         G.converge()
         assert(types(z) == table.concat(OUTFIT, ","), "chapéu caído voltou: " .. types(z))
+        -- feminino (ID negativo, bit 31): o % do Kahlua daria -1 na paridade (review da 0017)
+        local G2 = setup({ client = true })
+        local fid = idFor("estalador", 30, nil, true)
+        assert(fid < 0)
+        local f = G2.spawn({ id = fid, remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(30)
+        G2.converge()
+        f.outfitID = f.outfitID + HAT_FALLEN
+        f.ivs.items = { unpack(f.ivs.items) }
+        G2.converge()
+        fogOff()
+        G2.converge()
+        assert(types(f) == table.concat(OUTFIT, ","), "chapéu caído voltou (feminino): " .. types(f))
     end,
 
     -- só "NOM_" depois do módulo é item do mod; vanilla com NOM_ no nome some

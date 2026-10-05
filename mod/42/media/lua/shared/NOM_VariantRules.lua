@@ -3,6 +3,8 @@
 -- função do persistentOutfitID do zumbi e do número do período de névoa (ADR-006). Servidor
 -- e clientes chegam à mesma resposta sem sincronizar nada, e ela sobrevive a
 -- recarregar o chunk ou o save.
+require "NOM_Math"
+
 NOM_VariantRules = {}
 
 -- Forçado pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
@@ -43,10 +45,13 @@ local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "sem
 
 -- Hash do zumbi no período n, em [0, Q). salt separa sorteios independentes do
 -- mesmo zumbi no mesmo período; sal 0 é o sorteio de sempre (mix(x + 0) = mix(x)).
--- id = persistentOutfitID (int com sinal; o % do Lua devolve positivo).
+-- id = persistentOutfitID (int com sinal, bit 31 = feminino). No jogo o % do Kahlua
+-- trunca: com id negativo, id % Q e floor(id / Q) % Q saem negativos (no luajit dos
+-- testes, positivos). Não normalizar: re-sortearia todo zumbi feminino. Todo processo do
+-- jogo (solo, servidor, clientes) roda Kahlua, então concordam; todo quociente fica longe
+-- de 2^31 e todo produto abaixo de 2^53 (ADR-006, emenda da 0017).
 local function hash(id, n, salt)
-    -- id negativo (bit 31 = feminino): o % do Lua com Q positivo dá ≥ 0.
-    return mix(mix(mix(id % Q + math.floor(id / Q) % Q * 7) + n * 1000003 % Q) + salt)
+    return mix(mix(mix(id % Q + math.floor(id / Q) % Q * 7) + n * 1000003 % Q) + salt) -- kahlua-%-ok: trunca de propósito, |id/Q| < 64
 end
 
 -- O mesmo hash serve o sangue do Outro Mundo (shared/NOM_DressingRules.lua, sprint 0015).
@@ -81,11 +86,12 @@ end
 -- chaveada pelo ID (Eco, Carpideira que gritou, visual, debug) passa por aqui; vestir
 -- continua com o ID cru. Sem operador de bit no Kahlua: floor(id / 2^15) é o
 -- deslocamento aritmético (exato em double também no ID negativo, bit 31 = feminino),
--- e subtrair 2^15 desliga o bit sem tocar nos outros.
+-- a paridade vai pelo NOM_Math.mod (o % do Kahlua daria -1 no negativo) e subtrair 2^15
+-- desliga o bit sem tocar nos outros.
 NOM_VariantRules.HAT_FALLEN = 32768
 
 function NOM_VariantRules.baseId(id)
-    if id == nil or math.floor(id / 32768) % 2 == 0 then return id end
+    if id == nil or NOM_Math.mod(math.floor(id / 32768), 2) == 0 then return id end
     return id - 32768
 end
 
