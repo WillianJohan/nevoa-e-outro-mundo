@@ -513,7 +513,8 @@ final class Flow {
 
     /** uFlowTex e uFlow (x0, y0 relativos à origem do quadro, tiles cobertos, ligado). */
     static void bindUniforms(int prog, float originX, float originY) {
-        boolean on = !dead && pubOn && texVersion >= 0 && texN > 0;
+        // o parâmetro também: a simulação pode publicar uma última vez depois de desligada
+        boolean on = !dead && pubOn && texVersion >= 0 && texN > 0 && RenderContext.luaParams[PARAM_ON] >= 0.5f;
         sentX = (float) (texX0 - (double) originX);
         sentY = (float) (texY0 - (double) originY);
         sentOn = on ? 1f : 0f;
