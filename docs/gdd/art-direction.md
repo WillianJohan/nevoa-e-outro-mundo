@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum), 0018 (dissolve) |
+| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum), 0018 (dissolve), 0022 (brasa no corpo inteiro) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -94,6 +94,26 @@ tutorial clássico de Unity) quando o Eco morre e quando o zumbi vira monstro e 
   começo do fade. Combina com a névoa.
 - Opção do jogador ("Monstros queimam ao surgir e sumir", Opções > Mods): desligada, a troca é
   instantânea, como antes. Técnica: [ADR-016](../architecture/adr-016-dissolve-e-bloom.md).
+
+### O corpo inteiro em brasa (sprint 0022)
+
+Johan (05/10/2026), depois de ver a peça queimar no jogo: "o personagem inteiro em brasa".
+
+- **Na mutação, o zumbi inteiro queima e o monstro aparece embaixo.** No mesmo instante em que o
+  zumbi vira monstro, uma casca de carvão com rachaduras em brasa (a silhueta da roupa de proteção
+  vanilla, pintada pelo mod) cobre o corpo todo e se desfaz em ~1 s, em manchas com a borda
+  laranja, revelando a pele e a peça do monstro já prontas. Brasas sobem do pé dele.
+- **Na volta, o espelho:** a casca se forma por cima do monstro, a troca pro zumbi comum acontece
+  escondida embaixo dela, e ela se desfaz revelando o zumbi de antes, com a roupa dele.
+- Com a casca, a peça do monstro não se forma sozinha (todo item com o efeito no zumbi queima
+  junto, e a casca vai no sentido contrário): ela já está inteira embaixo.
+- **Na horda (névoa vermelha), só os 6 primeiros queimam inteiros**; os seguintes queimam só a
+  peça, como na 0018, e o resto troca na hora.
+- A casca é mais larga que o corpo (é a roupa de proteção): no segundo da queima a silhueta
+  incha um pouco. Sem máscara de corpo, a pele ou a roupa podem atravessar a malha em algum
+  ponto (conferir no jogo).
+- Opção "Brasa no corpo inteiro" (Opções > Mods, ligada, dentro de "Monstros queimam ao surgir e
+  sumir"): desligada, só a peça queima, como na 0018. Técnica: [emenda da ADR-016](../architecture/adr-016-dissolve-e-bloom.md#emenda-de-2026-10-05--sprint-0022-o-corpo-inteiro-em-brasa).
 
 ## Limites conhecidos
 

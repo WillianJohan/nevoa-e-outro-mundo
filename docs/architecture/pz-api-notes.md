@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05; §17.5: sprint 0022) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1243,6 +1243,20 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
 - A intensidade do jogador vai na fração do gradiente do `SearchMode` (`ParamInfo.z·2/ParamInfo.y
   = 13 + bloom·0,25`, §15.4): não há outro float livre (`VarInfo.zw` nunca são escritos, mas o
   Lua não os alcança).
+
+### 17.5 Casca no zumbi vivo (sprint 0022)
+
+Bytecode do B42.21, varredura de todos os métodos de `IsoZombie` e dos leitores de
+`getItemVisuals` em `IsoGameCharacter`.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| O campo `IsoZombie.itemVisuals` só é lido por `<init>`, `getItemVisuals`, `dressInClothingItem`, `dressInNamedOutfit`, `dressInPersistentOutfitID`, `useDescriptor`, `helmetFallFromVisuals` e `DoZombieInventory`; o `save` não está na lista (e só o `ReanimatedPlayers` o chama, fato 3) | EXISTS | varredura do `IsoZombie` |
+| Rede: nada da lista (`ZombiePacket.set`, §14.3) | EXISTS | §14.3 |
+| Na morte no solo, `DoZombieInventory` faz item vestido e loot de toda a lista antes do `OnZombieDead` (a casca viraria loot: o mod tira da lista, do `WornItems` e do inventário) | EXISTS | §14.4; `ember_dead_mid_mutation_loot_exact`, `ember_dead_after_swap_no_loot` |
+| `getBodyPartClothingDefense` (40–80) e `playWeaponHitArmourSound` (34–91) pulam item cujo script não tem `BloodLocation` (`getBloodClothingType` nulo → `goto`); `cantBite` olha só lugares de máscara/capacete; `helmetFallFromVisuals` só `ChanceToFall > 0`. A casca (`base:zeddmg`, sem `BloodLocation`, defesa ou `ChanceToFall`) não muda combate | EXISTS | `IsoGameCharacter.getBodyPartClothingDefense`, `playWeaponHitArmourSound`, `IsoZombie.cantBite` |
+| `base:zeddmg` multi-item: a casca não expulsa a peça nem a roupa no `WornItems.setItem` | EXISTS | §14.2 |
+| **UNKNOWN:** a malha Hazmat sem máscara sobre o corpo vivo: pele, cabelo ou roupa atravessando; a casca aparece em todo zumbi que vira variante à vista | UNKNOWN | roteiro da sprint 0022 |
 
 ## Abordagem recomendada por mecânica (resumo)
 

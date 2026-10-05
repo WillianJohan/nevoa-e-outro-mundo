@@ -16,7 +16,7 @@
 | [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit. Emenda da 0016: a roupa vanilla some na variante e volta (loot exato na morte) |
 | [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |
 | [adr-015-outro-mundo-sangrento.md](adr-015-outro-mundo-sangrento.md) | Outro Mundo sangrento: chão por `IsoMarker` com camadas, paredes desenhadas no quadro (`RenderGhostTileColor`), só parede limpa, de frente e à vista; regra pura por square e período; densidade do jogador |
-| [adr-016-dissolve-e-bloom.md](adr-016-dissolve-e-bloom.md) | Dissolve: peças gêmeas `*Fx` com o shader `NOM_Dissolve` (`<m_Shader>`), limiar no `Alpha` do personagem dirigido no `OnTick`; a variante se forma e se desfaz, o Eco queima na morte (casca pelo `WornItems`, brasas pelo overlay); bloom no `screen.frag` do mod2 com a intensidade do jogador no canal |
+| [adr-016-dissolve-e-bloom.md](adr-016-dissolve-e-bloom.md) | Dissolve: peças gêmeas `*Fx` com o shader `NOM_Dissolve` (`<m_Shader>`), limiar no `Alpha` do personagem dirigido no `OnTick`; a variante se forma e se desfaz, o Eco queima na morte (casca pelo `WornItems`, brasas pelo overlay); bloom no `screen.frag` do mod2 com a intensidade do jogador no canal. Emenda da 0022: casca de brasa no corpo inteiro do zumbi vivo (lista de `ItemVisual`, peça sem shader embaixo, teto de 6) |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -69,6 +69,7 @@ mod/
     lua/client/NOM_VariantLook.lua  pele e peça da variante na cópia local, enquanto a névoa dura (gancho do NightStats; não no dedicado); com o dissolve, a peça gêmea se forma e se desfaz
     lua/shared/NOM_DissolveRules.lua   tempo, faixa do limiar (0,85) e teto do dissolve (puro, sprint 0018)
     lua/client/NOM_Dissolve.lua     dirige o Alpha do zumbi no OnTick durante o dissolve (só local, ADR-016)
+    lua/client/NOM_EmberShell.lua   casca de brasa no corpo inteiro na mutação e na volta (lista de ItemVisual, só local, sprint 0022)
     lua/shared/NOM_EmberRules.lua   brasas e cinza da morte do Eco (puro)
     lua/client/NOM_Embers.lua       desenha as brasas pelo overlay de tela (NOM_ScreenFx.extra)
     lua/client/NOM_EcoFx.lua        morte do Eco: véu gêmeo e casca pelo WornItems, dissolve, brasas, corpo escondido
@@ -76,7 +77,7 @@ mod/
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens do mod por GUID: cinza e véu de fumaça)
-    clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod; *Fx e NOM_EcoCasca com <m_Shader>NOM_Dissolve</m_Shader> (sprint 0018)
+    clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod; *Fx, NOM_EcoCasca e NOM_Brasa com <m_Shader>NOM_Dissolve</m_Shader> (sprints 0018, 0022)
     shaders/NOM_Dissolve.vert, NOM_Dissolve_static.vert, NOM_Dissolve.frag   shader original do dissolve das peças (ADR-016)
     fileGuidTable.xml               GUIDs dos itens de roupa do mod (o jogo junta com a vanilla)
     scripts/NOM_clothing.txt        itens de script do visual (Base.NOM_*, sem ChanceToFall)
@@ -156,6 +157,7 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | **Visual das variantes** (sprint 0012) | na passada do `NightStats` (lotes de 20 por tick), solo e cada cliente | sem troca: **zero** chamada (uma consulta de tabela Lua por zumbi da passada); pôr: ≤ 11 + 3·N chamadas por zumbi (N = itens vanilla dele, que somem na variante, sprint 0016), uma vez por névoa; tirar: ≤ 5 + 2·N, também na passada em lotes do fim da névoa (0016; antes, todos na borda); na morte, + ~4 + 3 por vestido (o loot refeito pelo `WornItems`). Cada troca refaz a textura do modelo daquele zumbi (`resetModelNextFrame`): na vermelha, todo zumbi carregado entra no 1º giro dos lotes (300 zumbis ≈ 15 ticks; com N ≈ 6, ≤ ~580 chamadas por tick) e sai nos lotes do mesmo jeito | `look_budget`, `look_common_zombie_untouched`, `nude_fog_end_spread_in_batches` |
 | **Efeitos de tela** (sprint 0013, [ADR-013](adr-013-efeitos-de-tela.md)) | todo quadro (render da UI), solo e cada cliente; distância do Sem-rosto a cada 10 ticks | fora da névoa: **1** chamada (a hora) e nada desenhado; na névoa: ≤ 4 desenhos (grão em ladrilhos = 1 chamada, ~40 quads no Java a 1080p; vinheta, linhas, pulso) e ≤ 12 chamadas; com o mod do shader, +11 chamadas por tick enquanto o canal está tomado | `screenfx_nothing_outside_fog_cheap`, `screenfx_fog_draws_grain_and_vignette` |
 | **Dissolve** (sprint 0018, [ADR-016](adr-016-dissolve-e-bloom.md)) | todo tick enquanto há efeito, solo e cada cliente | sem efeito: **zero**; por efeito, 1 + 2·P chamadas (square; `getAlpha` e `setAlpha` por jogador local); teto de 12 efeitos (o resto troca na hora). Morte do Eco: + ~10 chamadas uma vez (véu, casca, `resetModelNextFrame`). Brasas por quadro: ≤ 4 + 2 por morte + 1 por partícula desenhada (≤ 4 mortes × 18), zero sem brasa. Com o bloom, o canal do shader fica tomado também fora da névoa (+11 por tick) | `dissolve_budget`, `embers_cap_and_budget`, `embers_idle_cheap`, `dissolve_look_red_fog_cap` |
+| **Brasa no corpo inteiro** (sprint 0022, emenda da ADR-016) | na mutação e na volta, na passada do `NightStats` (lotes de 20), solo e cada cliente | por zumbi com N itens vanilla: pôr com casca ≤ 20 + 3·N chamadas (a do visual mais a casca e a brasa), uma vez; a casca sair no fim ≤ 6; cobrir na volta ≤ 12; trocar embaixo e revelar ≤ 14 + 2·N; durante, o driver do alfa (1 + 2·P por tick). Teto de 6 cascas dentro dos 12 efeitos; o resto como na 0018. Cada casca refaz o modelo 2 vezes por transição | `ember_budget`, `ember_red_fog_cap` |
 
 Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,4·N pra ~2,7·N
 chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a

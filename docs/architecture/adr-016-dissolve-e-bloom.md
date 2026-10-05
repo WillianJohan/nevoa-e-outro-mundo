@@ -86,3 +86,39 @@ quando volta. E **bloom**. Duas spikes estáticas mostraram o caminho sem Java
 - UNKNOWNs (roteiro da sprint): o shader compilando no driver, o `resetModelNextFrame` durante
   a animação de morte, a janela de morte no cliente de MP, o corpo escondido pelo
   `setDoRender`, a casca cobrindo o corpo, o bloom no FPS em 4K.
+
+## Emenda de 2026-10-05 — sprint 0022: o corpo inteiro em brasa
+
+Johan viu a peça queimar no jogo (mutação e volta) e o Eco queimar na morte, e pediu "o
+personagem inteiro em brasa". O corpo continua no `basicEffect` (sem Java, spike-motor-visual):
+a técnica é a **casca da morte do Eco aplicada ao zumbi vivo** ([sprint 0022](../sprints/sprint-0022-brasa-corpo-inteiro/README.md)).
+
+1. **Casca de brasa** `Base.NOM_Brasa`: malha Hazmat vanilla pelo nome, **sem máscara** (o buraco
+   da queima mostra o monstro embaixo; a do Eco esconde o corpo de propósito), textura de carvão
+   e brasa do `gen_textures.py`, `<m_Shader>NOM_Dissolve</m_Shader>`, em `base:zeddmg` e sem
+   `BloodLocation` (nenhum efeito de jogo: pz-api-notes §17.5).
+2. **No zumbi vivo, pela lista de `ItemVisual`** (como as peças desde a 0012), não pelo
+   `WornItems` (que é o caminho do morto). `client/NOM_EmberShell.lua` veste, desfaz e tira; o
+   `NOM_VariantLook` decide quando.
+3. **Um Alpha por zumbi.** Todo item com shader no zumbi lê o mesmo limiar: a casca e o gêmeo da
+   peça não andam juntos em sentidos opostos. Com casca, a peça é a **original sem shader**.
+   Mutação: troca na hora embaixo da casca, casca em `"out"` (1 → 0). Volta: casca em `"in"`
+   (0 → 1), troca (`strip`) no fim, casca em `"out"`. A mesma variante de volta no meio da
+   volta: `"out"` de novo, do limiar atual. Recusado um segundo shader com o limiar invertido
+   (casca some enquanto a peça se forma): mais um programa pro driver compilar sem fallback,
+   por um efeito que a casca já cobre.
+4. **Teto:** `SHELL_CAP = 6` cascas dentro do teto de 12 efeitos. Na horda, os 6 primeiros da
+   passada queimam inteiros, os 6 seguintes só a peça (0018), o resto na hora; os lotes do
+   `NightStats` continuam espaçando o começo e o fim.
+5. **Brasas** (`NOM_Embers.burst`, teto de 4 do overlay) no pé do zumbi no começo de cada
+   transição com casca.
+6. **Morte e reaproveitamento:** a casca sai da lista, do `WornItems` e do inventário (o
+   `DoZombieInventory` do solo já a teria feito item); o loot fica o do zumbi vanilla. Inclusive
+   depois da troca da volta, quando o `VariantLook` já não guarda o zumbi.
+7. **Opção:** "Brasa no corpo inteiro", sub-opção do "Dissolve", ligada. Desligada = sprint 0018.
+
+Consequências: a casca muda a silhueta por ~1 s (a Hazmat é mais larga); sem máscara, pele ou
+roupa podem atravessar a malha (roteiro); a primeira mutação de uma sessão compila o mesmo
+`NOM_Dissolve` de antes (nenhum shader novo). Custo: pôr com casca ≤ 20 + 3·N chamadas uma vez,
+cobrir ≤ 12, trocar embaixo e revelar ≤ 14 + 2·N, mais o driver do alfa de sempre.
+
