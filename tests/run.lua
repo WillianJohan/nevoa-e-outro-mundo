@@ -1,3 +1,4 @@
+local print = print -- teste que captura o print global não engole o relatório
 package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;mod/42/media/lua/client/?.lua;" .. package.path
 
 local FILES = {
@@ -8,6 +9,7 @@ local FILES = {
     "tests/test_ember_rules.lua",
     "tests/test_dissolve.lua",
     "tests/test_dissolve_shader.lua",
+    "tests/test_eco_fx.lua",
     "tests/test_rules.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",

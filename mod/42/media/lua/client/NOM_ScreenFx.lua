@@ -36,6 +36,9 @@ NOM_ScreenFx = {
     -- fog/red (0..1, com fade), static (volume do rádio), flashAt/flashStrength (grito)
     state = NOM_ScreenFxRules.new(),
     ui = nil,
+    -- desenhos de outros sistemas no mesmo overlay, com ou sem névoa: função(el, agora).
+    -- Sem nada a desenhar, cada uma sai sem tocar no Java (as brasas do Eco, sprint 0018).
+    extra = {},
 }
 
 local S = NOM_ScreenFx
@@ -74,6 +77,7 @@ end
 
 local function draw(el)
     local now = getTimestampMs()
+    for i = 1, #S.extra do S.extra[i](el, now) end
     local l = frame(now)
     if not R.visible(l) then return end -- fora da névoa: só a hora acima
     if MainScreen and MainScreen.instance and MainScreen.instance:isReallyVisible() then return end

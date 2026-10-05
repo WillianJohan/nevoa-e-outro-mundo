@@ -11,6 +11,10 @@ NOM_DissolveRules = {
     BAND = 0.85,   -- igual ao NOM_BAND do NOM_Dissolve.frag (teste)
     MS = 1000,     -- limiar de 0 a 1: a peça inteira se forma ou se desfaz
     FADE_MS = 500, -- morte: depois da queima, o que sobra do corpo some em fade
+    -- morte: depois do fade, segura o Alpha em 0 até o corpo nascer (o zumbi sai do
+    -- square e o efeito acaba); soltar antes deixaria o jogo trazê-lo de volta no fim da
+    -- animação. Teto pra quem nunca vira corpo.
+    HOLD_MS = 5000,
     CAP = 12,      -- efeitos ao mesmo tempo; o resto é instantâneo (névoa vermelha)
 }
 
@@ -51,7 +55,7 @@ function R.step(e, now)
     local dt = elapsed(e, now)
     if dt < burn then return R.alpha(t), false end
     local u = (dt - burn) / R.FADE_MS
-    if u >= 1 then return 0, true end
+    if u >= 1 then return 0, dt >= burn + R.FADE_MS + R.HOLD_MS end
     return R.BAND * (1 - u), false
 end
 

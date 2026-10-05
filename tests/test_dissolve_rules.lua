@@ -54,8 +54,11 @@ return {
         local a, done = R.step(e, R.MS + R.FADE_MS / 2)
         assert(near(a, R.BAND / 2) and not done)
         a, done = R.step(e, R.MS + R.FADE_MS)
-        assert(a == 0 and done)
+        assert(a == 0 and not done, "soltou o alfa com o Eco ainda caindo (o jogo o traria de volta)")
         assert(R.threshold(e, R.MS + R.FADE_MS) == 0)
+        -- segura em 0 até o corpo nascer; um teto pra quem nunca vira corpo
+        a, done = R.step(e, R.MS + R.FADE_MS + R.HOLD_MS)
+        assert(a == 0 and done)
     end,
 
     dissolve_rules_cap_and_times = function()

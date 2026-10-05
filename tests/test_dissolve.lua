@@ -172,8 +172,10 @@ return {
         NOM_Dissolve.run(z, "death", function() ended = true end)
         G.ms(NOM_DissolveRules.MS + NOM_DissolveRules.FADE_MS - 100)
         assert(z.drawn[0] < 0.3)
-        G.ms(200)
-        assert(ended)
+        G.ms(1000)
+        assert(z.drawn[0] == 0 and not ended, "o Eco ainda caindo voltou a aparecer")
+        G.ms(NOM_DissolveRules.HOLD_MS)
+        assert(ended, "segurou pra sempre")
     end,
 
     -- corpo nasceu (o zumbi sai do square): limpa e chama o fim
