@@ -5,6 +5,7 @@
 //             z = altura da camada em andares (0 = 1.2)
 // uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
 // uParams[1].y: visual (1 = rolos com sombra própria, padrão; 0 = camada antiga)
+// uParams[1].z: qualidade (0 baixa, 1 média, 2 alta): passos do raio no visual novo
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
@@ -105,6 +106,25 @@ float densityLook(vec3 w, float ground, float layer, out float shade) {
     return d;
 }
 
+// Luz das lanternas e faróis em w (0 fora dos fachos); `open` = o quanto o facho abre a névoa ali.
+vec3 torchLight(vec3 w, out float open) {
+    vec3 acc = vec3(0.0);
+    open = 0.0;
+    for (int k = 0; k < uTorchCount; k++) {
+        vec4 P = uTorchPos[k], D = uTorchDir[k], C = uTorchColor[k];
+        vec3 dv = vec3(w.xy - P.xy, (w.z - P.z) * LEVEL_TILES);
+        float dist = length(dv);
+        if (dist > P.w || dist < 1e-3) continue;
+        float cone = D.w <= -0.99 ? 1.0 : smoothstep(D.w, mix(D.w, 1.0, 0.5), dot(dv / dist, D.xyz));
+        float fall = 1.0 - dist / P.w;
+        float b = cone * fall * fall * (dist / (dist + 0.6)) * clamp(C.w, 0.0, 2.0); // sem estouro na mão
+        acc += C.rgb * b;
+        open += b;
+    }
+    open = clamp(open, 0.0, 1.0);
+    return acc;
+}
+
 vec4 fogLook(vec3 P, float amount) {
     float ground = floor(uDepthRef.z);
     float layer = uParams[0].z > 0.0 ? uParams[0].z : 1.2;
@@ -113,9 +133,10 @@ vec4 fogLook(vec3 P, float amount) {
     gP = P;
     gTree = nomFlowTree(P.xy);
 
+    int steps = uParams[1].z < 0.5 ? 8 : (uParams[1].z < 1.5 ? 12 : 16);
     float span = top - max(P.z, ground - 0.25);
     vec3 start = vec3(P.xy, max(P.z, ground - 0.25));
-    vec3 stepW = NOM_TO_CAMERA * (span / float(STEPS));
+    vec3 stepW = NOM_TO_CAMERA * (span / float(steps));
     float stepLen = length(vec3(stepW.xy, stepW.z * LEVEL_TILES));
     float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
 
@@ -126,14 +147,18 @@ vec4 fogLook(vec3 P, float amount) {
     float sigma = 0.9 * amount;
     float trans = 1.0;
     vec3 light = vec3(0.0);
-    for (int i = 0; i < STEPS; i++) {                   // da câmera pro chão: a frente cobre o fundo
-        vec3 w = start + stepW * (float(STEPS - 1 - i) + jitter);
+    for (int i = 0; i < 16; i++) {                      // da câmera pro chão: a frente cobre o fundo
+        if (i >= steps) break;
+        vec3 w = start + stepW * (float(steps - 1 - i) + jitter);
         float shade;
         float dens = densityLook(w, ground, layer, shade);
         if (dens <= 0.001) continue;
+        float open;
+        vec3 torch = torchLight(w, open);
+        dens *= 1.0 - 0.55 * open;                      // a luz abre a névoa
         float absorb = 1.0 - exp(-sigma * dens * stepLen);
         float sun = exp(-1.6 * shade * LEVEL_TILES * amount);
-        light += trans * absorb * mix(dark, lit, sun);
+        light += trans * absorb * (mix(dark, lit, sun) + torch * 1.6); // o facho aceso dentro da névoa
         trans *= 1.0 - absorb;
         if (trans < 0.02) break;
     }

@@ -20,6 +20,11 @@ uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i,
 // r = densidade (0..1), gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
 uniform sampler2D uFlowTex;
 uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), n, 1 = simulação ligada
+// Lanternas e faróis perto (RenderContext.collectTorches), pro facho na névoa.
+uniform int uTorchCount;
+uniform vec4 uTorchPos[4];     // x, y (relativos a uOrigin), z (andares), alcance (tiles)
+uniform vec4 uTorchDir[4];     // direção unitária (em tiles), cos do meio-ângulo do cone (-1 = luz em volta)
+uniform vec4 uTorchColor[4];   // r, g, b, força
 
 const float NOM_FLOW_VMAX = 4.0;
 const int NOM_FLOW_SOLID = 1;
@@ -69,12 +74,12 @@ bool nomFlowOn() { return uFlow.w > 0.5; }
 vec2 nomFlowUV(vec2 xy) { return (xy - uFlow.xy) / uFlow.z; }
 
 // Densidade do fluido em xy (mundo relativo); 1 com a simulação desligada. Perto da borda da
-// grade volta pro ambiente, pra não aparecer o quadrado.
+// grade vai pra média dos bancos (~70% coberto), pra não aparecer o quadrado nem uma parede de névoa.
 float nomFlowDensity(vec2 xy) {
     if (!nomFlowOn()) return 1.0;
     vec2 uv = nomFlowUV(xy);
     vec2 e = smoothstep(vec2(0.0), vec2(0.06), uv) * smoothstep(vec2(0.0), vec2(0.06), 1.0 - uv);
-    return mix(1.0, texture(uFlowTex, uv).r, e.x * e.y);
+    return mix(0.7, texture(uFlowTex, uv).r, e.x * e.y);
 }
 
 // Velocidade do fluido em tiles/s; `fallback` com a simulação desligada ou fora da grade.

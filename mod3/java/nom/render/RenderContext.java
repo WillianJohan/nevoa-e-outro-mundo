@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
+
 import se.krka.kahlua.integration.annotations.LuaMethod;
 import zombie.GameWindow;
 import zombie.ZomboidFileSystem;
@@ -18,11 +20,17 @@ import zombie.core.SpriteRenderer;
 import zombie.core.textures.TextureDraw;
 import zombie.core.textures.TextureFBO;
 import zombie.gameStates.IngameState;
+import zombie.inventory.InventoryItem;
 import zombie.iso.IsoCamera;
 import zombie.iso.IsoCell;
 import zombie.iso.IsoDepthHelper;
 import zombie.iso.IsoWorld;
+import zombie.iso.Vector2;
 import zombie.iso.weather.ClimateManager;
+import zombie.scripting.objects.VehicleScript;
+import zombie.vehicles.BaseVehicle;
+import zombie.vehicles.VehicleLight;
+import zombie.vehicles.VehiclePart;
 
 /**
  * "NOM render context": tudo que um pós-passe do mundo precisa, num lugar só.
@@ -40,6 +48,8 @@ public final class RenderContext {
     static final String[] PASSES = { "NOM_VolFog" };
     static final int MAX_CHARS = 8;
     static final float CHAR_RANGE = 20f;
+    static final int MAX_TORCHES = 4;
+    static final float TORCH_RANGE = 40f;
     // ponytail: a origem pula a cada 256 tiles (o ruído da névoa dá um salto lá); suave se incomodar
     static final double ORIGIN_SNAP = 256;
 
@@ -47,9 +57,11 @@ public final class RenderContext {
     static final float[] luaParams = new float[16];
     static final long t0 = System.nanoTime();
     static final int PARAM_LOOK = 5;            // NOMRender_setParam(5, 0) volta pro visual antigo da névoa
+    static final int PARAM_QUALITY = 6;         // 0 baixa, 1 média, 2 alta (Opções > Mods, pelo Lua)
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
+        luaParams[PARAM_QUALITY] = 2f;
     }
 
     // ---------- Lua ----------
@@ -90,6 +102,10 @@ public final class RenderContext {
         int charCount;
         final float[] chars = new float[MAX_CHARS * 4]; // x, y, z, raio
         final float[] params = new float[16];
+        int torchCount;
+        final float[] torchPos = new float[MAX_TORCHES * 4];   // x, y (relativos), z, alcance
+        final float[] torchDir = new float[MAX_TORCHES * 4];   // dx, dy, dz (unitário, tiles), cos do cone
+        final float[] torchColor = new float[MAX_TORCHES * 4]; // r, g, b, força
 
         @Override public void render() { RenderContext.renderFrame(this); }
     }
@@ -131,6 +147,7 @@ public final class RenderContext {
             f.fogR = c.r; f.fogG = c.g; f.fogB = c.b;
 
             collectChars(f, cell, cx, cy);
+            collectTorches(f, cell, cx, cy);
             if (playerIndex == 0) Flow.update(cell, fs);
             System.arraycopy(luaParams, 0, f.params, 0, 16);
             SpriteRenderer.instance.drawGeneric(f);
@@ -164,6 +181,71 @@ public final class RenderContext {
         f.chars[slot * 4 + 1] = ch.getY() - f.originY;
         f.chars[slot * 4 + 2] = ch.getZ();
         f.chars[slot * 4 + 3] = 1.2f;
+    }
+
+    private static final ArrayList<InventoryItem> lightItems = new ArrayList<>();
+    private static final Vector2 look = new Vector2();
+    private static final Vector3f lightPos = new Vector3f(), forward = new Vector3f();
+
+    /**
+     * Lanternas dos jogadores locais e faróis dos carros perto, pro facho na névoa. Os mesmos dados que
+     * o jogo usa na luz (IsoGameCharacter$TorchInfo.set, bytecode no plan.md da sprint 0026).
+     */
+    private static void collectTorches(Frame f, IsoCell cell, float cx, float cy) {
+        for (IsoPlayer p : IsoPlayer.players) {
+            if (p == null) continue;
+            lightItems.clear();
+            p.getActiveLightItems(lightItems);
+            for (int i = 0; i < lightItems.size() && f.torchCount < MAX_TORCHES; i++) {
+                InventoryItem it = lightItems.get(i);
+                boolean cone = it.isTorchCone();
+                if (cone) p.getLookVector(look);
+                addTorch(f, p.getX(), p.getY(), p.getZ() + 0.4f, cone ? look.x : 1f, cone ? look.y : 0f,
+                        cone ? it.getTorchDot() : -1f, it.getLightDistance(), it.getLightStrength(),
+                        it.getColorRed(), it.getColorGreen(), it.getColorBlue());
+            }
+        }
+        for (BaseVehicle v : cell.getVehicles()) {
+            if (f.torchCount >= MAX_TORCHES) return;
+            if (v == null || !v.getHeadlightsOn()) continue;
+            float dx = v.getX() - cx, dy = v.getY() - cy;
+            if (dx * dx + dy * dy > TORCH_RANGE * TORCH_RANGE) continue;
+            VehicleScript sc = v.getScript();
+            if (sc == null) continue;
+            Vector3f ext = sc.getExtents();
+            v.getForwardVector(forward);
+            for (int i = 0; i < v.getLightCount() && f.torchCount < MAX_TORCHES; i++) {
+                VehiclePart part = v.getLightByIndex(i);
+                if (part == null || part.getId().contains("Rear")) continue;
+                VehicleLight l = part.getLight();
+                if (l == null) continue;
+                lightPos.set(l.offset.x * ext.x / 2f, 0f, l.offset.y * ext.z / 2f);
+                v.getWorldPos(lightPos, lightPos);
+                addTorch(f, lightPos.x, lightPos.y, lightPos.z + 0.2f, forward.x, forward.z, l.dot,
+                        part.getLightDistance(), part.getLightIntensity(), l.r, l.g, l.b);
+            }
+        }
+    }
+
+    private static void addTorch(Frame f, float x, float y, float z, float dx, float dy, float dot, float dist,
+                                 float strength, float r, float g, float b) {
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len < 1e-4f || dist <= 0f || strength <= 0f) return;
+        float dz = -0.12f;                      // o facho desce um pouco rumo ao chão
+        float n = (float) Math.sqrt(len * len + dz * dz);
+        int k = f.torchCount++ * 4;
+        f.torchPos[k] = x - f.originX;
+        f.torchPos[k + 1] = y - f.originY;
+        f.torchPos[k + 2] = z;
+        f.torchPos[k + 3] = dist;
+        f.torchDir[k] = dx / n;
+        f.torchDir[k + 1] = dy / n;
+        f.torchDir[k + 2] = dz / n;
+        f.torchDir[k + 3] = Math.max(-1f, Math.min(0.995f, dot));
+        f.torchColor[k] = r;
+        f.torchColor[k + 1] = g;
+        f.torchColor[k + 2] = b;
+        f.torchColor[k + 3] = strength;
     }
 
     // ---------- render thread ----------
@@ -258,6 +340,10 @@ public final class RenderContext {
         glUniform1i(glGetUniformLocation(prog, "uCharCount"), f.charCount);
         glUniform4fv(glGetUniformLocation(prog, "uChars"), f.chars);
         glUniform4fv(glGetUniformLocation(prog, "uParams"), f.params);
+        glUniform1i(glGetUniformLocation(prog, "uTorchCount"), f.torchCount);
+        glUniform4fv(glGetUniformLocation(prog, "uTorchPos"), f.torchPos);
+        glUniform4fv(glGetUniformLocation(prog, "uTorchDir"), f.torchDir);
+        glUniform4fv(glGetUniformLocation(prog, "uTorchColor"), f.torchColor);
         Flow.bindUniforms(prog, f.originX, f.originY);
     }
 

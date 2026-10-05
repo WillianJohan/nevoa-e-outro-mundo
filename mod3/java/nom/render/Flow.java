@@ -4,26 +4,34 @@ import static org.lwjgl.opengl.GL33C.*;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 
 import org.lwjgl.BufferUtils;
 
 import zombie.GameTime;
-import zombie.characters.IsoGameCharacter;
+import zombie.WorldSoundManager;
 import zombie.characters.IsoPlayer;
 import zombie.characters.IsoZombie;
 import zombie.iso.IsoCamera;
 import zombie.iso.IsoCell;
 import zombie.iso.IsoGridSquare;
+import zombie.iso.IsoMovingObject;
 import zombie.iso.weather.ClimateManager;
+import zombie.vehicles.BaseVehicle;
 
 /**
  * Névoa fluida: liga o FlowGrid ao jogo.
  *
  * Thread principal (update, chamado do RenderContext.onWorldEnd): rola a grade com o personagem da
- * câmera, monta a máscara de obstáculos aos poucos, injeta o vento do clima e o impulso de quem anda,
- * avança a 20 Hz e publica a textura sob trava. Thread de render (prepare): sobe a versão nova e
- * prende na unidade 6. Erro aqui desliga só o fluido; a névoa segue com densidade 1.
+ * câmera, monta a máscara de obstáculos aos poucos, injeta o vento do clima, o impulso de quem anda e
+ * de carro e a explosão dos sons altos (tiro, explosão), avança a 20 Hz e publica a textura sob trava.
+ * Thread de render (prepare): sobe a versão nova e prende na unidade 6. Erro aqui desliga só o fluido;
+ * a névoa segue com densidade 1.
+ *
+ * A névoa viaja (sprint 0026): entra em bancos pelo lado de onde vem o vento, atravessa e sai pelo
+ * outro; a rua não é recarregada, então rastro e vácuo atrás de prédio duram e andam com ela.
  */
 final class Flow {
     static final int N = 128;
@@ -32,20 +40,35 @@ final class Flow {
     static final float MOVER_RANGE = 40f;
     static final int MAX_MOVERS = 48;
     static final float MOVER_RADIUS = 1.6f;
+    static final float VEHICLE_RADIUS = 3f;
+    static final int LOUD_RADIUS = 20;     // som com raio de pelo menos isso (tiro, explosão) empurra a névoa
+    static final int MAX_BLASTS = 8;
     static final int PARAM_ON = 4;         // NOMRender_setParam(4, 0) desliga, (4, 1) liga
     static final int UNIT = 6;
 
     private static final FlowGrid grid = new FlowGrid(N);
+    static {
+        grid.banks = new FogBanks((int) System.nanoTime(), 0.7f, 22f);
+        grid.inertia = true;
+        grid.windRelax = 0.15f;
+        grid.outdoorRefill = 0f;
+        grid.stillDecay = 0.08f;
+        grid.doorPuff = 0.35f;
+    }
     private static boolean dead, running;
     private static int z = Integer.MIN_VALUE, maskRow, frameStamp;
     private static long lastNanos;
     private static float acc, simTime, camX, camY;
     private static volatile float sentX, sentY, sentOn = -1f;   // último uFlow mandado ao shader
 
-    // quem anda: posição anterior por personagem (x, y, segundos, quadro em que foi visto)
-    private static final IdentityHashMap<IsoGameCharacter, float[]> prev = new IdentityHashMap<>();
-    private static final float[] movers = new float[MAX_MOVERS * 4];
+    // quem anda (personagem ou carro): posição anterior (x, y, segundos, quadro em que foi visto)
+    private static final IdentityHashMap<IsoMovingObject, float[]> prev = new IdentityHashMap<>();
+    private static final float[] movers = new float[MAX_MOVERS * 5];   // x, y, vx, vy, raio
     private static int moverCount;
+    // sons altos: os vistos no quadro anterior não explodem de novo
+    private static HashSet<Long> soundsSeen = new HashSet<>(), soundsNow = new HashSet<>();
+    private static final float[] blasts = new float[MAX_BLASTS * 3];  // x, y, raio
+    private static int blastCount;
 
     private static long statSteps, statStepNanos, statFrames, statMaskNanos;
 
@@ -108,14 +131,21 @@ final class Flow {
 
             if (GameTime.isGamePaused()) return;
             acc += dt;
-            if (acc >= STEP) collectMovers(cell, cx, cy, cz, now);
+            if (acc >= STEP) {
+                collectMovers(cell, cx, cy, cz, now);
+                collectSounds(cz);
+            }
             int steps = 0;
             while (acc >= STEP && steps < 2) {
                 long s0 = System.nanoTime();
                 simTime += STEP;
                 wind();
-                for (int k = 0; k < moverCount; k++)
-                    grid.impulse(movers[k * 4], movers[k * 4 + 1], movers[k * 4 + 2], movers[k * 4 + 3], MOVER_RADIUS);
+                for (int k = 0; k < moverCount; k++) {
+                    int o = k * 5;
+                    grid.impulse(movers[o], movers[o + 1], movers[o + 2], movers[o + 3], movers[o + 4]);
+                }
+                for (int k = 0; k < blastCount; k++) grid.blast(blasts[k * 3], blasts[k * 3 + 1], blasts[k * 3 + 2]);
+                blastCount = 0;
                 grid.step(STEP);
                 acc -= STEP;
                 steps++;
@@ -166,42 +196,74 @@ final class Flow {
         grid.setOpenN(i, j, openN);
     }
 
-    /** Vento do clima, lento, com a direção oscilando devagar. A convenção do ângulo não importa pra névoa. */
+    /**
+     * Vento do clima, com rajadas e a direção oscilando devagar: forte o bastante pra ver a névoa
+     * passar (um banco atravessa a tela em 20 a 40 s). A convenção do ângulo não importa pra névoa.
+     */
     private static void wind() {
         ClimateManager cm = ClimateManager.getInstance();
-        float ang = cm.getWindAngleRadians() + 0.6f * (float) Math.sin(simTime / 40f);
-        float speed = 0.25f + cm.getWindIntensity();
+        float t = simTime;
+        float ang = cm.getWindAngleRadians() + 0.6f * (float) Math.sin(t / 40f) + 0.25f * (float) Math.sin(t / 13f);
+        float gust = 1f + 0.3f * (float) Math.sin(t / 6.3f) + 0.15f * (float) Math.sin(t / 2.1f + 1.3f);
+        float speed = (1f + 1.2f * cm.getWindIntensity()) * gust;
         grid.windX = (float) Math.cos(ang) * speed;
         grid.windY = (float) Math.sin(ang) * speed;
     }
 
-    /** Jogadores locais e zumbis no mesmo andar, a até MOVER_RANGE: velocidade pela posição anterior. */
+    /** Jogadores locais, zumbis e carros no mesmo andar, a até MOVER_RANGE: velocidade pela posição anterior. */
     private static void collectMovers(IsoCell cell, float cx, float cy, int cz, long now) {
         float t = (now - RenderContext.t0) / 1e9f;
         moverCount = 0;
         for (IsoPlayer p : IsoPlayer.players) {
-            if (p != null) mover(p, cx, cy, cz, t);
+            if (p != null) mover(p, cx, cy, cz, t, MOVER_RADIUS, 225f);
+        }
+        for (BaseVehicle v : cell.getVehicles()) {
+            if (v != null) mover(v, cx, cy, cz, t, VEHICLE_RADIUS, 1600f);
         }
         ArrayList<IsoZombie> zs = cell.getZombieList();
-        for (int i = 0; i < zs.size() && moverCount < MAX_MOVERS; i++) mover(zs.get(i), cx, cy, cz, t);
+        for (int i = 0; i < zs.size() && moverCount < MAX_MOVERS; i++) mover(zs.get(i), cx, cy, cz, t, MOVER_RADIUS, 225f);
         final int stamp = frameStamp;
         prev.values().removeIf(e -> (int) e[3] != stamp);
     }
 
-    private static void mover(IsoGameCharacter ch, float cx, float cy, int cz, float t) {
-        float x = ch.getX(), y = ch.getY();
-        if ((int) Math.floor(ch.getZ()) != cz) return;
+    /** maxSpeed2: acima disso (tiles²/s²) foi teleporte, não movimento. */
+    private static void mover(IsoMovingObject o, float cx, float cy, int cz, float t, float radius, float maxSpeed2) {
+        float x = o.getX(), y = o.getY();
+        if ((int) Math.floor(o.getZ()) != cz) return;
         float dx = x - cx, dy = y - cy;
         if (dx * dx + dy * dy > MOVER_RANGE * MOVER_RANGE) return;
-        float[] e = prev.get(ch);
-        if (e == null) { prev.put(ch, new float[] { x, y, t, frameStamp }); return; }
+        float[] e = prev.get(o);
+        if (e == null) { prev.put(o, new float[] { x, y, t, frameStamp }); return; }
         float dt = t - e[2];
         float vx = dt > 1e-3f ? (x - e[0]) / dt : 0f, vy = dt > 1e-3f ? (y - e[1]) / dt : 0f;
         e[0] = x; e[1] = y; e[2] = t; e[3] = frameStamp;
         float sp2 = vx * vx + vy * vy;
-        if (sp2 < 0.09f || sp2 > 225f || moverCount >= MAX_MOVERS) return; // parado, ou teleportou
-        int k = moverCount++ * 4;
-        movers[k] = x; movers[k + 1] = y; movers[k + 2] = vx; movers[k + 3] = vy;
+        if (sp2 < 0.09f || sp2 > maxSpeed2 || moverCount >= MAX_MOVERS) return; // parado, ou teleportou
+        int k = moverCount++ * 5;
+        movers[k] = x; movers[k + 1] = y; movers[k + 2] = vx; movers[k + 3] = vy; movers[k + 4] = radius;
+    }
+
+    /**
+     * Som alto novo no andar (tiro, explosão, vidro quebrando) vira explosão na névoa, com raio pelo
+     * alcance do som. Zumbi, carro e som que se repete (alarme) ficam de fora.
+     */
+    private static void collectSounds(int cz) {
+        List<WorldSoundManager.WorldSound> list = WorldSoundManager.instance.soundList;
+        soundsNow.clear();
+        for (int i = 0; i < list.size(); i++) {
+            WorldSoundManager.WorldSound s = list.get(i);
+            if (s == null || s.sourceIsZombie || s.repeating || s.sourceIsVehicle() || s.radius < LOUD_RADIUS || s.z != cz) continue;
+            long key = ((long) s.x << 40) ^ ((long) s.y << 16) ^ (s.radius * 31L) ^ System.identityHashCode(s);
+            soundsNow.add(key);
+            if (soundsSeen.contains(key) || blastCount >= MAX_BLASTS) continue;
+            int k = blastCount++ * 3;
+            blasts[k] = s.x + 0.5f;
+            blasts[k + 1] = s.y + 0.5f;
+            blasts[k + 2] = Math.max(2.5f, Math.min(9f, s.radius / 10f));
+        }
+        HashSet<Long> t = soundsSeen;
+        soundsSeen = soundsNow;
+        soundsNow = t;
     }
 
     private static void publish() {
@@ -228,10 +290,10 @@ final class Flow {
         int i = (int) Math.floor(camX) - grid.x0, j = (int) Math.floor(camY) - grid.y0;
         boolean in = i >= 0 && j >= 0 && i < N && j < N;
         float[] s = grid.densityStats();
-        return String.format("fluido: %s param4=%.0f andar=%d grade=(%d,%d) interior=%d sólido=%d árvore=%d"
+        return String.format("fluido: %s param4=%.0f vento=(%.2f,%.2f) andar=%d grade=(%d,%d) interior=%d sólido=%d árvore=%d"
                         + " faces fechadas=%d densidade min/média/max=%.2f/%.2f/%.2f sob o jogador=%s flags=%s"
                         + " publicada=%d enviada=%d shader uFlow=(%.0f,%.0f,%.0f) tex0=(%d,%d)",
-                dead ? "MORTO" : running ? "rodando" : "parado", RenderContext.luaParams[PARAM_ON], z,
+                dead ? "MORTO" : running ? "rodando" : "parado", RenderContext.luaParams[PARAM_ON], grid.windX, grid.windY, z,
                 grid.x0, grid.y0, grid.countCells(FlowGrid.F_INDOOR), grid.countCells(FlowGrid.F_SOLID),
                 grid.countCells(FlowGrid.F_TREE), grid.closedFaces(), s[0], s[1], s[2],
                 in ? String.format("%.2f", grid.density(i, j)) : "fora", in ? Integer.toString(grid.cellFlags(i, j)) : "-",
