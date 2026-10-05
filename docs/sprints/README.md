@@ -23,6 +23,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0014](sprint-0014-contraste-visual/README.md) | Contraste dos visuais: texturas agressivas (preto e branco cheios, formas grandes) nos mesmos modelos, pra ler sob a névoa | `em teste` — [roteiro](sprint-0014-contraste-visual/README.md#roteiro-in-game) |
 | [0015](sprint-0015-outro-mundo-sangrento/README.md) | Outro Mundo sangrento: muito sangue e erosão no máximo no chão e nas paredes, só na névoa e só local | `em teste` — [roteiro](sprint-0015-outro-mundo-sangrento/README.md#roteiro-in-game) |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão e override do `screen.frag` feitos na 0013 (mod opcional) |
+| [spike](spike-motor-visual/README.md) | Motor visual: estender o render (bloom, dissolver, fogo, luz, sombra) via ZombieBuddy | `concluída` (estática) — Java só cliente e opcional; bloom e dissolver são os únicos alvos que valem; sombra e luz do sol ficam com o ShadowZ |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
 consome; 0002 vem antes da noite agressiva porque o Eco é o sistema mais
