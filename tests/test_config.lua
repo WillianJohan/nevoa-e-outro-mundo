@@ -3,7 +3,7 @@ require "NOM_Config"
 return {
     config_missing_sandboxvars_uses_default = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogThreshold") == 0.5)
+        assert(NOM_Config.get("FogEventEveryDays") == 3)
         assert(NOM_Config.get("DarkEnabled") == true)
     end,
     config_missing_page_uses_default = function()
@@ -11,8 +11,8 @@ return {
         assert(NOM_Config.get("DarkIntensity") == 1.0)
     end,
     config_reads_sandbox_value = function()
-        SandboxVars = { NevoaEOutroMundo = { FogThreshold = 0.8 } }
-        assert(NOM_Config.get("FogThreshold") == 0.8)
+        SandboxVars = { NevoaEOutroMundo = { FogEventEveryDays = 0.8 } }
+        assert(NOM_Config.get("FogEventEveryDays") == 0.8)
     end,
     config_false_is_not_missing = function()
         SandboxVars = { NevoaEOutroMundo = { DarkEnabled = false } }
@@ -41,6 +41,18 @@ return {
         assert(NOM_Config.get("EstaladorChance") == 5)
         assert(NOM_Config.get("CorredorChance") == 2)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
+    end,
+    -- névoa é evento (sprint 0009): ~1 a cada 3 dias, 2 a 6 horas; FogThreshold saiu
+    config_fog_event_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("FogEventEveryDays") == 3)
+        assert(NOM_Config.get("FogMinHours") == 2)
+        assert(NOM_Config.get("FogMaxHours") == 6)
+        assert(NOM_Config.DEFAULTS.FogThreshold == nil, "FogThreshold ainda no Lua")
+        local f = assert(io.open("mod/42/media/sandbox-options.txt"))
+        local txt = f:read("*a")
+        f:close()
+        assert(not txt:find("FogThreshold", 1, true), "FogThreshold ainda no menu")
     end,
     config_fog_defaults = function()
         SandboxVars = nil
@@ -88,6 +100,7 @@ return {
         assert(body("NOM_FogDrone"):find("loop = true", 1, true), "drone sem loop")
         assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
         assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
+        assert(not body("NOM_Siren"):find("loop", 1, true), "sirene em loop (toca uma vez por evento)")
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()
@@ -114,7 +127,7 @@ return {
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic" }) do
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,
