@@ -16,7 +16,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
   é monstro.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0012
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0013
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
@@ -36,6 +36,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Névoa vermelha | 10% das névoas: sirene própria, névoa e luz vermelhas, todo zumbi é monstro (1/4 de cada) | 0010 |
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça | 0012 |
+| Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 
@@ -53,7 +54,7 @@ publicação) e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mai
 Em servidor: `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
 `Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
 
-**Dev:** symlink do repositório na pasta de mods:
+**Dev:** cópia do repositório na pasta de mods (`mod/` e o shader opcional `mod2/`):
 
 ```bash
 scripts/dev-sync.sh
@@ -80,6 +81,7 @@ docs/
 ├─ teste-in-game.md ← roteiro da sessão de teste no jogo
 └─ publicar.md     ← passo a passo do Workshop e da release
 mod/               ← o mod em si (nasce na sprint 0001)
+mod2/              ← mod opcional do shader (NevoaEOutroMundo_Shader, sprint 0013)
 scripts/           ← geradores de som e imagem, build do Workshop
 tests/             ← testes (./run-tests.sh)
 ```

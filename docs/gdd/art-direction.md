@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 |
+| Sprint | 0012 (monstros), 0013 (tela na névoa) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -54,3 +54,19 @@
   devolver a roupa; não vale o risco agora. Na morte, o corpo fica com a dele (a do mod sai).
 - **Rosto da pele:** a pele do mod não tem olhos nem boca desenhados (o desenho não usa o mapa
   UV); o rosto fica coberto pela peça (Estalador, Corredor, Carpideira) ou é o próprio tema.
+
+## A tela na névoa (sprint 0013)
+
+Pedido do Johan depois do primeiro teste: a névoa ficou "LINDA", falta a tela. A direção:
+**filme velho achado no Outro Mundo**, não câmera de celular nem videogame.
+
+- **Grão** fino, claro, que só se nota no escuro: é a película, não sujeira. Some fora da névoa.
+- **Vinheta que respira** devagar, preta: a névoa aperta e afrouxa em volta de quem anda nela.
+  Na vermelha, a borda é sangue escuro e aperta mais.
+- **Chiado** em linhas horizontais, como imagem de TV fora de sintonia: o mesmo aviso do rádio e
+  do rosto do Sem-rosto. Quem já aprendeu a temer o chiado lê na tela que ele está perto.
+- **Pulso vermelho** curto no grito da Carpideira: a tela "sente" o grito.
+- **Shader opcional:** a película se desalinha (aberração cromática), escorrega (distorção) e
+  perde o foco nas bordas. Mesma ideia, mais forte.
+- Nada disso tem cor fora da paleta do mod: preto, cinza, sépia da névoa e o vermelho da
+  vermelha. Texturas: `scripts/gen_textures.py` (branco com alfa, pintado no desenho).

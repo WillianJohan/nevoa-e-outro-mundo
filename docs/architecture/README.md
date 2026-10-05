@@ -14,6 +14,7 @@
 | [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
 | [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
 | [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit |
+| [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -56,8 +57,11 @@ mod/
     lua/server/NOM_Fog.lua          flag e período de névoa pros clientes, decide o sumiço do Sem-rosto
     lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, sirene, avisa que viu, dono move
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
-    lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode (só local)
+    lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode; com o mod do shader, o canal Lua → shader (só local)
     lua/client/NOM_FogOverlays.lua  sangue/ferrugem no chão via IsoMarkers (só local, sem save)
+    lua/shared/NOM_ScreenFxRules.lua   alfas das camadas da tela, fade, pulso do grito, canal do shader (puro)
+    lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela (PZAPI.ModOptions)
+    lua/client/NOM_ScreenFx.lua     overlay de tela na névoa: elemento de 1 px atrás da UI (só local)
     lua/client/NOM_VariantLook.lua  pele e peça da variante na cópia local, enquanto a névoa dura (gancho do NightStats; não no dedicado)
     lua/shared/NOM_DebugRules.lua   confere os comandos de debug e formata a linha de status (puro)
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
@@ -66,10 +70,15 @@ mod/
     clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod
     fileGuidTable.xml               GUIDs dos itens de roupa do mod (o jogo junta com a vanilla)
     scripts/NOM_clothing.txt        itens de script do visual (Base.NOM_*, sem ChanceToFall)
-    textures/Body/NOM_*.png, textures/NOM/*.png   geradas por scripts/gen_textures.py (CREDITS.md)
+    textures/Body/NOM_*.png, textures/NOM/*.png, textures/NOM/ScreenFx/*.png   geradas por scripts/gen_textures.py (CREDITS.md)
     scripts/NOM_sounds.txt          sons do mod (estalo, gritos, soluço, drone, metal, rádio, sirene, sirene vermelha)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
+mod2/                               mod opcional NevoaEOutroMundo_Shader (ADR-013), no mesmo item do Workshop
+  42/mod.info                       require=NevoaEOutroMundo
+  42/media/shaders/screen.frag      pós-processo de tela original (interface do WeatherShader)
+  42/media/lua/shared/NOM_ShaderFlag.lua   NOM_ShaderMod = true (o mod principal passa a usar o canal)
+  common/
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
 scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, build-workshop.sh (pasta de upload, só o mod/ commitado)
 docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
@@ -88,7 +97,8 @@ e, na névoa, o perfil da variante sorteada pelo período, em lotes por tick
 servidor decide os gritos do Corredor e da Carpideira (`Variants`;
 a Carpideira, [ADR-011](adr-011-carpideira.md)). O cliente vê o Sem-rosto (`SemRosto`), o
 servidor confere e o dono do zumbi move ([ADR-007](adr-007-sem-rosto-e-atmosfera-local.md));
-som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
+som, vinheta, overlays e efeitos de tela são locais (`FogSound`, `FogVignette`, `FogOverlays`,
+`ScreenFx`; o shader opcional, [ADR-013](adr-013-efeitos-de-tela.md)).
 
 ## Robustez
 
@@ -132,6 +142,7 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |
 | **Névoa vermelha** (sprint 0010; 1/4 de cada desde a 0011): ninguém é comum | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0, Carpideira 2 (calma ou furiosa; 3 a mais no primeiro frame) → ~2,25·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~2,5·N; **por varredura da Carpideira** (a cada 10 ticks) ~8 por Carpideira calma → ~2·N; as duas varreduras somam ~0,45·N por frame; **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~810 chamadas por frame. Contra a névoa normal (15% variantes): ~0,4·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `carpideira_scan_budget`, `stats_batch_bounded_with_200` |
 | **Visual das variantes** (sprint 0012) | na passada do `NightStats` (lotes de 20 por tick), solo e cada cliente | sem troca: **zero** chamada (uma consulta de tabela Lua por zumbi da passada); pôr: ≤ 9 chamadas por zumbi, uma vez por névoa; tirar: ≤ 5, na borda do fim (todos de uma vez) ou na morte (+5: item vestido e do inventário). Cada troca refaz a textura do modelo daquele zumbi (`resetModelNextFrame`): na vermelha, todo zumbi carregado entra no 1º giro dos lotes (300 zumbis ≈ 15 ticks, ≤ 180 chamadas por tick) e sai todo no mesmo tick do fim | `look_budget`, `look_common_zombie_untouched` |
+| **Efeitos de tela** (sprint 0013, [ADR-013](adr-013-efeitos-de-tela.md)) | todo quadro (render da UI), solo e cada cliente; distância do Sem-rosto a cada 10 ticks | fora da névoa: **1** chamada (a hora) e nada desenhado; na névoa: ≤ 4 desenhos (grão em ladrilhos = 1 chamada, ~40 quads no Java a 1080p; vinheta, linhas, pulso) e ≤ 12 chamadas; com o mod do shader, +11 chamadas por tick enquanto o canal está tomado | `screenfx_nothing_outside_fog_cheap`, `screenfx_fog_draws_grain_and_vignette` |
 
 Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,4·N pra ~2,7·N
 chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a

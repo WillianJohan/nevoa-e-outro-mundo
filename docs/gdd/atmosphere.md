@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -96,12 +96,38 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 - Se o jogador forragear na névoa, a vinheta sai da frente e o forrageamento usa a
   dele; volta quando ele para.
 
-## Shader (spike)
+## Efeitos de tela (só na névoa)
 
-| Status | `accepted` — concluído ([spike](../sprints/spike-shader/README.md)) |
+Sprint 0013, pedido do Johan depois de ver a névoa no jogo: um efeito de tela de verdade.
+Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
+([ADR-013](../architecture/adr-013-efeitos-de-tela.md)). Entra e sai com a névoa em ~4 s.
+
+- **Grão de filme** animado (quadros de ruído trocando ~16 vezes por segundo).
+- **Vinheta que respira:** as bordas escurecem e clareiam devagar (~7 s por respiração).
+- **Névoa vermelha:** a vinheta fica vermelha escura e mais forte (~45%), e o grão um pouco mais.
+- **Linhas de chiado** horizontais, pulando de lugar, mais fortes quanto mais perto o Sem-rosto
+  mais próximo: a mesma distância do rádio (a partir de 30 tiles, cheio a 3).
+- **Pulso vermelho** quando uma Carpideira grita perto: cheio a até 6 tiles, nada a partir de 30,
+  some em menos de 1 s.
+- **Opção do jogador, não do servidor:** Opções > Mods > "Névoa e Outro Mundo": liga/desliga e
+  intensidade (1.0, 0–2). Cada um ajusta a própria tela.
+- **Fora da névoa, nada**, nem à noite: a noite é escuridão; o filme granulado é a assinatura do
+  Outro Mundo (decisão da sprint 0013, ADR-013).
+- Só o primeiro jogador na tela dividida; some com o menu aberto e morto.
+
+## Shader opcional (mod "Névoa e Outro Mundo — Shader")
+
+| Status | `accepted` — sprint 0013 (o ShadowZ instalado aqui prova que o override do `screen.frag` pega; [spike](../sprints/spike-shader/README.md)) |
 |---|---|
 
-- Override de shader do jogo (grão de filme): arquivado. Vale só pra primeira carga
-  de mundo da sessão e troca o shader de todo mundo. A vinheta saiu sem shader.
+- Segundo mod no mesmo item do Workshop, **desligado por padrão**: troca o shader de tela do jogo
+  por um próprio, que soma aberração cromática, grão de verdade (o do overlay sai), distorção
+  (onda lenta na névoa, faixas que escorregam com o Sem-rosto perto) e bordas desfocadas e sem
+  cor; na vermelha, bordas puxando pro vermelho; no grito, a aberração dá um salto.
+- **Incompatível com ShadowZ** e com qualquer mod que troque o `screen.frag`: só um vale.
+- O jogo compila o shader **uma vez por sessão**, no primeiro mundo carregado: ligou ou
+  desligou o mod, reinicie o jogo.
+- Com ele, a vinheta do modo de busca na névoa (acima) sai: as bordas desfocadas são do shader.
+  Forragear continua igual.
 
 O jogo trata a névoa do mod como névoa de verdade em todo lugar que lê `getFogIntensity()`: visão dos zumbis, do jogador, combate e o parâmetro de áudio de névoa. É intencional.

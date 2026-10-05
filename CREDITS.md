@@ -93,4 +93,5 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | `NOM_FogOverlays.lua` | manchas de sangue no chão | sprites `overlay_blood_floor_01_0` a `_27`, por nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |
 | `NOM_FogVignette.lua` | vinheta da névoa | efeito de tela do modo de busca do jogo (`getSearchMode()`), sem textura própria |
+| `NOM_ScreenFx.lua` | efeitos de tela | desenho pela UI do jogo (`ISUIElement`), com as texturas originais acima |
 | Variantes, Eco, Sem-rosto, Carpideira | corpo e animação | zumbis vanilla; o mod muda comportamento, pele e peças por cima (texturas acima) |
