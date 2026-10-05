@@ -297,19 +297,25 @@ variante = f(`persistentOutfitID`, número da noite), calculada igual no servido
   `VisionModifier = 0.75` em óculos (`media/scripts/generated/items/clothing.txt:891`).
   Um item próprio do mod com `VisionModifier` baixo, vestido no zumbi, reduz visão. Existe um
   `PZMath.clamp` no fim de `updateVisionRadius` que pode impor piso: UNKNOWN.
-- `z:setUseless(true)` (EXISTS) faz o zumbi ignorar tudo (checado em `ZombieIdleState`,
-  `WalkTowardState`). Não serve para cego: mata a audição também.
-- **Usado na sprint 0004:** Sight=3 e Hearing=1 via 2.1 + regra Lua no dono. A visão "ruim"
-  não cega (piso de 10 tiles em `updateVisionRadius`). O spot é só `setTarget`:
-  `IsoPlayer.TestZombieSpotPlayer` → `IsoZombie.spotted` → `spottedNew`, que zera o alvo ele
-  mesmo quando o zumbi é `useless` (191–208) ou está na fumaça (209–235). `OnZombieUpdate`
-  dispara em `IsoZombie.updateInternal` 696, **antes** de `IsoGameCharacter.update` (1029, a
-  máquina de estados): `z:setTarget(nil)` ali, com o alvo `IsoPlayer` agachado
-  (`isSneaking()`) e sem `isRunning()`/`isSprinting()`, faz o zumbi não agir no que viu.
-  `setTarget`, `getTarget`, `isSneaking`, `isRunning`, `isSprinting`: EXISTS (públicos). Som
-  não passa por alvo (vai pelo `WorldSoundManager`): o Estalador continua indo até o barulho.
-  UNKNOWN: se o `pathToCharacter` do `spottedNew` (2434) deixa o zumbi andando até a posição
-  do jogador mesmo sem alvo (roteiro da sprint 0004).
+- `z:setUseless(true)` (CONFIRMED) faz o zumbi ignorar tudo (checado em `ZombieIdleState`,
+  `WalkTowardState.enter`, `RespondToSound`). Mata a audição também: só serve para cego em
+  janela curta (abaixo).
+- **Usado na sprint 0004 (corrigido no review):** Sight=3 e Hearing=1 via 2.1 + regra Lua no dono.
+  A visão "ruim" não cega (piso de 10 tiles em `updateVisionRadius`). O spot:
+  `IsoPlayer.TestZombieSpotPlayer` → `IsoZombie.spotted` → `spottedNew`, que faz `setTarget`, guarda
+  `spottedLast` e, no spot não forçado, `bonusSpotTime = 720` (1909–1917); o spot forçado também chama
+  `pathToCharacter` (2263–2447). `OnZombieUpdate` dispara em `updateInternal` 696, mas entre ele e a
+  máquina de estados (`IsoGameCharacter.update`, 1029) o jogo refaz `spotted(spottedLast, true)`
+  enquanto `bonusSpotTime > 0` (956–991): **`setTarget(nil)` no evento é desfeito no mesmo frame.**
+  O que funciona: `z:setUseless(true)` (CONFIRMED `client/DebugUIs/DebugContextMenu.lua:566,673`,
+  `client/Tutorial/Steps.lua:1107`). Com useless, `spottedNew` 191–208 faz `setTarget(null)` e
+  `spottedLast = null` e volta: o laço do spot forçado morre. Custos: `RespondToSound` volta cedo
+  com useless (8–15), então o zumbi fica surdo enquanto useless; `WalkTowardState.enter` (106) e
+  `ZombieIdleState.execute` (191) checam useless, mas um `WalkTowardState` em andamento segue até
+  `lastTargetSeenX/Y/Z` (`execute` 169–213), sem alvo e sem ataque. O mod liga useless numa
+  janela curta, só enquanto o jogador agachado e silencioso é o alvo, e só desliga o que ligou.
+  `isSneaking`, `isRunning`, `isSprinting`: EXISTS (públicos). UNKNOWN: o efeito no jogo da
+  caminhada até a última posição vista (roteiro da sprint 0004).
 - Clique periódico: ver seção 4 (`sendPlaySound` no servidor / `z:playSound` no solo).
 - Agarrão letal: **não existe caminho por golpe** (sprint 0004). `AttackState.triggerPlayerReaction`
   → `BodyDamage.AddRandomDamageFromZombie(zumbi, …)` lê do zumbi só `crawling`, `inactive`,
@@ -329,7 +335,9 @@ mais `addSound(z, x, y, z, raio, volume)` para puxar a horda (2.3).
 **Sprint 0004:** o servidor não sabe o alvo do zumbi no MP (o `target` não viaja; `PFBData` só
 restaura o caminho no cliente que assume a posse, `NetworkZombieMind.doRestorePFBTarget`). O dono
 vê a borda "pegou um jogador de alvo" no `OnZombieUpdate` e manda `corredorSaw` com o `onlineID`;
-o servidor confere a variante e o cooldown e grita.
+o servidor confere a variante, a distância de quem avisou (`player:DistTo(x, y)` ≤ 25, CONFIRMED
+`client/Vehicles/TimedActions/ISDetachTrailerFromVehicle.lua:34`), um aviso a cada 2 s reais por
+jogador (`getTimestampMs()`, CONFIRMED `server/ISObjectClickHandler.lua:352`) e o cooldown, e grita.
 
 ### 3.4 Sem-rosto (some quando visto ou iluminado)
 

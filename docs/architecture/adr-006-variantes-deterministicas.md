@@ -36,8 +36,9 @@ e determinística: mesma entrada, mesma resposta, em qualquer máquina.
   manda o número junto da flag: `sendServerCommand(…, "night", { on, night })`,
   inclusive na resposta ao `nightState`. Sem número (cliente que ainda não ouviu
   o servidor), não há variante.
-- **Sorteio**: mistura minstd do ID com a noite, sem operadores de bit (Kahlua),
-  `roll % 100` contra `EstaladorChance` e depois `CorredorChance`. "Uma vez por
+- **Sorteio**: mistura não linear do ID com a noite (quadrados módulo um primo
+  < 2^26, exata em double, sem operadores de bit do Kahlua; uma mistura linear
+  correlacionava noites seguidas), `roll` 0–99 contra `EstaladorChance` e depois `CorredorChance`. "Uma vez por
   noite" sai de graça: a noite seguinte é outra entrada. "Preguiçoso" também: o
   zumbi de chunk carregado depois é calculado na primeira passada do laço.
 - **Quem calcula**: quem simula o zumbi, no laço do `NOM_NightStats` (ADR-005),

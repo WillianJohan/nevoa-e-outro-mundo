@@ -23,7 +23,7 @@
 ## Pesquisa (bytecode B42.20.4) que decide o desenho
 
 - **`persistentOutfitID` chega igual ao cliente**: `ZombiePacket.set` grava `getPersistentOutfitID()` em `outfitId`; `NetworkZombieSimulator.parseZombie` (offsets 140–152) chama `createRealZombieAlways(outfitId, …)` → `PersistentOutfits.getOutfit(id)` devolve o mesmo ID quando válido → `createZombieOutsideWorld`. Fecha o UNKNOWN da pz-api-notes §3.1.
-- **Visão não cega**: `updateVisionRadius` prende em 10–20 tiles; visão "ruim" ainda vê a 10. A alavanca real: `OnZombieUpdate` dispara em `IsoZombie.updateInternal` (offset 696) **antes** de `IsoGameCharacter.update` (1029, máquina de estados). O spot vem de `IsoPlayer.TestZombieSpotPlayer` → `IsoZombie.spotted` → `spottedNew`, que só faz `setTarget`. O próprio jogo "cega" assim: `spottedNew` 191–208 faz `setTarget(null)` se `isUseless()`, e 209–235 se o square tem fumaça. `setTarget`, `getTarget`, `isRemoteZombie` públicos em `IsoZombie`; `isSneaking`, `isRunning`, `isSprinting` públicos em `IsoGameCharacter`.
+- **Visão não cega**: `updateVisionRadius` prende em 10–20 tiles; visão "ruim" ainda vê a 10. `OnZombieUpdate` dispara em `IsoZombie.updateInternal` (offset 696) antes de `IsoGameCharacter.update` (1029, máquina de estados). O spot vem de `IsoPlayer.TestZombieSpotPlayer` → `IsoZombie.spotted` → `spottedNew`, que faz `setTarget`, guarda `spottedLast` e, no spot não forçado, `bonusSpotTime = 720` (1909–1917); o spot forçado também chama `pathToCharacter` (2263–2447). **Corrigido no review:** entre o evento e a máquina de estados, `updateInternal` 956–991 refaz `spotted(spottedLast, true)` enquanto `bonusSpotTime > 0`, então `setTarget(nil)` sozinho é desfeito no mesmo frame. A alavanca é `setUseless(true)`: `spottedNew` 191–208 faz `setTarget(null)` e `spottedLast = null` com o zumbi useless, o que mata o spot forçado. Custo: useless também é surdo (`RespondToSound` 8–15), então a cegueira é uma janela curta. `WalkTowardState.execute` 169–213 segue até `lastTargetSeenX/Y/Z` sem alvo (sem ataque). `setUseless`/`isUseless` CONFIRMED (`client/DebugUIs/DebugContextMenu.lua:566,673`, `client/Tutorial/Steps.lua:1107`); `setTarget`, `getTarget`, `isRemoteZombie` públicos em `IsoZombie`; `isSneaking`, `isRunning`, `isSprinting` públicos em `IsoGameCharacter`.
 - **Sem dano por golpe**: `AttackState.triggerPlayerReaction` → `BodyDamage.AddRandomDamageFromZombie(zumbi, …)` lê só `crawling`, `inactive`, `scratch/laceration` do zumbi e o `ZombieLore.Strength` global; nenhum evento Lua nesse caminho. `OnPlayerGetDamage` só sai de `BodyDamage.Update` (POISON, HUNGRY, SICK, BLEEDING, THIRST), `Hit` (arma), queda, fogo, carro. `OnWeaponHitCharacter`/`OnHitZombie` saem de `Hit` com arma. Agarrão letal → **pendência**.
 - **Alvo do zumbi só existe no dono**: o servidor não recebe `target` (só `PFBData` restaura no cliente que assume a posse). O Corredor que pega alvo é visto no dono e reportado ao servidor.
 - **Visual por outfit muda o ID**: vestir outro outfit troca o `persistentOutfitID`, e a variante é função dele. `addVisualBandage` existe mas não tem remoção. Visual fica pendência; o aviso é sonoro.
@@ -51,6 +51,8 @@
 **Files:** Create `mod/42/media/lua/shared/NOM_VariantRules.lua`, `tests/test_variant_rules.lua`; register in `tests/run.lua`.
 
 **Produces:** `NOM_VariantRules.variant(id, night, cfg) -> "estalador" | "corredor" | nil`, cfg = `{ estaladorOn, corredorOn, estaladorChance, corredorChance }`; `NOM_VariantRules.config(get)` monta o cfg a partir de `NOM_Config.get`; `NOM_VariantRules.screamReady(lastAt, now) -> bool` (cooldown `SCREAM_COOLDOWN_HOURS = 0.5`).
+
+> **Review:** a mistura abaixo (linear) correlacionava noites seguidas (variante de novo em 24,7% contra 15%). Substituída pela mistura não linear `sq(h) = h² % Q`, `Q = 67108859`, testada por `variant_rules_nights_independent`; ver o código em `NOM_VariantRules.lua`.
 
 ```lua
 local M = 2147483647 -- primo de Mersenne; h * A < 2^53, conta exata em double
@@ -102,7 +104,7 @@ end
 
 **Produces:** `NOM_VariantAI.install(report)`; `report(z)` é chamado na borda "Corredor passou a ter um jogador como alvo". Eventos: `OnZombieUpdate` (regra de cego + borda do Corredor, só zumbi local `not isRemoteZombie()`), `OnHitZombie` (Estalador golpeado fica alerta: `md.NOM_alert = true`), `EveryOneMinute` (estalo local em toda cópia: `z:getEmitter():playSound("NOM_EstaladorClick")`).
 
-Regra de cego: à noite, Estalador não alerta, alvo `instanceof(t, "IsoPlayer")` com `t:isSneaking()` e sem `isRunning()`/`isSprinting()` → `z:setTarget(nil)`.
+Regra de cego (corrigida no review): à noite, Estalador não alerta, alvo `instanceof(t, "IsoPlayer")` com `t:isSneaking()` e sem `isRunning()`/`isSprinting()` → `z:setTarget(nil)` + `z:setUseless(true)` por uma janela de `BLIND_FRAMES` updates; solta antes se o jogador levantar/correr, no amanhecer, se a variante mudar, no golpe, no reaproveitamento do objeto. Só desliga o useless que o mod ligou. O `OnZombieUpdate` sai com uma consulta à tabela Lua `NOM_NightStats.variants` antes de qualquer chamada Java.
 
 Cliente MP: `report = function(z) sendClientCommand("NevoaEOutroMundo", "corredorSaw", { id = z:getOnlineID() }) end`.
 

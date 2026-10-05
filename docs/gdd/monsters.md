@@ -31,7 +31,9 @@ sorteio): quem avisa é o som.
 | noite | sorteado | `EstaladorEnabled`, `EstaladorChance` % (5) |
 
 - Cego: ignora visão, reage só a som. Agachado e em silêncio, o jogador passa.
-  Em pé, correndo ou batendo nele, ele acha o jogador. Ouvido apurado (o melhor
+  Em pé, correndo ou batendo nele, ele acha o jogador. Enquanto "não vê" um
+  jogador agachado do lado, fica surdo por instantes (limite do jogo, ver a
+  [sprint 0004](../sprints/sprint-0004-estalador-corredor/README.md#pendências-que-a-próxima-sprint-herda)). Ouvido apurado (o melhor
   do jogo), visão a pior; a velocidade é a da noite.
 - Agarrão letal rápido: **pendente** — o jogo não tem dano por zumbi nem evento
   no golpe do zumbi (ver Pendências da [sprint 0004](../sprints/sprint-0004-estalador-corredor/README.md)).
