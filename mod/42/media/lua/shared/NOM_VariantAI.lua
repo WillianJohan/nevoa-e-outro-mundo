@@ -1,4 +1,5 @@
--- Comportamento das variantes onde o zumbi é simulado (ADR-005): no solo, o
+-- Comportamento das variantes onde o zumbi é simulado (ADR-005): Estalador cego,
+-- Corredor que avisa, Carpideira parada (NOM_Carpideira). No solo, o
 -- próprio processo (server/NOM_Variants.lua instala); no MP, o cliente
 -- (client/NOM_VariantsClient.lua instala). A variante vem do NOM_NightStats
 -- (modData.NOM_variant, só em memória, ADR-006). Variante só age na névoa (decisão
@@ -6,6 +7,7 @@
 -- do servidor: aqui só se avisa, pelo report passado no install.
 require "NOM_NightStats"
 require "NOM_FogState"
+require "NOM_Carpideira"
 
 NOM_VariantAI = {}
 
@@ -76,10 +78,10 @@ local function corredor(z, md, report)
 end
 
 -- OnZombieUpdate roda por zumbi a cada frame: o zumbi comum sai na primeira
--- linha, com duas consultas de tabela Lua e nenhuma chamada Java.
+-- linha, com três consultas de tabela Lua e nenhuma chamada Java.
 local function onUpdate(z, report)
-    local kind, blind = NOM_NightStats.variants[z], blinded[z]
-    if kind == nil and blind == nil then return end
+    local kind, blind, still = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z]
+    if kind == nil and blind == nil and still == nil then return end
     local md = z:getModData()
     if kind ~= nil and md.NOM_variant ~= kind then -- objeto reaproveitado
         NOM_NightStats.variants[z] = nil
@@ -92,6 +94,13 @@ local function onUpdate(z, report)
         release(z) -- névoa baixou, deixou de ser Estalador ou virou remoto
     elseif kind == "corredor" and on then
         corredor(z, md, report)
+    end
+    -- Carpideira (sprint 0011): parada enquanto calma; solta quando a névoa baixa,
+    -- deixa de ser Carpideira ou vira remota (aí o pacote do dono manda).
+    if kind == "carpideira" and on then
+        NOM_Carpideira.hold(z, md)
+    elseif still then
+        NOM_Carpideira.letGo(z)
     end
 end
 
@@ -107,6 +116,7 @@ end
 -- herda a cegueira. Morto também sai da tabela.
 local function forget(z)
     if blinded[z] then release(z) end
+    NOM_Carpideira.forget(z)
 end
 
 -- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador

@@ -17,6 +17,7 @@ local FILES = {
     "tests/test_variant_rules.lua",
     "tests/test_carpideira_rules.lua",
     "tests/test_variant_ai.lua",
+    "tests/test_carpideira.lua",
     "tests/test_variants_client.lua",
     "tests/test_variants.lua",
     "tests/test_semrosto_rules.lua",

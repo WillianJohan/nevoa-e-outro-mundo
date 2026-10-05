@@ -40,7 +40,7 @@ local function setup(opts)
         return p
     end
     function G.zombie(o)
-        local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false,
+        local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false, id = o.id or 4242,
             onlineID = o.onlineID or -1, sounds = {}, netSounds = {}, dead = false, useless = o.useless or false,
             bonusSpotTime = 0, calls = 0, outfitName = o.outfit }
         local function def(name, fn)
@@ -60,6 +60,9 @@ local function setup(opts)
         def("setUseless", function(self, b) self.useless = b end)
         def("getOnlineID", function(self) return self.onlineID end)
         def("getOutfitName", function(self) return self.outfitName end)
+        def("getPersistentOutfitID", function(self) return self.id end)
+        -- IsoZombie.spotted(obj, forçado) público → spottedNew (sprint 0011)
+        def("spotted", function(self, p, forced) G.spot(self, p, forced) end)
         -- emitter:playSound manda PacketType.PlaySound no cliente de MP
         -- (FMODSoundEmitter.playSound 0–104); playSoundLocal = playSoundImpl(nome, nil), sem pacote
         def("getEmitter", function()
@@ -79,6 +82,7 @@ local function setup(opts)
         z.lastSeen = { x = p.x, y = p.y }
         if not forced then z.bonusSpotTime = 720 end
     end
+    G.spot = spotted
     local function dist(a, b) return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y)) end
     local function step(a, tx, ty)
         if a.x < tx then a.x = a.x + 1 elseif a.x > tx then a.x = a.x - 1 end
@@ -145,7 +149,7 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_FogState", "NOM_NightStats", "NOM_VariantAI" }) do
+    for _, m in ipairs({ "NOM_FogState", "NOM_NightStats", "NOM_VariantAI", "NOM_Carpideira" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -395,10 +399,10 @@ return {
     ai_red_fog_budget_per_frame = function()
         local G = setup()
         NOM_FogState.set(true, 1, true)
-        local kinds = { "estalador", "corredor", false }
-        local by = { estalador = {}, corredor = {}, none = {} }
-        for i = 1, 300 do
-            local k = kinds[i % 3 + 1]
+        local kinds = { "estalador", "corredor", false, "carpideira" }
+        local by = { estalador = {}, corredor = {}, none = {}, carpideira = {} }
+        for i = 1, 400 do
+            local k = kinds[i % 4 + 1]
             local z = G.zombie({ x = 100 + i, y = 100, variant = k or nil })
             table.insert(by[k or "none"], z)
         end
@@ -407,9 +411,82 @@ return {
         assert(sum(by.estalador) <= 100 * 10 * 4, "Estalador: " .. sum(by.estalador))
         assert(sum(by.corredor) <= 100 * 10 * 3, "Corredor: " .. sum(by.corredor))
         assert(sum(by.none) == 0, "Sem-rosto/comum: " .. sum(by.none))
+        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isRemoteZombie) e, no
+        -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
+        assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
         -- estalo: 1/min, só nos Estaladores, ≤ 3 chamadas cada (getModData, isDead, playSoundLocal)
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)
-        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0)
+        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0 and sum(by.carpideira) == 0)
+    end,
+
+    -- Carpideira (sprint 0011): calma, fica parada; jogador em pé à vista (fora do raio
+    -- que a acorda, que é da varredura) não é perseguido. Controle: o Corredor vem.
+    ai_carpideira_still_while_calm = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        local p = G.player({ x = 30, y = 0 })
+        G.frame(2)
+        assert(z.useless, "não ficou parada (useless)")
+        p.x = 6
+        G.frame(60)
+        assert(z.x == 0 and z.y == 0 and p.bitten == 0, "andou ou mordeu: " .. z.x .. "," .. z.y)
+        G.sound(0, 20)
+        G.frame(25)
+        assert(z.x == 0 and z.y == 0, "foi atrás de som calma")
+        local G2 = setup()
+        local c = G2.zombie({ x = 0, y = 0, variant = "corredor" })
+        local p2 = G2.player({ x = 6, y = 0 })
+        G2.frame(30)
+        assert(p2.bitten > 0 and c.x ~= 0, "o fake não persegue: teste não prova nada")
+    end,
+    -- o grito (decidido pelo servidor) solta e manda caçar quem a acordou
+    ai_carpideira_scream_hunts_trigger_player = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        local p = G.player({ x = 30, y = 0 })
+        G.frame(2)
+        NOM_Carpideira.scream(z, p)
+        assert(not z.useless and z.target == p, "não soltou ou não pegou o alvo")
+        assert(z.sounds[1] == NOM_Carpideira.SCREAM and #z.netSounds == 0, "grito não tocou local")
+        G.frame(40)
+        assert(p.bitten > 0, "não caçou quem a acordou")
+        assert(z.useless == false, "voltou a ficar parada depois do grito")
+    end,
+    -- fim da névoa: solta (não fica parada pro resto do jogo)
+    ai_carpideira_released_when_fog_ends = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        G.frame(2)
+        assert(z.useless)
+        NOM_FogState.set(false, 1)
+        G.frame(1)
+        assert(not z.useless, "parada depois da névoa")
+        -- objeto reaproveitado também
+        local G2 = setup()
+        local z2 = G2.zombie({ x = 0, y = 0, variant = "carpideira" })
+        G2.frame(2)
+        G2.reuse(z2)
+        assert(not z2.useless, "reaproveitado nasceu parado")
+    end,
+    -- MP: só o dono mexe; cópia remota segue o pacote (o useless viaja nele)
+    ai_carpideira_remote_untouched = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", remote = true })
+        G.frame(5)
+        assert(not z.useless, "cópia remota mexeu no useless")
+        z.remote = false -- virou dono
+        G.frame(1)
+        assert(z.useless, "novo dono não a deixou parada")
+    end,
+    -- quem já gritou nesta névoa (servidor avisou) volta do virtual como objeto novo:
+    -- não fica parada de novo
+    ai_carpideira_reloaded_after_scream_stays_furious = function()
+        local G = setup()
+        NOM_Carpideira.screamed[777] = true
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", id = 777 })
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "furiosa recarregada ficou parada")
     end,
 }

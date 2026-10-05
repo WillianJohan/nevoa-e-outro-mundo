@@ -1,0 +1,181 @@
+-- Carpideira (sprint 0011) onde ela é simulada, vista e ouvida: no solo, o próprio
+-- processo (server/NOM_Variants.lua instala); no MP, cada cliente
+-- (client/NOM_VariantsClient.lua instala).
+-- * Quem simula (o dono, ADR-005) a deixa parada enquanto calma: useless, a mesma
+--   alavanca do Estalador (sprint 0004). Chamado pelo NOM_VariantAI a cada frame.
+-- * Quem a tem carregada toca o soluço local (sem rede) e avisa quando um jogador
+--   local a acorda: perto (CarpideiraTriggerRadius) ou com a lanterna acesa e ela
+--   vista a até ALERT_RANGE. O barulho o servidor ouve sozinho (OnWorldSound).
+-- * Quem decide o grito é o servidor (server/NOM_Variants.lua); aqui ficam os
+--   efeitos dele (NOM_Carpideira.scream).
+require "NOM_Config"
+require "NOM_CarpideiraRules"
+require "NOM_NightStats"
+require "NOM_FogState"
+
+NOM_Carpideira = {
+    SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
+    SCREAM = "NOM_CarpideiraScream",
+    SCAN_TICKS = 10,
+    -- [persistentOutfitID] = true: já gritou nesta névoa (o servidor avisa; solo: direto).
+    screamed = {},
+    -- [zumbi] = true: este processo a deixou useless (só esses são soltos).
+    still = {},
+}
+
+local C = NOM_Carpideira
+local R = NOM_CarpideiraRules
+
+local sobs = {}       -- [zumbi] = id do soluço tocando
+local lastReport = {} -- [zumbi] = ms reais do último aviso
+
+-- Furiosa = já gritou nesta névoa. A marca do objeto é cache; a verdade é o ID (o
+-- objeto novo que volta do virtual tem modData vazio).
+function C.furious(z, md)
+    if md.NOM_furia then return true end
+    if C.screamed[z:getPersistentOutfitID()] then
+        md.NOM_furia = true
+        return true
+    end
+    return false
+end
+
+-- Por frame, no dono, na névoa (NOM_VariantAI). Parada: useless (o idle não
+-- perambula, RespondToSound volta cedo, spottedNew 191–208 zera o alvo) e o alvo de
+-- agora largado uma vez. Ligado uma vez por objeto; o pacote leva o useless às
+-- outras cópias e a quem herdar a posse.
+function C.hold(z, md)
+    if C.still[z] then
+        if md.NOM_furia then C.letGo(z) end
+        return
+    end
+    if C.furious(z, md) then return end
+    z:setUseless(true)
+    z:setTarget(nil)
+    C.still[z] = true
+end
+
+function C.letGo(z)
+    C.still[z] = nil
+    z:setUseless(false)
+end
+
+local function stopSob(z)
+    local id = sobs[z]
+    if not id then return end
+    z:getEmitter():stopSoundLocal(id)
+    sobs[z] = nil
+end
+
+-- Objeto reaproveitado pra outro zumbi (OnZombieCreate) ou morto: sai de tudo
+-- (NOM_VariantAI chama nos dois eventos).
+function C.forget(z)
+    if C.still[z] then C.letGo(z) end
+    stopSob(z)
+    lastReport[z] = nil
+end
+
+-- O servidor decidiu o grito (p = quem a acordou, nil se este processo não o tem).
+-- Grito local no emitter dela (cada processo que a tem carregada toca o seu: no MP
+-- o servidor manda o comando a todos), soluço para; no dono, solta e força o spot no
+-- jogador: spotted(p, true) → spottedNew com chance 1 000 000 (1114–1120), alvo e
+-- última posição vista (1909–1950). Só vale sem useless (191–208): solta antes.
+function C.scream(z, p)
+    z:getModData().NOM_furia = true
+    stopSob(z)
+    z:playSoundLocal(C.SCREAM)
+    if z:isRemoteZombie() then return end
+    C.letGo(z)
+    if p then z:spotted(p, true) end
+end
+
+local function localPlayers()
+    local out = {}
+    for i = 0, getNumActivePlayers() - 1 do
+        local p = getSpecificPlayer(i)
+        if p and not p:isDead() then out[#out + 1] = p end
+    end
+    return out
+end
+
+-- Por que este jogador acorda a Carpideira z: "near", "light" ou nil.
+-- Lanterna: acesa (getActiveLightItem, pz-api-notes §2.4) e o square dela com
+-- isCanSee(pn) (linha de visão + cone + luz, o "jogador vê" do jogo, §3.4): ela está
+-- na frente dele e iluminada. Aproximação de "apontada pra ela": luz de outra fonte
+-- com a lanterna acesa na mão também conta.
+local function why(p, z, radius)
+    if math.floor(p:getZ()) ~= math.floor(z:getZ()) then return nil end
+    local dx, dy = p:getX() - z:getX(), p:getY() - z:getY()
+    local d = math.sqrt(dx * dx + dy * dy)
+    if d <= radius then return "near" end
+    if d > R.ALERT_RANGE or p:getActiveLightItem() == nil then return nil end
+    local sq = z:getCurrentSquare()
+    if sq ~= nil and sq:isCanSee(p:getPlayerNum()) then return "light" end
+    return nil
+end
+
+local function sob(z)
+    local id = sobs[z]
+    if id and z:getEmitter():isPlaying(id) then return end
+    sobs[z] = z:playSoundLocal(C.SOB)
+end
+
+local function stopAll()
+    for z in pairs(sobs) do stopSob(z) end
+end
+
+-- A cada SCAN_TICKS: soluço das calmas carregadas, aviso de quem as acorda e fim do
+-- soluço de quem saiu (morreu, gritou, foi pro virtual: removeFromWorld não para os
+-- sons do emitter). A tabela Lua vem antes de qualquer chamada: o zumbi que não é
+-- Carpideira não custa nada.
+local function scan(report)
+    if not NOM_FogState.on or not NOM_Config.get("CarpideiraEnabled") then
+        stopAll()
+        return
+    end
+    local found, now, players = {}, getTimestampMs(), localPlayers()
+    local radius = NOM_Config.get("CarpideiraTriggerRadius")
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if NOM_NightStats.variants[z] == "carpideira" and not z:isDead() and not C.furious(z, z:getModData()) then
+            found[z] = true
+            sob(z)
+            local last = lastReport[z]
+            if last == nil or now - last >= R.REPORT_GAP_MS then
+                for _, p in ipairs(players) do
+                    local w = why(p, z, radius)
+                    if w then
+                        lastReport[z] = now
+                        report(z, p, w)
+                        if getDebug() then
+                            print("[NOM] carpideira acordada por=" .. w .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()))
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end
+    for z in pairs(sobs) do
+        if not found[z] then stopSob(z) end
+    end
+end
+
+-- report(z, jogador, why): um jogador local acordou a Carpideira z (why = "near" | "light").
+function C.install(report)
+    local ticks = 0
+    Events.OnTick.Add(function()
+        ticks = ticks + 1
+        if ticks < C.SCAN_TICKS then return end
+        ticks = 0
+        scan(report)
+    end)
+    NOM_FogState.onChange(function(on)
+        if not on then
+            C.screamed, lastReport = {}, {}
+        end
+    end)
+end
+
+return NOM_Carpideira
