@@ -1,6 +1,6 @@
 # Névoa fluida (mod3) — Plano de implementação
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** A névoa do mod3 se comporta como um líquido: contorna parede, árvore e carro, acumula nos abertos, escorre por porta e janela abertas e é empurrada por quem anda, deixando rastro. De quebra, o visual fica mais denso no chão, mais cinza e suave em cima, e envolve a base das árvores.
 
@@ -69,7 +69,7 @@ Console: `NOMRender_setParam(4, 0)` desliga a simulação, `(4, 1)` liga (padrã
 
 **Files:** criar `mod3/java/nom/render/FlowGrid.java`, `tests/java/FlowGridTest.java`, `tests/test_mod3_flow.sh`; mudar `run-tests.sh`.
 
-- [ ] Escrever `tests/test_mod3_flow.sh` (javac `--release 25` do `FlowGrid.java` + teste num diretório temporário, `java -ea`) e os testes:
+- [x] Escrever `tests/test_mod3_flow.sh` (javac `--release 25` do `FlowGrid.java` + teste num diretório temporário, `java -ea`) e os testes:
   - **caixa fechada**: caixa 6×6 com as quatro bordas fechadas, interior 0, vento forte e impulsos em volta, 400 passos → interior < 1e-6 e velocidade nas faces fechadas = 0;
   - **fresta de 1 tile**: a mesma caixa com uma face aberta e o vento entrando → densidade média do interior > 0,2;
   - **rolagem**: densidade aleatória, `scroll(+5, −3)` → célula de mundo igual; célula nova = ambiente; rolagem maior que a grade = `reset`;
@@ -80,28 +80,28 @@ Console: `NOMRender_setParam(4, 0)` desliga a simulação, `(4, 1)` liga (padrã
   - **contorna**: bloco sólido no meio, vento +x → velocidade nas faces do bloco = 0 e o fluxo ao lado do bloco é mais rápido que o vento;
   - **textura**: `writeRGBA` codifica densidade, velocidade e flags; célula sólida recebe a média dos vizinhos abertos;
   - **custo**: 128×128 com obstáculos, 200 passos depois de aquecer → média impressa; falha acima de 3 ms (meta 1 ms).
-- [ ] Rodar e ver falhar (classe não existe).
-- [ ] Implementar o mínimo que passa.
-- [ ] Rodar `./run-tests.sh`: tudo verde. Commit.
+- [x] Rodar e ver falhar (classe não existe).
+- [x] Implementar o mínimo que passa.
+- [x] Rodar `./run-tests.sh`: tudo verde. Commit.
 
 ### Tarefa 2: contrato GLSL e shader
 
 **Files:** `NOM_RenderContext.glsl`, `NOM_VolFog.frag`, `tests/test_mod3_depth.py`, `tests/test_mod3_flow.sh`.
 
-- [ ] Teste de contrato em `test_mod3_depth.py`: `VEL_MAX` e as flags do `FlowGrid.java` iguais às constantes `NOM_FLOW_*` do cabeçalho; `tests/test_mod3_flow.sh` compila cabeçalho + cada passe com `glslangValidator` (como o Java monta: cabeçalho, `#line 1`, passe). Ver falhar.
-- [ ] Cabeçalho: uniforms e helpers. Shader: densidade × fluido, flow map de duas fases, camada densa no chão e mais cinza e fina em cima (cor do clima), teto de opacidade, envelope das árvores, debug 5–7.
-- [ ] Testes verdes. Commit.
+- [x] Teste de contrato em `test_mod3_depth.py`: `VEL_MAX` e as flags do `FlowGrid.java` iguais às constantes `NOM_FLOW_*` do cabeçalho; `tests/test_mod3_flow.sh` compila cabeçalho + cada passe com `glslangValidator` (como o Java monta: cabeçalho, `#line 1`, passe). Ver falhar.
+- [x] Cabeçalho: uniforms e helpers. Shader: densidade × fluido, flow map de duas fases, camada densa no chão e mais cinza e fina em cima (cor do clima), teto de opacidade, envelope das árvores, debug 5–7.
+- [x] Testes verdes. Commit.
 
 ### Tarefa 3: adaptador `Flow` e ligação no `RenderContext`
 
 **Files:** criar `mod3/java/nom/render/Flow.java`; mudar `RenderContext.java`.
 
-- [ ] `Flow.update(IsoCell, IsoCamera.FrameState)` (thread principal, só `playerIndex == 0`): liga/desliga por `luaParams[4]`, rola ou reseta (mudou de andar), monta 8 linhas da máscara por quadro, vento do clima, impulsos de jogadores e zumbis a até 40 tiles (velocidade pela posição anterior de cada um), passos de 1/20 s (no máximo 2 por quadro; pausa congela), publica sob trava. Log de custo a cada 600 passos.
-- [ ] `Flow.prepare()` (thread de render): cria a textura, sobe a versão nova com `GL_PIXEL_UNPACK_BUFFER` desligado, prende na unidade 6. `RenderContext` salva e restaura a unidade 6 e passa `uFlowTex`/`uFlow`.
-- [ ] Erro no `Flow` desliga só o fluido (`[NOM-Render] ERRO no fluido`); a névoa segue com densidade 1.
-- [ ] `scripts/build-mod3.sh` compila e assina. Testes verdes. Commit.
+- [x] `Flow.update(IsoCell, IsoCamera.FrameState)` (thread principal, só `playerIndex == 0`): liga/desliga por `luaParams[4]`, rola ou reseta (mudou de andar), monta 8 linhas da máscara por quadro, vento do clima, impulsos de jogadores e zumbis a até 40 tiles (velocidade pela posição anterior de cada um), passos de 1/20 s (no máximo 2 por quadro; pausa congela), publica sob trava. Log de custo a cada 600 passos.
+- [x] `Flow.prepare()` (thread de render): cria a textura, sobe a versão nova com `GL_PIXEL_UNPACK_BUFFER` desligado, prende na unidade 6. `RenderContext` salva e restaura a unidade 6 e passa `uFlowTex`/`uFlow`.
+- [x] Erro no `Flow` desliga só o fluido (`[NOM-Render] ERRO no fluido`); a névoa segue com densidade 1.
+- [x] `scripts/build-mod3.sh` compila e assina. Testes verdes. Commit.
 
 ### Tarefa 4: docs, merge e sync
 
-- [ ] README da sprint (critérios, roteiro no jogo), roadmap, HANDOFF (tabela de comandos e próximo passo).
-- [ ] `./run-tests.sh` verde, merge na `main`, push, `scripts/build-mod3.sh && scripts/dev-sync.sh`.
+- [x] README da sprint (critérios, roteiro no jogo), roadmap, HANDOFF (tabela de comandos e próximo passo).
+- [x] `./run-tests.sh` verde, merge na `main`, push, `scripts/build-mod3.sh && scripts/dev-sync.sh`.
