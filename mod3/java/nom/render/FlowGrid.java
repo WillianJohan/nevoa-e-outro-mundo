@@ -5,11 +5,13 @@ import java.util.Arrays;
 /**
  * Névoa fluida: o núcleo da simulação, puro (sem API do jogo), testado em tests/java/FlowGridTest.java.
  *
- * Grade n x n de tiles, num andar só: a célula (i, j) é o tile do mundo (x0 + i, y0 + j). É escalonada:
- * a densidade mora no centro da célula e a velocidade nas faces, então a parede fina do jogo (borda
- * N/W de um square) é só uma face fechada. A densidade anda por fluxo nas faces (upwind conservativo):
- * face fechada não passa nada, por construção. Fora da grade é ar aberto, com a densidade ambiente e
- * pressão 0: a névoa entra e sai pelas bordas.
+ * Grade de `tiles` x `tiles` tiles, num andar só, com `scale` células por tile em cada eixo (n = tiles·scale
+ * células por lado; sprint 0030). A célula (i, j) cobre o mundo a partir de (x0 + i/scale, y0 + j/scale).
+ * Origem, rolagem, bancos, impulso e explosão são em tiles; velocidade em tiles/s. É escalonada: a
+ * densidade mora no centro da célula e a velocidade nas faces, então a parede fina do jogo (borda N/W de
+ * um square) é só uma fileira de faces fechadas. A densidade anda por fluxo nas faces (upwind
+ * conservativo): face fechada não passa nada, por construção. Fora da grade é ar aberto, com a densidade
+ * ambiente e pressão 0: a névoa entra e sai pelas bordas.
  */
 public final class FlowGrid {
     public static final int F_SOLID = 1, F_TREE = 2, F_INDOOR = 4;
@@ -24,8 +26,9 @@ public final class FlowGrid {
     static final float D_MAX = 1.5f;
     static final float V_CLAMP = 10f;
     static final float SOR = 1.8f;
+    static final int MAX_SUBSTEPS = 4;
 
-    public final int n;
+    public final int n, tiles, scale;
     public int x0, y0;
     public float ambient = 1f;
     public float windX, windY;
@@ -45,7 +48,8 @@ public final class FlowGrid {
     public boolean inertia;             // a velocidade é levada por ela mesma: esteira e redemoinho
     public float stillDecay;            // 1/s: fora, onde o ar para (atrás de prédio), a névoa se desfaz
     public float doorPuff;              // fração da diferença que uma porta que abre sopra pra dentro
-    public float vorticity;             // reforço de redemoinho (sprint 0029): a esteira enrola em ondas
+    public float vorticity;             // reforço de redemoinho (sprint 0029), por tile: a esteira enrola em ondas
+    public float vorticityRadius = 2f;  // tiles: o reforço age no giro médio dessa vizinhança (sprint 0030)
 
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
     private final float[] d, dn, div, invSum, p;
@@ -58,12 +62,18 @@ public final class FlowGrid {
     private final byte[] tmpB;
     private final float[] edgeW, edgeE, edgeN, edgeS;  // densidade logo fora da grade, por linha / coluna
     private final float[] u2, v2;
-    private final float[] curlCorner, curlCell, forceX, forceY;
-    private final int[] doors = new int[64];           // faces que abriram: f = face u, ~f = face v
+    private final float[] curlCorner, curlCell, curlBlur, forceX, forceY;
+    private final int[] doors = new int[256];          // faces que abriram: f = face u, ~f = face v
     private int doorCount;
     private boolean facesDirty = true;
 
-    public FlowGrid(int n) {
+    /** Uma célula por tile. */
+    public FlowGrid(int n) { this(n, 1); }
+
+    public FlowGrid(int tiles, int scale) {
+        this.tiles = tiles;
+        this.scale = scale;
+        int n = tiles * scale;
         this.n = n;
         nu = n + 1;
         m = n + 2;
@@ -93,6 +103,7 @@ public final class FlowGrid {
         v2 = new float[n * nu];
         curlCorner = new float[nu * nu];
         curlCell = new float[n * n];
+        curlBlur = new float[n * n];
         forceX = new float[n * n];
         forceY = new float[n * n];
         reset(0, 0);
@@ -117,8 +128,36 @@ public final class FlowGrid {
     }
 
     private float freshDensity(int i, int j) {
-        return banks == null ? ambient : ambient * banks.sample(x0 + i + 0.5, y0 + j + 0.5);
+        return banks == null ? ambient : ambient * banks.sample(worldX(i + 0.5), worldY(j + 0.5));
     }
+
+    /** Coordenada de mundo (tiles) de uma posição em células. */
+    private double worldX(double ci) { return x0 + ci / scale; }
+
+    private double worldY(double cj) { return y0 + cj / scale; }
+
+    // ---------- máscara por tile (o Flow monta assim) ----------
+
+    /** Flags de um tile do mundo (relativo à origem) nas scale x scale células dele. */
+    public void setTile(int ti, int tj, int f) {
+        for (int b = 0; b < scale; b++)
+            for (int a = 0; a < scale; a++) setCell(ti * scale + a, tj * scale + b, f);
+    }
+
+    /** Borda oeste do tile (ti, tj); ti vai até tiles (a borda leste da última coluna). */
+    public void setTileOpenW(int ti, int tj, boolean open) {
+        for (int b = 0; b < scale; b++) setOpenW(ti * scale, tj * scale + b, open);
+    }
+
+    /** Borda norte do tile (ti, tj); tj vai até tiles. */
+    public void setTileOpenN(int ti, int tj, boolean open) {
+        for (int a = 0; a < scale; a++) setOpenN(ti * scale + a, tj * scale, open);
+    }
+
+    /** Densidade na primeira célula do tile (diagnóstico). */
+    public float tileDensity(int ti, int tj) { return d[tj * scale * n + ti * scale]; }
+
+    public int tileFlags(int ti, int tj) { return cellFlags(ti * scale, tj * scale); }
 
     /** Flags do square (F_SOLID, F_TREE, F_INDOOR). Célula que acabou de entrar na grade e é interior começa vazia. */
     public void setCell(int i, int j, int f) {
@@ -193,11 +232,11 @@ public final class FlowGrid {
 
     // ---------- rolagem ----------
 
-    /** Leva a grade pra nova origem; o que já estava no mundo fica onde estava. */
+    /** Leva a grade pra nova origem (tiles); o que já estava no mundo fica onde estava. */
     public void scroll(int newX0, int newY0) {
-        int dx = newX0 - x0, dy = newY0 - y0;
-        if (dx == 0 && dy == 0) return;
-        if (Math.abs(dx) >= n || Math.abs(dy) >= n) { reset(newX0, newY0); return; }
+        if (newX0 == x0 && newY0 == y0) return;
+        if (Math.abs(newX0 - x0) >= tiles || Math.abs(newY0 - y0) >= tiles) { reset(newX0, newY0); return; }
+        int dx = (newX0 - x0) * scale, dy = (newY0 - y0) * scale;
         shift(d, n, n, dx, dy, Float.NaN);
         shift(u, nu, n, dx, dy, 0f);
         shift(v, n, nu, dx, dy, 0f);
@@ -244,7 +283,8 @@ public final class FlowGrid {
     public void impulse(float wx, float wy, float vx, float vy, float radius) {
         float speed = (float) Math.sqrt(vx * vx + vy * vy);
         if (speed > 2 * VEL_MAX) { vx *= 2 * VEL_MAX / speed; vy *= 2 * VEL_MAX / speed; speed = 2 * VEL_MAX; }
-        float lx = wx - x0, ly = wy - y0;
+        float lx = (wx - x0) * scale, ly = (wy - y0) * scale;
+        radius *= scale;
         int i0 = Math.max(0, (int) Math.floor(lx - radius)), i1 = Math.min(n, (int) Math.ceil(lx + radius));
         int j0 = Math.max(0, (int) Math.floor(ly - radius)), j1 = Math.min(n, (int) Math.ceil(ly + radius));
         float carve = Math.min(1f, speed / VEL_MAX) * 0.3f;
@@ -279,7 +319,8 @@ public final class FlowGrid {
      */
     public void blast(float wx, float wy, float radius) {
         if (radius <= 0f) return;
-        float lx = wx - x0, ly = wy - y0, outer = radius * 1.6f, mid = (radius + outer) * 0.5f, half = (outer - radius) * 0.5f;
+        radius *= scale;
+        float lx = (wx - x0) * scale, ly = (wy - y0) * scale, outer = radius * 1.6f, mid = (radius + outer) * 0.5f, half = (outer - radius) * 0.5f;
         int i0 = Math.max(0, (int) Math.floor(lx - outer)), i1 = Math.min(n - 1, (int) Math.ceil(lx + outer));
         int j0 = Math.max(0, (int) Math.floor(ly - outer)), j1 = Math.min(n - 1, (int) Math.ceil(ly + outer));
         if (i0 > i1 || j0 > j1) return;
@@ -348,10 +389,10 @@ public final class FlowGrid {
             return;
         }
         for (int k = 0; k < n; k++) {
-            edgeW[k] = ambient * banks.sample(x0 - 0.5, y0 + k + 0.5);
-            edgeE[k] = ambient * banks.sample(x0 + n + 0.5, y0 + k + 0.5);
-            edgeN[k] = ambient * banks.sample(x0 + k + 0.5, y0 - 0.5);
-            edgeS[k] = ambient * banks.sample(x0 + k + 0.5, y0 + n + 0.5);
+            edgeW[k] = ambient * banks.sample(worldX(-0.5), worldY(k + 0.5));
+            edgeE[k] = ambient * banks.sample(worldX(n + 0.5), worldY(k + 0.5));
+            edgeN[k] = ambient * banks.sample(worldX(k + 0.5), worldY(-0.5));
+            edgeS[k] = ambient * banks.sample(worldX(k + 0.5), worldY(n + 0.5));
         }
     }
 
@@ -380,6 +421,7 @@ public final class FlowGrid {
 
     /** Semi-lagrangiano: cada face pega a velocidade de onde o ar dela veio. */
     private void advectVelocity(float dt) {
+        dt *= scale;                       // deslocamento em células
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {
                 int f = j * nu + i;
@@ -400,24 +442,56 @@ public final class FlowGrid {
      * prédio a esteira enrola e solta ondas, em vez de passar lisa.
      */
     private void confine(float dt) {
+        // canto encostado em face fechada: o salto de velocidade através da parede fina não é giro, e
+        // reforçá-lo bombeia ar pra dentro da casa e pontilha a esteira
         for (int j = 1; j < n; j++)
-            for (int i = 1; i < n; i++)
-                curlCorner[j * nu + i] = (v[j * n + i] - v[j * n + i - 1]) - (u[j * nu + i] - u[(j - 1) * nu + i]);
+            for (int i = 1; i < n; i++) {
+                int fu = j * nu + i, fv = j * n + i;
+                boolean open = wu[fu] * wu[fu - nu] * wv[fv] * wv[fv - 1] != 0f;
+                curlCorner[fu] = open ? (v[fv] - v[fv - 1]) - (u[fu] - u[fu - nu]) : 0f;
+            }
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++) {
                 int c = j * n + i, k = j * nu + i;
-                curlCell[c] = (flags[c] & F_SOLID) != 0 ? 0f
+                curlCell[c] = (flags[c] & (F_SOLID | F_INDOOR)) != 0 ? 0f
                         : 0.25f * (curlCorner[k] + curlCorner[k + 1] + curlCorner[k + nu] + curlCorner[k + nu + 1]);
+            }
+        // giro médio na vizinhança, pesado pela coerência (|soma| / soma dos |giros|): num redemoinho de
+        // verdade fica perto de 1; no ruído de célula, que troca de sinal, vai a 0 e não se realimenta.
+        // Sem a média, os redemoinhos nascem do tamanho da célula e viram xadrez (sprint 0030)
+        int R = Math.max(1, Math.min(n / 4, Math.round(vorticityRadius * scale)));
+        // o giro por célula cai com a célula menor: vezes a escala, a mesma força serve pra todas
+        float vortScaled = vorticity * scale;
+        float area = (2 * R + 1) * (2 * R + 1);
+        // soma separável (linha, depois coluna); forceX/forceY servem de rascunho antes da força
+        float[] rowS = forceX, rowA = forceY;
+        for (int j = 0; j < n; j++)
+            for (int i = R; i < n - R; i++) {
+                int c = j * n + i;
+                float s = 0f, a = 0f;
+                for (int di = -R; di <= R; di++) { float x = curlCell[c + di]; s += x; a += Math.abs(x); }
+                rowS[c] = s;
+                rowA[c] = a;
+            }
+        Arrays.fill(curlBlur, 0f);
+        for (int j = R; j < n - R; j++)
+            for (int i = R; i < n - R; i++) {
+                int c = j * n + i;
+                if (curlCell[c] == 0f) continue;
+                float s = 0f, a = 0f;
+                for (int dj = -R * n; dj <= R * n; dj += n) { s += rowS[c + dj]; a += rowA[c + dj]; }
+                curlBlur[c] = s * Math.abs(s) / (area * a + 1e-9f);
             }
         Arrays.fill(forceX, 0f);
         Arrays.fill(forceY, 0f);
-        for (int j = 1; j < n - 1; j++)
-            for (int i = 1; i < n - 1; i++) {
+        for (int j = R; j < n - R; j++)
+            for (int i = R; i < n - R; i++) {
                 int c = j * n + i;
-                float gx = 0.5f * (Math.abs(curlCell[c + 1]) - Math.abs(curlCell[c - 1]));
-                float gy = 0.5f * (Math.abs(curlCell[c + n]) - Math.abs(curlCell[c - n]));
+                if (curlBlur[c] == 0f) continue;
+                float gx = (Math.abs(curlBlur[c + R]) - Math.abs(curlBlur[c - R])) / (2 * R);
+                float gy = (Math.abs(curlBlur[c + R * n]) - Math.abs(curlBlur[c - R * n])) / (2 * R);
                 float len = (float) Math.sqrt(gx * gx + gy * gy) + 1e-5f;
-                float w = curlCell[c] * vorticity / len;
+                float w = curlBlur[c] * vortScaled / len;
                 forceX[c] = gy * w;
                 forceY[c] = -gx * w;
             }
@@ -536,13 +610,23 @@ public final class FlowGrid {
         }
     }
 
+    /** Em subpassos: o limite por face é por célula, e célula menor esgota antes no vento forte. */
     private void advect(float dt) {
+        float vmax = 0f;
+        for (float x : u) vmax = Math.max(vmax, Math.abs(x));
+        for (float x : v) vmax = Math.max(vmax, Math.abs(x));
+        int k = Math.max(1, Math.min(MAX_SUBSTEPS, (int) Math.ceil(vmax * dt * scale / MAX_FACE_FLUX)));
+        for (int s = 0; s < k; s++) advectOnce(dt * scale / k);
+    }
+
+    /** cdt = dt em células: a face leva u·cdt da célula de onde o ar vem. */
+    private void advectOnce(float cdt) {
         System.arraycopy(d, 0, dn, 0, d.length);
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {
                 int f = j * nu + i;
                 if (wu[f] == 0f) continue;
-                float c = limit(u[f] * dt);
+                float c = limit(u[f] * cdt);
                 float src = c > 0 ? (i > 0 ? d[j * n + i - 1] : edgeW[j]) : (i < n ? d[j * n + i] : edgeE[j]);
                 move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, c * src);
             }
@@ -550,7 +634,7 @@ public final class FlowGrid {
             for (int i = 0; i < n; i++) {
                 int f = j * n + i;
                 if (wv[f] == 0f) continue;
-                float c = limit(v[f] * dt);
+                float c = limit(v[f] * cdt);
                 float src = c > 0 ? (j > 0 ? d[f - n] : edgeN[i]) : (j < n ? d[f] : edgeS[i]);
                 move(j > 0 ? f - n : -1, j < n ? f : -1, c * src);
             }
@@ -567,9 +651,17 @@ public final class FlowGrid {
         if (b >= 0) dn[b] += flux;
     }
 
+    /** Coeficientes em tiles²/s; em células, escala². Subpassos pelo mesmo motivo da advecção. */
     private void diffuse(float dt) {
-        float aOut = Math.min(diffusion * dt, MAX_DIFFUSE), aIn = Math.min(indoorSeep * dt, MAX_DIFFUSE);
+        float s2 = scale * scale, aOut = diffusion * dt * s2, aIn = indoorSeep * dt * s2;
         if (aOut <= 0f && aIn <= 0f) return;
+        int k = Math.max(1, Math.min(MAX_SUBSTEPS, (int) Math.ceil(Math.max(aOut, aIn) / MAX_DIFFUSE - 1e-4f)));
+        aOut = Math.min(aOut / k, MAX_DIFFUSE);
+        aIn = Math.min(aIn / k, MAX_DIFFUSE);
+        for (int s = 0; s < k; s++) diffuseOnce(aOut, aIn);
+    }
+
+    private void diffuseOnce(float aOut, float aIn) {
         System.arraycopy(d, 0, dn, 0, d.length);
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {

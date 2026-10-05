@@ -169,5 +169,16 @@ assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 tor
 roll = volfog.split("float rollTop")[1].split("float densityLook")[0]
 assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileUp)"
 assert re.search(r"float top = ground \+ layer \* 1\.6;", volfog), "mod3: o volume não tem altura pro empilhamento"
-assert re.search(r"grid\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
+assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
+# Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a
+# célula pela escala da textura; a simulação roda numa thread própria e a grade é só dela.
+assert re.search(r"PARAM_FLOW_RES = 9;", java) and re.search(r"luaParams\[PARAM_FLOW_RES\] = 2f", java), \
+    "mod3: PARAM_FLOW_RES (9) ausente ou sem padrão 2"
+ctx = (src.parent.parent.parent / "42/media/shaders/NOM_RenderContext.glsl").read_text()
+flags_fn = ctx.split("int nomFlowFlags")[1].split("float nomFlowTree")[0]
+assert "textureSize(uFlowTex" in flags_fn, "mod3: nomFlowFlags tem que achar a célula pela escala da textura"
+flow = (src / "Flow.java").read_text()
+assert 'new Thread(Flow::workLoop, "NOM-fluido")' in flow, "mod3: a simulação tem que rodar na thread própria"
+main_part = flow.split("// ---------- main thread ----------")[1].split("// ---------- thread da simulação ----------")[0]
+assert "grid." not in main_part, "mod3: a thread principal não pode mexer na grade (é da thread da simulação)"
 print("mod3 contrato Java/GLSL ok")

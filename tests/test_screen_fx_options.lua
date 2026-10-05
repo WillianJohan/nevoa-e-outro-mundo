@@ -141,6 +141,21 @@ return {
         assert(O.fogQuality() == 2, "fora da faixa")
         assert(load(false).fogQuality() == 2, "sem a API: alta")
     end,
+    -- sprint 0030: resolução da névoa fluida do mod Java (células por tile, 1 a 3), inteira
+    flow_resolution_option = function()
+        local O = load(true)
+        local r = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("FlowResolution")
+        assert(r and r.type == "slider" and r.min == 1 and r.max == 3 and r.step == 1 and r.value == 2)
+        assert(r.name:find("^UI_NOM_") and r.tooltip:find("^UI_NOM_"))
+        assert(O.flowResolution() == 2)
+        r.value = 2.6
+        assert(O.flowResolution() == 3, "não arredondou")
+        r.value = 0
+        assert(O.flowResolution() == 1, "fora da faixa (baixo)")
+        r.value = 9
+        assert(O.flowResolution() == 3, "fora da faixa (alto)")
+        assert(load(false).flowResolution() == 2, "sem a API: 2")
+    end,
     -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
     screenfx_options_debug_key_only_in_debug = function()
         local O = load(true, true)

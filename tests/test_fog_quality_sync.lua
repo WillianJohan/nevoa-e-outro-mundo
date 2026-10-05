@@ -1,9 +1,9 @@
--- client/NOM_FogQualitySync.lua: manda a qualidade escolhida em Opções > Mods pro mod Java opcional
--- (mod3) com NOMRender_setParam(6, q). O global só existe com o mod3 carregado (ZombieBuddy registra
--- os @LuaMethod do RenderContext); sem ele, nada. Eventos falsos guardam os callbacks.
+-- client/NOM_FogQualitySync.lua: manda a qualidade e a resolução escolhidas em Opções > Mods pro mod
+-- Java opcional (mod3) com NOMRender_setParam(6, q) e (9, s). O global só existe com o mod3 carregado
+-- (ZombieBuddy registra os @LuaMethod do RenderContext); sem ele, nada. Eventos falsos guardam os callbacks.
 local FILE = "mod/42/media/lua/client/NOM_FogQualitySync.lua"
 
-local function load(quality, withJava)
+local function load(opt, withJava)
     local handlers = {}
     Events = setmetatable({}, { __index = function(t, name)
         local e = { Add = function(fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end }
@@ -11,7 +11,10 @@ local function load(quality, withJava)
         return e
     end })
     isServer = function() return false end
-    NOM_ScreenFxOptions = { fogQuality = function() return quality.value end }
+    NOM_ScreenFxOptions = {
+        fogQuality = function() return opt.quality end,
+        flowResolution = function() return opt.res end,
+    }
     package.loaded.NOM_ScreenFxOptions = NOM_ScreenFxOptions
     local calls = {}
     NOMRender_setParam = withJava and function(i, v) calls[#calls + 1] = { i, v } end or nil
@@ -24,29 +27,48 @@ local function fire(handlers, name)
     for _, fn in ipairs(handlers[name] or {}) do fn() end
 end
 
+-- valor mandado pro parâmetro i (o último), ou nil
+local function sent(calls, i)
+    local v
+    for _, c in ipairs(calls) do if c[1] == i then v = c[2] end end
+    return v
+end
+
+local function count(calls, i)
+    local k = 0
+    for _, c in ipairs(calls) do if c[1] == i then k = k + 1 end end
+    return k
+end
+
 return {
     fog_quality_sync_on_game_start = function()
-        local q = { value = 1 }
-        local S, h, calls = load(q, true)
-        assert(S and S.PARAM == 6)
+        local o = { quality = 1, res = 3 }
+        local S, h, calls = load(o, true)
+        assert(S and S.PARAM == 6 and S.PARAM_RES == 9)
         fire(h, "OnGameStart")
-        assert(#calls == 1 and calls[1][1] == 6 and calls[1][2] == 1, "não mandou a qualidade no início")
+        assert(sent(calls, 6) == 1, "não mandou a qualidade no início")
+        assert(sent(calls, 9) == 3, "não mandou a resolução no início")
     end,
 
     fog_quality_sync_follows_option_once = function()
-        local q = { value = 2 }
-        local _, h, calls = load(q, true)
+        local o = { quality = 2, res = 2 }
+        local _, h, calls = load(o, true)
         fire(h, "OnGameStart")
         fire(h, "EveryOneMinute")
-        assert(#calls == 1, "mandou de novo sem mudar")
-        q.value = 0
+        assert(#calls == 2, "mandou de novo sem mudar")
+        o.quality = 0
         fire(h, "EveryOneMinute")
-        assert(#calls == 2 and calls[2][2] == 0, "não seguiu a opção")
+        assert(count(calls, 6) == 2 and sent(calls, 6) == 0, "não seguiu a qualidade")
+        assert(count(calls, 9) == 1, "mandou a resolução sem ela mudar")
+        o.res = 1
+        fire(h, "EveryOneMinute")
+        assert(count(calls, 9) == 2 and sent(calls, 9) == 1, "não seguiu a resolução")
+        assert(count(calls, 6) == 2, "mandou a qualidade sem ela mudar")
     end,
 
     fog_quality_sync_without_java_mod = function()
-        local q = { value = 2 }
-        local S, h = load(q, false)
+        local o = { quality = 2, res = 2 }
+        local S, h = load(o, false)
         fire(h, "OnGameStart")
         fire(h, "EveryOneMinute")
         assert(S.push() == false)

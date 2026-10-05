@@ -16,10 +16,10 @@ uniform vec4 uFog;             // intensidade da névoa do clima (0..1), cor fin
 uniform int uCharCount;
 uniform vec4 uChars[8];        // x, y (relativos), z, raio: jogadores locais e zumbis mais perto
 uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i, v)
-// Névoa fluida (Flow.java / FlowGrid.java): grade n x n de tiles, 1 texel por tile, linear.
+// Névoa fluida (Flow.java / FlowGrid.java): grade de uFlow.z x uFlow.z tiles, 1 a 3 texels por tile, linear.
 // r = densidade (0..1), gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
 uniform sampler2D uFlowTex;
-uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), n, 1 = simulação ligada
+uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), tiles por lado, 1 = simulação ligada
 uniform vec4 uDrift;           // xy = uOrigin menos o quanto o vento já levou a névoa (o mesmo dos bancos); zw = vento agora (tiles/s)
 // Lanternas e faróis perto (RenderContext.collectTorches), pro facho na névoa.
 uniform int uTorchCount;
@@ -91,11 +91,12 @@ vec2 nomFlowVel(vec2 xy, vec2 fallback) {
     return (texture(uFlowTex, uv).gb * 255.0 - 128.0) / 127.0 * NOM_FLOW_VMAX;
 }
 
-// Flags do tile que contém xy (NOM_FLOW_*); 0 fora da grade ou desligada.
+// Flags da célula que contém xy (NOM_FLOW_*); 0 fora da grade ou desligada. A textura tem
+// textureSize / uFlow.z células por tile (sprint 0030: NOMRender_setParam(9, s)).
 int nomFlowFlags(vec2 xy) {
     if (!nomFlowOn()) return 0;
-    ivec2 c = ivec2(floor(xy - uFlow.xy));
-    int n = int(uFlow.z);
+    int n = textureSize(uFlowTex, 0).x;
+    ivec2 c = ivec2(floor((xy - uFlow.xy) * (float(n) / uFlow.z)));
     if (c.x < 0 || c.y < 0 || c.x >= n || c.y >= n) return 0;
     return int(texelFetch(uFlowTex, c, 0).a * 255.0 + 0.5);
 }
