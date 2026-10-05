@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05; §16.5: 2026-10-05, sprint 0021) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1197,6 +1197,33 @@ Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_flo
 - **UNKNOWN (roteiro):** o tempo de quadro de verdade com 600 marcadores e 120 paredes; se pesar,
   baixar `MAX_FLOOR`/`MAX_WALL` ou o `SCAN_BUDGET`.
 
+### 16.5 O que o jogo mostrou (sprint 0021)
+
+Prints do Johan de 05/10 (parede preta por cima do jogador, chão de dentro em cima do telhado,
+sujeira em xadrez, arbusto por cima do jogador). Bytecode do B42.21 e packs, só leitura.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Posição do `IsoMarker`: `setPos(III)` → `x = i + 0,5`, `y = j + 0,5`, `z = k + 0,01`, `zLayer = k`. É o único setter de posição (os três `init` chamam ele); `x/y/z` não têm setter float | CONFIRMED (bytecode) | `IsoMarkers$IsoMarker.setPos(III)` 0–32, `init(KahluaTable,IIILIsoGridSquare)` 64–69 |
+| Desenho: quad do tamanho **recortado** da textura (`getWidth/getHeight` = região do pack, sem o quadro), `XToScreen − w/2`, `YToScreen − h`: base do recorte no centro do tile. `GenericSpriteRenderState.render` sem cutaway não soma `offsetX/Y` | CONFIRMED (bytecode) | `IsoSprite.renderTextureWithDepth` 151–211; `GenericSpriteRenderState.render(Texture,FFFFFFFF,Consumer)` 50–124 |
+| Erro por sprite (quadro 2×: 128×256, diamante do chão centrado em (64, 224)): `(64 − (ox + w/2), 224 − (oy + h))`. Losango cheio: 32 px pra cima = meio tile. Compensar exato é impossível (tile inteiro anda 64/32 px na tela; `z` anda um andar) | medido | `scripts/audit_floor_sprites.py` |
+| Ordem do quadro: `renderPlayers` (241) → itens, poças → `renderOpaqueObjectsEvent` (374) → `renderMovingObjects` (387) → por andar: piso translúcido, sombras, `WorldMarkers.renderGridSquareMarkers` (769), **`IsoMarkers.renderIsoMarkers` (784)**, objetos translúcidos (818) | CONFIRMED (bytecode) | `FBORenderCell.performRenderTiles` |
+| O marcador **não é tapado** por telhado, parede nem jogador (depth test ligado, mas sem efeito prático contra o mundo do FBO) | visto no jogo | prints 6, 7, 9, 10 de 05/10 |
+| `renderIsoMarkers` pula marcador com `active = false` (`setActive(Z)`); `setAlpha(F)` = `setA` | EXISTS | `renderIsoMarkers` 166–174; `IsoMarker.setActive`, `setAlpha` |
+| `WorldMarkers.addGridSquareMarker`: textura esticada num quadrado do chão (`x ± size·0,69`), pra círculo; deforma decalque isométrico | CONFIRMED (bytecode) | `FBORenderWorldMarkers.render` 150–235 |
+| `d_plants_1_*`: todos com `MoveWithWind` e `BlocksPlacement` (planta em pé); `d_streetcracks_1_*`: `FloorOverlay` | CONFIRMED | `media/tiledefinitions_erosion.tiles.txt` |
+| Recorte de parede por jogador: `square:getPlayerCutawayFlag(pn, ms)` → bits 1 = N cortada, 2 = W (no FBO devolve `targetPlayerCutawayFlags[pn]`, o `ms` não pesa) | EXISTS | `IsoGridSquare.getPlayerCutawayFlag(IJ)` 0–12; `FBORenderCutaways.doCutawayVisitSquares` 354, 612–616 (bit 1, visitados ao norte), 710–716 (bit 2, a oeste); lido por `FBORenderCell.renderMinusFloor_DoorOrWall` 59–150 |
+| Prédio: `square:isOutside()`, `square:getBuilding()`, `player:getBuilding()`, comparados com `~=` | CONFIRMED | `server/Farming/SFarmingSystem.lua:295`; `server/ClientCommands.lua:676`; `client/ISUI/ISWorldObjectContextMenu.lua:1679` |
+| Profundidade de tela de um andar: `YToScreen` sobe a altura de 3 tiles na diagonal por andar (um prédio de 1 andar cobre na tela os squares até 3 atrás dele) | CONFIRMED (bytecode): `YToScreen = 16·escala·(x + y) − 96·escala·z`, um andar = 6 passos de `x+y` = 3 tiles na diagonal | `IsoUtils.YToScreen(FFFI)` 0–50 |
+
+- **Escolha:** em vez de compensar o deslocamento, o pool do chão só tem decalque chato que,
+  desenhado pelo marcador, não põe pixel onde um personagem em pé no tile N, W ou NW está
+  (±24 px do centro dele, do pé pra cima). O decalque do tile do jogador fica apagado (todo
+  tick). Visibilidade por prédio e sombra de prédio, não por `isCouldSee` (o cone de visão
+  apagaria o chão às costas e faria o chão acender e apagar ao virar).
+- **UNKNOWN (roteiro da 0021):** zumbi em cima de decalque tem o pé coberto? Prédio de 2+
+  andares deixa chão de fora em cima do telhado (a sombra conta 3 tiles)?
+
 ## 17. Dissolve e bloom (sprint 0018)
 
 Bytecode do B42.21. Decisão na [ADR-016](adr-016-dissolve-e-bloom.md); a cadeia do `<m_Shader>`
@@ -1301,6 +1328,7 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
 14. Efeitos de tela (sprint 0013): texturas do mod por `getTexture("media/textures/NOM/ScreenFx/...")`,
     o elemento de 1 px por baixo do HUD de verdade, `PZAPI.ModOptions` em Opções > Mods, e o
     `screen.frag` do mod2 compilando e vencendo o vanilla (§15)
-15. Outro Mundo sangrento (sprint 0015): `RenderGhostTileColor` chamado do
-    `RenderOpaqueObjectsInWorld` desenha a parede no lugar e sem engasgo? O chão por marcador meio
-    tile pra cima incomoda? Quanto custa o quadro com 600 marcadores e 120 paredes? (§16)
+15. Outro Mundo sangrento (sprint 0015): ~~`RenderGhostTileColor` desenha a parede no lugar?~~
+    Não serve: sai depois do jogador e por cima de tudo (prints de 05/10, §16.5; paredes
+    desligadas). O chão por marcador meio tile pra cima incomoda? Quanto custa o quadro com 600
+    squares? Zumbi em cima de decalque, prédio alto (§16.5, roteiro da sprint 0021)

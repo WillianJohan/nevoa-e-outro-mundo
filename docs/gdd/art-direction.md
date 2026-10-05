@@ -131,8 +131,10 @@ Na névoa, o lugar em volta é o mesmo lugar, abandonado há décadas e onde alg
 - **Sangue que conta história:** poças (o miolo escuro, de camadas sobrepostas) com um rastro
   saindo, como algo arrastado; respingo solto entre elas. Nas paredes, escorrido. Não é carpete
   uniforme: é onde aconteceu alguma coisa.
-- **Erosão no máximo:** sujeira, rachadura e musgo no chão; rachadura, sujeira e trepadeira nas
-  paredes. O que a natureza levaria anos pra fazer, a névoa faz em segundos.
+- **Erosão no máximo:** sujeira e rachadura no chão. O que a natureza levaria anos pra fazer, a
+  névoa faz em segundos. A sujeira vem em manchas, nunca um losango por tile (lia como xadrez,
+  print de 05/10); planta e trepadeira saíram na sprint 0021 (eram objetos em pé e cobriam o
+  jogador), e as paredes estão desligadas.
 - **Vermelha é pior:** mais poças, mais rastro, mais parede suja.
 - Só sprites vanilla pelo nome (nada copiado nem gerado); escurecidos pela luz do lugar, com um
   piso pra ainda se lerem no breu. Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md).

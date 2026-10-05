@@ -106,7 +106,8 @@ Só viram escopo por promoção explícita.
 - **2026-10-05** — **Outro Mundo sangrento** (sprint 0015), pedido do Johan: "o Outro Mundo eu
   imaginei com bastante sangue e com a erosão no máximo". Na névoa, num raio de 25 tiles: poças e
   rastros de sangue, sujeira, rachadura e musgo no chão; sangue, sujeira, rachadura e trepadeira
-  nas paredes; mais na vermelha. Só na tela de quem vê, nada no save; densidade de cada jogador
+  nas paredes; mais na vermelha (sprint 0021: só o chão, sem musgo, sujeira em manchas, só onde o
+  jogador vê; paredes desligadas). Só na tela de quem vê, nada no save; densidade de cada jogador
   (Opções > Mods), `FogOverlays` continua o liga/desliga do servidor
   ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
   [art-direction.md](art-direction.md#o-outro-mundo-sangrento-sprint-0015),

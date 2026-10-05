@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Data | 2026-10-05 |
-| Emenda | [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md) (os overlays da névoa deixam de ser "manchas aos poucos no chão" e viram o cenário inteiro, chão e paredes) |
+| Emenda | [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md) (os overlays da névoa deixam de ser "manchas aos poucos no chão" e viram o cenário inteiro, chão e paredes). Emendada em 2026-10-05, sprint 0021 ([abaixo](#emenda-de-2026-10-05--sprint-0021-o-que-o-jogo-mostrou)) |
 
 Número 015 pra casar com a sprint (a 0014 corre em paralelo e pode abrir a sua ADR).
 
@@ -70,3 +70,50 @@ de sempre vale: nada no save nem na rede (ADR-007). O que o B42.21 dá
   ~1030 chamadas enquanto enche, ~150 parado. A regra pura é o caro no Kahlua: `SCAN_BUDGET` é o
   botão. Medir no jogo.
 - Some: as manchas "aos poucos" da sprint 0005 (o chão agora enche em ~4 s, com fade).
+
+## Emenda de 2026-10-05 — sprint 0021: o que o jogo mostrou
+
+Prints do Johan (05/10): a parede pintava de preto o que o jogo corta e passava por cima do
+jogador (print 6, hotfix `WALLS = false`); o chão de dentro da casa saía em cima do telhado com o
+jogador fora (7); a sujeira lia como xadrez (7); arbusto e sangue por cima do corpo e das pernas
+do jogador (9, 10). Evidência no [pz-api-notes §16.5](pz-api-notes.md#165-o-que-o-jogo-mostrou-sprint-0021).
+
+**O que mudou no "como":**
+
+1. **O marcador é overlay.** `IsoMarkers.renderIsoMarkers` sai em `performRenderTiles` 784,
+   depois de `renderPlayers` (241) e `renderMovingObjects` (387); os prints mostram que a
+   profundidade dele não tapa nada do mundo (telhado, parede, jogador). A consequência 2 desta ADR
+   ("desenha com profundidade") não vale na prática: tudo que o marcador desenha aparece.
+2. **O deslocamento não se compensa.** `IsoMarker.setPos(III)` é o único setter de posição
+   (`+0,5`, `+0,5`, `+0,01`); `renderTextureWithDepth` põe a base do recorte no centro do tile.
+   Sem float pelo Lua, nem combinação de tiles inteiros dá meio tile pra baixo (a tela anda de 64
+   e 32 px no quadro 2×). **Em vez de compensar, escolhe-se o sprite:** só decalque chato (conteúdo
+   no diamante do chão, sem `MoveWithWind`) e que, desenhado assim, não põe pixel na zona de um
+   personagem em pé no tile de trás (N, W, NW) — por simetria, o decalque do tile S/E de alguém não
+   o alcança. Medido no pack por `scripts/audit_floor_sprites.py` (só leitura, nada copiado) →
+   `tests/floor_sprites.lua`. Saem: todo `d_plants_1_*` (planta em pé, 33 do pool), 4 sangues
+   largos, 71 sujeiras, 100 rachaduras. Ficam 62 nomes de chão (eram 270).
+3. **O tile do jogador fica sem chão**, todo tick: o decalque dele cobriria o pé e a perna. O de
+   zumbi não (pendência, roteiro).
+4. **Só o chão que o jogador vê:** fora de prédio, só square de fora (`isOutside`) e fora da
+   sombra de prédio (algum dos 3 squares na diagonal de trás é de dentro: um andar cobre 3 tiles
+   na tela); dentro, o prédio dele (`getBuilding`, o jogo corta paredes e telhado) e o de fora.
+   Lido uma vez por square; o prédio do jogador a cada atualização. Mudou → o que saiu da vista
+   apaga em 4 s e sai, e o teto (600 squares à vista) não conta quem está apagando; o raio perde
+   um tile por lote em vez de desabar até o square recusado.
+5. **Sujeira em manchas, parcial e mais leve:** ruído de valor numa rede de 4 tiles (passa de
+   `1 − 0,4·d`, um tile em 7 falha), só sprites com cobertura < 50% e sem faixa de borda, num
+   segundo marcador do square com metade do alfa (o marcador tem uma cor pra todas as texturas).
+   Rachadura sobe de 0,35 pra 0,45 pra manter o enquadramento de 7×7 mudado.
+6. **Paredes ficam desligadas.** Pesquisado: o recorte do jogo dá pra ler
+   (`IsoGridSquare.getPlayerCutawayFlag(pn, ms)`, bit 1 = N cortada, 2 = W,
+   `FBORenderCutaways.doCutawayVisitSquares` 612–716) e resolveria a laje preta. Mas o
+   `RenderOpaqueObjectsInWorld` sai **depois do `renderPlayers`** (241 → 374) e o fantasma
+   desliga o teste de profundidade: a parede pinta por cima do jogador (e dos outros jogadores no
+   MP) e de tudo que já está no FBO do chunk — móvel, poste, árvore, cerca em **outros** squares na
+   frente dela. Isso só se tiraria por geometria aproximada (retângulo do jogador na tela, squares
+   da frente limpos), sem ver altura de objeto nem outro jogador. Não é regra confiável: fica
+   `WALLS = false`. Volta se aparecer desenho de sprite de tile com profundidade pelo Lua.
+
+**Custo novo:** todo tick, 4 chamadas (posição do jogador) com o chão ativo; por square novo na
+varredura, até 4 leituras de telhado (em cache por âncora); até 2 marcadores por square.
