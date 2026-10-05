@@ -33,3 +33,13 @@ for _ in range(1000):
     q = inverse(*forward(*p, cam), cam)
     assert all(abs(a - b) < 1e-6 for a, b in zip(p, q)), (p, q)
 print("mod3 depth inverse ok")
+
+# Advice do ZombieBuddy é inlinado na classe do jogo: todo método do mod3 chamado
+# de dentro de um @Patch precisa ser public, senão IllegalAccessError derruba o jogo.
+import re, pathlib
+src = pathlib.Path(__file__).resolve().parent.parent / "mod3/java/nom/render"
+called = set(re.findall(r"RenderContext\.(\w+)\(", (src / "Patches.java").read_text()))
+ctx = (src / "RenderContext.java").read_text()
+for m in called:
+    assert re.search(r"public static \S+ " + m + r"\(", ctx), "mod3: RenderContext." + m + " precisa ser public"
+print("mod3 patch calls public ok")

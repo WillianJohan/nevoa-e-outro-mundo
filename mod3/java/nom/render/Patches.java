@@ -13,7 +13,8 @@ public class Patches {
     public static class EndFrame {
         @Patch.OnEnter
         public static void enter(@Patch.Argument(0) int playerIndex) {
-            RenderContext.onWorldEnd(playerIndex);
+            // o advice roda dentro do Core: nada pode escapar daqui e derrubar o jogo
+            try { RenderContext.onWorldEnd(playerIndex); } catch (Throwable t) { }
         }
     }
 }

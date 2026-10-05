@@ -75,7 +75,9 @@ public final class RenderContext {
         @Override public void render() { RenderContext.renderFrame(this); }
     }
 
-    static void onWorldEnd(int playerIndex) {
+    // público: o advice é inlinado dentro do zombie.core.Core, e chamada a método
+    // package-private de lá dá IllegalAccessError e derruba o jogo.
+    public static void onWorldEnd(int playerIndex) {
         try {
             if (!(GameWindow.states.current instanceof IngameState)) return;
             IsoCamera.FrameState fs = IsoCamera.frameState;
