@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Monta a pasta de upload do Workshop a partir do repositório:
 #
-#   ~/Zomboid/Workshop/NevoaEOutroMundo/
+#   <pasta do jogo>/Workshop/NevoaEOutroMundo/ (~/Zomboid, ou a da Steam Flatpak)
 #     Contents/mods/NevoaEOutroMundo/   ← mod/ como está no último commit (git archive)
 #     preview.png                       ← docs/workshop/preview.png
 #     workshop.txt                      ← gerado de docs/workshop/description-*.txt
@@ -23,7 +23,17 @@ MOD_ID="NevoaEOutroMundo"
 TITLE="Névoa e Outro Mundo"
 TAGS="Build 42;Hardmode;Multiplayer" # permitidas em media/WorkshopTags.txt do jogo
 DEFAULT_VISIBILITY="unlisted"        # primeiro upload: só com o link, até o teste da instalação limpa
-DEST="$HOME/Zomboid/Workshop/$MOD_ID"
+# Pasta de dados do jogo: ZOMBOID_DIR manda; senão a da Steam Flatpak, se existir
+# (o jogo roda em sandbox e usa ~/.var/app/...); senão ~/Zomboid.
+FLATPAK_ZOMBOID="$HOME/.var/app/com.valvesoftware.Steam/Zomboid"
+if [ -n "${ZOMBOID_DIR:-}" ]; then
+    :
+elif [ -d "$FLATPAK_ZOMBOID" ]; then
+    ZOMBOID_DIR="$FLATPAK_ZOMBOID"
+else
+    ZOMBOID_DIR="$HOME/Zomboid"
+fi
+DEST="$ZOMBOID_DIR/Workshop/$MOD_ID"
 SRC_MOD="$REPO/mod"
 PREVIEW="$REPO/docs/workshop/preview.png"
 DESC_EN="$REPO/docs/workshop/description-en.txt"

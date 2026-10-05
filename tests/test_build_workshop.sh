@@ -279,7 +279,24 @@ build_refuses_uncommitted_workshop_id() {
     grep -q "workshop-id.txt" "$h/out.txt"
 }
 
-for t in build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
+build_uses_flatpak_zomboid_dir() {
+    local home
+    home="$(mktemp -d "$TMP/home.XXXX")"
+    mkdir -p "$home/.var/app/com.valvesoftware.Steam/Zomboid"
+    HOME_FOR="$home" build >/dev/null
+    test -f "$home/.var/app/com.valvesoftware.Steam/$DEST_REL/workshop.txt"
+    test ! -e "$home/$DEST_REL"
+}
+
+build_zomboid_dir_env_wins() {
+    local home
+    home="$(mktemp -d "$TMP/home.XXXX")"
+    mkdir -p "$home/.var/app/com.valvesoftware.Steam/Zomboid"
+    ZOMBOID_DIR="$home/outro" HOME_FOR="$home" build >/dev/null
+    test -f "$home/outro/Workshop/NevoaEOutroMundo/workshop.txt"
+}
+
+for t in build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
     build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
     build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \

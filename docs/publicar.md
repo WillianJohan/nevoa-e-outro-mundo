@@ -11,6 +11,13 @@ Steam já está no repositório: textos em `docs/workshop/`, imagens geradas por
 `scripts/gen_images.py`, e `scripts/build-workshop.sh`, que monta a pasta que o jogo
 envia.
 
+> **Steam Flatpak (o caso deste PC):** o jogo roda em sandbox e a pasta de dados é
+> `~/.var/app/com.valvesoftware.Steam/Zomboid`, não `~/Zomboid` — vale pra `mods/`,
+> `Workshop/` e `console.txt` em todo este documento. O mod de dev precisa de
+> `flatpak override --user --filesystem=$PWD/mod:ro com.valvesoftware.Steam` (rodado na raiz
+> do repo, e reiniciar a Steam) e do link em `~/.var/app/com.valvesoftware.Steam/Zomboid/mods/`.
+> O `build-workshop.sh` detecta essa pasta sozinho (ou use `ZOMBOID_DIR=...`).
+
 ## Antes de publicar
 
 - [ ] O [teste in-game consolidado](teste-in-game.md) passou (solo e MP), com o mod

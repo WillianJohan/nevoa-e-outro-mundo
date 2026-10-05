@@ -22,6 +22,13 @@ ele fecha.
 console do servidor dedicado (`~/Zomboid/server-console.txt`), mais as respostas da
 seção [Balanceamento](#balanceamento) e os números das [medições](#parte-3--medições-15-min).
 
+> **Steam Flatpak (o caso deste PC):** o jogo roda em sandbox e a pasta de dados é
+> `~/.var/app/com.valvesoftware.Steam/Zomboid`, não `~/Zomboid` — vale pra `mods/`,
+> `Workshop/` e `console.txt` em todo este documento. O mod de dev precisa de
+> `flatpak override --user --filesystem=$PWD/mod:ro com.valvesoftware.Steam` (rodado na raiz
+> do repo, e reiniciar a Steam) e do link em `~/.var/app/com.valvesoftware.Steam/Zomboid/mods/`.
+> O `build-workshop.sh` detecta essa pasta sozinho (ou use `ZOMBOID_DIR=...`).
+
 ## Antes de começar (~5 min)
 
 - [ ] Mod linkado: `ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`.
