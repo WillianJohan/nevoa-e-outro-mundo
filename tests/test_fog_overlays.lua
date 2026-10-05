@@ -280,10 +280,25 @@ return {
         for x = 80, 88 do
             for y = 106, 114 do assert(not shown(G, x, y), "chão do outro prédio: " .. x .. "," .. y) end
         end
-        -- de fora, na sombra do prédio dele: aparece (ele está dentro, o jogo corta)
+        -- review 0021: de fora, atrás das paredes N/W do prédio dele (que o jogo não corta):
+        -- a parede tapa na tela, o marcador sairia por cima dela
         local shadowOwn = 0
-        for x = 91, 94 do for y = 91, 94 do if shown(G, x, y) then shadowOwn = shadowOwn + 1 end end end
-        assert(shadowOwn > 3, "a sombra do próprio prédio escondeu o chão: " .. shadowOwn)
+        for x = 88, 104 do
+            for y = 88, 104 do
+                for k = G.interior[x .. "," .. y .. ",0"] and O().SHADOW + 1 or 1, O().SHADOW do
+                    if G.interior[(x + k) .. "," .. (y + k) .. ",0"] == own then
+                        shadowOwn = shadowOwn + 1
+                        assert(not shown(G, x, y), "chão de fora atrás da parede do prédio dele: " .. x .. "," .. y)
+                        break
+                    end
+                end
+            end
+        end
+        assert(shadowOwn > 10, "teste não mediu a sombra do prédio dele: " .. shadowOwn)
+        -- e a rua do outro lado (sul/leste, longe de prédio) continua
+        local street = 0
+        for x = 106, 110 do for y = 96, 104 do if shown(G, x, y) then street = street + 1 end end end
+        assert(street > 10, "a rua sumiu de dentro: " .. street)
         -- sai: o de dentro apaga com fade e o de fora continua
         G.p.x, G.p.y = 92.5, 100.5
         G.seconds(O().FADE_MS / 2000)

@@ -178,15 +178,13 @@ local function roofOf(cell, x, y, z, sq)
     return v
 end
 
--- O jogador vê o chão do square? Dentro de um prédio, o dele (o jogo corta paredes e
--- telhado dele, ISWorldObjectContextMenu.lua:1679 compara prédios assim); de fora, se
--- nenhum prédio (que não o dele) o cobre na tela.
+-- O jogador vê o chão do square? De dentro, o prédio dele (o jogo corta paredes do sul e
+-- do leste e o telhado; ISWorldObjectContextMenu.lua:1679 compara prédios assim). De fora do
+-- square, só se nenhum prédio o cobre na tela, nem o dele: as paredes N/W do prédio dele não
+-- são cortadas e tapam o que está atrás (review 0021).
 local function visible(e, pb)
     if e.roof then return e.roof == pb end
-    for _, b in ipairs(e.occ) do
-        if b ~= pb then return false end
-    end
-    return true
+    return #e.occ == 0
 end
 
 local function lookAt(cell, x, y, z, sq)
