@@ -19,8 +19,8 @@ local lastReport = {}
 local lastSent
 -- Sem-rosto locais achados na última varredura (pro rádio).
 local known = {}
--- ["x,y,z"] = ms reais do último sumiço pra lá (R.RESERVE_MS, sprint 0017).
--- ponytail: só esvazia no fim da névoa; um relato a cada 300 ms no máximo.
+-- ["x,y,z"] = ms reais do último sumiço pra lá (R.RESERVE_MS, sprint 0017). Vencidas
+-- saem a cada reserva nova (poucas: um relato a cada 300 ms) e tudo no fim da névoa.
 local reserved = {}
 
 local function key(x, y, zz) return x .. "," .. y .. "," .. zz end
@@ -28,7 +28,20 @@ local function key(x, y, zz) return x .. "," .. y .. "," .. zz end
 -- Tile destino de um sumiço (este processo escolheu, ou o servidor espalhou o de outro
 -- cliente): os próximos Sem-rostos procuram outro.
 function NOM_SemRosto.reserve(x, y, zz)
-    reserved[key(x, y, zz)] = getTimestampMs()
+    local now, old = getTimestampMs(), {}
+    -- apagar depois do laço: mexer na tabela durante o pairs não é seguro no Kahlua
+    for k, at in pairs(reserved) do
+        if now - at >= R.RESERVE_MS then old[#old + 1] = k end
+    end
+    for _, k in ipairs(old) do reserved[k] = nil end
+    reserved[key(x, y, zz)] = now
+end
+
+-- Quantas reservas vivas (teste da poda).
+function NOM_SemRosto.reservedCount()
+    local n = 0
+    for _ in pairs(reserved) do n = n + 1 end
+    return n
 end
 
 local function dist(ax, ay, bx, by)

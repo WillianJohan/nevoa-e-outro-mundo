@@ -273,4 +273,16 @@ return {
         G.tick(NOM_SemRosto.SCAN_TICKS)
         assert(#G.reports == 4 and tile(G.reports[4]) == tile(G.reports[1]), "reserva passou pra névoa nova")
     end,
+    -- review da 0017: reserva vencida sai na reserva seguinte (a tabela não cresce a névoa toda)
+    semrosto_reservation_pruned = function()
+        local G = setup()
+        for i = 1, 10 do NOM_SemRosto.reserve(i, 0, 0) end
+        assert(NOM_SemRosto.reservedCount() == 10)
+        G.now = G.now + NOM_SemRostoRules.RESERVE_MS - 1
+        NOM_SemRosto.reserve(50, 0, 0)
+        assert(NOM_SemRosto.reservedCount() == 11, "podou antes de vencer")
+        G.now = G.now + 1
+        NOM_SemRosto.reserve(51, 0, 0)
+        assert(NOM_SemRosto.reservedCount() == 2, "vencidas ficaram: " .. NOM_SemRosto.reservedCount())
+    end,
 }
