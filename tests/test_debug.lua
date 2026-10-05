@@ -268,6 +268,17 @@ return {
         NOM_VariantLook = nil
         assert(has(G.printed, "^%[NOM%] debug local .* visuais=3"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0015: quanto sangue e quantas paredes do Outro Mundo nesta tela
+    debug_status_counts_overlays = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_FogOverlays = { count = function() return 312, 47 end }
+        NOM_Debug.status()
+        NOM_FogOverlays = nil
+        assert(has(G.printed, "^%[NOM%] debug local .*chao=312 .*paredes=47"), table.concat(G.printed, "\n"))
+        NOM_Debug.status()
+        assert(has(G.printed, "^%[NOM%] debug local .*chao=0 .*paredes=0"), table.concat(G.printed, "\n"))
+    end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
     -- noite dos Ecos. Por isso o roteiro manda usar um save descartável.

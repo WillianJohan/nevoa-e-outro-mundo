@@ -3,5 +3,7 @@
     "UI_NOM_ScreenFx": "Efeitos de tela na névoa",
     "UI_NOM_ScreenFx_tooltip": "Grão de filme, vinheta que respira, linhas de chiado com o Sem-rosto perto e um pulso vermelho quando uma Carpideira grita. Só na sua tela.",
     "UI_NOM_ScreenFxIntensity": "Intensidade dos efeitos de tela",
-    "UI_NOM_ScreenFxIntensity_tooltip": "0 desliga os efeitos, 1 é o padrão, 2 é o dobro."
+    "UI_NOM_ScreenFxIntensity_tooltip": "0 desliga os efeitos, 1 é o padrão, 2 é o dobro.",
+    "UI_NOM_FogOverlayDensity": "Sangue e erosão na névoa",
+    "UI_NOM_FogOverlayDensity_tooltip": "Quanto sangue, sujeira, rachadura, musgo e trepadeira a névoa espalha em volta de você. 0 desliga, 1 é o padrão, 2 é o dobro. A névoa vermelha é sempre mais pesada."
 }

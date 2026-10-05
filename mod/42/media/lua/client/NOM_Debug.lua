@@ -71,6 +71,9 @@ function NOM_Debug.status()
     end
     local p = getSpecificPlayer(0)
     local near = p and NOM_SemRosto.nearest(p)
+    -- marcadores de chão e paredes do Outro Mundo nesta tela (client/NOM_FogOverlays.lua, sprint 0015)
+    local chao, paredes = 0, 0
+    if NOM_FogOverlays and NOM_FogOverlays.count then chao, paredes = NOM_FogOverlays.count() end
     print(NOM_DebugRules.line("[NOM] debug local", {
         noite = NOM_NightStats.night,
         noiteN = tostring(NOM_NightStats.nightNumber),
@@ -83,6 +86,8 @@ function NOM_Debug.status()
         semRostoPerto = near and math.floor(near) or "nenhum",
         -- zumbis com o visual da variante nesta tela (client/NOM_VariantLook.lua, sprint 0012)
         visuais = NOM_VariantLook and NOM_VariantLook.count() or 0,
+        chao = chao,
+        paredes = paredes,
     }))
     send({ op = "status" })
 end

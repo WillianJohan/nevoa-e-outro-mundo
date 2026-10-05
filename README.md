@@ -16,7 +16,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
   é monstro.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0014
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0015
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
@@ -37,6 +37,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça; contraste cheio e formas grandes pra ler sob a névoa | 0012, 0014 |
 | Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
+| Outro Mundo sangrento | na névoa, poças e rastros de sangue, sujeira, rachaduras, musgo e trepadeiras no chão e nas paredes em volta (mais na vermelha); só na tela, nada no save; densidade de cada jogador | 0015 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 

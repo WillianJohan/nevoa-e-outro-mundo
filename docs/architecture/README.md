@@ -15,6 +15,7 @@
 | [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
 | [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit |
 | [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |
+| [adr-015-outro-mundo-sangrento.md](adr-015-outro-mundo-sangrento.md) | Outro Mundo sangrento: chão por `IsoMarker` com camadas, paredes desenhadas no quadro (`RenderGhostTileColor`), só parede limpa, de frente e à vista; regra pura por square e período; densidade do jogador |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -58,9 +59,10 @@ mod/
     lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, sirene, avisa que viu, dono move
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
     lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode; com o mod do shader, o canal Lua → shader (só local)
-    lua/client/NOM_FogOverlays.lua  sangue/ferrugem no chão via IsoMarkers (só local, sem save)
+    lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão, sprite de parede N/W, poças e rastros (puro, sprint 0015)
+    lua/client/NOM_FogOverlays.lua  Outro Mundo sangrento: chão por IsoMarker, paredes desenhadas no quadro (só local, sem save; ADR-015)
     lua/shared/NOM_ScreenFxRules.lua   alfas das camadas da tela, fade, pulso do grito, canal do shader (puro)
-    lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela (PZAPI.ModOptions)
+    lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela e da densidade do Outro Mundo (PZAPI.ModOptions)
     lua/client/NOM_ScreenFx.lua     overlay de tela na névoa: elemento de 1 px atrás da UI (só local)
     lua/client/NOM_VariantLook.lua  pele e peça da variante na cópia local, enquanto a névoa dura (gancho do NightStats; não no dedicado)
     lua/shared/NOM_DebugRules.lua   confere os comandos de debug e formata a linha de status (puro)
@@ -136,7 +138,8 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Estalo do Estalador | 1/min de jogo na névoa | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
 | Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
-| Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
+| Som, vinheta | a cada 10 ticks, no cliente | por jogador local | — |
+| **Outro Mundo sangrento** (sprint 0015, [ADR-015](adr-015-outro-mundo-sangrento.md)) | atualização a cada 10 ticks na névoa; desenho das paredes todo quadro; solo e cada cliente | por quadro: **1 chamada por parede desenhada** (≤ 120), zero fora da névoa; marcadores de chão (≤ 600, ≤ 4 texturas) sem Lua por quadro. Por atualização: varredura de 80 squares (a regra pura antes do Java), ≤ ~1040 chamadas enquanto enche, ~180 parado (luz em rodízio de 30, 12 paredes conferidas, visão das paredes); 1ª vez +404 `getTexture` | `overlays_budget`, `overlays_capped` |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |

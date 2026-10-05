@@ -103,3 +103,11 @@ Só viram escopo por promoção explícita.
   ([atmosphere.md](atmosphere.md#efeitos-de-tela-só-na-névoa),
   [art-direction.md](art-direction.md#a-tela-na-névoa-sprint-0013),
   [ADR-013](../architecture/adr-013-efeitos-de-tela.md)).
+- **2026-10-05** — **Outro Mundo sangrento** (sprint 0015), pedido do Johan: "o Outro Mundo eu
+  imaginei com bastante sangue e com a erosão no máximo". Na névoa, num raio de 25 tiles: poças e
+  rastros de sangue, sujeira, rachadura e musgo no chão; sangue, sujeira, rachadura e trepadeira
+  nas paredes; mais na vermelha. Só na tela de quem vê, nada no save; densidade de cada jogador
+  (Opções > Mods), `FogOverlays` continua o liga/desliga do servidor
+  ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
+  [art-direction.md](art-direction.md#o-outro-mundo-sangrento-sprint-0015),
+  [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)).
