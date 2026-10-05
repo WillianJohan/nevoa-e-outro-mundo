@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -22,8 +22,10 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   ou sem lua) a luz do céu cai ~46% no vermelho e ~40% no azul com `DarkIntensity` 1,
   e 73–89% com 2. Lanterna, poste e luz de casa não
   mudam: de noite, luz vira o que separa ver de não ver.
-- Névoa: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor,
-  névoa mais densa que a vanilla. Contra a luz de névoa vanilla (que também escurece)
+- **Névoa: do mod, não do clima** ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)).
+  O canal de névoa do clima é 0 fora do evento e denso (0.85) durante, com entrada e
+  saída de ~20 minutos de jogo. Vale com o clima sombrio desligado: a névoa é o evento.
+  Por cima, o look: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor. Contra a luz de névoa vanilla (que também escurece)
   a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
 - Por que esses canais ([ADR-008](../architecture/adr-008-noite-pela-luz-global.md)):
   o jogo só escurece o céu pela cor e pela força da luz global; a "intensidade" da luz
@@ -39,11 +41,16 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 - A névoa do mod também encurta a visão dos zumbis (o jogo calcula a distância
   de visão pelo valor final da névoa). É intencional: ninguém enxerga na névoa,
   nem eles.
-- Névoa forçada pelo admin (painel de clima) passa por cima da nossa camada e
-  não liga o estado de névoa: o gatilho é só a névoa natural.
+- Névoa do painel de clima do admin passa por cima da nossa camada e não abre evento.
+- Resíduo aceito: num dia em que a vanilla teria névoa natural, o jogo ainda puxa a luz
+  pro cinza e dessatura um pouco (calcula isso antes da camada do mod), sem névoa
+  nenhuma. É o mesmo da opção vanilla "Sem névoa".
 
 ## Som
 
+- **Sirene** (evento de névoa): sirene de ataque aéreo, ~24 s, sobe e cai duas vezes,
+  tocada pra todo jogador 30 s reais antes da névoa, alta e audível em qualquer lugar
+  (toca no próprio jogador). Sem toggle: é o aviso do evento.
 - Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
   a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s).
 - Rádio chiando por proximidade do Sem-rosto (`SemRostoEnabled`): loop de estática
@@ -63,9 +70,9 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 ## Vinheta (só na névoa)
 
-> Vinheta, sangue/ferrugem no chão, drone e rádio **só aparecem com névoa forte**
-> (névoa ≥ `FogThreshold`), nunca só de noite. Pra ver sem esperar o clima:
-> `NOM_Debug.fog(0.8)` no console (ou o painel Debug → Climate).
+> Vinheta, sangue/ferrugem no chão, drone e rádio **só aparecem no evento de névoa**,
+> nunca só de noite. Pra ver sem esperar: `NOM_Debug.fog(true, true)` no console
+> (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 30 s depois).
 
 - `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,
   desfocam e perdem cor, com fade. É o efeito de tela do modo de busca do jogo,

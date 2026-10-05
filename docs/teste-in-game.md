@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Escrito em | sprint 0006 (2026-10-04) |
-| Cobre | os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
+| Cobre | o evento de névoa da [0009](sprints/sprint-0009-nevoa-evento/README.md#roteiro-in-game) (roteiro próprio) e os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
 | Duração | ~60–90 min: solo ~40, MP ~30, medições e remoção ~15 |
 
 > **⚠️ Use um save descartável.** `NOM_Debug.night` e `NOM_Debug.fog` avançam os
@@ -49,13 +49,13 @@ de debug do jogo; rodar como admin).
 |---|---|---|
 | `NOM_Debug.status()` | estado do mod | `[NOM] debug local …` e `[NOM] debug servidor …` |
 | `NOM_Debug.night(true)` / `(false)` / `()` | força noite / dia / devolve pro relógio | `[NOM] debug noite forcada=true`; vale no próximo minuto de jogo |
-| `NOM_Debug.fog(0.8)` / `(0)` / `()` | força a intensidade de névoa lida pelo mod / devolve pro clima | `[NOM] debug nevoa forcada=0.8` |
+| `NOM_Debug.fog(true)` / `(true, true)` / `(false)` | evento de névoa: sirene e névoa 30 s reais depois / névoa na hora / termina (sprint 0009) | `[NOM] debug nevoa sirene=true`, depois `[NOM] nevoa evento inicio periodo=N fim=…`; `[NOM] debug nevoa fim=true` |
 | `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`; `()` desfaz). Vale pelo `persistentOutfitID`: outro zumbi com o mesmo ID (gêmeo, raro) vira junto. Some quando o jogo reinicia (carregar o save de novo) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
 | `NOM_Debug.spawnEco()` | um Eco nos pés do jogador (só à noite) | `[NOM] debug eco spawn=true` |
 
 A noite forçada liga tudo do mod, mas o céu continua o do relógio: pra **ver** a
-noite, use Debug → Time. A névoa forçada liga a névoa do mod (flag, Sem-rosto, som,
-chão, vinheta e a névoa que o mod soma no clima); a névoa vanilla continua a do clima.
+noite, use Debug → Time. O `NOM_Debug.fog` abre um evento de névoa de verdade (flag,
+Sem-rosto, som, chão, vinheta e a névoa do clima, que é toda do mod desde a sprint 0009).
 
 - [ ] Dentro do save, `NOM_Debug.status()` imprime as duas linhas. **Se** `NOM_Debug`
       for `nil`: o jogo não está em `-debug` (ou o mod não está ativo no save).
@@ -133,7 +133,7 @@ começando de dia, numa cidade (Muldraugh serve).
 ### 1.5 Noite com névoa: Estalador e Corredor (8 min)
 
 Desde a sprint 0008 **todo monstro, menos o Eco, só existe na névoa**: sem névoa o
-`variant` do debug não tem efeito. Ligar a névoa antes: `NOM_Debug.fog(0.8)`
+`variant` do debug não tem efeito. Ligar a névoa antes: `NOM_Debug.fog(true, true)`
 (`[NOM] nevoa fog=true periodo=N`); ela fica ligada até o 1.7.
 
 - [ ] Do lado de um zumbi: `NOM_Debug.variant("estalador")`. Em ~1 s (próxima passada)
@@ -180,25 +180,26 @@ O Estalador do 1.5 segue forçado (o jogo não reiniciou). Se ele morreu:
       tempo, sem erro. (O debug força um tipo por zumbi; o mesmo zumbi ser os dois só
       acontece pelo sorteio natural, coberto por `night_and_fog_together`.)
       → [0005: noite + névoa](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#critérios-de-aceite) (passo 8)
-- [ ] **Tiro na névoa:** atirar num zumbi a ~15 tiles com e sem `NOM_Debug.fog(0.8)`:
+- [ ] **Tiro na névoa:** atirar num zumbi a ~15 tiles com e sem `NOM_Debug.fog(true, true)`:
       anotar se a mira piora muito (o combate à distância lê a névoa).
       → pendência da [0001](sprints/sprint-0001-estado-e-clima/README.md#pendências-que-a-próxima-sprint-herda)
 
 ### 1.7 Salvar e carregar de noite (4 min)
 
-- [ ] Com manchas no chão: `NOM_Debug.fog(0)`, salvar, sair, carregar (ainda de noite).
-      Nenhuma mancha. → [0005: overlays sem sobrar no save](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#critérios-de-aceite) (passo 7)
+- [ ] Com manchas no chão (evento de névoa aberto), salvar, sair, carregar (ainda de
+      noite). As manchas antigas não voltam; a névoa volta sozinha (evento salvo, sprint
+      0009) e as manchas recomeçam do zero. → [0005: overlays sem sobrar no save](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#critérios-de-aceite) (passo 7)
 - [ ] Mesma noite depois de carregar: nenhum `eco spawn=` dos corpos que já soltaram
       Eco; `NOM_Debug.status()` com o mesmo `noiteN`; os zumbis que eram variante **pelo
       sorteio natural** continuam (o forçado do debug some no reinício, é esperado).
       → [0002 passo 6](sprints/sprint-0002-eco/README.md#roteiro-in-game),
       [0004 passo 7](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
 - [ ] Pro amanhecer ter o que conferir: `NOM_Debug.variant("estalador")` num zumbi
-      perto e `NOM_Debug.fog(0.8)` de novo (as manchas recomeçam do zero).
+      perto (a névoa continua: o evento é salvo).
 
 ### 1.8 Amanhecer (5 min)
 
-- [ ] `NOM_Debug.fog()` e Debug → Time: 07:00. **Esperado:** `[NOM] nevoa fog=false periodo=…`,
+- [ ] `NOM_Debug.fog(false)` e Debug → Time: 07:00. **Esperado:** `[NOM] nevoa fog=false periodo=…`,
       `[NOM] night=false`, `[NOM] noite night=false`, `[NOM] eco removidos=N`, depois
       `stats aplicados=` de novo. Ecos somem; zumbis voltam ao passo do dia; drone e
       vinheta saem com fade; a tela clareia em ~20 min de jogo.
@@ -242,7 +243,7 @@ padrões. Cliente(s) também com `-debug`, logados como admin.
       pendência da [0005](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#pendências-que-a-próxima-sprint-herda)
 - [ ] `NOM_Debug.variant("corredor")`: grito no console do **servidor**, toca no cliente,
       zumbis vêm. → [0004 passo 10](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
-- [ ] `NOM_Debug.fog(0.8)` + `NOM_Debug.variant("semrosto")`: servidor
+- [ ] `NOM_Debug.fog(true, true)` + `NOM_Debug.variant("semrosto")`: servidor
       `[NOM] nevoa fog=true`; no cliente ele some ao ser visto e **não volta** pro lugar
       antigo. **Se** voltar: no servidor deve sair `[NOM] nevoa semrosto substituido`.
       → [0005 passo 9](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#roteiro-in-game)

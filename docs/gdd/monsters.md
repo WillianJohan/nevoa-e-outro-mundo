@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento) |
 
 ## Regra geral
 
@@ -11,8 +11,9 @@ Monstro = zumbi com outfit/textura própria e comportamento via Lua. Sem modelo
 3D novo, sem animação nova.
 
 **Todo monstro, menos o Eco, só existe na névoa** (decisão do Johan, 05/10/2026):
-Estalador, Corredor e Sem-rosto aparecem com a névoa forte, de dia ou de noite, e
-somem com ela. A noite fica com a agressividade dos zumbis comuns
+Estalador, Corredor e Sem-rosto aparecem com a névoa, de dia ou de noite, e
+somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias, anunciado pela sirene
+([world-states.md](world-states.md)). A noite fica com a agressividade dos zumbis comuns
 ([night.md](night.md)) e o Eco.
 
 Estalador, Corredor e Sem-rosto são **zumbis existentes**
@@ -73,7 +74,7 @@ sorteio): quem avisa é o som.
 |---|---|---|
 | névoa | sorteado | `SemRostoEnabled`, `SemRostoChance` % (5) |
 
-- Só existe com névoa forte (névoa ≥ `FogThreshold`). Sorteado uma vez por
+- Só existe no evento de névoa. Sorteado uma vez por
   **névoa**, no mesmo sorteio do Estalador e do Corredor (faixa própria): um
   Sem-rosto nunca é Estalador nem Corredor.
 - Quando entra no campo de visão do jogador ou é iluminado (o jogo só "vê" no

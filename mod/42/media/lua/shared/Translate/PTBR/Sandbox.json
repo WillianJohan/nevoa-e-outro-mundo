@@ -1,7 +1,7 @@
 {
     "Sandbox_NevoaEOutroMundo": "Névoa e Outro Mundo",
     "Sandbox_NevoaEOutroMundo.DarkEnabled": "Clima sombrio à noite e na névoa",
-    "Sandbox_NevoaEOutroMundo.DarkEnabled_tooltip": "Escurece, dessatura e tinge o mundo à noite e com névoa forte.",
+    "Sandbox_NevoaEOutroMundo.DarkEnabled_tooltip": "Escurece, dessatura e tinge o mundo à noite e na névoa.",
     "Sandbox_NevoaEOutroMundo.DarkIntensity": "Intensidade do clima sombrio",
     "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 desliga o efeito, 1 é o padrão, 2 é o dobro.",
     "Sandbox_NevoaEOutroMundo.FogEventEveryDays": "Névoa: a cada quantos dias",

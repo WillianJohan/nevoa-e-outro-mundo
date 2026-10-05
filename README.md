@@ -8,11 +8,12 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - À noite, bem mais escura que a vanilla, os zumbis caçam, enxergam e ouvem mais longe.
 - Corpos de quem morreu antes do anoitecer soltam **Ecos**: almas fracas que somem
   com o sol. Queime ou enterre os mortos.
-- Com névoa forte, de dia ou de noite, o mundo escurece, o rádio chia e o Outro Mundo
+- A cada ~3 dias, numa hora qualquer, uma sirene toca; 30 segundos depois vem a névoa
+  (de 2 a 6 horas, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
   aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda)
   e o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0007
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0009
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
@@ -28,6 +29,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Balanceamento, MP e performance | orçamento por sistema travado por teste, comandos de debug, presets documentados | 0006 |
 | Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
 | Ajustes do 1º teste | noite escura pela luz global, monstros só na névoa (5/2/5), Eco só de quem morreu antes do anoitecer | 0008 |
+| Névoa como evento | sirene 30 s reais antes, hora aleatória a cada ~3 dias, 2–6 h; névoa natural do jogo some | 0009 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 

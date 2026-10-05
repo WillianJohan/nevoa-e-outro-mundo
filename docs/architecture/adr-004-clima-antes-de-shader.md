@@ -37,3 +37,6 @@ bloqueia nenhuma sprint. Se funcionar, vira camada extra.
 - **Emendada pela [ADR-008](adr-008-noite-pela-luz-global.md) (sprint 0008):** quais
   canais do clima escurecem de verdade. "Luz global" é a cor e a força (alfa) da luz
   global, não o float de intensidade, que o render não lê.
+- **Emendada pela [ADR-009](adr-009-nevoa-evento-do-mod.md) (sprint 0009):** o canal de
+  névoa deixa de ser "névoa mais densa que a vanilla" e passa a ser do mod: 0 fora do
+  evento de névoa, densa durante; o override de névoa do jogo é desligado todo minuto.

@@ -10,6 +10,7 @@
 | [adr-006-variantes-deterministicas.md](adr-006-variantes-deterministicas.md) | Variante = função do ID do outfit e da noite (substitui o mecanismo da ADR-001) |
 | [adr-007-sem-rosto-e-atmosfera-local.md](adr-007-sem-rosto-e-atmosfera-local.md) | Sem-rosto: quem vê avisa, o servidor confere, o dono move; som, chão e tela da névoa só locais |
 | [adr-008-noite-pela-luz-global.md](adr-008-noite-pela-luz-global.md) | A noite escurece pela cor e força da luz global, os canais que o render usa (emenda a ADR-004) |
+| [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -24,10 +25,13 @@ mod/
     sandbox-options.txt
     lua/shared/NOM_Rules.lua        lógica pura (sem API do jogo), testável
     lua/shared/NOM_Config.lua       sandbox + defaults
-    lua/shared/NOM_World.lua        flags night/fog derivadas do clima vanilla
+    lua/shared/NOM_World.lua        flags night (relógio) e fog (evento do mod, setFog)
     lua/shared/Translate/<LANG>/    traduções em JSON (B42.20): Sandbox.json e Mod.json (nome/descrição do mod)
     lua/shared/NOM_EcoRules.lua     elegibilidade do corpo e chave de outfit (puro)
-    lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor; log canal a canal em -debug (ADR-008)
+    lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor; dono do canal de névoa (ADR-009); log canal a canal em -debug (ADR-008)
+    lua/shared/NOM_FogEventRules.lua   intervalo, duração e contagem da sirene do evento de névoa (puro)
+    lua/server/NOM_FogEvent.lua     agenda o evento de névoa (ModData global), conta a sirene em tempo real, liga a flag
+    lua/shared/NOM_Siren.lua        toca a sirene no jogador local (solo e cliente)
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
     lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
     lua/shared/NOM_NightRules.lua   degraus de velocidade/sentidos, perfil, caça (puro)
@@ -44,8 +48,8 @@ mod/
     lua/shared/NOM_AtmosphereRules.lua fade e valores da vinheta (puro)
     lua/shared/NOM_FogState.lua     flag e período de névoa do lado de quem vê
     lua/shared/NOM_SemRosto.lua     quem vê o Sem-rosto e pra onde ele pode ir (solo e cliente)
-    lua/server/NOM_Fog.lua          período de névoa, flag pros clientes, decide o sumiço do Sem-rosto
-    lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, avisa que viu, dono move
+    lua/server/NOM_Fog.lua          flag e período de névoa pros clientes, decide o sumiço do Sem-rosto
+    lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, sirene, avisa que viu, dono move
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
     lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode (só local)
     lua/client/NOM_FogOverlays.lua  sangue/ferrugem no chão via IsoMarkers (só local, sem save)
@@ -53,7 +57,7 @@ mod/
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
-    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio)
+    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio, sirene)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
@@ -61,8 +65,9 @@ scripts/                            gen_sounds.py, gen_images.py, build-workshop
 docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
 ```
 
-Fluxo: `World` deriva o estado do clima vanilla → `ClimateLook` escurece o
-clima, que o jogo sincroniza → `NightCount` conta a noite (e guarda quando ela
+Fluxo: `World` deriva a noite do relógio; `FogEvent` agenda a névoa, toca a sirene e
+liga a flag de névoa 30 s reais depois ([ADR-009](adr-009-nevoa-evento-do-mod.md)) →
+`ClimateLook` escurece o clima e escreve a névoa do mod (0 fora do evento), que o jogo sincroniza → `NightCount` conta a noite (e guarda quando ela
 abriu), `Eco` spawna dos corpos de antes dela, `Night` chama os zumbis e avisa os
 clientes → na névoa, `Fog` conta o período e avisa (`FogState`) → quem simula o
 zumbi (o próprio processo no solo, o cliente dono no MP) aplica os stats da noite
@@ -87,6 +92,10 @@ som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
   e a névoa forçadas avançam os contadores salvos de noites e de névoas** (ModData
   global), o que muda o sorteio das variantes e a noite dos Ecos daquele save: usar
   um save descartável.
+- Evento de névoa: próximo evento, fim e período no `ModData` global (`fog.next`,
+  `fog.endAt`, `fog.night`); a contagem da sirene não é salva (recarregar toca de novo).
+  Sem o mod, o jogo volta a fazer a névoa dele: o override desligado e a camada modded
+  não vão pro save.
 
 ## Orçamento por sistema
 
@@ -104,6 +113,7 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
+| Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player` |
 
 Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561

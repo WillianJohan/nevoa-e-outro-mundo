@@ -12,13 +12,15 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
 - Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
-- Névoa: som ambiente (`FogAmbience`) · sangue e ferrugem no chão (`FogOverlays`) · vinheta (`FogVignette`), todos padrão ligado
+- Névoa (evento com sirene, sem toggle: `FogEventEveryDays` alto deixa rara): som ambiente (`FogAmbience`) · sangue e ferrugem no chão (`FogOverlays`) · vinheta (`FogVignette`), todos padrão ligado
 
 ## Números
 
 | Opção | Sistema |
 |---|---|
-| `FogThreshold` (0.5, faixa 0.1–1) | [world-states.md](world-states.md) |
+| `FogEventEveryDays` (3, faixa 0.5–30 dias de jogo): média entre névoas; cada intervalo sorteado entre 0,5× e 1,5×, contado do fim da anterior | [world-states.md](world-states.md) |
+| `FogMinHours` (2), `FogMaxHours` (6), faixa 0.5–48 horas de jogo: duração sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
+| ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult` (1.5, faixa 1–3, em degraus: 1.5 sobe um, 2.5 sobe dois) | [night.md](night.md) |
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
@@ -38,7 +40,9 @@ todas as opções da página "Névoa e Outro Mundo":
 |---|---|---|---|
 | `DarkEnabled` | ligado | ligado | ligado |
 | `DarkIntensity` | 1.0 | 0.6 | 1.5 |
-| `FogThreshold` | 0.5 | 0.7 | 0.35 |
+| `FogEventEveryDays` | 3 | 5 | 1.5 |
+| `FogMinHours` | 2 | 1 | 3 |
+| `FogMaxHours` | 6 | 3 | 8 |
 | `EcoEnabled` | ligado | ligado | ligado |
 | `EcoMaxPerPlayer` | 30 | 10 | 60 |
 | `EcoRadius` | 40 | 25 | 50 |
@@ -62,11 +66,11 @@ todas as opções da página "Névoa e Outro Mundo":
 | `FogVignetteIntensity` | 1.0 | 0.6 | 1.5 |
 
 - **Leve:** a noite muda o jeito de jogar sem virar uma corrida — os zumbis não ganham
-  velocidade, a caça vem a cada 2 horas de perto, e a névoa forte é rara e com poucos
-  monstros (6% somados).
+  velocidade, a caça vem a cada 2 horas de perto, e a névoa é rara (a cada ~5 dias), curta
+  (1–3 h) e com poucos monstros (6% somados).
 - **Pesadelo:** a pior noite possível, de propósito — dois degraus de velocidade e
-  sentidos (arrastado vira corredor), caça a cada meia hora de longe, névoa mais
-  frequente com 25% de monstros, e vala comum cheia de Ecos.
+  sentidos (arrastado vira corredor), caça a cada meia hora de longe, névoa a cada
+  ~1,5 dia, de 3 a 8 horas, com 25% de monstros, e vala comum cheia de Ecos.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -103,5 +107,7 @@ jogar, trocar número é chute; o que precisa ser sentido está no
 - **Eco:** 30 por jogador num raio de 40 é o teto contra vala comum (sprint 0002); Eco
   é fraco (vida 0.3) e lento. Coerente; ver o custo da varredura no
   [orçamento](../architecture/README.md#orçamento-por-sistema).
-- **`FogThreshold` 0.5 e `DarkIntensity` 1.0:** dependem de como a névoa vanilla
-  aparece no jogo e de como a tela fica; só jogando.
+- **`DarkIntensity` 1.0:** depende de como a tela fica; só jogando.
+- **Névoa a cada 3 dias, 2–6 h (sprint 0009, decisão do Johan):** ~5% do tempo de jogo
+  com névoa (4 h a cada ~3,2 dias). Se ficar raro demais pra ver os monstros, o ajuste
+  é `FogEventEveryDays`.
