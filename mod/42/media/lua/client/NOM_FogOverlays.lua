@@ -1,19 +1,19 @@
--- Outro Mundo sangrento (sprint 0015): na névoa, chão e paredes em volta do jogador
--- ganham sangue (poças, rastros) e a erosão no máximo (sujeira, rachadura, musgo,
--- trepadeira), só na tela de quem vê (solo e cliente de MP). O que vai em cada
--- square: shared/NOM_DressingRules.lua. ADR-015, pz-api-notes §16.
+-- Outro Mundo sangrento (sprint 0015, ajustes da 0021): na névoa, o chão em volta do
+-- jogador ganha sangue (poças, rastros), sujeira e rachadura, só na tela de quem vê (solo e
+-- cliente de MP). O que vai em cada square: shared/NOM_DressingRules.lua. ADR-015,
+-- pz-api-notes §16.
 --
 -- Nada vai pro mapa, pro save ou pra rede (bytecode B42.21):
--- * Chão: um IsoMarker por square com a tabela de texturas
---   (getIsoMarkers():addIsoMarker(nomes, sq, r, g, b, a), ISBaseIcon.lua:579). Lista
---   em memória do IsoMarkers, sem save/load nem pacote; o IngameState.exit faz reset().
---   Desenhado com profundidade e sem luz: a cor do marcador leva a luz do square.
+-- * Chão: até dois IsoMarker por square (rachadura + sangue; a sujeira, mais leve, à parte)
+--   com a tabela de texturas (getIsoMarkers():addIsoMarker(nomes, sq, r, g, b, a),
+--   ISBaseIcon.lua:579). Lista em memória do IsoMarkers, sem save/load nem pacote; o
+--   IngameState.exit faz reset(). Sem luz: a cor do marcador leva a luz do square.
+--   O marcador sai depois dos personagens e por cima do mundo (§16.5): só square que o
+--   jogador vê (prédio), e o do tile dele apagado.
 -- * Parede: desenho imediato a cada quadro, no Events.RenderOpaqueObjectsInWorld
 --   (FBORenderCell.renderOpaqueObjectsEvent, todo quadro; ISBuildingObject.lua:721-741),
---   com sprite:RenderGhostTileColor(x, y, z, r, g, b, a) (ISFarmingCursorMouse.lua:21):
---   o mesmo desenho do fantasma de construção, na posição de tile de verdade. Sem
---   profundidade e sem luz: só parede limpa (piso + parede, sem batente de porta ou
---   janela), de frente e à vista.
+--   com sprite:RenderGhostTileColor(x, y, z, r, g, b, a) (ISFarmingCursorMouse.lua:21).
+--   Sem profundidade e depois do renderPlayers: desligado (NOM_DressingRules.WALLS, ADR-015).
 -- Proibidos (salvos ou sincronizados, §16.1): addBlood*, objetos de erosão,
 -- setOverlaySprite, AttachedAnimSprite, objeto novo no square.
 if isServer() then return end

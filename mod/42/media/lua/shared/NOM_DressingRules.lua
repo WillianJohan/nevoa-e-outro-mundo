@@ -8,10 +8,11 @@ require "NOM_VariantRules"
 
 NOM_DressingRules = {
     RADIUS = 25,       -- tiles do jogador
-    MAX_FLOOR = 600,   -- marcadores de chão ativos (um por square)
+    MAX_FLOOR = 600,   -- squares de chão à vista (até dois marcadores cada: sangue e sujeira)
     MAX_WALL = 120,    -- paredes desenhadas por quadro
     -- Hotfix 2026-10-05: o desenho de fantasma não tem profundidade e, no jogo, cobriu o
-    -- jogador e pintou de preto as paredes cortadas. Desligado até ter recorte por profundidade.
+    -- jogador e pintou de preto as paredes cortadas. Sprint 0021: fica desligado; o porquê
+    -- (sai depois do renderPlayers e por cima de tudo já desenhado) está na ADR-015.
     WALLS = false,
     MAX_LAYERS = 4,    -- texturas num marcador de chão
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
