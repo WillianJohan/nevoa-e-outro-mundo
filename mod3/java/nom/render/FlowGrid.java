@@ -31,9 +31,13 @@ public final class FlowGrid {
     public float windX, windY;
     public float windRelax = 0.6f;      // 1/s: a velocidade volta pro vento
     public float outdoorRefill = 0.12f; // 1/s: fora, a névoa volta pro ambiente (o rastro some em ~8 s)
-    public float indoorDecay = 0.08f;   // 1/s: dentro, a névoa que entrou se desfaz
+    public float indoorDecay = 0.05f;   // 1/s: dentro, a névoa que entrou se desfaz
     public float edgeRefill = 2f;       // 1/s: nas bordas da grade, a névoa entra
     public float diffusion = 0.15f;     // tiles²/s
+    // tiles²/s nas faces que tocam interior. Casa com uma porta só não recebe nada pelo vento (fluxo
+    // incompressível: o que entra teria que sair por outra abertura), então a névoa escorre pra dentro
+    // por aqui; penetra ~sqrt(indoorSeep / indoorDecay) ≈ 5 tiles.
+    public float indoorSeep = 1.2f;
     public int iterations = 16;         // 128x128: ~0,9 ms por passo (Ryzen 7600X); 24 passa de 1 ms
 
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
@@ -339,24 +343,28 @@ public final class FlowGrid {
     }
 
     private void diffuse(float dt) {
-        float a = Math.min(diffusion * dt, MAX_DIFFUSE);
-        if (a <= 0f) return;
+        float aOut = Math.min(diffusion * dt, MAX_DIFFUSE), aIn = Math.min(indoorSeep * dt, MAX_DIFFUSE);
+        if (aOut <= 0f && aIn <= 0f) return;
         System.arraycopy(d, 0, dn, 0, d.length);
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {
                 if (wu[j * nu + i] == 0f) continue;
-                float l = i > 0 ? d[j * n + i - 1] : ambient, r = i < n ? d[j * n + i] : ambient;
-                move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, a * (l - r));
+                int lc = i > 0 ? j * n + i - 1 : -1, rc = i < n ? j * n + i : -1;
+                float l = lc >= 0 ? d[lc] : ambient, r = rc >= 0 ? d[rc] : ambient;
+                move(lc, rc, (indoor(lc) || indoor(rc) ? aIn : aOut) * (l - r));
             }
         for (int j = 0; j <= n; j++)
             for (int i = 0; i < n; i++) {
                 int f = j * n + i;
                 if (wv[f] == 0f) continue;
-                float t = j > 0 ? d[f - n] : ambient, b = j < n ? d[f] : ambient;
-                move(j > 0 ? f - n : -1, j < n ? f : -1, a * (t - b));
+                int tc = j > 0 ? f - n : -1, bc = j < n ? f : -1;
+                float t = tc >= 0 ? d[tc] : ambient, b = bc >= 0 ? d[bc] : ambient;
+                move(tc, bc, (indoor(tc) || indoor(bc) ? aIn : aOut) * (t - b));
             }
         System.arraycopy(dn, 0, d, 0, d.length);
     }
+
+    private boolean indoor(int c) { return c >= 0 && (flags[c] & F_INDOOR) != 0; }
 
     private void sources(float dt) {
         float kOut = 1f - (float) Math.exp(-outdoorRefill * dt);

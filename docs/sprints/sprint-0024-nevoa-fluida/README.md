@@ -114,6 +114,7 @@ demais, e as árvores ficavam por cima dela.
 
 - **Gauss-Seidel em ordem de linha é preso por latência na JVM:** cada célula espera a anterior, e deu 2,6 ms. O red-black com os pesos pré-multiplicados e sem desvio no laço deu 0,95 ms com 24 iterações e 0,86 ms com 16. A rolagem e a velocidade que persistem entre passos compensam as iterações a menos (os testes de contorno e de fresta passam com 12).
 - **Teste com vento precisa de tempo pra convergir:** a velocidade relaxa a 0,6/s, então em 5 s está só a 95%.
+- **Casa com uma porta só não recebe névoa pelo vento** (relato do Johan: "não entra no corredor"). O fluxo é incompressível, então o que entra por uma abertura tem que sair por outra; com uma só, o fluxo líquido nela é zero. Sobrava a difusão de 0,15 tile²/s contra o decaimento de 0,08/s: a névoa penetrava ~1,4 tile e morria no batente. Agora as faces que tocam interior difundem a `indoorSeep` = 1,2 tile²/s e o decaimento de dentro é 0,05/s, o que dá ~5 tiles de alcance. O teste do corredor 8×2 com uma porta passou de 0,06 pra 0,29 dois tiles depois da porta, em 30 s. Fechando a porta, o corredor esvazia em ~30 s.
 - **`glslangValidator` (brew) compila o shader do mod3 igual ao Java monta** (cabeçalho + `#line 1` + passe), e pega erro de GLSL antes de ir pro jogo.
 
 ## Riscos
