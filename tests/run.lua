@@ -16,6 +16,7 @@ local FILES = {
     "tests/test_variant_rules.lua",
     "tests/test_variant_ai.lua",
     "tests/test_variants_client.lua",
+    "tests/test_variants.lua",
 }
 
 local pass, fail = 0, 0

@@ -54,13 +54,16 @@ end
 -- alcance efetivo e o raio passado é dividido de volta (NOM_NightRules.soundRadius).
 -- O volume fica no alcance: getSoundAttract devolve volume × queda e o zumbi
 -- segue o som mais forte; volume baixo perderia pra barulho vanilla.
-local function call(p, reach)
+NOM_Night = {}
+
+-- src: jogador (caça, lanterna) ou zumbi (grito do Corredor, server/NOM_Variants.lua).
+function NOM_Night.call(src, reach)
     local radius = NOM_NightRules.soundRadius(reach, {
         sensesOn = NOM_Config.get("NightSharperSenses"),
         senseMult = NOM_Config.get("NightSenseMult"),
         hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
     })
-    addSound(p, math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()), radius, reach)
+    addSound(src, math.floor(src:getX()), math.floor(src:getY()), math.floor(src:getZ()), radius, reach)
 end
 
 -- O vanilla sincroniza o liga/desliga da luz (syncItemActivated, client/ISUI/
@@ -81,7 +84,7 @@ local function hunt(ps)
     huntMinutes, due = NOM_NightRules.countdown(huntMinutes, NOM_Config.get("HuntIntervalMinutes"))
     if not due or #ps == 0 then return end
     local radius = NOM_Config.get("HuntRadius")
-    for _, p in ipairs(ps) do call(p, radius) end
+    for _, p in ipairs(ps) do NOM_Night.call(p, radius) end
     debugLog("caca jogadores=" .. #ps .. " raio=" .. radius)
 end
 
@@ -98,7 +101,7 @@ local function torches(ps)
     local radius, lit = NOM_NightRules.torchRadius(NOM_Config.get("NightSenseMult")), 0
     for _, p in ipairs(ps) do
         if torchOutside(p) then
-            call(p, radius)
+            NOM_Night.call(p, radius)
             lit = lit + 1
         end
     end
@@ -119,3 +122,5 @@ local function everyMinute()
 end
 
 Events.EveryOneMinute.Add(everyMinute)
+
+return NOM_Night
