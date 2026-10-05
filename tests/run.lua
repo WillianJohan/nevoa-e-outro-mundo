@@ -28,6 +28,7 @@ local FILES = {
     "tests/test_night_and_fog.lua",
     "tests/test_debug_rules.lua",
     "tests/test_debug.lua",
+    "tests/test_translations.lua",
 }
 
 local pass, fail = 0, 0
