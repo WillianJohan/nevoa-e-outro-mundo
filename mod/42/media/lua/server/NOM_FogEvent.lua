@@ -39,13 +39,13 @@ end
 local function now() return getGameTime():getWorldAgeHours() end
 
 -- bornAt: hora de mundo em que a curva de tensão começa (sprint 0019), gravada uma vez
--- como a semente. Save anterior a ela ganha no primeiro uso: a curva dele começa ali,
--- não no dia 0 do mundo.
+-- como a semente (NOM_FogEventRules.born): save novo agora, save veterano no ponto neutro
+-- da curva (30 dias atrás), que não muda nada pra quem já jogava.
 local function state()
     local data = ModData.getOrCreate(MODULE)
     data.fog = data.fog or {}
     if data.fog.seed == nil then data.fog.seed = ZombRand(NOM_VariantRules.SEED_RANGE) end
-    if data.fog.bornAt == nil then data.fog.bornAt = now() end
+    R.born(data.fog, now())
     return data.fog
 end
 
@@ -83,8 +83,11 @@ function NOM_FogEvent.siren(skip)
     local s = state()
     if s.inNight or countdown then return false end
     countdown, lastMs = skip and 0 or R.SIREN_MS, getTimestampMs()
-    local red, chance = decideRed()
-    if s.red == nil or forcedRed ~= nil then s.red = red end
+    local chance = "-" -- cor salva reaproveitada (recarga): não houve sorteio
+    if s.red == nil or forcedRed ~= nil then
+        local red, c = decideRed()
+        s.red, chance = red, hours(c)
+    end
     if isServer() then
         sendServerCommand(MODULE, "siren", { red = s.red })
     else
@@ -92,7 +95,7 @@ function NOM_FogEvent.siren(skip)
     end
     -- inteiro: "contagem=30000"; dias e chance da curva com 2 casas
     debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
-        " dias=" .. hours(R.days(s, now())) .. " chance=" .. hours(chance))
+        " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
     return true
 end
 

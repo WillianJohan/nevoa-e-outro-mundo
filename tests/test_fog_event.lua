@@ -362,10 +362,34 @@ return {
         assert(fogMD(G).bornAt == 100, "bornAt: " .. tostring(fogMD(G).bornAt))
         setup({ globalMD = G.globalMD, hours = 900 })
         assert(fogMD(G).bornAt == 100, "recarga trocou o bornAt")
+        -- save veterano (já tem agenda, sem bornAt): nasce no ponto neutro da curva (dia
+        -- 30: intervalo 1×, vermelha 1×), não no dia 0
         local old = { NevoaEOutroMundo = { fog = { night = 4, next = 5000, seed = 3 } } }
         setup({ globalMD = old, hours = 4800 })
-        assert(old.NevoaEOutroMundo.fog.bornAt == 4800, "save antigo sem bornAt")
+        assert(old.NevoaEOutroMundo.fog.bornAt == 4800 - 30 * 24, "veterano: " .. tostring(old.NevoaEOutroMundo.fog.bornAt))
         assert(old.NevoaEOutroMundo.fog.next == 5000, "save antigo reagendado")
+        local only = { NevoaEOutroMundo = { fog = { night = 2, seed = 3 } } }
+        setup({ globalMD = only, hours = 800 })
+        assert(only.NevoaEOutroMundo.fog.bornAt == 800 - 30 * 24, "veterano só com night")
+    end,
+    -- bornAt no futuro (relógio voltou, save editado): vira agora
+    fog_event_born_at_clamped_to_now = function()
+        local md = { NevoaEOutroMundo = { fog = { bornAt = 9000, seed = 3 } } }
+        setup({ globalMD = md, hours = 100 })
+        assert(md.NevoaEOutroMundo.fog.bornAt == 100, "bornAt: " .. tostring(md.NevoaEOutroMundo.fog.bornAt))
+    end,
+    -- veterano não sente a curva: sem carência (d começa em 30 ≥ 7) e intervalo 1× da base
+    fog_event_veteran_no_grace_no_change = function()
+        local md = { NevoaEOutroMundo = { fog = { night = 4, next = 110, seed = 3 } } }
+        local G = setup({ globalMD = md, hours = 100,
+            sandbox = { FogEscalation = true, FogEventEveryDays = 2, RedFogGraceDays = 7, RedFogChance = 100 } })
+        G.advance(10)
+        assert(G.played("NOM_SirenRed") == 1, "veterano caiu na carência")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == true)
+        NOM_FogEvent.stop()
+        local gap = fogMD(G).next - G.world.hours -- dia 30,4: fator ~0,99 da base 2
+        assert(math.abs(gap - 24) < 0.5, "intervalo do veterano: " .. tostring(gap))
     end,
     -- padrão do jogo (escalada ligada, base 2): a primeira névoa do save novo em ~3 dias
     fog_event_defaults_start_slow = function()
@@ -444,5 +468,27 @@ return {
         G.advance(36)
         G.seconds(31)
         assert(NOM_World.fog and NOM_World.red == false)
+    end,
+    -- review da 0019: o log da sirene diz a chance sorteada; na recarga durante a sirene a
+    -- cor salva é reaproveitada e a chance sai "-" (não houve sorteio)
+    fog_event_siren_log_reused_colour = function()
+        local realPrint, lines = print, {}
+        print = function(m) lines[#lines + 1] = m end
+        local ok, err = pcall(function()
+            local G = setup({ sandbox = { RedFogChance = 100 }, debug = true })
+            G.advance(36)
+            G.seconds(10)
+            setup({ globalMD = G.globalMD, hours = G.world.hours, debug = true })
+        end)
+        print = realPrint
+        assert(ok, err)
+        local sirens = {}
+        for _, l in ipairs(lines) do
+            if l:find("nevoa sirene", 1, true) then sirens[#sirens + 1] = l end
+        end
+        assert(sirens[1] and sirens[1]:find("vermelha=true", 1, true) and sirens[1]:find("chance=100.00", 1, true),
+            "primeira sirene: " .. tostring(sirens[1]))
+        assert(#sirens == 2 and sirens[2]:find("vermelha=true", 1, true) and sirens[2]:find("chance=-", 1, true),
+            "sirene da recarga: " .. tostring(sirens[2]))
     end,
 }

@@ -90,10 +90,14 @@ O que o bytecode do B42.21 diz sobre o canal de névoa ([pz-api-notes §11](pz-a
 Balanceamento do PO aprovado pelo Johan: a agenda deixa de ter média fixa.
 
 1. **Nascimento do save.** `data.fog.bornAt` (hora de mundo) é gravado uma vez, no
-   `state()` do `server/NOM_FogEvent.lua`, como a `seed`. Save anterior à sprint ganha o
-   bornAt no primeiro carregamento: **a curva dele começa ali**, não no dia 0 do mundo
-   (um save de 60 dias recomeça com a névoa rara). `d` = dias desde o bornAt
-   (`NOM_FogEventRules.days`, nunca negativo); o `worldAge` cru não entra.
+   `state()` do `server/NOM_FogEvent.lua` (`NOM_FogEventRules.born`), como a `seed`. Save
+   novo nasce agora. Save veterano (já tem `night` ou `next`, sem `bornAt`) nasce **no ponto
+   neutro da curva**, 30 dias antes do primeiro carregamento: intervalo 1×, vermelha 1×,
+   carência vencida; quem já jogava não sente mudança (ruling da review). `bornAt` no futuro
+   vira agora. `d` = dias desde o bornAt (`NOM_FogEventRules.days`, nunca negativo); o
+   `worldAge` cru não entra. O save antigo também guarda o próprio sandbox
+   (`SandboxOptions.load(ByteBuffer)` 81–122 só lê as opções gravadas): os defaults novos
+   valem pra save novo.
 2. **Intervalo.** Com `FogEscalation` (padrão ligado), a média é
    `FogEventEveryDays × clamp(1,5 − d/60, 0,75, 1,5)` (`NOM_FogEventRules.everyDays`). O
    intervalo continua uniforme entre 0,5× e 1,5× da média, sorteado no `R.stop` (fim do

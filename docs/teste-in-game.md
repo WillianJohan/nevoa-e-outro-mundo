@@ -309,7 +309,7 @@ de 200 (Debug → Spawn Horde).
 ## Balanceamento
 
 Playtest dos defaults do PO (sprint 0019, [revisão](gdd/sandbox.md#revisão-do-po-2026-10-05-sprint-0019-aprovada-pelo-johan)),
-com o sandbox padrão e um save novo (a curva conta do nascimento do save). Cada item tem um
+com o sandbox padrão e um **save novo** (a curva conta do nascimento do save; save antigo guarda o próprio sandbox, então continua com 3 dias, 2–6 h e os números velhos). Cada item tem um
 alvo e o ajuste se passar do limiar; anotar o resultado em uma linha nos Checkpoints da
 [sprint 0019](sprints/sprint-0019-balanceamento/README.md). Substitui as 5 perguntas da 0006
 (noite injusta, Sem-rosto, Ecos, escuro e caça estão nos itens 1–4 e 9).

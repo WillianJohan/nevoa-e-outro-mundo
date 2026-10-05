@@ -15,7 +15,7 @@
     "Sandbox_NevoaEOutroMundo.RedFogEnabled": "Red fog",
     "Sandbox_NevoaEOutroMundo.RedFogEnabled_tooltip": "Sometimes the fog comes red: a lower, harsher siren warns, the fog turns red (the light too, with the dark climate on) and every zombie inside it is a monster, split evenly among the enabled types (Clicker, Runner, Faceless, Mourner); a disabled type's share stays normal. Echoes stay Echoes.",
     "Sandbox_NevoaEOutroMundo.RedFogChance": "Red fog chance (%%)",
-    "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Percentage of fogs that come red. Rolled once per fog: saving and loading does not change it.",
+    "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Percentage of fogs that come red. Rolled once per fog, at the siren: saving and loading does not change it. No fog comes red during the grace days; with growing tension on, the chance climbs from day 30 to double by day 90.",
     "Sandbox_NevoaEOutroMundo.RedFogGraceDays": "Red fog: grace days",
     "Sandbox_NevoaEOutroMundo.RedFogGraceDays_tooltip": "For this many days at the start of the save no fog comes red. 0 turns the grace period off.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",

@@ -22,8 +22,8 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 |---|---|
 | `FogEventEveryDays` (2, faixa 0.5–30 dias de jogo): média entre névoas (com `FogEscalation`, multiplicada pela curva: 1,5× no começo, 0,75× do dia 45); cada intervalo sorteado entre 0,5× e 1,5×, contado do fim da anterior | [world-states.md](world-states.md) |
 | `FogMinHours` (3), `FogMaxHours` (6), faixa 0.5–48 horas de jogo: duração sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
-| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); com `FogEscalation`, sobe do dia 30 até 2× no dia 90 |
-| `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso, com ou sem a escalada; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
+| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); com `FogEscalation`, sobe do dia 30 até 2× no dia 90 | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
+| `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso, com ou sem a escalada; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult` (1.5, faixa 1–3, em degraus: 1.5 sobe um, 2.5 sobe dois) | [night.md](night.md) |
@@ -100,9 +100,12 @@ preset vanilla escolhido.
 ## Curva de tensão (sprint 0019)
 
 `FogEscalation` (padrão ligado) e `RedFogGraceDays` (7, faixa 0–60 dias). `d` = dias de
-jogo desde o nascimento do save (`data.fog.bornAt`, gravado uma vez como a semente; save
-anterior à sprint 0019 ganha no primeiro carregamento, e a curva dele **começa ali**, não no
-dia 0 do mundo).
+jogo desde o nascimento do save (`data.fog.bornAt`, gravado uma vez como a semente). Save
+anterior à sprint 0019 que já tinha agenda de névoa nasce **no ponto neutro** (30 dias antes
+do primeiro carregamento): intervalo 1×, vermelha 1×, carência já vencida, ou seja, nada muda
+pra quem já jogava; a curva só aperta dali pra frente. Save antigo também **guarda o próprio
+sandbox** (`SandboxOptions.load` lê o `map_sand.bin`; só opção nova ganha o default): os
+defaults novos (2 dias, 3–6 h etc.) valem pra save novo ou pra quem mudar à mão.
 
 - **Intervalo:** média `FogEventEveryDays × clamp(1,5 − d/60, 0,75, 1,5)`. Com a base 2: 3
   dias no começo, 2 no dia 30, 1,5 do dia 45 em diante. Cada intervalo continua sorteado entre

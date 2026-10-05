@@ -117,6 +117,18 @@ return {
         local grace = txt:match("option NevoaEOutroMundo%.RedFogGraceDays = {(.-)}")
         assert(grace and grace:match("min = (%d+)") == "0" and grace:match("max = (%d+)") == "60", "faixa da carência")
     end,
+    -- review da 0019: o tooltip da chance de vermelha avisa da carência e da escalada
+    config_red_chance_tooltip_mentions_curve = function()
+        for lang, words in pairs({ PTBR = { "carência", "dobro" }, EN = { "grace", "double" } }) do
+            local f = assert(io.open("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json"))
+            local txt = f:read("*a")
+            f:close()
+            local tip = txt:match('"Sandbox_NevoaEOutroMundo%.RedFogChance_tooltip"%s*:%s*"([^"]*)"')
+            for _, w in ipairs(words) do
+                assert(tip and tip:find(w, 1, true), lang .. ": tooltip da chance sem '" .. w .. "'")
+            end
+        end
+    end,
     -- tooltip do Eco (PO, sprint 0019): a mordida do Eco infecta como a de qualquer zumbi
     config_eco_tooltip_says_bite_infects = function()
         for lang, word in pairs({ PTBR = "mordida do Eco infecta", EN = "bite infects" }) do

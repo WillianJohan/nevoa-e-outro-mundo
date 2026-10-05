@@ -221,7 +221,7 @@ function W.new(opts)
 
     isClient = function() return opts.client == true end
     isServer = function() return opts.server == true end
-    getDebug = function() return false end
+    getDebug = function() return opts.debug == true end -- -debug do processo
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {

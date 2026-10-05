@@ -21,8 +21,21 @@ end
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
--- Curva de tensão (sprint 0019, análise do PO): dias de jogo desde o bornAt (save
--- anterior à curva ganha bornAt no primeiro uso: a curva dele começa ali).
+-- Curva de tensão (sprint 0019, análise do PO): dias de jogo desde o bornAt.
+-- Ponto neutro da curva: no dia 30 o intervalo é 1× e a vermelha 1× (e a carência,
+-- até 60 dias no sandbox, já passou se for menor que 30).
+R.NEUTRAL_DAYS = 30
+
+-- Grava o bornAt uma vez. Save novo nasce agora; save veterano (já tem agenda: night ou
+-- next, sem bornAt) nasce NEUTRAL_DAYS atrás, pra não sentir a curva (review da 0019).
+-- bornAt no futuro (relógio voltou, save editado) vira agora.
+function R.born(state, now)
+    if state.bornAt == nil then
+        state.bornAt = (state.night ~= nil or state.next ~= nil) and now - R.NEUTRAL_DAYS * 24 or now
+    end
+    if state.bornAt > now then state.bornAt = now end
+end
+
 function R.days(state, now)
     return math.max(0, now - (state.bornAt or now)) / 24
 end

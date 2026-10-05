@@ -15,7 +15,7 @@
     "Sandbox_NevoaEOutroMundo.RedFogEnabled": "Névoa vermelha",
     "Sandbox_NevoaEOutroMundo.RedFogEnabled_tooltip": "Às vezes a névoa vem vermelha: uma sirene mais grave e rasgada avisa, a névoa fica vermelha (a luz também, com o clima sombrio ligado) e todo zumbi dentro dela é monstro, dividido por igual entre os tipos ligados (Estalador, Corredor, Sem-rosto, Carpideira); a parte de um tipo desligado fica comum. O Eco continua Eco.",
     "Sandbox_NevoaEOutroMundo.RedFogChance": "Chance de névoa vermelha (%%)",
-    "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Porcentagem das névoas que vêm vermelhas. Sorteada uma vez por névoa: salvar e carregar não muda.",
+    "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Porcentagem das névoas que vêm vermelhas. Sorteada uma vez por névoa, na sirene: salvar e carregar não muda. Nenhuma vem vermelha nos dias de carência; com a tensão que cresce ligada, a chance sobe do dia 30 até o dobro no dia 90.",
     "Sandbox_NevoaEOutroMundo.RedFogGraceDays": "Névoa vermelha: dias de carência",
     "Sandbox_NevoaEOutroMundo.RedFogGraceDays_tooltip": "Nos primeiros tantos dias do save nenhuma névoa vem vermelha. 0 desliga a carência.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Ecos",

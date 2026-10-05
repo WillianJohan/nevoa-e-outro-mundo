@@ -40,8 +40,14 @@ integralmente pelo Johan em 05/10/2026.
       `translations_*` (toda chave nas duas línguas, JSON estrito, `translations_no_lone_percent`).
       Os tooltips não usam `%`: "uma vez e meia o configurado … três quartos dele do dia 45 …
       sobe até o dobro no dia 90".
-- [x] `data.fog.bornAt` gravado uma vez; save antigo ganha no primeiro uso e a curva começa
-      ali — `fog_event_born_at_saved_once`.
+- [x] `data.fog.bornAt` gravado uma vez; save novo nasce agora, save veterano (já tem agenda)
+      nasce no ponto neutro da curva (30 dias antes) — `fog_event_born_at_saved_once`; sem
+      carência e com intervalo ~1× da base pro veterano — `fog_event_veteran_no_grace_no_change`;
+      bornAt no futuro vira agora — `fog_event_born_at_clamped_to_now`.
+- [x] Log da sirene: na recarga durante a sirene a cor salva é reaproveitada e sai `chance=-`
+      — `fog_event_siren_log_reused_colour`.
+- [x] Tooltip da chance de vermelha fala da carência e da escalada (até o dobro), sem `%` —
+      `config_red_chance_tooltip_mentions_curve`.
 - [x] Debug passa por cima da carência — `fog_event_debug_red_ignores_grace`.
 - [x] Tooltip do Eco diz que a mordida infecta igual — `config_eco_tooltip_says_bite_infects`.
 - [x] Presets revistos (Leve "primeira visita", Padrão "o mundo tem horário", Pesadelo "a
@@ -50,11 +56,11 @@ integralmente pelo Johan em 05/10/2026.
       no [teste-in-game.md](../../teste-in-game.md#balanceamento) — revisão dos docs.
 - [ ] As duas opções aparecem no menu do sandbox com nome e tooltip legíveis nas duas línguas,
       sem `UnknownFormatConversionException` no console — **falta o jogo:** roteiro, passo 1.
-- [ ] A sirene loga dias e chance da curva, e um save antigo recomeça a curva no dia em que
-      carregou — **falta o jogo:** passos 2–4.
+- [ ] A sirene loga dias e chance da curva, e um save antigo entra no ponto neutro (dia 30)
+      com o próprio sandbox — **falta o jogo:** passos 2–4.
 - [ ] Playtest dos 10 itens do PO — **falta o jogo:** [teste-in-game.md](../../teste-in-game.md#balanceamento).
 
-`./run-tests.sh`: `total=579 passou=579 falhou=0` (Lua), `contraste total=4 passou=4`,
+`./run-tests.sh`: `total=583 passou=583 falhou=0` (Lua), `contraste total=4 passou=4`,
 `build total=25 passou=25`.
 
 ## Roteiro in-game
@@ -74,9 +80,12 @@ Jogo em `-debug`, **save descartável**, sandbox padrão. Console em
 3. **Fim da carência.** Avançar o relógio 7 dias (admin/sono), `NOM_Debug.fog(false)` e
    `NOM_Debug.fog(true)`. **Esperado:** `dias=7.xx chance=10.00`. Repetir com `fog(false)`
    até sair `vermelha=true` (1 em 10, em média).
-4. **Save antigo.** Carregar um save da sprint 0017 com dias de jogo. `NOM_Debug.fog(true)` logo depois.
-   **Esperado:** `dias=0.0x chance=0.00` (a curva começa no carregamento: ruling 2), não os
-   dias do save.
+4. **Save antigo** (o do Johan serve). Carregar um save da sprint 0017 com dias de jogo e
+   `NOM_Debug.fog(true)` logo depois. **Esperado:** `dias=30.0x chance=10.00` (ponto neutro:
+   ruling 2), sem carência. **O save antigo guarda o próprio sandbox:** continua com
+   `FogEventEveryDays` 3 e `FogMinHours` 2 (e Eco 30/40, caça 60/30, Corredor 2, Sem-rosto 5,
+   grito 60) até alguém mudar à mão ou começar um save novo; só `FogEscalation` e
+   `RedFogGraceDays` chegam com o default. Conferir na página do sandbox do save.
 5. **Recarga na sirene vermelha.** `NOM_Debug.redFog(true)`, salvar e sair durante os 30 s,
    carregar. **Esperado:** a sirene **vermelha** toca de novo e a névoa abre vermelha.
 6. **Playtest do PO** (10 itens com limiares): [teste-in-game.md](../../teste-in-game.md#balanceamento).
@@ -99,10 +108,17 @@ Jogo em `-debug`, **save descartável**, sandbox padrão. Console em
    semana continua sem vermelha; "comportamento de hoje" (critério 4) exige também carência 0.
    Custo se errado: quem desliga a escalada esperando o jogo antigo fica 7 dias sem vermelha,
    até zerar a carência; trocar é um `if` no `R.redChance`.
-2. **Save antigo começa a curva no primeiro carregamento** (como pede o brief), não no
-   `worldAge` 0. Um save de 60 dias volta a ter névoa a cada ~3 dias e vermelha zerada por
-   7 dias. Custo se errado: o veterano perde a pressão que já tinha por uma semana; a
-   alternativa (bornAt = 0) é uma linha no `state()`.
+2. **Save veterano nasce no ponto neutro da curva** (ruling do coordenador na review,
+   substitui o "começa no primeiro carregamento" da primeira versão). Save que já tem agenda
+   (`night` ou `next`) e não tem `bornAt` ganha `bornAt = agora − 30 dias`
+   (`NOM_FogEventRules.born`, `NEUTRAL_DAYS`): intervalo 1×, vermelha 1×, carência vencida
+   (30 ≥ 7; só uma carência acima de 30 no sandbox ainda pegaria o veterano). Quem já jogava não
+   sente mudança; a curva aperta dali pra frente. Save novo nasce agora. `bornAt` no futuro vira
+   agora. **E o save antigo guarda o próprio sandbox:** `SandboxOptions.load(ByteBuffer)` só faz
+   `parse` das opções que estão no `map_sand.bin` (bytecode 81–122: acha pelo nome, opção
+   ausente fica com o valor que tinha); opção nova (`FogEscalation`, `RedFogGraceDays`) fica com
+   o default. Os defaults novos valem pra save novo. Custo se errado: o veterano sem a pressão
+   inicial da curva; mudar o ponto é o `NEUTRAL_DAYS`.
 3. **Intervalo sorteado no fim do evento** (com o `d` daquele momento) e salvo; mudar o sandbox
    ou o dia avançar não reagenda o `next` já marcado. Custo se errado: no máximo um intervalo
    "velho" depois de trocar o sandbox.
@@ -127,6 +143,9 @@ Jogo em `-debug`, **save descartável**, sandbox padrão. Console em
 - **04/10/2026** — Docs: sandbox.md (defaults, presets, curva, revisão do PO), Overview,
   world-states/monsters/night/atmosphere, emendas da ADR-009 e da ADR-010, playtest no
   teste-in-game.md, README e descrições do Workshop. Em teste.
+- **04/10/2026** — Review: save veterano no ponto neutro da curva, `bornAt` limitado a agora,
+  log `chance=-` na cor reaproveitada, tooltip da chance com carência e escalada, tabela do
+  sandbox.md consertada. Verde.
 
 ## Aprendizados
 
@@ -141,6 +160,10 @@ Jogo em `-debug`, **save descartável**, sandbox padrão. Console em
 - Tudo do roteiro acima e o playtest dos 10 itens.
 - Vermelha sem teto de variantes (item 7 do playtest decide se vira sprint).
 - Sono/fast-forward atravessando a sirene (risco de produto acima).
+- Achado menor 5 da review fica como está: só debug e anterior à sprint (o forçado do
+  `NOM_Debug.redFog` mora só em memória).
+- Save antigo continua com o sandbox antigo: pra jogar com os números do PO, mudar à mão na
+  página do sandbox do save ou começar um save novo.
 - Sprint 0018 (dissolve + bloom) corre em paralelo: o merge das duas mexe em
   `docs/sprints/README.md` (roadmap) e no Overview (Decisões), só com linhas acrescentadas.
 
