@@ -159,7 +159,133 @@ local function bySquare(G)
     return out
 end
 
+-- prédio: squares de dentro de x0..x1, y0..y1 no andar 0
+local function building(G, x0, y0, x1, y1)
+    local b = { name = "prédio " .. x0 .. "," .. y0 }
+    for x = x0, x1 do for y = y0, y1 do G.interior[x .. "," .. y .. ",0"] = b end end
+    return b
+end
+
+-- marcador que se vê (alfa > 0) em (x, y, 0)?
+local function shown(G, x, y)
+    for _, m in ipairs(alive(G)) do
+        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 and m.a > 0 then return true end
+    end
+    return false
+end
+
+-- quantos squares de fora, perto do jogador e fora de qualquer sombra, têm marcador à vista
+local function shownOutside(G, r, skip)
+    local n = 0
+    for x = 100 - r, 100 + r do
+        for y = 100 - r, 100 + r do
+            if not skip(x, y) and shown(G, x, y) then n = n + 1 end
+        end
+    end
+    return n
+end
+
 return {
+    -- print 7 (05/10): com o jogador fora, o chão de dentro da casa saía por cima do telhado
+    overlays_outside_player_skips_interior = function()
+        local G = setup()
+        building(G, 104, 92, 112, 108)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        for x = 104, 112 do
+            for y = 92, 108 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
+        end
+        assert(shownOutside(G, 3, function() return false end) > 15, "o chão de fora sumiu junto")
+    end,
+
+    -- o marcador não é tapado pelo mundo: de fora, o prédio cobre na tela os squares de fora
+    -- até SHADOW tiles atrás dele na diagonal (um andar de altura = 3 tiles na tela)
+    overlays_outside_player_skips_building_shadow = function()
+        local G = setup()
+        G.p.x, G.p.y = 95.5, 95.5
+        building(G, 106, 106, 114, 114)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        local function inShadow(x, y)
+            for k = 1, O().SHADOW do
+                if G.interior[(x + k) .. "," .. (y + k) .. ",0"] then return true end
+            end
+            return false
+        end
+        local hidden, total = 0, 0
+        for x = 98, 114 do
+            for y = 98, 114 do
+                if not G.interior[x .. "," .. y .. ",0"] and inShadow(x, y) then
+                    total = total + 1
+                    assert(not shown(G, x, y), "chão de fora atrás do prédio: " .. x .. "," .. y)
+                end
+            end
+        end
+        assert(total > 10, "teste não mediu a sombra: " .. total)
+    end,
+
+    -- dentro: o prédio dele e o de fora (o jogo corta as paredes e o telhado dele); o outro
+    -- prédio e a sombra dele não
+    overlays_inside_player_sees_own_building = function()
+        local G = setup()
+        local own = building(G, 95, 95, 104, 104)
+        building(G, 80, 106, 88, 114)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        assert(G.p:getBuilding() == own)
+        local inside = 0
+        for x = 95, 104 do for y = 95, 104 do if shown(G, x, y) then inside = inside + 1 end end end
+        assert(inside > 30, "o prédio do jogador ficou limpo: " .. inside)
+        for x = 80, 88 do
+            for y = 106, 114 do assert(not shown(G, x, y), "chão do outro prédio: " .. x .. "," .. y) end
+        end
+        -- de fora, na sombra do prédio dele: aparece (ele está dentro, o jogo corta)
+        local shadowOwn = 0
+        for x = 91, 94 do for y = 91, 94 do if shown(G, x, y) then shadowOwn = shadowOwn + 1 end end end
+        assert(shadowOwn > 3, "a sombra do próprio prédio escondeu o chão: " .. shadowOwn)
+        -- sai: o de dentro apaga com fade e o de fora continua
+        G.p.x, G.p.y = 92.5, 100.5
+        G.seconds(O().FADE_MS / 2000)
+        local fading = 0
+        for _, m in ipairs(alive(G)) do
+            if G.interior[m.sq.x .. "," .. m.sq.y .. ",0"] == own and m.a > 0 and m.a < 1 then fading = fading + 1 end
+        end
+        assert(fading > 10, "o de dentro sumiu sem fade: " .. fading)
+        G.seconds(O().FADE_MS / 1000)
+        for x = 95, 104 do
+            for y = 95, 104 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
+        end
+    end,
+
+    -- review focus: na porta, entrando e saindo a cada passo, nada é tirado e posto de novo
+    overlays_building_doorway_no_flicker = function()
+        local G = setup()
+        building(G, 101, 90, 110, 110)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        local near = {}
+        for _, m in ipairs(alive(G)) do
+            local dx, dy = m.sq.x - 100, m.sq.y - 100
+            if dx * dx + dy * dy <= 36 then near[#near + 1] = m end
+        end
+        assert(#near > 10, "pouco chão perto da porta: " .. #near)
+        for step = 1, 10 do
+            G.p.x = step % 2 == 1 and 101.5 or 100.5
+            G.seconds(0.5)
+        end
+        for _, m in ipairs(near) do assert(not m.removed, "marcador tirado na porta (pisca): " .. m.sq.x .. "," .. m.sq.y .. " raio " .. O().reach()) end
+    end,
+
+    -- review focus: square da diagonal sem chunk conta como livre, sem erro
+    overlays_shadow_missing_square = function()
+        local G = setup()
+        for x = 101, 130 do for y = 101, 130 do G.holes[x .. "," .. y .. ",0"] = true end end
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        assert(shown(G, 99, 99) or shown(G, 98, 99) or shown(G, 99, 98), "borda carregada sem chão")
+        assert(shownOutside(G, 3, function(x, y) return x > 100 and y > 100 end) > 15)
+    end,
+
     -- print 7 (05/10): sujeira cheia, uma por tile, lia como xadrez. Ela vai num marcador
     -- próprio, mais leve que o sangue do mesmo square (o marcador tem uma cor só)
     overlays_grime_own_marker_lighter = function()
