@@ -49,6 +49,10 @@ local function hash(id, n, salt)
     return mix(mix(mix(id % Q + math.floor(id / Q) % Q * 7) + n * 1000003 % Q) + salt)
 end
 
+-- O mesmo hash serve o sangue do Outro Mundo (shared/NOM_DressingRules.lua, sprint 0015).
+NOM_VariantRules.Q = Q
+NOM_VariantRules.hash = hash
+
 -- Sorteio 0–99 do zumbi no período n.
 local function roll(id, n)
     return math.floor(hash(id, n, 0) / Q * 100)

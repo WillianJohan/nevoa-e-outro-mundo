@@ -33,6 +33,7 @@ local FILES = {
     "tests/test_fog_client.lua",
     "tests/test_fog_sound.lua",
     "tests/test_fog_vignette.lua",
+    "tests/test_dressing_rules.lua",
     "tests/test_fog_overlays.lua",
     "tests/test_night_and_fog.lua",
     "tests/test_fog_event_rules.lua",
