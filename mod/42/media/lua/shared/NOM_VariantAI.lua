@@ -56,9 +56,7 @@ local function estalador(z, md, blind)
     -- do tutorial não dá pra distinguir: num Estalador na névoa, também cai.
     -- Custo: uma chamada Java por Estalador local por frame.
     if z:isUseless() then
-        local outfit = z:getOutfitName()
-        -- string.find com plain: client/OptionScreens/LoadGameScreen.lua:601
-        if not (outfit and string.find(outfit, "Useless", 1, true)) then z:setUseless(false) end
+        if not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
         return
     end
     if md.NOM_alert then return end
@@ -112,11 +110,29 @@ local function onHit(z)
     z:getModData().NOM_alert = true
 end
 
+-- Useless herdado (review da 0011): o useless viaja no pacote do zumbi
+-- (NetworkZombieAI.set → getBooleanVariables 86–89; parse 204–252) e o
+-- resetForReuse não o limpa. Se o dono que parou a Carpideira (ou cegou o Estalador)
+-- perde a posse, a névoa acaba ou o objeto é reaproveitado, o novo dono fica com um
+-- zumbi useless que nada aqui marcou, e o onUpdate sai cedo (kind, blind e still nil).
+-- Solta o useless de zumbi local que este processo não ligou, salvo o do próprio
+-- jogo (outfit "Useless"); o do tutorial e do menu de debug cai junto (não dá pra
+-- distinguir). Chamado pela passada do NOM_NightStats e no OnZombieCreate.
+local function unstick(z)
+    if blinded[z] or NOM_Carpideira.still[z] or z:isRemoteZombie() then return end
+    if z:isUseless() and not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
+end
+
 -- Objeto reaproveitado pra outro zumbi (resetForReuse → OnZombieCreate) não
--- herda a cegueira. Morto também sai da tabela.
+-- herda a cegueira nem a parada. Morto também sai da tabela.
 local function forget(z)
     if blinded[z] then release(z) end
     NOM_Carpideira.forget(z)
+end
+
+local function created(z)
+    forget(z)
+    unstick(z)
 end
 
 -- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador
@@ -140,7 +156,8 @@ end
 function NOM_VariantAI.install(report)
     Events.OnZombieUpdate.Add(function(z) onUpdate(z, report) end)
     Events.OnHitZombie.Add(onHit)
-    Events.OnZombieCreate.Add(forget)
+    Events.OnZombieCreate.Add(created)
+    NOM_NightStats.unstick = unstick
     Events.OnZombieDead.Add(forget)
     Events.EveryOneMinute.Add(clicks)
 end

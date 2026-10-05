@@ -17,6 +17,9 @@ NOM_Carpideira = {
     SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
     SCREAM = "NOM_CarpideiraScream",
     SCAN_TICKS = 10,
+    -- Soluça só quem está a até SOB_RANGE tiles de um jogador local (o som some a 12):
+    -- a célula carregada pode ter dezenas de Carpideiras, e cada uma seria um loop.
+    SOB_RANGE = 15,
     -- [persistentOutfitID] = true: já gritou nesta névoa (o servidor avisa; solo: direto).
     screamed = {},
     -- [zumbi] = true: este processo a deixou useless (só esses são soltos).
@@ -26,18 +29,30 @@ NOM_Carpideira = {
 local C = NOM_Carpideira
 local R = NOM_CarpideiraRules
 
+-- Tabelas chaveadas pelo objeto do zumbi: limitadas às Carpideiras carregadas e
+-- esvaziadas no reaproveitamento/morte (forget), quando o som para (sobs) ou no fim
+-- da névoa (lastReport).
 local sobs = {}       -- [zumbi] = id do soluço tocando
 local lastReport = {} -- [zumbi] = ms reais do último aviso
 
--- Furiosa = já gritou nesta névoa. A marca do objeto é cache; a verdade é o ID (o
--- objeto novo que volta do virtual tem modData vazio).
+-- Furiosa = já gritou nesta névoa. A marca do objeto (NOM_furia = número do período,
+-- então vale só nesta névoa) é cache; a verdade é o ID (o objeto novo que volta do
+-- virtual tem modData vazio). NOM_NightStats.forget apaga a marca na morte.
 function C.furious(z, md)
-    if md.NOM_furia then return true end
+    local period = NOM_FogState.period
+    if md.NOM_furia ~= nil and md.NOM_furia == period then return true end
     if C.screamed[z:getPersistentOutfitID()] then
-        md.NOM_furia = true
+        md.NOM_furia = period
         return true
     end
     return false
+end
+
+-- Useless do próprio jogo (outfit de debug com "Useless", updateInternal 47–58): o mod
+-- nunca desliga. string.find com plain: client/OptionScreens/LoadGameScreen.lua:601.
+function C.gameUseless(z)
+    local outfit = z:getOutfitName()
+    return outfit ~= nil and string.find(outfit, "Useless", 1, true) ~= nil
 end
 
 -- Por frame, no dono, na névoa (NOM_VariantAI). Parada: useless (o idle não
@@ -46,15 +61,24 @@ end
 -- outras cópias e a quem herdar a posse.
 function C.hold(z, md)
     if C.still[z] then
-        if md.NOM_furia then C.letGo(z) end
+        if md.NOM_furia == NOM_FogState.period then C.letGo(z) end
         return
     end
-    if C.furious(z, md) then return end
+    if C.furious(z, md) then
+        -- já gritou, mas a posse veio pra cá com o useless no pacote do dono antigo
+        -- (NetworkZombieAI.set/parse): solta, como o Estalador herdado (NOM_VariantAI).
+        -- Custo: uma chamada a mais por frame na furiosa.
+        if z:isUseless() and not C.gameUseless(z) then z:setUseless(false) end
+        return
+    end
     z:setUseless(true)
     z:setTarget(nil)
     C.still[z] = true
 end
 
+-- Desliga o useless sem perguntar de quem é: se o tutorial ou o menu de debug ligou
+-- o useless numa Carpideira que este processo parou, ele cai junto (não dá pra
+-- distinguir, como no Estalador).
 function C.letGo(z)
     C.still[z] = nil
     z:setUseless(false)
@@ -81,7 +105,7 @@ end
 -- jogador: spotted(p, true) → spottedNew com chance 1 000 000 (1114–1120), alvo e
 -- última posição vista (1909–1950). Só vale sem useless (191–208): solta antes.
 function C.scream(z, p)
-    z:getModData().NOM_furia = true
+    z:getModData().NOM_furia = NOM_FogState.period
     stopSob(z)
     z:playSoundLocal(C.SCREAM)
     if z:isRemoteZombie() then return end
@@ -98,15 +122,13 @@ local function localPlayers()
     return out
 end
 
--- Por que este jogador acorda a Carpideira z: "near", "light" ou nil.
+-- Por que este jogador, a d tiles, acorda a Carpideira z: "near", "light" ou nil.
 -- Lanterna: acesa (getActiveLightItem, pz-api-notes §2.4) e o square dela com
 -- isCanSee(pn) (linha de visão + cone + luz, o "jogador vê" do jogo, §3.4): ela está
 -- na frente dele e iluminada. Aproximação de "apontada pra ela": luz de outra fonte
 -- com a lanterna acesa na mão também conta.
-local function why(p, z, radius)
+local function why(p, z, d, radius)
     if math.floor(p:getZ()) ~= math.floor(z:getZ()) then return nil end
-    local dx, dy = p:getX() - z:getX(), p:getY() - z:getY()
-    local d = math.sqrt(dx * dx + dy * dy)
     if d <= radius then return "near" end
     if d > R.ALERT_RANGE or p:getActiveLightItem() == nil then return nil end
     local sq = z:getCurrentSquare()
@@ -135,25 +157,35 @@ local function scan(report)
     end
     local found, now, players = {}, getTimestampMs(), localPlayers()
     local radius = NOM_Config.get("CarpideiraTriggerRadius")
+    -- Um aviso por varredura: o servidor aceita um por segundo por jogador, e vários
+    -- de uma vez atrasariam os outros; quem ficou de fora vai na varredura seguinte.
+    local reported = false
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if NOM_NightStats.variants[z] == "carpideira" and not z:isDead() and not C.furious(z, z:getModData()) then
-            found[z] = true
-            sob(z)
-            local last = lastReport[z]
-            if last == nil or now - last >= R.REPORT_GAP_MS then
-                for _, p in ipairs(players) do
-                    local w = why(p, z, radius)
-                    if w then
-                        lastReport[z] = now
-                        report(z, p, w)
-                        if getDebug() then
-                            print("[NOM] carpideira acordada por=" .. w .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()))
-                        end
-                        break
+        local md = NOM_NightStats.variants[z] == "carpideira" and not z:isDead() and z:getModData()
+        if md and not C.furious(z, md) then
+            local zx, zy = z:getX(), z:getY()
+            local last, nearest = lastReport[z], nil
+            local ready = not reported and (last == nil or now - last >= R.REPORT_GAP_MS)
+            for _, p in ipairs(players) do
+                local dx, dy = p:getX() - zx, p:getY() - zy
+                local d = math.sqrt(dx * dx + dy * dy)
+                if nearest == nil or d < nearest then nearest = d end
+                local w = ready and why(p, z, d, radius)
+                if w then
+                    ready, reported = false, true
+                    lastReport[z] = now
+                    report(z, p, w)
+                    if getDebug() then
+                        print("[NOM] carpideira acordada por=" .. w .. " x=" .. math.floor(zx) .. " y=" .. math.floor(zy))
                     end
                 end
+            end
+            -- no solo o aviso decide o grito na hora (NOM_Carpideira.scream): sem soluço
+            if nearest ~= nil and nearest <= C.SOB_RANGE and md.NOM_furia ~= NOM_FogState.period then
+                found[z] = true
+                sob(z)
             end
         end
     end

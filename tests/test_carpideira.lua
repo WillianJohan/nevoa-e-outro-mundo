@@ -47,7 +47,7 @@ return {
     carpideira_sobs_locally_while_calm = function()
         local G = setup()
         local z = G.carpideira({ x = 0, y = 0 })
-        G.player({ x = 20, y = 0 })
+        G.player({ x = 10, y = 0 })
         G.scan()
         local s = G.playing(NOM_Carpideira.SOB)
         assert(#s == 1 and s[1].src == z, "não soluçou")
@@ -67,6 +67,7 @@ return {
     carpideira_sob_stops_on_scream_fog_end_and_unload = function()
         local G = setup()
         local z = G.carpideira({ x = 0, y = 0 })
+        G.player({ x = 10, y = 0 })
         G.scan()
         NOM_Carpideira.scream(z, nil)
         assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço depois do grito")
@@ -76,6 +77,7 @@ return {
 
         local G2 = setup()
         G2.carpideira({ x = 0, y = 0 })
+        G2.player({ x = 10, y = 0 })
         G2.scan()
         NOM_FogState.set(false, 1)
         G2.scan()
@@ -83,6 +85,7 @@ return {
 
         local G3 = setup()
         local z3 = G3.carpideira({ x = 0, y = 0 })
+        G3.player({ x = 10, y = 0 })
         G3.scan()
         z3:removeFromWorld() -- foi pro virtual: o emitter não para sozinho
         G3.scan()
@@ -90,6 +93,7 @@ return {
 
         local G4 = setup()
         local z4 = G4.carpideira({ x = 0, y = 0 })
+        G4.player({ x = 10, y = 0 })
         G4.scan()
         z4.dead = true
         G4.scan()
@@ -177,5 +181,49 @@ return {
         end
         G.scan()
         for _, z in ipairs(cs) do assert(z.calls <= 10, "Carpideira calma: " .. z.calls .. " chamadas") end
+    end,
+    -- review: sem teto, cada Carpideira carregada (a célula inteira) tocava um loop.
+    -- Só soluça quem está a até SOB_RANGE de um jogador local; longe, para.
+    carpideira_sob_only_near_a_local_player = function()
+        local G = setup()
+        local near = G.carpideira({ x = 0, y = 0 })
+        local far = G.carpideira({ x = 40, y = 0, id = ID + 2 })
+        local p = G.player({ x = 10, y = 0 })
+        G.scan()
+        local s = G.playing(NOM_Carpideira.SOB)
+        assert(#s == 1 and s[1].src == near, "soluçou longe de todo mundo: " .. #s)
+        p.x = 40 - NOM_Carpideira.SOB_RANGE - 1 -- longe das duas
+        G.scan()
+        assert(#G.playing(NOM_Carpideira.SOB) == 0, "não parou quem ficou longe")
+        p.x = 30
+        G.scan()
+        s = G.playing(NOM_Carpideira.SOB)
+        assert(#s == 1 and s[1].src == far)
+    end,
+    -- review: um aviso por varredura (o servidor aceita um por segundo por jogador:
+    -- vários de uma vez atrasariam o enésimo); a outra vai na varredura seguinte
+    carpideira_one_report_per_scan = function()
+        local G = setup()
+        local a = G.carpideira({ x = 0, y = 0 })
+        local b = G.carpideira({ x = 0, y = 2, id = ID + 3 })
+        G.player({ x = 1, y = 1 })
+        G.scan()
+        assert(#G.reports == 1, "avisos na mesma varredura: " .. #G.reports)
+        G.scan()
+        assert(#G.reports == 2 and G.reports[2].z ~= G.reports[1].z, "a segunda não foi na seguinte")
+        assert((G.reports[1].z == a or G.reports[1].z == b) and (G.reports[2].z == a or G.reports[2].z == b))
+    end,
+    -- review: a marca da fúria é do período; a mesma Carpideira na névoa seguinte (o
+    -- objeto ficou carregado) volta calma
+    carpideira_furia_is_per_fog = function()
+        local G = setup()
+        local z = G.carpideira({ x = 0, y = 0 })
+        G.player({ x = 10, y = 0 })
+        NOM_Carpideira.scream(z, nil)
+        assert(z.md.NOM_furia == 1, "marca sem o período")
+        NOM_FogState.set(false, 1)
+        NOM_FogState.set(true, 2)
+        G.scan()
+        assert(#G.playing(NOM_Carpideira.SOB) == 1, "fúria passou pra névoa seguinte")
     end,
 }

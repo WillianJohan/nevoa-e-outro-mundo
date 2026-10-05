@@ -92,9 +92,24 @@ local function woke(player, z, why)
 end
 
 -- Solo: este processo simula os zumbis e vê (no dedicado é o cliente).
+-- NOM_Carpideira.screamed é memória: recarregar o save no meio da névoa a esvazia, e
+-- a que gritou voltaria parada e soluçando. Refeita do ModData ao carregar
+-- (OnInitGlobalModData, server/Vehicles/ProfessionVehicles.lua:343-350) e na borda da
+-- névoa (o primeiro minuto depois de carregar, NOM_FogEvent). No dedicado quem entra
+-- recebe carpideiraList (abaixo).
+local function syncScreamed()
+    local out = {}
+    for pid in pairs(screamedNow()) do out[pid] = true end
+    NOM_Carpideira.screamed = out
+end
+
 if not isServer() then
     NOM_VariantAI.install(scream)
     NOM_Carpideira.install(function(z, p, why) woke(p, z, why) end)
+    Events.OnInitGlobalModData.Add(syncScreamed)
+    NOM_World.onChange(function(flag, on)
+        if flag == "fog" and on then syncScreamed() end
+    end)
 end
 
 -- Barulho alto perto acorda: Events.OnWorldSound(x, y, z, raio, volume, fonte) sai de

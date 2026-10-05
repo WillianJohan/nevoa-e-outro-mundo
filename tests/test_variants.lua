@@ -45,6 +45,8 @@ local function setup(opts)
         function z:playSoundLocal(name) self.local_[#self.local_ + 1] = name; return 1 end
         function z:isRemoteZombie() return false end
         function z:setUseless(b) self.useless = b end
+        function z:isUseless() return self.useless == true end
+        function z:setTarget(t) self.target = t end
         function z:spotted(p, forced) if not self.useless then self.target, self.forced = p, forced end end
         G.zombies[#G.zombies + 1] = z
         return z
@@ -153,6 +155,7 @@ local function setup(opts)
     end
     -- alcance real do grito pros zumbis em volta (audição apurada da noite)
     function G.reach(s) return s.radius * HEARING_MULT[1] end
+    G.fire = fire
     function G.commandsSent(command)
         local out = {}
         for _, c in ipairs(G.sent) do if c.command == command then out[#out + 1] = c end end
@@ -413,11 +416,14 @@ return {
             G2.worldSound(case.x, 10, 0, case.r, case.r, G2.player(case.x, 10))
             assert(#z2.local_ == 0, case.why .. " acordou")
         end
-        local G3 = setup({ sandbox = CARP })
+        -- de dia na névoa o chamado do mod não é compensado: raio 30 = alto. Sem a
+        -- marca NOM_Night.calling, a caça a 1,5 tile a acordaria (review)
+        local G3 = setup({ sandbox = CARP, tod = 12 })
         local z3 = G3.zombie({ id = id })
         local other = G3.zombie({ id = id + 1, x = 30 })
         G3.worldSound(12, 10, 0, 60, 60, other) -- fonte zumbi (ex.: grito do Corredor)
-        NOM_Night.call(G3.player(12, 10), 30) -- caça da noite: addSound com o jogador de fonte
+        NOM_Night.call(G3.player(12, 10), 30) -- chamado do mod: addSound com o jogador de fonte
+        assert(G3.sounds[#G3.sounds].radius >= NOM_CarpideiraRules.LOUD_RADIUS, "teste não prova nada: chamado baixo")
         assert(#z3.local_ == 0, "chamado do mod ou barulho de zumbi acordou")
         local G4 = setup({ sandbox = CARP })
         local z4 = G4.zombie({ id = id, z = 1 })
@@ -457,5 +463,25 @@ return {
         local G2 = setup({ server = true, sandbox = CARP })
         G2.clientCommand("NevoaEOutroMundo", "fogState", {}, G2.player(80, 80))
         assert(#G2.commandsSent("carpideiraList") == 0)
+    end,
+    -- review: no solo a lista de quem gritou do processo é só memória. Recarregar o
+    -- save no meio da névoa refaz ela do ModData (ao carregar e na borda da névoa):
+    -- a que gritou não fica parada nem soluça de novo
+    carpideira_sp_reload_keeps_furious = function()
+        local G = setup({ sandbox = CARP })
+        local id = idFor("carpideira", 1, CARP)
+        G.carpReport(G.zombie({ id = id }), G.player(12, 10), "near")
+        assert(NOM_Carpideira.screamed[id])
+        -- recarregar: o Lua recomeça (memória vazia), o ModData volta
+        NOM_Carpideira.screamed = {}
+        G.fire("OnInitGlobalModData", false)
+        assert(NOM_Carpideira.screamed[id], "não refez a lista ao carregar")
+        NOM_Carpideira.screamed = {}
+        NOM_World.setFog(false)
+        NOM_World.setFog(true) -- borda da névoa no primeiro minuto depois de carregar
+        assert(NOM_Carpideira.screamed[id], "não refez a lista na borda da névoa")
+        local z = G.zombie({ id = id }) -- voltou do virtual: objeto novo
+        NOM_Carpideira.hold(z, z:getModData())
+        assert(not z.useless, "a que gritou ficou parada de novo")
     end,
 }

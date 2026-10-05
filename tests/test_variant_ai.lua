@@ -469,15 +469,60 @@ return {
         G2.reuse(z2)
         assert(not z2.useless, "reaproveitado nasceu parado")
     end,
-    -- MP: só o dono mexe; cópia remota segue o pacote (o useless viaja nele)
+    -- MP: só o dono mexe; a cópia remota segue o pacote (o useless viaja nele:
+    -- NetworkZombieAI.set/parse), então nasce parada como a do dono
     ai_carpideira_remote_untouched = function()
         local G = setup()
-        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", remote = true })
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", remote = true, useless = true })
         G.frame(5)
-        assert(not z.useless, "cópia remota mexeu no useless")
-        z.remote = false -- virou dono
+        assert(z.useless, "cópia remota mexeu no useless")
+        z.remote = false -- virou dono, com o useless herdado
         G.frame(1)
-        assert(z.useless, "novo dono não a deixou parada")
+        assert(z.useless and NOM_Carpideira.still[z], "novo dono não a assumiu parada")
+    end,
+    -- review (Critical A): calma e parada pelo dono antigo; a névoa acaba e a posse vem
+    -- pra cá com o useless herdado. Nada aqui a parou (kind, blind, still: nil): o
+    -- onUpdate sai cedo. A passada do NightStats (unstick) solta.
+    ai_carpideira_inherited_after_fog_is_released = function()
+        local G = setup({ fog = false })
+        local z = G.zombie({ x = 0, y = 0, useless = true }) -- comum de novo, herdada parada
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(5)
+        assert(z.useless, "o fake não modela o useless herdado")
+        NOM_NightStats.unstick(z)
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "ficou parada pra sempre depois da névoa")
+        -- reaproveitado com o useless herdado (resetForReuse não limpa)
+        local G2 = setup({ fog = false })
+        local z2 = G2.zombie({ x = 0, y = 0, useless = true })
+        G2.reuse(z2)
+        assert(not z2.useless, "reaproveitado nasceu parado")
+        -- remoto, Useless do jogo (outfit de debug) e parada pelo próprio mod: não mexe
+        local G3 = setup()
+        local r = G3.zombie({ x = 0, y = 0, useless = true, remote = true })
+        local dbg = G3.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless" })
+        local mine = G3.zombie({ x = 0, y = 9, variant = "carpideira" })
+        G3.frame(2)
+        for _, z3 in ipairs({ r, dbg, mine }) do NOM_NightStats.unstick(z3) end
+        assert(r.useless and dbg.useless and mine.useless, "soltou o que não era herdado")
+        -- Estalador cego por este processo também fica
+        local G4 = setup()
+        local e = G4.zombie({ x = 0, y = 0, variant = "estalador" })
+        G4.player({ x = 1, y = 0, sneaking = true })
+        G4.frame(3)
+        assert(e.useless)
+        NOM_NightStats.unstick(e)
+        assert(e.useless, "soltou o Estalador no meio da janela")
+    end,
+    -- review (Critical B): ela já gritou e a posse muda; o novo dono herda o useless
+    -- do pacote antigo. Furiosa: solta.
+    ai_carpideira_inherited_after_scream_is_released = function()
+        local G = setup()
+        NOM_Carpideira.screamed[778] = true
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", id = 778, useless = true })
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "furiosa herdada ficou parada")
     end,
     -- quem já gritou nesta névoa (servidor avisou) volta do virtual como objeto novo:
     -- não fica parada de novo
