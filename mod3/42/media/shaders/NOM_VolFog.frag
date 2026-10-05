@@ -126,8 +126,8 @@ vec4 fogLook(vec3 P, float amount) {
     float sigma = 0.9 * amount;
     float trans = 1.0;
     vec3 light = vec3(0.0);
-    for (int i = 0; i < STEPS; i++) {
-        vec3 w = start + stepW * (float(i) + jitter);
+    for (int i = 0; i < STEPS; i++) {                   // da câmera pro chão: a frente cobre o fundo
+        vec3 w = start + stepW * (float(STEPS - 1 - i) + jitter);
         float shade;
         float dens = densityLook(w, ground, layer, shade);
         if (dens <= 0.001) continue;
