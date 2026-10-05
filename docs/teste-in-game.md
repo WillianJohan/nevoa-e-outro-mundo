@@ -53,13 +53,13 @@ Os `NOM_Debug.*` da tabela abaixo continuam iguais.
 |---|---|---|
 | `NOM.help()` | lista os comandos | `[NOM] NOM.fog(on, skip) - névoa: …` (uma por comando) |
 | `NOM.fog()` / `(true)` / `(true, true)` / `(false)` | inverte (cancela a sirene que está contando) / sirene / névoa já / termina | `[NOM] debug nevoa sirene=true` ou `[NOM] debug nevoa fim=true` |
-| `NOM.redFog()` / `(true)` / `(false)` | névoa vermelha: inverte / força / desfaz | `[NOM] debug nevoa vermelha=…` |
+| `NOM.redFog()` / `(true)` / `(false)` | névoa vermelha: inverte (o servidor vê a vermelha aberta ou na sirene) / força / desfaz | `[NOM] debug nevoa vermelha=…` |
 | `NOM.night()` / `(true)` / `(false)` | noite forçada: inverte / noite / dia (relógio: `NOM_Debug.night()`) | `[NOM] debug noite forcada=…` |
-| `NOM.time(22)` | hora do relógio (25 vira 1) | `[NOM] debug hora=22.00` |
-| `NOM.spawn(5)` / `NOM.spawn(5, "Police")` | zumbis 3 tiles na sua frente (1 a 50; outfit opcional) | `[NOM] debug spawn n=5 criados=5 outfit=-` |
+| `NOM.time(22)` | hora do relógio, sempre pra frente (hora que já passou vira a de amanhã; 25 vira 1) | `[NOM] debug hora=22.00` |
+| `NOM.spawn(5)` / `NOM.spawn(5, "Police")` | zumbis espalhados em 3×3, 3 tiles na sua frente (1 a 50; outfit opcional, nome errado é recusado) | `[NOM] debug spawn n=5 criados=5 outfit=-` (ou `spawn outfit desconhecido=…`) |
 | `NOM.variant("corredor")` / `NOM.eco()` / `NOM.status()` | os mesmos do `NOM_Debug` | idem |
 | `NOM.god()` / `NOM.noclip()` / `NOM.invisible()` | truques do jogador local (inverte; `true`/`false` fixa) | `[NOM] debug god=true` |
-| `NOM.panel()` ou **F7** | abre e fecha o painel de botões (tecla em Opções > Mods > Névoa e Outro Mundo) | janela "Névoa e Outro Mundo: debug" |
+| `NOM.panel()` ou **Insert** | abre e fecha o painel de botões (tecla em Opções > Mods > Névoa e Outro Mundo) | janela "Névoa e Outro Mundo: debug" |
 
 | Comando | Faz | Linha esperada |
 |---|---|---|
