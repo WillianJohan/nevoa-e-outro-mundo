@@ -279,10 +279,15 @@ public class FlowGridTest {
         g.setDensity(1, 2, 0.2f); g.setDensity(3, 2, 0.4f); g.setDensity(2, 1, 0.6f); g.setDensity(2, 3, 0.8f);
         byte[] t = new byte[4 * 4 * 4];
         g.writeRGBA(t);
-        check(at(t, 4, 1, 1, 0) == 128, "densidade 0.5 virou " + at(t, 4, 1, 1, 0));
+        // densidade / D_MAX (sprint 0031): o acúmulo até 1,5 chega no shader
+        check(at(t, 4, 1, 1, 0) == 85, "densidade 0.5 virou " + at(t, 4, 1, 1, 0));
         check(at(t, 4, 1, 1, 3) == (FlowGrid.T_WALL_W | FlowGrid.T_WALL_N), "flags de parede: " + at(t, 4, 1, 1, 3));
         check(at(t, 4, 2, 2, 3) == (FlowGrid.F_SOLID | FlowGrid.F_TREE), "flags de sólido: " + at(t, 4, 2, 2, 3));
-        check(at(t, 4, 2, 2, 0) == 128, "sólido sem a média dos vizinhos: " + at(t, 4, 2, 2, 0));
+        check(at(t, 4, 2, 2, 0) == 85, "sólido sem a média dos vizinhos: " + at(t, 4, 2, 2, 0));
+        g.setDensity(0, 3, 1.5f);
+        g.setDensity(1, 3, 1f);
+        g.writeRGBA(t);
+        check(at(t, 4, 0, 3, 0) == 255 && at(t, 4, 1, 3, 0) == 170, "1,5 e 1,0 viraram " + at(t, 4, 0, 3, 0) + " e " + at(t, 4, 1, 3, 0));
         check(at(t, 4, 0, 0, 1) == 128 && at(t, 4, 0, 0, 2) == 128, "velocidade zero não é 128");
 
         FlowGrid w = new FlowGrid(8);
