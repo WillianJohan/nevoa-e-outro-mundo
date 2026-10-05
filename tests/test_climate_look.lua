@@ -91,7 +91,7 @@ local function setup(opts)
     ClimateColorInfo = {
         new = function(r, g, b, a, r2, g2, b2, a2) return newColorInfo({ r, g, b, a }, { r2, g2, b2, a2 }) end,
     }
-    SandboxVars = { NevoaEOutroMundo = opts.sandbox or {}, FogCycle = opts.fogCycle or 1, ClimateCycle = 1 }
+    SandboxVars = { NevoaEOutroMundo = opts.sandbox or {}, FogCycle = opts.fogCycle or 1, ClimateCycle = opts.climateCycle or 1 }
     isClient = function() return opts.client == true end
     getDebug = function() return false end
     local handlers = { climate = {}, tick = {} }
@@ -259,5 +259,16 @@ return {
         end)
         assert(NOM_World.fog == true, "override de névoa ignorado")
         assert(changes == 1, "flag piscou " .. changes .. " vezes")
+    end,
+
+    -- ClimateCycle 6 (nevasca eterna) liga o override de valor da névoa mesmo com
+    -- FogCycle normal (bytecode updateSandboxOverrides): a detecção lê o final.
+    -- Pela fórmula do WeatherPeriod daria lerp(0.5, 0.1, 0.7) = 0.4 < 0.5.
+    look_blizzard_override_uses_final = function()
+        local env = setup({ tod = 12, fog = 0.1, K = 10, sandbox = { FogThreshold = 0.5 }, climateCycle = 6 })
+        local f = env.floats[5]
+        f.override, f.overrideInterp, f.overrideValue, f.overrideInternal = 0.7, 0.5, true, 0.5
+        env.run(5)
+        assert(NOM_World.fog == true, "nevasca eterna ignorada: leu o interno")
     end,
 }
