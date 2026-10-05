@@ -117,6 +117,20 @@ return {
         end
     end,
 
+    -- sprint 0021: planta saiu do chão e as paredes estão desligadas; o texto não promete
+    translations_overlays_promise_only_the_floor = function()
+        local banned = { EN = { "moss", "vines", "walls" }, PTBR = { "musgo", "trepadeira", "paredes" } }
+        for lang, words in pairs(banned) do
+            local sandbox = parse(DIR .. lang .. "/Sandbox.json")
+            local ui = parse(DIR .. lang .. "/UI.json")
+            for _, t in ipairs({ sandbox["Sandbox_NevoaEOutroMundo.FogOverlays_tooltip"], ui["UI_NOM_FogOverlayDensity_tooltip"] }) do
+                for _, w in ipairs(words) do
+                    assert(not t:lower():find(w, 1, true), lang .. " promete " .. w .. ": " .. t)
+                end
+            end
+        end
+    end,
+
     translations_same_files_per_language = function()
         local ref = table.concat(lines("ls " .. DIR .. LANGS[1]), ",")
         for _, lang in ipairs(LANGS) do

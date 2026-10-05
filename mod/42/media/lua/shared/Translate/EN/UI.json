@@ -5,7 +5,7 @@
     "UI_NOM_ScreenFxIntensity": "Screen effects intensity",
     "UI_NOM_ScreenFxIntensity_tooltip": "0 turns the effects off, 1 is the default, 2 is double.",
     "UI_NOM_FogOverlayDensity": "Blood and decay in the fog",
-    "UI_NOM_FogOverlayDensity_tooltip": "How much blood, grime, cracks, moss and vines the fog spreads around you. 0 turns it off, 1 is the default, 2 is double. Red fog is always heavier.",
+    "UI_NOM_FogOverlayDensity_tooltip": "How much blood, grime and cracks the fog spreads around you. 0 turns it off, 1 is the default, 2 is double. Red fog is always heavier.",
     "UI_NOM_Dissolve": "Monsters burn in and out",
     "UI_NOM_Dissolve_tooltip": "Monster pieces form and fall apart with a burning edge when a zombie turns and turns back, and Echoes burn away with embers when they die. Off: instant swap, as before.",
     "UI_NOM_Bloom": "Bloom (Shader mod)",

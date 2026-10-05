@@ -37,7 +37,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça; contraste cheio e formas grandes pra ler sob a névoa | 0012, 0014 |
 | Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
-| Outro Mundo sangrento | na névoa, poças e rastros de sangue, sujeira, rachaduras, musgo e trepadeiras no chão e nas paredes em volta (mais na vermelha); só na tela, nada no save; densidade de cada jogador | 0015 |
+| Outro Mundo sangrento | na névoa, poças e rastros de sangue, sujeira em manchas e rachaduras no chão em volta (mais na vermelha), só onde o jogador vê e nunca por cima dele; só na tela, nada no save; densidade de cada jogador | 0015, 0021 |
 | Dissolve e bloom | a peça do monstro se forma e se desfaz queimando, o Eco queima até a cinza com brasas na morte; bloom no shader opcional, mais forte na névoa; opção de cada jogador | 0018 |
 | Balanceamento do PO e curva de tensão | defaults e presets novos (névoa 2 dias e 3–6 h, Eco 20/30, caça 90/25, monstros 5/3/3/3); a névoa começa a cada ~3 dias e aperta com os dias do save, sem vermelha na primeira semana e com o dobro dela no dia 90 | 0019 |
 

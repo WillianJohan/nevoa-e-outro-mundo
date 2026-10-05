@@ -1,19 +1,21 @@
--- Outro Mundo sangrento (sprint 0015): na névoa, chão e paredes em volta do jogador
--- ganham sangue (poças, rastros) e a erosão no máximo (sujeira, rachadura, musgo,
--- trepadeira), só na tela de quem vê (solo e cliente de MP). O que vai em cada
--- square: shared/NOM_DressingRules.lua. ADR-015, pz-api-notes §16.
+-- Outro Mundo sangrento (sprint 0015, ajustes da 0021): na névoa, o chão em volta do
+-- jogador ganha sangue (poças, rastros), sujeira e rachadura, só na tela de quem vê (solo e
+-- cliente de MP). O que vai em cada square: shared/NOM_DressingRules.lua. ADR-015,
+-- pz-api-notes §16.
 --
 -- Nada vai pro mapa, pro save ou pra rede (bytecode B42.21):
--- * Chão: um IsoMarker por square com a tabela de texturas
---   (getIsoMarkers():addIsoMarker(nomes, sq, r, g, b, a), ISBaseIcon.lua:579). Lista
---   em memória do IsoMarkers, sem save/load nem pacote; o IngameState.exit faz reset().
---   Desenhado com profundidade e sem luz: a cor do marcador leva a luz do square.
+-- * Chão: até dois IsoMarker por square (rachadura + sangue; a sujeira, mais leve, à parte)
+--   com a tabela de texturas (getIsoMarkers():addIsoMarker(nomes, sq, r, g, b, a),
+--   ISBaseIcon.lua:579). Lista em memória do IsoMarkers, sem save/load nem pacote; o
+--   IngameState.exit faz reset(). Sem luz: a cor do marcador leva a luz do square.
+--   O marcador sai depois dos personagens e testa profundidade com um valor só, o do centro
+--   do tile (§16.5): pinta por cima do que está atrás desse ponto (personagem do tile de
+--   trás, parede, telhado). Daí: só square que o jogador vê (prédio e sombra de prédio), e
+--   os 4 tiles debaixo de cada personagem perto apagados.
 -- * Parede: desenho imediato a cada quadro, no Events.RenderOpaqueObjectsInWorld
 --   (FBORenderCell.renderOpaqueObjectsEvent, todo quadro; ISBuildingObject.lua:721-741),
---   com sprite:RenderGhostTileColor(x, y, z, r, g, b, a) (ISFarmingCursorMouse.lua:21):
---   o mesmo desenho do fantasma de construção, na posição de tile de verdade. Sem
---   profundidade e sem luz: só parede limpa (piso + parede, sem batente de porta ou
---   janela), de frente e à vista.
+--   com sprite:RenderGhostTileColor(x, y, z, r, g, b, a) (ISFarmingCursorMouse.lua:21).
+--   Sem profundidade e depois do renderPlayers: desligado (NOM_DressingRules.WALLS, ADR-015).
 -- Proibidos (salvos ou sincronizados, §16.1): addBlood*, objetos de erosão,
 -- setOverlaySprite, AttachedAnimSprite, objeto novo no square.
 if isServer() then return end
@@ -34,6 +36,16 @@ NOM_FogOverlays = {
     LIGHT_FLOOR = 0.5,   -- no escuro total (e sob a névoa vermelha) o sangue ainda se lê
     MIN_REACH = 5,       -- o teto nunca encolhe o raio efetivo abaixo disto
     DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
+    -- O marcador sai por cima do mundo (print 7: chão de dentro em cima do telhado). Um prédio
+    -- de um andar cobre na tela os squares até 3 tiles atrás dele na diagonal (a altura de um
+    -- andar, IsoUtils.YToScreen). Prédio mais alto cobre mais: o resto aparece (roteiro).
+    SHADOW = 3,
+    -- O losango do decalque sai centrado no canto N do tile (meio tile acima): com o pé em
+    -- qualquer lugar do tile, alcançam o corpo os decalques do próprio tile e dos S, E e SE
+    -- (review 0021). Esses 4 apagam debaixo do jogador (todo tick) e dos zumbis e outros
+    -- jogadores a até CHAR_RADIUS tiles (CHAR_PER_TICK zumbis lidos por tick, em rodízio).
+    CHAR_RADIUS = 10,
+    CHAR_PER_TICK = 8,
 }
 
 local O = NOM_FogOverlays
@@ -49,15 +61,29 @@ local frames     -- { N = { IsoFlagType... }, W = { ... } }, lazy como as textur
 local sprites = {} -- [nome] = IsoSprite
 -- Duas reservas com teto, cada uma com o raio efetivo que o teto aguenta: o teto serve
 -- quem está mais perto (cheio, o raio encolhe e o que fica fora cai na hora).
-local F = { list = {}, max = D.MAX_FLOOR, reach = D.RADIUS }
+-- n = marcadores no chão, inclusive os que estão apagando (até dois por square): o teto
+-- MAX_FLOOR é de marcadores de verdade (review 0021).
+local F = { list = {}, max = D.MAX_FLOOR, reach = D.RADIUS, n = 0 }
 local W = { list = {}, max = D.MAX_WALL, reach = D.RADIUS }
-local taken = {}   -- [k] = true: já tem entrada (k = square; na parede, + o lado)
+
+local function used(pool)
+    return pool.n or #pool.list
+end
+local taken = {}   -- [k] = entrada do chão, ou true na parede (k = square; na parede, + o lado)
+-- Chão debaixo de personagem (prints 9 e 10): [entrada] = true, apagada. Os tiles de cada
+-- personagem perto, lidos em rodízio: occ (volta completa) e build (a volta em curso).
+local blanked, occ, build, zAt = {}, {}, {}, 0
 -- Decidido nesta varredura, por reserva: [x,y,z] no chão, [x,y,z .. "N"|"W"] na parede.
 -- Fora do raio efetivo, recusado pelo teto, sem chunk ou parede de costas: não entra.
 local seenF, seenW = {}, {}
 local cursor, gen, anchorX, anchorY, lastMs = 1, nil, nil, nil, nil
 local density, pendingD, pendingAt -- densidade em vigor e a que o jogador está mexendo
 local lightAt, wallAt = 1, 1
+-- Telhado por square ("x,y,z"): false = de fora, o prédio (objeto do jogo) ou true =
+-- coberto sem cômodo. Lido uma vez por âncora; o prédio do jogador muda o que se vê.
+local roofs = {}
+local NONE = {}     -- contexto ainda não lido
+local ctx = NONE    -- prédio do jogador (nil = fora)
 
 local function loadSprites()
     valid = {}
@@ -110,12 +136,21 @@ local function cleanWall(sq, north)
     return other ~= nil and other ~= w
 end
 
+local function paint(e)
+    local a = blanked[e] and 0 or e.a
+    if e.m then e.m:setColor(e.l, e.l, e.l, a) end
+    if e.g then e.g:setColor(e.l, e.l, e.l, a * D.GRIME_ALPHA) end
+end
+
 local function drop(pool, i)
     local e = pool.list[i]
+    blanked[e] = nil
     if e.m then e.m:remove() end
+    if e.g then e.g:remove() end
+    if pool.n then pool.n = pool.n - (e.m and 1 or 0) - (e.g and 1 or 0) end
     taken[e.k] = nil
     -- voltando pra cá, entra de novo (mesmo desenho)
-    if e.m then seenF[e.k] = nil else seenW[e.k] = nil end
+    if pool == F then seenF[e.k] = nil else seenW[e.k] = nil end
     table.remove(pool.list, i)
 end
 
@@ -127,13 +162,14 @@ end
 function O.clear()
     dropAll(F)
     dropAll(W)
-    taken, seenF, seenW = {}, {}, {}
+    taken, seenF, seenW, roofs, ctx = {}, {}, {}, {}, NONE
+    blanked, occ, build, zAt = {}, {}, {}, 0
     cursor, gen, anchorX, anchorY = 1, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
 end
 
 function O.count()
-    return #F.list, #W.list
+    return F.n, #W.list -- marcadores de chão (até dois por square) e paredes
 end
 
 -- Raio efetivo do chão e das paredes (o que o teto aguenta em volta do jogador).
@@ -141,15 +177,54 @@ function O.reach()
     return F.reach, W.reach
 end
 
-local function addFloor(sq, x, y, z, sk, layers)
+local function roofOf(cell, x, y, z, sq)
+    local k = x .. "," .. y .. "," .. z
+    local v = roofs[k]
+    if v == nil then
+        sq = sq or cell:getGridSquare(x, y, z)
+        -- isOutside: server/Farming/SFarmingSystem.lua:295; getBuilding: server/ClientCommands.lua:676
+        if not sq or sq:isOutside() then v = false else v = sq:getBuilding() or true end
+        roofs[k] = v
+    end
+    return v
+end
+
+-- O jogador vê o chão do square? De dentro, o prédio dele (o jogo corta paredes do sul e
+-- do leste e o telhado; ISWorldObjectContextMenu.lua:1679 compara prédios assim). De fora do
+-- square, só se nenhum prédio o cobre na tela, nem o dele: as paredes N/W do prédio dele não
+-- são cortadas e tapam o que está atrás (review 0021).
+local function visible(e, pb)
+    if e.roof then return e.roof == pb end
+    return #e.occ == 0
+end
+
+local function lookAt(cell, x, y, z, sq)
+    local roof, occ = roofOf(cell, x, y, z, sq), {}
+    if not roof then
+        for k = 1, O.SHADOW do
+            local b = roofOf(cell, x + k, y + k, z)
+            if b then occ[#occ + 1] = b end
+        end
+    end
+    return { roof = roof, occ = occ }
+end
+
+-- Um square, até dois marcadores: rachadura + sangue num, a sujeira no outro (alfa ×
+-- GRIME_ALPHA; o marcador tem uma cor só pra todas as texturas).
+local function addFloor(sq, x, y, z, sk, layers, vis)
     local names = {}
     for _, l in ipairs(layers) do names[#names + 1] = name(l) end
-    if #names == 0 or not sq:isFree(false) then return end -- isFree: ISWorldObjectContextMenu.lua:2199
+    local grime = layers.grime and name(layers.grime)
+    if (#names == 0 and not grime) or not sq:isFree(false) then return end -- isFree: ISWorldObjectContextMenu.lua:2199
     local l = lightOf(sq)
-    local m = getIsoMarkers():addIsoMarker(names, sq, l, l, l, 0)
-    if not m then return end
-    taken[sk] = true
-    F.list[#F.list + 1] = { m = m, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l }
+    local markers = getIsoMarkers()
+    local m = #names > 0 and markers:addIsoMarker(names, sq, l, l, l, 0) or nil
+    local g = grime and markers:addIsoMarker({ grime }, sq, l, l, l, 0) or nil
+    if not m and not g then return end
+    F.n = F.n + (m and 1 or 0) + (g and 1 or 0)
+    F.list[#F.list + 1] = { m = m, g = g, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l,
+        roof = vis.roof, occ = vis.occ }
+    taken[sk] = F.list[#F.list]
 end
 
 local function addWall(sq, x, y, z, sk, layer, north)
@@ -164,8 +239,16 @@ local function addWall(sq, x, y, z, sk, layer, north)
 end
 
 -- Cheio: o raio efetivo encolhe pra antes deste anel; o que ficar fora cai na próxima.
+-- No chão, o que aparece perto depois (entrou ou saiu de um prédio) e não cabe tira um
+-- tile do raio por lote: o anel de fora sai e abre lugar, sem desabar até o recusado.
 local function shrink(pool, o2)
-    pool.reach = math.max(O.MIN_REACH, math.min(pool.reach, math.floor(math.sqrt(o2)) - 1))
+    local r = math.floor(math.sqrt(o2)) - 1
+    if pool == F then
+        if pool.shrunk then return end
+        pool.shrunk = true
+        r = math.max(r, pool.reach - 1)
+    end
+    pool.reach = math.max(O.MIN_REACH, math.min(pool.reach, r))
 end
 
 -- Volta completa com folga: o raio efetivo cresce um tile se o anel novo cabe (a
@@ -174,7 +257,7 @@ end
 local function sweepDone()
     for _, pool in ipairs({ F, W }) do
         local r = pool.reach
-        if r < D.RADIUS and #pool.list * (r + 1) * (r + 1) / (r * r) < pool.max * 0.95 then pool.reach = r + 1 end
+        if r < D.RADIUS and used(pool) * (r + 1) * (r + 1) / (r * r) < pool.max * 0.95 then pool.reach = r + 1 end
     end
 end
 
@@ -182,6 +265,7 @@ end
 -- regra antes do Java, cada reserva decidida uma vez por square (e por lado).
 local function scan(px, py, pz, per, d)
     local cell = getCell()
+    F.shrunk = nil
     for _ = 1, O.SCAN_BUDGET do
         local limit = D.WITHIN[math.max(F.reach, W.reach)]
         if cursor > limit then
@@ -201,12 +285,13 @@ local function scan(px, py, pz, per, d)
         end
         if o2 <= F.reach * F.reach and not seenF[sk] and not taken[sk] then
             local layers = D.floor(x, y, pz, per, d)
-            if not layers then
-                seenF[sk] = true
-            elseif #F.list >= F.max then
+            local vis = layers and square() and lookAt(cell, x, y, pz, sq) -- sem chunk: tenta na próxima volta
+            if not layers or (vis and not visible(vis, ctx)) then
+                seenF[sk] = true -- fora da vista não ocupa o teto; mudou o prédio, a varredura recomeça
+            elseif vis and F.n + (#layers > 0 and 1 or 0) + (layers.grime and 1 or 0) > F.max then
                 shrink(F, o2) -- cheio: tenta de novo quando o raio voltar
-            elseif square() then -- sem chunk: tenta na próxima volta
-                addFloor(sq, x, y, pz, sk, layers)
+            elseif vis then
+                addFloor(sq, x, y, pz, sk, layers, vis)
                 seenF[sk] = true
             end
         end
@@ -231,13 +316,13 @@ local function scan(px, py, pz, per, d)
     end
 end
 
--- Fade de uma reserva até want(e); com alfa 0 e keep(e) falso, sai.
+-- Fade de uma reserva até want(e); apagada (alfa 0, sem querer voltar) e sem keep, sai.
 local function fade(pool, dt, want, keep)
     for i = #pool.list, 1, -1 do
         local e = pool.list[i]
         local target = want(e) and 1 or 0
         local a = NOM_AtmosphereRules.approach(e.a, target, dt, O.FADE_MS)
-        if a <= 0 and not keep then
+        if a <= 0 and target == 0 and not keep then
             drop(pool, i)
         else
             e.changed = e.changed or a ~= e.a
@@ -305,12 +390,16 @@ local function update()
             gen, seenF, seenW, cursor = g, {}, {}, 1
         end
         if not anchorX or math.abs(px - anchorX) >= O.RESEEN_TILES or math.abs(py - anchorY) >= O.RESEEN_TILES then
-            anchorX, anchorY, seenF, seenW, cursor = px, py, {}, {}, 1 -- recomeça do mais perto
+            anchorX, anchorY, seenF, seenW, roofs, cursor = px, py, {}, {}, {}, 1 -- recomeça do mais perto
         end
+        -- entrou ou saiu de prédio: o que se vê muda; o que estava na reserva só apaga (fade)
+        local pb = p:getBuilding() -- ISWorldObjectContextMenu.lua:1679
+        if pb ~= ctx then ctx, seenF, cursor = pb, {}, 1 end
         prune(F, px, py, pz)
         prune(W, px, py, pz)
     end
-    fade(F, dt, function() return on end, on)
+    -- chão que saiu da vista apaga e sai: o teto fica com o que se vê
+    fade(F, dt, function(e) return on and visible(e, ctx) end, false)
     fade(W, dt, function(e)
         -- de frente (N com o jogador ao sul, W com ele a leste: a outra face o jogo corta) e à
         -- vista (linha de visão do jogo, LightingJNI, no cone). Fora da vista só apaga: fica.
@@ -318,7 +407,7 @@ local function update()
     end, on)
     if on then refresh() end
     for _, e in ipairs(F.list) do
-        if e.changed then e.m:setColor(e.l, e.l, e.l, e.a) end
+        if e.changed then paint(e) end
         e.changed = nil
     end
     if on then scan(px, py, pz, per, d) end
@@ -342,8 +431,73 @@ end)
 Events.OnGameStart.Add(O.clear)
 Events.OnMainMenuEnter.Add(O.clear)
 
+local FOUR = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
+
+local function mark(set, x, y, z)
+    for _, o in ipairs(FOUR) do set[(x + o[1]) .. "," .. (y + o[2]) .. "," .. z] = true end
+end
+
+local function markIfNear(set, c, px, py, pz)
+    local x, y = c:getX(), c:getY()
+    local dx, dy = x - px, y - py
+    if math.floor(c:getZ()) == pz and dx * dx + dy * dy <= O.CHAR_RADIUS * O.CHAR_RADIUS then
+        mark(set, math.floor(x), math.floor(y), pz)
+    end
+end
+
+-- Um lote do rodízio de personagens: até CHAR_PER_TICK zumbis (getCell():getZombieList(),
+-- a lista do cliente); na volta completa, os outros jogadores do MP (getOnlinePlayers, só
+-- cliente) e a volta nova passa a valer.
+local function scanCharacters(p, px, py, pz)
+    local list = getCell():getZombieList()
+    local n = list:size()
+    for _ = 1, O.CHAR_PER_TICK do
+        if zAt >= n then
+            if isClient() then
+                local players = getOnlinePlayers()
+                for i = 0, players:size() - 1 do
+                    local other = players:get(i)
+                    if other ~= p then markIfNear(build, other, px, py, pz) end
+                end
+            end
+            occ, build, zAt = build, {}, 0
+            return
+        end
+        local z = list:get(zAt)
+        zAt = zAt + 1
+        if z then markIfNear(build, z, px, py, pz) end
+    end
+end
+
+-- Todo tick (o marcador sai depois dos personagens e por cima deles, sem esperar a
+-- atualização): apaga o chão debaixo do jogador e dos personagens perto; o que eles
+-- deixaram volta ao alfa da entrada.
+local function underfoot()
+    local p = getSpecificPlayer(0)
+    if #F.list == 0 or not p then
+        blanked = {}
+        return
+    end
+    local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
+    scanCharacters(p, p:getX(), p:getY(), pz)
+    local tiles = {}
+    mark(tiles, px, py, pz)
+    for k in pairs(occ) do tiles[k] = true end
+    for k in pairs(build) do tiles[k] = true end
+    local now = {}
+    for k in pairs(tiles) do
+        local e = taken[k]
+        if e and e ~= true then now[e] = true end
+    end
+    local old = blanked
+    blanked = now
+    for e in pairs(old) do if not now[e] then paint(e) end end
+    for e in pairs(now) do if not old[e] then paint(e) end end
+end
+
 local ticks = 0
 Events.OnTick.Add(function()
+    underfoot()
     ticks = ticks + 1
     if ticks < O.UPDATE_TICKS then return end
     ticks = 0

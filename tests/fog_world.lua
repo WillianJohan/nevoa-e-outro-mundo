@@ -19,6 +19,11 @@
 --   G.walls[k] = "N", "W" ou "NW"), getObjects():size() (piso + paredes, ou G.objects[k]),
 --   getLightLevel(pn) (máx. de r,g,b da luz do square; G.light[k] ou G.lightAll, 0..1).
 --   G.sqCalls conta toda chamada de método em square (cada uma é uma ida ao Java).
+-- * Prédios (sprint 0021): square:isOutside() (server/Farming/SFarmingSystem.lua:295) é falso
+--   sob telhado; square:getBuilding() é o prédio do cômodo, nil fora (server/ClientCommands.lua:676);
+--   player:getBuilding() é o do square dele (client/ISUI/ISWorldObjectContextMenu.lua:1679).
+--   G.interior[k] = prédio (mesma tabela = mesmo prédio, como o objeto Java); G.roofed[k] =
+--   telhado sem cômodo (varanda): fora de prédio e não é "de fora".
 -- * Zumbi (sprint 0011): playSoundLocal no emitter dele (IsoGameCharacter.playSoundLocal),
 --   getEmitter() com isPlaying/stopSoundLocal (BaseCharacterSoundEmitter); setUseless,
 --   setTarget, spotted(p, forçado) (IsoZombie, públicos). removeFromWorld não para o
@@ -41,7 +46,7 @@ end
 function W.new(opts)
     opts = opts or {}
     local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
-        holes = {}, blocked = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, flags = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
+        holes = {}, blocked = {}, interior = {}, roofed = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, flags = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
     local handlers = {}
     G.handlers = handlers
     function G.fire(name, ...)
@@ -83,6 +88,8 @@ function W.new(opts)
                 end }
             end,
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
+            isOutside = function() return G.interior[k] == nil and not G.roofed[k] end,
+            getBuilding = function() return G.interior[k] end,
             getWall = function(_, north)
                 local w = G.walls[k]
                 if w and w:find(north and "N" or "W") then
@@ -150,6 +157,7 @@ function W.new(opts)
             return { getDirection = function() return me.face end }
         end
         function p:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
+        function p:getBuilding() return G.interior[key(math.floor(self.x), math.floor(self.y), math.floor(self.z))] end
         function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
         function p:getEmitter() return emitter end
         function p:getActiveLightItem() if self.light then return { lit = true } end return nil end

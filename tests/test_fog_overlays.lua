@@ -91,15 +91,44 @@ local function alive(G)
     return out
 end
 
+-- desenho por square (sangue e sujeira são dois marcadores do mesmo square)
 local function layout(G)
     local out = {}
-    for _, m in ipairs(alive(G)) do out[m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z] = table.concat(m.names, "|") end
+    for _, m in ipairs(alive(G)) do
+        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
+        local v = table.concat(m.names, "|")
+        if out[k] then
+            out[k] = out[k] < v and out[k] .. "+" .. v or v .. "+" .. out[k]
+        else
+            out[k] = v
+        end
+    end
     return out
 end
 
-local function textures(G)
+-- squares com marcador vivo (o teto é por square)
+local function squares(G)
     local n = 0
-    for _, m in ipairs(alive(G)) do n = n + #m.names end
+    for _ in pairs(layout(G)) do n = n + 1 end
+    return n
+end
+
+-- um marcador vivo fora do tile do jogador (o do tile dele fica apagado)
+local function awayFromPlayer(G, list)
+    for _, m in ipairs(list or alive(G)) do
+        if m.sq.x ~= math.floor(G.p.x) or m.sq.y ~= math.floor(G.p.y) then return m end
+    end
+end
+
+local function textures(G, noGrime, r)
+    local n = 0
+    for _, m in ipairs(alive(G)) do
+        local dx, dy = m.sq.x - math.floor(G.p.x), m.sq.y - math.floor(G.p.y)
+        if r and dx * dx + dy * dy > r * r then m = { names = {} } end
+        for _, name in ipairs(m.names) do
+            if not (noGrime and name:find("^overlay_grime")) then n = n + 1 end
+        end
+    end
     return n
 end
 
@@ -132,7 +161,309 @@ local function coverage(G, r)
     return have / tot, want > 0 and have / want or 1
 end
 
+-- tile do personagem e os S, E e SE dele (os decalques que alcançam o corpo)
+local FOUR = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
+
+-- ticks pra duas voltas do rodízio de personagens (a volta velha só sai no fim da nova)
+local function rotation(G)
+    return 2 * (math.ceil(#G.zombies / O().CHAR_PER_TICK) + 1) + 1
+end
+
+local function at(G, x, y)
+    local out = {}
+    for _, m in ipairs(alive(G)) do
+        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 then out[#out + 1] = m end
+    end
+    return out
+end
+
+-- marcadores vivos por square: { main = marcador sem sujeira, grime = marcador da sujeira }
+local function bySquare(G)
+    local out = {}
+    for _, m in ipairs(alive(G)) do
+        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
+        out[k] = out[k] or {}
+        if #m.names == 1 and m.names[1]:find("^overlay_grime") then out[k].grime = m else out[k].main = m end
+    end
+    return out
+end
+
+-- prédio: squares de dentro de x0..x1, y0..y1 no andar 0
+local function building(G, x0, y0, x1, y1)
+    local b = { name = "prédio " .. x0 .. "," .. y0 }
+    for x = x0, x1 do for y = y0, y1 do G.interior[x .. "," .. y .. ",0"] = b end end
+    return b
+end
+
+-- marcador que se vê (alfa > 0) em (x, y, 0)?
+local function shown(G, x, y)
+    for _, m in ipairs(alive(G)) do
+        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 and m.a > 0 then return true end
+    end
+    return false
+end
+
+-- quantos squares de fora, perto do jogador e fora de qualquer sombra, têm marcador à vista
+local function shownOutside(G, r, skip)
+    local n = 0
+    for x = 100 - r, 100 + r do
+        for y = 100 - r, 100 + r do
+            if not skip(x, y) and shown(G, x, y) then n = n + 1 end
+        end
+    end
+    return n
+end
+
 return {
+    -- prints 9 e 10 (05/10): o marcador sai depois dos personagens, meio tile acima, com o
+    -- losango centrado no canto N do tile. Com o pé em qualquer lugar do tile, o decalque do
+    -- próprio tile e dos tiles S, E e SE alcança o corpo (review 0021): os 4 ficam apagados
+    overlays_player_tiles_clear_every_tick = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        local hidden = 0
+        for step = 1, 12 do
+            local ox, oy = math.floor(G.p.x), math.floor(G.p.y)
+            G.p.x = G.p.x + 1
+            G.tick(1)
+            local px, py = math.floor(G.p.x), math.floor(G.p.y)
+            for _, o in ipairs(FOUR) do
+                for _, m in ipairs(at(G, px + o[1], py + o[2])) do
+                    assert(m.a == 0, "marcador visível em " .. o[1] .. "," .. o[2] .. " do jogador, passo " .. step)
+                    hidden = hidden + 1
+                end
+            end
+            G.tick(1)
+            -- o tile deixado e o S dele saíram dos 4 (andou pra leste)
+            for _, m in ipairs(at(G, ox, oy)) do assert(m.a > 0, "o tile deixado ficou apagado, passo " .. step) end
+            for _, m in ipairs(at(G, ox, oy + 1)) do assert(m.a > 0, "o S do tile deixado ficou apagado") end
+        end
+        assert(hidden >= 24, "o caminho não tinha marcador (teste não mede): " .. hidden)
+    end,
+
+    -- review 0021: zumbi em pé em decalque (o caso comum): os mesmos 4 tiles, perto do
+    -- jogador, em rodízio; volta quando ele sai
+    overlays_zombie_tiles_clear = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        for i = 1, 150 do G.zombie({ x = 300 + i, y = 300, id = i }) end -- longe: fora do raio
+        local z = G.zombie({ x = 104, y = 97, id = 999 })
+        local far = G.zombie({ x = 100 + O().CHAR_RADIUS + 3, y = 100, id = 998 })
+        G.tick(rotation(G))
+        local hidden = 0
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do
+                assert(m.a == 0, "decalque visível debaixo do zumbi em " .. o[1] .. "," .. o[2])
+                hidden = hidden + 1
+            end
+        end
+        assert(hidden > 0, "o zumbi não estava em decalque (teste não mede)")
+        local fx = math.floor(far.x)
+        for _, m in ipairs(at(G, fx, 100)) do assert(m.a > 0 or m.a == nil, "zumbi longe apagou o chão") end
+        z.x = 96.5
+        G.tick(rotation(G))
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do assert(m.a > 0, "o chão não voltou depois do zumbi sair") end
+        end
+    end,
+
+    -- custo por tick limitado com muitos zumbis perto
+    overlays_zombie_scan_bounded = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        for i = 1, 300 do G.zombie({ x = 90 + i % 20, y = 90 + math.floor(i / 20), id = i }) end
+        local gets = 0
+        local cell = getCell
+        getCell = function()
+            local c = cell()
+            local list = c.getZombieList
+            c.getZombieList = function(self)
+                local l = list(self)
+                local get = l.get
+                l.get = function(me, i) gets = gets + 1; return get(me, i) end
+                return l
+            end
+            return c
+        end
+        for _ = 1, 30 do
+            gets = 0
+            G.tick(1)
+            assert(gets <= O().CHAR_PER_TICK, "zumbis lidos num tick: " .. gets)
+        end
+    end,
+
+    -- review 0021: outro jogador do MP em pé em decalque
+    overlays_remote_player_tiles_clear = function()
+        local G = setup({ density = 2, client = true })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        G.player({ x = 97, y = 103 })
+        G.tick(rotation(G))
+        local hidden = 0
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 97 + o[1], 103 + o[2])) do
+                assert(m.a == 0, "decalque visível debaixo do outro jogador")
+                hidden = hidden + 1
+            end
+        end
+        assert(hidden > 0, "o outro jogador não estava em decalque (teste não mede)")
+    end,
+
+    -- print 7 (05/10): com o jogador fora, o chão de dentro da casa saía por cima do telhado
+    overlays_outside_player_skips_interior = function()
+        local G = setup()
+        building(G, 104, 92, 112, 108)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        for x = 104, 112 do
+            for y = 92, 108 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
+        end
+        assert(shownOutside(G, 3, function() return false end) > 15, "o chão de fora sumiu junto")
+    end,
+
+    -- o marcador não é tapado pelo mundo: de fora, o prédio cobre na tela os squares de fora
+    -- até SHADOW tiles atrás dele na diagonal (um andar de altura = 3 tiles na tela)
+    overlays_outside_player_skips_building_shadow = function()
+        local G = setup()
+        G.p.x, G.p.y = 95.5, 95.5
+        building(G, 106, 106, 114, 114)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        local function inShadow(x, y)
+            for k = 1, O().SHADOW do
+                if G.interior[(x + k) .. "," .. (y + k) .. ",0"] then return true end
+            end
+            return false
+        end
+        local hidden, total = 0, 0
+        for x = 98, 114 do
+            for y = 98, 114 do
+                if not G.interior[x .. "," .. y .. ",0"] and inShadow(x, y) then
+                    total = total + 1
+                    assert(not shown(G, x, y), "chão de fora atrás do prédio: " .. x .. "," .. y)
+                end
+            end
+        end
+        assert(total > 10, "teste não mediu a sombra: " .. total)
+    end,
+
+    -- dentro: o prédio dele e o de fora (o jogo corta as paredes e o telhado dele); o outro
+    -- prédio e a sombra dele não
+    overlays_inside_player_sees_own_building = function()
+        local G = setup()
+        local own = building(G, 95, 95, 104, 104)
+        building(G, 80, 106, 88, 114)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        assert(G.p:getBuilding() == own)
+        local inside = 0
+        for x = 95, 104 do for y = 95, 104 do if shown(G, x, y) then inside = inside + 1 end end end
+        assert(inside > 30, "o prédio do jogador ficou limpo: " .. inside)
+        for x = 80, 88 do
+            for y = 106, 114 do assert(not shown(G, x, y), "chão do outro prédio: " .. x .. "," .. y) end
+        end
+        -- review 0021: de fora, atrás das paredes N/W do prédio dele (que o jogo não corta):
+        -- a parede tapa na tela, o marcador sairia por cima dela
+        local shadowOwn = 0
+        for x = 88, 104 do
+            for y = 88, 104 do
+                for k = G.interior[x .. "," .. y .. ",0"] and O().SHADOW + 1 or 1, O().SHADOW do
+                    if G.interior[(x + k) .. "," .. (y + k) .. ",0"] == own then
+                        shadowOwn = shadowOwn + 1
+                        assert(not shown(G, x, y), "chão de fora atrás da parede do prédio dele: " .. x .. "," .. y)
+                        break
+                    end
+                end
+            end
+        end
+        assert(shadowOwn > 10, "teste não mediu a sombra do prédio dele: " .. shadowOwn)
+        -- e a rua do outro lado (sul/leste, longe de prédio) continua
+        local street = 0
+        for x = 106, 110 do for y = 96, 104 do if shown(G, x, y) then street = street + 1 end end end
+        assert(street > 10, "a rua sumiu de dentro: " .. street)
+        -- sai: o de dentro apaga com fade e o de fora continua
+        G.p.x, G.p.y = 92.5, 100.5
+        G.seconds(O().FADE_MS / 2000)
+        local fading = 0
+        for _, m in ipairs(alive(G)) do
+            if G.interior[m.sq.x .. "," .. m.sq.y .. ",0"] == own and m.a > 0 and m.a < 1 then fading = fading + 1 end
+        end
+        assert(fading > 10, "o de dentro sumiu sem fade: " .. fading)
+        G.seconds(O().FADE_MS / 1000)
+        for x = 95, 104 do
+            for y = 95, 104 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
+        end
+    end,
+
+    -- review focus: na porta, entrando e saindo a cada passo, nada é tirado e posto de novo
+    overlays_building_doorway_no_flicker = function()
+        local G = setup()
+        building(G, 101, 90, 110, 110)
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        local near = {}
+        for _, m in ipairs(alive(G)) do
+            local dx, dy = m.sq.x - 100, m.sq.y - 100
+            if dx * dx + dy * dy <= 36 then near[#near + 1] = m end
+        end
+        assert(#near > 10, "pouco chão perto da porta: " .. #near)
+        for step = 1, 10 do
+            G.p.x = step % 2 == 1 and 101.5 or 100.5
+            G.seconds(0.5)
+        end
+        for _, m in ipairs(near) do assert(not m.removed, "marcador tirado na porta (pisca): " .. m.sq.x .. "," .. m.sq.y .. " raio " .. O().reach()) end
+    end,
+
+    -- review focus: square da diagonal sem chunk conta como livre, sem erro
+    overlays_shadow_missing_square = function()
+        local G = setup()
+        for x = 101, 130 do for y = 101, 130 do G.holes[x .. "," .. y .. ",0"] = true end end
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        assert(shown(G, 99, 99) or shown(G, 98, 99) or shown(G, 99, 98), "borda carregada sem chão")
+        assert(shownOutside(G, 3, function(x, y) return x > 100 and y > 100 end) > 15)
+    end,
+
+    -- print 7 (05/10): sujeira cheia, uma por tile, lia como xadrez. Ela vai num marcador
+    -- próprio, mais leve que o sangue do mesmo square (o marcador tem uma cor só)
+    overlays_grime_own_marker_lighter = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        local both = 0
+        for k, s in pairs(bySquare(G)) do
+            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
+            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 1, D().density(1, false))
+            assert((s.grime ~= nil) == (f.grime ~= nil), "sujeira não bate com a regra em " .. k)
+            for _, n in ipairs(s.main and s.main.names or {}) do assert(not n:find("grime"), "sujeira no marcador do sangue") end
+            if s.grime and s.main then
+                both = both + 1
+                assert(math.abs(s.grime.a - s.main.a * D().GRIME_ALPHA) < 1e-6, "alfa da sujeira: " .. s.grime.a)
+            end
+        end
+        assert(both > 20, "poucos squares com sujeira e sangue: " .. both)
+    end,
+
+    -- os dois marcadores de um square saem juntos (fim da névoa, densidade nova)
+    overlays_grime_marker_follows_entry = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        local grimes = 0
+        for _, s in pairs(bySquare(G)) do if s.grime then grimes = grimes + 1 end end
+        assert(grimes > 20, "sem sujeira: " .. grimes)
+        local old = alive(G)
+        NOM_FogState.set(true, 1, true) -- densidade nova (vermelha forçada): redesenha depois de 1 s
+        G.seconds(1.5)
+        for _, m in ipairs(old) do assert(m.removed, "marcador velho ficou") end
+        NOM_FogState.set(false, 1)
+        G.seconds(O().FADE_MS / 1000 + 2)
+        assert(#alive(G) == 0, "sobrou marcador: " .. #alive(G))
+    end,
+
     overlays_walls_off_by_default = function()
         -- visto no jogo (print do Johan): desenho de fantasma sem profundidade cobre o
         -- jogador e pinta de preto paredes cortadas; o padrão é não desenhar paredes
@@ -155,7 +486,7 @@ return {
         assert(#G.markers == 0, "mancha sem névoa")
         NOM_FogState.set(true, 1)
         G.seconds(1)
-        local first = G.markers[1]
+        local first = awayFromPlayer(G, G.markers)
         assert(first and first.a < 0.5, "nasceu sem fade")
         G.seconds(10)
         local n = #alive(G)
@@ -172,11 +503,13 @@ return {
         local G = setup()
         NOM_FogState.set(true, 3, false)
         G.seconds(20)
-        local normal = textures(G)
+        -- sangue e rachadura num raio que as duas cobrem inteiro (o teto encolhe o raio da
+        -- vermelha); a sujeira tem teto (GRIME_MAX) e não cresce com a densidade
+        local normal = textures(G, true, 8)
         local R = setup()
         NOM_FogState.set(true, 3, true)
         R.seconds(20)
-        assert(textures(R) > normal * 1.15, "vermelha não é mais densa: " .. textures(R) .. " vs " .. normal)
+        assert(textures(R, true, 8) > normal * 1.15, "vermelha não é mais densa: " .. textures(R, true, 8) .. " vs " .. normal)
     end,
 
     -- review 0015 (crítico): com o teto cheio, andar não pode deixar o jogador no limpo.
@@ -193,7 +526,7 @@ return {
                     local _, rel = coverage(G, 3)
                     assert(rel >= 0.85, (red and "vermelha" or "normal") .. ": andando, 7×7 com " .. rel .. " do que a regra pede, passo " .. step)
                 end
-                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando")
+                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando: " .. #alive(G) .. " marcadores")
             end
             G.seconds(2)
             local abs = coverage(G, 3)
@@ -235,10 +568,17 @@ return {
         local G = setup()
         NOM_FogState.set(true, 2, false)
         G.seconds(20)
-        local before = textures(G)
+        local old = alive(G)
         NOM_FogState.set(true, 2, true)
         G.seconds(5)
-        assert(textures(G) > before * 1.1, "vermelha forçada não redesenhou: " .. textures(G) .. " vs " .. before)
+        for _, m in ipairs(old) do assert(m.removed, "vermelha forçada não redesenhou") end
+        local d = D().density(1, true)
+        for k, v in pairs(layout(G)) do
+            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
+            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 2, d)
+            assert(f, "square sem nada na regra vermelha: " .. k)
+            assert(v:find(D().SETS[(f[#f] or f.grime)[1]].prefix .. (f[#f] or f.grime)[2], 1, true), "desenho não é o da vermelha: " .. k)
+        end
         assert(select(2, coverage(G, 3)) >= 0.9)
     end,
 
@@ -313,7 +653,8 @@ return {
         local c0 = G.java + G.sqCalls
         G.tick(O().UPDATE_TICKS * 20)
         local per = (G.java + G.sqCalls - c0) / 20
-        assert(per <= O().LIGHT_BUDGET + 10, "parado e ainda sondando: " .. per .. " chamadas por atualização")
+        assert(per <= O().LIGHT_BUDGET + 10 + O().UPDATE_TICKS, -- + 1 getCell por tick (rodízio de personagens)
+            "parado e ainda sondando: " .. per .. " chamadas por atualização")
     end,
 
     -- parede de costas não ocupa o teto: o raio das paredes fica largo num mundo cheio delas
@@ -369,8 +710,11 @@ return {
         addWalls(G, 70, 70, 60)
         NOM_FogState.set(true, 1, true)
         G.seconds(60)
+        -- review 0021: o teto é de marcadores de verdade (sujeira é o segundo do square), e
+        -- conta os que estão apagando
         assert(#alive(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. #alive(G))
         assert(#alive(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. #alive(G))
+        assert(O().count() == #alive(G), "count não conta marcadores: " .. O().count() .. " vs " .. #alive(G))
         local draws = G.frame()
         assert(select(2, O().count()) <= D().MAX_WALL, "passou do teto das paredes")
         -- as de costas e fora do cone ficam na reserva, apagadas (voltam ao virar)
@@ -429,7 +773,7 @@ return {
         G.lightAll = 0
         NOM_FogState.set(true, 1)
         G.seconds(12)
-        local m = alive(G)[1]
+        local m = awayFromPlayer(G)
         assert(m.color[1] < 0.75 and m.color[1] >= O().LIGHT_FLOOR - 1e-6, "luz no escuro: " .. m.color[1])
         G.lightAll = 1
         G.seconds(20)
@@ -446,7 +790,7 @@ return {
         assert(#alive(G) > 0 and #G.frame() > 0)
         NOM_FogState.set(false, 1)
         G.seconds(O().FADE_MS / 2000)
-        local m = alive(G)[1]
+        local m = awayFromPlayer(G)
         assert(m and m.a < 1 and m.a > 0, "sumiu sem fade")
         G.seconds(O().FADE_MS / 1000)
         assert(#alive(G) == 0, "sobrou mancha: " .. #alive(G))
@@ -522,9 +866,8 @@ return {
         end
         assert(removedNear == 0, "mancha perto sumiu andando: " .. removedNear)
         assert(O().reach() >= 10, "raio efetivo pequeno demais: " .. O().reach())
-        for _, m in ipairs(alive(B)) do
-            local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
-            if la[k] then assert(la[k] == table.concat(m.names, "|"), "desenho mudou andando") end
+        for k, v in pairs(layout(B)) do
+            if la[k] then assert(la[k] == v, "desenho mudou andando") end
         end
     end,
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §17.5: sprint 0022) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1197,6 +1197,36 @@ Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_flo
 - **UNKNOWN (roteiro):** o tempo de quadro de verdade com 600 marcadores e 120 paredes; se pesar,
   baixar `MAX_FLOOR`/`MAX_WALL` ou o `SCAN_BUDGET`.
 
+### 16.5 O que o jogo mostrou (sprint 0021)
+
+Prints do Johan de 05/10 (parede preta por cima do jogador, chão de dentro em cima do telhado,
+sujeira em xadrez, arbusto por cima do jogador). Bytecode do B42.21 e packs, só leitura.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Posição do `IsoMarker`: `setPos(III)` → `x = i + 0,5`, `y = j + 0,5`, `z = k + 0,01`, `zLayer = k`. É o único setter de posição (os três `init` chamam ele); `x/y/z` não têm setter float | CONFIRMED (bytecode) | `IsoMarkers$IsoMarker.setPos(III)` 0–32, `init(KahluaTable,IIILIsoGridSquare)` 64–69 |
+| Desenho: quad do tamanho **recortado** da textura (`getWidth/getHeight` = região do pack, sem o quadro), `XToScreen − w/2`, `YToScreen − h`: base do recorte no centro do tile. `GenericSpriteRenderState.render` sem cutaway não soma `offsetX/Y` | CONFIRMED (bytecode) | `IsoSprite.renderTextureWithDepth` 151–211; `GenericSpriteRenderState.render(Texture,FFFFFFFF,Consumer)` 50–124 |
+| Erro por sprite (quadro 2×: 128×256, diamante do chão centrado em (64, 224)): `(64 − (ox + w/2), 224 − (oy + h))`. Losango cheio: 32 px pra cima = meio tile. Compensar exato é impossível (tile inteiro anda 64/32 px na tela; `z` anda um andar) | medido | `scripts/audit_floor_sprites.py` |
+| Ordem do quadro: `renderPlayers` (241) → itens, poças → `renderOpaqueObjectsEvent` (374) → `renderMovingObjects` (387) → por andar: piso translúcido, sombras, `WorldMarkers.renderGridSquareMarkers` (769), **`IsoMarkers.renderIsoMarkers` (784)**, objetos translúcidos (818) | CONFIRMED (bytecode) | `FBORenderCell.performRenderTiles` |
+| O marcador **testa profundidade**, mas com **um valor só pro quad inteiro**, o do centro do tile: `IndieGL.enableDepthTest` (`renderIsoMarkers` 38) e `TextureDraw.nextZ = calculateDepth(x+0,5, y+0,5, z+0,01)·2 − 1` (`renderTextureWithDepth` 131–144). Tudo que fica atrás desse ponto em profundidade e sob o quad na tela leva o decalque por cima: personagem em tile de trás, base de parede; nos prints, também o telhado | CONFIRMED (bytecode) + visto no jogo | `IsoMarkers.renderIsoMarkers` 38; `IsoSprite.renderTextureWithDepth`; prints 6, 7, 9, 10 de 05/10 |
+| `renderIsoMarkers` pula marcador com `active = false` (`setActive(Z)`); `setAlpha(F)` = `setA` | EXISTS | `renderIsoMarkers` 166–174; `IsoMarker.setActive`, `setAlpha` |
+| `WorldMarkers.addGridSquareMarker`: textura esticada num quadrado do chão (`x ± size·0,69`), pra círculo; deforma decalque isométrico | CONFIRMED (bytecode) | `FBORenderWorldMarkers.render` 150–235 |
+| `d_plants_1_*`: todos com `MoveWithWind` e `BlocksPlacement` (planta em pé); `d_streetcracks_1_*`: `FloorOverlay` | CONFIRMED | `media/tiledefinitions_erosion.tiles.txt` |
+| Recorte de parede por jogador: `square:getPlayerCutawayFlag(pn, ms)` → bits 1 = N cortada, 2 = W (no FBO devolve `targetPlayerCutawayFlags[pn]`, o `ms` não pesa) | EXISTS | `IsoGridSquare.getPlayerCutawayFlag(IJ)` 0–12; `FBORenderCutaways.doCutawayVisitSquares` 354, 612–616 (bit 1, visitados ao norte), 710–716 (bit 2, a oeste); lido por `FBORenderCell.renderMinusFloor_DoorOrWall` 59–150 |
+| Prédio: `square:isOutside()`, `square:getBuilding()`, `player:getBuilding()`, comparados com `~=` | CONFIRMED | `server/Farming/SFarmingSystem.lua:295`; `server/ClientCommands.lua:676`; `client/ISUI/ISWorldObjectContextMenu.lua:1679` |
+| Profundidade de tela de um andar: `YToScreen` sobe a altura de 3 tiles na diagonal por andar (um prédio de 1 andar cobre na tela os squares até 3 atrás dele) | CONFIRMED (bytecode): `YToScreen = 16·escala·(x + y) − 96·escala·z`, um andar = 6 passos de `x+y` = 3 tiles na diagonal | `IsoUtils.YToScreen(FFFI)` 0–50 |
+
+- **Escolha:** o deslocamento não se compensa. O pool do chão só tem decalque chato que não
+  invade o centro dos tiles N, W e NW (heurística de vazamento: com o pé fora do centro, todo
+  sprite alcança, porque o losango deslocado fica centrado no canto N do tile — review 0021).
+  Quem garante o corpo limpo é o cliente: o decalque do tile do personagem e dos S, E e SE dele
+  fica apagado — do jogador todo tick, de zumbis e jogadores do MP a até 10 tiles em rodízio.
+  Visibilidade por prédio e sombra de prédio (inclusive o prédio do próprio jogador, cujas
+  paredes N/W não são cortadas), não por `isCouldSee` (o cone de visão apagaria o chão às
+  costas e faria o chão acender e apagar ao virar).
+- **UNKNOWN (roteiro da 0021):** a latência do rodízio de zumbis (até ~2 voltas de 8 por tick)
+  se vê? Prédio de 2+ andares deixa chão de fora em cima do telhado (a sombra conta 3 tiles)?
+
 ## 17. Dissolve e bloom (sprint 0018)
 
 Bytecode do B42.21. Decisão na [ADR-016](adr-016-dissolve-e-bloom.md); a cadeia do `<m_Shader>`
@@ -1334,8 +1364,9 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 14. Efeitos de tela (sprint 0013): texturas do mod por `getTexture("media/textures/NOM/ScreenFx/...")`,
     o elemento de 1 px por baixo do HUD de verdade, `PZAPI.ModOptions` em Opções > Mods, e o
     `screen.frag` do mod2 compilando e vencendo o vanilla (§15)
-15. Outro Mundo sangrento (sprint 0015): `RenderGhostTileColor` chamado do
-    `RenderOpaqueObjectsInWorld` desenha a parede no lugar e sem engasgo? O chão por marcador meio
-    tile pra cima incomoda? Quanto custa o quadro com 600 marcadores e 120 paredes? (§16)
+15. Outro Mundo sangrento (sprint 0015): ~~`RenderGhostTileColor` desenha a parede no lugar?~~
+    Não serve: sai depois do jogador e por cima de tudo (prints de 05/10, §16.5; paredes
+    desligadas). O chão por marcador meio tile pra cima incomoda? Quanto custa o quadro com 600
+    squares? Zumbi em cima de decalque, prédio alto (§16.5, roteiro da sprint 0021)
 16. Debug amigável (sprint 0020): Insert livre em `-debug` (as 46 classes dizem que sim)? `NOM.time` no dedicado chega nos
     clientes, com a data certa? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)

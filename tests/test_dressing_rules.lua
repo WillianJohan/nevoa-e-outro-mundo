@@ -38,7 +38,147 @@ local function sweep(R, period, d, size)
     return n, layers, pools
 end
 
+-- Medida do pack (scripts/audit_floor_sprites.py, sprint 0021): por nome, flat, zone, cov, spill.
+local AUDIT = dofile("tests/floor_sprites.lua")
+
+local function floorNames(R)
+    local out = {}
+    for setName, s in pairs(R.SETS) do
+        if not s.wall then
+            for _, i in ipairs(s.idx) do out[#out + 1] = { set = setName, name = s.prefix .. i } end
+        end
+    end
+    return out
+end
+
 return {
+    -- prints 9 e 10 do Johan (05/10): planta em pé desenhada como decalque cobre o jogador.
+    -- Todo sprite do chão é decalque chato (conteúdo no diamante do chão, sem MoveWithWind)
+    dressing_rules_floor_pool_flat_only = function()
+        local R = load()
+        local names = floorNames(R)
+        assert(#names > 50, "pool vazio demais: " .. #names)
+        for _, n in ipairs(names) do
+            local a = AUDIT[n.name]
+            assert(a, "sprite fora da auditoria: " .. n.name)
+            assert(a.flat, "sprite em pé no chão: " .. n.name)
+        end
+    end,
+
+    -- o IsoMarker põe a base do recorte no centro do tile (meio tile acima): o pool não invade
+    -- o centro dos tiles de trás (N, W, NW). Heurística de vazamento, não garantia de corpo
+    -- limpo (com o pé fora do centro todo sprite alcança; quem garante é o cliente apagando
+    -- 4 tiles por personagem: overlays_player_tiles_clear_every_tick, review 0021)
+    dressing_rules_floor_pool_spares_tile_centres = function()
+        local R = load()
+        for _, n in ipairs(floorNames(R)) do
+            assert(AUDIT[n.name].zone == 0, "invade o centro do tile de trás: " .. n.name .. " (" .. AUDIT[n.name].zone .. " px)")
+        end
+    end,
+
+    -- d_plants_1_* é planta de erosão (objeto em pé, tiledefinitions_erosion): fora do chão
+    dressing_rules_no_plants = function()
+        local R = load()
+        for _, n in ipairs(floorNames(R)) do assert(not n.name:find("^d_plants"), "planta no chão: " .. n.name) end
+        for x = 0, 59 do
+            for y = 0, 59 do
+                for _, l in ipairs(R.floor(2000 + x, 3000 + y, 0, 4, 3.2) or {}) do
+                    assert(R.SETS[l[1]] and not R.SETS[l[1]].prefix:find("^d_plants"), "camada de planta")
+                end
+            end
+        end
+    end,
+
+    -- print 7 (05/10): sujeira de tile cheio, um losango por tile, lia como xadrez. Só
+    -- sujeira parcial (cobertura < 50% do diamante) e que não é faixa de borda de tile
+    dressing_rules_grime_partial_only = function()
+        local R = load()
+        for _, i in ipairs(R.SETS.grimeFloor.idx) do
+            local a = AUDIT[R.SETS.grimeFloor.prefix .. i]
+            assert(a.cov < 0.5, "sujeira de tile cheio: " .. i .. " (" .. a.cov .. ")")
+            assert(a.spill < 0.9, "sujeira de borda de tile: " .. i .. " (" .. a.spill .. ")")
+        end
+        assert(R.GRIME_ALPHA and R.GRIME_ALPHA > 0 and R.GRIME_ALPHA < 1, "sujeira sem alfa próprio")
+    end,
+
+    dressing_rules_grime_rarer = function()
+        local R = load()
+        local n, tot = 0, 0
+        for x = 0, 79 do
+            for y = 0, 79 do
+                tot = tot + 1
+                local f = R.floor(5000 + x, 6000 + y, 0, 3, 1)
+                if f and f.grime then n = n + 1 end
+                for _, l in ipairs(f or {}) do assert(l[1] ~= "grimeFloor", "sujeira nas camadas do marcador principal") end
+            end
+        end
+        assert(n / tot >= 0.1 and n / tot <= 0.35, "fração de sujeira: " .. n / tot)
+    end,
+
+    -- manchas, não sal e pimenta: a troca sujo/limpo entre vizinhos é bem menor que a de um
+    -- sorteio por tile com a mesma fração (2p(1-p))
+    -- manchas, não sal e pimenta, em toda densidade (review 0021: em 1,6/2/3,2 voltava a
+    -- ser tile a tile): a troca sujo/limpo entre vizinhos é bem menor que a de um sorteio por
+    -- tile com a mesma fração (2p(1-p)), em três períodos
+    dressing_rules_grime_clusters = function()
+        local R = load()
+        for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
+            for _, per in ipairs({ 3, 6, 11 }) do
+                local has, n, tot = {}, 0, 0
+                for x = 0, 89 do
+                    for y = 0, 89 do
+                        local f = R.floor(7000 + x, 8000 + y, 0, per, d)
+                        has[x .. "," .. y] = f ~= nil and f.grime ~= nil
+                        if has[x .. "," .. y] then n = n + 1 end
+                        tot = tot + 1
+                    end
+                end
+                local p = n / tot
+                assert(p > 0.05, "sem sujeira pra medir: " .. p)
+                local flips, pairs = 0, 0
+                for x = 0, 88 do
+                    for y = 0, 88 do
+                        for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+                            pairs = pairs + 1
+                            if has[x .. "," .. y] ~= has[(x + o[1]) .. "," .. (y + o[2])] then flips = flips + 1 end
+                        end
+                    end
+                end
+                local ratio = flips / pairs / (2 * p * (1 - p))
+                assert(ratio < 0.6, "sujeira espalhada tile a tile: d=" .. d .. " per=" .. per .. " razão " .. ratio)
+            end
+        end
+    end,
+
+    -- métrica do xadrez: dois vizinhos sujos nunca têm o mesmo sprite (nem cheio nem parcial)
+    dressing_rules_grime_no_checkerboard = function()
+        local R = load()
+        for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
+            local g = {}
+            for x = 0, 79 do
+                for y = 0, 79 do
+                    local f = R.floor(9000 + x, 1000 + y, 0, 6, d)
+                    g[x .. "," .. y] = f and f.grime and f.grime[2]
+                end
+            end
+            local same, dirty = 0, 0
+            for x = 0, 78 do
+                for y = 0, 78 do
+                    local a = g[x .. "," .. y]
+                    for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+                        local b = g[(x + o[1]) .. "," .. (y + o[2])]
+                        if a and b then
+                            dirty = dirty + 1
+                            if a == b then same = same + 1 end
+                        end
+                    end
+                end
+            end
+            assert(dirty > 300, "pouca sujeira vizinha pra medir: " .. dirty)
+            assert(same == 0, "vizinhos com a mesma sujeira: d=" .. d .. " " .. same .. " de " .. dirty)
+        end
+    end,
+
     dressing_rules_deterministic_per_square_and_period = function()
         local R = load()
         local a = R.floor(1234, 5678, 0, 3, 1)
@@ -105,7 +245,10 @@ return {
             for y = 0, 49 do
                 local f = R.floor(300 + x, 300 + y, 1, 2, 3.2)
                 if f then
-                    assert(#f >= 1 and #f <= R.MAX_LAYERS, "camadas: " .. #f)
+                    assert((#f >= 1 or f.grime) and #f <= R.MAX_LAYERS, "camadas: " .. #f)
+                    if f.grime then
+                        assert(f.grime[1] == "grimeFloor" and set(R.SETS.grimeFloor.idx)[f.grime[2]], "sujeira fora do pool")
+                    end
                     for _, l in ipairs(f) do
                         local s = R.SETS[l[1]]
                         assert(s and not s.wall, "set de chão: " .. tostring(l[1]))
