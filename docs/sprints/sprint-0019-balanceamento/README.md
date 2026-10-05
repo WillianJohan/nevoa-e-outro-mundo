@@ -160,8 +160,10 @@ Jogo em `-debug`, **save descartável**, sandbox padrão. Console em
 - Tudo do roteiro acima e o playtest dos 10 itens.
 - Vermelha sem teto de variantes (item 7 do playtest decide se vira sprint).
 - Sono/fast-forward atravessando a sirene (risco de produto acima).
-- Achado menor 5 da review fica como está: só debug e anterior à sprint (o forçado do
-  `NOM_Debug.redFog` mora só em memória).
+- Cancelar logo após recarregar não cancela: recarregar no meio da sirene e chamar
+  `NOM_Debug.fog(false)` antes do primeiro `OnClimateTick` → `stop()` não vê contagem e não
+  faz nada; o `red` salvo e o `next` no passado fazem a sirene tocar de novo. Só debug,
+  anterior à sprint (só a persistência da cor é nova).
 - Save antigo continua com o sandbox antigo: pra jogar com os números do PO, mudar à mão na
   página do sandbox do save ou começar um save novo.
 - Sprint 0018 (dissolve + bloom) corre em paralelo: o merge das duas mexe em
