@@ -12,7 +12,7 @@ NOM_VariantAI.CLICK_SOUND = "NOM_EstaladorClick" -- media/scripts/NOM_sounds.txt
 -- (todos no mesmo minuto viraria metrônomo).
 local CLICK_ODDS = 2
 
--- Janela de cegueira, em updates do zumbi (~1 s a 60 FPS). Fecha sozinha e abre
+-- Janela de cegueira, em updates do zumbi, não em tempo real (~1 s a 60 FPS). Fecha sozinha e abre
 -- de novo no update seguinte se o jogador ainda estiver agachado à vista: useless
 -- também é surdo (RespondToSound volta cedo, bytecode 8–15), e a janela curta é o
 -- que deixa o Estalador ouvir entre uma e outra.
@@ -45,9 +45,21 @@ local function estalador(z, md, blind)
         release(z)
         return -- o spot volta no próximo frame; se ainda for silencioso, fecha de novo
     end
+    -- useless viaja no pacote do zumbi (NetworkZombieAI.set → getBooleanVariables
+    -- 86–89; parse 204–252): se a posse trocou no meio da janela, este dono herdou
+    -- o useless sem a entrada em blinded. Desliga, salvo o useless do próprio jogo
+    -- (outfit de debug com "Useless", updateInternal 47–58). O do menu de debug e
+    -- do tutorial não dá pra distinguir: num Estalador à noite, também cai.
+    -- Custo: uma chamada Java por Estalador local por frame.
+    if z:isUseless() then
+        local outfit = z:getOutfitName()
+        -- string.find com plain: client/OptionScreens/LoadGameScreen.lua:601
+        if not (outfit and string.find(outfit, "Useless", 1, true)) then z:setUseless(false) end
+        return
+    end
     if md.NOM_alert then return end
     local t = z:getTarget()
-    if t ~= nil and instanceof(t, "IsoPlayer") and silent(t) and not z:isUseless() then
+    if t ~= nil and instanceof(t, "IsoPlayer") and silent(t) then
         z:setTarget(nil)
         z:setUseless(true)
         blinded[z] = { p = t, n = 0 }

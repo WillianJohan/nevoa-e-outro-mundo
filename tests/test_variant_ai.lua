@@ -13,7 +13,10 @@
 -- * Som: RespondToSound volta cedo com o zumbi useless (8–15).
 -- * OnHitZombie(zombie, wielder, bodyPart, weapon): shared/Definitions/DamageModelDefinitions.lua:24,69.
 -- * setUseless/isUseless: client/DebugUIs/DebugContextMenu.lua:566,673; client/Tutorial/Steps.lua:1107.
--- * Zumbi remoto (MP, não dono) não roda a IA: a posição vem do pacote.
+-- * Zumbi remoto (MP, não dono) não roda a IA: a posição vem do pacote, e o useless
+--   também (NetworkZombieAI.set → NetworkZombieVariables.getBooleanVariables 86–89;
+--   NetworkZombieAI.parse 204–252). Quando a posse troca, o novo dono herda o useless.
+-- * Outfit de debug com "Useless" no nome liga o useless (updateInternal 47–58).
 -- * EveryOneMinute; ZombRand(n) global (server/ClientCommands.lua:120).
 -- * Toda chamada de método no zumbi conta em z.calls (custo Java por frame).
 require "NOM_VariantRules"
@@ -39,7 +42,7 @@ local function setup(opts)
     function G.zombie(o)
         local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false,
             onlineID = o.onlineID or -1, sounds = {}, dead = false, useless = o.useless or false,
-            bonusSpotTime = 0, calls = 0 }
+            bonusSpotTime = 0, calls = 0, outfitName = o.outfit }
         local function def(name, fn)
             z[name] = function(...) z.calls = z.calls + 1; return fn(...) end
         end
@@ -56,6 +59,7 @@ local function setup(opts)
         def("isUseless", function(self) return self.useless end)
         def("setUseless", function(self, b) self.useless = b end)
         def("getOnlineID", function(self) return self.onlineID end)
+        def("getOutfitName", function(self) return self.outfitName end)
         def("getEmitter", function()
             return { playSound = function(_, name) z.sounds[#z.sounds + 1] = name; return 1 end }
         end)
@@ -321,9 +325,25 @@ return {
         assert(not z.useless, "reaproveitado nasceu useless")
     end,
     -- useless de outro (tutorial, debug, outro mod): o mod não liga nem desliga
+    -- MP: o dono cegou, a posse troca no meio da janela; o novo dono recebeu o
+    -- useless pelo pacote sem a entrada local. Não pode ficar inerte pra sempre.
+    ai_ownership_transfer_mid_window = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true, useless = true })
+        local p = G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        assert(z.useless, "mexeu no useless de zumbi remoto")
+        z.remote = false -- virou dono
+        G.frame(2)
+        assert(#G.zombies == 1 and p.bitten == 0)
+        p.sneaking = false
+        G.frame(5)
+        assert(p.bitten > 0, "Estalador herdado ficou inerte: useless=" .. tostring(z.useless))
+    end,
+    -- useless do próprio jogo (outfit de debug "…Useless…"): o mod não liga nem desliga
     ai_foreign_useless_untouched = function()
         local G = setup()
-        local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true })
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true, outfit = "DebugUseless" })
         G.player({ x = 1, y = 0, sneaking = true })
         G.frame(3)
         NOM_NightStats.setNight(false, 1)
