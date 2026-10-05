@@ -61,6 +61,8 @@ sorteio): quem avisa é o som.
 | névoa | sorteado | `CorredorEnabled`, `CorredorChance` % (2), `CorredorScreamRadius` (40 tiles) |
 
 - Sem névoa é zumbi comum; na névoa é sprinter (mesmo com `NightFaster` desligado).
+  Exceção aceita: com "Ativos só à noite" (`ZombieLore.ActiveOnly`), na névoa de dia
+  (a fase inativa do jogo) ele fica arrastado como todos — a regra vanilla vence.
 - Ao ver o jogador, grita e atrai os zumbis num raio. É ele que começa a horda.
   No máximo um grito por Corredor a cada meia hora de jogo, de dia ou de noite.
 - Quando a névoa baixa, volta a ser zumbi comum.
@@ -105,8 +107,9 @@ A alma de um morto. Fraco sozinho; perigoso onde há muitos corpos.
 - **Só de quem morreu antes do anoitecer atual** (decisão do Johan, 05/10/2026: "se
   eu matar o zombie e logo em seguida ele nascer, é ruim"). Quem morre durante a
   noite espera o próximo entardecer. A hora da morte é a do próprio corpo no jogo
-  (salva com ele). Corpo de cenário gerado pela primeira vez durante a noite conta
-  como morto naquela hora: também espera.
+  (salva com ele, e mantida quando o corpo é pego no colo e largado). Corpo de cenário
+  (casas, acidentes) nasce quando o chunk é gerado: uma área explorada pela primeira
+  vez de noite só solta Ecos na noite seguinte.
 - **Cada corpo gera Eco uma única vez na vida.** O cadáver continua no chão.
 - **Corpo queimado ou enterrado não gera Eco**, porque deixa de existir como
   `IsoDeadBody`. Nenhuma regra extra.

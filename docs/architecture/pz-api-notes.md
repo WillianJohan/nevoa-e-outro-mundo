@@ -693,7 +693,7 @@ Motivo: no primeiro teste a noite do mod não mudava nada na tela
 | `FLOAT_DAYLIGHT_STRENGTH` (11) | `darkness = 1 − daylight` (202–209) → `NightValue` do shader (só óculos de visão noturna) e o fator acima | — | vanilla de madrugada: 0 |
 | `FLOAT_NIGHT_STRENGTH` (2) | `night` (194–199) → `LightingJNI.stateEndFrame` e o termo do luar no piso | nativo | vanilla de madrugada: 1 |
 | `FLOAT_AMBIENT` (9) | `ambient = n + (1 − n) × cm` (411–454), `n` = piso do sandbox + `0.075 × lua × night` (359–375; ×(0.925 − 0.075 × darkness) em interior, 378–398) → `stateEndFrame` e `getSkyLightLevel` | luz ambiente | vanilla de madrugada: 0 (`ClimateValues.updateValues` 1263–1268: `ambient = dayLightStrength`) |
-| `COLOR_GLOBAL_LIGHT` (0) | exterior: `blendColor` e `blendIntensity = alfa` (224–246; `isExterior` forçado `true` em 212); `rmod/gmod/bmod = lerp(1, cor dessaturada, alfa)` (662–725) → `IsoGridSquare.rmod`/`IsoObject.rmod` (`applyRenderSettings`), `stateEndFrame` (`LightingJNI.update` 282–332) | **multiplicador da luz** | vanilla de madrugada: `colNight` 0.33/alfa 0.4 (`ClimateManager.<init>` 250–269) |
+| `COLOR_GLOBAL_LIGHT` (0) | exterior: `blendColor` e `blendIntensity = alfa` (224–246; `isExterior` forçado `true` em 212); `rmod/gmod/bmod = lerp(1, cor dessaturada, alfa)` (662–725) → `IsoGridSquare.rmod`/`IsoObject.rmod` (`applyRenderSettings`), `stateEndFrame` (`LightingJNI.update` 282–332) | **multiplicador da luz** | vanilla de madrugada: sem lua 0.25, lua cheia 0.33, **alfa 0.8** (`mod` 0.40–0.46). O construtor põe 0.33/0.4 (`<init>` 250–323), mas o `server/Climate/ClimateMain.lua:14-22` troca no `OnClimateManagerInit` (disparado no `<init>`, 590, a cada carga), e o `updateValues` mistura sem lua/lua cheia pela lua (1794–1841) |
 
 - **Luz do céu**: `GameTime.getSkyLightLevel` (10–77) = `clamp(2 × mod × ambient)` por
   canal, empacotada em RGB e passada ao `stateEndFrame`; mudança invalida as luzes
@@ -727,13 +727,14 @@ Motivo: no primeiro teste a noite do mod não mudava nada na tela
 | `body:getDeathTime()` → horas de mundo (float) | CONFIRMED | `shared/Definitions/animal/ButcheringUtil.lua:568` |
 | gravada na morte | EXISTS | `IsoDeadBody.<init>(IsoGameCharacter,ZZ)` 1333–1341: `GameTime.getWorldAgeHours()`; também os corpos de cenário (`RandomizedWorldBase` usa esse construtor) |
 | salva e carregada | EXISTS | `save` 444–449 (`putFloat`), `load` 593–598 (`getFloat`, sem checar versão) |
-| `-1` ou futuro → agora | EXISTS | `addToWorld` 128–161 |
+| `-1` ou futuro → agora | EXISTS | `addToWorld` 128–161: o Lua nunca vê `-1` |
+| corpo de cenário | EXISTS | nasce na geração do chunk (`RandomizedWorldBase`) com a hora de então: área explorada pela primeira vez de noite só solta Eco na noite seguinte |
+| pegar no colo e largar | EXISTS | `InventoryItem.tryLoadCorpseFromByteData` 101–114: `new IsoDeadBody(cell)` + `load(byteData)` relê `deathTime` e `modData` do corpo humano; só o `CorpseAnimal` (117+) e o fallback `createDefaultDeadBody` recomeçam |
 | `getGameTime():getWorldAgeHours()` | CONFIRMED | `ButcheringUtil.lua:594` |
 
 O mod guarda a hora em que a noite abriu (`data.eco.start`, `NOM_NightCount`) e só
 solta Eco de corpo com `deathTime` menor. Fallback por `OnZombieDead` não foi
-necessário. UNKNOWN: corpo carregado (pego e solto) volta com a hora da morte ou com
-a de agora (`InventoryItem` cria `IsoDeadBody`); no pior caso, espera uma noite.
+necessário.
 
 ### 10.3 Variantes por névoa
 

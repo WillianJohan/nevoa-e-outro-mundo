@@ -36,7 +36,7 @@
 - `blendColor` = cor **exterior** da luz global e `blendIntensity` = **alfa** dela (224–246; `isExterior` é forçado `true` em 212). `rmod/gmod/bmod = lerp(1, cor dessaturada, alfa)` (662–725).
 - `ambient = n + (1 − n) × ambient do clima`, `n` = `NightDarkness` do sandbox (tableswitch 306: 1 → 0, 2 → 0.07, 3 → 0.15, 4 → 0.25) `+ 0.075 × lua × night` (293–454). O piso vem depois do clima: **a camada do mod não muda `n`.**
 - `GameTime.getSkyLightLevel` (10–77): luz do céu por canal = `clamp(2 × mod × ambient)`, vai pro `LightingJNI.stateEndFrame` (`LightingJNI.update` 282–332, junto de `rmod/gmod/bmod`, `ambient`, `night`).
-- Vanilla de madrugada (`ClimateValues.updateValues` 1132–1268): `nightStrength = 1`, `dayLightStrength = 0`, `ambient = dayLightStrength = 0`; luz global = `colNight` (0.33, 0.33, 0.33, alfa 0.4; `ClimateManager.<init>` 250–269). Ou seja: ambient, daylight e night **já estão no extremo**; só a cor/alfa da luz global tem folga. `mod` vanilla = 1 − 0.4 × 0.67 = 0.73.
+- Vanilla de madrugada (`ClimateValues.updateValues` 1132–1268): `nightStrength = 1`, `dayLightStrength = 0`, `ambient = dayLightStrength = 0`; luz global = `colNight` (0.33, 0.33, 0.33, alfa 0.4; `ClimateManager.<init>` 250–269). Ou seja: ambient, daylight e night **já estão no extremo**; só a cor/alfa da luz global tem folga. `mod` vanilla = 1 − 0.4 × 0.67 = 0.73. **Errado, corrigido no review:** o `server/Climate/ClimateMain.lua:14-22` troca as cores no `OnClimateManagerInit`: sem lua 0.25, lua cheia 0.33, alfa 0.8 (`mod` 0.40–0.46). Ver a ADR-008.
 - O tint antigo puxava a cor pra (0.55, 0.65, 0.95) com o alfa vanilla: `mod` subia (0.76/0.80). **A noite do mod ficava um pouco mais clara.** O save do teste usa `NightDarkness = 3` (`map_sand.bin`).
 - `ClimateFloat.calculate`/`ClimateColor.calculate` aplicam a camada modded a todo canal (loop em `ClimateManager.update` 416–478); `Color.interp` mistura o alfa (34–109). Na chuva, `WeatherPeriod.update` 684–696 põe `globalLight.setOverride(cloudColor, t)` (não é de valor: mistura em cima do nosso interno).
 - Admin vanilla: o slider "Darkness" mexe em `DAYLIGHT_STRENGTH`, `NIGHT_STRENGTH` e `AMBIENT` juntos (`client/ISUI/AdminPanel/ISAdmPanelClimate.lua:362-365`); a cor da luz tem sliders R/G/B/A (`:367-380`).
@@ -49,7 +49,7 @@
 ## Review Focus
 
 1. **Save antigo aberto no meio da noite** (sem a hora de início guardada) — esperado: sem erro, o início vira a hora da carga. Teste: `rules_sync_night_migrates_open_night` (Task 2).
-2. **Corpo com `deathTime` −1** (nunca entrou no mundo, ou vindo de outro mod) — esperado: tratado como antigo, solta Eco. Teste: `rules_died_before_night` (Task 2).
+2. **Corpo com `deathTime` −1** — na prática o Lua nunca vê (o `addToWorld` troca por agora, 128–161); a regra trata negativo como antigo só por defesa. Teste: `rules_died_before_night` (Task 2).
 3. **Noite forçada pelo `NOM_Debug` de dia** — esperado: a noite abre na hora em que foi forçada; corpo de antes solta. Teste: `eco_forced_night_counts_from_forcing` (Task 2).
 4. **`DarkIntensity` 0 à noite** — esperado: nenhuma escrita no clima. Teste: `look_intensity_zero_touches_nothing` (Task 3).
 5. **Sem `-debug`** — esperado: nenhum `print` do clima. Teste: `look_debug_log_silent_without_debug` (Task 4).

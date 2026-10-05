@@ -18,8 +18,9 @@ servidor a cada minuto de jogo (`OnClimateTick`). No solo o servidor roda no
 mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 - **Noite: claramente mais escura e mais fria que a vanilla.** A cor da luz global
-  vai pra um azul escuro com força alta: a luz do céu cai ~37% (mais no vermelho que
-  no azul) com `DarkIntensity` 1 e ~68% com 2. Lanterna, poste e luz de casa não
+  vai pra quase preto, puxado pro azul, com força alta: contra a noite vanilla (com
+  ou sem lua) a luz do céu cai ~46% no vermelho e ~40% no azul com `DarkIntensity` 1,
+  e 73–89% com 2. Lanterna, poste e luz de casa não
   mudam: de noite, luz vira o que separa ver de não ver.
 - Névoa: dessaturação forte (de dia), tint sépia/cinza escuro, luz ambiente menor,
   névoa mais densa que a vanilla.

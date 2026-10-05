@@ -24,7 +24,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
 | `HuntIntervalMinutes` (60, faixa 10–720 minutos de jogo), `HuntRadius` (30 tiles, faixa 5–100) | [night.md](night.md) |
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
-| `EstaladorChance` (5 %), `CorredorChance` (2 %), `SemRostoChance` (5 %), faixa 0–100 cada, **por névoa**: um sorteio só, faixas seguidas nessa ordem (somadas acima de 100, quem vem depois fica com o resto) | [monsters.md](monsters.md#regra-geral) |
+| `EstaladorChance` (5 %), `CorredorChance` (2 %), `SemRostoChance` (5 %), faixa 0–100 cada, **por névoa**: um sorteio só, faixas seguidas nessa ordem: somadas acima de 100, quem vem depois fica espremido (com o resto, ou zero) | [monsters.md](monsters.md#regra-geral) |
 | `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor) |
 | `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |
 | `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |
