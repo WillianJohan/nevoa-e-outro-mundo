@@ -1,6 +1,7 @@
 -- Gerado por scripts/audit_floor_sprites.py (só medida do pack Tiles2x, nada copiado).
 -- flat: conteúdo no diamante do chão e sem MoveWithWind/vegitation (tiledefinitions_erosion);
--- zone: pixels que o IsoMarker põe onde um personagem de tile vizinho de trás está;
+-- zone: pixels que o IsoMarker põe onde estaria um personagem no CENTRO de um tile de trás (N, W, NW);
+--   heurística de vazamento: com o pé fora do centro todo sprite alcança (o cliente apaga 4 tiles);
 -- cov: alfa / área do diamante (4096 px); spill: fração fora do diamante do tile como o marcador desenha.
 return {
     ["d_plants_1_0"] = { flat = false, zone = 159, cov = 0.34, spill = 0.81 },

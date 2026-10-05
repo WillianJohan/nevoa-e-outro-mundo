@@ -65,13 +65,14 @@ return {
         end
     end,
 
-    -- o IsoMarker põe a base do recorte no centro do tile (meio tile acima) e desenha depois
-    -- dos personagens: nenhum pixel pode cair onde um personagem em pé no tile de trás (N, W,
-    -- NW) está. Pela simetria, é o mesmo que o decalque do tile S/E de alguém não alcançá-lo.
-    dressing_rules_floor_pool_reaches_no_character = function()
+    -- o IsoMarker põe a base do recorte no centro do tile (meio tile acima): o pool não invade
+    -- o centro dos tiles de trás (N, W, NW). Heurística de vazamento, não garantia de corpo
+    -- limpo (com o pé fora do centro todo sprite alcança; quem garante é o cliente apagando
+    -- 4 tiles por personagem: overlays_player_tiles_clear_every_tick, review 0021)
+    dressing_rules_floor_pool_spares_tile_centres = function()
         local R = load()
         for _, n in ipairs(floorNames(R)) do
-            assert(AUDIT[n.name].zone == 0, "alcança o personagem do lado: " .. n.name .. " (" .. AUDIT[n.name].zone .. " px)")
+            assert(AUDIT[n.name].zone == 0, "invade o centro do tile de trás: " .. n.name .. " (" .. AUDIT[n.name].zone .. " px)")
         end
     end,
 

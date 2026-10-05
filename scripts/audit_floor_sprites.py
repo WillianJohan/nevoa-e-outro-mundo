@@ -2,7 +2,13 @@
 """Auditoria dos sprites de chão do Outro Mundo (sprint 0021): mede, só lendo o pack do
 jogo instalado, onde o conteúdo de cada sprite cai e escreve tests/floor_sprites.lua.
 Nenhum pixel é copiado: sai só número (cobertura, fração dentro do diamante, pixels na
-zona de um personagem). Os testes conferem o pool de NOM_DressingRules contra a tabela.
+zona do centro dos tiles de trás). Os testes conferem o pool de NOM_DressingRules contra a tabela.
+
+`zone` NÃO garante que o decalque não toca personagem (review 0021): com o pé em qualquer
+lugar dos tiles N, W ou NW, todo sprite alcança (o losango deslocado fica centrado no canto
+N do tile). Ela só mede quem invade o centro desses tiles: sprite com zone 0 vaza menos pros
+vizinhos. Quem garante o corpo limpo é o cliente, apagando o tile do personagem e os S, E e
+SE dele (NOM_FogOverlays.CHAR_RADIUS).
 
 Geometria (pack Tiles2x, quadro 128x256): o diamante do chão tem centro em (64, 224),
 meia-largura 64, meia-altura 32. O IsoMarker desenha o recorte da textura com a base no
@@ -25,7 +31,8 @@ PREFIXES = ["overlay_blood_floor_01_", "overlay_grime_floor_01_", "d_streetcrack
 ALPHA = 32         # pixel que conta (alfa de 0..255)
 HALF = 24          # meia-largura de um personagem em px do quadro 2x
 FEET = 6           # o pé desce isso abaixo do centro do tile
-# centros dos tiles de trás (N, W e NW) relativos ao centro do tile do decalque
+# centros dos tiles de trás (N, W e NW) relativos ao centro do tile do decalque: a zona é a
+# de um personagem em pé exatamente no centro (heurística de vazamento, não garantia)
 BEHIND = [(-64, -32), (64, -32), (0, -64)]
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tests", "floor_sprites.lua")
 
@@ -109,7 +116,8 @@ def main():
     upright = upright_names()
     lines = ["-- Gerado por scripts/audit_floor_sprites.py (só medida do pack Tiles2x, nada copiado).",
              "-- flat: conteúdo no diamante do chão e sem MoveWithWind/vegitation (tiledefinitions_erosion);",
-             "-- zone: pixels que o IsoMarker põe onde um personagem de tile vizinho de trás está;",
+             "-- zone: pixels que o IsoMarker põe onde estaria um personagem no CENTRO de um tile de trás (N, W, NW);",
+             "--   heurística de vazamento: com o pé fora do centro todo sprite alcança (o cliente apaga 4 tiles);",
              "-- cov: alfa / área do diamante (4096 px); spill: fração fora do diamante do tile como o marcador desenha.",
              "return {"]
     counts = {}

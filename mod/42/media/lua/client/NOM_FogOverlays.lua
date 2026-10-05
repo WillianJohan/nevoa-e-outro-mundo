@@ -38,6 +38,12 @@ NOM_FogOverlays = {
     -- de um andar cobre na tela os squares até 3 tiles atrás dele na diagonal (a altura de um
     -- andar, IsoUtils.YToScreen). Prédio mais alto cobre mais: o resto aparece (roteiro).
     SHADOW = 3,
+    -- O losango do decalque sai centrado no canto N do tile (meio tile acima): com o pé em
+    -- qualquer lugar do tile, alcançam o corpo os decalques do próprio tile e dos S, E e SE
+    -- (review 0021). Esses 4 apagam debaixo do jogador (todo tick) e dos zumbis e outros
+    -- jogadores a até CHAR_RADIUS tiles (CHAR_PER_TICK zumbis lidos por tick, em rodízio).
+    CHAR_RADIUS = 10,
+    CHAR_PER_TICK = 8,
 }
 
 local O = NOM_FogOverlays
@@ -62,7 +68,9 @@ local function used(pool)
     return pool.n or #pool.list
 end
 local taken = {}   -- [k] = entrada do chão, ou true na parede (k = square; na parede, + o lado)
-local under       -- entrada do chão no tile do jogador: apagada (prints 9 e 10)
+-- Chão debaixo de personagem (prints 9 e 10): [entrada] = true, apagada. Os tiles de cada
+-- personagem perto, lidos em rodízio: occ (volta completa) e build (a volta em curso).
+local blanked, occ, build, zAt = {}, {}, {}, 0
 -- Decidido nesta varredura, por reserva: [x,y,z] no chão, [x,y,z .. "N"|"W"] na parede.
 -- Fora do raio efetivo, recusado pelo teto, sem chunk ou parede de costas: não entra.
 local seenF, seenW = {}, {}
@@ -127,14 +135,14 @@ local function cleanWall(sq, north)
 end
 
 local function paint(e)
-    local a = e == under and 0 or e.a
+    local a = blanked[e] and 0 or e.a
     if e.m then e.m:setColor(e.l, e.l, e.l, a) end
     if e.g then e.g:setColor(e.l, e.l, e.l, a * D.GRIME_ALPHA) end
 end
 
 local function drop(pool, i)
     local e = pool.list[i]
-    if e == under then under = nil end
+    blanked[e] = nil
     if e.m then e.m:remove() end
     if e.g then e.g:remove() end
     if pool.n and e.want then pool.n = pool.n - 1 end
@@ -152,7 +160,8 @@ end
 function O.clear()
     dropAll(F)
     dropAll(W)
-    taken, seenF, seenW, roofs, ctx, under = {}, {}, {}, {}, NONE, nil
+    taken, seenF, seenW, roofs, ctx = {}, {}, {}, {}, NONE
+    blanked, occ, build, zAt = {}, {}, {}, 0
     cursor, gen, anchorX, anchorY = 1, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
 end
@@ -422,18 +431,68 @@ end)
 Events.OnGameStart.Add(O.clear)
 Events.OnMainMenuEnter.Add(O.clear)
 
--- Todo tick (o marcador sai depois do jogador e por cima dele, sem esperar a atualização):
--- o chão do tile dele apaga na hora; o que ele deixou volta ao alfa da entrada.
+local FOUR = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
+
+local function mark(set, x, y, z)
+    for _, o in ipairs(FOUR) do set[(x + o[1]) .. "," .. (y + o[2]) .. "," .. z] = true end
+end
+
+local function markIfNear(set, c, px, py, pz)
+    local x, y = c:getX(), c:getY()
+    local dx, dy = x - px, y - py
+    if math.floor(c:getZ()) == pz and dx * dx + dy * dy <= O.CHAR_RADIUS * O.CHAR_RADIUS then
+        mark(set, math.floor(x), math.floor(y), pz)
+    end
+end
+
+-- Um lote do rodízio de personagens: até CHAR_PER_TICK zumbis (getCell():getZombieList(),
+-- a lista do cliente); na volta completa, os outros jogadores do MP (getOnlinePlayers, só
+-- cliente) e a volta nova passa a valer.
+local function scanCharacters(p, px, py, pz)
+    local list = getCell():getZombieList()
+    local n = list:size()
+    for _ = 1, O.CHAR_PER_TICK do
+        if zAt >= n then
+            if isClient() then
+                local players = getOnlinePlayers()
+                for i = 0, players:size() - 1 do
+                    local other = players:get(i)
+                    if other ~= p then markIfNear(build, other, px, py, pz) end
+                end
+            end
+            occ, build, zAt = build, {}, 0
+            return
+        end
+        local z = list:get(zAt)
+        zAt = zAt + 1
+        if z then markIfNear(build, z, px, py, pz) end
+    end
+end
+
+-- Todo tick (o marcador sai depois dos personagens e por cima deles, sem esperar a
+-- atualização): apaga o chão debaixo do jogador e dos personagens perto; o que eles
+-- deixaram volta ao alfa da entrada.
 local function underfoot()
-    if #F.list == 0 then return end
     local p = getSpecificPlayer(0)
-    local e = p and taken[math.floor(p:getX()) .. "," .. math.floor(p:getY()) .. "," .. math.floor(p:getZ())]
-    if e == true then e = nil end
-    if e == under then return end
-    local old = under
-    under = e
-    if old then paint(old) end
-    if e then paint(e) end
+    if #F.list == 0 or not p then
+        blanked = {}
+        return
+    end
+    local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
+    scanCharacters(p, p:getX(), p:getY(), pz)
+    local tiles = {}
+    mark(tiles, px, py, pz)
+    for k in pairs(occ) do tiles[k] = true end
+    for k in pairs(build) do tiles[k] = true end
+    local now = {}
+    for k in pairs(tiles) do
+        local e = taken[k]
+        if e and e ~= true then now[e] = true end
+    end
+    local old = blanked
+    blanked = now
+    for e in pairs(old) do if not now[e] then paint(e) end end
+    for e in pairs(now) do if not old[e] then paint(e) end end
 end
 
 local ticks = 0

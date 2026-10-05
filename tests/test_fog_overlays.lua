@@ -161,6 +161,22 @@ local function coverage(G, r)
     return have / tot, want > 0 and have / want or 1
 end
 
+-- tile do personagem e os S, E e SE dele (os decalques que alcançam o corpo)
+local FOUR = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
+
+-- ticks pra duas voltas do rodízio de personagens (a volta velha só sai no fim da nova)
+local function rotation(G)
+    return 2 * (math.ceil(#G.zombies / O().CHAR_PER_TICK) + 1) + 1
+end
+
+local function at(G, x, y)
+    local out = {}
+    for _, m in ipairs(alive(G)) do
+        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 then out[#out + 1] = m end
+    end
+    return out
+end
+
 -- marcadores vivos por square: { main = marcador sem sujeira, grime = marcador da sujeira }
 local function bySquare(G)
     local out = {}
@@ -199,32 +215,101 @@ local function shownOutside(G, r, skip)
 end
 
 return {
-    -- prints 9 e 10 (05/10): o marcador sai depois dos personagens, com a base no centro do
-    -- tile: o do tile do jogador cobre o pé e a perna. Esse fica apagado, a cada tick
-    overlays_player_tile_clear_every_tick = function()
+    -- prints 9 e 10 (05/10): o marcador sai depois dos personagens, meio tile acima, com o
+    -- losango centrado no canto N do tile. Com o pé em qualquer lugar do tile, o decalque do
+    -- próprio tile e dos tiles S, E e SE alcança o corpo (review 0021): os 4 ficam apagados
+    overlays_player_tiles_clear_every_tick = function()
         local G = setup({ density = 2 })
         NOM_FogState.set(true, 1, true)
         G.seconds(20)
-        local function at(x, y)
-            local out = {}
-            for _, m in ipairs(alive(G)) do
-                if m.sq.x == x and m.sq.y == y and m.sq.z == 0 then out[#out + 1] = m end
-            end
-            return out
-        end
         local hidden = 0
         for step = 1, 12 do
             local ox, oy = math.floor(G.p.x), math.floor(G.p.y)
             G.p.x = G.p.x + 1
             G.tick(1)
-            for _, m in ipairs(at(math.floor(G.p.x), math.floor(G.p.y))) do
-                assert(m.a == 0, "marcador visível no tile do jogador, passo " .. step)
-                hidden = hidden + 1
+            local px, py = math.floor(G.p.x), math.floor(G.p.y)
+            for _, o in ipairs(FOUR) do
+                for _, m in ipairs(at(G, px + o[1], py + o[2])) do
+                    assert(m.a == 0, "marcador visível em " .. o[1] .. "," .. o[2] .. " do jogador, passo " .. step)
+                    hidden = hidden + 1
+                end
             end
             G.tick(1)
-            for _, m in ipairs(at(ox, oy)) do assert(m.a > 0, "o tile deixado ficou apagado, passo " .. step) end
+            -- o tile deixado e o S dele saíram dos 4 (andou pra leste)
+            for _, m in ipairs(at(G, ox, oy)) do assert(m.a > 0, "o tile deixado ficou apagado, passo " .. step) end
+            for _, m in ipairs(at(G, ox, oy + 1)) do assert(m.a > 0, "o S do tile deixado ficou apagado") end
         end
-        assert(hidden >= 6, "o caminho não tinha marcador (teste não mede): " .. hidden)
+        assert(hidden >= 24, "o caminho não tinha marcador (teste não mede): " .. hidden)
+    end,
+
+    -- review 0021: zumbi em pé em decalque (o caso comum): os mesmos 4 tiles, perto do
+    -- jogador, em rodízio; volta quando ele sai
+    overlays_zombie_tiles_clear = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        for i = 1, 150 do G.zombie({ x = 300 + i, y = 300, id = i }) end -- longe: fora do raio
+        local z = G.zombie({ x = 104, y = 97, id = 999 })
+        local far = G.zombie({ x = 100 + O().CHAR_RADIUS + 3, y = 100, id = 998 })
+        G.tick(rotation(G))
+        local hidden = 0
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do
+                assert(m.a == 0, "decalque visível debaixo do zumbi em " .. o[1] .. "," .. o[2])
+                hidden = hidden + 1
+            end
+        end
+        assert(hidden > 0, "o zumbi não estava em decalque (teste não mede)")
+        local fx = math.floor(far.x)
+        for _, m in ipairs(at(G, fx, 100)) do assert(m.a > 0 or m.a == nil, "zumbi longe apagou o chão") end
+        z.x = 96.5
+        G.tick(rotation(G))
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do assert(m.a > 0, "o chão não voltou depois do zumbi sair") end
+        end
+    end,
+
+    -- custo por tick limitado com muitos zumbis perto
+    overlays_zombie_scan_bounded = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        for i = 1, 300 do G.zombie({ x = 90 + i % 20, y = 90 + math.floor(i / 20), id = i }) end
+        local gets = 0
+        local cell = getCell
+        getCell = function()
+            local c = cell()
+            local list = c.getZombieList
+            c.getZombieList = function(self)
+                local l = list(self)
+                local get = l.get
+                l.get = function(me, i) gets = gets + 1; return get(me, i) end
+                return l
+            end
+            return c
+        end
+        for _ = 1, 30 do
+            gets = 0
+            G.tick(1)
+            assert(gets <= O().CHAR_PER_TICK, "zumbis lidos num tick: " .. gets)
+        end
+    end,
+
+    -- review 0021: outro jogador do MP em pé em decalque
+    overlays_remote_player_tiles_clear = function()
+        local G = setup({ density = 2, client = true })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        G.player({ x = 97, y = 103 })
+        G.tick(rotation(G))
+        local hidden = 0
+        for _, o in ipairs(FOUR) do
+            for _, m in ipairs(at(G, 97 + o[1], 103 + o[2])) do
+                assert(m.a == 0, "decalque visível debaixo do outro jogador")
+                hidden = hidden + 1
+            end
+        end
+        assert(hidden > 0, "o outro jogador não estava em decalque (teste não mede)")
     end,
 
     -- print 7 (05/10): com o jogador fora, o chão de dentro da casa saía por cima do telhado
@@ -568,7 +653,8 @@ return {
         local c0 = G.java + G.sqCalls
         G.tick(O().UPDATE_TICKS * 20)
         local per = (G.java + G.sqCalls - c0) / 20
-        assert(per <= O().LIGHT_BUDGET + 10, "parado e ainda sondando: " .. per .. " chamadas por atualização")
+        assert(per <= O().LIGHT_BUDGET + 10 + O().UPDATE_TICKS, -- + 1 getCell por tick (rodízio de personagens)
+            "parado e ainda sondando: " .. per .. " chamadas por atualização")
     end,
 
     -- parede de costas não ocupa o teto: o raio das paredes fica largo num mundo cheio delas
