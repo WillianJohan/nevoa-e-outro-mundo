@@ -55,7 +55,7 @@ Opções: `SemRostoEnabled` (true), `SemRostoChance` (5, inteiro 0–100), `FogA
 
 **Produces:**
 - `NOM_VariantRules.semRosto(id, period, cfg) -> bool`, cfg = `{ semRostoOn, semRostoChance }`; `NOM_VariantRules.semRostoConfig(get)`. Mistura com sal próprio: independente do sorteio da noite.
-- `NOM_SemRostoRules.spots(px, py, faceAngle, r) -> { {x, y}, … }`: pontos inteiros no círculo de raio `r`, começando atrás do jogador (`faceAngle + π`) e abrindo ±30° até ±150°.
+- `NOM_SemRostoRules.spots(px, py, faceAngle, r) -> { {x, y}, … }`: pontos inteiros no círculo de raio `r`, começando atrás do jogador (`faceAngle + π`) e abrindo ±30° até ±120°.
 - `NOM_SemRostoRules.nextRadius(d) -> r`: `max(MIN_DIST, d - STEP)` (MIN_DIST 3, STEP 3).
 - `NOM_SemRostoRules.ready(lastMs, nowMs) -> bool` (`COOLDOWN_MS` 4000).
 - `NOM_SemRostoRules.validMove(sx, sy, zx, zy, tx, ty) -> bool`: destino mais perto do jogador que o zumbi, a ≥ MIN_DIST − 1 e ≤ `REPORT_RANGE` (30).
