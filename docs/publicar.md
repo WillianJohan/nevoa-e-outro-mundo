@@ -162,7 +162,7 @@ Se tudo passou: marcar o critério no README da sprint 0007 com o ID e o console
 
 ```bash
 mv ~/Zomboid/Workshop-parked/NevoaEOutroMundo ~/Zomboid/Workshop/
-ln -sfn ~/Documents/projects/nevoa-e-outro-mundo/mod ~/Zomboid/mods/NevoaEOutroMundo
+~/Documents/projects/nevoa-e-outro-mundo/scripts/dev-sync.sh
 ```
 
 Sem a pasta de volta, o próximo build cai no ID do repo (e avisa); com ela, nada muda.
