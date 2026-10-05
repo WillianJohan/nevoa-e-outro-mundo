@@ -63,6 +63,13 @@ return {
         assert(NOM_EcoRules.syncNight(s, true, 130) == 4)
         assert(s.start == 130)
     end,
+    -- o contador da névoa usa a mesma conta sem hora: não guarda início
+    rules_sync_without_now_keeps_no_start = function()
+        local s = {}
+        NOM_EcoRules.syncNight(s, true)
+        NOM_EcoRules.syncNight(s, true)
+        assert(s.start == nil and s.night == 1)
+    end,
     rules_died_before_night = function()
         assert(NOM_EcoRules.diedBeforeNight(99, 100) == true)
         assert(NOM_EcoRules.diedBeforeNight(100.2, 100) == false)
