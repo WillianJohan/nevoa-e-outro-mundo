@@ -21,10 +21,21 @@ local CREDITS = read("CREDITS.md")
 local function listed(text) return CREDITS:find(text, 1, true) ~= nil end
 
 return {
-    credits_every_binary_asset_listed = function()
-        local files = find("find mod docs/workshop -type f \\( -name '*.png' -o -name '*.ogg' -o -name '*.wav' \\)")
-        assert(#files >= 8, "esperava sons e imagens, achou " .. #files)
-        for _, path in ipairs(files) do assert(listed(path), "CREDITS.md não cita " .. path) end
+    -- invertido: todo arquivo do mod que não é código/texto/script precisa de origem
+    credits_every_asset_listed = function()
+        local TEXT = { lua = true, txt = true, xml = true, json = true, info = true }
+        local files = find("find mod docs/workshop -type f")
+        local n = 0
+        for _, path in ipairs(files) do
+            local ext = path:match("%.(%w+)$")
+            local name = path:match("[^/]+$")
+            local isText = path:find("^mod/") and (TEXT[ext] or name == ".gitkeep")
+            if not isText and not path:find("%.txt$") then
+                n = n + 1
+                assert(listed(path), "CREDITS.md não cita " .. path)
+            end
+        end
+        assert(n >= 8, "esperava sons e imagens, achou " .. n)
     end,
 
     credits_generators_exist = function()

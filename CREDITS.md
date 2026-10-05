@@ -6,8 +6,9 @@ Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. N
 código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
 [MIT](LICENSE), a mesma do mod.
 
-`tests/test_credits.lua` falha se aparecer um `.png`, `.ogg` ou `.wav` no mod (ou em
-`docs/workshop/`) que não esteja nesta página, ou um GUID vanilla não listado.
+`tests/test_credits.lua` falha se aparecer no mod qualquer arquivo que não seja
+código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
+`docs/workshop/`, que não esteja nesta página; e com GUID vanilla não listado.
 
 ## Sons
 
