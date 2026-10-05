@@ -116,36 +116,43 @@ return {
 
     -- manchas, não sal e pimenta: a troca sujo/limpo entre vizinhos é bem menor que a de um
     -- sorteio por tile com a mesma fração (2p(1-p))
+    -- manchas, não sal e pimenta, em toda densidade (review 0021: em 1,6/2/3,2 voltava a
+    -- ser tile a tile): a troca sujo/limpo entre vizinhos é bem menor que a de um sorteio por
+    -- tile com a mesma fração (2p(1-p)), em três períodos
     dressing_rules_grime_clusters = function()
         local R = load()
-        local has, n, tot = {}, 0, 0
-        for x = 0, 79 do
-            for y = 0, 79 do
-                local f = R.floor(7000 + x, 8000 + y, 0, 5, 1)
-                has[x .. "," .. y] = f ~= nil and f.grime ~= nil
-                if has[x .. "," .. y] then n = n + 1 end
-                tot = tot + 1
-            end
-        end
-        local p = n / tot
-        assert(p > 0.05, "sem sujeira pra medir: " .. p)
-        local flips, pairs = 0, 0
-        for x = 0, 78 do
-            for y = 0, 78 do
-                for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
-                    pairs = pairs + 1
-                    if has[x .. "," .. y] ~= has[(x + o[1]) .. "," .. (y + o[2])] then flips = flips + 1 end
+        for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
+            for _, per in ipairs({ 3, 6, 11 }) do
+                local has, n, tot = {}, 0, 0
+                for x = 0, 89 do
+                    for y = 0, 89 do
+                        local f = R.floor(7000 + x, 8000 + y, 0, per, d)
+                        has[x .. "," .. y] = f ~= nil and f.grime ~= nil
+                        if has[x .. "," .. y] then n = n + 1 end
+                        tot = tot + 1
+                    end
                 end
+                local p = n / tot
+                assert(p > 0.05, "sem sujeira pra medir: " .. p)
+                local flips, pairs = 0, 0
+                for x = 0, 88 do
+                    for y = 0, 88 do
+                        for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+                            pairs = pairs + 1
+                            if has[x .. "," .. y] ~= has[(x + o[1]) .. "," .. (y + o[2])] then flips = flips + 1 end
+                        end
+                    end
+                end
+                local ratio = flips / pairs / (2 * p * (1 - p))
+                assert(ratio < 0.6, "sujeira espalhada tile a tile: d=" .. d .. " per=" .. per .. " razão " .. ratio)
             end
         end
-        assert(flips / pairs < 0.6 * 2 * p * (1 - p), "sujeira espalhada tile a tile: " .. flips / pairs .. " vs " .. 2 * p * (1 - p))
     end,
 
-    -- métrica do xadrez: vizinhos sujos com o mesmo sprite são raros, e nunca um sprite de
-    -- cobertura cheia repetido lado a lado
+    -- métrica do xadrez: dois vizinhos sujos nunca têm o mesmo sprite (nem cheio nem parcial)
     dressing_rules_grime_no_checkerboard = function()
         local R = load()
-        for _, d in ipairs({ 1, 2, 3.2 }) do
+        for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
             local g = {}
             for x = 0, 79 do
                 for y = 0, 79 do
@@ -153,7 +160,7 @@ return {
                     g[x .. "," .. y] = f and f.grime and f.grime[2]
                 end
             end
-            local same, full, dirty = 0, 0, 0
+            local same, dirty = 0, 0
             for x = 0, 78 do
                 for y = 0, 78 do
                     local a = g[x .. "," .. y]
@@ -161,17 +168,13 @@ return {
                         local b = g[(x + o[1]) .. "," .. (y + o[2])]
                         if a and b then
                             dirty = dirty + 1
-                            if a == b then
-                                same = same + 1
-                                if AUDIT[R.SETS.grimeFloor.prefix .. a].cov >= 0.5 then full = full + 1 end
-                            end
+                            if a == b then same = same + 1 end
                         end
                     end
                 end
             end
-            assert(dirty > 100, "pouca sujeira pra medir: " .. dirty)
-            assert(same / dirty < 0.15, "vizinhos com a mesma sujeira: " .. same / dirty)
-            assert(full == 0, "sujeira cheia repetida lado a lado: " .. full)
+            assert(dirty > 300, "pouca sujeira vizinha pra medir: " .. dirty)
+            assert(same == 0, "vizinhos com a mesma sujeira: d=" .. d .. " " .. same .. " de " .. dirty)
         end
     end,
 

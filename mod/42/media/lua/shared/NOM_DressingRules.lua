@@ -1,10 +1,13 @@
--- Regras puras do Outro Mundo sangrento (sprint 0015): o que cada square ganha na
--- névoa. Chão: camadas de sangue (poças e rastros) e de erosão (sujeira, rachadura); parede: um sprite por lado (sangue, sujeira, rachadura, trepadeira). Sem
--- API do jogo, testável com ./run-tests.sh. Quem desenha: client/NOM_FogOverlays.lua.
+-- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021): o que cada square
+-- ganha na névoa. Chão: rachadura e sangue (poças e rastros) num marcador, sujeira em
+-- manchas noutro. Parede: um sprite por lado (sangue, sujeira, rachadura, trepadeira), hoje
+-- desligada (WALLS). Sem API do jogo, testável com ./run-tests.sh. Quem desenha:
+-- client/NOM_FogOverlays.lua.
 --
 -- Nada é guardado: a resposta é função do square, do período de névoa e da
 -- densidade (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
 require "NOM_VariantRules"
+require "NOM_Math"
 
 NOM_DressingRules = {
     RADIUS = 25,       -- tiles do jogador
@@ -23,9 +26,14 @@ NOM_DressingRules = {
     BACKGROUND = 0.15, -- respingo solto por square
     CRACKS = 0.45,
     -- Sujeira (print 7: losango cheio por tile lia como xadrez): em manchas (ruído numa rede
-    -- de GRIME_CELL tiles), sprite parcial e num marcador próprio, com alfa × GRIME_ALPHA.
-    GRIME = 0.4,       -- o ruído passa de 1 − GRIME·d: ~20% do chão na densidade 1
+    -- de GRIME_CELL tiles, recortado por um ruído fino de GRIME_FINE), sprite parcial que não
+    -- repete o do vizinho e num marcador próprio, com alfa × GRIME_ALPHA. A chance para em
+    -- GRIME_MAX: acima disso as manchas se emendam e volta o tile a tile (review 0021).
+    GRIME = 0.4,       -- o ruído passa de 1 − min(GRIME·d, GRIME_MAX)
+    GRIME_MAX = 0.4,   -- medido: ~27% do chão a partir da densidade 1 (dressing_rules_grime_rarer)
     GRIME_CELL = 4,
+    GRIME_FINE = 2,    -- o ruído fino passa de GRIME_CUT: borda irregular, sem furo isolado
+    GRIME_CUT = 0.3,
     GRIME_ALPHA = 0.5,
     WALL = 0.75,       -- chance de cada parede ter algo
 }
@@ -131,12 +139,17 @@ local function pool(cx, cy, z, period, d)
     return p or nil
 end
 
-local function corner(i, j, z, period)
+local function corner(i, j, z, period, salt)
+    local t = corners[salt]
+    if not t then
+        t = {}
+        corners[salt] = t
+    end
     local k = sqId(i, j, z)
-    local v = corners[k]
+    local v = t[k]
     if v == nil then
-        v = u(k + 3, period, 54)
-        corners[k] = v
+        v = u(k + 3, period, salt)
+        t[k] = v
     end
     return v
 end
@@ -145,15 +158,31 @@ local function smooth(t)
     return t * t * (3 - 2 * t)
 end
 
--- Ruído de valor da sujeira em (x, y): 0..1, contínuo de tile pra tile (manchas).
-function R.grimeNoise(x, y, z, period)
-    local c = R.GRIME_CELL
-    local gx, gy = (x + 0.5) / c, (y + 0.5) / c
+-- Ruído de valor em (x, y) numa rede de `cell` tiles: 0..1, contínuo de tile pra tile.
+local function noise(x, y, z, period, cell, salt)
+    local gx, gy = (x + 0.5) / cell, (y + 0.5) / cell
     local i, j = math.floor(gx), math.floor(gy)
     local sx, sy = smooth(gx - i), smooth(gy - j)
-    local a = corner(i, j, z, period) + (corner(i + 1, j, z, period) - corner(i, j, z, period)) * sx
-    local b = corner(i, j + 1, z, period) + (corner(i + 1, j + 1, z, period) - corner(i, j + 1, z, period)) * sx
+    local c00, c10 = corner(i, j, z, period, salt), corner(i + 1, j, z, period, salt)
+    local c01, c11 = corner(i, j + 1, z, period, salt), corner(i + 1, j + 1, z, period, salt)
+    local a = c00 + (c10 - c00) * sx
+    local b = c01 + (c11 - c01) * sx
     return a + (b - a) * sy
+end
+
+-- Ruído das manchas de sujeira em (x, y): 0..1.
+function R.grimeNoise(x, y, z, period)
+    return noise(x, y, z, period, R.GRIME_CELL, 54)
+end
+
+-- Sprite de sujeira do square: a classe (x + 2y) mod 5 nunca é a de um vizinho de lado
+-- (±1, ±2), e cada classe tem os seus sprites: dois vizinhos nunca repetem o sprite.
+local function grimePick(x, y, id, period)
+    local idx = R.SETS.grimeFloor.idx
+    local class = NOM_Math.mod(x + 2 * y, 5)
+    local own = {}
+    for k = class + 1, #idx, 5 do own[#own + 1] = idx[k] end
+    return { "grimeFloor", own[math.floor(u(id, period, 61) * #own) + 1] }
 end
 
 -- Camadas de sangue do square pelas poças das 9 células em volta: 3 no miolo, 2 na
@@ -193,12 +222,13 @@ function R.floor(x, y, z, period, d)
     local id = sqId(x, y, z)
     local out = {}
     -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
-    local grime = R.grimeNoise(x, y, z, period) >= 1 - chance(R.GRIME, d) and u(id, period, 51) >= 1 / 7
+    local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
+        and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
     if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
     local blood = bloodLevel(x, y, z, id, period, d)
     while #out + blood > R.MAX_LAYERS do table.remove(out) end
     for k = 1, blood do out[#out + 1] = pick("bloodFloor", id, period, 40 + k) end
-    if grime then out.grime = pick("grimeFloor", id, period, 61) end
+    if grime then out.grime = grimePick(x, y, id, period) end
     if #out == 0 and not grime then return nil end
     return out
 end

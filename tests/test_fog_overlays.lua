@@ -120,9 +120,15 @@ local function awayFromPlayer(G, list)
     end
 end
 
-local function textures(G)
+local function textures(G, noGrime, r)
     local n = 0
-    for _, m in ipairs(alive(G)) do n = n + #m.names end
+    for _, m in ipairs(alive(G)) do
+        local dx, dy = m.sq.x - math.floor(G.p.x), m.sq.y - math.floor(G.p.y)
+        if r and dx * dx + dy * dy > r * r then m = { names = {} } end
+        for _, name in ipairs(m.names) do
+            if not (noGrime and name:find("^overlay_grime")) then n = n + 1 end
+        end
+    end
     return n
 end
 
@@ -397,11 +403,13 @@ return {
         local G = setup()
         NOM_FogState.set(true, 3, false)
         G.seconds(20)
-        local normal = textures(G)
+        -- sangue e rachadura num raio que as duas cobrem inteiro (o teto encolhe o raio da
+        -- vermelha); a sujeira tem teto (GRIME_MAX) e não cresce com a densidade
+        local normal = textures(G, true, 8)
         local R = setup()
         NOM_FogState.set(true, 3, true)
         R.seconds(20)
-        assert(textures(R) > normal * 1.15, "vermelha não é mais densa: " .. textures(R) .. " vs " .. normal)
+        assert(textures(R, true, 8) > normal * 1.15, "vermelha não é mais densa: " .. textures(R, true, 8) .. " vs " .. normal)
     end,
 
     -- review 0015 (crítico): com o teto cheio, andar não pode deixar o jogador no limpo.
