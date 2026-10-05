@@ -53,11 +53,13 @@ local function isEco(z)
     return z:getModData().NOM_eco == true
 end
 
-local function spawnFrom(body, night)
-    local sq = body:getSquare()
-    local list = addZombiesInOutfit(sq:getX(), sq:getY(), sq:getZ(), 1, OUTFIT, FEMALE_CHANCE)
+NOM_Eco = {}
+
+-- Um Eco em (x, y, zz), contado na noite night. Devolve o zumbi ou nil.
+local function spawn(x, y, zz, night)
+    local list = addZombiesInOutfit(x, y, zz, 1, OUTFIT, FEMALE_CHANCE)
     if not list or list:size() == 0 then
-        return false
+        return nil
     end
     local z = list:get(0)
     -- OnZombieCreate já disparou antes do outfit ser vestido: marca aqui.
@@ -70,6 +72,12 @@ local function spawnFrom(body, night)
     else
         debugLog("outfit " .. OUTFIT .. " não carregou (persistentOutfitID 0)")
     end
+    return z
+end
+
+local function spawnFrom(body, night)
+    local sq = body:getSquare()
+    if not spawn(sq:getX(), sq:getY(), sq:getZ(), night) then return false end
     body:getModData().NOM_ecoReleased = true
     return true
 end
@@ -100,6 +108,18 @@ local function loadedEcos()
         if isEco(z) and not z:isDead() then out[#out + 1] = z end
     end
     return out
+end
+
+-- Debug (server/NOM_DebugServer.lua): Eco sem corpo, só à noite (de dia não
+-- haveria amanhecer pra levá-lo).
+function NOM_Eco.spawnAt(x, y, zz)
+    local night = currentNight()
+    if not night or not NOM_World.night then return false end
+    return spawn(x, y, zz, night) ~= nil
+end
+
+function NOM_Eco.loaded()
+    return #loadedEcos()
 end
 
 -- Corpo de Eco carrega o modData do Eco (o construtor do IsoDeadBody copia).

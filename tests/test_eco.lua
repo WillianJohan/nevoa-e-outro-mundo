@@ -639,4 +639,20 @@ return {
         assert(c.n <= #zs, "chamadas em zumbi comum: " .. c.n)
         assert(#G.ecos() == 5)
     end,
+    -- debug (NOM_Debug.spawnEco): Eco no lugar pedido, só à noite, contado na
+    -- noite atual como os outros (some no amanhecer)
+    eco_spawn_at_only_at_night = function()
+        local G = setup({ tod = 12 })
+        assert(NOM_Eco.spawnAt(100, 100, 0) == false, "spawnou de dia")
+        assert(#G.ecos() == 0)
+        G.setTime(23)
+        assert(NOM_Eco.spawnAt(100, 100, 0) == true)
+        local e = G.ecos()[1]
+        assert(e and e.md.NOM_eco == true and e.health == 0.3, "Eco sem marca ou sem vida baixa")
+        assert(NOM_Eco.loaded() == 1)
+        local ids = G.globalMD.NevoaEOutroMundo.eco.ids
+        assert(ids[e.outfitID] and ids[e.outfitID][G.globalMD.NevoaEOutroMundo.eco.night], "ID não guardado na noite")
+        G.setTime(7)
+        assert(#G.ecos() == 0 and NOM_Eco.loaded() == 0, "Eco do debug não sumiu no amanhecer")
+    end,
 }
