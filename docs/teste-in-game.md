@@ -284,7 +284,15 @@ de 200 (Debug → Spawn Horde).
 | FPS 5 s depois do anoitecer (solo) | | |
 | Tick do servidor (dedicado, `server-console.txt`) | | |
 | Pico a cada 10 min de jogo (varredura do Eco) | — | |
+| FPS com névoa normal (`NOM_Debug.fog(true, true)`, 1 min depois) | — | |
+| FPS com névoa vermelha (`NOM_Debug.redFog(true)` com a névoa aberta, 1 min depois: todo zumbi é variante) | — | |
 
+- [ ] **Névoa vermelha com horda** (sprint 0010): com a horda de 200 carregada, anotar o
+      FPS sem névoa, depois `NOM_Debug.fog(true, true)` e o FPS 1 minuto depois (todos
+      os stats aplicados), depois `NOM_Debug.redFog(true)` e o FPS 1 minuto depois. No
+      dedicado, o tick do servidor nas mesmas três. **Esperado:** a vermelha a menos de
+      ~10% do FPS da normal; se cair mais, mandar os números (o orçamento contado está
+      no [README da arquitetura](architecture/README.md#orçamento-por-sistema)).
 - [ ] Preencher a tabela. → [0003: FPS](sprints/sprint-0003-noite-agressiva/README.md#critérios-de-aceite),
       [0006: FPS e tick](sprints/sprint-0006-balanceamento-mp/README.md#critérios-de-aceite)
 

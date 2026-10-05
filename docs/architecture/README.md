@@ -116,7 +116,12 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
-| Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player` |
+| Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown` |
+| **Névoa vermelha** (sprint 0010): ninguém é comum, 1/3 de cada tipo | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0 → ~2,3·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~3·N (~0,3·N por frame); **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~800 chamadas por frame. Contra a névoa normal (12% variantes): ~0,3·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `stats_batch_bounded_with_200` |
+
+Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,3·N pra ~2,3·N
+chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a
+horda no jogo ([roteiro, parte 3](../teste-in-game.md#parte-3--medições-15-min)).
 
 Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561
 squares num tick (o raio de um jogador), a cada 10 minutos de jogo. É o maior pico do

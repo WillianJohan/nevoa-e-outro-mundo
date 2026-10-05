@@ -133,8 +133,9 @@ if not isServer() then
 end
 
 -- O aviso vem do cliente. Cada jogador manda no máximo um a cada RATE_MS reais
--- (procurar o zumbi custa uma volta na lista).
-local RATE_MS = 250
+-- (procurar o zumbi custa uma volta na lista). O cliente espaça os dele um pouco
+-- mais (NOM_SemRostoRules.REPORT_GAP_MS).
+local RATE_MS = R.RATE_MS
 -- ponytail: chave é o objeto do jogador; quem desconecta fica até reiniciar.
 local lastSeen = {}
 

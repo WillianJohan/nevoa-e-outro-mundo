@@ -15,6 +15,8 @@ local ECO_OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 
 -- [zumbi] = último relato em ms reais (não piscar: o servidor também confere).
 local lastReport = {}
+-- ms reais do último relato de qualquer zumbi (R.REPORT_GAP_MS).
+local lastSent
 -- Sem-rosto locais achados na última varredura (pro rádio).
 local known = {}
 
@@ -113,7 +115,7 @@ local function scan(report)
         local z = list:get(i)
         if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red) then
             found[#found + 1] = z
-            if R.ready(lastReport[z], now) then
+            if R.ready(lastReport[z], now) and (lastSent == nil or now - lastSent >= R.REPORT_GAP_MS) then
                 for _, p in ipairs(players) do
                     if seenBy(p, z) then
                         -- colado: não some, ataca (R.ATTACK_DIST)
@@ -121,6 +123,7 @@ local function scan(report)
                             local x, y, zz = destination(p, z, players)
                             if x then
                                 lastReport[z] = now
+                                lastSent = now
                                 report(z, x, y, zz, p)
                                 if getDebug() then
                                     print("[NOM] semrosto visto x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
