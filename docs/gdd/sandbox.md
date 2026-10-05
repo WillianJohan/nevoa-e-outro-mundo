@@ -11,7 +11,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
-- Monstros: Estalador · Corredor · Sem-rosto · Eco (`EcoEnabled`, padrão ligado)
+- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto · Eco (`EcoEnabled`), todos padrão ligado
 - Overlays de névoa
 
 ## Números
@@ -24,6 +24,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
 | `HuntIntervalMinutes` (60, faixa 10–720 minutos de jogo), `HuntRadius` (30 tiles, faixa 5–100) | [night.md](night.md) |
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
-| `EstaladorChance`, `CorredorChance`, `SemRostoChance` | [monsters.md](monsters.md) |
-| `CorredorScreamRadius` | [monsters.md](monsters.md) |
+| `EstaladorChance` (5 %, faixa 0–100), `CorredorChance` (10 %, faixa 0–100; somadas acima de 100, o Corredor fica com o resto) | [monsters.md](monsters.md#estalador) |
+| `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor-noturno) |
+| `SemRostoChance` | [monsters.md](monsters.md#sem-rosto) |
 | `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |
