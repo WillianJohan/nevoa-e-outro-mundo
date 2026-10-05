@@ -37,10 +37,17 @@ local pass = { seen = 0, applied = 0 }
 -- da noite: o tick dorme até a próxima flag. Zumbi que volta do virtual ou é
 -- reaproveitado nasce limpo (objeto novo ou modData zerado), então nada novo
 -- aparece de dia. Orçamento em docs/architecture/README.md.
--- ponytail: zumbi pulado numa passada (a lista mudou embaixo do cursor) e de novo
--- na seguinte fica com o stat da noite até ir pro virtual; improvável, aceito.
+-- O cursor é por posição: cada zumbi que sai da lista no meio da passada pode
+-- fazer o cursor pular um. Rede de segurança: o tick acorda a cada hora de jogo
+-- (wake) e faz uma passada a mais; um zumbi preso fica no máximo uma hora.
 local idle = false
 local sweep = { seen = 0, applied = 0 }
+
+-- Passada nova (flag nova ou EveryHours).
+local function wake()
+    idle = false
+    sweep.seen, sweep.applied = 0, 0
+end
 
 local function option(name)
     return getSandboxOptions():getOptionByName(name)
@@ -199,8 +206,7 @@ end
 -- nightNumber: número da noite do servidor (NOM_NightCount), base do sorteio
 -- das variantes. nil enquanto o cliente não souber.
 function NOM_NightStats.setNight(on, nightNumber)
-    idle = false
-    sweep.seen, sweep.applied = 0, 0
+    wake()
     NOM_NightStats.night = on
     NOM_NightStats.nightNumber = nightNumber
 end
@@ -227,6 +233,8 @@ end
 
 function NOM_NightStats.install()
     Events.OnTick.Add(NOM_NightStats.tick)
+    -- EveryHours: shared/Foraging/forageSystem.lua:751
+    Events.EveryHours.Add(wake)
     Events.OnZombieCreate.Add(NOM_NightStats.enqueue)
     Events.OnZombieDead.Add(NOM_NightStats.forget)
 end

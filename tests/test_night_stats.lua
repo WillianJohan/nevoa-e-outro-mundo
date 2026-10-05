@@ -175,6 +175,7 @@ local function setup(opts)
         z.dead = true
         fire("OnZombieDead", z)
     end
+    G.fire = fire
     function G.converge() G.tick(math.ceil(G.zombies:size() / NOM_NightStats.BATCH) + 1) end
 
     isClient = function() return false end
@@ -662,5 +663,28 @@ return {
         NOM_VariantRules.forced[77], NOM_VariantRules.forced[78] = nil, nil
         assert(eco.md.NOM_variant == nil and eco.speedType == 3, "Eco virou Corredor")
         assert(z.md.NOM_variant == "corredor" and z.speedType == 1, "forçado ignorado")
+    end,
+    -- zumbi pulado pelo cursor (a lista mudou embaixo dele no amanhecer) fica com o
+    -- stat da noite enquanto o tick dorme; a cada hora de jogo o tick acorda e
+    -- devolve (Events.EveryHours, shared/Foraging/forageSystem.lua:751)
+    stats_day_idle_wakes_every_hour = function()
+        local G = setup()
+        local zs = {}
+        for i = 1, 30 do zs[i] = G.spawn() end
+        NOM_NightStats.setNight(true)
+        G.converge()
+        local stranded = zs[7]
+        local key = stranded.md.NOM_night
+        NOM_NightStats.setNight(false)
+        G.converge()
+        G.converge()
+        -- simula o pulado: continua com o perfil da noite com o tick já dormindo
+        stranded.md.NOM_night = key
+        stranded.speedType = 1
+        G.converge()
+        assert(stranded.md.NOM_night == key, "teste não prova nada: o tick não dormiu")
+        G.fire("EveryHours")
+        G.converge()
+        assert(stranded.md.NOM_night == nil, "zumbi preso na noite depois da hora")
     end,
 }
