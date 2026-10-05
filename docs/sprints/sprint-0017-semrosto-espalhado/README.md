@@ -42,13 +42,24 @@ liga no ID quando o chapéu cai é a entrada do sorteio (ADR-006).
 - [x] Carpideira que gritou e perdeu o chapéu não grita de novo nem volta a soluçar —
       `carpideira_fallen_hat_does_not_scream_again` (servidor), `carpideira_furious_with_fallen_hat`
       (quem vê), `variants_client_scream_with_fallen_hat` (o grito acha a cópia com o bit).
-- [x] O debug força pelo ID sem o bit — `debug_variant_sends_base_id`.
+- [x] O debug força pelo ID sem o bit — `debug_variant_sends_base_id`; o servidor também
+      grava e espalha pelo `baseId` (`ops.variant`).
+- [x] Review: o `%` do Kahlua trunca e satura (`KahluaThread.primitiveMath`:
+      `a - (double)(int)(a/b)*b`). Corrigidos: `hatFallen` do visual (no ID feminino a
+      paridade dava `-1` e o chapéu caído voltava pra cabeça em ~metade dos zumbis do MP,
+      bug da 0016) — caso feminino em `nude_fallen_hat_not_restored`; deslocamento do grão e
+      das linhas e quadro do grão da 0013 (`getTimestampMs` ~1.76e12 saturava o `(int)`) —
+      `NOM_Math.mod`, `math_mod_floored_and_exact` (contra um fake do `%` do Kahlua). Lint
+      `kahlua_percent_safe` (paridade com `%` e `%` em ID ou tempo real sem `NOM_Math.mod` nem
+      `-- kahlua-%-ok:`), com `kahlua_percent_lint_catches_known_bugs` provando que pega os
+      dois casos. O `hash` do sorteio fica truncado de propósito (ADR-006, adendo).
+- [x] Reserva vencida sai na reserva seguinte — `semrosto_reservation_pruned`.
 - [ ] No jogo, uma horda de Sem-rostos vista junta reaparece espalhada — **falta o jogo:**
       roteiro, passos 2–3.
 - [ ] MP: uma variante que perde o chapéu num golpe continua a variante nos dois clientes e no
       servidor — **falta o jogo:** passo 4.
 
-`./run-tests.sh`: `total=559 passou=559 falhou=0` (Lua), `contraste total=4 passou=4`,
+`./run-tests.sh`: `total=563 passou=563 falhou=0` (Lua), `contraste total=4 passou=4`,
 `build total=25 passou=25`.
 
 ## Roteiro in-game
@@ -73,6 +84,12 @@ Jogo em `-debug`, **save descartável**. Console em
    **Se** virar comum ou outra variante logo depois do chapéu cair: anotar o `id=` das linhas
    do debug.
 
+5. **Grão da tela (0013).** Na névoa, com os efeitos de tela ligados: o grão treme e as
+   linhas pulam de lugar a cada quadro, sem ficar parados nem sumir. Antes desta correção o
+   deslocamento saturava no Kahlua.
+6. **Chapéu caído, zumbi feminino** (MP, como o passo 4, numa variante mulher): no fim da
+   névoa o chapéu caído **não** volta pra cabeça.
+
 ## Checkpoints
 
 - **04/10/2026** — Sprint aberta (rulings do Claude de 05/10). Bytecode: quem liga o bit do
@@ -82,6 +99,9 @@ Jogo em `-debug`, **save descartável**. Console em
   reserva do destino do Sem-rosto (solo, cliente e `semRostoMove`). Testes verdes.
 - **04/10/2026** — Docs: monsters.md, emendas da ADR-006 e da ADR-007, pz-api-notes §14.4,
   roteiro. Em teste.
+- **04/10/2026** — Review: `%` do Kahlua trunca e satura. `NOM_Math.mod`, `hatFallen` pelo
+  `baseId`, grão e linhas da tela reduzidos antes de multiplicar, lint do `%`, debug do
+  servidor pelo `baseId`, poda da reserva.
 
 ## Aprendizados
 
@@ -89,9 +109,13 @@ Jogo em `-debug`, **save descartável**. Console em
   só chama `setFallenHat` pra quem não é zumbi; no zumbi quem liga é o servidor dedicado no
   golpe (`hit/Zombie.react`) e o cliente no `ZombieHelmetFallingPacket`. Um teste em solo não
   reproduz a troca de variante; só o MP (ou um ID salvo com o bit).
-- **Máscara de bit sem operador de bit, em ID com sinal:** `math.floor(id / 2^k) % 2` é o
-  deslocamento aritmético exato em double também pra negativo, e subtrair `2^k` desliga o bit
-  sem tocar no bit de sinal.
+- **O `%` do Kahlua trunca e satura; o do luajit dos testes, não.** `-1 % 2` é `-1` no
+  jogo e `1` no teste, e `getTimestampMs() * 7 % 64` vira lixo no jogo porque o `(int)` do
+  Java satura em `2^31-1`. Teste verde não prova nada aqui: use `NOM_Math.mod` (o lint
+  `kahlua_percent_safe` cobra).
+- **Máscara de bit sem operador de bit, em ID com sinal:** `math.floor(id / 2^k)` é o
+  deslocamento aritmético exato em double também pra negativo; a paridade dele vai por
+  `NOM_Math.mod(…, 2)`, e subtrair `2^k` desliga o bit sem tocar no bit de sinal.
 
 ## Pendências que a próxima sprint herda
 
@@ -105,4 +129,4 @@ Jogo em `-debug`, **save descartável**. Console em
 
 ## Sessões
 
-- 2026-10-05 — abd764e2-7a9a-416b-b9b3-1630ab9e761f — plano, `baseId`, reserva do destino, docs
+- 2026-10-05 — abd764e2-7a9a-416b-b9b3-1630ab9e761f — plano, `baseId`, reserva do destino, docs, review (`%` do Kahlua)

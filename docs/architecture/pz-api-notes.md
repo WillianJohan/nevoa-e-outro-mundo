@@ -25,7 +25,7 @@
 - Caminhos Lua são relativos a `media/lua/`. Bytecode no formato `Classe.metodo(descritor)`.
 - Nenhum código de mod do Workshop foi copiado ou usado como evidência.
 
-### Três fatos transversais (leia antes de tudo)
+### Fatos transversais (leia antes de tudo)
 
 1. **Detecção de "lado do servidor".** Em solo, `isServer()` e `isClient()` são **ambos
    `false`**; em dedicado, `isServer()` é `true` no servidor. Guarda correta para lógica
@@ -49,6 +49,12 @@
    e flags (`ZombieStateFlag`: Initialized, Crawling, CanWalk, FakeDead, CanCrawlUnderVehicle,
    ReanimatedForGrappleOnly). Ao voltar, `ZombiePopulationManager` chama `IsoZombie.DoZombieStats()`,
    que re-sorteia os stats a partir do sandbox. Ver seção 3.
+4. **O `%` do Kahlua trunca e satura** (review da sprint 0017). `KahluaThread.primitiveMath`
+   faz `a - (double)(int)(a/b)*b`: com operando negativo o resto sai negativo (`-1 % 2 = -1`;
+   o luajit dos testes dá `1`), e o `(int)` do Java satura em `2^31-1` quando `a/b` passa disso
+   (`getTimestampMs()` é ~1.76e12). `math.floor` é `Math.floor` em double (`MathLib.floor`
+   23–32), sem `(int)`. Use `NOM_Math.mod`; o lint `kahlua_percent_safe` pega paridade e `%`
+   em ID de outfit ou tempo real.
 
 ---
 

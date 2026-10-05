@@ -113,3 +113,14 @@ zumbi por isso (`setFallenHat` mantém o init; o `outfitId` do `ZombiePacket` s�
 na criação, `NetworkZombieSimulator.parseZombie` 144–152), e o `processClient` refaz a
 lista com os mesmos objetos. Marcas antigas salvas com o bit (Carpideira de uma névoa
 em curso quando o mod atualizou) param de casar: o custo é um grito a mais, uma vez.
+
+**Adendo do review (0017): o `%` do Kahlua trunca.** `KahluaThread.primitiveMath` faz
+`a - (double)(int)(a/b)*b`; o luajit dos testes arredonda pra baixo. O `baseId` testa a
+paridade pelo `NOM_Math.mod` (o `% 2` daria `-1` no ID feminino). O `hash` **não** foi
+normalizado: no jogo `id % Q` e `floor(id / Q) % Q` saem negativos pro ID feminino, e
+normalizar re-sortearia todo zumbi feminino. Os testes de distribuição no luajit exercitam o
+`%` arredondado pra baixo nos IDs femininos, enquanto o jogo usa o truncado: a taxa e a
+independência entre períodos estão provadas pros masculinos exatamente e pros femininos só
+pela mesma mistura com outra entrada. O determinismo entre solo, servidor e clientes vale
+porque todos rodam Kahlua, e todo produto fica abaixo de `2^53` (os quocientes do `%`, longe
+de `2^31`).
