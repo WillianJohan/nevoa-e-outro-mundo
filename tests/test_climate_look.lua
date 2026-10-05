@@ -3,6 +3,7 @@
 -- dispara OnClimateTick; depois, a cada frame, calculate() faz o lerp da camada
 -- modded NO PRÓPRIO valor interno (internal = lerp(interp, internal, modded)).
 require "NOM_Rules"
+require "NOM_FogEventRules"
 
 local LOOK_FILE = "mod/42/media/lua/server/NOM_ClimateLook.lua"
 
@@ -33,25 +34,34 @@ local function setup(opts)
     local calls = {}
     local world = { tod = opts.tod or 12, fog = opts.fog or 0 }
 
+    -- ClimateManager$ClimateFloat do jogo: admin primeiro, camada modded no
+    -- interno, override por cima (de valor: ignora o interno). setOverride religa
+    -- o override; setEnableOverride só mexe no isOverride. O que o JOGO faz nos
+    -- campos (sandbox, WeatherPeriod) não entra em calls: calls é só o que o mod chama.
     local function float(name, vanilla)
-        local f = { vanilla = vanilla, internal = vanilla, final = vanilla, modded = 0, interp = 0, isModded = false }
+        local f = { vanilla = vanilla, internal = vanilla, final = vanilla, modded = 0, interp = 0, isModded = false,
+            isOverride = false, isOverrideValue = false, override = 0, overrideInterp = 0, overrideInternal = 0 }
         function f:getInternalValue() return self.internal end
         function f:getFinalValue() return self.final end
-        function f:isEnableOverride() return self.override ~= nil end
+        function f:isEnableOverride() return self.isOverride end
         function f:getOverride() return self.override end
         function f:getOverrideInterpolate() return self.overrideInterp end
+        function f:setEnableOverride(on) self.isOverride = on; calls[#calls + 1] = name .. ":override=" .. tostring(on) end
         function f:setEnableModded(on) self.isModded = on; calls[#calls + 1] = name .. (on and ":on" or ":off") end
         function f:setModdedValue(v) self.modded = v end
         function f:setModdedInterpolate(w) self.interp = w end
         function f:reset() self.internal = self.vanilla end
+        function f:gameSetOverride(v, t) self.override, self.overrideInterp, self.isOverride = v, t, true end
         function f:calculate()
+            if self.admin ~= nil then
+                self.final = self.admin
+                return
+            end
             if self.isModded and self.interp > 0 then
                 self.internal = lerp(self.interp, self.internal, self.modded)
             end
-            if self.override and self.overrideInterp > 0 then
-                -- override de valor (FogCycle/ClimateCycle do sandbox) ignora o interno;
-                -- o do WeatherPeriod (setOverride(0, t)) mistura em cima do interno
-                local base = self.overrideValue and self.overrideInternal or self.internal
+            if self.isOverride and self.overrideInterp > 0 then
+                local base = self.isOverrideValue and self.overrideInternal or self.internal
                 self.final = lerp(self.overrideInterp, base, self.override)
             else
                 self.final = self.internal
@@ -118,15 +128,33 @@ local function setup(opts)
     dofile(LOOK_FILE)
 
     local K = opts.K or 10
-    local env = { calls = calls, world = world, floats = floats, color = color }
-    -- Um minuto de jogo: updateValues + OnClimateTick no 1º frame, calculate em todo frame.
+    local env = { calls = calls, world = world, floats = floats, color = color, minutes = 0 }
+    -- updateSandboxOverrides (bytecode 471–675): fogOverride = 4 com nevasca eterna
+    -- (ClimateCycle 6) e FogCycle ≠ 2, senão o FogCycle; só na TROCA liga/desliga o
+    -- override de valor ("sem névoa" põe 0); névoa eterna (≥ 3) sorteia de hora em hora.
+    local lastFogOverride
+    local function sandboxOverrides()
+        local sv, f = SandboxVars, floats[5]
+        local fo = (sv.ClimateCycle == 6 and sv.FogCycle ~= 2) and 4 or sv.FogCycle
+        if fo ~= lastFogOverride then
+            lastFogOverride = fo
+            f.isOverride, f.isOverrideValue = fo > 1, fo > 1
+            if fo == 2 then f:gameSetOverride(0, 1) elseif fo >= 3 then f.overrideInternal = 0.5 end
+        end
+        if fo >= 3 and env.minutes % 60 == 0 then f:gameSetOverride(0.7, 1) end
+    end
+    -- Um minuto de jogo: overrides do sandbox, updateValues, WeatherPeriod (env.weather
+    -- = { fog, t }: setOverride todo minuto), OnClimateTick; calculate em todo frame.
     function env.minute()
         for frame = 1, K do
             if frame == 1 then
                 floats[5].vanilla = world.fog
                 for _, f in pairs(floats) do f:reset() end
                 color:reset()
+                sandboxOverrides()
+                if env.weather then floats[5]:gameSetOverride(env.weather.fog, env.weather.t) end
                 for _, h in ipairs(handlers.climate) do h(clim) end
+                env.minutes = env.minutes + 1
             end
             for _, f in pairs(floats) do f:calculate() end
             color:calculate()
@@ -147,6 +175,15 @@ local function count(calls, entry)
     for _, c in ipairs(calls) do if c == entry then n = n + 1 end end
     return n
 end
+
+-- chamadas do mod fora do canal de névoa (que é sempre do mod, ADR-009)
+local function notFog(calls)
+    local out = {}
+    for _, c in ipairs(calls) do if c:sub(1, 3) ~= "f5:" then out[#out + 1] = c end end
+    return out
+end
+
+local DENSITY = NOM_FogEventRules.DENSITY
 
 local function nightWeight(ch, intensity)
     return NOM_Rules.mix(1, 0, intensity or 1)[ch].weight
@@ -182,32 +219,7 @@ return {
             string.format("finais iguais: %.3f %.3f %.3f", finals[1], finals[2], finals[3]))
     end,
 
-    -- (c) a névoa do mod não segura a flag quando a névoa vanilla baixa (latch C1)
-    look_fog_flag_exits_when_vanilla_fog_drops = function()
-        local env = setup({ tod = 12, fog = 0.9, K = 10, sandbox = { FogThreshold = 0.35, DarkIntensity = 2 } })
-        local sawFog = false
-        env.run(200, function()
-            sawFog = sawFog or NOM_World.fog
-            env.world.fog = math.max(0, env.world.fog - 0.01)
-        end)
-        assert(sawFog, "névoa nunca ligou")
-        assert(NOM_World.fog == false, "névoa travou ligada")
-    end,
 
-    -- (c2) período de clima (WeatherPeriod) puxando a névoa pra 0 com override
-    -- que não é de valor: o final mistura o interno, onde mora a névoa do mod
-    look_fog_flag_exits_during_weather_period_override = function()
-        local env = setup({ tod = 12, fog = 0.9, K = 10, sandbox = { FogThreshold = 0.35, DarkIntensity = 2 } })
-        local f = env.floats[5]
-        f.override, f.overrideInterp, f.overrideValue = 0, 0.2, false
-        local sawFog = false
-        env.run(200, function()
-            sawFog = sawFog or NOM_World.fog
-            env.world.fog = math.max(0, env.world.fog - 0.01)
-        end)
-        assert(sawFog, "névoa nunca ligou")
-        assert(NOM_World.fog == false, "névoa travou ligada no período de clima")
-    end,
 
     -- transição em minutos de jogo: 20 ticks de clima, seja qual for o tempo real
     look_transition_takes_twenty_game_minutes = function()
@@ -219,12 +231,6 @@ return {
         assert(near(env.floats[9].final, full), "não chegou cheio em 20 minutos de jogo")
     end,
 
-    -- (d) dia sem névoa: nenhuma chamada no clima
-    look_idle_day_touches_nothing = function()
-        local env = setup({ tod = 12, K = 10 })
-        env.run(50)
-        assert(#env.calls == 0, "chamou o clima de dia sem efeito: " .. table.concat(env.calls, ","))
-    end,
 
     -- (e) desligar no sandbox desce em rampa e desliga a camada uma vez só
     look_toggle_off_ramps_down_then_disables_once = function()
@@ -240,48 +246,25 @@ return {
         assert(count(env.calls, "f9:on") == 1, "liga uma vez só")
         assert(count(env.calls, "f9:off") == 1, "desliga uma vez só")
         assert(count(env.calls, "tint:off") == 1)
-        assert(count(env.calls, "f5:on") == 0, "sem névoa, canal de névoa nunca liga")
+        assert(count(env.calls, "f5:on") == 1 and count(env.calls, "f5:off") == 0, "canal de névoa: liga uma vez e fica")
     end,
 
     -- DarkIntensity 0 à noite: peso zero em todo canal, nenhuma escrita
     look_intensity_zero_touches_nothing = function()
         local env = setup({ tod = 23, K = 10, sandbox = { DarkIntensity = 0 } })
         env.run(40)
-        assert(#env.calls == 0, "escreveu com intensidade 0: " .. table.concat(env.calls, ","))
+        assert(#notFog(env.calls) == 0, "escreveu com intensidade 0: " .. table.concat(env.calls, ","))
     end,
     -- (f) cliente de MP nunca escreve no clima: o visual vem do servidor
     look_mp_client_writes_nothing = function()
         local env = setup({ tod = 23, K = 10, client = true })
         env.run(40)
         assert(#env.calls == 0, "cliente escreveu no clima: " .. table.concat(env.calls, ","))
+        assert(env.floats[5].isModded == false, "cliente mexeu na névoa")
         assert(near(env.floats[0].final, 0.2), "cliente mexeu na dessaturação")
     end,
 
-    -- (g) FogCycle do sandbox: a detecção usa o valor efetivo e não fica piscando
-    look_fog_override_uses_final_without_flapping = function()
-        local env = setup({ tod = 12, fog = 0.1, K = 10, sandbox = { FogThreshold = 0.5 }, fogCycle = 3 })
-        local f = env.floats[5]
-        -- final = lerp(0.5, 0.5, 0.7) = 0.6; a fórmula do WeatherPeriod daria 0.4
-        f.override, f.overrideInterp, f.overrideValue, f.overrideInternal = 0.7, 0.5, true, 0.5
-        f.final = 0.6
-        local changes, last = 0, false
-        env.run(100, function()
-            if NOM_World.fog ~= last then changes = changes + 1; last = NOM_World.fog end
-        end)
-        assert(NOM_World.fog == true, "override de névoa ignorado")
-        assert(changes == 1, "flag piscou " .. changes .. " vezes")
-    end,
 
-    -- ClimateCycle 6 (nevasca eterna) liga o override de valor da névoa mesmo com
-    -- FogCycle normal (bytecode updateSandboxOverrides): a detecção lê o final.
-    -- Pela fórmula do WeatherPeriod daria lerp(0.5, 0.1, 0.7) = 0.4 < 0.5.
-    look_blizzard_override_uses_final = function()
-        local env = setup({ tod = 12, fog = 0.1, K = 10, sandbox = { FogThreshold = 0.5 }, climateCycle = 6 })
-        local f = env.floats[5]
-        f.override, f.overrideInterp, f.overrideValue, f.overrideInternal = 0.7, 0.5, true, 0.5
-        env.run(5)
-        assert(NOM_World.fog == true, "nevasca eterna ignorada: leu o interno")
-    end,
     -- log de -debug pra conferir no console.txt se o valor chega no jogo: na borda
     -- da rampa e uma vez por hora de jogo à noite, um bloco com vanilla, escrito e
     -- final de cada canal
@@ -325,5 +308,85 @@ return {
         print = orig
         assert(ok, err)
         assert(n == 0, "imprimiu sem -debug: " .. n)
+    end,
+
+    -- (d) dia sem evento: só o canal de névoa, ligado uma vez, em 0
+    look_idle_day_touches_only_fog = function()
+        local env = setup({ tod = 12, K = 10 })
+        env.run(50)
+        assert(#notFog(env.calls) == 0, "mexeu no clima de dia sem efeito: " .. table.concat(env.calls, ","))
+        assert(count(env.calls, "f5:on") == 1, "névoa: " .. table.concat(env.calls, ","))
+        assert(env.floats[5].final == 0)
+    end,
+
+    -- névoa natural do jogo não existe (Johan, 05/10): final 0 fora do evento, com
+    -- o look ligado ou desligado
+    look_fog_zero_outside_event = function()
+        for _, enabled in ipairs({ true, false }) do
+            local env = setup({ tod = 7, fog = 0.9, K = 10, sandbox = { DarkEnabled = enabled } })
+            env.run(1)
+            assert(env.floats[5].final == 0, "névoa natural passou no 1º minuto: " .. env.floats[5].final)
+            env.run(30, function() env.world.fog = math.random() end)
+            assert(env.floats[5].final == 0 and NOM_World.fog == false, "névoa natural passou")
+        end
+    end,
+    -- chuva/tempestade (WeatherPeriod) religa o override todo minuto, inclusive
+    -- com névoa de estágio (setOverride(fogStrength, t)): final continua 0
+    look_fog_zero_under_weather_period_override = function()
+        local env = setup({ tod = 12, fog = 0.4, K = 10 })
+        env.weather = { fog = 0.8, t = 0.7 }
+        env.run(30)
+        assert(env.floats[5].final == 0, "névoa do WeatherPeriod: " .. env.floats[5].final)
+        env.weather = { fog = 0, t = 0.5 }
+        env.run(5)
+        assert(env.floats[5].final == 0)
+    end,
+    -- FogCycle (névoa eterna, sem névoa) e nevasca eterna: override de valor; fora
+    -- do evento, final 0
+    look_fog_zero_under_fog_cycle_override = function()
+        for _, sb in ipairs({ { fogCycle = 4 }, { fogCycle = 3 }, { fogCycle = 2 }, { climateCycle = 6 } }) do
+            local env = setup({ tod = 12, fog = 0.3, K = 10, fogCycle = sb.fogCycle, climateCycle = sb.climateCycle })
+            env.run(130)
+            assert(env.floats[5].final == 0, "FogCycle " .. tostring(sb.fogCycle) .. ": " .. env.floats[5].final)
+        end
+    end,
+    -- evento: a névoa sobe até DENSITY em 20 minutos de jogo e desce em 20; vale com
+    -- o look desligado (a névoa é o evento, não o look)
+    look_event_fog_ramps_in_and_out = function()
+        local env = setup({ tod = 12, fog = 0, K = 10, sandbox = { DarkEnabled = false } })
+        env.run(5)
+        NOM_World.setFog(true)
+        env.run(10)
+        local mid = env.floats[5].final
+        assert(mid > 0 and mid < DENSITY, "sem rampa: " .. mid)
+        env.run(10)
+        assert(near(env.floats[5].final, DENSITY), "não chegou cheia: " .. env.floats[5].final)
+        env.run(30)
+        assert(near(env.floats[5].final, DENSITY), "composta: " .. env.floats[5].final)
+        NOM_World.setFog(false)
+        env.run(19)
+        assert(env.floats[5].final > 0, "cortou seco")
+        env.run(1)
+        assert(env.floats[5].final == 0, "não voltou a 0")
+    end,
+    -- com chuva, FogCycle "sem névoa" ou névoa eterna, a do evento é a que fica
+    look_event_fog_wins_over_overrides = function()
+        for _, sb in ipairs({ { fogCycle = 2 }, { fogCycle = 4 }, { climateCycle = 6 }, { weather = true } }) do
+            local env = setup({ tod = 12, fog = 0.9, K = 10, fogCycle = sb.fogCycle, climateCycle = sb.climateCycle })
+            if sb.weather then env.weather = { fog = 0, t = 1 } end
+            NOM_World.setFog(true)
+            env.run(80)
+            assert(near(env.floats[5].final, DENSITY), "override venceu o evento: " .. env.floats[5].final)
+        end
+    end,
+    -- admin (painel de clima) passa por cima de tudo, e o mod não briga
+    look_admin_fog_still_wins = function()
+        local env = setup({ tod = 12, K = 10 })
+        env.floats[5].admin = 0.3
+        env.run(5)
+        assert(env.floats[5].final == 0.3)
+        NOM_World.setFog(true)
+        env.run(25)
+        assert(env.floats[5].final == 0.3)
     end,
 }
