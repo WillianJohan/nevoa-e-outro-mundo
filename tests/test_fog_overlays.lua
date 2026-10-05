@@ -20,6 +20,10 @@ local function setup(opts)
     require "NOM_FogState"
     require "NOM_ScreenFxOptions"
     if opts.density then NOM_ScreenFxOptions.overlayDensity = function() return opts.density end end
+    -- paredes ficam desligadas por padrão no mod (hotfix: sem profundidade, cobriam o jogador);
+    -- os testes do mecanismo ligam; walls = "default" testa o padrão do mod
+    require "NOM_DressingRules"
+    if opts.walls ~= "default" then NOM_DressingRules.WALLS = opts.walls ~= false end
     G.markers, G.draws, G.inFrame = {}, {}, false
     G.java = 0 -- chamadas em marcador, sprite, célula (as do square: G.sqCalls)
     getIsoMarkers = function()
@@ -129,6 +133,14 @@ local function coverage(G, r)
 end
 
 return {
+    overlays_walls_off_by_default = function()
+        -- visto no jogo (print do Johan): desenho de fantasma sem profundidade cobre o
+        -- jogador e pinta de preto paredes cortadas; o padrão é não desenhar paredes
+        local G = setup({ walls = "default" })
+        assert(NOM_DressingRules.WALLS == false, "paredes ligadas por padrão")
+        assert(#G.frame() == 0, "parede desenhada com WALLS desligado")
+    end,
+
     overlays_inert_on_dedicated = function()
         local G = setup({ server = true })
         NOM_FogState.set(true, 1)

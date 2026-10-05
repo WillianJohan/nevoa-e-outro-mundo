@@ -79,7 +79,7 @@ function R.layers(s, now, i)
         grain = clamp(f * (0.09 + 0.05 * r) * i, 0, 1),
         vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r) * i, 0, 1),
         vr = 0.42 * r, vg = 0, vb = 0,
-        lines = clamp(s.static * f * 0.35 * i, 0, 1),
+        lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
     }
 end

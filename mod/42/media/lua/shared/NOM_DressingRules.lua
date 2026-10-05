@@ -11,6 +11,9 @@ NOM_DressingRules = {
     RADIUS = 25,       -- tiles do jogador
     MAX_FLOOR = 600,   -- marcadores de chão ativos (um por square)
     MAX_WALL = 120,    -- paredes desenhadas por quadro
+    -- Hotfix 2026-10-05: o desenho de fantasma não tem profundidade e, no jogo, cobriu o
+    -- jogador e pintou de preto as paredes cortadas. Desligado até ter recorte por profundidade.
+    WALLS = false,
     MAX_LAYERS = 4,    -- texturas num marcador de chão
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
     CELL = 7,          -- uma poça possível por célula de 7×7
