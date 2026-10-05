@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-04 |
 | Substitui | o mecanismo da [ADR-001](adr-001-variantes-por-moddata.md) (`NOM_variant`/`NOM_orig`/`NOM_rolledAt` no `modData`) |
-| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)). 2026-10-05 (sprint 0011): Carpideira, 4º tipo no fim de `KINDS` ([ADR-011](adr-011-carpideira.md)). 2026-10-05 (sprint 0012): a variante ganha visual (pele e peça) sem trocar o outfit ([ADR-012](adr-012-visual-das-variantes.md)) |
+| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)). 2026-10-05 (sprint 0011): Carpideira, 4º tipo no fim de `KINDS` ([ADR-011](adr-011-carpideira.md)). 2026-10-05 (sprint 0012): a variante ganha visual (pele e peça) sem trocar o outfit ([ADR-012](adr-012-visual-das-variantes.md)). 2026-10-05 (sprint 0017): o bit do chapéu caído sai do ID antes do sorteio e de toda tabela chaveada pelo ID ([abaixo](#emenda-de-2026-10-05--sprint-0017-o-chapéu-caído-não-é-identidade)) |
 
 > **Emenda de 2026-10-05.** Decisão do Johan: todo monstro, menos o Eco, só existe na
 > névoa. A entrada do sorteio passou a ser o **número do período de névoa**
@@ -87,3 +87,29 @@ e determinística: mesma entrada, mesma resposta, em qualquer máquina.
 - O contador de noites é do servidor; se o servidor cair entre contar e salvar,
   a mesma noite pode ganhar outro número e outro sorteio (custo já registrado no
   Eco, sprint 0002).
+
+## Emenda de 2026-10-05 — sprint 0017: o chapéu caído não é identidade
+
+O `PersistentOutfits.setFallenHat` liga o bit `0x8000` do `persistentOutfitID`
+(bytecode 0–36: `setPersistentOutfitID(id | 32768, isPersistentOutfitInit())`). Quem
+liga no zumbi: o servidor dedicado no golpe que derruba o chapéu (`hit/Zombie.react`
+20–57, só `GameServer.server`) e o cliente no `ZombieHelmetFallingPacket.processClient`
+238. No solo o jogo não liga no zumbi (`IsoGameCharacter.helmetFall` 81–97 pula zumbi),
+mas o bit volta salvo no popman. Como o ID é a entrada do sorteio, um zumbi que perdia
+o chapéu na névoa podia virar ou deixar de ser variante, e a Carpideira que gritou, o
+Eco e o forçado do debug deixavam de ser achados pelo ID.
+
+**Decisão:** `NOM_VariantRules.baseId(id)` tira o bit (`math.floor(id / 32768) % 2`,
+deslocamento aritmético exato em double também no ID negativo; subtrai 32768). O
+`variant()` usa ele por dentro (sorteio, vermelha, `forced`), e toda tabela chaveada
+pelo ID lê por ele: Eco (`data.eco.ids`), Carpideira que gritou (`ModData` e
+`NOM_Carpideira.screamed`), `pid` do grito no cliente, ID que o `NightStats` passa pro
+visual, ID forçado do debug. O ID cru fica onde o jogo precisa dele: vestir
+(`dressInPersistentOutfitID`, que com o bit não devolve o chapéu caído) e o
+`hatFallen` do visual.
+
+**Consequências:** o visual não repinta quando só o bit muda; o jogo não re-veste o
+zumbi por isso (`setFallenHat` mantém o init; o `outfitId` do `ZombiePacket` só é usado
+na criação, `NetworkZombieSimulator.parseZombie` 144–152), e o `processClient` refaz a
+lista com os mesmos objetos. Marcas antigas salvas com o bit (Carpideira de uma névoa
+em curso quando o mod atualizou) param de casar: o custo é um grito a mais, uma vez.

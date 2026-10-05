@@ -1010,6 +1010,14 @@ Bytecode do B42.21. Decisão na [emenda da ADR-012](adr-012-visual-das-variantes
   e `Item.getChanceToFall` EXISTS (`Item` no `Exposer`). No cliente de MP,
   `ZombieHelmetFallingPacket.processClient` 0–241: procura o chapéu na lista pelo nome, tira se
   achar, `clear` + `addAll`, `resetModelNextFrame` e `setFallenHat(true)` mesmo sem achar.
+- **Quem liga o bit do chapéu** (sprint 0017, bytecode): `setFallenHat` mantém o
+  `isPersistentOutfitInit` (0–36) e com `false` desliga o bit. No zumbi: servidor dedicado
+  em `hit/Zombie.react` 20–57 (só `GameServer.server`, flag 64 do golpe; `removeFallenHat` só
+  com `ServerGUI`) e cliente em `ZombieHelmetFallingPacket.processClient` 238.
+  `IsoGameCharacter.helmetFall` 81–97 só liga pra quem não é zumbi: no solo o jogo não muda
+  o ID do zumbi. Ninguém re-veste um zumbi vivo porque o bit mudou: o `outfitId` do
+  `ZombiePacket` só é usado na criação (`NetworkZombieSimulator.parseZombie` 144–152). O mod
+  tira o bit antes do sorteio (`NOM_VariantRules.baseId`, ADR-006).
 - **Sair pro menu reinicia o Lua:** `IngameState.exit` 986 `LuaManager.init`, 1314
   `LoadDirBase`. Estado em tabela Lua não sobrevive.
 - **UNKNOWN:** `ArrayList.remove(Object)` devolve o booleano pro Lua (o Kahlua converte

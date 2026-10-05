@@ -152,7 +152,8 @@ Jogo em `-debug`, **save descartável**. Console em
 - Zumbi que sai da lista no meio da passada do fim da névoa fica pelado até a passada de
   conferência de hora em hora do `NightStats` (aceito).
 - O bit de chapéu caído muda o `persistentOutfitID`, base do sorteio (ADR-006): um zumbi que
-  perde o chapéu na névoa pode virar ou deixar de ser variante. Vem desde a 0004; decidir à parte.
+  perde o chapéu na névoa pode virar ou deixar de ser variante. Vem desde a 0004. **Resolvida na
+  [0017](../sprint-0017-semrosto-espalhado/README.md)** (`NOM_VariantRules.baseId`).
 - Herdadas da 0012 que seguem: chiado parado do Sem-rosto; modelos 3D próprios (`later`).
 
 ## Sessões

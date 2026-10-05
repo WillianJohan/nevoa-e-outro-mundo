@@ -23,6 +23,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0014](sprint-0014-contraste-visual/README.md) | Contraste dos visuais: texturas agressivas (preto e branco cheios, formas grandes) nos mesmos modelos, pra ler sob a névoa | `em teste` — [roteiro](sprint-0014-contraste-visual/README.md#roteiro-in-game) |
 | [0015](sprint-0015-outro-mundo-sangrento/README.md) | Outro Mundo sangrento: muito sangue e erosão no máximo no chão e nas paredes, só na névoa e só local | `em teste` — [roteiro](sprint-0015-outro-mundo-sangrento/README.md#roteiro-in-game) |
 | [0016](sprint-0016-monstro-sem-roupa/README.md) | Monstro sem roupa comum: na variante, a roupa vanilla some (só pele, peça do mod e feridas); volta no fim, e o loot da morte é o do zumbi comum | `em teste` — [roteiro](sprint-0016-monstro-sem-roupa/README.md#roteiro-in-game) |
+| [0017](sprint-0017-semrosto-espalhado/README.md) | Sem-rosto espalhado (a horda vista junta reaparece em tiles diferentes) e chapéu caído não muda a variante | `em teste` — [roteiro](sprint-0017-semrosto-espalhado/README.md#roteiro-in-game) |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão e override do `screen.frag` feitos na 0013 (mod opcional) |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
