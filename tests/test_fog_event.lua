@@ -232,11 +232,12 @@ return {
         require "NOM_VariantRules"
         local c = NOM_VariantRules.config(function(k) return ({ RedFogEnabled = true, RedFogChance = 50 })[k] end)
         local G = setup({ sandbox = { RedFogChance = 50 } })
+        local seed = fogMD(G).seed
         for p = 1, 6 do
             G.advance(200)
             G.seconds(31)
             assert(NOM_FogEvent.period() == p)
-            assert(NOM_World.red == NOM_VariantRules.redFog(p, c), "período " .. p)
+            assert(NOM_World.red == NOM_VariantRules.redFog(p, c, seed), "período " .. p)
             G.advance(10)
         end
     end,
@@ -310,5 +311,35 @@ return {
         assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "tocou duas sirenes")
         G.seconds(31)
         assert(NOM_World.red == true)
+    end,
+    -- semente do mundo (review): sorteada uma vez com ZombRand, salva no data.fog,
+    -- a mesma depois de recarregar; save antigo sem ela ganha uma no primeiro uso
+    fog_event_world_seed_saved_once = function()
+        local G = setup({ rand = 777777 })
+        local seed = fogMD(G).seed
+        assert(seed == 777777 % 67108859 and seed == math.floor(seed), "semente: " .. tostring(seed))
+        local G2 = setup({ globalMD = G.globalMD, rand = 5 })
+        assert(fogMD(G2).seed == seed, "recarga trocou a semente")
+        local old = { NevoaEOutroMundo = { fog = { night = 4, next = 500 } } }
+        local G3 = setup({ globalMD = old, rand = 99 })
+        assert(old.NevoaEOutroMundo.fog.seed == 99, "save antigo sem semente")
+        assert(old.NevoaEOutroMundo.fog.night == 4)
+    end,
+    -- semente diferente, vermelha diferente: o mesmo período sai vermelho num mundo e não no outro
+    fog_event_red_depends_on_world_seed = function()
+        require "NOM_VariantRules"
+        local c = NOM_VariantRules.config(function(k) return ({ RedFogEnabled = true, RedFogChance = 50 })[k] end)
+        local a, b
+        for s = 1, 100 do
+            if NOM_VariantRules.redFog(1, c, s) and not a then a = s end
+            if not NOM_VariantRules.redFog(1, c, s) and not b then b = s end
+        end
+        assert(a and b, "a semente não muda o período 1")
+        for _, s in ipairs({ a, b }) do
+            local G = setup({ sandbox = { RedFogChance = 50 }, globalMD = { NevoaEOutroMundo = { fog = { seed = s } } } })
+            G.advance(36)
+            G.seconds(31)
+            assert(NOM_World.red == NOM_VariantRules.redFog(1, c, s), "semente " .. s)
+        end
     end,
 }

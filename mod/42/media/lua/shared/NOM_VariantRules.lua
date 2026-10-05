@@ -58,11 +58,16 @@ end
 local RED_SALT = 7919
 local SPLIT_SALT = 104729
 
--- Névoa vermelha no período (sprint 0010): RedFogChance% dos períodos, função só do
--- número do período. Recarregar não re-sorteia; servidor e clientes concordam.
-function NOM_VariantRules.redFog(period, cfg)
+-- Semente do mundo: inteiro em [0, SEED_RANGE), sorteado uma vez por save
+-- (server/NOM_FogEvent.lua, data.fog.seed). Sem ela todo save teria a mesma agenda.
+NOM_VariantRules.SEED_RANGE = Q
+
+-- Névoa vermelha no período (sprint 0010): RedFogChance% dos períodos, função do
+-- número do período e da semente do mundo (entra no lugar do ID do zumbi).
+-- Recarregar não re-sorteia. Só o servidor sorteia; os clientes recebem.
+function NOM_VariantRules.redFog(period, cfg, seed)
     if not period or not cfg.redFogOn then return false end
-    return math.floor(hash(0, period, RED_SALT) / Q * 100) < (cfg.redFogChance or 0)
+    return math.floor(hash(seed or 0, period, RED_SALT) / Q * 100) < (cfg.redFogChance or 0)
 end
 
 -- Variante do zumbi no período de névoa (decisão do Johan, 05/10: todo monstro,

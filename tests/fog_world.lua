@@ -189,7 +189,7 @@ function W.new(opts)
     getTimestampMs = function() return G.now end
     -- GameTime.isGamePaused: solo = velocidade 0; dedicado = vazio com PauseEmpty
     isGamePaused = function() return G.paused == true end
-    G.rand = 0
+    G.rand = opts.rand or 0
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end

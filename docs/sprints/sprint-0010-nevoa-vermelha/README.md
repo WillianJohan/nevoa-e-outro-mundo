@@ -58,7 +58,7 @@ Decisões do Johan (05/10/2026):
       **por código e bytecode:** `look_red_fog_tints_without_compounding` (K = 1, 10,
       150 frames por minuto, contra o `ClimateColor` falso que faz o lerp no próprio
       interno), `look_red_fog_color_ramps`, `look_red_fog_color_restored_after` (o
-      interno da cor da névoa não volta sozinho, `<init>` 324–361), `look_red_fog_color_wins_storm_override`
+      interno da cor da névoa não volta sozinho, `setup()` 324–361 (chamado pelo `<init>` no 525)), `look_red_fog_color_wins_storm_override`
       (`WeatherPeriod` 909–957), `look_normal_fog_touches_no_fog_color`,
       `look_red_fog_color_without_dark`; cor da névoa lida pelo `ImprovedFog.update`
       132–174 (pz-api-notes §12.1). **Falta o jogo:** roteiro passos 2–5.
@@ -131,7 +131,7 @@ novo só carrega ao recarregar o save.
 ## Aprendizados
 
 1. **Cor do clima que o jogo não recalcula fica presa.** O `COLOR_NEW_FOG` só é escrito
-   no `<init>`, e o `calculate` aplica a camada modded no próprio interno. Com
+   no `setup()` do construtor, e o `calculate` aplica a camada modded no próprio interno. Com
    interpolate 1, desligar a camada deixa o último valor escrito até recarregar o
    save. Antes de desligar uma camada modded, confira se o jogo reescreve o interno
    todo minuto (`updateValues`); se não, escreva o vanilla antes.

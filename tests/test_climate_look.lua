@@ -101,7 +101,7 @@ local function setup(opts)
     end
 
     -- COLOR_NEW_FOG (id 1): a cor que o ImprovedFog desenha (update 132–174). O
-    -- interno nasce 0.9/0.9/0.95/1 (<init> 324–361) e o jogo NUNCA volta ele: o
+    -- interno nasce 0.9/0.9/0.95/1 (setup() 324–361) e o jogo NUNCA volta ele: o
     -- updateValues não escreve, então reset() não existe aqui. O calculate é o mesmo
     -- da luz (modded no próprio interno), com o override por cima (calculate 61–97),
     -- que a tempestade liga todo minuto (WeatherPeriod.updateCurrentStage 909–957).

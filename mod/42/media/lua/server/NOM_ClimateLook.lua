@@ -18,7 +18,7 @@ local FLOATS = {
 }
 
 -- COLOR_NEW_FOG: o ClimateManager não tem o campo estático (só COLOR_GLOBAL_LIGHT
--- e COLOR_MAX); o id 1 vem do <init> 312–321 e de
+-- e COLOR_MAX); o id 1 vem do setup() 312–321 (chamado pelo <init> no 525) e de
 -- client/ISUI/AdminPanel/ISAdmPanelClimate.lua:249.
 local COLOR_NEW_FOG = 1
 
@@ -76,7 +76,7 @@ local function ownFog(f)
 end
 
 -- Cor da névoa vermelha (ADR-010). O interno do COLOR_NEW_FOG nunca volta sozinho
--- (nada no ClimateManager escreve nele depois do <init>), e o calculate faz o lerp
+-- (nada no ClimateManager escreve nele depois do setup()), e o calculate faz o lerp
 -- da camada modded no PRÓPRIO interno (ClimateColor.calculate 25–60): com
 -- interpolate 1 o interno vira o escrito. Desligar a camada direto deixaria a névoa
 -- vermelha até recarregar; então, no fim, um minuto escrevendo o vanilla e só

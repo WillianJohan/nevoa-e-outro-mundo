@@ -26,9 +26,9 @@
   `ClimateManager.getColorNewFog().getExterior()` r/g/b pro `colorR/G/B`, que o
   `renderFogSegment` passa ao `FogShader.setColorInfo(r, g, b, 1)` (459–469). Não existe
   campo estático `COLOR_NEW_FOG` no `ClimateManager` (só `COLOR_GLOBAL_LIGHT` e
-  `COLOR_MAX`); o id 1 vem do `<init>` 312–321 (`iconst_1`) e do
+  `COLOR_MAX`); o id 1 vem do `setup()` 312–321 (`iconst_1`; o `<init>` chama o `setup` no 525) e do
   `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:249`.
-- **O interno dela nunca volta sozinho.** O `<init>` põe 0.9/0.9/0.95/1 (324–361) e nada
+- **O interno dela nunca volta sozinho.** O `setup()` (chamado pelo `<init>` no 525) põe 0.9/0.9/0.95/1 (324–361) e nada
   mais no `ClimateManager` escreve o interno (só o getter, 727). O
   `ClimateColor.calculate` (25–60) faz `internal.interp(modded, t, internal)` **no próprio
   interno**: com interpolate 1 o interno vira o modded, e desligar a camada deixaria a

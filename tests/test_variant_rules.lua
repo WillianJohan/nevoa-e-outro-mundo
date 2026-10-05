@@ -250,4 +250,33 @@ return {
         local c = R.config(function(k) return ({ RedFogEnabled = false, RedFogChance = 33 })[k] end)
         assert(c.redFogOn == false and c.redFogChance == 33)
     end,
+    -- review: sem semente do mundo todo save tinha a mesma agenda de vermelhas (#11,
+    -- #14, #21...). Com a semente: mundos diferentes, agendas diferentes; a taxa
+    -- de longo prazo continua RedFogChance
+    variant_rules_red_fog_seed_changes_schedule = function()
+        local c = cfg({ redFogOn = true, redFogChance = 10 })
+        local function schedule(seed)
+            local out = {}
+            for p = 1, 200 do out[#out + 1] = R.redFog(p, c, seed) and "1" or "0" end
+            return table.concat(out)
+        end
+        assert(schedule(12345) == schedule(12345), "mesma semente, agenda diferente")
+        local seen, firsts = {}, {}
+        local n, total = 0, 0
+        for seed = 1, 50 do
+            local s = schedule(seed * 1000003 % 67108859)
+            seen[s] = true
+            firsts[s:find("1", 1, true) or 0] = true
+            for i = 1, #s do
+                total = total + 1
+                if s:sub(i, i) == "1" then n = n + 1 end
+            end
+        end
+        local distinct, firstDistinct = 0, 0
+        for _ in pairs(seen) do distinct = distinct + 1 end
+        for _ in pairs(firsts) do firstDistinct = firstDistinct + 1 end
+        assert(distinct == 50, "agendas repetidas: " .. distinct)
+        assert(firstDistinct >= 10, "primeira vermelha quase sempre no mesmo período: " .. firstDistinct)
+        assert(math.abs(n / total - 0.1) < 0.015, "taxa: " .. n / total)
+    end,
 }

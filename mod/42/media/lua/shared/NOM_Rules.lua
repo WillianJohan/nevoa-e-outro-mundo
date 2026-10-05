@@ -42,7 +42,7 @@ NOM_Rules.LOOKS = {
 }
 
 -- Cor da névoa (ClimateManager COLOR_NEW_FOG, id 1), que o ImprovedFog desenha
--- (update 132–174 → FogShader.setColorInfo). Vanilla: <init> 324–361, exterior e
+-- (update 132–174 → FogShader.setColorInfo). Vanilla: setup() 324–361, exterior e
 -- interior; nenhum Lua vanilla troca. Na névoa vermelha, RED_FOG_COLOR.
 NOM_Rules.FOG_COLOR = { 0.9, 0.9, 0.95, 1 }
 NOM_Rules.RED_FOG_COLOR = { 0.55, 0.06, 0.05, 1 }

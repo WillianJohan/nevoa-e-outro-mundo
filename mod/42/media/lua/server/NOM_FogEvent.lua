@@ -28,9 +28,14 @@ local function debugLog(msg)
     if getDebug() then print("[NOM] nevoa " .. msg) end
 end
 
+-- seed: semente do mundo pro sorteio da névoa vermelha (ADR-010), sorteada no
+-- primeiro uso (save novo ou anterior a ela) e salva. ZombRand(n) no Lua é
+-- LuaManager$GlobalObject.ZombRand(D)D → RandLua.Next(long) → Next(int, Random),
+-- inteiro em [0, n) (bytecode 0–35); n = SEED_RANGE cabe em int.
 local function state()
     local data = ModData.getOrCreate(MODULE)
     data.fog = data.fog or {}
+    if data.fog.seed == nil then data.fog.seed = ZombRand(NOM_VariantRules.SEED_RANGE) end
     return data.fog
 end
 
@@ -56,7 +61,8 @@ end
 -- o mesmo em qualquer processo e depois de recarregar (NOM_VariantRules.redFog).
 local function decideRed()
     if forcedRed ~= nil then return forcedRed end
-    return NOM_VariantRules.redFog((state().night or 0) + 1, NOM_VariantRules.config(NOM_Config.get))
+    local s = state()
+    return NOM_VariantRules.redFog((s.night or 0) + 1, NOM_VariantRules.config(NOM_Config.get), s.seed)
 end
 
 -- Toca a sirene e começa a contagem. skip: a névoa começa no próximo tick (debug).
