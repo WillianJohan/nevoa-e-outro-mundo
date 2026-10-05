@@ -62,11 +62,11 @@ public final class RenderContext {
     static final int PARAM_HAZE = 7;            // escala do véu de fundo da névoa (0 = só rolos)
     static final int PARAM_VANILLA_FOG = 8;     // 1 devolve a névoa vanilla (ImprovedFog) por baixo da nossa
     static final int PARAM_FLOW_RES = 9;        // células por tile da névoa fluida, 1 a 3 (Opções > Mods, pelo Lua)
-    static final int PARAM_VACUUM = 10;         // 0 a esteira dos prédios enche de névoa; 1 fica o vácuo da 0026
+    static final int PARAM_VACUUM = 10;         // 1 vácuo atrás dos prédios (o Johan escolheu no A/B); 0 a esteira enche
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_FLOW_RES] = 2f;
-        luaParams[PARAM_VACUUM] = 0f;
+        luaParams[PARAM_VACUUM] = 1f;
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
         luaParams[PARAM_HAZE] = 1f;

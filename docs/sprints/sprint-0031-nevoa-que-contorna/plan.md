@@ -8,8 +8,8 @@ código (D1–D6). Esta sprint é a etapa 1 dela: consertar a simulação 2D ant
 
 ## O que muda
 
-1. **Vácuo A/B** (`NOMRender_setParam(10, v)`): multiplica o `stillDecay`. 0 (padrão) = a névoa
-   contorna e enche o outro lado; 1 = o vácuo da 0026. O Johan escolhe no jogo.
+1. **Vácuo A/B** (`NOMRender_setParam(10, v)`): multiplica o `stillDecay`. 0 = a névoa contorna e
+   enche o outro lado; 1 = o vácuo da 0026. No jogo o Johan preferiu 1, que virou o padrão.
 2. **Acúmulo visível** (D4): a textura leva `densidade / D_MAX` e o shader multiplica de volta
    (`NOM_FLOW_DMAX = 1.5`); a névoa que empilha contra a parede chega no desenho.
 3. **Obstáculo poroso e baixo** (D2): árvore deixa de ser sólida e vira arrasto (o ar passa freado);
@@ -31,7 +31,7 @@ código (D1–D6). Esta sprint é a etapa 1 dela: consertar a simulação 2D ant
 - [x] Carro (`F_LOW`): passa fluxo, velocidade menor que fora; domínio fechado com carros conserva massa.
 - [x] Pressão com chute: divergência que sobra menor que começando do zero, mesmas iterações.
 - [x] Custo do passo na escala 2 ≤ 6,3 ms (5,7 + 10%): medido 5,6 ms.
-- [x] `test_mod3_depth.py`: `PARAM_VACUUM = 10` com padrão 0; `NOM_FLOW_DMAX` no shader; `pileUp` olha à frente.
+- [x] `test_mod3_depth.py`: `PARAM_VACUUM = 10` com padrão 1; `NOM_FLOW_DMAX` no shader; `pileUp` olha à frente.
 
 ## Fora (etapa 2)
 
