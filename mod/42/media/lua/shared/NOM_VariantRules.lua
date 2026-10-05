@@ -33,7 +33,9 @@ local function mix(h)
 end
 
 -- Ordem das faixas do sorteio. Uma variante nova entra NO FIM (a Carpideira, sprint
--- 0010): as faixas de hoje não andam e cada zumbi continua o que era.
+-- 0011): as faixas de hoje não andam e cada zumbi continua o que era.
+-- Na névoa vermelha (sprint 0010) a divisão é por #KINDS: um tipo novo re-divide
+-- (1/3 vira 1/4), o que é a regra ("todos os tipos, por igual").
 NOM_VariantRules.KINDS = { "estalador", "corredor", "semrosto" }
 local CHANCE = { estalador = "estaladorChance", corredor = "corredorChance", semrosto = "semRostoChance" }
 local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "semRostoOn" }

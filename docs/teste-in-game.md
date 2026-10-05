@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Escrito em | sprint 0006 (2026-10-04) |
-| Cobre | o evento de névoa da [0009](sprints/sprint-0009-nevoa-evento/README.md#roteiro-in-game) (roteiro próprio) e os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
+| Cobre | o evento de névoa da [0009](sprints/sprint-0009-nevoa-evento/README.md#roteiro-in-game) e a névoa vermelha da [0010](sprints/sprint-0010-nevoa-vermelha/README.md#roteiro-in-game) (roteiros próprios) e os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
 | Duração | ~60–90 min: solo ~40, MP ~30, medições e remoção ~15 |
 
 > **⚠️ Use um save descartável.** `NOM_Debug.night` e `NOM_Debug.fog` avançam os
@@ -50,6 +50,7 @@ de debug do jogo; rodar como admin).
 | `NOM_Debug.status()` | estado do mod | `[NOM] debug local …` e `[NOM] debug servidor …` |
 | `NOM_Debug.night(true)` / `(false)` / `()` | força noite / dia / devolve pro relógio | `[NOM] debug noite forcada=true`; vale no próximo minuto de jogo |
 | `NOM_Debug.fog(true)` / `(true, true)` / `(false)` | evento de névoa: sirene e névoa 30 s reais depois / névoa na hora / termina (sprint 0009) | `[NOM] debug nevoa sirene=true`, depois `[NOM] nevoa evento inicio periodo=N fim=…`; `[NOM] debug nevoa fim=true` |
+| `NOM_Debug.redFog(true)` / `(false)` | névoa vermelha: com névoa aberta vira na hora; sem, sirene vermelha e névoa vermelha 30 s depois / desfaz (sprint 0010) | `[NOM] debug nevoa vermelha=true`, `[NOM] nevoa sirene contagem=30000 vermelha=true` |
 | `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`; `()` desfaz). Vale pelo `persistentOutfitID`: outro zumbi com o mesmo ID (gêmeo, raro) vira junto. Some quando o jogo reinicia (carregar o save de novo) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
 | `NOM_Debug.spawnEco()` | um Eco nos pés do jogador (só à noite) | `[NOM] debug eco spawn=true` |
 

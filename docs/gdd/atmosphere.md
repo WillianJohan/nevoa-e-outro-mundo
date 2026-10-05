@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -27,6 +27,16 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   saída de ~20 minutos de jogo. Vale com o clima sombrio desligado: a névoa é o evento.
   Por cima, o look: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor. Contra a luz de névoa vanilla (que também escurece)
   a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
+- **Névoa vermelha** ([ADR-010](../architecture/adr-010-nevoa-vermelha.md)): a névoa
+  em si fica vermelha escura (a cor que o jogo usa pra desenhar a névoa), com a mesma
+  rampa de ~20 minutos, e isso vale com o clima sombrio desligado (é o evento). Por
+  cima, com o clima sombrio ligado, a luz vai pra um vermelho escuro: contra as três
+  luzes de névoa vanilla a luz do céu cai 17–32% no vermelho e ~50% no verde e no
+  azul com `DarkIntensity` 1; com a noite junto, ≥ 30% em todo canal. A dessaturação
+  vai pra baixo (a da névoa normal lavaria o vermelho). Na tempestade com névoa o
+  jogo pinta a névoa de marrom: na vermelha, o mod passa por cima. Quando acaba, a
+  cor volta à branca vanilla. A vinheta **não** fica vermelha: o efeito de tela do
+  jogo não tem cor (só desfoque, dessaturação, raio e escurecimento).
 - Por que esses canais ([ADR-008](../architecture/adr-008-noite-pela-luz-global.md)):
   o jogo só escurece o céu pela cor e pela força da luz global; a "intensidade" da luz
   não é lida, a dessaturação some de noite (o render multiplica pelo dia), e de
@@ -51,6 +61,9 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 - **Sirene** (evento de névoa): sirene de ataque aéreo, ~24 s, sobe e cai duas vezes,
   tocada pra todo jogador 30 s reais antes da névoa, alta e audível em qualquer lugar
   (toca no próprio jogador). Sem toggle: é o aviso do evento.
+- **Sirene vermelha** (névoa vermelha): a mesma sirene, ~30% mais grave, rasgada, com
+  o rotor gemendo e um ronco uma oitava abaixo, ~28 s. Toca no lugar da normal, no
+  mesmo momento (30 s reais antes): quem ouve sabe o que vem.
 - Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
   a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s).
 - Rádio chiando por proximidade do Sem-rosto (`SemRostoEnabled`): loop de estática
@@ -73,6 +86,7 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 > Vinheta, sangue/ferrugem no chão, drone e rádio **só aparecem no evento de névoa**,
 > nunca só de noite. Pra ver sem esperar: `NOM_Debug.fog(true, true)` no console
 > (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 30 s depois).
+> Vermelha: `NOM_Debug.redFog(true)`.
 
 - `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,
   desfocam e perdem cor, com fade. É o efeito de tela do modo de busca do jogo,

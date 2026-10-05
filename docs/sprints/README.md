@@ -16,7 +16,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0007](sprint-0007-workshop/README.md) | Publicação no Workshop | `em teste` — envio e release pelo [publicar.md](../publicar.md), depois do roteiro in-game |
 | [0008](sprint-0008-ajustes-teste/README.md) | Ajustes do primeiro teste in-game (noite escura, monstros só na névoa, Eco) | `em teste` — [roteiro](sprint-0008-ajustes-teste/README.md#roteiro-in-game) |
 | [0009](sprint-0009-nevoa-evento/README.md) | Névoa como evento: sirene 30 s antes, hora aleatória, 2–6 h; sem névoa natural | `em teste` — [roteiro](sprint-0009-nevoa-evento/README.md#roteiro-in-game) |
-| [0010](sprint-0010-nevoa-vermelha/README.md) | Névoa vermelha: sirene própria, névoa e luz vermelhas, todo zumbi é variante | `em andamento` |
+| [0010](sprint-0010-nevoa-vermelha/README.md) | Névoa vermelha: sirene própria, névoa e luz vermelhas, todo zumbi é variante | `em teste` — [roteiro](sprint-0010-nevoa-vermelha/README.md#roteiro-in-game) |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão arquivado |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto

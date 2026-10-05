@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -798,6 +798,35 @@ e sem `master` (volume de efeitos). No MP o servidor manda `sendServerCommand(MO
 "siren", {})` e cada cliente toca a dele. UNKNOWN: se o emitter do jogador pausa o som
 com o jogo pausado (a contagem para de qualquer jeito).
 
+## 12. Névoa vermelha (sprint 0010)
+
+**Verificado na sprint 0010** (bytecode do `projectzomboid.jar` instalado, 42.21).
+Decisão na [ADR-010](adr-010-nevoa-vermelha.md).
+
+### 12.1 Cor da névoa (`COLOR_NEW_FOG`)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| A névoa é desenhada com a cor final exterior do `colorNewFog` | EXISTS | `ImprovedFog.update` 132–174 (`getColorNewFog().getExterior()` r/g/b → `colorR/G/B`); `renderFogSegment` passa ao `FogShader.setColorInfo(r, g, b, 1)` (459–469). O alfa da cor é ignorado |
+| id 1 | CONFIRMED | `ClimateManager.<init>` 312–321 (`initClimateColor(iconst_1, "COLOR_NEW_FOG")`); `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:249` (`COLOR_NEW_FOG = 1`). **Não há** campo estático `ClimateManager.COLOR_NEW_FOG` (só `COLOR_GLOBAL_LIGHT` e `COLOR_MAX`): use o literal 1 |
+| Vanilla 0.9/0.9/0.95/1 (exterior e interior), e o interno nunca volta | EXISTS | `<init>` 324–361; o único outro acesso ao campo no `ClimateManager` é o getter (`getColorNewFog`, 0–7); nenhum Lua vanilla mexe (`server/Climate/ClimateMain.lua` só troca as luzes `colFog*`) |
+| `calculate` mistura a camada modded **no próprio interno** e o override por cima | EXISTS | `ClimateColor.calculate` 25–60 (`internal.interp(modded, t, internal)`), 61–97 (override → final), admin antes (0–24). Com interpolate 1 o interno vira o modded: desligar a camada sem escrever o vanilla antes deixa a cor presa até recarregar |
+| Tempestade pinta a névoa | EXISTS | `WeatherPeriod.updateCurrentStage` 909–957: estágio com `fogStrength > 0` faz `colorNewFog.setOverride(fogTintStorm | fogTintTropical, t)` todo minuto (pula com `fogQuality == 2`, 872–876) |
+| `isEnableOverride()` / `setEnableOverride(Z)` / `setEnableModded` / `setModdedValue(ClimateColorInfo)` / `setModdedInterpolate(F)` em `ClimateColor` | EXISTS | métodos públicos de `ClimateManager$ClimateColor` (mesmos do `COLOR_GLOBAL_LIGHT`, já usado desde a sprint 0001) |
+| Vai pros clientes de MP | EXISTS | `ClimateManager.writePacketContents` 124–143: `finalValue` de toda `climateColors` |
+| UNKNOWN | — | qual caminho de render usa o `ImprovedFog` em cada `fogQuality` (com o legado a névoa pode não ficar vermelha; a luz fica). Roteiro da sprint 0010 |
+
+### 12.2 Vinheta
+
+`SearchMode$PlayerSearchMode` só tem `getBlur`, `getDesat`, `getRadius`,
+`getGradientWidth` e `getDarkness` (`SearchModeFloat`), sem cor (lista de métodos do
+bytecode). A vinheta não tinge.
+
+### 12.3 Sirene vermelha
+
+Mesmo caminho da §11.3 com o som `NOM_SirenRed` (`media/sound/NOM_SirenRed.ogg`, ~28 s,
+gerado por `scripts/gen_sounds.py`).
+
 ---
 
 ## Abordagem recomendada por mecânica (resumo)
@@ -821,6 +850,7 @@ com o jogo pausado (a contagem para de qualquer jeito).
 | Decal local | `getIsoMarkers():addIsoMarker(sprite, sq, r,g,b,a)` | `addGridSquareMarker` |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
+| Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 
 ## Testes in-game prioritários (UNKNOWNs)

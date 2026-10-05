@@ -12,6 +12,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
 - Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
+- Névoa vermelha (`RedFogEnabled`, padrão ligado): parte das névoas vem vermelha, com sirene própria, e todo zumbi nela é monstro ([monsters.md](monsters.md#regra-geral))
 - Névoa (evento com sirene, sem toggle: `FogEventEveryDays` alto deixa rara): som ambiente (`FogAmbience`) · sangue e ferrugem no chão (`FogOverlays`) · vinheta (`FogVignette`), todos padrão ligado
 
 ## Números
@@ -20,6 +21,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 |---|---|
 | `FogEventEveryDays` (3, faixa 0.5–30 dias de jogo): média entre névoas; cada intervalo sorteado entre 0,5× e 1,5×, contado do fim da anterior | [world-states.md](world-states.md) |
 | `FogMinHours` (2), `FogMaxHours` (6), faixa 0.5–48 horas de jogo: duração sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
+| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela (recarregar não muda) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult` (1.5, faixa 1–3, em degraus: 1.5 sobe um, 2.5 sobe dois) | [night.md](night.md) |
@@ -43,6 +45,8 @@ todas as opções da página "Névoa e Outro Mundo":
 | `FogEventEveryDays` | 3 | 5 | 1.5 |
 | `FogMinHours` | 2 | 1 | 3 |
 | `FogMaxHours` | 6 | 3 | 8 |
+| `RedFogEnabled` | ligado | ligado | ligado |
+| `RedFogChance` | 10 | 3 | 25 |
 | `EcoEnabled` | ligado | ligado | ligado |
 | `EcoMaxPerPlayer` | 30 | 10 | 60 |
 | `EcoRadius` | 40 | 25 | 50 |
@@ -67,10 +71,11 @@ todas as opções da página "Névoa e Outro Mundo":
 
 - **Leve:** a noite muda o jeito de jogar sem virar uma corrida — os zumbis não ganham
   velocidade, a caça vem a cada 2 horas de perto, e a névoa é rara (a cada ~5 dias), curta
-  (1–3 h) e com poucos monstros (6% somados).
+  (1–3 h) e com poucos monstros (6% somados); névoa vermelha rara (3%).
 - **Pesadelo:** a pior noite possível, de propósito — dois degraus de velocidade e
   sentidos (arrastado vira corredor), caça a cada meia hora de longe, névoa a cada
-  ~1,5 dia, de 3 a 8 horas, com 25% de monstros, e vala comum cheia de Ecos.
+  ~1,5 dia, de 3 a 8 horas, com 25% de monstros, uma em cada quatro vermelha (todo
+  zumbi monstro), e vala comum cheia de Ecos.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -101,7 +106,7 @@ jogar, trocar número é chute; o que precisa ser sentido está no
   empatam de propósito. Coerente.
 - **Chances (revistas em 05/10/2026, depois do primeiro teste):** todo monstro, menos o
   Eco, só existe na névoa (decisão do Johan), num sorteio só por névoa: Estalador 5,
-  Corredor 2, Sem-rosto 5, 12% somados (a Carpideira, 3, entra na sprint 0010). Numa
+  Corredor 2, Sem-rosto 5, 12% somados (a Carpideira, 3, entra na sprint 0011). Numa
   cidade com 200 zumbis carregados são ~10 Estaladores, ~4 Corredores e ~10 Sem-rosto
   na névoa. A noite sem névoa fica só com a agressividade e os Ecos.
 - **Eco:** 30 por jogador num raio de 40 é o teto contra vala comum (sprint 0002); Eco

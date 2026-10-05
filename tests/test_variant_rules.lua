@@ -124,7 +124,7 @@ return {
         end
     end,
     -- desligar um tipo não muda quem é o outro: as faixas ficam no lugar (a 4ª
-    -- variante da sprint 0010 entra no fim da lista sem mexer nas de hoje)
+    -- variante da sprint 0011 entra no fim da lista sem mexer nas de hoje)
     variant_rules_toggle_keeps_other_ranges = function()
         local ids = realIDs()
         for _, id in ipairs(ids) do

@@ -16,6 +16,7 @@ Every few days, at any hour, an air-raid siren wails across the whole map. Thirt
 [*][b]Runners[/b]: sprinters that scream when they spot you and call the zombies around. They start the horde.
 [/list]
 [b]The Faceless[/b] walks in the fog. Look at it, or shine a light on it, and it vanishes, only to come back closer, behind you. Get too close and it attacks. Your head fills with radio static when one is near.
+Sometimes the siren sounds lower and torn: that is the [b]red fog[/b]. Fog and light turn red and every zombie inside it is a monster.
 Night and fog together: everything at once. The worst night possible, on purpose.
 
 [h2]Sandbox[/h2]

@@ -5,6 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Substitui | o gatilho "névoa natural do clima" ([world-states.md](../gdd/world-states.md), sprint 0001) |
+| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa) |
 | Emenda | [ADR-004](adr-004-clima-antes-de-shader.md) e [ADR-008](adr-008-noite-pela-luz-global.md) (o canal `FLOAT_FOG_INTENSITY` sai do look) |
 
 ## Contexto

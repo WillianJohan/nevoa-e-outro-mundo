@@ -16,6 +16,7 @@ De tempos em tempos, numa hora qualquer, uma sirene toca no mapa inteiro. Trinta
 [*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.
 [/list]
 [b]O Sem-rosto[/b] anda na névoa. Olhe pra ele, ou ilumine, e ele some, pra voltar mais perto, atrás de você. Colado, ataca. O rádio chia na sua cabeça quando ele está perto.
+Às vezes a sirene toca mais grave e rasgada: é a [b]névoa vermelha[/b]. A névoa e a luz ficam vermelhas e todo zumbi dentro dela é monstro.
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
 
 [h2]Sandbox[/h2]

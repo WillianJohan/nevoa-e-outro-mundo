@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha) |
 
 ## Regra geral
 
@@ -31,7 +31,16 @@ carregados depois também entram. Ecos nunca são variantes.
 viram faixas seguidas — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`
 com o padrão. Ninguém é duas coisas, e o total é a soma (12% com o padrão).
 Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante nova entra
-no fim da lista (a Carpideira, sprint 0010).
+no fim da lista (a Carpideira, sprint 0011).
+
+**Névoa vermelha** (sprint 0010, [ADR-010](../architecture/adr-010-nevoa-vermelha.md)):
+`RedFogChance`% das névoas (10 por padrão) vêm vermelhas, com sirene própria. Nelas
+**todo zumbi é monstro**: a chance de virar variante vai a 100% e o tipo sai de um
+segundo sorteio do mesmo ID e período, dividido por igual entre os tipos que existem
+(hoje 1/3 Estalador, 1/3 Corredor, 1/3 Sem-rosto; com a Carpideira, 1/4 cada). Cada
+um com o comportamento de sempre. Um tipo desligado no sandbox deixa a fatia dele como
+zumbi comum (não redistribui). O Eco continua Eco. Se a névoa é vermelha é sorteado
+pelo número do período: salvar e carregar no meio não muda nada.
 
 Numa noite com névoa a variante vai por cima dos stats da noite (o Estalador corre
 como os outros da noite e continua cego); de dia, por cima dos stats do jogo.
