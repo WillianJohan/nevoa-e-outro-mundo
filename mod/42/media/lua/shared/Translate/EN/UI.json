@@ -9,5 +9,7 @@
     "UI_NOM_Dissolve": "Monsters burn in and out",
     "UI_NOM_Dissolve_tooltip": "Monster pieces form and fall apart with a burning edge when a zombie turns and turns back, and Echoes burn away with embers when they die. Off: instant swap, as before.",
     "UI_NOM_Bloom": "Bloom (Shader mod)",
-    "UI_NOM_Bloom_tooltip": "Glow around bright lights, stronger in the fog. Only with the optional Shader mod (not with ShadowZ). 0 turns it off."
+    "UI_NOM_Bloom_tooltip": "Glow around bright lights, stronger in the fog. Only with the optional Shader mod (not with ShadowZ). 0 turns it off.",
+    "UI_NOM_DebugPanelKey": "Mod debug panel (-debug only)",
+    "UI_NOM_DebugPanelKey_tooltip": "Opens and closes the Fog and Otherworld debug button panel. Only shown with the game in -debug. In the console: NOM.panel()."
 }

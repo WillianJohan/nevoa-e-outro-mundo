@@ -1,4 +1,5 @@
--- Opções de cliente dos efeitos de tela (sprint 0013) e da densidade do sangue e da
+-- Opções de cliente dos efeitos de tela (sprint 0013), da tecla do painel de debug
+-- (sprint 0020, só com -debug) e da densidade do sangue e da
 -- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua), do dissolve e do bloom do
 -- shader (sprint 0018, client/NOM_Dissolve.lua e mod2): cada jogador escolhe no
 -- próprio jogo (Opções > Mods), não o servidor. PZAPI.ModOptions do B42
@@ -25,6 +26,11 @@ if PZAPI and PZAPI.ModOptions then
         "UI_NOM_FogOverlayDensity_tooltip")
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
+    -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
+    -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods
+    if getDebug() then
+        page:addKeyBind("DebugPanel", "UI_NOM_DebugPanelKey", Keyboard.KEY_F7, "UI_NOM_DebugPanelKey_tooltip")
+    end
 end
 
 local function value(id, default)
@@ -61,6 +67,12 @@ end
 function O.bloom()
     local v = tonumber(value("Bloom", O.DEFAULT_BLOOM)) or O.DEFAULT_BLOOM
     return math.max(0, math.min(2, v))
+end
+
+-- Código da tecla do painel de debug; nil fora do -debug. F7 sem a página.
+function O.debugPanelKey()
+    if not getDebug() then return nil end
+    return value("DebugPanel", Keyboard.KEY_F7)
 end
 
 return NOM_ScreenFxOptions
