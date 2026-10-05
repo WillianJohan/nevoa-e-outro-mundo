@@ -30,13 +30,15 @@ O Johan pediu resolução maior, parametrizável.
 
 ## TDD
 
-- [ ] `FlowTravelTest`: casa de parede fina fica parada por dentro; reforço não pontilha a esteira.
-- [ ] `FlowGridTest`: escala 2 marca 2x2 células por tile, fecha 2 faces por parede, rola em tiles.
-- [ ] Escala 2: buraco viaja na mesma velocidade (tiles/s) que na escala 1; vácuo atrás do prédio.
-- [ ] Custo do passo em escala 2 (meta < 6 ms, fora da thread principal).
-- [ ] `test_mod3_depth.py`: `PARAM_FLOW_RES = 9` com padrão 2; shader usa `textureSize(uFlowTex`.
-- [ ] `test_fog_quality_sync.lua`: manda a resolução também, só quando muda.
-- [ ] Traduções PTBR + EN da opção.
+- [x] `FlowTravelTest`: casa de parede fina fica parada por dentro; reforço não pontilha a esteira.
+- [x] `FlowScaleTest`: escala 2 marca 2x2 células por tile, fecha 2 faces por parede, rola em tiles.
+- [x] Escala 2: buraco viaja na mesma velocidade (tiles/s) que na escala 1, inclusive com vento forte
+  (subpassos); difusão e entrada em casa iguais; vácuo atrás do prédio; explosão conserva massa.
+- [x] Escalas 1 e 3: redemoinho estável, casa parada, vácuo.
+- [x] Custo do passo em escala 2: ~5,7 ms (meta subiu de 6 pra 8 ms: roda fora da thread principal).
+- [x] `test_mod3_depth.py`: `PARAM_FLOW_RES = 9` com padrão 2; shader usa `textureSize(uFlowTex`.
+- [x] `test_fog_quality_sync.lua`: manda a resolução também, só quando muda.
+- [x] Traduções PTBR + EN da opção.
 
 ## Fora
 
