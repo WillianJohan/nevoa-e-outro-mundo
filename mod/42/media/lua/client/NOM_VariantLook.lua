@@ -15,6 +15,7 @@
 if isServer() then return end
 
 require "NOM_NightStats"
+require "NOM_VariantRules"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
 -- Direção de arte: docs/gdd/art-direction.md.
@@ -64,8 +65,9 @@ local function hide(list, w)
 end
 
 -- Chapéu caído: PersistentOutfits.setFallenHat liga o bit 0x8000 do persistentOutfitID
--- (isHatFallen(I) testa esse bit). Sem operador de bit no Kahlua: divisão e resto.
-local HAT_FALLEN = 32768
+-- (isHatFallen(I) testa esse bit). Sem operador de bit no Kahlua: divisão e resto. Aqui
+-- o ID cru: o bit é o que se quer ler (o sorteio e o worn.id usam o ID sem ele).
+local HAT_FALLEN = NOM_VariantRules.HAT_FALLEN
 local function hatFallen(id)
     return id ~= nil and math.floor(id / HAT_FALLEN) % 2 == 1
 end

@@ -771,4 +771,19 @@ return {
         G2.tenMinutes()
         assert(#G2.ecos() == 0, "reinício abriu a noite de novo e soltou o recém-morto")
     end,
+
+    -- sprint 0017: o Eco recarregado com o bit do chapéu caído (o ID salvo não tem)
+    -- ainda é Eco; veste pelo ID que tem (o jogo tira o chapéu caído ao vestir)
+    eco_reloaded_with_fallen_hat_still_eco = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local id = G.unload(G.ecos()[1])
+        local back = G.reload(105, 105, 0, id + 32768)
+        assert(back.md.NOM_eco == true, "Eco de chapéu caído virou zumbi comum")
+        assert(back.outfitID == id + 32768, "vestiu com o ID sem o bit")
+        G.setTime(9)
+        G.tick(1)
+        assert(back.removed, "Eco de chapéu caído ficou de dia")
+    end,
 }

@@ -5,6 +5,7 @@
 if not isClient() then return end
 
 require "NOM_VariantAI"
+require "NOM_VariantRules"
 require "NOM_Carpideira"
 
 local MODULE = "NevoaEOutroMundo"
@@ -31,7 +32,7 @@ local function screamed(args)
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if z:getPersistentOutfitID() == args.pid and z:getOnlineID() == args.id then
+        if NOM_VariantRules.baseId(z:getPersistentOutfitID()) == args.pid and z:getOnlineID() == args.id then
             NOM_Carpideira.scream(z, type(args.pl) == "number" and getPlayerByOnlineID(args.pl) or nil)
             return
         end

@@ -484,4 +484,17 @@ return {
         NOM_Carpideira.hold(z, z:getModData())
         assert(not z.useless, "a que gritou ficou parada de novo")
     end,
+
+    -- sprint 0017: a Carpideira que gritou e depois perdeu o chapéu (bit 0x8000 do ID)
+    -- continua marcada: o ModData guarda o ID sem o bit
+    carpideira_fallen_hat_does_not_scream_again = function()
+        local G = setup({ sandbox = CARP })
+        local z = G.zombie({ id = idFor("carpideira", 1, CARP) })
+        local p = G.player(12, 10)
+        G.carpReport(z, p, "near")
+        assert(#G.sounds == 1)
+        z.id = z.id + NOM_VariantRules.HAT_FALLEN
+        G.carpReport(z, p, "near")
+        assert(#G.sounds == 1, "gritou de novo depois de perder o chapéu")
+    end,
 }

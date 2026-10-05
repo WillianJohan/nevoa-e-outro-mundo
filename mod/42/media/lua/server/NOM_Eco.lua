@@ -5,6 +5,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_EcoRules"
+require "NOM_VariantRules"
 require "NOM_Players"
 require "NOM_NightCount"
 
@@ -64,7 +65,7 @@ local function spawn(x, y, zz, night)
     local z = list:get(0)
     -- OnZombieCreate já disparou antes do outfit ser vestido: marca aqui.
     markEco(z)
-    local id = z:getPersistentOutfitID()
+    local id = NOM_VariantRules.baseId(z:getPersistentOutfitID())
     if id ~= 0 then
         local ids = store().ids
         ids[id] = ids[id] or {}
@@ -249,12 +250,15 @@ end
 -- isso depois, preguiçoso) e confirma pelo nome; se não bater, a lista de mods
 -- mudou o índice do outfit e o ID sai.
 local toCheck = {}
+-- Chave sem o bit do chapéu caído (sprint 0017, NOM_VariantRules.baseId); veste com o
+-- ID que o zumbi tem, como o jogo faria (com o bit, o chapéu caído não volta).
 local function onZombieCreate(z)
-    local id = z:getPersistentOutfitID()
+    local raw = z:getPersistentOutfitID()
+    local id = NOM_VariantRules.baseId(raw)
     if id == 0 then return end
     local ids = store().ids
     if ids[id] == nil then return end
-    z:dressInPersistentOutfitID(id)
+    z:dressInPersistentOutfitID(raw)
     if z:getOutfitName() ~= OUTFIT then
         ids[id] = nil
         return
@@ -296,7 +300,7 @@ local function onTick()
             local gone, ids = {}, store().ids
             for _, z in ipairs(toCheck) do
                 if isEco(z) and not z:isDead()
-                    and not NOM_EcoRules.keepReloaded(ids[z:getPersistentOutfitID()], night, NOM_World.night) then
+                    and not NOM_EcoRules.keepReloaded(ids[NOM_VariantRules.baseId(z:getPersistentOutfitID())], night, NOM_World.night) then
                     gone[#gone + 1] = z
                 end
             end

@@ -349,4 +349,13 @@ return {
         assert(has(G.printed, "^%[NOM%] debug local .*vermelha=true"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*vermelha=true"), table.concat(G.printed, "\n"))
     end) end,
+
+    -- sprint 0017: o forçado vai pelo ID sem o bit do chapéu (o sorteio tira o bit)
+    debug_variant_sends_base_id = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 2 + 32768 })
+        NOM_Debug.variant("corredor")
+        assert(G.sentClient[1].args.id == 2, "mandou " .. tostring(G.sentClient[1].args.id))
+    end) end,
 }

@@ -786,4 +786,24 @@ return {
         G.converge()
         assert(cantBite(z), "a máscara não voltou a valer")
     end,
+
+    -- sprint 0017: o bit do chapéu caído não é identidade. O zumbi continua a mesma
+    -- variante, e o visual não é refeito (a peça do mod é o mesmo objeto: o
+    -- processClient refaz a lista com os objetos que estavam nela)
+    look_fallen_hat_keeps_variant = function()
+        local G = setup({ client = true })
+        local z = G.spawn({ id = idFor("estalador", 34), remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(34)
+        G.converge()
+        local function piece()
+            for _, iv in ipairs(z.ivs.items) do if iv.type == NOM_VariantLook.LOOKS.estalador.item then return iv end end
+        end
+        local before = piece()
+        assert(before)
+        z.outfitID = z.outfitID + HAT_FALLEN
+        z.ivs.items = { unpack(z.ivs.items) }
+        G.converge()
+        assert(NOM_NightStats.variants[z] == "estalador", "perdeu a variante com o chapéu")
+        assert(piece() == before, "repintou por causa do bit do chapéu")
+    end,
 }
