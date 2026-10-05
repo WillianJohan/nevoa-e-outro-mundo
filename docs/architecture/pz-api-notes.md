@@ -927,6 +927,14 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
   113–312: lê `<pasta do mod>/media/fileGuidTable.xml` e `mergeFrom`). Textura em
   `media/textures/<textureChoices>.png`.
 - `IsoZombie.helmetFallFromVisuals` 62–70: só cai item com `getChanceToFall() > 0`.
+- **Lugar da peça (review da 0012):** `WornItems.setItem` 5–19: lugar que não é multi-item e
+  já está ocupado → tira quem está (106); 35–96: tira quem é exclusivo do lugar novo. O
+  `DoZombieInventory` veste na ordem da lista, então uma peça do mod num lugar comum
+  (`base:eyes`, `base:mask`, `base:hat`) expulsa a do zumbi, que some do corpo e do loot. As
+  peças das variantes vão em `base:zeddmg`: `setMultiItem(ItemBodyLocation.ZED_DMG, true)` em
+  `shared/NPCs/BodyLocations.lua:859`, sem `setExclusive` nem `setHideModel` (77 itens
+  vanilla `ZedDmg_*`, todos camadas sem modelo). **UNKNOWN:** a peça com modelo nesse lugar
+  aparece na cabeça (roteiro).
 
 ### 14.3 Rede, save, reaproveitamento, morte
 
@@ -950,6 +958,11 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
   (352–378): não usado.
 - **UNKNOWN:** no cliente de MP, o `OnZombieDead` dispara na cópia local antes de um corpo
   local (se houver)? O corpo do servidor sai limpo (ele nunca pinta).
+- **Jogador reanimado:** `IsoZombie.save` só é chamado pelo `ReanimatedPlayers` (fato
+  transversal 3) e grava a `HumanVisual` (`HumanVisual.save` escreve o `skinTextureName`, que
+  o `load` lê). O mod não pinta quem tem `isReanimatedPlayer()` (EXISTS, `IsoZombie`).
+- Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
+  (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
 
 ## Abordagem recomendada por mecânica (resumo)
 

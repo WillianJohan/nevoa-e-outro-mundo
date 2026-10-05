@@ -33,9 +33,16 @@ arte (aprovada) e o porquê de cada visual estão no [art-direction.md](../../gd
 - [x] Nada preso em objeto reaproveitado nem em quem o jogo veste depois — `look_reused_object_clean`
       (inclusive o reaproveitado ainda não vestido), `look_waits_until_dressed` (bytecode
       `ModelManager.dressInRandomOutfit` 116–128, `dressInPersistentOutfitID` 1–43).
-- [x] Variante morta não deixa peça, pele nem item no corpo (loot e save) — `look_dead_leaves_no_loot`
-      (o fake faz o `DoZombieInventory` antes do `OnZombieDead`, como `IsoZombie.onKilled` 45–52,
-      e o corpo copia pele, vestidos e inventário, como `IsoDeadBody.<init>` 661–710).
+- [x] Variante morta não deixa peça, pele nem item no corpo (loot e save), e fica com o
+      chapéu, a máscara e os óculos dela — `look_dead_leaves_no_loot`,
+      `look_dead_keeps_vanilla_headgear` (o fake faz o `DoZombieInventory` antes do
+      `OnZombieDead`, como `IsoZombie.onKilled` 45–52, vestindo pelo `WornItems.setItem` que
+      expulsa quem ocupa lugar comum, e o corpo copia pele, vestidos e inventário, como
+      `IsoDeadBody.<init>` 661–710; peças em `base:zeddmg`, multi-item).
+      Eco: `eco_death_strips_worn_items` (inventário e vestidos limpos no `OnZombieDead`).
+- [x] Nada vai pro save por jogador reanimado nem vaza num erro da API —
+      `look_skips_reanimated_player`, `look_api_error_does_not_leak_or_stall` (o gancho em
+      `pcall`, a marca antes de tocar no zumbi), `look_redressed_zombie_repainted`.
 - [x] MP: cada cliente pinta a própria cópia, dona ou remota, sem mandar nada; o dedicado não
       carrega — `look_remote_copy_gets_it_and_nothing_sent` (`sendClientCommand` explode no
       fake), `look_not_on_dedicated_server`; o visual não viaja (`ZombiePacket.set`: só
@@ -43,7 +50,7 @@ arte (aprovada) e o porquê de cada visual estão no [art-direction.md](../../gd
 - [x] `NOM_Debug.variant(...)` mostra o visual na passada seguinte e o status conta —
       `look_debug_forced_and_undone` (forçar, trocar de tipo, desfazer), `debug_status_counts_looks`
       (`visuais=N`).
-- [x] Orçamento — `look_budget` (pôr ≤ 8 chamadas, tirar ≤ 5, passada sem troca 0); tabela no
+- [x] Orçamento — `look_budget` (pôr ≤ 9 chamadas, tirar ≤ 5, passada sem troca 0); tabela no
       [architecture/README.md](../../architecture/README.md#orçamento-por-sistema).
 - [x] Texturas originais, procedurais, no tamanho da vanilla; itens, GUIDs, nomes e créditos —
       `scripts/gen_textures.py` (semente fixa, mesmos bytes ao rodar de novo), `look_assets_*`
@@ -60,7 +67,7 @@ arte (aprovada) e o porquê de cada visual estão no [art-direction.md](../../gd
 - [ ] Sem engasgo grande no começo e no fim de uma névoa vermelha com horda — **falta o
       jogo:** passo 9.
 
-`./run-tests.sh`: `total=451 passou=451 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=456 passou=456 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -77,8 +84,11 @@ padrão), câmera de frente pro zumbi.
    em até 1 s ele fica branco-osso com rachaduras escuras e uma faixa ferrugem tapando os
    olhos; `NOM_Debug.status()` com `visuais=1` (ou mais, se o sorteio já fez outros).
    `NOM_Debug.variant("corredor")` em outro: pele cinza com veias e uma mancha vermelho-escura
-   na boca. A roupa deles continua a mesma. **Se** a pele ficar rosa/branca lisa ou a peça
-   não aparecer: a textura do mod não foi achada (registrar o caminho e a linha do console).
+   na boca. A roupa deles continua a mesma. **Se** a pele ficar rosa/branca lisa, preta ou
+   com buracos: a textura do mod não foi achada ou o RGB (sem alfa) não serve como pele
+   (registrar). **Se** a pele mudar mas a peça não aparecer na cabeça: o modelo não
+   renderiza no lugar `base:zeddmg` (registrar; ADR-012). Repetir num zumbi de capacete ou
+   de óculos: as duas peças aparecem.
 3. **Sem-rosto.** `NOM_Debug.variant("semrosto")` num terceiro (de longe, pra ele não sumir
    antes de olhar): a cabeça inteira cinza granulada, sem rosto nem cabelo.
 4. **Carpideira.** `NOM_Debug.variant("carpideira")`: corpo pálido com escorridos pretos e
@@ -89,9 +99,10 @@ padrão), câmera de frente pro zumbi.
    camisola de hospital.
 6. **Fim da névoa.** `NOM_Debug.fog(false)`. **Esperado:** no mesmo instante todos voltam à
    pele e à roupa de antes; `NOM_Debug.status()` com `visuais=0`.
-7. **Morte e loot.** Nova névoa, `NOM_Debug.variant("estalador")`, matar. **Esperado:** o
-   corpo com a pele e a roupa normais, e nenhum item "Venda de arame enferrujado" no
-   inventário do corpo. Zumbis comuns em volta nunca ganharam nada.
+7. **Morte e loot.** Nova névoa, `NOM_Debug.variant("estalador")` num zumbi de chapéu ou
+   capacete, matar. **Esperado:** o corpo com a pele e a roupa normais, **com o chapéu**, e
+   nenhum item "Venda de arame enferrujado" no inventário do corpo. Zumbis comuns em volta
+   nunca ganharam nada.
 8. **MP** (dedicado + 2 clientes). Repetir 2 com o cliente A. **Esperado:** o cliente B,
    olhando o mesmo zumbi, vê o mesmo visual (cada cliente calcula); console do **servidor**
    sem linha do visual. Matar a variante pelo cliente B: o corpo nos dois clientes sem a
@@ -110,6 +121,11 @@ padrão), câmera de frente pro zumbi.
 - **04/10/2026** — Texturas procedurais (`gen_textures.py`), itens, XML, GUIDs, nomes; outfit do
   Eco com itens do mod; `NOM_VariantLook` pelo gancho do `NightStats`; status do debug.
 - **04/10/2026** — Docs: art-direction, ADR-012, pz-api-notes §14, orçamento, roteiro. Em teste.
+- **04/10/2026** — Review: peças em lugar comum expulsavam o chapéu/máscara/óculos do zumbi na
+  morte (agora `base:zeddmg`); jogador reanimado não é pintado (o save dele guarda a pele);
+  marca antes de tocar no zumbi e gancho em `pcall`; repinta quem o jogo veste com outro ID;
+  o Eco morre sem vestidos. Docs: tabela limitada pelo pool, peles RGB, engasgo no fim da
+  vermelha.
 
 ## Aprendizados
 
@@ -122,6 +138,10 @@ padrão), câmera de frente pro zumbi.
 - **`removeWornItem` não é local.** Ele passa por `setWornItem`, que manda `SyncClothing` no
   cliente de MP; `WornItems.remove` e `ItemContainer.Remove` não mandam nada.
 - **`addClothingItem` apaga a roupa do zumbi** que ocupa o mesmo lugar (e não devolve).
+- **O lugar (`BodyLocation`) de uma peça só de visual importa na morte.** O `DoZombieInventory`
+  veste pelo `WornItems.setItem`, que expulsa quem ocupa um lugar comum: a peça do mod
+  "ganhava" do chapéu do zumbi e os dois sumiam do corpo. Lugar multi-item (`base:zeddmg`)
+  não expulsa ninguém.
 
 ## Pendências que a próxima sprint herda
 
@@ -129,6 +149,9 @@ padrão), câmera de frente pro zumbi.
   [pz-api-notes §14](../../architecture/pz-api-notes.md#14-visual-das-variantes-sprint-0012):
   textura do mod pelo caminho, `ItemVisual.new()`, `remove(Object)` no Kahlua.
 - Peça por cima de peça: zumbi que já usa chapéu, máscara ou óculos fica com as duas.
+- Peça com modelo no lugar `base:zeddmg`: renderiza? (UNKNOWN, roteiro passo 2).
+- Engasgo no fim da névoa vermelha (todos os modelos refeitos no mesmo tick): se pesar,
+  espalhar o tirar pelos lotes.
 - Chiado animado do Sem-rosto: não há textura animada em roupa; fica um quadro.
 - Modelos 3D próprios continuam `later` ([Overview](../../gdd/Overview.md#fora-do-mvp-later)).
 

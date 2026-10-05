@@ -35,33 +35,41 @@ local worn = {}
 
 -- Zumbi ainda não vestido (longe da tela): o ModelManager veste pelo ID na criação do
 -- modelo e dressInPersistentOutfitID limpa pele e lista. Pinta na próxima passada.
-local function put(z, kind)
-    if not z:isPersistentOutfitInit() then return end
+-- Jogador reanimado: o ReanimatedPlayers salva o zumbi (IsoZombie.save →
+-- HumanVisual.save, com o skinTextureName); a pele do mod iria pro save.
+-- A marca vem antes de tocar no zumbi: se a API falhar no meio, o fim da névoa tira.
+local function put(z, kind, id)
+    if not z:isPersistentOutfitInit() or z:isReanimatedPlayer() then return end
     local look = LOOKS[kind]
+    local w = { kind = kind, id = id, item = look.item }
+    worn[z] = w
     if look.skin then z:getHumanVisual():setSkinTextureName(look.skin) end
     local iv = ItemVisual.new()
     iv:setItemType(look.item)
     z:getItemVisuals():add(iv)
+    w.iv = iv
     z:resetModelNextFrame()
-    worn[z] = { kind = kind, iv = iv, item = look.item }
 end
 
 local function strip(z)
     local w = worn[z]
     if not w then return end
     worn[z] = nil
-    z:getItemVisuals():remove(w.iv) -- remove(Object): o objeto que este processo pôs
+    if w.iv then z:getItemVisuals():remove(w.iv) end -- remove(Object): o objeto que este processo pôs
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
 end
 
--- kind: variante na névoa ou nil (comum, Eco, fora da névoa).
-function NOM_VariantLook.sync(z, kind)
+-- kind: variante na névoa ou nil (comum, Eco, fora da névoa). id: o
+-- persistentOutfitID que deu a variante (o NightStats já leu): o jogo vestir de novo
+-- com outro ID apaga a pele e a lista, e aí pinta de novo.
+function NOM_VariantLook.sync(z, kind, id)
     local w = worn[z]
-    if (w and w.kind) == kind then return end
+    if w and w.kind == kind and w.id == id then return end
+    if not w and kind == nil then return end
     strip(z)
-    if kind and LOOKS[kind] then put(z, kind) end
+    if kind and LOOKS[kind] then put(z, kind, id) end
 end
 
 function NOM_VariantLook.count()

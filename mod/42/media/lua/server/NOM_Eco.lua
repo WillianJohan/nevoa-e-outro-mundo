@@ -266,8 +266,11 @@ end
 local dying = {}
 local function onZombieDead(z)
     if not isEco(z) then return end
-    -- DoZombieInventory já rodou antes do evento (bytecode IsoZombie.onKilled)
+    -- DoZombieInventory já rodou antes do evento (bytecode IsoZombie.onKilled): limpa o
+    -- inventário e os vestidos (cinza e véu do mod, sprint 0012), que o corpo copiaria
+    -- (IsoDeadBody.<init> 699–710) se a remoção dele falhar. WornItems.clear é local.
     z:getInventory():removeAllItems()
+    z:getWornItems():clear()
     dying[#dying + 1] = { x = math.floor(z:getX()), y = math.floor(z:getY()), z = math.floor(z:getZ()), ticks = CORPSE_TICKS }
 end
 

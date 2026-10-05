@@ -51,6 +51,6 @@
   modelo inteiro. O Sem-rosto usa um quadro de chiado.
 - **Peça por cima de peça:** o zumbi que já usa algo no mesmo lugar (chapéu, máscara, óculos)
   fica com as duas, e elas podem atravessar uma na outra. Tirar a dele exigiria guardar e
-  devolver a roupa; não vale o risco agora.
+  devolver a roupa; não vale o risco agora. Na morte, o corpo fica com a dele (a do mod sai).
 - **Rosto da pele:** a pele do mod não tem olhos nem boca desenhados (o desenho não usa o mapa
   UV); o rosto fica coberto pela peça (Estalador, Corredor, Carpideira) ou é o próprio tema.

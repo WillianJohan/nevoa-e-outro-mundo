@@ -12,6 +12,10 @@
 -- * Morte no solo (IsoZombie.onKilled 45–52): DoZombieInventory (item vestido e no
 --   inventário pra todo ItemVisual cujo item de script existe) ANTES do OnZombieDead;
 --   depois o corpo copia pele, WornItems e inventário (IsoDeadBody.<init>).
+-- * WornItems.setItem (review da 0012): lugar que não é multi-item expulsa quem já
+--   está nele; o DoZombieInventory veste na ordem da lista e o inventário recebe só os
+--   vestidos (addItemsToItemContainer). zeddmg, bandage e wound são multi-item
+--   (shared/NPCs/BodyLocations.lua:857-859). O lugar dos itens do mod sai do script de verdade.
 -- * Rede: nada do visual viaja (ZombiePacket.set leva só outfitId e skinTextureIndex);
 --   sendClientCommand/sendServerCommand aqui explodem.
 local FILE_STATS = "mod/42/media/lua/shared/NOM_NightStats.lua"
@@ -19,6 +23,18 @@ local FILE_LOOK = "mod/42/media/lua/client/NOM_VariantLook.lua"
 
 -- roupa vanilla que o outfit dá (dois itens): o que tem que sobrar intacto
 local OUTFIT = { "Base.Tshirt_DefaultTEXTURE", "Base.Trousers_Denim" }
+
+-- BodyLocation de cada item (vanilla: generated/items/clothing.txt; mod: NOM_clothing.txt)
+local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"] = "pants",
+    ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask" }
+do
+    local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
+    for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
+        LOC["Base." .. name] = body:match("BodyLocation = base:(%w+)")
+    end
+    f:close()
+end
+local MULTI = { zeddmg = true, bandage = true, wound = true }
 
 local function jlist(G)
     local l = { items = {} }
@@ -57,6 +73,7 @@ local function setup(opts)
 
     ItemVisual = { new = function()
         vc()
+        if G.throwNew then error("ItemVisual.new falhou") end
         local iv = {}
         function iv:setItemType(t) vc(); self.type = t end
         function iv:getItemType() vc(); return self.type end
@@ -66,7 +83,8 @@ local function setup(opts)
     function G.zombie(o)
         o = o or {}
         local z = { md = {}, outfitID = o.id or 0, init = o.dressed ~= false, remote = o.remote or false,
-            dead = false, speedType = 2, resets = 0, outfit = o.outfit or "Generic01" }
+            dead = false, speedType = 2, resets = 0, outfit = o.outfit or "Generic01", extra = o.extra or {},
+            reanimated = o.reanimated or false }
         z.hv = {}
         function z.hv:setSkinTextureName(n) vc(); self.name = n end
         function z.hv:getSkinTexture() vc(); return self.name or "M_ZedBody01_level1" end
@@ -80,6 +98,7 @@ local function setup(opts)
             self.hv.name = nil
             self.ivs.items = {}
             for _, t in ipairs(OUTFIT) do self.ivs.items[#self.ivs.items + 1] = { type = t } end
+            for _, t in ipairs(self.extra) do self.ivs.items[#self.ivs.items + 1] = { type = t } end
             self.outfitID, self.init = id, true
         end
         if z.init then z:dressInPersistentOutfitID(z.outfitID) end
@@ -114,6 +133,7 @@ local function setup(opts)
         function z:getSpeedType() return self.speedType end
         function z:doZombieSpeed(t) if t and t > 0 then self.speedType = t end end
         function z:DoZombieStats() end
+        function z:isReanimatedPlayer() vc(); return self.reanimated end
         return z
     end
     function G.spawn(o)
@@ -132,11 +152,16 @@ local function setup(opts)
     function G.kill(z)
         if not z.init then z:dressInPersistentOutfitID(z.outfitID) end
         z.inv, z.worn = {}, {}
-        for _, iv in ipairs(z.ivs.items) do
-            local it = { type = iv.type }
+        for _, iv in ipairs(z.ivs.items) do -- WornItems.setFromItemVisuals → setItem
+            local it = { type = iv.type, loc = assert(LOC[iv.type], "sem lugar: " .. iv.type) }
+            if not MULTI[it.loc] then
+                for i = #z.worn, 1, -1 do
+                    if z.worn[i].loc == it.loc then table.remove(z.worn, i) end
+                end
+            end
             z.worn[#z.worn + 1] = it
-            z.inv[#z.inv + 1] = it
         end
+        for _, it in ipairs(z.worn) do z.inv[#z.inv + 1] = it end
         z.dead = true
         fire("OnZombieDead", z)
         local corpse = { skin = z.hv.name, worn = {}, inv = {}, ivs = types(z) }
@@ -404,7 +429,70 @@ return {
         assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil, "período novo, visual velho")
     end,
 
-    -- orçamento (docs/architecture/README.md): por zumbi, pôr ≤ 8 chamadas, tirar ≤ 5,
+    -- review da 0012: a peça do mod num lugar comum expulsava o chapéu/máscara/óculos do
+    -- zumbi no DoZombieInventory, e o corpo ficava sem nenhum dos dois
+    look_dead_keeps_vanilla_headgear = function()
+        local G = setup()
+        local extra = { "Base.Hat_Army", "Base.Glasses_SkiGoggles", "Base.Hat_SurgicalMask" }
+        for _, k in ipairs(KINDS) do G.spawn({ id = idFor(k, 17), extra = extra }) end
+        fogOn(17)
+        G.converge()
+        assert(NOM_VariantLook.count() == 4)
+        for _, z in ipairs({ unpack(G.zombies) }) do
+            local c = G.kill(z)
+            local inv = table.concat(c.inv, ",")
+            for _, t in ipairs(extra) do assert(inv:find(t, 1, true), "o corpo perdeu " .. t .. ": " .. inv) end
+            assert(not inv:find("NOM_", 1, true), "loot do mod: " .. inv)
+        end
+    end,
+
+    -- ReanimatedPlayers salva o zumbi com IsoZombie.save → HumanVisual.save (com o
+    -- skinTextureName): a pele do mod ficaria pra sempre
+    look_skips_reanimated_player = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("estalador", 18), reanimated = true })
+        fogOn(18)
+        G.converge()
+        assert(z.hv.name == nil and types(z) == table.concat(OUTFIT, ","), "jogador reanimado pintado")
+        assert(NOM_VariantLook.count() == 0)
+    end,
+
+    -- surpresa da API no jogo: a pele não vaza e a passada dos stats não para
+    look_api_error_does_not_leak_or_stall = function()
+        local G = setup()
+        local a = G.spawn({ id = idFor("estalador", 19) })
+        local b = G.spawn({ id = idFor("corredor", 19) })
+        G.throwNew = true
+        fogOn(19)
+        G.converge()
+        assert(a.md.NOM_variant == "estalador" and b.md.NOM_variant == "corredor", "os stats pararam no erro do visual")
+        G.throwNew = false
+        fogOff()
+        assert(a.hv.name == nil and b.hv.name == nil, "pele vazou depois do erro")
+        assert(NOM_VariantLook.count() == 0)
+    end,
+
+    -- o jogo veste de novo com outro ID (a lista e a pele somem): pinta de novo
+    look_redressed_zombie_repainted = function()
+        local G = setup()
+        local id1 = idFor("estalador", 20)
+        local c = NOM_VariantRules.config(NOM_Config.get)
+        local id2
+        for seed = 1, 500 do
+            local id = 11 * 65536 + seed
+            if NOM_VariantRules.variant(id, 20, c) == "estalador" then id2 = id break end
+        end
+        local z = G.spawn({ id = id1 })
+        fogOn(20)
+        G.converge()
+        z:dressInPersistentOutfitID(id2)
+        assert(not hasItem(z, NOM_VariantLook.LOOKS.estalador.item))
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.item) and z.hv.name == NOM_VariantLook.LOOKS.estalador.skin,
+            "re-vestido ficou sem visual: " .. types(z))
+    end,
+
+    -- orçamento (docs/architecture/README.md): por zumbi, pôr ≤ 9 chamadas, tirar ≤ 5,
     -- passada sem troca 0
     look_budget = function()
         local G = setup()
@@ -412,7 +500,7 @@ return {
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 8, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 9, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)

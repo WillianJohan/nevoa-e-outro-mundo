@@ -118,7 +118,7 @@ local function setup(opts)
     end
 
     function G.zombie(x, y, z, id)
-        local zz = { x = x, y = y, z = z, md = {}, outfitID = id, health = 1.5, inv = 0,
+        local zz = { x = x, y = y, z = z, md = {}, outfitID = id, health = 1.5, inv = 0, worn = 0,
             onlineID = G.nextOnline }
         G.nextOnline = G.nextOnline + 1
         function zz:getX() return self.x end
@@ -134,6 +134,10 @@ local function setup(opts)
         function zz:getOnlineID() return self.onlineID end
         function zz:getInventory()
             return { removeAllItems = function() zz.inv = 0 end }
+        end
+        -- WornItems.clear só esvazia a lista (bytecode 0–9); o corpo copia o WornItems
+        function zz:getWornItems()
+            return { clear = function() zz.worn = 0 end }
         end
         function zz:removeFromWorld() G.zombies:remove(self); self.removed = true end
         function zz:removeFromSquare() self.offSquare = true end
@@ -170,7 +174,8 @@ local function setup(opts)
 
     function G.kill(zz, o)
         o = o or {}
-        zz.inv = 3 -- DoZombieInventory
+        zz.inv = 3 -- DoZombieInventory: vestidos (WornItems) e inventário
+        zz.worn = 2
         zz.dead = true
         fire("OnZombieDead", zz)
         G.dying[#G.dying + 1] = { z = zz, ticks = o.delay or 5, dx = o.dx or 0 }
@@ -184,7 +189,7 @@ local function setup(opts)
                     table.remove(G.dying, i)
                     G.zombies:remove(d.z)
                     G.body(math.floor(d.z.x) + d.dx, math.floor(d.z.y), d.z.z,
-                        { md = copy(d.z.md), items = d.z.inv, deathTime = G.world.age })
+                        { md = copy(d.z.md), items = d.z.inv, worn = d.z.worn, deathTime = G.world.age })
                 end
             end
             fire("OnTick", 0)
@@ -408,6 +413,19 @@ return {
         G.tick(40)
         assert(G.bodiesAt(105, 105) == 1, "o corpo original tem que ficar")
         assert(G.removedCorpses == 1, "cadáver do Eco ficou no chão")
+    end,
+    -- review da 0012: o Eco veste NOM_EcoCinza/NOM_EcoVeu pelo outfit; se a remoção do
+    -- corpo falhar, ele não pode ficar vestido com eles (o corpo copia o WornItems)
+    eco_death_strips_worn_items = function()
+        local G = setup()
+        G.body(105, 105, 0)
+        G.tenMinutes()
+        local e = G.ecos()[1]
+        G.kill(e)
+        assert(e.worn == 0, "o Eco morreu ainda vestido com os itens do mod")
+        local zz = G.normalZombie(110, 110)
+        G.kill(zz)
+        assert(zz.worn == 2, "despiu zumbi comum")
     end,
     eco_corpse_on_neighbor_square_is_removed = function()
         local G = setup()

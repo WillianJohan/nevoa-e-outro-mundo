@@ -1,7 +1,11 @@
 /* Visual dos monstros (sprint 0012). Itens de roupa só pra visual: o mod os põe
    na lista de ItemVisuals do zumbi enquanto a névoa dura (client/NOM_VariantLook.lua)
    e no outfit NOM_Eco (clothing/clothing.xml). Sem ChanceToFall (não caem da cabeça,
-   IsoZombie.helmetFallFromVisuals). Ícones vanilla citados pelo nome. */
+   IsoZombie.helmetFallFromVisuals). Ícones vanilla citados pelo nome.
+   Os quatro das variantes ficam em base:zeddmg, lugar multi-item e sem exclusão
+   (shared/NPCs/BodyLocations.lua:859, o das feridas de zumbi): no DoZombieInventory o
+   WornItems.setItem expulsaria o chapéu, a máscara ou os óculos do zumbi se a peça do
+   mod ocupasse o mesmo lugar (review da 0012). */
 module Base
 {
     item NOM_EstaladorVenda
@@ -10,7 +14,7 @@ module Base
         ItemType = base:clothing,
         Weight = 0.1,
         Icon = SkiGogglesWhite,
-        BodyLocation = base:eyes,
+        BodyLocation = base:zeddmg,
         ClothingItem = NOM_EstaladorVenda,
     }
 
@@ -20,7 +24,7 @@ module Base
         ItemType = base:clothing,
         Weight = 0.1,
         Icon = SurgicalMaskBlue,
-        BodyLocation = base:mask,
+        BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CorredorBoca,
     }
@@ -31,7 +35,7 @@ module Base
         ItemType = base:clothing,
         Weight = 0.1,
         Icon = Balaclava,
-        BodyLocation = base:mask,
+        BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_SemRostoEstatica,
     }
@@ -42,7 +46,7 @@ module Base
         ItemType = base:clothing,
         Weight = 0.1,
         Icon = VeilWedding,
-        BodyLocation = base:hat,
+        BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCabelo,
     }
