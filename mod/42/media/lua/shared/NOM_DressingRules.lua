@@ -11,7 +11,7 @@ require "NOM_Math"
 
 NOM_DressingRules = {
     RADIUS = 25,       -- tiles do jogador
-    MAX_FLOOR = 600,   -- squares de chão à vista (até dois marcadores cada: sangue e sujeira)
+    MAX_FLOOR = 600,   -- marcadores de chão vivos (sangue e sujeira contam à parte, e os que apagam também)
     MAX_WALL = 120,    -- paredes desenhadas por quadro
     -- Hotfix 2026-10-05: o desenho de fantasma não tem profundidade e, no jogo, cobriu o
     -- jogador e pintou de preto as paredes cortadas. Sprint 0021: fica desligado; o porquê

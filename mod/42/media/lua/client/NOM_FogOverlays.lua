@@ -59,8 +59,8 @@ local frames     -- { N = { IsoFlagType... }, W = { ... } }, lazy como as textur
 local sprites = {} -- [nome] = IsoSprite
 -- Duas reservas com teto, cada uma com o raio efetivo que o teto aguenta: o teto serve
 -- quem está mais perto (cheio, o raio encolhe e o que fica fora cai na hora).
--- n = entradas que contam no teto: no chão, só as à vista (a que apaga ao sair da vista sai
--- em FADE_MS e não trava o chão que acabou de aparecer, ao entrar ou sair de um prédio).
+-- n = marcadores no chão, inclusive os que estão apagando (até dois por square): o teto
+-- MAX_FLOOR é de marcadores de verdade (review 0021).
 local F = { list = {}, max = D.MAX_FLOOR, reach = D.RADIUS, n = 0 }
 local W = { list = {}, max = D.MAX_WALL, reach = D.RADIUS }
 
@@ -145,7 +145,7 @@ local function drop(pool, i)
     blanked[e] = nil
     if e.m then e.m:remove() end
     if e.g then e.g:remove() end
-    if pool.n and e.want then pool.n = pool.n - 1 end
+    if pool.n then pool.n = pool.n - (e.m and 1 or 0) - (e.g and 1 or 0) end
     taken[e.k] = nil
     -- voltando pra cá, entra de novo (mesmo desenho)
     if pool == F then seenF[e.k] = nil else seenW[e.k] = nil end
@@ -167,7 +167,7 @@ function O.clear()
 end
 
 function O.count()
-    return #F.list, #W.list
+    return F.n, #W.list -- marcadores de chão (até dois por square) e paredes
 end
 
 -- Raio efetivo do chão e das paredes (o que o teto aguenta em volta do jogador).
@@ -219,9 +219,9 @@ local function addFloor(sq, x, y, z, sk, layers, vis)
     local m = #names > 0 and markers:addIsoMarker(names, sq, l, l, l, 0) or nil
     local g = grime and markers:addIsoMarker({ grime }, sq, l, l, l, 0) or nil
     if not m and not g then return end
-    F.n = F.n + 1
+    F.n = F.n + (m and 1 or 0) + (g and 1 or 0)
     F.list[#F.list + 1] = { m = m, g = g, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l,
-        roof = vis.roof, occ = vis.occ, want = true }
+        roof = vis.roof, occ = vis.occ }
     taken[sk] = F.list[#F.list]
 end
 
@@ -286,7 +286,7 @@ local function scan(px, py, pz, per, d)
             local vis = layers and square() and lookAt(cell, x, y, pz, sq) -- sem chunk: tenta na próxima volta
             if not layers or (vis and not visible(vis, ctx)) then
                 seenF[sk] = true -- fora da vista não ocupa o teto; mudou o prédio, a varredura recomeça
-            elseif vis and F.n >= F.max then
+            elseif vis and F.n + (#layers > 0 and 1 or 0) + (layers.grime and 1 or 0) > F.max then
                 shrink(F, o2) -- cheio: tenta de novo quando o raio voltar
             elseif vis then
                 addFloor(sq, x, y, pz, sk, layers, vis)
@@ -323,8 +323,6 @@ local function fade(pool, dt, want, keep)
         if a <= 0 and target == 0 and not keep then
             drop(pool, i)
         else
-            if pool.n and e.want ~= (target == 1) then pool.n = pool.n + target * 2 - 1 end
-            e.want = target == 1
             e.changed = e.changed or a ~= e.a
             e.a = a
         end

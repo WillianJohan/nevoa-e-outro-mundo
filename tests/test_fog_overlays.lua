@@ -526,7 +526,7 @@ return {
                     local _, rel = coverage(G, 3)
                     assert(rel >= 0.85, (red and "vermelha" or "normal") .. ": andando, 7×7 com " .. rel .. " do que a regra pede, passo " .. step)
                 end
-                assert(squares(G) <= D().MAX_FLOOR, "passou do teto andando")
+                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando: " .. #alive(G) .. " marcadores")
             end
             G.seconds(2)
             local abs = coverage(G, 3)
@@ -710,8 +710,11 @@ return {
         addWalls(G, 70, 70, 60)
         NOM_FogState.set(true, 1, true)
         G.seconds(60)
-        assert(squares(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. squares(G))
-        assert(squares(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. squares(G))
+        -- review 0021: o teto é de marcadores de verdade (sujeira é o segundo do square), e
+        -- conta os que estão apagando
+        assert(#alive(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. #alive(G))
+        assert(#alive(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. #alive(G))
+        assert(O().count() == #alive(G), "count não conta marcadores: " .. O().count() .. " vs " .. #alive(G))
         local draws = G.frame()
         assert(select(2, O().count()) <= D().MAX_WALL, "passou do teto das paredes")
         -- as de costas e fora do cone ficam na reserva, apagadas (voltam ao virar)
