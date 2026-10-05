@@ -45,6 +45,20 @@ do
     f:close()
 end
 local MULTI = { zeddmg = true, bandage = true, wound = true }
+-- ChanceToFall (generated/items/clothing.txt): o que cai da cabeça
+local FALL = { ["Base.Hat_Army"] = 10, ["Base.Hat_SurgicalMask"] = 10 }
+LOC["Base.Tshirt_NOM_Fake"] = "tshirt" -- vanilla de mentira com "NOM_" no meio do nome
+-- IsoZombie.cantBite 0–319: máscara/capacete de cabeça (mask, maskeyes, maskfull, fullhat,
+-- fullsuithead) na lista de ItemVisual impede a mordida (BodyDamage.AddRandomDamageFromZombie
+-- 1024–1041)
+local NO_BITE = { mask = true, maskeyes = true, maskfull = true, fullhat = true, fullsuithead = true }
+local function cantBite(z)
+    for _, iv in ipairs(z.ivs.items) do
+        if NO_BITE[LOC[iv.type]] then return true end
+    end
+    return false
+end
+local HAT_FALLEN = 32768 -- PersistentOutfits.setFallenHat: bit 0x8000 do persistentOutfitID
 
 local function jlist(G)
     local l = { items = {} }
@@ -86,6 +100,11 @@ local function setup(opts)
         local iv = { type = t }
         function iv:setItemType(x) vc(); self.type = x end
         function iv:getItemType() vc(); return self.type end
+        function iv:getScriptItem()
+            vc()
+            local t = self.type
+            return { getChanceToFall = function() vc(); return FALL[t] or 0 end }
+        end
         return iv
     end
     ItemVisual = { new = function()
@@ -713,5 +732,58 @@ return {
         G.converge()
         assert(NOM_VariantLook.count() == 0)
         for _, z in ipairs(G.zombies) do assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil) end
+    end,
+
+    -- cliente de MP: o servidor derruba o chapéu (ZombieHelmetFallingPacket.processClient
+    -- 130–238: não acha o chapéu na lista, que está escondido, mas cria a roupa caindo e
+    -- liga o bit do chapéu caído no ID). Ao devolver, o chapéu não pode voltar pra cabeça
+    nude_fallen_hat_not_restored = function()
+        local G = setup({ client = true })
+        local z = G.spawn({ id = idFor("estalador", 30), remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(30)
+        G.converge()
+        assert(not hasItem(z, "Base.Hat_Army"))
+        z.outfitID = z.outfitID + HAT_FALLEN -- setFallenHat → setPersistentOutfitID(id | 0x8000)
+        z.ivs.items = { unpack(z.ivs.items) } -- clear + addAll da cópia (sem o chapéu)
+        G.converge()
+        fogOff()
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "chapéu caído voltou: " .. types(z))
+    end,
+
+    -- só "NOM_" depois do módulo é item do mod; vanilla com NOM_ no nome some
+    nude_keep_only_mod_module_prefix = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 31), extra = { "Base.Tshirt_NOM_Fake" } })
+        fogOn(31)
+        G.converge()
+        assert(types(z) == "Base.NOM_CorredorBoca", "sobrou: " .. types(z))
+    end,
+
+    -- status do debug: só quem está na lista da célula conta (step 4 do roteiro)
+    nude_count_only_loaded_zombies = function()
+        local G = setup()
+        local a = G.spawn({ id = idFor("estalador", 32) })
+        G.spawn({ id = idFor("corredor", 32) })
+        fogOn(32)
+        G.converge()
+        assert(NOM_VariantLook.count() == 2)
+        table.remove(G.zombies, 1) -- saiu do mundo sem evento (virou virtual)
+        assert(NOM_VariantLook.count() == 1, "contou zumbi fora da célula")
+        assert(a.hv.name ~= nil)
+    end,
+
+    -- decisão do Johan (05/10): "o monstro larga tudo". A máscara escondida não impede
+    -- a mordida enquanto é variante, e volta a impedir no fim
+    nude_monster_bites_through_hidden_mask = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 33), extra = { "Base.Hat_SurgicalMask" } })
+        assert(cantBite(z), "fake: máscara deveria impedir")
+        fogOn(33)
+        G.converge()
+        assert(not cantBite(z), "variante com a máscara ainda impede a mordida")
+        fogOff()
+        G.converge()
+        assert(cantBite(z), "a máscara não voltou a valer")
     end,
 }

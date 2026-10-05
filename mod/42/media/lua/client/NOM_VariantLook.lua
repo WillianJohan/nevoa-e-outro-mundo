@@ -39,7 +39,7 @@ local KEEP = NOM_VariantLook.KEEP
 local worn = {}
 
 local function keep(t)
-    if t == nil or t:find("NOM_", 1, true) then return true end -- item do mod
+    if t == nil or t:find("%.NOM_") then return true end -- item do mod (módulo.NOM_*)
     for _, p in ipairs(KEEP) do
         if t:find(p) then return true end
     end
@@ -63,13 +63,28 @@ local function hide(list, w)
     for _, iv in ipairs(gone) do list:remove(iv) end
 end
 
+-- Chapéu caído: PersistentOutfits.setFallenHat liga o bit 0x8000 do persistentOutfitID
+-- (isHatFallen(I) testa esse bit). Sem operador de bit no Kahlua: divisão e resto.
+local HAT_FALLEN = 32768
+local function hatFallen(id)
+    return id ~= nil and math.floor(id / HAT_FALLEN) % 2 == 1
+end
+
 -- Devolve a lista original, na ordem. Se a peça do mod já não está lá, o jogo vestiu
 -- de novo (dressInPersistentOutfitID limpa a lista) e a lista nova é a verdade.
-local function unhide(list, w)
+-- Cliente de MP: o servidor derruba o chapéu (ZombieHelmetFallingPacket.processClient
+-- 130–238 não acha o escondido, mas cria a roupa caindo e liga o bit). Com o bit ligado,
+-- o que tem ChanceToFall > 0 não volta, como o PersistentOutfits.removeFallenHat faz
+-- (18–92) ao vestir.
+local function unhide(z, list, w)
     if not list:remove(w.iv) then return end
     if not w.all then return end
+    local fallen = hatFallen(z:getPersistentOutfitID())
     for _, iv in ipairs(w.all) do list:remove(iv) end -- os que ficaram à mostra
-    for _, iv in ipairs(w.all) do list:add(iv) end
+    for _, iv in ipairs(w.all) do
+        local item = fallen and iv:getScriptItem()
+        if not (item and item:getChanceToFall() > 0) then list:add(iv) end
+    end
 end
 
 -- Zumbi ainda não vestido (longe da tela): o ModelManager veste pelo ID na criação do
@@ -96,7 +111,7 @@ local function strip(z)
     local w = worn[z]
     if not w then return end
     worn[z] = nil
-    if w.iv then unhide(z:getItemVisuals(), w) end -- remove(Object): os objetos que este processo tirou e pôs
+    if w.iv then unhide(z, z:getItemVisuals(), w) end -- remove(Object): os objetos que este processo tirou e pôs
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
@@ -113,9 +128,14 @@ function NOM_VariantLook.sync(z, kind, id)
     if kind and LOOKS[kind] then put(z, kind, id) end
 end
 
+-- Pro status do debug: só os zumbis carregados nesta tela. Quem saiu do mundo fica na
+-- tabela até ser reaproveitado ou morrer, e ninguém o desenha.
 function NOM_VariantLook.count()
+    local list = getCell():getZombieList()
     local n = 0
-    for _ in pairs(worn) do n = n + 1 end
+    for i = 0, list:size() - 1 do
+        if worn[list:get(i)] then n = n + 1 end
+    end
     return n
 end
 
