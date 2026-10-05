@@ -45,13 +45,19 @@ end
 -- ids = { [persistentOutfitID] = { [noite] = true } }. Conjunto de noites porque
 -- a semente é Rand.Next(500)+1: dois Ecos do mesmo sexo dividem o ID em ~19%
 -- das noites, e um não pode apagar o outro.
+-- next() não existe no Kahlua (console.txt: "Object tried to call nil in prune")
+function NOM_EcoRules.isEmpty(t)
+    for _ in pairs(t) do return false end
+    return true
+end
+
 function NOM_EcoRules.prune(ids, night)
     local oldest = night - NOM_EcoRules.KEEP_NIGHTS
     for id, nights in pairs(ids) do
         for n in pairs(nights) do
             if n <= oldest then nights[n] = nil end
         end
-        if next(nights) == nil then ids[id] = nil end
+        if NOM_EcoRules.isEmpty(nights) then ids[id] = nil end
     end
 end
 

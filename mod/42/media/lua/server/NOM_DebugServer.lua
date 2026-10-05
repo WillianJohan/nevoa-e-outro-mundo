@@ -98,7 +98,9 @@ end)
 -- portanto só em -debug, que é quando ela enche).
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "nightState" or not isServer() then return end
-    if next(NOM_VariantRules.forced) == nil then return end
+    local any = false
+    for _ in pairs(NOM_VariantRules.forced) do any = true break end -- next() não existe no Kahlua
+    if not any then return end
     local list = {}
     for id, kind in pairs(NOM_VariantRules.forced) do list[#list + 1] = { id = id, kind = kind } end
     sendServerCommand(player, MODULE, "debugForced", { list = list })

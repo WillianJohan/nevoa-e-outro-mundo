@@ -6,6 +6,11 @@
 | Data | 2026-10-04 |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
+> **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
+> ("Object tried to call nil in prune"); o luajit dos testes tem, então o teste passou
+> e o jogo quebrou. `tests/test_kahlua_compat.lua` varre `mod/` atrás do que o Kahlua
+> não tem. Achou outra função faltando no jogo: acrescente lá.
+
 ## Como ler este documento
 
 - **CONFIRMED**: visto em uso no Lua vanilla (arquivo:linha).
