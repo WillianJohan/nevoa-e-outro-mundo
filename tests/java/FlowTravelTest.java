@@ -7,6 +7,7 @@ import nom.render.Wind;
 /** Névoa viajante (sprint 0026): bancos, inércia, vácuo, porta, explosão. Sem o jogo. */
 public class FlowTravelTest {
     static final float DT = 0.05f;
+    static final float VORT = 0.6f;      // o grid.vorticity do Flow
     static int passed, failed;
 
     public static void main(String[] args) {
@@ -25,6 +26,8 @@ public class FlowTravelTest {
         run("vento não se repete (sem ritmo fixo)", FlowTravelTest::windNotPeriodic);
         run("reforço de redemoinho enrola a esteira do prédio", FlowTravelTest::vorticityCurlsWake);
         run("reforço de redemoinho não explode e mantém o vácuo", FlowTravelTest::vorticityStable);
+        run("reforço de redemoinho não pontilha a esteira", FlowTravelTest::vorticityNoSpeckle);
+        run("dentro da casa fechada o ar fica parado", FlowTravelTest::vorticityStillIndoors);
         System.out.println("mod3 névoa viajante: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
     }
@@ -223,7 +226,7 @@ public class FlowTravelTest {
     static void travelCost() {
         FlowGrid g = travel(128, new FogBanks(9, 0.7f, 22f));
         g.doorPuff = 0.35f;
-        g.vorticity = 0.8f;
+        g.vorticity = VORT;
         g.windX = 1.4f; g.windY = 0.5f;
         Random r = new Random(5);
         for (int k = 0; k < 40; k++) {
@@ -297,27 +300,101 @@ public class FlowTravelTest {
         check(worst < 0.8, "repete com " + worstLag * 0.25f + " s (correlação " + worst + ")");
     }
 
+    /** Escala do jogo (Flow.SCALE_DEFAULT): os testes de redemoinho rodam nela. */
+    static final int GAME_SCALE = 2;
+
     /** Prédio no meio do vento, um pouco de lado pra esteira não ficar simétrica. */
-    static FlowGrid windyBlock(float vorticity) {
-        FlowGrid g = travel(64, null);
+    static FlowGrid windyBlock(float vorticity, int scale) {
+        FlowGrid g = travelScaled(64, scale);
         g.vorticity = vorticity;
         g.windX = 1.5f;
         g.windY = 0.12f;
-        for (int j = 28; j < 36; j++) for (int i = 24; i < 32; i++) g.setCell(i, j, FlowGrid.F_SOLID);
+        for (int tj = 28; tj < 36; tj++) for (int ti = 24; ti < 32; ti++) g.setTile(ti, tj, FlowGrid.F_SOLID);
         return g;
     }
 
-    /** Soma de |rotacional| nos cantos das células da esteira (atrás do prédio). */
+    /** Casa como o jogo manda: interior com parede fina em volta (face fechada), nada sólido. */
+    static FlowGrid windyHouse(float vorticity, int scale) {
+        FlowGrid g = travelScaled(64, scale);
+        g.vorticity = vorticity;
+        g.windX = 1.5f;
+        g.windY = 0.12f;
+        for (int tj = 28; tj < 36; tj++) {
+            for (int ti = 24; ti < 32; ti++) g.setTile(ti, tj, FlowGrid.F_INDOOR);
+            g.setTileOpenW(24, tj, false);
+            g.setTileOpenW(32, tj, false);
+        }
+        for (int ti = 24; ti < 32; ti++) { g.setTileOpenN(ti, 28, false); g.setTileOpenN(ti, 36, false); }
+        return g;
+    }
+
+    static FlowGrid travelScaled(int tiles, int scale) {
+        FlowGrid g = new FlowGrid(tiles, scale);
+        g.inertia = true;
+        g.windRelax = 0.15f;
+        g.outdoorRefill = 0f;
+        g.stillDecay = 0.08f;
+        g.reset(0, 0);
+        return g;
+    }
+
+    /** Média da densidade no tile. */
+    static float tileDensity(FlowGrid g, int ti, int tj) {
+        float s = 0;
+        for (int b = 0; b < g.scale; b++)
+            for (int a = 0; a < g.scale; a++) s += g.density(ti * g.scale + a, tj * g.scale + b);
+        return s / (g.scale * g.scale);
+    }
+
+    /** Velocidade média do tile (x, y), pelas faces de dentro e da borda. */
+    static float tileU(FlowGrid g, int ti, int tj) {
+        float s = 0;
+        int k = g.scale;
+        for (int b = 0; b < k; b++) for (int a = 0; a <= k; a++) s += g.faceU(ti * k + a, tj * k + b);
+        return s / (k * (k + 1));
+    }
+
+    static float tileV(FlowGrid g, int ti, int tj) {
+        float s = 0;
+        int k = g.scale;
+        for (int b = 0; b <= k; b++) for (int a = 0; a < k; a++) s += g.faceV(ti * k + a, tj * k + b);
+        return s / (k * (k + 1));
+    }
+
+    /** Giro na escala de tile atrás do prédio: soma de |rotacional| da velocidade média por tile. */
     static double wakeSwirl(FlowGrid g) {
         double s = 0;
-        for (int j = 20; j <= 44; j++)
-            for (int i = 33; i <= 60; i++)
-                s += Math.abs((g.faceV(i, j) - g.faceV(i - 1, j)) - (g.faceU(i, j) - g.faceU(i, j - 1)));
+        for (int tj = 20; tj <= 44; tj++)
+            for (int ti = 33; ti <= 60; ti++)
+                s += Math.abs((tileV(g, ti, tj) - tileV(g, ti - 1, tj)) - (tileU(g, ti, tj) - tileU(g, ti, tj - 1)));
         return s;
     }
 
+    /** Ruído na escala da célula: cada face menos a média das quatro vizinhas, na esteira, por tile². */
+    static double gridNoise(FlowGrid g) {
+        double s = 0;
+        int k = g.scale;
+        for (int j = 20 * k; j <= 44 * k; j++)
+            for (int i = 33 * k; i <= 60 * k; i++) {
+                s += Math.abs(g.faceU(i, j) - 0.25f * (g.faceU(i - 1, j) + g.faceU(i + 1, j) + g.faceU(i, j - 1) + g.faceU(i, j + 1)));
+                s += Math.abs(g.faceV(i, j) - 0.25f * (g.faceV(i - 1, j) + g.faceV(i + 1, j) + g.faceV(i, j - 1) + g.faceV(i, j + 1)));
+            }
+        return s / (k * k);
+    }
+
+    /** Maior |velocidade| nas faces de dentro da casa de windyHouse. */
+    static float indoorSpeed(FlowGrid g) {
+        int k = g.scale;
+        float m = 0f;
+        for (int j = 28 * k; j < 36 * k; j++)
+            for (int i = 24 * k + 1; i < 32 * k; i++) m = Math.max(m, Math.abs(g.faceU(i, j)));
+        for (int j = 28 * k + 1; j < 36 * k; j++)
+            for (int i = 24 * k; i < 32 * k; i++) m = Math.max(m, Math.abs(g.faceV(i, j)));
+        return m;
+    }
+
     static void vorticityCurlsWake() {
-        FlowGrid plain = windyBlock(0f), curled = windyBlock(0.8f);
+        FlowGrid plain = windyBlock(0f, GAME_SCALE), curled = windyBlock(VORT, GAME_SCALE);
         double a = 0, b = 0;
         for (int s = 0; s < 600; s++) {
             plain.step(DT);
@@ -328,19 +405,48 @@ public class FlowTravelTest {
     }
 
     static void vorticityStable() {
-        FlowGrid g = windyBlock(0.8f);
+        FlowGrid g = windyBlock(VORT, GAME_SCALE);
         float maxV = 0f;
         for (int s = 0; s < 2000; s++) g.step(DT);  // 100 s
-        for (int j = 0; j < 64; j++)
-            for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < g.n; j++)
+            for (int i = 0; i < g.n; i++) {
                 float x = Math.abs(g.faceU(i, j)) + Math.abs(g.faceV(i, j));
                 check(!Float.isNaN(x) && !Float.isNaN(g.density(i, j)), "NaN em " + i + "," + j);
                 maxV = Math.max(maxV, x);
             }
         check(maxV < 8f, "velocidade disparou: " + maxV);
-        float behind = g.density(34, 31), up = g.density(16, 31);
+        float behind = tileDensity(g, 34, 31), up = tileDensity(g, 16, 31);
         check(behind < 0.7f, "o redemoinho apagou o vácuo atrás do prédio: " + behind);
         check(up > 0.85f, "a frente do prédio esvaziou: " + up);
+    }
+
+    /**
+     * O reforço pode criar onda (giro na escala de tile), não pontilhado: o ruído de célula não cresce
+     * mais que o giro. Sem a média do giro, na escala 2 o ruído subia 3,3x pra 1,5x de giro.
+     */
+    static void vorticityNoSpeckle() {
+        FlowGrid plain = windyHouse(0f, GAME_SCALE), curled = windyHouse(VORT, GAME_SCALE);
+        double na = 0, nb = 0, wa = 0, wb = 0;
+        for (int s = 0; s < 600; s++) {
+            plain.step(DT);
+            curled.step(DT);
+            if (s >= 400) {
+                na += gridNoise(plain); nb += gridNoise(curled);
+                wa += wakeSwirl(plain); wb += wakeSwirl(curled);
+            }
+        }
+        double noise = nb / na, swirl = wb / wa;
+        check(noise < 1.15 * swirl, "o redemoinho pontilhou a esteira: ruído " + noise + "x, giro " + swirl + "x");
+    }
+
+    static void vorticityStillIndoors() {
+        FlowGrid g = windyHouse(VORT, GAME_SCALE);
+        float maxV = 0f;
+        for (int s = 0; s < 600; s++) {
+            g.step(DT);
+            if (s >= 400) maxV = Math.max(maxV, indoorSpeed(g));
+        }
+        check(maxV < 0.2f, "o ar dentro da casa fechada mexe: " + maxV);
     }
 
     static double corr(float[] a, int lag) {
