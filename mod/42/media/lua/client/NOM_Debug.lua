@@ -76,7 +76,7 @@ function NOM_Debug.status()
     end
     local p = getSpecificPlayer(0)
     local near = p and NOM_SemRosto.nearest(p)
-    -- marcadores de chão e paredes do Outro Mundo nesta tela (client/NOM_FogOverlays.lua, sprint 0015)
+    -- pisos e paredes com anexo do Outro Mundo nesta tela (client/NOM_FogOverlays.lua, sprints 0015 e 0023)
     local chao, paredes = 0, 0
     if NOM_FogOverlays and NOM_FogOverlays.count then chao, paredes = NOM_FogOverlays.count() end
     print(NOM_DebugRules.line("[NOM] debug local", {

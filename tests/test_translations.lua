@@ -117,17 +117,17 @@ return {
         end
     end,
 
-    -- sprint 0021: planta saiu do chão e as paredes estão desligadas; o texto não promete
-    translations_overlays_promise_only_the_floor = function()
-        local banned = { EN = { "moss", "vines", "walls" }, PTBR = { "musgo", "trepadeira", "paredes" } }
-        for lang, words in pairs(banned) do
+    -- sprint 0023: o Outro Mundo vai anexado ao chão e às paredes (de volta), com chão queimado
+    -- dentro e mato e trepadeira fora; e continua sem nada no save
+    translations_overlays_promise_floor_and_walls = function()
+        local want = { EN = { "walls", "burnt", "vines", "save" }, PTBR = { "paredes", "queimado", "trepadeira", "save" } }
+        for lang, words in pairs(want) do
             local sandbox = parse(DIR .. lang .. "/Sandbox.json")
             local ui = parse(DIR .. lang .. "/UI.json")
-            for _, t in ipairs({ sandbox["Sandbox_NevoaEOutroMundo.FogOverlays_tooltip"], ui["UI_NOM_FogOverlayDensity_tooltip"] }) do
-                for _, w in ipairs(words) do
-                    assert(not t:lower():find(w, 1, true), lang .. " promete " .. w .. ": " .. t)
-                end
-            end
+            local tip = sandbox["Sandbox_NevoaEOutroMundo.FogOverlays_tooltip"]:lower()
+            for _, w in ipairs(words) do assert(tip:find(w, 1, true), lang .. " não fala de " .. w .. ": " .. tip) end
+            local opt = ui["UI_NOM_FogOverlayDensity_tooltip"]:lower()
+            assert(opt:find(words[1], 1, true), lang .. " opção sem as paredes: " .. opt)
         end
     end,
 
