@@ -71,8 +71,15 @@ end
 
 -- Canal do shader ---------------------------------------------------------------
 
+-- O sandbox do servidor ainda manda (FogVignette, FogVignetteIntensity) e a opção
+-- do jogador escala por cima.
+local function channelIntensity()
+    if not NOM_Config.get("FogVignette") then return 0 end
+    return NOM_ScreenFxOptions.intensity() * NOM_Config.get("FogVignetteIntensity")
+end
+
 local function channelValues(now)
-    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sample(now), now, NOM_ScreenFxOptions.intensity())
+    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sample(now), now, channelIntensity())
 end
 
 local function write(pn, c)
@@ -104,7 +111,7 @@ local function releaseChannel(pn)
 end
 
 local function channelWanted(now)
-    if NOM_ScreenFxOptions.intensity() <= 0 then return false end
+    if channelIntensity() <= 0 then return false end
     local c = channelValues(now)
     return c.blur > 0 or c.darkness > 0
 end

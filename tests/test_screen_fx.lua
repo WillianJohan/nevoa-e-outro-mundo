@@ -28,7 +28,8 @@ local function fakeUI(G)
         return c
     end
     function ISUIElement.new(class, x, y, w, h)
-        local o = setmetatable({ x = x, y = y, width = w, height = h }, class)
+        -- o vanilla nasce consumindo mouse (ISUIElement:new: wantMouseEvents = true)
+        local o = setmetatable({ x = x, y = y, width = w, height = h, wantMouseEvents = true }, class)
         return o
     end
     function ISUIElement:instantiate()

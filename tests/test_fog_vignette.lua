@@ -25,6 +25,7 @@ local function setup(opts)
     NOM_ShaderMod = opts.shader
     require "NOM_FogState"
     G.enabled, G.targets, G.managers, G.override, G.fading, G.all = {}, {}, {}, {}, {}, {}
+    G.FADE_TICKS = 30
     local function float(pn, name)
         return { setAll = function(_, v)
             G.all[pn] = G.all[pn] or {}
@@ -37,7 +38,8 @@ local function setup(opts)
     getSearchMode = function()
         return {
             setEnabled = function(_, pn, b)
-                if not b and G.enabled[pn] then G.fading[pn] = true end
+                -- FadeOut: o fade anda por SearchMode.fadeTime, aqui ~FADE_TICKS ticks
+                if not b and G.enabled[pn] then G.fading[pn] = G.FADE_TICKS end
                 G.enabled[pn] = b
             end,
             setOverride = function(_, pn, b) G.override[pn] = b end,
@@ -45,7 +47,7 @@ local function setup(opts)
             isEnabled = function(_, pn) return G.enabled[pn] == true end,
             getSearchModeForPlayer = function(_, pn)
                 return {
-                    isShaderEnabled = function() return G.enabled[pn] == true or G.fading[pn] == true end,
+                    isShaderEnabled = function() return G.enabled[pn] == true or G.fading[pn] ~= nil end,
                     getBlur = function() return float(pn, "blur") end,
                     getDesat = function() return float(pn, "desat") end,
                     getRadius = function() return float(pn, "radius") end,
@@ -76,7 +78,10 @@ local function setup(opts)
         for _, m in pairs(G.managers) do m:updateOverlay() end
         -- SearchMode.update (IngameState.UpdateStuff): com override não anda
         for pn in pairs(G.fading) do
-            if not G.override[pn] then G.fading[pn] = nil end
+            if not G.override[pn] then
+                G.fading[pn] = G.fading[pn] - 1
+                if G.fading[pn] <= 0 then G.fading[pn] = nil end
+            end
         end
     end)
     G.p = G.player({ x = 100, y = 100 })
@@ -216,6 +221,8 @@ return {
         G.seconds(1)
         assert(G.all[0] == nil, "tomou no meio do fade")
         G.override[0] = false
+        G.tick(G.FADE_TICKS - 12)
+        assert(G.all[0] == nil, "tomou antes do fade acabar")
         G.seconds(1)
         assert(G.override[0] == true and G.all[0] and G.all[0].blur > 0, "não tomou depois do fade")
     end,
@@ -244,5 +251,20 @@ return {
         G.seconds(NOM_ScreenFxRules.FADE_MS / 1000 + 1)
         assert(G.override[0] == false and G.managers[G.p].isOverride == false, "segurou depois da névoa")
         assert(G.all[0].blur == 0)
+    end,
+    -- o sandbox do servidor ainda manda: FogVignette desligada = sem canal;
+    -- FogVignetteIntensity escala o canal junto com a opção do jogador
+    vignette_channel_follows_sandbox = function()
+        local G = setup({ shader = true, sandbox = { FogVignette = false } })
+        NOM_FogState.set(true, 1)
+        G.seconds(6)
+        assert(G.override[0] ~= true and G.all[0] == nil, "canal com a vinheta desligada no sandbox")
+        local G2 = setup({ shader = true, sandbox = { FogVignetteIntensity = 0.5 } })
+        NOM_FogState.set(true, 1)
+        G2.seconds(6)
+        assert(math.abs(G2.all[0].blur - 0.5) < 1e-9, "não escalou: " .. tostring(G2.all[0].blur))
+        SandboxVars.NevoaEOutroMundo.FogVignetteIntensity = 0
+        G2.seconds(1)
+        assert(G2.override[0] == false, "segurou com intensidade 0 no sandbox")
     end,
 }
