@@ -102,6 +102,48 @@ return {
                 string.format("%s DI2: r %.0f%% g %.0f%% b %.0f%%", name, r2 * 100, g2 * 100, b2 * 100))
         end
     end,
+    -- névoa: o updateValues (1645–1770) puxa a luz global pra uma de três cores pela
+    -- intensidade da névoa, e o ClimateMain.lua:24-34 põe alfa 0.8 nas três. Contra
+    -- qualquer uma, a névoa do mod não pode clarear: ≥ 25% em todo canal com
+    -- DarkIntensity 1 (≥ 25% também com 2), puxando pro sépia (azul cai mais)
+    rules_fog_darker_than_vanilla_on_every_path = function()
+        local function drop(van, look)
+            local t = look.tint
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local br, bg, bb = NOM_Rules.skyMod(unpack(van))
+            local r, g, b = NOM_Rules.skyMod(unpack(c))
+            return 1 - r / br, 1 - g / bg, 1 - b / bb
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
+            for _, I in ipairs({ 1, 2 }) do
+                local r, g, b = drop(van, NOM_Rules.mix(0, 1, I))
+                local f = string.format("%s DI%d: r %.0f%% g %.0f%% b %.0f%%", name, I, r * 100, g * 100, b * 100)
+                assert(r >= 0.25 and g >= 0.25 and b >= 0.25, "névoa pouco escura ou mais clara: " .. f)
+                if I == 1 then assert(b > r, "não puxou pro sépia: " .. f) end
+            end
+        end
+    end,
+    -- noite + névoa juntas: a mistura das duas cores ainda passa nos dois testes
+    rules_night_and_fog_together_still_dark = function()
+        local look = NOM_Rules.mix(1, 1, 1)
+        local t = look.tint
+        local function drop(van)
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local base = { NOM_Rules.skyMod(unpack(van)) }
+            local m = { NOM_Rules.skyMod(unpack(c)) }
+            local worst = 1
+            for i = 1, 3 do worst = math.min(worst, 1 - m[i] / base[i]) end
+            return worst
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_NIGHTS) do
+            assert(drop(van) >= 0.35, name .. " noite+névoa: " .. drop(van))
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
+            assert(drop(van) >= 0.25, name .. " noite+névoa: " .. drop(van))
+        end
+    end,
     mix_overlap_takes_strongest_not_sum = function()
         local both = NOM_Rules.mix(1, 1, 1)
         local fog = NOM_Rules.mix(0, 1, 1)

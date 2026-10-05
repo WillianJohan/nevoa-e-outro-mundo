@@ -26,7 +26,9 @@ NOM_Rules.LOOKS = {
         desaturation = { value = 1, weight = 0.6 },
         ambient      = { value = 0, weight = 0.3 },
         fog          = { value = 1, weight = 0.3 },
-        tint         = { value = { 0.45, 0.40, 0.32, 0.75 }, weight = 0.5 },
+        -- sépia bem escuro: contra as três cores vanilla de névoa (VANILLA_FOGS) a luz
+        -- cai 29–46% com DarkIntensity 1, o azul mais (teste rules_fog_darker_*)
+        tint         = { value = { 0.14, 0.11, 0.08, 0.95 }, weight = 0.6 },
     },
 }
 
@@ -37,6 +39,16 @@ NOM_Rules.LOOKS = {
 NOM_Rules.VANILLA_NIGHTS = {
     noMoon = { 0.25, 0.25, 0.25, 0.8 },
     moon = { 0.33, 0.33, 0.33, 0.8 },
+}
+
+-- Luz global (exterior) vanilla na névoa cheia: o updateValues (1645–1770) puxa a
+-- luz pra uma de três cores pela intensidade da névoa, conforme o shader e a
+-- qualidade de névoa (colFog com fogQuality 2, colFogNew, colFogLegacy sem o
+-- weather shader); o server/Climate/ClimateMain.lua:24-34 põe alfa 0.8 nas três.
+NOM_Rules.VANILLA_FOGS = {
+    fog = { 0.2, 0.2, 0.2, 0.8 },
+    new = { 0.5, 0.5, 0.55, 0.8 },
+    legacy = { 0.3, 0.3, 0.3, 0.8 },
 }
 
 -- Multiplicador da luz por canal que a cor (r, g, b, alfa) da luz global dá no
