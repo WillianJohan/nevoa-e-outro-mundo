@@ -1,0 +1,7 @@
+{
+    "UI_NOM_Options": "Fog and Otherworld",
+    "UI_NOM_ScreenFx": "Screen effects in the fog",
+    "UI_NOM_ScreenFx_tooltip": "Film grain, a breathing vignette, static lines when the Faceless is near and a red flash when a Mourner screams. Only on your screen.",
+    "UI_NOM_ScreenFxIntensity": "Screen effects intensity",
+    "UI_NOM_ScreenFxIntensity_tooltip": "0 turns the effects off, 1 is the default, 2 is double."
+}
