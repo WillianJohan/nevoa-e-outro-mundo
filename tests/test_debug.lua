@@ -257,6 +257,17 @@ return {
         assert(has(G.printed, "^%[NOM%] debug servidor .*nevoaN=2.*noiteN=3"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*fim=%- .*proxima=136.00 sirene=12000"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0012: quantos zumbis estão com o visual da variante nesta tela
+    debug_status_counts_looks = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.status()
+        assert(has(G.printed, "^%[NOM%] debug local .* visuais=0"), table.concat(G.printed, "\n"))
+        NOM_VariantLook = { count = function() return 3 end }
+        NOM_Debug.status()
+        NOM_VariantLook = nil
+        assert(has(G.printed, "^%[NOM%] debug local .* visuais=3"), table.concat(G.printed, "\n"))
+    end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
     -- noite dos Ecos. Por isso o roteiro manda usar um save descartável.
