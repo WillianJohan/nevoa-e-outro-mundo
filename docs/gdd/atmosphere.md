@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -17,8 +17,21 @@ Camada modded do `ClimateManager` via Lua
 servidor a cada minuto de jogo (`OnClimateTick`). No solo o servidor roda no
 mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
-- Noite: luz global menor, leve dessaturação, tint azulado.
-- Névoa: dessaturação forte, tint sépia/cinza, névoa mais densa que a vanilla.
+- **Noite: claramente mais escura e mais fria que a vanilla.** A cor da luz global
+  vai pra quase preto, puxado pro azul, com força alta: contra a noite vanilla (com
+  ou sem lua) a luz do céu cai ~46% no vermelho e ~40% no azul com `DarkIntensity` 1,
+  e 73–89% com 2. Lanterna, poste e luz de casa não
+  mudam: de noite, luz vira o que separa ver de não ver.
+- Névoa: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor,
+  névoa mais densa que a vanilla. Contra a luz de névoa vanilla (que também escurece)
+  a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
+- Por que esses canais ([ADR-008](../architecture/adr-008-noite-pela-luz-global.md)):
+  o jogo só escurece o céu pela cor e pela força da luz global; a "intensidade" da luz
+  não é lida, a dessaturação some de noite (o render multiplica pelo dia), e de
+  madrugada a luz ambiente já é zero.
+- **O sandbox vanilla "Escuridão à noite" continua valendo** e soma depois do clima:
+  "Muito escuro" deixa o céu apagado, "Claro" põe um piso de 25%. A noite do mod
+  escurece por cima de qualquer um deles (multiplica), mas não tira o piso.
 - Transição de ~20 minutos de jogo (um passo por minuto). No MP chega aos
   clientes a cada 10 minutos de jogo com fade de ~5 s, mesma cadência do
   anoitecer vanilla.
@@ -49,6 +62,10 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   `overlay_grime_floor_01_*` tingido de ferrugem).
 
 ## Vinheta (só na névoa)
+
+> Vinheta, sangue/ferrugem no chão, drone e rádio **só aparecem com névoa forte**
+> (névoa ≥ `FogThreshold`), nunca só de noite. Pra ver sem esperar o clima:
+> `NOM_Debug.fog(0.8)` no console (ou o painel Debug → Climate).
 
 - `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,
   desfocam e perdem cor, com fade. É o efeito de tela do modo de busca do jogo,

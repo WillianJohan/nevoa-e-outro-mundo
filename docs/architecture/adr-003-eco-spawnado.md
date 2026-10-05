@@ -20,7 +20,9 @@ Como (sprint 0002, evidência em [pz-api-notes §1](pz-api-notes.md#1-eco-sprint
 
 - **Spawn:** `addZombiesInOutfit(x, y, z, 1, "NOM_Eco", 50)` no servidor, a cada
   10 minutos de jogo, no raio de cada jogador, corpos mais perto primeiro, até o
-  teto. `NOM_Eco` é um outfit do mod (`media/clothing/clothing.xml`) feito só de
+  teto. Só corpo de quem morreu **antes do início da noite atual** (sprint 0008):
+  `IsoDeadBody.getDeathTime()` (horas de mundo, salvo com o corpo) contra a hora em
+  que a noite abriu, guardada pelo `NOM_NightCount` (`data.eco.start`). `NOM_Eco` é um outfit do mod (`media/clothing/clothing.xml`) feito só de
   itens vanilla referenciados por GUID.
 - **Identidade:** o `modData` do zumbi não é salvo. O `ModData` global guarda o
   `persistentOutfitID` **exato** (com a semente) de cada Eco e as noites em que

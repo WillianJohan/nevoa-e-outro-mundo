@@ -46,6 +46,36 @@ return {
         NOM_EcoRules.syncNight(s, false)
         assert(NOM_EcoRules.syncNight(s, true) == 2)
     end,
+    -- hora de mundo em que a noite abriu: o Eco só vem de quem morreu antes dela
+    rules_sync_night_records_start = function()
+        local s = {}
+        NOM_EcoRules.syncNight(s, true, 100.5)
+        assert(s.start == 100.5)
+        NOM_EcoRules.syncNight(s, true, 101)
+        assert(s.start == 100.5, "início andou no meio da noite")
+        NOM_EcoRules.syncNight(s, false, 110)
+        NOM_EcoRules.syncNight(s, true, 124.5)
+        assert(s.start == 124.5)
+    end,
+    -- save de antes da sprint 0008 aberto de noite: sem início guardado, vale a carga
+    rules_sync_night_migrates_open_night = function()
+        local s = { night = 4, inNight = true }
+        assert(NOM_EcoRules.syncNight(s, true, 130) == 4)
+        assert(s.start == 130)
+    end,
+    -- o contador da névoa usa a mesma conta sem hora: não guarda início
+    rules_sync_without_now_keeps_no_start = function()
+        local s = {}
+        NOM_EcoRules.syncNight(s, true)
+        NOM_EcoRules.syncNight(s, true)
+        assert(s.start == nil and s.night == 1)
+    end,
+    rules_died_before_night = function()
+        assert(NOM_EcoRules.diedBeforeNight(99, 100) == true)
+        assert(NOM_EcoRules.diedBeforeNight(100.2, 100) == false)
+        assert(NOM_EcoRules.diedBeforeNight(-1, 100) == true, "sem hora de morte = antigo")
+        assert(NOM_EcoRules.diedBeforeNight(150, nil) == true, "início desconhecido não bloqueia")
+    end,
     -- ids = { [id] = { [noite] = true } }: noites velhas saem, conjunto vazio sai
     rules_prune_old_nights = function()
         local ids = { [10] = { [1] = true }, [11] = { [1] = true, [5] = true }, [12] = { [9] = true } }

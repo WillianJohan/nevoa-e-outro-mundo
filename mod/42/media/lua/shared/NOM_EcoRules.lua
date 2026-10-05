@@ -33,13 +33,27 @@ end
 
 -- state = { night = número da noite, inNight = bool } salvo no ModData global.
 -- Conta pelo estado, não pela borda: servidor que reinicia no meio da noite
--- continua na mesma noite.
-function NOM_EcoRules.syncNight(state, isNight)
+-- continua na mesma noite. now (opcional) = horas de mundo agora: guardado em
+-- state.start quando o período abre (save de antes da sprint 0008, aberto de
+-- noite, não tem: vale a hora da carga). Sem now (contador da névoa), nada de start.
+function NOM_EcoRules.syncNight(state, isNight, now)
     if isNight and not state.inNight then
         state.night = (state.night or 0) + 1
     end
+    if now and isNight and (state.start == nil or not state.inNight) then
+        state.start = now
+    end
     state.inNight = isNight
     return state.night or 0
+end
+
+-- Regra do Johan (05/10): corpo só solta Eco se morreu antes do anoitecer atual;
+-- quem morreu de noite espera a próxima. deathTime = IsoDeadBody.getDeathTime()
+-- (horas de mundo). O Lua nunca vê -1: o addToWorld troca -1 por agora (bytecode
+-- 128–161); negativo fica tratado como antigo só por defesa. start nil = início
+-- desconhecido, não bloqueia.
+function NOM_EcoRules.diedBeforeNight(deathTime, start)
+    return start == nil or deathTime < 0 or deathTime < start
 end
 
 -- ids = { [persistentOutfitID] = { [noite] = true } }. Conjunto de noites porque

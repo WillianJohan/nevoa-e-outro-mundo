@@ -24,13 +24,13 @@ end
 
 -- period: período de névoa (nil = desconhecido, nunca é Sem-rosto). Ecos nunca
 -- são: no solo pela marca do server/NOM_Eco.lua, no cliente de MP pelo outfit.
--- cfg = NOM_VariantRules.semRostoConfig(...) (opcional: quem varre a lista passa
+-- cfg = NOM_VariantRules.config(...) (opcional: quem varre a lista passa
 -- um só pra todos).
 -- O sorteio (uma chamada Java, o ID) vem primeiro: a varredura passa por todo
 -- zumbi carregado a cada SCAN_TICKS na névoa, e o comum para aí.
 function NOM_SemRosto.isSemRosto(z, period, cfg)
     if not period then return false end
-    cfg = cfg or NOM_VariantRules.semRostoConfig(NOM_Config.get)
+    cfg = cfg or NOM_VariantRules.config(NOM_Config.get)
     if not NOM_VariantRules.semRosto(z:getPersistentOutfitID(), period, cfg) then return false end
     if z:isDead() then return false end
     return not ((z:hasModData() and z:getModData().NOM_eco) or z:getOutfitName() == ECO_OUTFIT)
@@ -107,7 +107,7 @@ local function scan(report)
         return
     end
     local found, now, players = {}, getTimestampMs(), localPlayers()
-    local cfg = NOM_VariantRules.semRostoConfig(NOM_Config.get)
+    local cfg = NOM_VariantRules.config(NOM_Config.get)
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)

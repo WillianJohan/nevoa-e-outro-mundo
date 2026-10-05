@@ -29,7 +29,8 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 
 Dia: saquear, limpar corpos (queimar/enterrar), preparar abrigo →
 noite: sobreviver aos infectados agressivos e aos Ecos →
-névoa: fugir ou se esconder do Outro Mundo → amanhecer → repetir.
+névoa (de dia ou de noite): fugir ou se esconder do Outro Mundo — Estaladores,
+Corredores, Sem-rosto → amanhecer → repetir.
 
 ## Índice de sistemas
 
@@ -55,3 +56,10 @@ Só viram escopo por promoção explícita.
 - **2026-10-04** — Eco: corpo solta Eco uma vez na vida; corpo queimado/enterrado não solta.
 - **2026-10-04** — Visual: clima via Lua como base + spike de shader.
 - **2026-10-04** — Noite sem força e sem dano a mais: o jogo não tem isso por zumbi, e trocar o `ZombieLore.Strength` global a noite inteira vazaria pro save. A noite é velocidade, sentidos e caça ([night.md](night.md#sem-força-e-sem-dano-à-noite)).
+- **2026-10-05** — Todos os monstros, exceto os Ecos, só na névoa; chances 5/2/3/5
+  (Estalador, Corredor, Carpideira da sprint 0010, Sem-rosto). A noite fica com a
+  agressividade dos zumbis comuns e os Ecos ([monsters.md](monsters.md#regra-geral)).
+- **2026-10-05** — O Eco só nasce de quem morreu antes do anoitecer: quem morre de
+  noite espera o próximo entardecer ([monsters.md](monsters.md#eco)).
+- **2026-10-05** — A noite tem que ser claramente mais escura que a vanilla
+  ([atmosphere.md](atmosphere.md#clima)).

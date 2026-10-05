@@ -24,7 +24,8 @@ if not isServer() then NOM_NightStats.install() end
 
 NOM_World.onChange(function(flag, on)
     if flag ~= "night" then return end
-    -- O número da noite vai junto: o cliente sorteia as variantes igual (ADR-006).
+    -- O número da noite vai junto (status do debug). As variantes usam o período de
+    -- névoa, que vai pelo comando "fog" (server/NOM_Fog.lua, ADR-006).
     local night = NOM_NightCount.current()
     if isServer() then
         sendServerCommand(MODULE, "night", { on = on, night = night })
@@ -56,10 +57,11 @@ end
 -- segue o som mais forte; volume baixo perderia pra barulho vanilla.
 NOM_Night = {}
 
--- src: jogador (caça, lanterna) ou zumbi (grito do Corredor, server/NOM_Variants.lua).
+-- src: jogador (caça, lanterna) ou zumbi (grito do Corredor, server/NOM_Variants.lua,
+-- que pode vir de dia na névoa: aí ninguém tem o degrau da noite e o raio é o do jogo).
 function NOM_Night.call(src, reach)
     local radius = NOM_NightRules.soundRadius(reach, {
-        sensesOn = NOM_Config.get("NightSharperSenses"),
+        sensesOn = NOM_World.night and NOM_Config.get("NightSharperSenses"),
         senseMult = NOM_Config.get("NightSenseMult"),
         hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
     })

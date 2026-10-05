@@ -3,7 +3,7 @@
 --   NOM_Debug.night(true|false|nil)   noite forçada; nil devolve pro relógio
 --   NOM_Debug.fog(0.8|nil)            intensidade de névoa forçada (0..1); nil devolve pro clima
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
---   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto"; nil desfaz)
+--   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
 -- Tudo vai pro servidor (server/NOM_DebugServer.lua), que confere e decide. No solo
 -- o sendClientCommand vira OnClientCommand no mesmo processo (SinglePlayerClient).

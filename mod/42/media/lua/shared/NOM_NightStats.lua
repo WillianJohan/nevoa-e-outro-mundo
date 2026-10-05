@@ -1,6 +1,9 @@
--- Stats noturnos (velocidade, visão, audição) aplicados em lotes por tick.
--- Roda onde o zumbi é simulado (ADR-005): no solo, chamado por server/NOM_Night.lua;
--- no MP, por client/NOM_NightClient.lua. Quem decide se é noite é o servidor.
+-- Stats noturnos (velocidade, visão, audição) e perfis das variantes da névoa
+-- (Estalador, Corredor) aplicados em lotes por tick. Roda onde o zumbi é simulado
+-- (ADR-005): no solo, chamado por server/NOM_Night.lua; no MP, por
+-- client/NOM_NightClient.lua. Quem decide se é noite e se há névoa é o servidor:
+-- a noite chega por setNight, a névoa pelo NOM_FogState (número do período, base
+-- do sorteio das variantes, ADR-006).
 --
 -- O jogo não tem setter de velocidade/sentidos por zumbi. DoZombieStats() relê
 -- sight/hearing do sandbox e doZombieSpeed(t) usa o sandbox antes do argumento
@@ -10,6 +13,7 @@
 require "NOM_NightRules"
 require "NOM_VariantRules"
 require "NOM_Config"
+require "NOM_FogState"
 
 -- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
 -- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
@@ -132,14 +136,18 @@ local function process(z, c)
     if z:isDead() then return false end
     local md = z:getModData()
     local cur = md.NOM_night
-    if cur == nil and not NOM_NightStats.night then return false end -- dia, intocado
+    local fog = NOM_FogState.on
+    if cur == nil and not NOM_NightStats.night and not fog then return false end -- dia sem névoa, intocado
     -- Eco primeiro: nunca é variante. A variante é derivada a cada passada do ID
-    -- atual (ADR-006): o spawn por outfit troca o ID depois do OnZombieCreate.
+    -- atual (ADR-006): o spawn por outfit troca o ID depois do OnZombieCreate. Só
+    -- existe na névoa (decisão do Johan, 05/10), sorteada pelo período de névoa.
+    -- O Sem-rosto não tem stats: aqui ele é zumbi comum (server/NOM_Fog.lua).
     local kind = nil
     if isEco(z, md) then
         kind = "eco"
-    elseif NOM_NightStats.night then
-        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_NightStats.nightNumber, c.variants)
+    elseif fog then
+        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_FogState.period, c.variants)
+        if kind == "semrosto" then kind = nil end
     end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
     -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.
@@ -200,7 +208,7 @@ function NOM_NightStats.tick()
     end
     cursor = size > 0 and (cursor + n) % size or 0
     logPass(size, n, applied)
-    if NOM_NightStats.night then return end
+    if NOM_NightStats.night or NOM_FogState.on then return end
     sweep.seen = sweep.seen + n
     sweep.applied = sweep.applied + applied
     if sweep.seen >= size and fromQueue == 0 then
@@ -209,8 +217,8 @@ function NOM_NightStats.tick()
     end
 end
 
--- nightNumber: número da noite do servidor (NOM_NightCount), base do sorteio
--- das variantes. nil enquanto o cliente não souber.
+-- nightNumber: número da noite do servidor (NOM_NightCount), só pro status do
+-- debug (as variantes usam o período de névoa). nil enquanto o cliente não souber.
 function NOM_NightStats.setNight(on, nightNumber)
     wake()
     NOM_NightStats.night = on
@@ -243,6 +251,8 @@ function NOM_NightStats.install()
     Events.EveryHours.Add(wake)
     Events.OnZombieCreate.Add(NOM_NightStats.enqueue)
     Events.OnZombieDead.Add(NOM_NightStats.forget)
+    -- névoa que sobe ou baixa (de dia também) acorda o tick que dormia
+    NOM_FogState.onChange(wake)
 end
 
 return NOM_NightStats

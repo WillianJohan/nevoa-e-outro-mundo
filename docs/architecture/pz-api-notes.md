@@ -674,6 +674,81 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
 
 ---
 
+## 10. Render da noite e hora da morte (sprint 0008)
+
+**Verificado na sprint 0008** (bytecode do `projectzomboid.jar` instalado, 42.21;
+`ClimateManager.class` e `IsoDeadBody.class` idênticos byte a byte ao jar extraído).
+Motivo: no primeiro teste a noite do mod não mudava nada na tela
+([ADR-008](adr-008-noite-pela-luz-global.md)).
+
+### 10.1 Quem lê cada canal do clima
+
+`RenderSettings$PlayerRenderSettings.updateRenderSettings(I, IsoPlayer)` copia do
+`ClimateManager` os **finais** (offsets 19–88) e monta o que o render usa:
+
+| Canal | Lido por | O que vira | Status |
+|---|---|---|---|
+| `FLOAT_GLOBAL_LIGHT_INTENSITY` (1) | só gravado em `cmGlobalLightIntensity` (34); lido só por `ThunderStorm.applyLightningForPlayer` | relâmpago | **não escurece nada** |
+| `FLOAT_DESATURATION` (0) | `desaturation = cm × (1 − darkness)` (594–606, 805–817) → `WeatherShader` uniform `DesaturationVal` (`startMainThread` 120, `startRenderThread` 122–131) | dessaturação da tela | **zera de madrugada** |
+| `FLOAT_DAYLIGHT_STRENGTH` (11) | `darkness = 1 − daylight` (202–209) → `NightValue` do shader (só óculos de visão noturna) e o fator acima | — | vanilla de madrugada: 0 |
+| `FLOAT_NIGHT_STRENGTH` (2) | `night` (194–199) → `LightingJNI.stateEndFrame` e o termo do luar no piso | nativo | vanilla de madrugada: 1 |
+| `FLOAT_AMBIENT` (9) | `ambient = n + (1 − n) × cm` (411–454), `n` = piso do sandbox + `0.075 × lua × night` (359–375; ×(0.925 − 0.075 × darkness) em interior, 378–398) → `stateEndFrame` e `getSkyLightLevel` | luz ambiente | vanilla de madrugada: 0 (`ClimateValues.updateValues` 1263–1268: `ambient = dayLightStrength`) |
+| `COLOR_GLOBAL_LIGHT` (0) | exterior: `blendColor` e `blendIntensity = alfa` (224–246; `isExterior` forçado `true` em 212); `rmod/gmod/bmod = lerp(1, cor dessaturada, alfa)` (662–725) → `IsoGridSquare.rmod`/`IsoObject.rmod` (`applyRenderSettings`), `stateEndFrame` (`LightingJNI.update` 282–332) | **multiplicador da luz** | vanilla de madrugada: sem lua 0.25, lua cheia 0.33, **alfa 0.8** (`mod` 0.40–0.46). O construtor põe 0.33/0.4 (`<init>` 250–323), mas o `server/Climate/ClimateMain.lua:14-22` troca no `OnClimateManagerInit` (disparado no `<init>`, 590, a cada carga), e o `updateValues` mistura sem lua/lua cheia pela lua (1794–1841) |
+
+- **Na névoa**, `updateValues` (1645–1770) puxa a luz global pela intensidade da
+  névoa pra `colFog` (com `PerformanceSettings.fogQuality` 2), `colFogNew`, ou
+  `colFogLegacy` (sem `SceneShaderStore.weatherShader`); o `ClimateMain.lua:24-34`
+  põe 0.2 / 0.5,0.5,0.55 / 0.3, **alfa 0.8** nas três (`mod` 0.36–0.64). Tint de
+  névoa mais claro que isso clareia a névoa.
+- **Luz do céu**: `GameTime.getSkyLightLevel` (10–77) = `clamp(2 × mod × ambient)` por
+  canal, empacotada em RGB e passada ao `stateEndFrame`; mudança invalida as luzes
+  globais (`LightingJNI.doInvalidateGlobalLights`, chamado em `getSkyLightLevel` 139–157).
+- **Piso do sandbox `NightDarkness`** (tableswitch em 306): 1 "Muito escuro" → 0,
+  2 "Escuro" → 0.07, 3 "Normal" → 0.15, 4 "Claro" → 0.25 (padrão 0.15). Somado no
+  render, depois do clima: a camada modded **não** muda o piso, mas o `mod` da cor
+  multiplica o resultado. O save do teste usa 3 (`map_sand.bin`).
+- `screen.frag` (shader de cena, `SceneShaderStore` "screen"): `blendOverlay(Light…)`
+  comentado; da cor global só sobra a dessaturação.
+- Luzes de prédio sem fonte (`IsoLightSource` com `localToBuilding`, `update`
+  145–209) multiplicam por `ambient × mod`; lanterna e poste não.
+- Visão do zumbi com alvo: `IsoZombie.updateVisionRadius` 37–116 usa
+  `1 − square:getLightLevel` do alvo (até −5 tiles, preso em 10–20).
+- A camada modded vale em todo canal: o loop de `ClimateManager.update` (416–478)
+  chama `ClimateFloat.calculate`/`ClimateColor.calculate` pra todos;
+  `Color.interp` mistura o alfa (34–109). Admin passa por cima (`calculate` 0–21).
+  Na chuva, `WeatherPeriod.update` 684–696 faz `globalLight.setOverride(cloudColor, t)`
+  sem ser de valor (mistura por cima do nosso interno).
+- Admin vanilla: o slider "Darkness" mexe `DAYLIGHT_STRENGTH`, `NIGHT_STRENGTH` e
+  `AMBIENT` juntos; a luz tem R/G/B/A (`client/ISUI/AdminPanel/ISAdmPanelClimate.lua:362-380`).
+- `ClimateColor.getFinalValue()`, `ClimateColorInfo.getExterior()` e
+  `Color.getRedFloat()…getAlphaFloat()`: EXISTS/CONFIRMED (`ISAdmPanelClimate.lua:295`).
+- UNKNOWN: o que o nativo faz com `night` e quanto o `mod` escurece na tela. Roteiro
+  da sprint 0008.
+
+### 10.2 Hora da morte do corpo
+
+| API | Status | Evidência |
+|---|---|---|
+| `body:getDeathTime()` → horas de mundo (float) | CONFIRMED | `shared/Definitions/animal/ButcheringUtil.lua:568` |
+| gravada na morte | EXISTS | `IsoDeadBody.<init>(IsoGameCharacter,ZZ)` 1333–1341: `GameTime.getWorldAgeHours()`; também os corpos de cenário (`RandomizedWorldBase` usa esse construtor) |
+| salva e carregada | EXISTS | `save` 444–449 (`putFloat`), `load` 593–598 (`getFloat`, sem checar versão) |
+| `-1` ou futuro → agora | EXISTS | `addToWorld` 128–161: o Lua nunca vê `-1` |
+| corpo de cenário | EXISTS | nasce na geração do chunk (`RandomizedWorldBase`) com a hora de então: área explorada pela primeira vez de noite só solta Eco na noite seguinte |
+| pegar no colo e largar | EXISTS | `InventoryItem.tryLoadCorpseFromByteData` 101–114: `new IsoDeadBody(cell)` + `load(byteData)` relê `deathTime` e `modData` do corpo humano; só o `CorpseAnimal` (117+) e o fallback `createDefaultDeadBody` recomeçam |
+| `getGameTime():getWorldAgeHours()` | CONFIRMED | `ButcheringUtil.lua:594` |
+
+O mod guarda a hora em que a noite abriu (`data.eco.start`, `NOM_NightCount`) e só
+solta Eco de corpo com `deathTime` menor. Fallback por `OnZombieDead` não foi
+necessário.
+
+### 10.3 Variantes por névoa
+
+Decisão do Johan (05/10/2026): Estalador, Corredor e Sem-rosto só na névoa. A
+[ADR-006](adr-006-variantes-deterministicas.md) passa a usar o número do período de
+névoa e um sorteio só (faixas contíguas). Nenhuma API nova.
+
+---
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

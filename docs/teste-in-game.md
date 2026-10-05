@@ -95,9 +95,12 @@ começando de dia, numa cidade (Muldraugh serve).
       no pôr do sol, depois `[NOM] noite night=true` e, em menos de um segundo,
       `[NOM] noite stats aplicados=N zumbis=M noite=true`.
       → [0001: flags na hora certa](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite)
-- [ ] A tela escurece aos poucos, levemente dessaturada e azulada; cheia em ~20 minutos
-      de jogo, sem corte. `[NOM] nightRamp=1.00 fogRamp=0.00` quando completa.
-      → [0001: noite, transição](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite)
+- [ ] A tela escurece aos poucos, **bem mais escura e azulada que a noite vanilla**;
+      cheia em ~20 minutos de jogo, sem corte. `[NOM] nightRamp=1.00 fogRamp=0.00` e o
+      bloco `[NOM] clima …` quando completa (o que conferir nas linhas:
+      [roteiro da 0008](sprints/sprint-0008-ajustes-teste/README.md#roteiro-in-game), passo 1).
+      → [0001: noite, transição](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite),
+      [0008: noite escura](sprints/sprint-0008-ajustes-teste/README.md#critérios-de-aceite)
 - [ ] Os zumbis ficam um degrau mais rápidos. → [0003 passo 2](sprints/sprint-0003-noite-agressiva/README.md#roteiro-in-game)
 
 ### 1.4 Noite: zumbis comuns e Ecos (10 min)
@@ -110,6 +113,9 @@ começando de dia, numa cidade (Muldraugh serve).
       tiles adiante e esperar 10 minutos de jogo. **Esperado:** nenhum segundo Eco desse
       corpo (sem `eco spawn=` novo ali). **Se** sair: o `modData` do corpo não sobrevive
       ao carregar. → pendência da [0002](sprints/sprint-0002-eco/README.md#pendências-que-a-próxima-sprint-herda)
+- [ ] **Recém-morto não vira Eco:** matar um zumbi comum perto de você agora, à noite.
+      Na varredura seguinte, `[NOM] eco esperando a proxima noite=1` e nenhum Eco dele;
+      na noite seguinte, ele solta. → [0008: Eco só de quem morreu antes](sprints/sprint-0008-ajustes-teste/README.md#roteiro-in-game) (passo 3)
 - [ ] Matar um Eco: `[NOM] eco cadaveres=1` em segundos; sem corpo, sem loot.
       → [0002: Eco morto sem cadáver](sprints/sprint-0002-eco/README.md#critérios-de-aceite)
 - [ ] `NOM_Debug.spawnEco()` → `[NOM] debug eco spawn=true` e um Eco aparece no jogador.
@@ -124,7 +130,11 @@ começando de dia, numa cidade (Muldraugh serve).
 - [ ] **FPS à noite** com a mesma horda, 5 segundos depois do anoitecer: anotar.
       → [0003: loop em lotes](sprints/sprint-0003-noite-agressiva/README.md#critérios-de-aceite)
 
-### 1.5 Noite: Estalador e Corredor (8 min)
+### 1.5 Noite com névoa: Estalador e Corredor (8 min)
+
+Desde a sprint 0008 **todo monstro, menos o Eco, só existe na névoa**: sem névoa o
+`variant` do debug não tem efeito. Ligar a névoa antes: `NOM_Debug.fog(0.8)`
+(`[NOM] nevoa fog=true periodo=N`); ela fica ligada até o 1.7.
 
 - [ ] Do lado de um zumbi: `NOM_Debug.variant("estalador")`. Em ~1 s (próxima passada)
       `NOM_Debug.status()` mostra `estaladores=1`.
@@ -140,12 +150,12 @@ começando de dia, numa cidade (Muldraugh serve).
       → [0004: Corredor grita](sprints/sprint-0004-estalador-corredor/README.md#critérios-de-aceite) (passos 6 e 8)
 - [ ] Num Eco: `NOM_Debug.variant("estalador")`. Continua arrastado, não estala.
       → [0004 passo 13](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
-### 1.6 Noite com névoa (8 min)
+### 1.6 Noite com névoa: atmosfera e Sem-rosto (8 min)
 
 O Estalador do 1.5 segue forçado (o jogo não reiniciou). Se ele morreu:
-`NOM_Debug.variant("estalador")` num zumbi perto antes de ligar a névoa.
+`NOM_Debug.variant("estalador")` num zumbi perto.
 
-- [ ] `NOM_Debug.fog(0.8)`. **Esperado:** `[NOM] night=true fog=true fogI=0.80`,
+- [ ] (névoa ligada no 1.5) **Esperado:** `[NOM] night=true fog=true fogI=0.80`,
       `[NOM] nevoa fog=true periodo=1`; tela mais dessaturada e sépia, névoa mais
       densa, em ~20 min de jogo. → [0001: névoa](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite)
 - [ ] Drone grave entra em ~8 s; baque metálico a cada 20–60 s.
@@ -194,7 +204,9 @@ O Estalador do 1.5 segue forçado (o jogo não reiniciou). Se ele morreu:
       vinheta saem com fade; a tela clareia em ~20 min de jogo.
       → [0002: Ecos somem](sprints/sprint-0002-eco/README.md#critérios-de-aceite),
       [0003 passo 3](sprints/sprint-0003-noite-agressiva/README.md#roteiro-in-game)
-- [ ] O Sem-rosto da névoa: olhar pra ele não faz nada. O Estalador e o Corredor: comuns.
+- [ ] O Sem-rosto da névoa: olhar pra ele não faz nada. O Estalador e o Corredor: comuns
+      (é a névoa que baixou que leva os dois, não o amanhecer: com névoa de dia eles
+      continuam, [roteiro da 0008](sprints/sprint-0008-ajustes-teste/README.md#roteiro-in-game) passo 4).
 - [ ] `NOM_Debug.status()` alguns segundos depois: `noite=false`, `estaladores=0`.
 - [ ] Debug → Sandbox (ou o painel de admin): `Speed`, `Sight`, `Hearing`,
       `Cognition`, `Memory` iguais aos do início (a troca do mod não vazou).

@@ -31,7 +31,8 @@ sem save: um overlay que vaza pro save é pior que nenhum.
 **Sem-rosto: o cliente que vê avisa, o servidor confere, o dono move.**
 
 - Quem é Sem-rosto: `NOM_VariantRules.semRosto(persistentOutfitID, período de névoa)`,
-  determinístico como as variantes da noite e independente delas (sal próprio). O
+  determinístico, na faixa dele do sorteio único das variantes da névoa (sprint 0008,
+  [ADR-006](adr-006-variantes-deterministicas.md)). O
   servidor conta os períodos de névoa no `ModData` global (`data.fog`, pelo
   estado, como as noites) e manda `fog { on, period }`.
 - Quem vê (solo: o processo; MP: cada cliente) varre os Sem-rosto a cada 10 ticks:

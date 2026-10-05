@@ -145,12 +145,14 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_NightStats", "NOM_VariantAI" }) do
+    for _, m in ipairs({ "NOM_FogState", "NOM_NightStats", "NOM_VariantAI" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
     require "NOM_NightStats"
-    NOM_NightStats.setNight(opts.night ~= false, 1)
+    -- variantes só existem na névoa (Johan, 05/10), de dia ou de noite
+    NOM_FogState.set(opts.fog ~= false, 1)
+    NOM_NightStats.setNight(opts.night == true, 1)
     dofile(FILE)
     NOM_VariantAI.install(function(z) G.reports[#G.reports + 1] = z end)
     G.handlers = handlers
@@ -238,9 +240,9 @@ return {
         G.frame(3)
         assert(e.target == p and #G.reports == 0)
     end,
-    -- amanhecer (flag já virou, o lote ainda não limpou a marca): nada de cego nem estalo
-    ai_day_does_nothing = function()
-        local G = setup({ night = false })
+    -- fim da névoa (flag já virou, o lote ainda não limpou a marca): nada de cego nem estalo
+    ai_night_without_fog_does_nothing = function()
+        local G = setup({ fog = false, night = true })
         local e = G.zombie({ x = 0, y = 0, variant = "estalador" })
         G.zombie({ x = 0, y = 5, variant = "corredor" })
         local p = G.player({ x = 1, y = 0, sneaking = true })
@@ -290,16 +292,16 @@ return {
         G.frame(25)
         assert(z.y == 20, "Estalador surdo depois da janela: " .. z.x .. "," .. z.y)
     end,
-    -- nunca useless depois do amanhecer, da troca de variante ou do golpe
+    -- nunca useless depois do fim da névoa, da troca de variante ou do golpe
     ai_estalador_useless_never_outlives_night = function()
         local G = setup()
         local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
         G.player({ x = 1, y = 0, sneaking = true })
         G.frame(3)
         assert(z.useless)
-        NOM_NightStats.setNight(false, 1)
+        NOM_FogState.set(false, 1)
         G.frame(1)
-        assert(not z.useless, "useless passou do amanhecer")
+        assert(not z.useless, "useless passou do fim da névoa")
         -- variante saiu (o lote tirou do conjunto)
         local G2 = setup()
         local z2 = G2.zombie({ x = 0, y = 0, variant = "estalador" })
@@ -349,7 +351,7 @@ return {
         local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true, outfit = "DebugUseless" })
         G.player({ x = 1, y = 0, sneaking = true })
         G.frame(3)
-        NOM_NightStats.setNight(false, 1)
+        NOM_FogState.set(false, 1)
         G.frame(3)
         G.hit(z, {})
         assert(z.useless, "desligou um useless que não era do mod")

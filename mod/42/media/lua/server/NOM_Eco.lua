@@ -163,9 +163,13 @@ end
 -- Junta em cands os corpos ainda sem Eco no raio do jogador p. visited vale pela
 -- varredura inteira: square já lido pra outro jogador não é lido de novo, e o
 -- corpo dele já está em cands. Corpo já liberado é pulado antes de alocar
--- qualquer coisa; cadáver de Eco que escapou da remoção é varrido.
+-- qualquer coisa; cadáver de Eco que escapou da remoção é varrido. Corpo de quem
+-- morreu depois do anoitecer espera a próxima noite (regra do Johan, 05/10):
+-- IsoDeadBody.getDeathTime() é a hora de mundo da morte, salva com o corpo
+-- (bytecode <init> 1333–1341, save 444–449, load 593–598). s.waiting conta esses.
 -- ponytail: só o andar do jogador; corpo em outro andar fica de fora.
-local function bodiesAround(cell, p, radius, visited, cands)
+local function bodiesAround(cell, p, radius, s)
+    local visited, cands = s.visited, s.cands
     for x = p.x - radius, p.x + radius do
         for y = p.y - radius, p.y + radius do
             local key = (x * 100000 + y) * 100 + p.z + 50
@@ -180,8 +184,12 @@ local function bodiesAround(cell, p, radius, visited, cands)
                             local md = b:hasModData() and b:getModData() or nil
                             if md and md.NOM_eco then
                                 sweep = true
-                            elseif not (md and md.NOM_ecoReleased) then
+                            elseif md and md.NOM_ecoReleased then
+                                -- já soltou o Eco da vida dele
+                            elseif NOM_EcoRules.diedBeforeNight(b:getDeathTime(), s.start) then
                                 cands[#cands + 1] = { body = b, x = x, y = y, z = p.z }
+                            else
+                                s.waiting = s.waiting + 1
                             end
                         end
                     end
@@ -192,7 +200,8 @@ local function bodiesAround(cell, p, radius, visited, cands)
     end
 end
 
--- Varredura em andamento: { ps, i, visited, cands, night, radius, cap, spawned }.
+-- Varredura em andamento: { ps, i, visited, cands, night, start, radius, cap,
+-- spawned, waiting }.
 -- Um jogador por tick (o pico é o raio de um jogador, (2R+1)² squares, não N×).
 local scanning
 
@@ -207,7 +216,8 @@ local function startScan()
         end
     end
     if #ps == 0 then return end
-    scanning = { ps = ps, i = 1, visited = {}, cands = {}, night = night, spawned = 0,
+    scanning = { ps = ps, i = 1, visited = {}, cands = {}, night = night, spawned = 0, waiting = 0,
+        start = NOM_NightCount.start(),
         radius = NOM_Config.get("EcoRadius"), cap = NOM_Config.get("EcoMaxPerPlayer") }
 end
 
@@ -219,7 +229,7 @@ local function scanStep()
     end
     local cell, p = getCell(), s.ps[s.i]
     local quota = NOM_EcoRules.quota(s.cap, countEcosNear(cell, p, s.radius))
-    bodiesAround(cell, p, s.radius, s.visited, s.cands)
+    bodiesAround(cell, p, s.radius, s)
     for _, c in ipairs(NOM_EcoRules.pick(s.cands, p.x, p.y, p.z, s.radius, quota)) do
         if spawnFrom(c.body, s.night) then
             c.released = true
@@ -229,6 +239,7 @@ local function scanStep()
     s.i = s.i + 1
     if s.i > #s.ps then
         if s.spawned > 0 then debugLog("spawn=" .. s.spawned) end
+        if s.waiting > 0 then debugLog("esperando a proxima noite=" .. s.waiting) end
         scanning = nil
     end
 end

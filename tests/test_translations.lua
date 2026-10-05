@@ -93,6 +93,28 @@ return {
         end
     end,
 
+    -- sprint 0008: monstros (menos o Eco) só na névoa; Eco só de quem morreu antes
+    -- do anoitecer. O texto do menu tem que dizer isso, nos dois idiomas
+    translations_variants_say_fog_and_eco_says_dusk = function()
+        local words = {
+            -- "de dia ou de noite" pode; o que não pode é a noite como condição
+            EN = { fog = "fog", night = { "at night", "each night" }, dusk = "before dusk" },
+            PTBR = { fog = "névoa", night = { "à noite", "a cada noite" }, dusk = "antes do anoitecer" },
+        }
+        for lang, w in pairs(words) do
+            local keys = parse("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json")
+            for _, opt in ipairs({ "EstaladorEnabled", "CorredorEnabled", "EstaladorChance", "CorredorChance", "SemRostoChance" }) do
+                local t = keys["Sandbox_NevoaEOutroMundo." .. opt .. "_tooltip"]:lower()
+                assert(t:find(w.fog, 1, true), lang .. " " .. opt .. " não fala da névoa: " .. t)
+                for _, n in ipairs(w.night) do
+                    assert(not t:find(n, 1, true), lang .. " " .. opt .. " ainda fala da noite: " .. t)
+                end
+            end
+            local eco = keys["Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip"]:lower()
+            assert(eco:find(w.dusk, 1, true), lang .. " Eco sem a regra do anoitecer: " .. eco)
+        end
+    end,
+
     translations_same_files_per_language = function()
         local ref = table.concat(lines("ls " .. DIR .. LANGS[1]), ",")
         for _, lang in ipairs(LANGS) do

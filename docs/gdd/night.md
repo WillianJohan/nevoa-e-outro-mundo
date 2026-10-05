@@ -21,12 +21,16 @@ próprio no sandbox e tudo volta ao normal ao amanhecer.
 3. **Caça ativa** (`NightHunt`) — a cada `HuntIntervalMinutes` (tempo de jogo),
    zumbis a até `HuntRadius` tiles recebem um som na posição de cada jogador e vão
    até lá, mesmo sem vê-lo.
-4. **Variantes só noturnas** — Estalador, Corredor e Eco ([monsters.md](monsters.md)).
-   O Eco **não** recebe o bônus: fica lento e com a audição do dia, então ouve a
-   caça e a lanterna a 1/3 do alcance (de propósito: alma fraca, não caçadora).
-   O Estalador tem sempre o ouvido apurado: com `NightSharperSenses` desligado ele
-   ouve a caça, a lanterna e o grito do Corredor a 3× o alcance (de propósito:
-   ele vive de som).
+4. **Eco** — o único monstro da noite ([monsters.md](monsters.md#eco)). Ele **não**
+   recebe o bônus: fica lento e com a audição do dia, então ouve a caça e a
+   lanterna a 1/3 do alcance (de propósito: alma fraca, não caçadora).
+
+Estalador, Corredor e Sem-rosto **não são da noite**: só existem na névoa, de dia ou
+de noite (decisão do Johan, 05/10/2026, [monsters.md](monsters.md#regra-geral)). Numa
+noite com névoa, a variante vai por cima dos stats da noite: o Estalador fica cego e
+de ouvido apurado mas corre como os outros da noite; o Corredor corre sempre. O
+Estalador tem sempre o ouvido apurado: ouve a caça, a lanterna e o grito do Corredor
+a 3× o alcance mesmo com `NightSharperSenses` desligado (de propósito: ele vive de som).
 
 O alcance da caça e da lanterna é o configurado: o jogo multiplica o raio de todo
 som pela audição do zumbi (×3 na apurada da noite), e o mod compensa.

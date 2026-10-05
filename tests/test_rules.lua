@@ -55,16 +55,94 @@ return {
             assert(look[ch].weight == 0, ch)
         end
     end,
+    -- à noite só os canais que o render usa no escuro: a dessaturação vai a zero
+    -- com a noite (PlayerRenderSettings 594–606: × (1 − darkness))
     mix_night_only_has_no_fog_channel = function()
         local look = NOM_Rules.mix(1, 0, 1)
         assert(look.fog.weight == 0)
-        assert(look.desaturation.weight > 0)
+        assert(look.desaturation.weight == 0)
+        assert(look.ambient.weight > 0)
         assert(look.tint.weight > 0)
     end,
     mix_intensity_scales_weight = function()
         local half = NOM_Rules.mix(1, 0, 0.5)
         local full = NOM_Rules.mix(1, 0, 1)
-        assert(near(half.desaturation.weight * 2, full.desaturation.weight))
+        assert(near(half.tint.weight * 2, full.tint.weight))
+    end,
+    -- luz do céu = 2 × mod × ambient (GameTime.getSkyLightLevel 10–77), mod = 1 − alfa ×
+    -- (1 − cor) (PlayerRenderSettings 662–725). Noite vanilla de verdade: o
+    -- server/Climate/ClimateMain.lua:14-22 troca as cores no OnClimateManagerInit;
+    -- sem lua cinza 0.25, lua cheia 0.33, alfa 0.8 nas duas (mod 0.40 e 0.464)
+    rules_sky_mod_matches_render = function()
+        local r, g, b = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHTS.noMoon))
+        assert(near(r, 1 - 0.8 * 0.75) and near(g, r) and near(b, r), "sem lua " .. r)
+        assert(near(NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHTS.moon)), 1 - 0.8 * 0.67), "lua cheia")
+        assert(near(NOM_Rules.skyMod(1, 1, 1, 0.9), 1), "cor branca não escurece")
+    end,
+    -- "a noite parece clara igual dia": contra a noite vanilla REAL, com e sem lua,
+    -- a luz do céu cai ≥ 35% em todo canal com DarkIntensity 1 e ≥ 60% com 2; o
+    -- azul cai menos que o vermelho (frio), mas também cai os 35%
+    rules_night_darker_and_colder_than_vanilla = function()
+        local function night(van, intensity)
+            local t = NOM_Rules.mix(1, 0, intensity).tint
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local base = NOM_Rules.skyMod(unpack(van))
+            local r, g, b = NOM_Rules.skyMod(unpack(c))
+            return 1 - r / base, 1 - g / base, 1 - b / base
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_NIGHTS) do
+            local r, g, b = night(van, 1)
+            local f = string.format("%s DI1: r %.0f%% g %.0f%% b %.0f%%", name, r * 100, g * 100, b * 100)
+            assert(r >= 0.35 and g >= 0.35 and b >= 0.35, "pouco escuro: " .. f)
+            assert(r <= 0.55, "escuro demais pra jogar: " .. f)
+            assert(r > b + 0.03, "não ficou mais fria: " .. f)
+            local r2, g2, b2 = night(van, 2)
+            assert(r2 >= 0.6 and g2 >= 0.6 and b2 >= 0.6,
+                string.format("%s DI2: r %.0f%% g %.0f%% b %.0f%%", name, r2 * 100, g2 * 100, b2 * 100))
+        end
+    end,
+    -- névoa: o updateValues (1645–1770) puxa a luz global pra uma de três cores pela
+    -- intensidade da névoa, e o ClimateMain.lua:24-34 põe alfa 0.8 nas três. Contra
+    -- qualquer uma, a névoa do mod não pode clarear: ≥ 25% em todo canal com
+    -- DarkIntensity 1 (≥ 25% também com 2), puxando pro sépia (azul cai mais)
+    rules_fog_darker_than_vanilla_on_every_path = function()
+        local function drop(van, look)
+            local t = look.tint
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local br, bg, bb = NOM_Rules.skyMod(unpack(van))
+            local r, g, b = NOM_Rules.skyMod(unpack(c))
+            return 1 - r / br, 1 - g / bg, 1 - b / bb
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
+            for _, I in ipairs({ 1, 2 }) do
+                local r, g, b = drop(van, NOM_Rules.mix(0, 1, I))
+                local f = string.format("%s DI%d: r %.0f%% g %.0f%% b %.0f%%", name, I, r * 100, g * 100, b * 100)
+                assert(r >= 0.25 and g >= 0.25 and b >= 0.25, "névoa pouco escura ou mais clara: " .. f)
+                if I == 1 then assert(b > r, "não puxou pro sépia: " .. f) end
+            end
+        end
+    end,
+    -- noite + névoa juntas: a mistura das duas cores ainda passa nos dois testes
+    rules_night_and_fog_together_still_dark = function()
+        local look = NOM_Rules.mix(1, 1, 1)
+        local t = look.tint
+        local function drop(van)
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local base = { NOM_Rules.skyMod(unpack(van)) }
+            local m = { NOM_Rules.skyMod(unpack(c)) }
+            local worst = 1
+            for i = 1, 3 do worst = math.min(worst, 1 - m[i] / base[i]) end
+            return worst
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_NIGHTS) do
+            assert(drop(van) >= 0.35, name .. " noite+névoa: " .. drop(van))
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
+            assert(drop(van) >= 0.25, name .. " noite+névoa: " .. drop(van))
+        end
     end,
     mix_overlap_takes_strongest_not_sum = function()
         local both = NOM_Rules.mix(1, 1, 1)
@@ -72,7 +150,7 @@ return {
         assert(near(both.desaturation.weight, fog.desaturation.weight))
         -- cor da sobreposição fica entre azul (noite) e sépia (névoa)
         local n, f = NOM_Rules.LOOKS.night.tint.value, NOM_Rules.LOOKS.fog.tint.value
-        for i = 1, 3 do
+        for i = 1, 4 do
             local lo, hi = math.min(n[i], f[i]), math.max(n[i], f[i])
             assert(both.tint.value[i] >= lo and both.tint.value[i] <= hi)
         end

@@ -35,19 +35,22 @@ function NOM_NightRules.dayTier(sandboxSpeed, current)
 end
 
 -- Perfil que o zumbi deve ter. kind = nil (comum), "eco", "estalador" ou
--- "corredor". cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }
+-- "corredor" (variante só existe na névoa, de dia ou de noite: à noite ela vai por
+-- cima dos stats da noite; de dia, por cima dos do jogo). cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }
 -- (sight/hearing = valores do sandbox). sight/hearing nil = os do sandbox.
 -- key == "day" quando nada muda em relação ao jogo.
 function NOM_NightRules.wanted(night, kind, dayTier, cfg)
     local R = NOM_NightRules
-    if not night then return { key = "day", speed = dayTier } end
+    if not night and (kind == nil or kind == "eco") then return { key = "day", speed = dayTier } end
     if kind == "eco" then return { key = "eco", speed = R.ECO_SPEED } end
     local w = { speed = dayTier }
-    if cfg.fasterOn then w.speed = R.sharpen(dayTier, R.steps(cfg.speedMult)) end
-    local s = cfg.sensesOn and R.steps(cfg.senseMult) or 0
-    if s > 0 then
-        w.sight = R.sharpen(R.baseSense(cfg.sight), s)
-        w.hearing = R.sharpen(R.baseSense(cfg.hearing), s)
+    if night then
+        if cfg.fasterOn then w.speed = R.sharpen(dayTier, R.steps(cfg.speedMult)) end
+        local s = cfg.sensesOn and R.steps(cfg.senseMult) or 0
+        if s > 0 then
+            w.sight = R.sharpen(R.baseSense(cfg.sight), s)
+            w.hearing = R.sharpen(R.baseSense(cfg.hearing), s)
+        end
     end
     -- Variantes valem pelo próprio toggle, não pelos da noite.
     if kind == "corredor" then w.speed = R.CORREDOR_SPEED end

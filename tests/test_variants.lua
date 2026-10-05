@@ -88,7 +88,8 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players", "NOM_NightCount", "NOM_Night", "NOM_VariantAI" }) do
+    for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players", "NOM_NightCount", "NOM_Night", "NOM_VariantAI",
+        "NOM_FogState", "NOM_SemRosto", "NOM_Fog" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -99,9 +100,11 @@ local function setup(opts)
     dofile(NIGHT_FILE)
     package.loaded["NOM_Night"] = NOM_Night
     dofile(FILE)
+    -- névoa forte por padrão: o Corredor só existe na névoa (Johan, 05/10)
+    G.fog = opts.fog or 0.9
     function G.setTime(tod)
         G.world.tod = tod
-        NOM_World.update(0)
+        NOM_World.update(G.fog)
     end
     -- jogador que manda o comando: perto do zumbi (10, 10) por padrão
     function G.player(x, y)
@@ -121,7 +124,7 @@ local function setup(opts)
     return G
 end
 
--- ID (formato do jogo) que dá a variante pedida na noite
+-- ID (formato do jogo) que dá a variante pedida no período de névoa
 local function idFor(want, night, sandbox)
     local c = NOM_VariantRules.config(function(k)
         local v = sandbox[k]
@@ -186,7 +189,7 @@ return {
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 2 })
         assert(#G.played == 0 and #G.sounds == 0, "Eco gritou")
     end,
-    -- o servidor não confia no aviso: confere a variante dele, a noite, o toggle e o morto
+    -- o servidor não confia no aviso: confere a variante dele, a névoa, o toggle e o morto
     variants_server_rejects_non_corredor_and_day = function()
         local G = setup({ server = true, sandbox = { CorredorChance = 50, EstaladorChance = 0 } })
         G.zombie({ id = idFor(nil, 1, G.sandbox), onlineID = 1 })
@@ -195,15 +198,24 @@ return {
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 1 })
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 2 })
         assert(#G.played == 0, "zumbi comum ou morto gritou")
-        local G2 = setup({ server = true, tod = 12 })
+        local G2 = setup({ server = true, fog = 0 })
         G2.zombie({ id = idFor("corredor", 1, G2.sandbox), onlineID = 5 })
         G2.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 5 })
-        assert(#G2.played == 0, "gritou de dia")
+        assert(#G2.played == 0, "gritou sem névoa")
         local sb = { CorredorEnabled = false, CorredorChance = 100, EstaladorChance = 0 }
         local G3 = setup({ server = true, sandbox = sb })
         G3.zombie({ id = idFor("corredor", 1, { CorredorChance = 100, EstaladorChance = 0 }), onlineID = 5 })
         G3.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 5 })
         assert(#G3.played == 0, "toggle desligado gritou")
+    end,
+    -- de dia na névoa ele grita, e o alcance é o configurado sem a compensação da
+    -- audição da noite (de dia ninguém tem o degrau a mais)
+    variants_scream_by_day_in_fog = function()
+        local G = setup({ server = true, tod = 12, sandbox = { CorredorChance = 100, EstaladorChance = 0, CorredorScreamRadius = 60 } })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 8 })
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 })
+        assert(#G.played == 1, "não gritou de dia na névoa")
+        assert(G.sounds[1].radius == 60, "raio de dia " .. G.sounds[1].radius)
     end,
     -- o aviso vem do cliente: só vale de quem está perto do Corredor (25 tiles)
     variants_rejects_far_sender = function()

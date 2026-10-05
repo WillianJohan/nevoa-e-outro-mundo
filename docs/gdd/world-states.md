@@ -26,5 +26,7 @@ São flags, não um enum: as duas podem estar ativas ao mesmo tempo.
   por comando do servidor (`night` desde a sprint 0003, `fog` desde a 0005), e
   quem entra no meio pergunta o estado.
 - Cada período (uma noite, uma névoa) tem um número próprio, contado pelo servidor
-  e salvo com o mundo, usado pelo sorteio de variantes ([monsters.md](monsters.md)):
-  a noite pro Estalador e o Corredor, a névoa pro Sem-rosto.
+  e salvo com o mundo. O da **névoa** é a base do sorteio de todas as variantes
+  (Estalador, Corredor, Sem-rosto, [monsters.md](monsters.md)); o da **noite** marca
+  de que noite é cada Eco, e a hora em que ela abriu decide quais corpos já podem
+  soltar Eco (sprint 0008).
