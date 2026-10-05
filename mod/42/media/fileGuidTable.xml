@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GUIDs dos itens de roupa do mod; o jogo junta com a tabela vanilla (ZomboidFileSystem.loadFileGuidTable). -->
+<fileGuidTable>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EstaladorVenda.xml</path>
+		<guid>43ec5726-45f4-4c47-98d7-4eb3d8f73f1c</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CorredorBoca.xml</path>
+		<guid>30e6416d-316c-4b16-b1e3-03d054150010</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoEstatica.xml</path>
+		<guid>412f470a-8cba-4e3b-a9f4-bdca386e6603</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraCabelo.xml</path>
+		<guid>d6c55e60-188d-4b27-a2aa-3ed9e3902662</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EcoVeu.xml</path>
+		<guid>82f80e18-a7cf-4312-949c-23879a1e3820</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EcoCinza.xml</path>
+		<guid>e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d</guid>
+	</files>
+</fileGuidTable>

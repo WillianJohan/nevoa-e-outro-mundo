@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Visual do mod (sprint 0012): modelo vanilla citado pelo nome, textura gerada por scripts/gen_textures.py. -->
+<clothingItem>
+	<m_MaleModel>static\clothes\m_glasses_skigoggles</m_MaleModel>
+	<m_FemaleModel>static\clothes\f_glasses_skigoggles</m_FemaleModel>
+	<m_GUID>43ec5726-45f4-4c47-98d7-4eb3d8f73f1c</m_GUID>
+	<m_Static>true</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_MasksFolder>none</m_MasksFolder>
+	<textureChoices>NOM\NOM_EstaladorVenda</textureChoices>
+</clothingItem>

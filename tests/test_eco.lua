@@ -391,8 +391,9 @@ return {
         for _, tag in ipairs({ "m_MaleOutfits", "m_FemaleOutfits" }) do
             local block = xml:match("<" .. tag .. ">%s*<m_Name>NOM_Eco</m_Name>(.-)</" .. tag .. ">")
             assert(block, "sem NOM_Eco em " .. tag)
-            assert(block:find("ae2071bc-0d47-4041-b0a5-28c8cfa46c05", 1, true), tag .. " sem a camisola (Gown_Hospital)")
-            assert(block:find("edf2b504-261e-4baf-9440-48884d80a8bb", 1, true), tag .. " sem o véu (Hat_WeddingVeil)")
+            -- sprint 0012: cinza e véu de fumaça do mod (mod/42/media/fileGuidTable.xml)
+            assert(block:find("e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d", 1, true), tag .. " sem a cinza (NOM_EcoCinza)")
+            assert(block:find("82f80e18-a7cf-4312-949c-23879a1e3820", 1, true), tag .. " sem o véu (NOM_EcoVeu)")
         end
     end,
 

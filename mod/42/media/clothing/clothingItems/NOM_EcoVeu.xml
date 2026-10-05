@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Visual do mod (sprint 0012): modelo vanilla citado pelo nome, textura gerada por scripts/gen_textures.py. -->
+<clothingItem>
+	<m_MaleModel>skinned\clothes\m_weddingveil</m_MaleModel>
+	<m_FemaleModel>skinned\clothes\f_weddingveil</m_FemaleModel>
+	<m_GUID>82f80e18-a7cf-4312-949c-23879a1e3820</m_GUID>
+	<m_Static>false</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone></m_AttachBone>
+	<m_HatCategory>Group02</m_HatCategory>
+	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
+	<textureChoices>NOM\NOM_EcoVeu</textureChoices>
+</clothingItem>
