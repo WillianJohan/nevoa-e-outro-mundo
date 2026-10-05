@@ -1003,6 +1003,13 @@ Bytecode do B42.21. Decisão na [emenda da ADR-012](adr-012-visual-das-variantes
 - `IsoZombie.getItemVisuals()` com `isUsingWornItems()` (morto, reanimado, `wasFakeDead`)
   reconstrói a lista a partir do `WornItems` (0–38): mexer na lista de um zumbi desses não
   dura. O mod só pinta zumbi vivo e não reanimado.
+- **Chapéu caído:** `PersistentOutfits.setFallenHat` 0–36 liga o bit `0x8000` do
+  `persistentOutfitID` (`setPersistentOutfitID(id | 32768, init)`); `isHatFallen(I)` testa o bit;
+  `removeFallenHat` 0–93 tira da lista quem tem `getScriptItem():getChanceToFall() > 0`.
+  `PersistentOutfits` não está no `Exposer` (o mod lê o bit no ID); `ItemVisual.getScriptItem`
+  e `Item.getChanceToFall` EXISTS (`Item` no `Exposer`). No cliente de MP,
+  `ZombieHelmetFallingPacket.processClient` 0–241: procura o chapéu na lista pelo nome, tira se
+  achar, `clear` + `addAll`, `resetModelNextFrame` e `setFallenHat(true)` mesmo sem achar.
 - **Sair pro menu reinicia o Lua:** `IngameState.exit` 986 `LuaManager.init`, 1314
   `LoadDirBase`. Estado em tabela Lua não sobrevive.
 - **UNKNOWN:** `ArrayList.remove(Object)` devolve o booleano pro Lua (o Kahlua converte

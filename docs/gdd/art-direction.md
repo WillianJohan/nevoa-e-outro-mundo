@@ -44,7 +44,9 @@
   a variante acaba (fim da névoa, troca de tipo, reaproveitamento, morte), a roupa volta, e
   o corpo e o loot são os do zumbi comum. Exceção de roupa (o Johan gostou de "uma saia
   estranha", sem saber qual): um padrão na lista `NOM_VariantLook.KEEP`. O Eco não muda (já
-  só veste itens do mod).
+  só veste itens do mod). **O monstro larga tudo** (Johan, 05/10/2026): a roupa escondida
+  também não vale no jogo (morde através de máscara e capacete, sem armadura nem modificador
+  de visão/audição, chapéu não cai), até a variante acabar.
 - Texturas: `scripts/gen_textures.py`. Técnica: [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Os monstros

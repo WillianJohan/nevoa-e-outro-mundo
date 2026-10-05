@@ -146,6 +146,29 @@ antes do `DoZombieInventory` na morte (a); sobra tirar da lista e refazer o loot
 - O zumbi que sair da lista no meio da passada do fim da névoa pode ficar pelado até a
   passada de conferência de hora em hora do `NightStats` (rede de segurança dele).
 - O loot refeito sorteia a condição de novo (`CreateItem`), como o jogo faz em toda morte.
+- **Loot exato só pra quem não apanhou como variante.** Sangue, buraco e sujeira da luta
+  (`addBlood`/`addHole`/`addDirt`) vão pros `ItemVisual` que estão na lista: os escondidos não
+  pegam o dano. Ao voltar (fim ou morte), a roupa volta limpa daquela luta, e o item no loot
+  também. Aceito (review da 0016): não corrigir.
+- **Chapéu derrubado no MP (review da 0016):** o servidor decide a queda (`helmetFall` devolve
+  false no cliente) e manda `ZombieHelmetFallingPacket`; no cliente, `processClient` 130–238
+  não acha o chapéu escondido, mas cria a roupa caindo e chama `PersistentOutfits.setFallenHat`,
+  que liga o bit `0x8000` do `persistentOutfitID` (`isHatFallen(I)`). Ao devolver, com o bit
+  ligado, o que tem `ChanceToFall > 0` não volta (como `removeFallenHat` 18–92 faz ao vestir).
+  `PersistentOutfits` não está no `Exposer`: o mod lê o bit no ID.
+- **O monstro larga tudo (decisão do Johan, 05/10/2026).** Enquanto é variante, a roupa
+  escondida não vale como roupa pro jogo, que lê a lista de `ItemVisual` (ou os vestidos que
+  saem dela): a variante **morde através de máscara e capacete** (`IsoZombie.cantBite` 140–319
+  procura máscara/capacete de cabeça na lista; `BodyDamage.AddRandomDamageFromZombie`
+  1024–1041 só desvia a mordida com ele), **perde a armadura da roupa**
+  (`CombatManager.calculateTotalDefense` / `getBodyPartClothingDefense` × `ZombiesArmorFactor`),
+  **perde os modificadores de visão e audição** dos itens (`ModelManager.DoCharacterModelParts`
+  → `OnClothingUpdated` → `updateWornItemsVisionModifier`/`HearingModifier`) e **o chapéu
+  escondido não cai** (`helmetFallFromVisuals` só acha o que está na lista). Tudo volta quando
+  a variante acaba. Teste: `nude_monster_bites_through_hidden_mask`.
+- O bit de chapéu caído muda o `persistentOutfitID`, base do sorteio da variante (ADR-006): um
+  zumbi que perde o chapéu na névoa pode virar ou deixar de ser variante. Vem desde a 0004 (não
+  é da 0016); registrado pra decidir à parte.
 - UNKNOWN pro roteiro: `ArrayList.remove(Object)` devolvendo booleano no Kahlua (a prova do
   re-vestir); `WornItems.setFromItemVisuals`/`addItemsToItemContainer` chamados do Lua (EXISTS,
   sem uso vanilla); o desenho sem roupa (a pele do mod no corpo todo, sem buraco).

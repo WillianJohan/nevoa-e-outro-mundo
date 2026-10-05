@@ -51,7 +51,22 @@ guarda exceções. O Eco não muda (já veste só itens do mod).
       `nude_redressed_does_not_restore_old_clothes`, `look_redressed_zombie_repainted`. Estado só
       na tabela Lua; sair pro menu reinicia o Lua (`IngameState.exit` 986 `LuaManager.init`).
 - [x] Fim da névoa espalhado pelos lotes do `NightStats`, não num tick só —
-      `nude_fog_end_spread_in_batches` (40 variantes: um tick devolve ≤ 20).
+      `nude_fog_end_spread_in_batches` (40 variantes: um tick devolve ≤ 20). Zumbi pulado pelo
+      cursor da passada fica até 1 hora de jogo sem a roupa (passada de conferência do
+      `NightStats`): **aceito** pelo coordenador (review da 0016).
+- [x] Review: chapéu derrubado pelo servidor no MP não volta pra cabeça no fim —
+      `nude_fallen_hat_not_restored` (o fake liga o bit `0x8000` do ID e refaz a lista como o
+      `ZombieHelmetFallingPacket.processClient` 130–238); item do mod só por `módulo.NOM_` —
+      `nude_keep_only_mod_module_prefix`; `visuais=N` conta só os zumbis carregados —
+      `nude_count_only_loaded_zombies`.
+- [x] **O monstro larga tudo** (decisão do Johan, 05/10/2026): enquanto é variante, morde através
+      de máscara e capacete, sem armadura nem modificador de visão/audição da roupa, e o chapéu
+      escondido não cai; tudo volta no fim — `nude_monster_bites_through_hidden_mask` (fake do
+      `IsoZombie.cantBite` 140–319 pela lista); resto pelo bytecode na
+      [emenda da ADR-012](../../architecture/adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante).
+- Limite aceito (review): o loot é exato pra quem **não apanhou** como variante; sangue,
+  buraco e sujeira da luta só pegam o que estava à mostra, então a roupa escondida volta limpa
+  daquela luta.
 - [x] Orçamento — `look_budget` (pôr ≤ 11 + 3·N, tirar ≤ 5 + 2·N, passada sem troca 0, contados
       em cada chamada aos objetos falsos); tabela no
       [architecture/README.md](../../architecture/README.md#orçamento-por-sistema).
@@ -62,7 +77,7 @@ guarda exceções. O Eco não muda (já veste só itens do mod).
 - [ ] MP: os dois clientes veem a variante sem roupa e o corpo com a roupa — **falta o jogo:** passo 6.
 - [ ] Sem engasgo no começo e no fim de uma névoa vermelha com horda — **falta o jogo:** passo 7.
 
-`./run-tests.sh`: `total=512 passou=512 falhou=0` (Lua), `contraste total=4 passou=4`,
+`./run-tests.sh`: `total=516 passou=516 falhou=0` (Lua), `contraste total=4 passou=4`,
 `build total=25 passou=25`.
 
 ## Roteiro in-game
@@ -84,12 +99,15 @@ Jogo em `-debug`, **save descartável**. Console em
    normal, pelado, e a cabeça de chiado.
 4. **Volta.** `NOM_Debug.fog(false)`. **Esperado:** em ~1 s (lotes de 20) todos voltam com a
    roupa e o chapéu de antes; `visuais=0`. **Se** a roupa não voltar: o `remove(Object)` do
-   Kahlua não devolveu `true` (pz-api-notes §14.4; registrar).
+   Kahlua não devolveu `true` (pz-api-notes §14.4; registrar). O `visuais=` conta só os
+   zumbis carregados nesta tela.
 5. **Morte e loot.** Nova névoa, `NOM_Debug.variant("estalador")` no zumbi de chapéu, matar.
    **Esperado:** o corpo caído **de roupa e chapéu**, pele normal; no inventário do corpo os
    itens de roupa dele (camiseta, calça, chapéu…), nenhum "Venda de arame enferrujado" e
    nada repetido. Matar outra variante com fogo (coquetel molotov): corpo
    queimado normal, sem a peça.
+   **O monstro larga tudo:** uma variante que era de máscara ou capacete morde mesmo assim
+   (deixar ela pegar o personagem num save de teste, sem God Mode).
 6. **MP** (dedicado + 2 clientes). Repetir 2 com o cliente A. **Esperado:** o cliente B vê o
    mesmo zumbi sem roupa. Matar pelo cliente B: nos dois clientes, o corpo de roupa, e o loot
    igual nos dois. Console do servidor sem linha do visual.
@@ -107,6 +125,9 @@ Jogo em `-debug`, **save descartável**. Console em
   (solo, fogo, cliente de MP); fim da névoa pelos lotes do `NightStats`. Testes verdes.
 - **04/10/2026** — Docs: art-direction, monsters, Overview, emenda da ADR-012, pz-api-notes
   §14.4, orçamento, roteiro. Em teste.
+- **04/10/2026** — Review: chapéu derrubado pelo servidor no MP não volta; `módulo.NOM_`;
+  status só dos carregados; limite do dano escondido documentado; decisão do Johan "o monstro
+  larga tudo" registrada e travada por teste.
 
 ## Aprendizados
 
@@ -129,7 +150,9 @@ Jogo em `-debug`, **save descartável**. Console em
   do mod cobrindo o corpo inteiro sem roupa por cima.
 - A "saia estranha": quando o Johan achar qual item é, entra um padrão na `NOM_VariantLook.KEEP`.
 - Zumbi que sai da lista no meio da passada do fim da névoa fica pelado até a passada de
-  conferência de hora em hora do `NightStats`.
+  conferência de hora em hora do `NightStats` (aceito).
+- O bit de chapéu caído muda o `persistentOutfitID`, base do sorteio (ADR-006): um zumbi que
+  perde o chapéu na névoa pode virar ou deixar de ser variante. Vem desde a 0004; decidir à parte.
 - Herdadas da 0012 que seguem: chiado parado do Sem-rosto; modelos 3D próprios (`later`).
 
 ## Sessões
