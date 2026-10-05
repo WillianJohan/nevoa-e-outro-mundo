@@ -328,7 +328,7 @@ end
 -- O jogo só dispara o evento com o tile do mouse dentro do mundo (IsoWorld.isValidSquare
 -- em FBORenderCell.renderOpaqueObjectsEvent): mouse fora do mapa, sem parede nesse quadro.
 Events.RenderOpaqueObjectsInWorld.Add(function(pn, _, _, z)
-    if pn ~= 0 or #W.list == 0 then return end
+    if pn ~= 0 or not D.WALLS or #W.list == 0 then return end
     local drawn = 0
     for _, w in ipairs(W.list) do
         if w.a > 0 and w.z == z then
