@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 (monstros), 0013 (tela na névoa) |
+| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -13,9 +13,28 @@
   Pyramid Head de Silent Hill.
 - **Legível no zoom normal, de frente:** um zumbi tem uns 60–100 px na tela. Conta a cor e
   a silhueta da peça na cabeça, não o detalhe. Cada monstro tem uma cor dominante própria.
+- **Contraste cheio, formas grandes (sprint 0014).** Visto no jogo (05/10/2026), o chiado
+  fino da 0012 virou uma balaclava de lã cinza: na câmera isométrica, com o tom escuro da
+  névoa cortando 30–50% do brilho (ADR-008/010), ruído fino e cinza médio somem. Toda
+  textura de monstro usa quase preto e quase branco, formas de 1/8 da largura pra cima,
+  poucas cores e brilho puxado pra cima. `tests/test_look_contrast.py` reprova a textura
+  que voltar a ser "lã"; `scripts/preview_textures.py` mostra cada uma a 64 px, normal e
+  escurecida/avermelhada como na névoa
+  ([prévia](../sprints/sprint-0014-contraste-visual/preview.png)).
+- **O Eco fica fora da regra das formas grandes.** Mancha grande preta e branca no corpo
+  todo leu como couro de vaca na prévia. O Eco lê por ser **muito mais claro** que qualquer
+  outro zumbi, não pelo desenho: base quase branca, salpico pequeno e esparso, escorrido
+  fino. O teste dele confere média de luminância alta, pouco cinza médio e pouca área
+  escura, no lugar do desvio de longe.
+- **Nada de grade em diagonal.** A venda do Estalador em X repetido leu como toalha de
+  piquenique; atadura é faixa horizontal. O teste da venda exige que a luminância varie
+  bem mais de linha pra linha do que de coluna pra coluna.
 - **Desenho que não depende do mapa UV:** rachadura, veia, chiado, fio, escorrido. Vale em
   qualquer ponto da textura, então a peça inteira vira o material e nada é copiado nem
-  "decalcado" da textura vanilla (dela só se usa o tamanho).
+  "decalcado" da textura vanilla (dela só se usa o tamanho). Única exceção: a fuligem nos
+  olhos da Carpideira, posta onde fica o rosto na pele de zumbi vanilla (o layout, visto a
+  olho, é o mesmo no masculino e no feminino). A balaclava vanilla é um tricô uniforme, sem
+  região de rosto visível: o chiado do Sem-rosto vale na cabeça inteira.
 - **Uma pele e uma peça por variante.** A roupa do zumbi fica: aquele zumbi qualquer *era* a
   coisa. Some quando a névoa baixa.
 - Texturas: `scripts/gen_textures.py`. Técnica: [ADR-012](../architecture/adr-012-visual-das-variantes.md).
@@ -24,11 +43,11 @@
 
 | Monstro | Pele | Peça (modelo vanilla) | Cor que lê de longe |
 |---|---|---|---|
-| Estalador | porcelana branco-osso rachada, costuras quase pretas | venda de atadura manchada com arame enferrujado em X (óculos de esqui, `Glasses_SkiGoggles`) | branco rachado + faixa ferrugem nos olhos |
-| Corredor | cinza de cinza, esticada na vertical, veias roxo-pretas | boca rasgada: carne vermelho-escura, rasgos e pontas de dente (máscara cirúrgica, `Hat_SurgicalMask`) | cinza + mancha vermelha na boca |
-| Sem-rosto | a do zumbi | rosto de chiado de TV cinza, a cabeça inteira (balaclava inteira, `Hat_BalaclavaFull`) | cabeça cinza granulada |
-| Carpideira | pálida azulada, escorridos de fuligem de cima pra baixo, manchas onde esfregou | cabelo preto embolado caindo no rosto (véu de noiva, `Hat_WeddingVeil`) | cabeça preta caída sobre corpo pálido |
-| Eco | coberta: cinza clara e fumaça no corpo todo | véu de fumaça clara (véu de noiva) | quase branco, sem rosto |
+| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura: faixas horizontais branco-sujas com frestas escuras, dois arames farpados ferrugem-escuros enrolados de lado a lado e uma mancha de sangue seco (óculos de esqui, `Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
+| Corredor | cinza de cinza clara, veias grossas roxo-pretas | boca rasgada: vermelho escuro saturado, um rasgo preto de lado a lado com dentes brancos grandes e escorridos pretos (máscara cirúrgica, `Hat_SurgicalMask`) | cinza com veias + boca vermelha e preta |
+| Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, a cabeça inteira (balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
+| Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche com três mechas brancas, caindo no rosto (véu de noiva, `Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
+| Eco | coberta: quase branca, salpicos pequenos e esparsos de cinza e poucos escorridos finos na vertical | véu do mesmo jeito, mais escuro só nas bordas (véu de noiva) | o mais claro da névoa: fantasma coberto de cinza |
 
 **Por quê, um por um:**
 
@@ -53,7 +72,8 @@
   fica com as duas, e elas podem atravessar uma na outra. Tirar a dele exigiria guardar e
   devolver a roupa; não vale o risco agora. Na morte, o corpo fica com a dele (a do mod sai).
 - **Rosto da pele:** a pele do mod não tem olhos nem boca desenhados (o desenho não usa o mapa
-  UV); o rosto fica coberto pela peça (Estalador, Corredor, Carpideira) ou é o próprio tema.
+  UV, fora a fuligem da Carpideira); o rosto fica coberto pela peça (Estalador, Corredor,
+  Carpideira) ou é o próprio tema.
 
 ## A tela na névoa (sprint 0013)
 

@@ -81,8 +81,8 @@ mod2/                               mod opcional NevoaEOutroMundo_Shader (ADR-01
   42/media/shaders/screen.frag      pós-processo de tela original (interface do WeatherShader)
   42/media/lua/shared/NOM_ShaderFlag.lua   NOM_ShaderMod = true (o mod principal passa a usar o canal)
   common/
-tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
-scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, build-workshop.sh (pasta de upload, só o mod/ commitado)
+tests/                              asserts de lua puro (./run-tests.sh, luajit), contraste das texturas (test_look_contrast.py) e teste do build
+scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, preview_textures.py (folha de contato das texturas, sprint 0014), build-workshop.sh (pasta de upload, só o mod/ commitado)
 docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
 ```
 
