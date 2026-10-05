@@ -1,6 +1,5 @@
 -- Regras puras do Outro Mundo sangrento (sprint 0015): o que cada square ganha na
--- névoa. Chão: camadas de sangue (poças e rastros) e de erosão (sujeira, rachadura,
--- musgo); parede: um sprite por lado (sangue, sujeira, rachadura, trepadeira). Sem
+-- névoa. Chão: camadas de sangue (poças e rastros) e de erosão (sujeira, rachadura); parede: um sprite por lado (sangue, sujeira, rachadura, trepadeira). Sem
 -- API do jogo, testável com ./run-tests.sh. Quem desenha: client/NOM_FogOverlays.lua.
 --
 -- Nada é guardado: a resposta é função do square, do período de névoa e da
@@ -21,18 +20,12 @@ NOM_DressingRules = {
     -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
     POOL = 0.85,       -- chance de poça por célula, na densidade 1
     BACKGROUND = 0.15, -- respingo solto por square
-    GRIME = 0.5, CRACKS = 0.35, MOSS = 0.2,
+    GRIME = 0.5, CRACKS = 0.45,
     WALL = 0.75,       -- chance de cada parede ter algo
 }
 
 local R = NOM_DressingRules
 local V = NOM_VariantRules
-
-local function range(a, b, out)
-    out = out or {}
-    for i = a, b do out[#out + 1] = i end
-    return out
-end
 
 local function byMod(n, m, keep)
     local out = {}
@@ -51,14 +44,17 @@ end
 -- Sprites vanilla por nome (<prefixo><índice>). Índices conferidos no pack Tiles2x
 -- e o lado (N/W) pelo recorte da textura e por tileDepthTextureAssignments.txt
 -- (pz-api-notes §16). O cliente ainda confere cada nome com getTexture.
+-- Chão (sprint 0021, pz-api-notes §16.5): só decalque chato que, desenhado pelo IsoMarker
+-- (base do recorte no centro do tile, depois dos personagens), não alcança um personagem
+-- em pé no tile de trás. Medido por scripts/audit_floor_sprites.py (tests/floor_sprites.lua).
+-- Planta (d_plants_1_*) é objeto em pé: fora.
 R.SETS = {
     bloodFloor = { prefix = "overlay_blood_floor_01_",
-        idx = range(43, 46, range(37, 40, { 34, 35, unpack(range(7, 27, range(0, 5))) })) },
-    grimeFloor = { prefix = "overlay_grime_floor_01_",
-        idx = { 44, 48, 88, 89, unpack(range(50, 85, range(27, 42, range(0, 25)))) } },
-    cracksFloor = { prefix = "d_streetcracks_1_", idx = range(28, 119, range(16, 26, range(0, 14))) },
-    mossFloor = { prefix = "d_plants_1_",
-        idx = { 23, 35, 38, 39, 55, 57, 58, 59, 63, unpack(range(46, 53, range(0, 15))) } },
+        idx = { 0, 1, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27,
+            34, 35, 37, 38, 39, 40, 43, 44, 45, 46 } },
+    grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 30, 38, 80, 88 } },
+    cracksFloor = { prefix = "d_streetcracks_1_",
+        idx = { 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 18, 20, 21, 22 } },
     bloodWallW = { wall = "W", prefix = "overlay_blood_wall_01_", idx = { 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19 } },
     bloodWallN = { wall = "N", prefix = "overlay_blood_wall_01_", idx = { 4, 5, 13, 14, 15, 20, 21, 22, 23 } },
     grimeWallW = { wall = "W", prefix = "overlay_grime_wall_01_", idx = every(0, 4, 32) },
@@ -159,7 +155,6 @@ function R.floor(x, y, z, period, d)
     local out = {}
     if u(id, period, 51) < chance(R.GRIME, d) then out[#out + 1] = pick("grimeFloor", id, period, 61) end
     if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
-    if u(id, period, 53) < chance(R.MOSS, d) then out[#out + 1] = pick("mossFloor", id, period, 63) end
     local blood = bloodLevel(x, y, z, id, period, d)
     while #out + blood > R.MAX_LAYERS do table.remove(out) end
     for k = 1, blood do out[#out + 1] = pick("bloodFloor", id, period, 40 + k) end

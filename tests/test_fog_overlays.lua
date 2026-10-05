@@ -237,7 +237,7 @@ return {
         G.seconds(20)
         local before = textures(G)
         NOM_FogState.set(true, 2, true)
-        G.seconds(5)
+        G.seconds(15) -- o raio efetivo recomeça em 25 e acomoda no teto
         assert(textures(G) > before * 1.1, "vermelha forçada não redesenhou: " .. textures(G) .. " vs " .. before)
         assert(select(2, coverage(G, 3)) >= 0.9)
     end,

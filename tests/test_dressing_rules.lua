@@ -38,7 +38,56 @@ local function sweep(R, period, d, size)
     return n, layers, pools
 end
 
+-- Medida do pack (scripts/audit_floor_sprites.py, sprint 0021): por nome, flat, zone, cov, spill.
+local AUDIT = dofile("tests/floor_sprites.lua")
+
+local function floorNames(R)
+    local out = {}
+    for setName, s in pairs(R.SETS) do
+        if not s.wall then
+            for _, i in ipairs(s.idx) do out[#out + 1] = { set = setName, name = s.prefix .. i } end
+        end
+    end
+    return out
+end
+
 return {
+    -- prints 9 e 10 do Johan (05/10): planta em pé desenhada como decalque cobre o jogador.
+    -- Todo sprite do chão é decalque chato (conteúdo no diamante do chão, sem MoveWithWind)
+    dressing_rules_floor_pool_flat_only = function()
+        local R = load()
+        local names = floorNames(R)
+        assert(#names > 50, "pool vazio demais: " .. #names)
+        for _, n in ipairs(names) do
+            local a = AUDIT[n.name]
+            assert(a, "sprite fora da auditoria: " .. n.name)
+            assert(a.flat, "sprite em pé no chão: " .. n.name)
+        end
+    end,
+
+    -- o IsoMarker põe a base do recorte no centro do tile (meio tile acima) e desenha depois
+    -- dos personagens: nenhum pixel pode cair onde um personagem em pé no tile de trás (N, W,
+    -- NW) está. Pela simetria, é o mesmo que o decalque do tile S/E de alguém não alcançá-lo.
+    dressing_rules_floor_pool_reaches_no_character = function()
+        local R = load()
+        for _, n in ipairs(floorNames(R)) do
+            assert(AUDIT[n.name].zone == 0, "alcança o personagem do lado: " .. n.name .. " (" .. AUDIT[n.name].zone .. " px)")
+        end
+    end,
+
+    -- d_plants_1_* é planta de erosão (objeto em pé, tiledefinitions_erosion): fora do chão
+    dressing_rules_no_plants = function()
+        local R = load()
+        for _, n in ipairs(floorNames(R)) do assert(not n.name:find("^d_plants"), "planta no chão: " .. n.name) end
+        for x = 0, 59 do
+            for y = 0, 59 do
+                for _, l in ipairs(R.floor(2000 + x, 3000 + y, 0, 4, 3.2) or {}) do
+                    assert(R.SETS[l[1]] and not R.SETS[l[1]].prefix:find("^d_plants"), "camada de planta")
+                end
+            end
+        end
+    end,
+
     dressing_rules_deterministic_per_square_and_period = function()
         local R = load()
         local a = R.floor(1234, 5678, 0, 3, 1)
