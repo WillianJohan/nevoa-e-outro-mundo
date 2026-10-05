@@ -1,4 +1,5 @@
--- Opções de cliente dos efeitos de tela (sprint 0013) e da densidade do sangue e da
+-- Opções de cliente dos efeitos de tela (sprint 0013), da tecla do painel de debug
+-- (sprint 0020, só com -debug) e da densidade do sangue e da
 -- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua), do dissolve e do bloom do
 -- shader (sprint 0018, client/NOM_Dissolve.lua e mod2), da brasa no corpo (sprint 0022): cada jogador escolhe no
 -- próprio jogo (Opções > Mods), não o servidor. PZAPI.ModOptions do B42
@@ -26,6 +27,13 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
     page:addTickBox("BodyEmbers", "UI_NOM_BodyEmbers", true, "UI_NOM_BodyEmbers_tooltip")
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
+    -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
+    -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods. Insert: F7 abre o
+    -- editor de veículos do vanilla em -debug (IngameState.updateInternal 547–606), F2/F8/F9
+    -- também são do debug e F1–F6/F10/F11 têm bind; nenhuma das classes que leem o teclado usa Insert
+    if getDebug() then
+        page:addKeyBind("DebugPanel", "UI_NOM_DebugPanelKey", Keyboard.KEY_INSERT, "UI_NOM_DebugPanelKey_tooltip")
+    end
 end
 
 local function value(id, default)
@@ -68,6 +76,12 @@ end
 function O.bloom()
     local v = tonumber(value("Bloom", O.DEFAULT_BLOOM)) or O.DEFAULT_BLOOM
     return math.max(0, math.min(2, v))
+end
+
+-- Código da tecla do painel de debug; nil fora do -debug. Insert sem a página.
+function O.debugPanelKey()
+    if not getDebug() then return nil end
+    return value("DebugPanel", Keyboard.KEY_INSERT)
 end
 
 return NOM_ScreenFxOptions
