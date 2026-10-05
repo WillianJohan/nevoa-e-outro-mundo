@@ -682,4 +682,22 @@ return {
             "não andou um jogador por tick: " .. table.concat(perTick, ","))
         assert(#G.ecos() == 9, "Ecos: " .. #G.ecos())
     end,
+    eco_scan_skips_body_removed_mid_scan = function()
+        -- corpo achado num tick da varredura (lista compartilhada) e removido
+        -- (queimado, carregado) antes do tick do outro jogador que ia usá-lo:
+        -- sem erro, sem Eco desse corpo, varredura segue
+        local G = setup({ sandbox = { EcoRadius = 10, EcoMaxPerPlayer = 1 },
+            players = { { x = 100, y = 100, z = 0 }, { x = 117, y = 100, z = 0 } } })
+        local bs = { G.body(105, 100, 0), G.body(109, 100, 0) }
+        G.fireTenMinutes()
+        G.tick()
+        local gone
+        for _, b in ipairs(bs) do if not b.md.NOM_ecoReleased then gone = b end end
+        assert(gone, "o primeiro tick deveria liberar só um corpo")
+        gone.square:removeCorpse(gone, false)
+        for _ = 1, 3 do G.tick() end
+        assert(not gone.md.NOM_ecoReleased)
+        assert(#G.ecos() == 1, "Ecos: " .. #G.ecos())
+    end,
 }
+

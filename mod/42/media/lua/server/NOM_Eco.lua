@@ -76,7 +76,9 @@ local function spawn(x, y, zz, night)
 end
 
 local function spawnFrom(body, night)
+    -- corpo da lista compartilhada da varredura pode ter sido removido entre ticks
     local sq = body:getSquare()
+    if not sq then return false end
     if not spawn(sq:getX(), sq:getY(), sq:getZ(), night) then return false end
     body:getModData().NOM_ecoReleased = true
     return true
