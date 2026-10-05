@@ -34,6 +34,10 @@ mesmo nos dois modos.
 - **Emendada pela [ADR-005](adr-005-quem-simula-aplica.md)** para comportamento de
   zumbi: o servidor decide e avisa, mas quem simula o zumbi (o cliente dono, no MP)
   aplica velocidade e sentidos. `client/NOM_NightClient.lua` aplica; não decide.
+- **Emendada pela [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md)** para o
+  Sem-rosto: "ver" é do cliente (luz e visão são calculadas lá), o servidor confere
+  e decide, e o dono do zumbi move. A flag de névoa chega aos clientes por
+  `fog { on, period }` (sprint 0005).
 - Exceção de limpeza: `client/NOM_EcoClient.lua` apaga o Eco que o servidor já
   removeu (`ecoGone`), porque `removeFromWorld` no servidor não avisa o cliente.
   Ele não decide nada.

@@ -108,7 +108,9 @@ local function forget(z)
 end
 
 -- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador
--- ouve o que está perto dele, sem rede.
+-- ouve o que está perto dele, sem rede. playSoundLocal = getEmitter():playSoundImpl
+-- (nome, nil), sem pacote; emitter:playSound no cliente de MP manda PacketType.PlaySound
+-- (FMODSoundEmitter.playSound 0–104) e cada cliente faria os outros ouvirem de novo.
 local function clicks()
     if not NOM_NightStats.night then return end
     local list = getCell():getZombieList()
@@ -116,7 +118,7 @@ local function clicks()
         local z = list:get(i)
         if z:hasModData() and z:getModData().NOM_variant == "estalador" and not z:isDead()
             and ZombRand(CLICK_ODDS) == 0 then
-            z:getEmitter():playSound(NOM_VariantAI.CLICK_SOUND)
+            z:playSoundLocal(NOM_VariantAI.CLICK_SOUND)
         end
     end
 end

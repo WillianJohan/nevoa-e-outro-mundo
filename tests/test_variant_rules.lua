@@ -110,4 +110,47 @@ return {
         assert(not R.screamReady(10, 10 + R.SCREAM_COOLDOWN_HOURS - 0.01))
         assert(R.screamReady(10, 10 + R.SCREAM_COOLDOWN_HOURS))
     end,
+    -- Sem-rosto: sorteio por período de névoa, mesma conta determinística
+    semrosto_rules_deterministic_and_needs_period = function()
+        local c = { semRostoOn = true, semRostoChance = 100 }
+        assert(R.semRosto(outfitID(3, 17), 2, c) == true)
+        assert(R.semRosto(outfitID(3, 17, true), 2, c) == true, "ID feminino (negativo) falhou")
+        assert(R.semRosto(outfitID(3, 17), nil, c) == false, "sem período virou Sem-rosto")
+        assert(R.semRosto(0, 2, c) == false, "ID 0 virou Sem-rosto")
+        assert(R.semRosto(outfitID(3, 17), 2, { semRostoOn = false, semRostoChance = 100 }) == false)
+        assert(R.semRosto(outfitID(3, 17), 2, { semRostoOn = true, semRostoChance = 0 }) == false)
+    end,
+    semrosto_rules_rate_matches_chance = function()
+        local ids = realIDs()
+        for period = 1, 3 do
+            local n = 0
+            for _, id in ipairs(ids) do
+                if R.semRosto(id, period, { semRostoOn = true, semRostoChance = 5 }) then n = n + 1 end
+            end
+            assert(math.abs(n / #ids * 100 - 5) < 1.5, "Sem-rosto " .. (n / #ids * 100) .. "%")
+        end
+    end,
+    -- noite e névoa juntas: ser Estalador não muda a chance de ser Sem-rosto,
+    -- mesmo quando o número da noite e o da névoa são iguais
+    semrosto_rules_independent_of_night_variant = function()
+        local ids = realIDs()
+        local c = { semRostoOn = true, semRostoChance = 20 }
+        for _, n in ipairs({ 1, 4 }) do
+            local est, both, sem = 0, 0, 0
+            for _, id in ipairs(ids) do
+                local e = R.variant(id, n, cfg({ estaladorChance = 20, corredorChance = 0 })) == "estalador"
+                local s = R.semRosto(id, n, c)
+                if e then est = est + 1 end
+                if s then sem = sem + 1 end
+                if e and s then both = both + 1 end
+            end
+            local pe, ps = est / #ids, sem / #ids
+            assert(math.abs(both / #ids - pe * ps) < 0.01, string.format("n=%d: P(as duas)=%.4f, pe*ps=%.4f", n, both / #ids, pe * ps))
+        end
+    end,
+    semrosto_rules_config_reads_sandbox = function()
+        local vals = { SemRostoEnabled = false, SemRostoChance = 12 }
+        local c = R.semRostoConfig(function(k) return vals[k] end)
+        assert(c.semRostoOn == false and c.semRostoChance == 12)
+    end,
 }

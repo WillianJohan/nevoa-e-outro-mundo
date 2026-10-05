@@ -1,10 +1,11 @@
--- Cliente de MP: apaga o Eco local que o servidor já tirou do mundo. O servidor
+-- Cliente de MP: apaga o zumbi local que o servidor já tirou do mundo (Eco no
+-- amanhecer; Sem-rosto trocado pelo fallback do server/NOM_Fog.lua). O servidor
 -- não manda o aviso de remoção de zumbi pra Lua de mod (ver server/NOM_Eco.lua).
 -- Não decide nada: só limpa o que o servidor mandou limpar.
 if not isClient() then return end
 
 local function onServerCommand(module, command, args)
-    if module ~= "NevoaEOutroMundo" or command ~= "ecoGone" then return end
+    if module ~= "NevoaEOutroMundo" or (command ~= "ecoGone" and command ~= "semRostoGone") then return end
     local gone = {}
     for _, id in pairs(args.ids) do gone[id] = true end
     gone[-1] = nil -- -1 = zumbi sem ID de rede: nunca casa

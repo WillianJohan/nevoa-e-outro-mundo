@@ -1,0 +1,273 @@
+-- Mundo falso pros testes da névoa (servidor, Sem-rosto, cliente). Imita o
+-- B42.20 onde importa (bytecode):
+-- * Visão do jogador por square, calculada no cliente (LightingJNI): isCouldSee(pn)
+--   = linha de visão no cone (aqui: até 30 tiles, ±60° da frente, ou colado);
+--   isCanSee(pn) = isCouldSee e luz (no escuro só o square iluminado, ou a até 10
+--   tiles da lanterna do jogador). O jogo usa isCanSee do square do zumbi como
+--   "o jogador vê o zumbi" (IsoZombie.checkZombieEntersPlayerBuilding 26–44).
+-- * getForwardDirection():getDirection() em radianos (shared/Fishing/FishingRod.lua:286).
+-- * square:isFree(false) (client/ISUI/ISWorldObjectContextMenu.lua:2199).
+-- * teleportTo(x, y, z): setX/Y/Z com o int (canto do tile), setLastX/Y, sem rede
+--   (IsoGameCharacter.teleportTo(III)); setX/setY/setLastX/setLastY públicos (IsoMovingObject).
+-- * Água: square:getProperties():has(IsoFlagType.water) (server/Fishing/BuildingObjects/FishingNet.lua:31).
+-- * Andar: o jogador pode estar em z quebrado (escada); o square é do math.floor(z).
+-- * MP: o servidor aplica a posição que o dono manda (NetworkZombiePacker.applyZombie);
+--   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
+-- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
+-- * Square: qualquer método além dos de leitura listados explode (nada de mexer no mapa).
+-- * Som: player:playSoundLocal(nome) = getEmitter():playSoundImpl(nome, nil), sem
+--   pacote (IsoGameCharacter.playSoundLocal; client/ISUI/Maps/ISMap.lua:210);
+--   emitter:setVolume(id, v), isPlaying(id), stopSoundLocal(id) são locais. Já
+--   emitter:playSound e stopSound mandam pacote no cliente de MP
+--   (FMODSoundEmitter.playSound 0–104, stopSound → sendStopSound): aqui explodem.
+local W = {}
+
+local function jlist(items)
+    local l = { items = items or {} }
+    function l:size() return #self.items end
+    function l:get(i) return self.items[i + 1] end
+    return l
+end
+
+function W.new(opts)
+    opts = opts or {}
+    local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
+        holes = {}, blocked = {}, lit = {}, water = {}, dark = opts.dark or false, nextID = 1000, spawned = {} }
+    local handlers = {}
+    G.handlers = handlers
+    function G.fire(name, ...)
+        for _, h in ipairs(handlers[name] or {}) do h(...) end
+    end
+    local function key(x, y, z) return x .. "," .. y .. "," .. (z or 0) end
+
+    local function angleOk(p, x, y)
+        local dx, dy = x + 0.5 - p.x, y + 0.5 - p.y
+        local d = math.sqrt(dx * dx + dy * dy)
+        if d < 1.5 then return true end
+        local a = math.atan2(dy, dx) - p.face
+        a = math.abs((a + math.pi) % (2 * math.pi) - math.pi)
+        return a <= math.rad(60)
+    end
+    local function couldSee(pn, x, y, z)
+        local p = G.byNum[pn]
+        if not p or math.floor(p.z) ~= z or G.blocked[key(x, y, z)] then return false end
+        local dx, dy = x + 0.5 - p.x, y + 0.5 - p.y
+        return math.sqrt(dx * dx + dy * dy) <= 30 and angleOk(p, x, y)
+    end
+
+    local squares = {}
+    function G.square(x, y, z)
+        z = z or 0
+        local k = key(x, y, z)
+        if G.holes[k] then return nil end
+        if squares[k] then return squares[k] end
+        local sq = { x = x, y = y, z = z, free = true }
+        local api = {
+            getX = function() return x end,
+            getY = function() return y end,
+            getZ = function() return z end,
+            isFree = function(_, _) return sq.free and not G.noFree end,
+            getProperties = function()
+                return { has = function(_, flag) return flag == IsoFlagType.water and G.water[k] == true end }
+            end,
+            isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
+            isCanSee = function(_, pn)
+                if not couldSee(pn, x, y, z) then return false end
+                if not G.dark or G.lit[k] then return true end
+                local p = G.byNum[pn]
+                local dx, dy = x + 0.5 - p.x, y + 0.5 - p.y
+                return p.light == true and math.sqrt(dx * dx + dy * dy) <= 10
+            end,
+        }
+        setmetatable(sq, { __index = function(_, name)
+            if api[name] then return api[name] end
+            error("square:" .. tostring(name) .. " não devia ser chamado (mexe no mapa?)", 2)
+        end })
+        squares[k] = sq
+        return sq
+    end
+
+    G.sounds = {} -- id -> { name, volume, playing }
+    local emitter = {
+        isPlaying = function(_, id) return G.sounds[id] ~= nil and G.sounds[id].playing end,
+        setVolume = function(_, id, v) G.sounds[id].volume = v end,
+        stopSoundLocal = function(_, id) G.sounds[id].playing = false end,
+        playSound = function() error("emitter:playSound manda pacote PlaySound no cliente de MP", 2) end,
+        stopSound = function() error("emitter:stopSound manda sendStopSound", 2) end,
+    }
+    function G.playing(name)
+        local out = {}
+        for id, snd in pairs(G.sounds) do
+            if snd.name == name and snd.playing then out[#out + 1] = snd end
+        end
+        return out
+    end
+    function G.played(name)
+        local n = 0
+        for _, snd in pairs(G.sounds) do if snd.name == name then n = n + 1 end end
+        return n
+    end
+
+    G.byNum = {}
+    function G.player(o)
+        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = #G.players,
+            dead = false, light = o.light }
+        function p:getX() return self.x end
+        function p:getY() return self.y end
+        function p:getZ() return self.z end
+        function p:getPlayerNum() return self.pn end
+        function p:isDead() return self.dead end
+        function p:getForwardDirection()
+            local me = self
+            return { getDirection = function() return me.face end }
+        end
+        function p:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
+        function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
+        function p:getEmitter() return emitter end
+        function p:playSoundLocal(name)
+            local id = #G.sounds + 1
+            G.sounds[id] = { name = name, volume = 1, playing = true }
+            return id
+        end
+        G.players[#G.players + 1] = p
+        G.byNum[p.pn] = p
+        return p
+    end
+
+    function G.zombie(o)
+        local z = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, id = o.id, onlineID = o.onlineID or -1,
+            remote = o.remote or false, md = {}, outfitName = o.outfit or "Generic01", dead = false, female = o.female }
+        if o.eco then z.md.NOM_eco = true end
+        function z:getX() return self.x end
+        function z:getY() return self.y end
+        function z:getZ() return self.z end
+        function z:getPersistentOutfitID() return self.id end
+        function z:getOnlineID() return self.onlineID end
+        function z:isRemoteZombie() return self.remote end
+        function z:getModData() return self.md end
+        function z:hasModData() return next(self.md) ~= nil end
+        function z:getOutfitName() return self.outfitName end
+        function z:isDead() return self.dead end
+        function z:isFemale() return self.female == true end
+        function z:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
+        function z:teleportTo(x, y, zz)
+            self.x, self.y, self.z = math.floor(x), math.floor(y), math.floor(zz)
+            self.lastX, self.lastY = self.x, self.y
+            self.teleports = (self.teleports or 0) + 1
+        end
+        function z:setX(v) self.x = v; return v end
+        function z:setY(v) self.y = v; return v end
+        function z:setLastX(v) self.lastX = v; return v end
+        function z:setLastY(v) self.lastY = v; return v end
+        function z:dressInPersistentOutfitID(id) self.id = id end
+        function z:removeFromWorld()
+            self.removed = true
+            for i, v in ipairs(G.zombies) do
+                if v == self then table.remove(G.zombies, i) break end
+            end
+        end
+        function z:removeFromSquare() self.offSquare = true end
+        G.zombies[#G.zombies + 1] = z
+        return z
+    end
+    -- pacote do dono com a posição antiga: o servidor aplica (applyZombie)
+    function G.ownerPacket(z, x, y)
+        z.x, z.y = x + 0.5, y + 0.5
+    end
+
+    isClient = function() return opts.client == true end
+    isServer = function() return opts.server == true end
+    getDebug = function() return false end
+    SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
+    G.globalMD = opts.globalMD or {}
+    ModData = {
+        getOrCreate = function(name)
+            G.globalMD[name] = G.globalMD[name] or {}
+            return G.globalMD[name]
+        end,
+    }
+    getTimestampMs = function() return G.now end
+    G.rand = 0
+    ZombRand = function(n) return G.rand % n end
+    getNumActivePlayers = function() return #G.players end
+    getSpecificPlayer = function(i) return G.players[i + 1] end
+    -- getPlayer() é o jogador em foco (tela dividida); o mod usa getSpecificPlayer(0)
+    getPlayer = function() error("use getSpecificPlayer(0)", 2) end
+    IsoFlagType = { water = "water" }
+    getOnlinePlayers = function() return jlist(G.players) end
+    getCell = function()
+        return {
+            getGridSquare = function(_, x, y, z) return G.square(x, y, z) end,
+            getZombieList = function() return jlist(G.zombies) end,
+        }
+    end
+    addZombiesInOutfit = function(x, y, z, n, outfit, female)
+        local zz = G.zombie({ x = x, y = y, z = z, id = G.nextID, outfit = outfit, onlineID = G.nextID })
+        G.nextID = G.nextID + 1
+        zz.x, zz.y = x, y
+        zz.femaleChance = female
+        G.spawned[#G.spawned + 1] = zz
+        G.fire("OnZombieCreate", zz)
+        return jlist({ zz })
+    end
+    sendServerCommand = function(a, b, c, d)
+        if d == nil then
+            G.sentServer[#G.sentServer + 1] = { module = a, command = b, args = c }
+        else
+            G.sentServer[#G.sentServer + 1] = { player = a, module = b, command = c, args = d }
+        end
+    end
+    sendClientCommand = function(a, b, c, d)
+        if d == nil then
+            G.sentClient[#G.sentClient + 1] = { module = a, command = b, args = c }
+        else
+            G.sentClient[#G.sentClient + 1] = { player = a, module = b, command = c, args = d }
+        end
+    end
+    G.world = { tod = opts.tod or 12 }
+    getGameTime = function() return { getTimeOfDay = function() return G.world.tod end } end
+    getClimateManager = function()
+        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
+    end
+    Events = setmetatable({}, {
+        __index = function(t, name)
+            local e = { Add = function(f) handlers[name] = handlers[name] or {}; table.insert(handlers[name], f) end }
+            rawset(t, name, e)
+            return e
+        end,
+    })
+    function G.reload(mods)
+        for _, m in ipairs(mods) do
+            _G[m] = nil
+            package.loaded[m] = nil
+        end
+    end
+    -- n ticks do jogo, avançando o relógio real (60 FPS)
+    function G.tick(n)
+        for _ = 1, n or 1 do
+            G.now = G.now + 16
+            G.ticks = G.ticks + 1
+            G.fire("OnTick", G.ticks)
+        end
+    end
+    function G.seconds(s) G.tick(math.floor(s * 1000 / 16 + 0.5)) end
+    function G.commands(list, command)
+        local out = {}
+        for _, c in ipairs(list) do if c.command == command then out[#out + 1] = c end end
+        return out
+    end
+    return G
+end
+
+-- persistentOutfitID no formato do jogo; acha um ID que é (ou não) Sem-rosto no período.
+function W.semRostoID(period, want, chance)
+    require "NOM_VariantRules"
+    local c = { semRostoOn = true, semRostoChance = chance or 5 }
+    for seed = 1, 500 do
+        local id = 7 * 65536 + seed
+        if NOM_VariantRules.semRosto(id, period, c) == want then return id end
+    end
+    error("nenhum ID")
+end
+
+return W

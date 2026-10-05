@@ -19,6 +19,12 @@ NOM_Config.DEFAULTS = {
     EstaladorChance = 5,
     CorredorChance = 10,
     CorredorScreamRadius = 40,
+    SemRostoEnabled = true,
+    SemRostoChance = 5,
+    FogAmbience = true,
+    FogOverlays = true,
+    FogVignette = true,
+    FogVignetteIntensity = 1.0,
 }
 
 function NOM_Config.get(key)

@@ -11,8 +11,8 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
-- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto · Eco (`EcoEnabled`), todos padrão ligado
-- Overlays de névoa
+- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
+- Névoa: som ambiente (`FogAmbience`) · sangue e ferrugem no chão (`FogOverlays`) · vinheta (`FogVignette`), todos padrão ligado
 
 ## Números
 
@@ -26,5 +26,6 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
 | `EstaladorChance` (5 %, faixa 0–100), `CorredorChance` (10 %, faixa 0–100; somadas acima de 100, o Corredor fica com o resto) | [monsters.md](monsters.md#estalador) |
 | `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor-noturno) |
-| `SemRostoChance` | [monsters.md](monsters.md#sem-rosto) |
+| `SemRostoChance` (5 %, faixa 0–100) | [monsters.md](monsters.md#sem-rosto) |
+| `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |
 | `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |

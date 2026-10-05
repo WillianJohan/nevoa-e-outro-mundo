@@ -61,4 +61,11 @@ return {
         C.send("NevoaEOutroMundo", "ecoGone", { ids = { -1, 4 } })
         assert(not a.removed, "removeu zumbi sem ID de rede")
     end,
+    -- o substituto do Sem-rosto travado (fallback da ADR-007) usa a mesma limpeza
+    client_removes_replaced_semrosto = function()
+        local C = setup(true)
+        local a, b = C.zombie(4), C.zombie(7)
+        C.send("NevoaEOutroMundo", "semRostoGone", { ids = { 7 } })
+        assert(b.removed and not a.removed)
+    end,
 }

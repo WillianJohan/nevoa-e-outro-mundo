@@ -3,10 +3,11 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta) |
 
-Som e overlays rodam no **cliente**: é o que se ouve e o que cada jogador vê
-sozinho. O clima é a exceção: roda no **servidor** e chega aos clientes pela
+Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
+jogador vê sozinho. Nada disso vai pra rede nem pro save
+([ADR-007](../architecture/adr-007-sem-rosto-e-atmosfera-local.md)). O clima é a exceção: roda no **servidor** e chega aos clientes pela
 sincronização de clima do próprio jogo.
 
 ## Clima
@@ -30,23 +31,37 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 ## Som
 
-- Névoa: o ambiente troca para drone grave + ruídos metálicos distantes.
-- Rádio chiando por proximidade do Sem-rosto.
+- Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
+  a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s).
+- Rádio chiando por proximidade do Sem-rosto (`SemRostoEnabled`): loop de estática
+  com volume pela distância do Sem-rosto mais perto; para quando a névoa baixa.
 - Estalo do Estalador, grito do Corredor.
+- Sons originais, gerados por `scripts/gen_sounds.py` ([CREDITS.md](../../CREDITS.md)).
 
 ## Overlays (só na névoa)
 
-- Manchas de sangue e ferrugem surgem aos poucos em tiles perto do jogador e
-  somem quando a névoa baixa.
+- `FogOverlays`: manchas de sangue e ferrugem surgem aos poucos (uma a cada
+  1,5 s, com fade de 6 s) em tiles livres a 3–12 tiles do jogador, até 40. As que
+  ficam a mais de 20 tiles somem. Quando a névoa baixa, todas somem em ~6 s.
 - **Locais e só visuais**, sem sincronizar. Cada jogador vê o próprio pesadelo.
+  São marcadores de tela (`IsoMarkers`), não objetos do mapa: nada fica no save.
+- Visual por nome de sprite vanilla (`overlay_blood_floor_01_*`, e
+  `overlay_grime_floor_01_*` tingido de ferrugem).
+
+## Vinheta (só na névoa)
+
+- `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,
+  desfocam e perdem cor, com fade. É o efeito de tela do modo de busca do jogo,
+  ligado sem ligar o forrageamento.
+- Se o jogador forragear na névoa, a vinheta sai da frente e o forrageamento usa a
+  dele; volta quando ele para.
 
 ## Shader (spike)
 
-| Status | `draft` — depende do spike |
+| Status | `accepted` — concluído ([spike](../sprints/spike-shader/README.md)) |
 |---|---|
 
-- Pergunta: o B42 carrega GLSL vindo da pasta do mod?
-- Probe: vinheta + grão de filme ativados só na névoa.
-- Se sim, vira camada extra. Se não, fica só o clima.
+- Override de shader do jogo (grão de filme): arquivado. Vale só pra primeira carga
+  de mundo da sessão e troca o shader de todo mundo. A vinheta saiu sem shader.
 
 O jogo trata a névoa do mod como névoa de verdade em todo lugar que lê `getFogIntensity()`: visão dos zumbis, do jogador, combate e o parâmetro de áudio de névoa. É intencional.

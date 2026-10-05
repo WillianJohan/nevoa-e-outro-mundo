@@ -42,6 +42,15 @@ return {
         assert(NOM_Config.get("CorredorChance") == 10)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
+    config_fog_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("SemRostoEnabled") == true)
+        assert(NOM_Config.get("SemRostoChance") == 5)
+        assert(NOM_Config.get("FogAmbience") == true)
+        assert(NOM_Config.get("FogOverlays") == true)
+        assert(NOM_Config.get("FogVignette") == true)
+        assert(NOM_Config.get("FogVignetteIntensity") == 1.0)
+    end,
     -- toda opção do sandbox tem default no Lua e rótulo + tooltip nas duas línguas
     config_every_option_has_default_and_translations = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -63,7 +72,17 @@ return {
                 assert(json:find(key .. '_tooltip"', 1, true), lang .. " sem tooltip: " .. name)
             end
         end
-        assert(n >= 18, "esperava as opções das variantes, achou " .. n)
+        assert(n >= 24, "esperava as opções da névoa, achou " .. n)
+    end,
+    -- drone e rádio tocam em loop; o metal é um golpe só
+    config_fog_sounds_loop = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local function body(name) return txt:match("sound%s+" .. name .. "%s*(%b{})") end
+        assert(body("NOM_FogDrone"):find("loop = true", 1, true), "drone sem loop")
+        assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
+        assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()
@@ -89,8 +108,8 @@ return {
             h:close()
             n = n + 1
         end
-        assert(n >= 2, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream" }) do
+        assert(n >= 5, "sons declarados: " .. n)
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,
