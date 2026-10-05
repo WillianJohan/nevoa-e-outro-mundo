@@ -137,6 +137,16 @@ return {
         end
     end,
 
+    -- parser estrito de verdade (o daqui de cima só confere o formato por linha):
+    -- aspas sem escape, escape inválido e vírgula sobrando falham
+    translations_strict_json = function()
+        eachFile(function(lang, name, path)
+            local ok = os.execute("python3 -c 'import json,sys; json.load(open(sys.argv[1], encoding=\"utf-8\"))' '"
+                .. path .. "' 2>/dev/null")
+            assert(ok == 0 or ok == true, lang .. "/" .. name .. ": JSON inválido (python3 -m json.tool " .. path .. ")")
+        end)
+    end,
+
     translations_json_commas = function()
         eachFile(function(lang, name, path)
             local _, entries = parse(path)
