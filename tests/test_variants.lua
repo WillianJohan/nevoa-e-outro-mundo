@@ -7,6 +7,8 @@
 -- * getGameTime():getWorldAgeHours() (server/Vehicles/VehicleCommands.lua:240).
 -- * OnClientCommand(module, command, player, args) (server/ClientCommands.lua:1296).
 -- * modData do zumbi no servidor: o Eco tem NOM_eco (server/NOM_Eco.lua).
+-- * character:DistTo(x, y) (client/Vehicles/TimedActions/ISDetachTrailerFromVehicle.lua:34);
+--   getTimestampMs() relógio real em ms (server/ISObjectClickHandler.lua:352).
 require "NOM_VariantRules"
 
 local FILE = "mod/42/media/lua/server/NOM_Variants.lua"
@@ -16,7 +18,7 @@ local HEARING_MULT = { 3.0, 1.0, 0.45 }
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = {}, sounds = {}, played = {}, hours = 100, world = { tod = opts.tod or 23 },
-        globalMD = {}, aiReport = nil }
+        globalMD = {}, aiReport = nil, ms = 0 }
     local handlers = {}
     local function fire(name, ...)
         for _, h in ipairs(handlers[name] or {}) do h(...) end
@@ -65,6 +67,7 @@ local function setup(opts)
             getWorldAgeHours = function() return G.hours end,
         }
     end
+    getTimestampMs = function() return G.ms end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
     end
@@ -100,7 +103,18 @@ local function setup(opts)
         G.world.tod = tod
         NOM_World.update(0)
     end
-    function G.clientCommand(module, command, args) fire("OnClientCommand", module, command, {}, args) end
+    -- jogador que manda o comando: perto do zumbi (10, 10) por padrão
+    function G.player(x, y)
+        local p = { x = x or 12, y = y or 10 }
+        function p:DistTo(tx, ty) return math.sqrt((self.x - tx) ^ 2 + (self.y - ty) ^ 2) end
+        return p
+    end
+    G.sender = G.player()
+    -- cada comando chega 2 s depois do anterior, salvo o teste dizer outra coisa
+    function G.clientCommand(module, command, args, player, gapMs)
+        G.ms = G.ms + (gapMs or 2000)
+        fire("OnClientCommand", module, command, player or G.sender, args)
+    end
     -- alcance real do grito pros zumbis em volta (audição apurada da noite)
     function G.reach(s) return s.radius * HEARING_MULT[1] end
     G.setTime(G.world.tod)
@@ -190,5 +204,28 @@ return {
         G3.zombie({ id = idFor("corredor", 1, { CorredorChance = 100, EstaladorChance = 0 }), onlineID = 5 })
         G3.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 5 })
         assert(#G3.played == 0, "toggle desligado gritou")
+    end,
+    -- o aviso vem do cliente: só vale de quem está perto do Corredor (25 tiles)
+    variants_rejects_far_sender = function()
+        local G = setup({ server = true })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 8 })
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, G.player(10, 36))
+        assert(#G.played == 0, "jogador a 26 tiles fez o Corredor gritar")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, G.player(10, 35))
+        assert(#G.played == 1, "jogador a 25 tiles não valeu")
+    end,
+    -- no máximo um corredorSaw a cada 2 s reais por jogador; outro jogador não é afetado
+    variants_rate_limit_per_player = function()
+        local G = setup({ server = true })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 8 })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 9 })
+        local a, b = G.player(), G.player()
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 99 }, a) -- inválido, mas conta
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, a, 500)
+        assert(#G.played == 0, "passou do limite")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, b, 0)
+        assert(#G.played == 1, "limite de um jogador travou o outro")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 1500)
+        assert(#G.played == 2, "não liberou depois de 2 s")
     end,
 }

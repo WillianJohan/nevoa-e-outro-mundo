@@ -50,16 +50,34 @@ end
 -- Solo: este processo simula os zumbis (no dedicado é o cliente dono).
 if not isServer() then NOM_VariantAI.install(scream) end
 
--- args vem do cliente: só número, e -1 (sem ID de rede) nunca casa.
+-- O aviso vem do cliente, que pode mentir. Além da variante, da noite e do
+-- cooldown (scream), só vale de quem está perto do zumbi, e cada jogador manda
+-- no máximo um aviso a cada RATE_MS de relógio real (contando os inválidos).
+local SENDER_RANGE = 25
+local RATE_MS = 2000
+-- ponytail: chave é o objeto do jogador; quem desconecta fica na tabela até o
+-- servidor reiniciar (um número por jogador). Limpar no desconectar se crescer.
+local lastSaw = {}
+
+local function rateOk(player)
+    local now = getTimestampMs()
+    local last = lastSaw[player]
+    if last and now - last < RATE_MS then return false end
+    lastSaw[player] = now
+    return true
+end
+
+-- args: só número, e -1 (sem ID de rede) nunca casa.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "corredorSaw" then return end
+    if not rateOk(player) then return end
     local id = args and args.id
     if type(id) ~= "number" or id == -1 then return end
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z:getOnlineID() == id then
-            scream(z)
+            if player:DistTo(z:getX(), z:getY()) <= SENDER_RANGE then scream(z) end
             return
         end
     end
