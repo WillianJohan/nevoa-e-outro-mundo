@@ -42,7 +42,9 @@ local function load(withApi, debug)
     PZAPI = withApi and { ModOptions = fakeModOptions() } or nil
     isServer = function() return false end
     getDebug = function() return debug == true end
-    Keyboard = { KEY_F7 = 65 } -- org/lwjglx/input/Keyboard
+    -- org/lwjglx/input/Keyboard. F7 (65) abre o editor de veículos do vanilla em -debug
+    -- (IngameState.updateInternal 547–606): o mod usa Insert (210)
+    Keyboard = { KEY_F7 = 65, KEY_INSERT = 210 }
     dofile(FILE)
     return NOM_ScreenFxOptions
 end
@@ -114,8 +116,8 @@ return {
     screenfx_options_debug_key_only_in_debug = function()
         local O = load(true, true)
         local k = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel")
-        assert(k and k.type == "keybind" and k.key == 65 and k.name:find("^UI_NOM_") and k.tooltip:find("^UI_NOM_"))
-        assert(O.debugPanelKey() == 65)
+        assert(k and k.type == "keybind" and k.key == 210 and k.name:find("^UI_NOM_") and k.tooltip:find("^UI_NOM_"))
+        assert(O.debugPanelKey() == 210)
         O = load(true, false)
         assert(PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel") == nil, "tecla sem -debug")
         assert(O.debugPanelKey() == nil)
@@ -125,6 +127,6 @@ return {
         PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel").key = 88
         assert(O.debugPanelKey() == 88, "não seguiu a tecla trocada")
         O = load(false, true)
-        assert(O.debugPanelKey() == 65, "sem a API: F7")
+        assert(O.debugPanelKey() == 210, "sem a API: Insert")
     end,
 }

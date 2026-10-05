@@ -1,6 +1,6 @@
 -- Painel de debug (sprint 0020): janela de botões que chamam os atalhos NOM.*
 -- (client/NOM_Console.lua), só no cliente com o jogo em -debug. Abre e fecha pela
--- tecla das opções do mod (NOM_ScreenFxOptions.debugPanelKey, padrão F7) ou por
+-- tecla das opções do mod (NOM_ScreenFxOptions.debugPanelKey, padrão Insert) ou por
 -- NOM.panel(). Fechado, sai do UIManager: não pega clique nem tecla. A posição fica
 -- no layout do jogo (ISLayoutManager.RegisterWindow, como ISBBQInfoAction.lua:29).
 -- Padrão de janela: ISCollapsableWindow com ISButton (DebugUIs/ISFilmingToolsUI.lua).

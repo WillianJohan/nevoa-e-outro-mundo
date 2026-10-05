@@ -27,9 +27,11 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
     -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
-    -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods
+    -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods. Insert: F7 abre o
+    -- editor de veículos do vanilla em -debug (IngameState.updateInternal 547–606), F2/F8/F9
+    -- também são do debug e F1–F6/F10/F11 têm bind; nenhuma das classes que leem o teclado usa Insert
     if getDebug() then
-        page:addKeyBind("DebugPanel", "UI_NOM_DebugPanelKey", Keyboard.KEY_F7, "UI_NOM_DebugPanelKey_tooltip")
+        page:addKeyBind("DebugPanel", "UI_NOM_DebugPanelKey", Keyboard.KEY_INSERT, "UI_NOM_DebugPanelKey_tooltip")
     end
 end
 
@@ -69,10 +71,10 @@ function O.bloom()
     return math.max(0, math.min(2, v))
 end
 
--- Código da tecla do painel de debug; nil fora do -debug. F7 sem a página.
+-- Código da tecla do painel de debug; nil fora do -debug. Insert sem a página.
 function O.debugPanelKey()
     if not getDebug() then return nil end
-    return value("DebugPanel", Keyboard.KEY_F7)
+    return value("DebugPanel", Keyboard.KEY_INSERT)
 end
 
 return NOM_ScreenFxOptions

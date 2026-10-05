@@ -98,7 +98,7 @@ NOM.HELP = {
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },
     { "NOM.status()", "estado do mod, local e do servidor" },
-    { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão F7)" },
+    { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },
 }
 
