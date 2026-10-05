@@ -16,30 +16,40 @@ require "NOM_AtmosphereRules"
 
 NOM_FogVignette = { UPDATE_TICKS = 10 }
 
--- [pn] = { m = manager, override = isOverride de antes, enabled = enabled de antes }
+-- [pn] = { m = manager, override = isOverride de antes, enabled = enabled de
+-- antes, intensity = intensidade aplicada }
 local owned = {}
 
-local function take(pn, m)
+local function targets(pn, intensity)
+    owned[pn].intensity = intensity
     local sm = getSearchMode()
-    owned[pn] = { m = m, override = m.isOverride, enabled = sm:isEnabled(pn) }
-    m.isOverride = true
-    local v = NOM_AtmosphereRules.vignette(NOM_Config.get("FogVignetteIntensity"))
+    local v = NOM_AtmosphereRules.vignette(intensity)
     local psm = sm:getSearchModeForPlayer(pn)
     psm:getBlur():setTargets(v.blur, v.blur)
     psm:getDesat():setTargets(v.desat, v.desat)
     psm:getRadius():setTargets(v.radius, v.radius)
     psm:getDarkness():setTargets(v.darkness, v.darkness)
     psm:getGradientWidth():setTargets(v.gradient, v.gradient)
+end
+
+local function take(pn, m, intensity)
+    local sm = getSearchMode()
+    owned[pn] = { m = m, override = m.isOverride, enabled = sm:isEnabled(pn) }
+    m.isOverride = true
+    targets(pn, intensity)
     sm:setEnabled(pn, true) -- o SearchMode já aproxima dos alvos devagar (fade)
 end
 
 -- Devolve o override de antes. Se ele era nosso, o enabled fica como o vanilla
 -- deixaria (a fórmula do updateOverlay, :1089), sem esperar o vanilla rodar; se
 -- era de outro (OnOverrideSearchManager, outro mod), volta o enabled de antes.
+-- Se o isOverride não é mais o true que pusemos (ISSearchManager.handleOverride
+-- mudou no meio, :1449-1456), o controle é de outro: não escreve nada.
 local function release(pn)
     local o = owned[pn]
     owned[pn] = nil
     local m = o.m
+    if m.isOverride ~= true then return end
     m.isOverride = o.override
     if o.override then
         getSearchMode():setEnabled(pn, o.enabled)
@@ -49,7 +59,8 @@ local function release(pn)
 end
 
 local function update()
-    local on = NOM_FogState.on and NOM_Config.get("FogVignette") and NOM_Config.get("FogVignetteIntensity") > 0
+    local intensity = NOM_Config.get("FogVignetteIntensity")
+    local on = NOM_FogState.on and NOM_Config.get("FogVignette") and intensity > 0
     local seen = {}
     for i = 0, getNumActivePlayers() - 1 do
         local p = getSpecificPlayer(i)
@@ -59,7 +70,9 @@ local function update()
             local m = ISSearchManager.getManager(p)
             local want = on and not m.isSearchMode
             if want and not owned[pn] then
-                take(pn, m)
+                take(pn, m, intensity)
+            elseif want and owned[pn].intensity ~= intensity then
+                targets(pn, intensity) -- sandbox mudou no meio da névoa
             elseif not want and owned[pn] then
                 release(pn)
             end

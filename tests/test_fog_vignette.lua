@@ -139,4 +139,24 @@ return {
         assert(m.isOverride == true, "apagou o override de outro")
         assert(G.enabled[0] == false, "não devolveu o enabled de antes")
     end,
+    -- o override de antes mudou no meio (handleOverride): não escreve o velho de volta
+    vignette_release_does_not_restore_stale_override = function()
+        local G = setup()
+        local m = ISSearchManager.getManager(G.p)
+        m.isOverride = true -- de outro
+        NOM_FogState.set(true, 1)
+        G.seconds(2)
+        m.isOverride = false -- o outro soltou (ISSearchManager.handleOverride, :1449-1456)
+        NOM_FogState.set(false, 1)
+        G.seconds(1)
+        assert(m.isOverride == false, "escreveu de volta o override velho")
+    end,
+    vignette_intensity_change_mid_fog = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(2)
+        SandboxVars.NevoaEOutroMundo.FogVignetteIntensity = 2
+        G.seconds(2)
+        assert(G.targets[0].darkness[1] == NOM_AtmosphereRules.vignette(2).darkness, "intensidade nova não aplicou")
+    end,
 }

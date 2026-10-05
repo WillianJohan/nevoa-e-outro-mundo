@@ -74,7 +74,7 @@ local function update()
     local now = getTimestampMs()
     local dt = lastMs and now - lastMs or 0
     lastMs = now
-    local p = getPlayer()
+    local p = getSpecificPlayer(0) -- getPlayer() é o jogador em foco na tela dividida
     local on = NOM_FogState.on and NOM_Config.get("FogOverlays") and p ~= nil and not p:isDead()
     local fade = O.FADE_MS / O.ALPHA -- approach anda 1 por fadeMs
     for i = #marks, 1, -1 do

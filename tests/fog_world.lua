@@ -7,7 +7,10 @@
 --   "o jogador vê o zumbi" (IsoZombie.checkZombieEntersPlayerBuilding 26–44).
 -- * getForwardDirection():getDirection() em radianos (shared/Fishing/FishingRod.lua:286).
 -- * square:isFree(false) (client/ISUI/ISWorldObjectContextMenu.lua:2199).
--- * teleportTo(x, y, z): setX/Y/Z no próprio objeto, sem rede (IsoGameCharacter.teleportTo(III)).
+-- * teleportTo(x, y, z): setX/Y/Z com o int (canto do tile), setLastX/Y, sem rede
+--   (IsoGameCharacter.teleportTo(III)); setX/setY/setLastX/setLastY públicos (IsoMovingObject).
+-- * Água: square:getProperties():has(IsoFlagType.water) (server/Fishing/BuildingObjects/FishingNet.lua:31).
+-- * Andar: o jogador pode estar em z quebrado (escada); o square é do math.floor(z).
 -- * MP: o servidor aplica a posição que o dono manda (NetworkZombiePacker.applyZombie);
 --   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
 -- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
@@ -29,7 +32,7 @@ end
 function W.new(opts)
     opts = opts or {}
     local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
-        holes = {}, blocked = {}, lit = {}, dark = opts.dark or false, nextID = 1000, spawned = {} }
+        holes = {}, blocked = {}, lit = {}, water = {}, dark = opts.dark or false, nextID = 1000, spawned = {} }
     local handlers = {}
     G.handlers = handlers
     function G.fire(name, ...)
@@ -47,7 +50,7 @@ function W.new(opts)
     end
     local function couldSee(pn, x, y, z)
         local p = G.byNum[pn]
-        if not p or p.z ~= z or G.blocked[key(x, y, z)] then return false end
+        if not p or math.floor(p.z) ~= z or G.blocked[key(x, y, z)] then return false end
         local dx, dy = x + 0.5 - p.x, y + 0.5 - p.y
         return math.sqrt(dx * dx + dy * dy) <= 30 and angleOk(p, x, y)
     end
@@ -64,6 +67,9 @@ function W.new(opts)
             getY = function() return y end,
             getZ = function() return z end,
             isFree = function(_, _) return sq.free and not G.noFree end,
+            getProperties = function()
+                return { has = function(_, flag) return flag == IsoFlagType.water and G.water[k] == true end }
+            end,
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             isCanSee = function(_, pn)
                 if not couldSee(pn, x, y, z) then return false end
@@ -145,9 +151,14 @@ function W.new(opts)
         function z:isFemale() return self.female == true end
         function z:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
         function z:teleportTo(x, y, zz)
-            self.x, self.y, self.z = x, y, zz
+            self.x, self.y, self.z = math.floor(x), math.floor(y), math.floor(zz)
+            self.lastX, self.lastY = self.x, self.y
             self.teleports = (self.teleports or 0) + 1
         end
+        function z:setX(v) self.x = v; return v end
+        function z:setY(v) self.y = v; return v end
+        function z:setLastX(v) self.lastX = v; return v end
+        function z:setLastY(v) self.lastY = v; return v end
         function z:dressInPersistentOutfitID(id) self.id = id end
         function z:removeFromWorld()
             self.removed = true
@@ -180,7 +191,9 @@ function W.new(opts)
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end
-    getPlayer = function() return G.players[1] end
+    -- getPlayer() é o jogador em foco (tela dividida); o mod usa getSpecificPlayer(0)
+    getPlayer = function() error("use getSpecificPlayer(0)", 2) end
+    IsoFlagType = { water = "water" }
     getOnlinePlayers = function() return jlist(G.players) end
     getCell = function()
         return {

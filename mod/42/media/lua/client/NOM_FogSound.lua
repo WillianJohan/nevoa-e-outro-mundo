@@ -74,7 +74,7 @@ local function onTick()
     local now = getTimestampMs()
     local dt = lastMs and now - lastMs or 0
     lastMs = now
-    local p = getPlayer()
+    local p = getSpecificPlayer(0) -- getPlayer() é o jogador em foco na tela dividida
     if not p or p:isDead() then
         stop(drone)
         stop(static)
