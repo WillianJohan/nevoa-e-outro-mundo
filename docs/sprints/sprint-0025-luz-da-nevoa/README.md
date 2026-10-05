@@ -42,6 +42,14 @@ A cor continua vindo do clima: a névoa vermelha segue vermelha.
   GPU (spike primeiro), discutido com o Johan em 2026-10-05.
 - Se ficar bom, os ajustes de luz entram na névoa de vez e a simulação 3D vira opcional (qualidade alta).
 
+## Aprendizados
+
+- **Ordem do raio importa quando a cor varia no volume.** O laço anda do ponto visível rumo à câmera,
+  mas a composição "frente cobre fundo" tratava o primeiro passo como o mais perto da câmera. No visual
+  antigo, a cor quase não variava e ninguém notou. No novo, apareceu no primeiro vídeo do Johan: névoa
+  rala clara, funda escura e parede brilhando. Agora o visual novo percorre da câmera pro chão. O
+  antigo ficou como estava, pra servir de comparação.
+
 ## Ajustes fáceis (no `NOM_VolFog.frag`)
 
 | Constante | Efeito |
