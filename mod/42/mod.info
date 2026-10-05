@@ -1,5 +1,9 @@
 name=Névoa e Outro Mundo
 id=NevoaEOutroMundo
 author=Johan
-modversion=0.1.0
+modversion=1.0.0
+versionMin=42.20
+poster=poster.png
+icon=icon.png
+url=https://github.com/WillianJohan/nevoa-e-outro-mundo
 description=Noite agressiva estilo The Last of Us e névoa do Outro Mundo estilo Silent Hill.

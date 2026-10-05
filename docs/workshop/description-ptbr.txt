@@ -1,0 +1,47 @@
+[h1]Português (BR)[/h1]
+Horror para o Build 42, inspirado em The Last of Us e Silent Hill. [b]A noite traz infectados de carne. A névoa traz o Outro Mundo.[/b]
+
+[h2]Noite[/h2]
+[list]
+[*]Todo zumbi fica mais rápido e enxerga e ouve mais longe. Lanterna ligada ao ar livre vira farol.
+[*]De tempos em tempos, os zumbis perto de você vêm até você mesmo sem te ver.
+[*][b]Estaladores[/b]: cegos, guiados só por som, estalam de aviso. Agachado e em silêncio, dá pra passar do lado.
+[*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.
+[*][b]Ecos[/b]: corpos deixados perto de você soltam uma alma fraca, uma vez por corpo. Sem cadáver, sem loot, somem ao amanhecer. Queime ou enterre os mortos.
+[/list]
+
+[h2]Névoa[/h2]
+Com névoa natural forte, o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, sangue e ferrugem surgem no chão e as bordas da tela se fecham.
+[b]O Sem-rosto[/b] anda na névoa. Olhe pra ele, ou ilumine, e ele some, pra voltar mais perto, atrás de você. Colado, ataca. O rádio chia na sua cabeça quando ele está perto.
+Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
+
+[h2]Sandbox[/h2]
+Página própria, "Névoa e Outro Mundo". Todo sistema tem liga/desliga e números (padrão entre parênteses):
+[list]
+[*]Clima sombrio (ligado), intensidade (1.0); névoa que acorda o Outro Mundo (0.5)
+[*]Noite: mais rápidos (ligado, x1.5), sentidos (ligado, x1.5), caça (ligada, a cada 60 min, 30 tiles)
+[*]Estaladores (5%), Corredores (10%, grito de 40 tiles), Sem-rosto (5% por névoa)
+[*]Ecos (até 30 por jogador, 40 tiles)
+[*]Névoa: som ambiente, sangue e ferrugem, vinheta (tudo ligado, vinheta 1.0)
+[/list]
+Presets "Leve" e "Pesadelo" documentados no GitHub; salve como preset seu do sandbox.
+
+[h2]Multiplayer[/h2]
+Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide noite, névoa, variantes e Ecos; som, vinheta e manchas são locais de cada jogador e não vão pra rede nem pro save. No servidor, coloque o mod em Mods e WorkshopItems; os clientes baixam sozinhos.
+
+[h2]Compatibilidade[/h2]
+[list]
+[*]Build 42.20 ou mais novo (nas anteriores o jogo marca o mod como indisponível).
+[*]Não adiciona itens, receitas nem muda o mapa. Deve conviver com a maioria dos mods; mods que também mexem na velocidade e nos sentidos dos zumbis à noite vão brigar com ele.
+[*]Tirar o mod de um save em andamento não quebra o save.
+[/list]
+
+[h2]Limites conhecidos[/h2]
+[list]
+[*]As variantes não têm visual próprio: você reconhece pelo som e pelo comportamento.
+[*]Os Ecos usam roupa vanilla (camisola de hospital e véu).
+[*]A atmosfera da névoa (som, manchas, vinheta) segue só o primeiro jogador na tela dividida.
+[/list]
+
+Código, documentação de design e bugs: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
+Todos os sons e imagens são originais, gerados por scripts do repositório. Licença MIT.

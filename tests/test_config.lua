@@ -51,26 +51,15 @@ return {
         assert(NOM_Config.get("FogVignette") == true)
         assert(NOM_Config.get("FogVignetteIntensity") == 1.0)
     end,
-    -- toda opção do sandbox tem default no Lua e rótulo + tooltip nas duas línguas
-    config_every_option_has_default_and_translations = function()
+    -- toda opção do sandbox tem default no Lua (as traduções: test_translations.lua)
+    config_every_option_has_default = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
         local txt = f:read("*a")
         f:close()
-        local langs = {}
-        for _, lang in ipairs({ "PTBR", "EN" }) do
-            local j = assert(io.open("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json"))
-            langs[lang] = j:read("*a")
-            j:close()
-        end
         local n = 0
         for name in txt:gmatch("option NevoaEOutroMundo%.(%w+)") do
             n = n + 1
             assert(NOM_Config.DEFAULTS[name] ~= nil, "sem default: " .. name)
-            for lang, json in pairs(langs) do
-                local key = '"Sandbox_NevoaEOutroMundo.' .. name
-                assert(json:find(key .. '"', 1, true), lang .. " sem rótulo: " .. name)
-                assert(json:find(key .. '_tooltip"', 1, true), lang .. " sem tooltip: " .. name)
-            end
         end
         assert(n >= 24, "esperava as opções da névoa, achou " .. n)
     end,

@@ -12,7 +12,40 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Com névoa forte, o mundo escurece, o rádio chia e o **Sem-rosto** aparece.
   Olhe pra ele e ele some. Pra reaparecer mais perto.
 
-> Estado: **em teste**. Sprints 0001–0006 implementadas, esperando a sessão in-game ([roteiro](docs/teste-in-game.md)). Ver o [roadmap](docs/sprints/README.md).
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0007
+> implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
+> dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
+
+### O que já está no mod
+
+| Sistema | O que faz | Sprint |
+|---|---|---|
+| Noite e névoa | detecta a noite e a névoa natural forte; clima mais escuro, dessaturado e tingido | 0001 |
+| Eco | corpo perto do jogador solta uma alma fraca à noite, uma vez; sem cadáver nem loot; some ao amanhecer | 0002 |
+| Noite agressiva | todo zumbi mais rápido, com sentidos melhores, caça periódica e lanterna que chama | 0003 |
+| Estalador e Corredor | cego guiado por som que estala; corredor que grita e chama a horda | 0004 |
+| Sem-rosto e atmosfera | some quando visto e volta mais perto; rádio chiando, drone, sangue e ferrugem no chão, vinheta | 0005 |
+| Balanceamento, MP e performance | orçamento por sistema travado por teste, comandos de debug, presets documentados | 0006 |
+| Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
+
+Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
+
+## Instalar
+
+**Jogador:** inscrever-se no item do Steam Workshop (link em breve, depois da
+publicação) e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
+Em servidor: `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
+`Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
+
+**Dev:** symlink do repositório na pasta de mods:
+
+```bash
+ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo
+```
+
+Se existir `~/Zomboid/Workshop/NevoaEOutroMundo/` (criada pelo
+`scripts/build-workshop.sh`) ou a inscrição no Workshop, o jogo carrega essa cópia e
+**ignora o symlink** ([por quê](docs/publicar.md#o-build-ganha-do-symlink)).
 
 ---
 
@@ -25,9 +58,14 @@ A documentação é a fonte da verdade. **Comece sempre pelo
 docs/
 ├─ gdd/            ← o QUÊ: design do mod, um arquivo por sistema. Hub: Overview.md
 ├─ architecture/   ← o COMO: ADRs e estrutura técnica
-└─ sprints/        ← o QUANDO: roadmap + uma pasta por sprint
-   └─ sprint-NNNN-slug/README.md
+├─ sprints/        ← o QUANDO: roadmap + uma pasta por sprint
+│  └─ sprint-NNNN-slug/README.md
+├─ workshop/       ← textos e preview da página do Steam Workshop
+├─ teste-in-game.md ← roteiro da sessão de teste no jogo
+└─ publicar.md     ← passo a passo do Workshop e da release
 mod/               ← o mod em si (nasce na sprint 0001)
+scripts/           ← geradores de som e imagem, build do Workshop
+tests/             ← testes (./run-tests.sh)
 ```
 
 ### Todo doc abre com uma tabela de `Status`
@@ -74,11 +112,15 @@ git push origin --delete sprint/0001-estado-e-clima
 
 ## Desenvolvimento
 
-- Project Zomboid **Build 42** (desenvolvido contra 42.20.4).
+- Project Zomboid **Build 42**: desenvolvido contra 42.20.4; publicação verificada contra 42.21.
 - Lua do mod em `mod/42/media/` + `mod/common/` (estrutura de mod do B42.20).
-- Dev local: `ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`.
-- Testes: `brew install luajit`, depois `./run-tests.sh`.
-- Teste in-game com o jogo em modo `-debug`.
+- Testes: `brew install luajit`, depois `./run-tests.sh` (lógica pura, traduções,
+  créditos e o build do Workshop, com `HOME` temporário).
+- Teste in-game com o jogo em modo `-debug`: [roteiro consolidado](docs/teste-in-game.md).
+- Sons e imagens são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_images.py`);
+  nada de terceiros ([CREDITS.md](CREDITS.md)).
+- Publicar e atualizar no Workshop: [docs/publicar.md](docs/publicar.md)
+  (`scripts/build-workshop.sh` monta a pasta de upload).
 
 ## Acordo de trabalho
 
