@@ -104,6 +104,19 @@ return {
         end
         assert(n >= 10, "achou só " .. n .. " opções numéricas")
     end,
+    -- curva de tensão (sprint 0019): escalada ligada, carência 7 dias (faixa 0–60)
+    config_new_options_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("FogEscalation") == true)
+        assert(NOM_Config.get("RedFogGraceDays") == 7)
+        local f = assert(io.open("mod/42/media/sandbox-options.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local esc = txt:match("option NevoaEOutroMundo%.FogEscalation = {(.-)}")
+        assert(esc and esc:find("type = boolean", 1, true), "FogEscalation fora do menu")
+        local grace = txt:match("option NevoaEOutroMundo%.RedFogGraceDays = {(.-)}")
+        assert(grace and grace:match("min = (%d+)") == "0" and grace:match("max = (%d+)") == "60", "faixa da carência")
+    end,
     -- tooltip do Eco (PO, sprint 0019): a mordida do Eco infecta como a de qualquer zumbi
     config_eco_tooltip_says_bite_infects = function()
         for lang, word in pairs({ PTBR = "mordida do Eco infecta", EN = "bite infects" }) do
