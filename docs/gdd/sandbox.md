@@ -29,3 +29,79 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `SemRostoChance` (5 %, faixa 0–100) | [monsters.md](monsters.md#sem-rosto) |
 | `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |
 | `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |
+
+## Presets
+
+Dois jeitos prontos de ajustar o sofrimento, além do padrão. Valores exatos de
+todas as opções da página "Névoa e Outro Mundo":
+
+| Opção | Padrão | Leve | Pesadelo |
+|---|---|---|---|
+| `DarkEnabled` | ligado | ligado | ligado |
+| `DarkIntensity` | 1.0 | 0.6 | 1.5 |
+| `FogThreshold` | 0.5 | 0.7 | 0.35 |
+| `EcoEnabled` | ligado | ligado | ligado |
+| `EcoMaxPerPlayer` | 30 | 10 | 60 |
+| `EcoRadius` | 40 | 25 | 50 |
+| `NightFaster` | ligado | **desligado** | ligado |
+| `NightSharperSenses` | ligado | ligado | ligado |
+| `NightHunt` | ligado | ligado | ligado |
+| `NightSpeedMult` | 1.5 | 1.5 | 2.5 |
+| `NightSenseMult` | 1.5 | 1.5 | 2.5 |
+| `HuntIntervalMinutes` | 60 | 120 | 30 |
+| `HuntRadius` | 30 | 20 | 50 |
+| `EstaladorEnabled` | ligado | ligado | ligado |
+| `CorredorEnabled` | ligado | ligado | ligado |
+| `EstaladorChance` | 5 | 3 | 10 |
+| `CorredorChance` | 10 | 5 | 20 |
+| `CorredorScreamRadius` | 40 | 30 | 60 |
+| `SemRostoEnabled` | ligado | ligado | ligado |
+| `SemRostoChance` | 5 | 2 | 15 |
+| `FogAmbience` | ligado | ligado | ligado |
+| `FogOverlays` | ligado | ligado | ligado |
+| `FogVignette` | ligado | ligado | ligado |
+| `FogVignetteIntensity` | 1.0 | 0.6 | 1.5 |
+
+- **Leve:** a noite muda o jeito de jogar sem virar uma corrida — os zumbis não ganham
+  velocidade (só os Corredores correm), a caça vem a cada 2 horas de perto, e a névoa
+  forte é rara e com um Sem-rosto de vez em quando.
+- **Pesadelo:** a pior noite possível, de propósito — dois degraus de velocidade e
+  sentidos (arrastado vira corredor), caça a cada meia hora de longe, o dobro de
+  variantes, névoa mais frequente e vala comum cheia de Ecos.
+
+**Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
+os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
+pasta do usuário (`getSandboxPresets()`, bytecode: só lê `LuaManager.getSandboxCacheDir()`).
+Pra ter "Leve" ou "Pesadelo" no menu: ajustar os valores acima uma vez e salvar como
+preset do usuário. Os dois mudam só a página do mod; o resto do sandbox fica com o
+preset vanilla escolhido.
+
+## Revisão dos defaults (2026-10-04, sem jogar)
+
+Revisão de coerência feita na sprint 0006, contra o sandbox vanilla mais comum do B42
+(Apocalypse: `ZombieLore.Speed = 4` aleatório, `Sight`/`Hearing = 5` aleatório,
+`media/lua/shared/Sandbox/Apocalypse.lua:195-207`). **Nenhum default mudou:** sem
+jogar, trocar número é chute; o que precisa ser sentido está no
+[roteiro in-game](../teste-in-game.md#balanceamento).
+
+- **Velocidade à noite é o ponto mais quente.** Com velocidade aleatória, de dia ~20%
+  são corredores, ~40% rápidos e ~40% arrastados (`doZombieSpeed(-1)` com sandbox 4).
+  `NightSpeedMult` 1.5 sobe um degrau: à noite **~60% correm**. O Corredor (10%) quase
+  só se distingue pelo grito. Se a noite ficar injusta ou o Corredor sumir no meio dos
+  outros, o ajuste é `NightFaster` desligado como padrão (o Corredor vira o único que
+  corre), não um multiplicador menor: 1.0–1.49 não sobe degrau nenhum.
+- **Sentidos:** sandbox aleatório usa "normal" de base; um degrau dá águia/apurada a
+  todos à noite. Audição apurada triplica o alcance de som, mas a caça e a lanterna já
+  compensam (alcance efetivo = o configurado). Coerente.
+- **Alcances:** caça 30, lanterna 30 (20 × 1.5), grito do Corredor 40, Eco 40. O
+  Corredor é quem chama de mais longe (é ele que começa a horda); a caça e a lanterna
+  empatam de propósito. Coerente.
+- **Chances:** 15% de variantes por noite (5 + 10) e 5% de Sem-rosto por névoa. Numa
+  cidade com 200 zumbis carregados são ~10 Sem-rosto ao mesmo tempo: muito rádio e
+  muito sumiço. No campo, com 20 carregados, ~1. Se a névoa na cidade virar ruído,
+  baixar `SemRostoChance` pra 2–3.
+- **Eco:** 30 por jogador num raio de 40 é o teto contra vala comum (sprint 0002); Eco
+  é fraco (vida 0.3) e lento. Coerente; ver o custo da varredura no
+  [orçamento](../architecture/README.md#orçamento-por-sistema).
+- **`FogThreshold` 0.5 e `DarkIntensity` 1.0:** dependem de como a névoa vanilla
+  aparece no jogo e de como a tela fica; só jogando.
