@@ -4,8 +4,13 @@
 |-------|-------|
 | Status | `accepted` |
 | Escrito em | sprint 0006 (2026-10-04) |
-| Cobre | todo critério in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) |
+| Cobre | os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
 | Duração | ~60–90 min: solo ~40, MP ~30, medições e remoção ~15 |
+
+> **⚠️ Use um save descartável.** `NOM_Debug.night` e `NOM_Debug.fog` avançam os
+> contadores de noites e de névoas que o mod **salva** no save (ModData global). O
+> número da noite decide o sorteio das variantes e a noite dos Ecos: num save de
+> verdade a mudança é permanente. Nada aqui é pra rodar num save que se quer manter.
 
 Uma sessão só. O save do solo anda na ordem natural (dia → anoitecer → noite →
 névoa → amanhecer), então cada passo prepara o próximo. Os roteiros das sprints
@@ -35,15 +40,15 @@ de debug do jogo; rodar como admin).
 | `NOM_Debug.status()` | estado do mod | `[NOM] debug local …` e `[NOM] debug servidor …` |
 | `NOM_Debug.night(true)` / `(false)` / `()` | força noite / dia / devolve pro relógio | `[NOM] debug noite forcada=true`; vale no próximo minuto de jogo |
 | `NOM_Debug.fog(0.8)` / `(0)` / `()` | força a intensidade de névoa lida pelo mod / devolve pro clima | `[NOM] debug nevoa forcada=0.8` |
-| `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`; `()` desfaz) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
+| `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`; `()` desfaz). Vale pelo `persistentOutfitID`: outro zumbi com o mesmo ID (gêmeo, raro) vira junto. Some quando o jogo reinicia (carregar o save de novo) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
 | `NOM_Debug.spawnEco()` | um Eco nos pés do jogador (só à noite) | `[NOM] debug eco spawn=true` |
 
 A noite forçada liga tudo do mod, mas o céu continua o do relógio: pra **ver** a
 noite, use Debug → Time. A névoa forçada liga a névoa do mod (flag, Sem-rosto, som,
 chão, vinheta e a névoa que o mod soma no clima); a névoa vanilla continua a do clima.
 
-- [ ] `NOM_Debug.status()` no menu principal → nada (não está em jogo). Já dentro do
-      save: as duas linhas. **Se** `NOM_Debug` for `nil`: o jogo não está em `-debug`.
+- [ ] Dentro do save, `NOM_Debug.status()` imprime as duas linhas. **Se** `NOM_Debug`
+      for `nil`: o jogo não está em `-debug` (ou o mod não está ativo no save).
 
 ## Parte 1 — Solo (~40 min)
 
@@ -61,7 +66,7 @@ começando de dia, numa cidade (Muldraugh serve).
       [0005 passo 1](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#roteiro-in-game)
 - [ ] **Carga:** nenhum `ERROR`/`WARN` com `NOM_`, `NOM_sounds` ou `clothing.xml` no
       `console.txt`. → [0001: mod ativa sem erro](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite)
-- [ ] Primeira linha de clima: `[NOM] night=false fog=false fogI=0.00`.
+- [ ] Primeira linha de clima: `[NOM] night=false fog=false fogI=…` (a névoa vanilla do momento).
 
 ### 1.2 Dia: preparar a noite (5 min)
 
@@ -87,6 +92,10 @@ começando de dia, numa cidade (Muldraugh serve).
       Ecos de camisola de hospital e véu, em cima dos corpos, arrastados; um golpe
       derruba. **Se** `[NOM] eco outfit NOM_Eco não carregou`: registrar.
       → [0002 passos 2 e 9 da 0003](sprints/sprint-0002-eco/README.md#roteiro-in-game)
+- [ ] **Corpo carregado:** pegar no colo um dos corpos que já soltou Eco, largar uns
+      tiles adiante e esperar 10 minutos de jogo. **Esperado:** nenhum segundo Eco desse
+      corpo (sem `eco spawn=` novo ali). **Se** sair: o `modData` do corpo não sobrevive
+      ao carregar. → pendência da [0002](sprints/sprint-0002-eco/README.md#pendências-que-a-próxima-sprint-herda)
 - [ ] Matar um Eco: `[NOM] eco cadaveres=1` em segundos; sem corpo, sem loot.
       → [0002: Eco morto sem cadáver](sprints/sprint-0002-eco/README.md#critérios-de-aceite)
 - [ ] `NOM_Debug.spawnEco()` → `[NOM] debug eco spawn=true` e um Eco aparece no jogador.
@@ -117,12 +126,10 @@ começando de dia, numa cidade (Muldraugh serve).
       → [0004: Corredor grita](sprints/sprint-0004-estalador-corredor/README.md#critérios-de-aceite) (passos 6 e 8)
 - [ ] Num Eco: `NOM_Debug.variant("estalador")`. Continua arrastado, não estala.
       → [0004 passo 13](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
-- [ ] **Salvar e carregar de noite:** sair, carregar. Os mesmos zumbis seguem variantes
-      (o forçado do debug some com o reinício; o sorteio natural, não), nenhum
-      `eco spawn=` dos mesmos corpos. → [0002 passo 6](sprints/sprint-0002-eco/README.md#roteiro-in-game),
-      [0004 passo 7](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
-
 ### 1.6 Noite com névoa (8 min)
+
+O Estalador do 1.5 segue forçado (o jogo não reiniciou). Se ele morreu:
+`NOM_Debug.variant("estalador")` num zumbi perto antes de ligar a névoa.
 
 - [ ] `NOM_Debug.fog(0.8)`. **Esperado:** `[NOM] night=true fog=true fogI=0.80`,
       `[NOM] nevoa fog=true periodo=1`; tela mais dessaturada e sépia, névoa mais
@@ -153,11 +160,17 @@ começando de dia, numa cidade (Muldraugh serve).
       anotar se a mira piora muito (o combate à distância lê a névoa).
       → pendência da [0001](sprints/sprint-0001-estado-e-clima/README.md#pendências-que-a-próxima-sprint-herda)
 
-### 1.7 Salvar com névoa (2 min)
+### 1.7 Salvar e carregar de noite (4 min)
 
-- [ ] Com manchas no chão: `NOM_Debug.fog(0)`, salvar, sair, carregar. Nenhuma mancha.
-      `NOM_Debug.fog(0.8)` de novo: manchas recomeçam do zero.
-      → [0005: overlays sem sobrar no save](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#critérios-de-aceite) (passo 7)
+- [ ] Com manchas no chão: `NOM_Debug.fog(0)`, salvar, sair, carregar (ainda de noite).
+      Nenhuma mancha. → [0005: overlays sem sobrar no save](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#critérios-de-aceite) (passo 7)
+- [ ] Mesma noite depois de carregar: nenhum `eco spawn=` dos corpos que já soltaram
+      Eco; `NOM_Debug.status()` com o mesmo `noiteN`; os zumbis que eram variante **pelo
+      sorteio natural** continuam (o forçado do debug some no reinício, é esperado).
+      → [0002 passo 6](sprints/sprint-0002-eco/README.md#roteiro-in-game),
+      [0004 passo 7](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
+- [ ] Pro amanhecer ter o que conferir: `NOM_Debug.variant("estalador")` num zumbi
+      perto e `NOM_Debug.fog(0.8)` de novo (as manchas recomeçam do zero).
 
 ### 1.8 Amanhecer (5 min)
 
@@ -212,6 +225,10 @@ padrões. Cliente(s) também com `-debug`, logados como admin.
 
 ### 2.2 Segundo cliente
 
+Os dois clientes com `-debug`: é o `client/NOM_Debug.lua` (só existe com `-debug`) que
+recebe as variantes forçadas, inclusive as de antes de B entrar (o servidor manda a
+tabela inteira na resposta ao pedido de estado da entrada).
+
 - [ ] B conecta **no meio da noite**: `stats aplicados=` no B logo depois de entrar, e as
       variantes valem. → [0003 passo 12](sprints/sprint-0003-noite-agressiva/README.md#roteiro-in-game),
       [0004 passo 12](sprints/sprint-0004-estalador-corredor/README.md#roteiro-in-game)
@@ -263,3 +280,14 @@ Responder em uma linha cada, depois de jogar (vai pros Checkpoints da sprint 000
 3. 30 Ecos por jogador foi muito, pouco ou certo?
 4. A escuridão (`DarkIntensity` 1.0) atrapalhou ver o jogo?
 5. A caça a cada hora de jogo ficou presente demais ou passou despercebida?
+
+## Fora desta sessão
+
+- **Sem-rosto deslizando na tela de um terceiro jogador** ([0005 passo 10](sprints/sprint-0005-sem-rosto-e-nevoa/README.md#roteiro-in-game),
+  parte "com B longe olhando A"): precisa de um terceiro cliente. Se der pra abrir um,
+  repetir o último item do 2.2 com C olhando de longe e anotar se ele desliza.
+- **`ActiveOnly`** ([0003 passo 14](sprints/sprint-0003-noite-agressiva/README.md#roteiro-in-game)):
+  precisa de um save com "Ativos só de dia". Se sobrar tempo: save descartável com essa
+  opção, à noite os zumbis continuam arrastados e sem `stats aplicados=` repetido a cada
+  passada.
+- **Tela dividida:** fora do escopo (pendência `later` da 0005).

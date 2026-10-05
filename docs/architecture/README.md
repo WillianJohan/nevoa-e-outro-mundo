@@ -78,7 +78,10 @@ som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
 - Loop de comportamento processa zumbis em lotes por tick, não todos de uma vez.
 - Teto de Ecos por jogador evita travar servidor em vala comum.
 - Comandos de debug (`NOM_Debug`) não existem nem agem fora do `-debug`; no dedicado
-  exigem a permissão de debug do jogo. O que forçam fica só em memória.
+  exigem a permissão de debug do jogo. O forçado em si fica em memória, **mas a noite
+  e a névoa forçadas avançam os contadores salvos de noites e de névoas** (ModData
+  global), o que muda o sorteio das variantes e a noite dos Ecos daquele save: usar
+  um save descartável.
 
 ## Orçamento por sistema
 
@@ -89,19 +92,19 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Sistema | Quando roda | Trabalho | Teste |
 |---|---|---|---|
 | `NightStats.tick` | todo tick à noite e na passada do amanhecer | ≤ `BATCH` (20) zumbis + 5 leituras de sandbox por tick | `stats_batch_bounded_with_200` |
-| `NightStats.tick` de dia | depois de uma passada sem nada a devolver | **zero** (dorme até a próxima flag) | `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night` |
+| `NightStats.tick` de dia | depois de uma passada sem nada a devolver | **zero** (dorme até a próxima flag ou a próxima hora de jogo, quando faz uma passada de conferência) | `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `stats_day_idle_wakes_every_hour` |
 | `VariantAI` (`OnZombieUpdate`) | todo frame, todo zumbi | zumbi comum: 2 consultas de tabela Lua, zero chamada | `ai_common_zombie_no_java_calls` |
 | Estalo do Estalador | 1/min de jogo à noite | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
-| Varredura do Eco | a cada 10 min de jogo, à noite | `(2·EcoRadius+1)²` squares por jogador (os repetidos 1×), 1 chamada por zumbi | `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
+| Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player` |
 
-Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, lê 6 561 squares por
-jogador num tick só, a cada 10 minutos de jogo (~25 s reais). Com vários jogadores
-longe uns dos outros é o maior pico do mod. Medir no jogo ([roteiro](../teste-in-game.md));
-se pesar, espalhar a varredura por vários ticks.
+Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561
+squares num tick (o raio de um jogador), a cada 10 minutos de jogo. É o maior pico do
+mod. Medir no jogo ([roteiro](../teste-in-game.md#parte-3--medições-15-min)); se pesar,
+fatiar também o raio de um jogador.
 
 ## Testes
 

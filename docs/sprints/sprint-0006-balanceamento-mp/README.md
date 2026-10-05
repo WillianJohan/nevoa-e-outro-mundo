@@ -19,11 +19,11 @@ sessão só de teste pro Johan: [docs/teste-in-game.md](../../teste-in-game.md).
 - [ ] Sessão de MP com 2+ jogadores por pelo menos 3 noites de jogo, sem erro no `console.txt` do servidor nem dos clientes — falta o jogo: [roteiro, Parte 2](../../teste-in-game.md#parte-2--multiplayer-30-min) (2.3)
 - [ ] Defaults do sandbox revisados depois de jogar (o que mudou e por quê, registrado em Checkpoints) — revisão de coerência feita sem jogar, nenhum default mudou ([sandbox.md](../../gdd/sandbox.md#revisão-dos-defaults-2026-10-04-sem-jogar)); falta jogar: [roteiro, Balanceamento](../../teste-in-game.md#balanceamento)
 - [x] Preset "leve" e "pesadelo" documentados no GDD de sandbox — [sandbox.md#presets](../../gdd/sandbox.md#presets), valores das 24 opções e um motivo por preset. Não vão no mod: `GlobalObject.getSandboxPresets()` (bytecode 0–104) só lista `*.cfg` da pasta do usuário e os vanilla são 5 nomes fixos (`client/OptionScreens/SandboxOptions.lua:891-895`)
-- [ ] FPS e tick do servidor medidos com e sem o mod numa cidade (Louisville/Muldraugh), números registrados — orçamento estático por sistema feito e travado por teste ([architecture/README.md#orçamento-por-sistema](../../architecture/README.md#orçamento-por-sistema): `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `ai_click_touches_only_estaladores`, `semrosto_scan_one_call_per_common_zombie`, `eco_scan_budget_independent_of_horde`); falta medir: [roteiro, Parte 3](../../teste-in-game.md#parte-3--medições-15-min)
+- [ ] FPS e tick do servidor medidos com e sem o mod numa cidade (Louisville/Muldraugh), números registrados — orçamento estático por sistema feito e travado por teste ([architecture/README.md#orçamento-por-sistema](../../architecture/README.md#orçamento-por-sistema): `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `stats_day_idle_wakes_every_hour`, `ai_click_touches_only_estaladores`, `semrosto_scan_one_call_per_common_zombie`, `eco_scan_budget_independent_of_horde`, `eco_scan_one_player_per_tick`); falta medir: [roteiro, Parte 3](../../teste-in-game.md#parte-3--medições-15-min)
 - [ ] Remover o mod de um save em andamento não quebra o save — por bytecode nada quebra e não houve o que corrigir ([pz-api-notes §8](../../architecture/pz-api-notes.md#8-remover-o-mod-de-um-save-sprint-0006): `GlobalModData.load` 125–183, `SandboxOptions.load` 95–110, `readLuaFile` 235–272, `PersistentOutfits.getOutfit` 40–58, `ClimateManager.save` só admin); falta o jogo: [roteiro, Parte 4](../../teste-in-game.md#parte-4--remover-o-mod-5-min)
 - [x] Todas as pendências herdadas das sprints 0001-0005 resolvidas ou promovidas a `later` — tabela [abaixo](#pendências-herdadas-0001-0005): 2 resolvidas por teste (`look_blizzard_override_uses_final`, `ai_click_is_local_on_mp_client`), as que dependem do jogo no roteiro consolidado, o resto `later` com motivo
 
-`./run-tests.sh`: `total=280 passou=280 falhou=0`.
+`./run-tests.sh`: `total=286 passou=286 falhou=0`.
 
 ## Pendências herdadas (0001-0005)
 
@@ -72,6 +72,8 @@ do dia do `NightStats`).
 Um só, pra todas as sprints: [docs/teste-in-game.md](../../teste-in-game.md). Desta
 sprint:
 
+0. **Save descartável:** a noite e a névoa forçadas avançam os contadores salvos
+   (`debug_forced_night_advances_saved_counter`).
 1. **Comandos de debug** (seção "Antes de começar"): `NOM_Debug.status()` imprime
    `[NOM] debug local …` e `[NOM] debug servidor …`; sem `-debug`, `NOM_Debug` é `nil`.
 2. **3 noites de MP** (Parte 2.3): nenhum erro com `NOM_` nos três consoles.
@@ -98,6 +100,14 @@ sprint:
   (velocidade aleatória), `NightSpeedMult` 1.5 faz ~60% dos zumbis correrem à noite e o
   Corredor quase só se distingue pelo grito; se o jogo confirmar, o ajuste é
   `NightFaster` desligado por padrão. Roteiro in-game consolidado.
+- **04/10/2026** — Review (sem Critical): a noite/névoa forçadas **não** são só memória,
+  avançam os contadores salvos (docs corrigidos, aviso no topo do roteiro, teste com o
+  `NOM_NightCount` de verdade); quem entra depois recebe as variantes forçadas (resposta
+  ao `nightState`); `NightStats` ocioso acorda a cada hora de jogo; varredura do Eco
+  espalhada, um jogador por tick; NaN recusado; linha de "negado"; §8 corrigida (tirar ou
+  pôr o `NOM_Eco` desloca o índice dos outfits seguintes); roteiro: save/load de noite
+  depois da névoa (1.7), corpo carregado no 1.4, "Fora desta sessão" (terceiro cliente,
+  `ActiveOnly`). 286 testes.
 
 ## Aprendizados
 
@@ -111,7 +121,10 @@ sprint:
 3. **Remover mod é seguro pelo lado do jogo:** opção de sandbox desconhecida é pulada,
    `ModData` global sem dono é carregado e esquecido, e `persistentOutfitID` com índice
    fora da lista de outfits vira "sem outfit" (`getOutfit` devolve 0), não exceção.
-4. **Teste de "não chama o zumbi" precisa separar o jogo do mod.** O fake do
+4. **"Só em memória" não basta olhar a tabela.** O forçado do debug vive em memória,
+   mas alimenta o `NOM_World`, que alimenta os contadores salvos (`syncNight` no
+   ModData global). Teste com o contador de verdade, não com registrador, pegou isso.
+5. **Teste de "não chama o zumbi" precisa separar o jogo do mod.** O fake do
    `NightStats` chama `makeInactive` em todo zumbi a cada tick (o `updateActiveState`
    do jogo); contar tudo dava falso positivo. `tests/calls.lua` aceita uma lista do que
    é do jogo.
@@ -122,9 +135,10 @@ sprint:
   1, 2, 4 e 5 desta sprint e os das 0001–0005 com o `console.txt`.
 - Decidir os defaults com as respostas do Balanceamento (principalmente `NightFaster`
   e `SemRostoChance`).
-- Se a medição mostrar pico a cada 10 minutos de jogo: espalhar a varredura do Eco por
-  vários ticks.
+- Se a medição mostrar pico a cada 10 minutos de jogo: a varredura do Eco já anda um
+  jogador por tick; o próximo passo é fatiar o raio de um jogador.
 - Forçado do debug é por `persistentOutfitID`: gêmeos (mesmo ID) viram juntos.
+- Debug só em save descartável: noite e névoa forçadas avançam os contadores salvos.
 
 ## Sessões
 
