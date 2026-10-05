@@ -80,6 +80,7 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | Arquivo | O que é |
 |---|---|
 | `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
+| `mod/42/media/shaders/NOM_Dissolve.vert`, `mod/42/media/shaders/NOM_Dissolve_static.vert`, `mod/42/media/shaders/NOM_Dissolve.frag` | dissolve das peças do mod (sprint 0018, ADR-016), pelo `<m_Shader>` dos itens `*Fx` e da casca do Eco: **código original**, escrito pro mod (MIT). Do jogo só a interface: atributos pelo índice, paleta de ossos, nomes e tipos dos uniforms que o Java do `skinnedmodel.Shader` manda e a saída `gl_FragColor`. Nenhuma linha do `basicEffect*.vert/.frag` da The Indie Stone (`tests/test_dissolve_shader.lua` confere contra os arquivos instalados) |
 
 ## Conteúdo vanilla referenciado (nada copiado)
 
