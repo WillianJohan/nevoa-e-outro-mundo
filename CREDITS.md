@@ -62,12 +62,12 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador: porcelana quase branca, rachaduras grossas pretas |
 | `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza clara, veias grossas quase pretas |
 | `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: muito pálida, escorridos de fuligem, fuligem nos olhos |
-| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura branco-suja e arame ferrugem em X |
+| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura em faixas, arame farpado ferrugem, sangue seco |
 | `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor: vermelho escuro, rasgo preto, dentes brancos |
 | `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV em blocos preto/branco, faixas rasgadas |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto |
-| `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpico escuro no corpo todo do Eco |
-| `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco com salpico escuro do Eco |
+| `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
+| `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco do Eco, salpicado, mais escuro nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |

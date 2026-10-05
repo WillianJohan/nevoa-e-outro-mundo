@@ -12,12 +12,12 @@ Saída (mod/42/media/textures/):
   Body/NOM_Estalador.png         256  porcelana quase branca, rachaduras grossas pretas
   Body/NOM_Corredor.png          256  cinza-cinza clara, veias grossas roxo-pretas
   Body/NOM_Carpideira.png        256  muito pálida, escorridos de fuligem, fuligem nos olhos
-  NOM/NOM_EstaladorVenda.png     128  atadura branco-suja, arame ferrugem em X com contorno preto (óculos de esqui)
+  NOM/NOM_EstaladorVenda.png     128  atadura em faixas branco-sujas, dois arames farpados ferrugem, sangue seco (óculos de esqui)
   NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos (máscara cirúrgica)
   NOM/NOM_SemRostoEstatica.png   128  chiado de TV em blocos preto/branco e faixas rasgadas (balaclava inteira)
   NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
-  NOM/NOM_EcoCinza.png           256  quase branco com salpico escuro, no corpo todo (camada sem modelo)
-  NOM/NOM_EcoVeu.png             128  quase branco com salpico escuro (véu)
+  NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
+  NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
@@ -120,7 +120,7 @@ def carpideira_skin(rng, size=256):
     y = np.linspace(0, 1, size, dtype=np.float32)[:, None]
     stop = 0.2 + 0.5 * blocks(rng, 1, 32, size)            # cada escorrido acaba numa altura
     k = streak[None, :] * (y < stop)
-    k = np.maximum(k, (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.74).astype(np.float32))
+    k = np.maximum(k, (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.8).astype(np.float32))   # onde esfregou
     # fuligem debaixo dos olhos: o rosto da pele de zumbi vanilla fica no alto e no meio
     # (M e F iguais, visto pelo layout: rosto em x 44–56%, olhos em x ~47% e ~53%,
     # y ~12%). Uma mancha por olho que escorre até ~24%.
@@ -132,15 +132,21 @@ def carpideira_skin(rng, size=256):
 
 
 def estalador_venda(rng, size=128):
-    # atadura branco-suja em faixas, arame ferrugem grosso em X com contorno preto
+    # atadura: faixas horizontais branco-sujas com frestas escuras entre elas, dois
+    # arames ferrugem-escuros enrolados de lado a lado (linha ondulada com farpas) e uma
+    # mancha de sangue seco. Nada de grade em diagonal (lia como toalha de piquenique).
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    rgb = color((238, 230, 210), np.ones((size, size), np.float32))
-    rgb = mix(rgb, (150, 132, 104), ((y % 32) < 3).astype(np.float32))  # dobra da atadura
-    d1 = np.abs((x + y) % 64 - 32)                       # um X grande a cada 64 px
-    d2 = np.abs((x - y + size) % 64 - 32)
-    d = np.minimum(d1, d2)
-    rgb = mix(rgb, INK, (d < 10).astype(np.float32))     # contorno
-    return mix(rgb, (214, 92, 24), (d < 6).astype(np.float32))  # ferrugem viva
+    rgb = color((236, 228, 206), 0.94 + 0.06 * fbm(rng, size))
+    rgb = mix(rgb, (58, 44, 34), ((y % 24) < 5).astype(np.float32))      # fresta entre faixas
+    stain = (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.76).astype(np.float32)   # uma mancha só
+    rgb = mix(rgb, (104, 22, 18), stain * 0.9)                           # sangue seco
+    wire = np.zeros((size, size), np.float32)
+    for row, phase in ((38, 0.0), (90, 2.0)):
+        wy = row + 7 * np.sin(x / 9.0 + phase)                           # o arame enrolando
+        wire = np.maximum(wire, (np.abs(y - wy) < 3.5).astype(np.float32))
+        barb = ((x + 4 * phase) % 14 < 2.5) & (np.abs(y - wy) < 8)       # farpas
+        wire = np.maximum(wire, barb.astype(np.float32))
+    return mix(rgb, (92, 40, 16), wire)                                  # ferrugem escura
 
 
 def corredor_boca(rng, size=128):
@@ -187,19 +193,28 @@ def carpideira_cabelo(rng, size=128):
     return mix(rgb, (226, 226, 226), k)
 
 
-def eco_ash(rng, size, base):
-    # quase branco, salpico escuro em manchas: gente feita de fumaça e cinza
-    rgb = color(base, 0.95 + 0.05 * fbm(rng, size))
-    speck = (fbm(rng, size, (size // 16, size // 8), (0.7, 0.3)) > 0.66).astype(np.float32)
-    return mix(rgb, (40, 40, 44), speck)
+# O Eco fica fora da regra das formas grandes: lê por ser muito mais claro que qualquer
+# outro zumbi. Mancha grande preta no corpo todo virou couro de vaca (prévia da 0014).
+def eco_ash(rng, size, base, edge):
+    # quase branco; salpicos pequenos de cinza escura, esparsos, e poucos escorridos
+    # finos na vertical (fumaça subindo, cinza escorrendo); edge escurece as bordas
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    border = np.clip(1 - np.minimum(np.minimum(x, 1 - x), np.minimum(y, 1 - y)) / 0.2, 0, 1)
+    rgb = color(base, (0.96 + 0.04 * fbm(rng, size)) * (1 - edge * border))
+    speck = np.kron((rng.random((size // 2, size // 2)) > 0.975).astype(np.float32), np.ones((2, 2), np.float32))
+    cols = np.repeat(rng.random(size // 2) > 0.96, 2)                    # escorridos de 2 px
+    top, length = np.repeat(rng.random(size // 2), 2), np.repeat(0.2 + 0.4 * rng.random(size // 2), 2)
+    drip = cols[None, :] & (y > top[None, :]) & (y < (top + length)[None, :])
+    k = np.maximum(speck, drip.astype(np.float32))
+    return mix(rgb, (52, 50, 54), k)
 
 
 def eco_cinza(rng, size=256):
-    return eco_ash(rng, size, (238, 238, 242))
+    return eco_ash(rng, size, (240, 240, 244), 0.0)
 
 
 def eco_veu(rng, size=128):
-    return eco_ash(rng, size, (244, 244, 248))
+    return eco_ash(rng, size, (246, 246, 250), 0.22)                     # borda do véu mais escura
 
 
 def screen_grain(rng, size=256):
@@ -225,17 +240,19 @@ def screen_lines(rng, w=512, h=256):
 
 
 def main():
-    rng = np.random.default_rng(SEED)
-    save(estalador_skin(rng), "Body/NOM_Estalador.png")
-    save(corredor_skin(rng), "Body/NOM_Corredor.png")
-    save(carpideira_skin(rng), "Body/NOM_Carpideira.png")
-    save(estalador_venda(rng), "NOM/NOM_EstaladorVenda.png")
-    save(corredor_boca(rng), "NOM/NOM_CorredorBoca.png")
-    save(semrosto_estatica(rng), "NOM/NOM_SemRostoEstatica.png")
-    save(carpideira_cabelo(rng), "NOM/NOM_CarpideiraCabelo.png")
+    # um gerador por textura: mexer no desenho de uma não sorteia as outras de novo
+    def rng(i):
+        return np.random.default_rng((SEED, i))
+    save(estalador_skin(rng(1)), "Body/NOM_Estalador.png")
+    save(corredor_skin(rng(2)), "Body/NOM_Corredor.png")
+    save(carpideira_skin(rng(3)), "Body/NOM_Carpideira.png")
+    save(estalador_venda(rng(4)), "NOM/NOM_EstaladorVenda.png")
+    save(corredor_boca(rng(5)), "NOM/NOM_CorredorBoca.png")
+    save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")
+    save(carpideira_cabelo(rng(7)), "NOM/NOM_CarpideiraCabelo.png")
     # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
-    save(eco_cinza(rng), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
-    save(eco_veu(rng), "NOM/NOM_EcoVeu.png")
+    save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
+    save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)
     for i in range(1, 5):

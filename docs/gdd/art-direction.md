@@ -21,6 +21,14 @@
   que voltar a ser "lã"; `scripts/preview_textures.py` mostra cada uma a 64 px, normal e
   escurecida/avermelhada como na névoa
   ([prévia](../sprints/sprint-0014-contraste-visual/preview.png)).
+- **O Eco fica fora da regra das formas grandes.** Mancha grande preta e branca no corpo
+  todo leu como couro de vaca na prévia. O Eco lê por ser **muito mais claro** que qualquer
+  outro zumbi, não pelo desenho: base quase branca, salpico pequeno e esparso, escorrido
+  fino. O teste dele confere média de luminância alta, pouco cinza médio e pouca área
+  escura, no lugar do desvio de longe.
+- **Nada de grade em diagonal.** A venda do Estalador em X repetido leu como toalha de
+  piquenique; atadura é faixa horizontal. O teste da venda exige que a luminância varie
+  bem mais de linha pra linha do que de coluna pra coluna.
 - **Desenho que não depende do mapa UV:** rachadura, veia, chiado, fio, escorrido. Vale em
   qualquer ponto da textura, então a peça inteira vira o material e nada é copiado nem
   "decalcado" da textura vanilla (dela só se usa o tamanho). Única exceção: a fuligem nos
@@ -35,11 +43,11 @@
 
 | Monstro | Pele | Peça (modelo vanilla) | Cor que lê de longe |
 |---|---|---|---|
-| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura branco-suja com arame ferrugem viva em X, contornado de preto (óculos de esqui, `Glasses_SkiGoggles`) | branco trincado + X laranja nos olhos |
+| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura: faixas horizontais branco-sujas com frestas escuras, dois arames farpados ferrugem-escuros enrolados de lado a lado e uma mancha de sangue seco (óculos de esqui, `Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
 | Corredor | cinza de cinza clara, veias grossas roxo-pretas | boca rasgada: vermelho escuro saturado, um rasgo preto de lado a lado com dentes brancos grandes e escorridos pretos (máscara cirúrgica, `Hat_SurgicalMask`) | cinza com veias + boca vermelha e preta |
 | Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, a cabeça inteira (balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
 | Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche com três mechas brancas, caindo no rosto (véu de noiva, `Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
-| Eco | coberta: quase branca com salpico escuro no corpo todo | véu quase branco com salpico escuro (véu de noiva) | gente de fumaça e cinza |
+| Eco | coberta: quase branca, salpicos pequenos e esparsos de cinza e poucos escorridos finos na vertical | véu do mesmo jeito, mais escuro só nas bordas (véu de noiva) | o mais claro da névoa: fantasma coberto de cinza |
 
 **Por quê, um por um:**
 
