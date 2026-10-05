@@ -5,5 +5,9 @@
     "UI_NOM_ScreenFxIntensity": "Intensidade dos efeitos de tela",
     "UI_NOM_ScreenFxIntensity_tooltip": "0 desliga os efeitos, 1 é o padrão, 2 é o dobro.",
     "UI_NOM_FogOverlayDensity": "Sangue e erosão na névoa",
-    "UI_NOM_FogOverlayDensity_tooltip": "Quanto sangue, sujeira, rachadura, musgo e trepadeira a névoa espalha em volta de você. 0 desliga, 1 é o padrão, 2 é o dobro. A névoa vermelha é sempre mais pesada."
+    "UI_NOM_FogOverlayDensity_tooltip": "Quanto sangue, sujeira, rachadura, musgo e trepadeira a névoa espalha em volta de você. 0 desliga, 1 é o padrão, 2 é o dobro. A névoa vermelha é sempre mais pesada.",
+    "UI_NOM_Dissolve": "Monstros queimam ao surgir e sumir",
+    "UI_NOM_Dissolve_tooltip": "As peças dos monstros se formam e se desfazem com borda em brasa quando o zumbi vira monstro e volta, e o Eco queima e some em brasas ao morrer. Desligado: troca instantânea, como antes.",
+    "UI_NOM_Bloom": "Bloom (mod do Shader)",
+    "UI_NOM_Bloom_tooltip": "Brilho em volta das luzes fortes, mais forte na névoa. Só com o mod opcional do Shader (não com ShadowZ). 0 desliga."
 }

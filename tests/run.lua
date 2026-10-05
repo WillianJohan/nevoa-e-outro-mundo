@@ -6,6 +6,7 @@ local FILES = {
     "tests/test_math.lua",
     "tests/test_dissolve_rules.lua",
     "tests/test_ember_rules.lua",
+    "tests/test_dissolve.lua",
     "tests/test_rules.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",

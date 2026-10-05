@@ -1,5 +1,6 @@
 -- Opções de cliente dos efeitos de tela (sprint 0013) e da densidade do sangue e da
--- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua): cada jogador escolhe no
+-- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua), do dissolve e do bloom do
+-- shader (sprint 0018, client/NOM_Dissolve.lua e mod2): cada jogador escolhe no
 -- próprio jogo (Opções > Mods), não o servidor. PZAPI.ModOptions do B42
 -- (client/PZAPI/ModOptions.lua: create, addTickBox, addSlider, getOption/getValue),
 -- gravado no ModOptions.ini da máquina. A tela de opções (MainOptions:addModOptionsPanel,
@@ -10,7 +11,7 @@
 -- option.value depois.
 if isServer() then return end
 
-NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1 }
+NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1 }
 
 local O = NOM_ScreenFxOptions
 local page
@@ -22,6 +23,8 @@ if PZAPI and PZAPI.ModOptions then
         "UI_NOM_ScreenFxIntensity_tooltip")
     page:addSlider("FogOverlayDensity", "UI_NOM_FogOverlayDensity", 0, 2, 0.1, O.DEFAULT_DENSITY,
         "UI_NOM_FogOverlayDensity_tooltip")
+    page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
+    page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
 end
 
 local function value(id, default)
@@ -46,6 +49,17 @@ end
 -- 0..2: quanto sangue e erosão a névoa põe em volta (1 = o padrão, já pesado).
 function O.overlayDensity()
     local v = tonumber(value("FogOverlayDensity", O.DEFAULT_DENSITY)) or O.DEFAULT_DENSITY
+    return math.max(0, math.min(2, v))
+end
+
+-- Dissolve das peças e da morte do Eco; desligado = peças sem shader, troca instantânea.
+function O.dissolve()
+    return value("Dissolve", true) == true
+end
+
+-- 0..2: bloom do screen.frag do mod do shader (sem o mod, não faz nada).
+function O.bloom()
+    local v = tonumber(value("Bloom", O.DEFAULT_BLOOM)) or O.DEFAULT_BLOOM
     return math.max(0, math.min(2, v))
 end
 
