@@ -24,7 +24,8 @@ if not isServer() then NOM_NightStats.install() end
 
 NOM_World.onChange(function(flag, on)
     if flag ~= "night" then return end
-    -- O número da noite vai junto: o cliente sorteia as variantes igual (ADR-006).
+    -- O número da noite vai junto (status do debug). As variantes usam o período de
+    -- névoa, que vai pelo comando "fog" (server/NOM_Fog.lua, ADR-006).
     local night = NOM_NightCount.current()
     if isServer() then
         sendServerCommand(MODULE, "night", { on = on, night = night })
