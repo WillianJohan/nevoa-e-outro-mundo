@@ -83,6 +83,11 @@ void main() {
         return;
     }
     if (dbg == 3) { fragColor = vec4(fract(P.z + 0.5), 0.0, 1.0 - fract(P.z + 0.5), 1.0) * 0.5; return; }
+    if (dbg >= 5 && dbg <= 7 && !nomFlowOn()) { fragColor = vec4(1.0, 0.0, 1.0, 1.0); return; } // magenta: o shader acha a simulação desligada
+    if (dbg >= 5 && dbg <= 7) {
+        vec2 uv = nomFlowUV(P.xy);
+        if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { fragColor = vec4(0.0, 0.0, 0.35, 1.0); return; } // fora da grade
+    }
     if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, parede/porta fechada branca
         int f = nomFlowFlags(P.xy);
         vec2 e = fract(P.xy);
@@ -92,10 +97,10 @@ void main() {
         fragColor = vec4(c * 0.7, 0.7);
         return;
     }
-    if (dbg == 6) { fragColor = vec4(vec3(nomFlowDensity(P.xy)) * 0.8, 0.8); return; }
-    if (dbg == 7) { // velocidade: vermelho = +x, verde = +y, cinza = parado
-        vec2 v = nomFlowVel(P.xy, vec2(0.0)) / NOM_FLOW_VMAX;
-        fragColor = vec4(vec3(0.5 + 0.5 * v.x, 0.5 + 0.5 * v.y, 0.5) * 0.8, 0.8);
+    if (dbg == 6) { fragColor = vec4(vec3(texture(uFlowTex, nomFlowUV(P.xy)).r), 1.0); return; } // preto vazio, branco cheio
+    if (dbg == 7) { // velocidade, saturando em 1 tile/s: vermelho = +x, verde = +y, cinza = parado
+        vec2 v = clamp(nomFlowVel(P.xy, vec2(0.0)), -1.0, 1.0);
+        fragColor = vec4(0.5 + 0.5 * v.x, 0.5 + 0.5 * v.y, 0.5, 1.0);
         return;
     }
     if (amount <= 0.001) { fragColor = vec4(0.0); return; }

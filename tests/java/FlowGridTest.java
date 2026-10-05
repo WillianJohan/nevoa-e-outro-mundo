@@ -19,6 +19,7 @@ public class FlowGridTest {
         run("interior novo começa vazio e esvazia", FlowGridTest::freshIndoor);
         run("vento contorna obstáculo sólido", FlowGridTest::flowsAroundSolid);
         run("textura RGBA codifica densidade, velocidade e flags", FlowGridTest::textureEncoding);
+        run("contagens pro diagnóstico", FlowGridTest::diagnosticCounts);
         run("custo do passo em 128x128", FlowGridTest::stepCost);
         System.out.println("mod3 FlowGrid: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
@@ -259,6 +260,23 @@ public class FlowGridTest {
         int gx = at(tw, 8, 4, 4, 1), gy = at(tw, 8, 4, 4, 2);
         check(Math.abs(gx - (128 + 2f / FlowGrid.VEL_MAX * 127)) < 3, "velocidade x codificada: " + gx);
         check(Math.abs(gy - (128 - 1f / FlowGrid.VEL_MAX * 127)) < 3, "velocidade y codificada: " + gy);
+    }
+
+    static void diagnosticCounts() {
+        FlowGrid g = new FlowGrid(8);
+        g.reset(0, 0);
+        g.setCell(1, 1, FlowGrid.F_INDOOR);
+        g.setCell(2, 1, FlowGrid.F_INDOOR);
+        g.setCell(3, 3, FlowGrid.F_SOLID | FlowGrid.F_TREE);
+        g.setOpenW(4, 4, false);
+        g.setOpenN(5, 5, false);
+        g.setOpenN(5, 8, false);
+        check(g.countCells(FlowGrid.F_INDOOR) == 2, "interior: " + g.countCells(FlowGrid.F_INDOOR));
+        check(g.countCells(FlowGrid.F_TREE) == 1, "árvore: " + g.countCells(FlowGrid.F_TREE));
+        check(g.closedFaces() == 3, "faces fechadas: " + g.closedFaces());
+        g.setDensity(0, 0, 0.25f);
+        float[] s = g.densityStats();
+        check(s[0] == 0f && s[2] == 1f, "min/max: " + s[0] + "/" + s[2]);
     }
 
     static void stepCost() {

@@ -61,6 +61,14 @@ public final class RenderContext {
     @LuaMethod(name = "NOMRender_isActive", global = true)
     public static boolean isActive() { return true; }
 
+    /** Estado da névoa fluida, no console e no console.txt. */
+    @LuaMethod(name = "NOMRender_flowInfo", global = true)
+    public static String flowInfo() {
+        String s = Flow.info();
+        log(s);
+        return s;
+    }
+
     // ---------- main thread ----------
 
     /** Retrato de um quadro de um jogador. Novo a cada quadro: o render thread lê depois. */
