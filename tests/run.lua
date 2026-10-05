@@ -19,6 +19,8 @@ local FILES = {
     "tests/test_variants.lua",
     "tests/test_semrosto_rules.lua",
     "tests/test_atmosphere_rules.lua",
+    "tests/test_fog.lua",
+    "tests/test_fog_client.lua",
 }
 
 local pass, fail = 0, 0
