@@ -695,6 +695,11 @@ Motivo: no primeiro teste a noite do mod não mudava nada na tela
 | `FLOAT_AMBIENT` (9) | `ambient = n + (1 − n) × cm` (411–454), `n` = piso do sandbox + `0.075 × lua × night` (359–375; ×(0.925 − 0.075 × darkness) em interior, 378–398) → `stateEndFrame` e `getSkyLightLevel` | luz ambiente | vanilla de madrugada: 0 (`ClimateValues.updateValues` 1263–1268: `ambient = dayLightStrength`) |
 | `COLOR_GLOBAL_LIGHT` (0) | exterior: `blendColor` e `blendIntensity = alfa` (224–246; `isExterior` forçado `true` em 212); `rmod/gmod/bmod = lerp(1, cor dessaturada, alfa)` (662–725) → `IsoGridSquare.rmod`/`IsoObject.rmod` (`applyRenderSettings`), `stateEndFrame` (`LightingJNI.update` 282–332) | **multiplicador da luz** | vanilla de madrugada: sem lua 0.25, lua cheia 0.33, **alfa 0.8** (`mod` 0.40–0.46). O construtor põe 0.33/0.4 (`<init>` 250–323), mas o `server/Climate/ClimateMain.lua:14-22` troca no `OnClimateManagerInit` (disparado no `<init>`, 590, a cada carga), e o `updateValues` mistura sem lua/lua cheia pela lua (1794–1841) |
 
+- **Na névoa**, `updateValues` (1645–1770) puxa a luz global pela intensidade da
+  névoa pra `colFog` (com `PerformanceSettings.fogQuality` 2), `colFogNew`, ou
+  `colFogLegacy` (sem `SceneShaderStore.weatherShader`); o `ClimateMain.lua:24-34`
+  põe 0.2 / 0.5,0.5,0.55 / 0.3, **alfa 0.8** nas três (`mod` 0.36–0.64). Tint de
+  névoa mais claro que isso clareia a névoa.
 - **Luz do céu**: `GameTime.getSkyLightLevel` (10–77) = `clamp(2 × mod × ambient)` por
   canal, empacotada em RGB e passada ao `stateEndFrame`; mudança invalida as luzes
   globais (`LightingJNI.doInvalidateGlobalLights`, chamado em `getSkyLightLevel` 139–157).

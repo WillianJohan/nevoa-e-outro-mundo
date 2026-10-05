@@ -58,7 +58,11 @@ Pedidos do Johan (05/10/2026, depois do teste):
       nas duas luas; `rules_sky_mod_matches_render`; `look_does_not_compound_between_climate_ticks`
       com o alfa). **Falta o jogo:** roteiro passos 1–2.
 - [ ] Névoa continua forte (dessaturação de dia, névoa mais densa, mundo mais escuro e
-      sépia) — `LOOKS.fog` com cor+alfa e ambient; falta ver: roteiro passo 6.
+      sépia) — contra as três cores vanilla de névoa (alfa 0.8), a luz do céu cai com
+      `DarkIntensity` 1: `colFogNew` −40/−42/−46%, `colFogLegacy` −34/−37/−41%, `colFog`
+      −29/−33/−38% (R/G/B); com 2, −49 a −80%; noite + névoa −39 a −46%
+      (`rules_fog_darker_than_vanilla_on_every_path`, `rules_night_and_fog_together_still_dark`).
+      Falta ver: roteiro passo 6.
 - [x] Log só de `-debug` na borda da rampa e uma vez por hora de jogo à noite, com
       vanilla, escrito e `getFinalValue()` de cada canal (e o multiplicador da luz) —
       `look_debug_log_on_edges_and_hourly`, `look_debug_log_silent_without_debug`.
@@ -70,7 +74,7 @@ Pedidos do Johan (05/10/2026, depois do teste):
       espremido, Eco "só de quem morreu antes do anoitecer"; nenhum `%` sozinho —
       `translations_variants_say_fog_and_eco_says_dusk`, `translations_no_lone_percent`.
 
-`./run-tests.sh`: `total=323 passou=323 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=325 passou=325 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -118,9 +122,17 @@ O Lua novo só carrega ao recarregar o save.
    não tem efeito (`estaladores=0`); Ecos e noite agressiva seguem. Com
    `NOM_Debug.fog(0.8)`: vira Estalador e corre como os da noite.
 6. **Névoa forte de dia:** com `NOM_Debug.fog(0.8)` ao meio-dia, a tela fica
-   dessaturada, sépia e mais escura, com névoa densa, vinheta, manchas, drone. Bloco
-   `[NOM] clima` na borda (`fogRamp=1.00`): `desaturation … escrito≈0.6+`, `ambient`
-   menor que o vanilla, tint sépia.
+   dessaturada, sépia e **mais escura que a névoa vanilla**, com névoa densa, vinheta,
+   manchas, drone. Bloco `[NOM] clima` na borda (`fogRamp=1.00`):
+   `desaturation … escrito≈0.6+`, `ambient` menor que o vanilla, e o tint:
+   - **Névoa natural forte** (o jogo também puxa a luz pra cor de névoa dele, alfa
+     0.80): `vanilla` perto de `0.50,0.50,0.55,0.80` (o mais comum, `colFogNew`),
+     `0.30,…` ou `0.20,…`; `escrito≈0.28,0.27,0.27,0.89` com o primeiro; `luz` sempre
+     **menor** que a do vanilla (≈ 0.36 contra 0.60). Se `luz` subir com a névoa, avisar.
+   - **Só o `NOM_Debug.fog`** (a névoa vanilla continua fraca): o `vanilla` é a luz do
+     dia, não a de névoa; conferir só `final = escrito` e `luz` menor que antes.
+   - Noite + névoa (23:00 com `NOM_Debug.fog(0.8)`): `luz` ≈ 0.24–0.27, como a noite
+     sozinha.
 
 ## Checkpoints
 
@@ -138,6 +150,9 @@ O Lua novo só carrega ao recarregar o save.
   `ClimateMain.lua` (alfa 0.8, `mod` 0.40–0.46), não a do construtor; o look antigo
   quase não escurecia contra ela. Retunado e medido nas duas luas. Tooltips das
   variantes falando da névoa e do Eco falando do anoitecer.
+- **04/10/2026** — Verificação: o tint da névoa tinha o mesmo erro (as três cores
+  vanilla de névoa têm alfa 0.8; o tint antigo clareava até 32%). Retunado e medido
+  nos três caminhos e junto com a noite.
 
 ## Aprendizados
 

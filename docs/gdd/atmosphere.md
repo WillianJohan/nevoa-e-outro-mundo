@@ -22,8 +22,9 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   ou sem lua) a luz do céu cai ~46% no vermelho e ~40% no azul com `DarkIntensity` 1,
   e 73–89% com 2. Lanterna, poste e luz de casa não
   mudam: de noite, luz vira o que separa ver de não ver.
-- Névoa: dessaturação forte (de dia), tint sépia/cinza escuro, luz ambiente menor,
-  névoa mais densa que a vanilla.
+- Névoa: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor,
+  névoa mais densa que a vanilla. Contra a luz de névoa vanilla (que também escurece)
+  a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
 - Por que esses canais ([ADR-008](../architecture/adr-008-noite-pela-luz-global.md)):
   o jogo só escurece o céu pela cor e pela força da luz global; a "intensidade" da luz
   não é lida, a dessaturação some de noite (o render multiplica pelo dia), e de

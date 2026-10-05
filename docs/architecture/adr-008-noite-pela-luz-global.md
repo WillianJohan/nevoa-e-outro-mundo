@@ -34,7 +34,7 @@ ADR-004 (servidor, `OnClimateTick`, valor absoluto, `setModdedInterpolate(1)`):
 
 | Canal | Noite | Névoa | Por quê |
 |---|---|---|---|
-| `COLOR_GLOBAL_LIGHT` (cor **e alfa**) | quase preto, puxado pro azul (0.00, 0.03, 0.06), alfa 0.95, peso 0.55 | sépia escura (0.45, 0.40, 0.32), alfa 0.75, peso 0.5 | único canal com folga de madrugada; o alfa é a força |
+| `COLOR_GLOBAL_LIGHT` (cor **e alfa**) | quase preto, puxado pro azul (0.00, 0.03, 0.06), alfa 0.95, peso 0.55 | sépia bem escuro (0.14, 0.11, 0.08), alfa 0.95, peso 0.6 | único canal com folga de madrugada; o alfa é a força |
 | `FLOAT_AMBIENT` | → 0, peso 0.5 | → 0, peso 0.3 | escurece o anoitecer e a névoa de dia |
 | `FLOAT_DESATURATION` | — | → 1, peso 0.6 | só vale de dia |
 | `FLOAT_FOG_INTENSITY` | — | → 1, peso 0.3 | a névoa vanilla lê o final |
@@ -46,6 +46,22 @@ Os pesos são multiplicados por `DarkIntensity` (teto 1). Como a vanilla já usa
 |---|---|---|
 | `DarkIntensity` 1 | R −46%, G −42%, B −39% | R −46%, G −43%, B −40% |
 | `DarkIntensity` 2 | R −87%, G −80%, B −73% | R −89%, G −83%, B −77% |
+
+Na névoa, o jogo puxa a luz global pra uma de três cores pela intensidade da névoa
+(`ClimateManager.updateValues` 1645–1770: `colFog` com `fogQuality` 2, `colFogNew`,
+ou `colFogLegacy` sem o weather shader), todas com alfa 0.8 pelo `ClimateMain.lua:24-34`.
+O tint de névoa antigo (0.45/0.40/0.32, alfa 0.75) **clareava** contra duas delas
+(até +32%). Queda da luz do céu na névoa cheia com o tint novo:
+
+| | `colFogNew` (0.5/0.5/0.55, `mod` 0.60/0.64) | `colFogLegacy` (0.3, `mod` 0.44) | `colFog` (0.2, `mod` 0.36) |
+|---|---|---|---|
+| `DarkIntensity` 1 | R −40%, G −42%, B −46% | R −34%, G −37%, B −41% | R −29%, G −33%, B −38% |
+| `DarkIntensity` 2 | −69/−74/−80% | −58/−65/−71% | −49/−57/−65% |
+
+Sépia: o azul cai mais. Noite + névoa juntas (cores misturadas pelo peso, peso o
+maior dos dois), `DarkIntensity` 1: −39 a −43% contra as noites vanilla e −39 a −46%
+contra as névoas. Testes `rules_fog_darker_than_vanilla_on_every_path` (≥ 25% em todo
+canal nos três caminhos, com 1 e 2) e `rules_night_and_fog_together_still_dark`.
 
 Mais escura e um pouco mais fria (o azul cai menos). Testes:
 `rules_night_darker_and_colder_than_vanilla` (≥ 35% em todo canal com 1, ≥ 60% com 2,
