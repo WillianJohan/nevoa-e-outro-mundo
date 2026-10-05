@@ -24,6 +24,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0015](sprint-0015-outro-mundo-sangrento/README.md) | Outro Mundo sangrento: muito sangue e erosão no máximo no chão e nas paredes, só na névoa e só local | `em teste` — [roteiro](sprint-0015-outro-mundo-sangrento/README.md#roteiro-in-game) |
 | [0016](sprint-0016-monstro-sem-roupa/README.md) | Monstro sem roupa comum: na variante, a roupa vanilla some (só pele, peça do mod e feridas); volta no fim, e o loot da morte é o do zumbi comum | `em teste` — [roteiro](sprint-0016-monstro-sem-roupa/README.md#roteiro-in-game) |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão e override do `screen.frag` feitos na 0013 (mod opcional) |
+| [spike](spike-dissolve/README.md) | Dissolve na morte do Eco e na mutação das variantes | `concluída` (estática) — `m_Shader` na peça + `Alpha` como limiar; probes in-game pendentes antes da sprint |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
 consome; 0002 vem antes da noite agressiva porque o Eco é o sistema mais
