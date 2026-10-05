@@ -10,25 +10,36 @@ pass=0
 fail=0
 DEST_REL="Zomboid/Workshop/NevoaEOutroMundo"
 
-# roda o build de um repo (padrão: este) com um HOME novo; ecoa o HOME
-build() {
-    local repo="${1:-$REPO}" home
-    home="$(mktemp -d "$TMP/home.XXXX")"
-    HOME="$home" bash "$repo/scripts/build-workshop.sh" "${@:2}" >"$home/out.txt" 2>&1
-    local status=$?
-    echo "$home"
-    return $status
-}
-
-# cópia do repo só com o que o build lê, pra estragar sem medo
+# cópia do repo só com o que o build lê, num git próprio (o build só manda o que
+# está commitado em mod/), pra estragar sem medo
 fake_repo() {
     local r
     r="$(mktemp -d "$TMP/repo.XXXX")"
     mkdir -p "$r/docs"
     cp -R "$REPO/mod" "$REPO/scripts" "$r/"
     cp -R "$REPO/docs/workshop" "$r/docs/"
+    rm -f "$r/docs/workshop/workshop-id.txt"
+    git -C "$r" init -q
+    commit_all "$r"
     echo "$r"
 }
+
+commit_all() { git -C "$1" add -A && git -C "$1" -c user.name=t -c user.email=t@t commit -qm t --allow-empty; }
+
+CLEAN="$(fake_repo)"
+
+# roda o build de um repo (padrão: a cópia limpa) num HOME (padrão: novo); ecoa o HOME
+build() {
+    local repo="${1:-$CLEAN}" home="${HOME_FOR:-}"
+    [ -n "$home" ] || home="$(mktemp -d "$TMP/home.XXXX")"
+    HOME="$home" bash "$repo/scripts/build-workshop.sh" "${@:2}" >"$home/out.txt" 2>&1
+    local status=$?
+    echo "$home"
+    return $status
+}
+
+# de novo no mesmo HOME
+rebuild() { HOME_FOR="$1" build "${2:-$CLEAN}" >/dev/null; }
 
 tree_hash() { (cd "$1" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum); }
 
@@ -85,7 +96,7 @@ build_is_idempotent() {
     h="$(build)"
     d="$h/$DEST_REL"
     first="$(tree_hash "$d")"
-    HOME="$h" bash scripts/build-workshop.sh >/dev/null
+    rebuild "$h"
     test "$(tree_hash "$d")" = "$first"
 }
 
@@ -96,7 +107,7 @@ build_preserves_id_and_visibility() {
     w="$h/$DEST_REL/workshop.txt"
     sed -i 's/^visibility=.*/visibility=public/' "$w"
     sed -i '1a id=3412345678' "$w"
-    HOME="$h" bash scripts/build-workshop.sh >/dev/null
+    rebuild "$h"
     grep -qx "id=3412345678" "$w"
     grep -qx "visibility=public" "$w"
     test "$(grep -c '^id=' "$w")" -eq 1
@@ -107,13 +118,13 @@ build_removes_stale_files() {
     h="$(build)"
     m="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo/42/media/lua/client"
     touch "$m/NOM_Velho.lua"
-    HOME="$h" bash scripts/build-workshop.sh >/dev/null
+    rebuild "$h"
     test ! -e "$m/NOM_Velho.lua"
 }
 
 build_dry_run_writes_nothing() {
     local h
-    h="$(build "$REPO" --dry-run)"
+    h="$(build "$CLEAN" --dry-run)"
     test ! -e "$h/Zomboid"
     grep -q "dry-run" "$h/out.txt"
 }
@@ -148,12 +159,83 @@ build_refuses_missing_source() {
     local r
     r="$(fake_repo)"
     rm "$r/mod/42/mod.info"
+    commit_all "$r"
     if build "$r" >/dev/null; then return 1; fi
+}
+
+# o tamanho exato do limite passa (Files.size > 1024000 recusa); um byte a mais, não
+build_preview_size_limit_inclusive() {
+    local r h
+    r="$(fake_repo)"
+    python3 - "$r/docs/workshop/preview.png" <<'PY'
+import sys
+from PIL import Image
+p = sys.argv[1]
+Image.new("RGB", (256, 256)).save(p)
+data = open(p, "rb").read()
+open(p, "wb").write(data + b"\0" * (1024000 - len(data)))
+PY
+    h="$(build "$r")"
+    truncate -s 1024001 "$r/docs/workshop/preview.png"
+    if h="$(build "$r")"; then return 1; fi
+    grep -q "preview" "$h/out.txt"
+}
+
+# só o que está commitado em mod/ vai pro upload
+build_ships_only_tracked_files() {
+    local r h
+    r="$(fake_repo)"
+    echo "rascunho" >"$r/mod/42/media/lua/client/NOM_Rascunho.lua"
+    h="$(build "$r")"
+    test ! -e "$h/$DEST_REL/Contents/mods/NevoaEOutroMundo/42/media/lua/client/NOM_Rascunho.lua"
+    grep -q "AVISO.*NOM_Rascunho.lua" "$h/out.txt"
+}
+
+build_refuses_uncommitted_change_in_mod() {
+    local r h
+    r="$(fake_repo)"
+    echo "-- mudança" >>"$r/mod/42/media/lua/shared/NOM_Rules.lua"
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "NOM_Rules.lua" "$h/out.txt"
+}
+
+# docs/workshop/workshop-id.txt guarda o ID publicado; a pasta local perdeu o id=
+build_fills_missing_id_from_repo() {
+    local r h
+    r="$(fake_repo)"
+    echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    h="$(build "$r")"
+    grep -qx "id=3412345678" "$h/$DEST_REL/workshop.txt"
+    grep -q "AVISO.*3412345678" "$h/out.txt"
+}
+
+build_warns_on_id_mismatch() {
+    local r h w
+    r="$(fake_repo)"
+    echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    h="$(build "$r")"
+    w="$h/$DEST_REL/workshop.txt"
+    sed -i 's/^id=.*/id=999/' "$w"
+    rebuild "$h" "$r"
+    grep -qx "id=999" "$w" # o que o jogo gravou fica; quem decide é o Johan
+    grep -q "AVISO.*999.*3412345678" "$h/out.txt"
+}
+
+build_no_warning_when_ids_match() {
+    local r h
+    r="$(fake_repo)"
+    echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    h="$(build "$r")"
+    rebuild "$h" "$r"
+    test "$(grep -c AVISO "$h/out.txt")" -eq 0
 }
 
 for t in build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
-    build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source; do
+    build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
+    build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \
+    build_fills_missing_id_from_repo build_warns_on_id_mismatch build_no_warning_when_ids_match; do
     check "$t" "$t"
 done
 
