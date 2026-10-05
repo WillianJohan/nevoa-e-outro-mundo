@@ -76,6 +76,23 @@ local function eachFile(fn)
 end
 
 return {
+    translations_no_lone_percent = function()
+        -- o jogo passa o texto pelo java.util.Formatter: "%" sozinho lança
+        -- UnknownFormatConversionException (visto no console.txt); vanilla usa "%%"
+        for _, lang in ipairs({ "EN", "PTBR" }) do
+            for _, f in ipairs({ "Sandbox.json" }) do
+                local path = "mod/42/media/lua/shared/Translate/" .. lang .. "/" .. f
+                local h = io.open(path)
+                if h then
+                    local text = h:read("*a"); h:close()
+                    local stripped = text:gsub("%%%%", "")
+                    local bad = stripped:match('"[^"\n]*%%[^"\n]*"')
+                    assert(not bad, path .. ": % sozinho em " .. tostring(bad))
+                end
+            end
+        end
+    end,
+
     translations_same_files_per_language = function()
         local ref = table.concat(lines("ls " .. DIR .. LANGS[1]), ",")
         for _, lang in ipairs(LANGS) do
