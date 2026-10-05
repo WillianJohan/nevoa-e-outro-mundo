@@ -7,8 +7,9 @@
 #     workshop.txt                      ← gerado de docs/workshop/description-*.txt
 #
 # Idempotente: apaga e recopia o mod (arquivo que saiu do repo some do upload).
-# Só vai o que está commitado: mudança não commitada em mod/ é recusada (o upload
-# tem de ser o commit que leva a tag) e arquivo não rastreado fica de fora, com aviso.
+# Só vai o que está commitado: mudança não commitada em mod/ ou docs/workshop/ é
+# recusada (o upload tem de ser o commit que leva a tag) e arquivo não rastreado em
+# mod/ fica de fora, com aviso.
 # Preserva o id= e o visibility= que o jogo grava no workshop.txt depois do
 # primeiro upload (WorkshopSubmitScreen.lua:351, 1157-1158): sem o id=, o
 # próximo upload criaria um item novo no Steam. O ID publicado também fica no
@@ -61,13 +62,18 @@ desc_bytes=$(($(wc -c <"$DESC_EN") + $(wc -c <"$DESC_PT") + 1))
     die "descrição do Workshop com $desc_bytes bytes (máximo $MAX_DESC_BYTES: o Steam corta em 8000)"
 
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || die "$REPO não é um repositório git"
+# o mod sai do HEAD (git archive): sem estes no commit, a pasta sairia pela metade
+for f in mod/42/mod.info mod/common/.gitkeep; do
+    git -C "$REPO" cat-file -e "HEAD:$f" 2>/dev/null || die "o HEAD não tem $f: commite antes (o upload sai do último commit)"
+done
+# texto, preview e ID do Workshop também têm de ser os do commit que leva a tag
 untracked=()
 while IFS= read -r line; do
     case "$line" in
-        "?? "*) untracked+=("${line#?? }") ;;
-        *) die "mudança não commitada em mod/ ($line): commite antes, o upload é o último commit" ;;
+        "?? mod/"*) untracked+=("${line#?? }") ;;
+        *) die "mudança não commitada em mod/ ou docs/workshop/ ($line): commite antes, o upload é o último commit" ;;
     esac
-done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod)
+done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod docs/workshop)
 for f in ${untracked[@]+"${untracked[@]}"}; do warn "$f não está no git: fica fora do upload"; done
 
 repo_id=""

@@ -48,7 +48,7 @@ Johan.
 - [ ] Release `v1.0.0` taggeada no GitHub apontando pro mesmo commit publicado — espera o
       teste in-game e o envio: [publicar.md §5](../../publicar.md#5-abrir-pra-todo-mundo-e-taggear-2-min)
 
-`./run-tests.sh`: `total=300 passou=300 falhou=0` (Lua) e `build total=16 passou=16
+`./run-tests.sh`: `total=300 passou=300 falhou=0` (Lua) e `build total=20 passou=20
 falhou=0` (`tests/test_build_workshop.sh`, `HOME` temporário, cópia git do repo).
 Verificado contra o jogo **42.21** (o instalado no review; versão de desenvolvimento 42.20.4).
 
@@ -90,7 +90,8 @@ Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. D
   (`docs/workshop/workshop-id.txt` + README) e o build usa/confere; build só manda o
   `mod/` commitado (`git archive HEAD`); preview até 1 024 000 bytes inclusive; JSON
   validado por parser estrito; créditos invertidos (todo arquivo que não é código
-  precisa de origem); ícone com o "N" na névoa. 300 + 16 testes.
+  precisa de origem); ícone com o "N" na névoa. Depois: o build recusa HEAD sem `mod.info`/`common/` e
+  `docs/workshop/` sujo (texto e ID do upload = os do commit). 300 + 20 testes.
 
 ## Aprendizados
 

@@ -44,7 +44,9 @@ pronto. Abra o jogo: menu principal > Workshop > Névoa e Outro Mundo.
 
 O script recusa (e não escreve nada) se a preview não for PNG de 256 ou 512 px
 quadrado com até 1 024 000 bytes, se as duas descrições juntas passarem de 7900
-bytes (regras do jogo e do Steam), ou se houver mudança não commitada em `mod/`:
+bytes (regras do jogo e do Steam), se houver mudança não commitada em `mod/` ou em
+`docs/workshop/` (texto, preview, ID), ou se o commit não tiver `mod/42/mod.info` e
+`mod/common/.gitkeep`:
 **vai pro upload só o que está no último commit** (`git archive HEAD mod`), que é o
 commit que leva a tag. Arquivo fora do git em `mod/` fica de fora, com `AVISO:`.
 Rodar de novo é seguro: o mod é recopiado do zero e o `id=`/`visibility=` que o jogo

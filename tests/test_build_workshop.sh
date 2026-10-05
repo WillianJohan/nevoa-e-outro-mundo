@@ -25,6 +25,8 @@ fake_repo() {
 }
 
 commit_all() { git -C "$1" add -A && git -C "$1" -c user.name=t -c user.email=t@t commit -qm t --allow-empty; }
+# commita tudo menos um caminho (que fica no disco, fora do git)
+commit_all_but() { echo "/$2" >>"$1/.git/info/exclude" && commit_all "$1"; }
 
 CLEAN="$(fake_repo)"
 
@@ -141,6 +143,7 @@ build_refuses_long_description() {
     local r h
     r="$(fake_repo)"
     python3 -c "print('x' * 8000)" >>"$r/docs/workshop/description-en.txt"
+    commit_all "$r"
     if h="$(build "$r")"; then return 1; fi # tem que falhar
     test ! -e "$h/Zomboid"
     grep -q "descrição" "$h/out.txt"
@@ -150,6 +153,7 @@ build_refuses_bad_preview() {
     local r h
     r="$(fake_repo)"
     python3 -c "from PIL import Image; Image.new('RGB', (300, 200)).save('$r/docs/workshop/preview.png')"
+    commit_all "$r"
     if h="$(build "$r")"; then return 1; fi # tem que falhar
     test ! -e "$h/Zomboid"
     grep -q "preview" "$h/out.txt"
@@ -175,8 +179,10 @@ Image.new("RGB", (256, 256)).save(p)
 data = open(p, "rb").read()
 open(p, "wb").write(data + b"\0" * (1024000 - len(data)))
 PY
+    commit_all "$r"
     h="$(build "$r")"
     truncate -s 1024001 "$r/docs/workshop/preview.png"
+    commit_all "$r"
     if h="$(build "$r")"; then return 1; fi
     grep -q "preview" "$h/out.txt"
 }
@@ -205,6 +211,7 @@ build_fills_missing_id_from_repo() {
     local r h
     r="$(fake_repo)"
     echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    commit_all "$r"
     h="$(build "$r")"
     grep -qx "id=3412345678" "$h/$DEST_REL/workshop.txt"
     grep -q "AVISO.*3412345678" "$h/out.txt"
@@ -214,6 +221,7 @@ build_warns_on_id_mismatch() {
     local r h w
     r="$(fake_repo)"
     echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    commit_all "$r"
     h="$(build "$r")"
     w="$h/$DEST_REL/workshop.txt"
     sed -i 's/^id=.*/id=999/' "$w"
@@ -226,16 +234,58 @@ build_no_warning_when_ids_match() {
     local r h
     r="$(fake_repo)"
     echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    commit_all "$r"
     h="$(build "$r")"
     rebuild "$h" "$r"
     test "$(grep -c AVISO "$h/out.txt")" -eq 0
+}
+
+# o upload sai do HEAD: arquivo que só existe no working tree não conta
+build_refuses_head_without_modinfo() {
+    local r h
+    r="$(fake_repo)"
+    git -C "$r" rm -q --cached mod/42/mod.info
+    commit_all_but "$r" mod/42/mod.info
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "HEAD.*mod/42/mod.info" "$h/out.txt"
+}
+
+build_refuses_head_without_common() {
+    local r h
+    r="$(fake_repo)"
+    git -C "$r" rm -q --cached mod/common/.gitkeep
+    commit_all_but "$r" mod/common/.gitkeep
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "HEAD.*mod/common/.gitkeep" "$h/out.txt"
+}
+
+# texto, preview e ID do upload também são os do commit que leva a tag
+build_refuses_uncommitted_workshop_docs() {
+    local r h
+    r="$(fake_repo)"
+    echo "linha nova" >>"$r/docs/workshop/description-en.txt"
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "description-en.txt" "$h/out.txt"
+}
+
+build_refuses_uncommitted_workshop_id() {
+    local r h
+    r="$(fake_repo)"
+    echo "3412345678" >"$r/docs/workshop/workshop-id.txt"
+    if h="$(build "$r")"; then return 1; fi
+    grep -q "workshop-id.txt" "$h/out.txt"
 }
 
 for t in build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
     build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
     build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \
-    build_fills_missing_id_from_repo build_warns_on_id_mismatch build_no_warning_when_ids_match; do
+    build_fills_missing_id_from_repo build_warns_on_id_mismatch build_no_warning_when_ids_match \
+    build_refuses_head_without_modinfo build_refuses_head_without_common \
+    build_refuses_uncommitted_workshop_docs build_refuses_uncommitted_workshop_id; do
     check "$t" "$t"
 done
 
