@@ -110,4 +110,15 @@ return {
         assert(c2.blur == 2 and c2.radius == 1)
         assert(R.channel(s, 0, 0).blur == 0)
     end,
+
+    -- sprint 0018: a intensidade do bloom do jogador vai no marcador (13 + bloom·escala),
+    -- independente da intensidade dos efeitos; sem bloom, o marcador da 0013
+    screenfx_rules_channel_bloom = function()
+        assert(R.channel(R.new(), 0, 1).gradient == R.MARKER, "sem bloom muda o marcador")
+        assert(R.channel(R.new(), 0, 1, 0).gradient == R.MARKER)
+        assert(R.channel(R.new(), 0, 0, 1).gradient == R.MARKER + R.BLOOM_SCALE, "o bloom dependeu da intensidade")
+        assert(R.channel(R.new(), 0, 1, 2).gradient == R.MARKER + 2 * R.BLOOM_SCALE)
+        assert(R.channel(R.new(), 0, 1, 9).gradient == R.MARKER + 2 * R.BLOOM_SCALE, "fora da faixa")
+        assert(2 * R.BLOOM_SCALE < 1, "o bloom não pode chegar no próximo inteiro do marcador")
+    end,
 }

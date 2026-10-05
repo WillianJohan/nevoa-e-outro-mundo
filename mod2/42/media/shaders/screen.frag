@@ -14,6 +14,10 @@
 //   SearchMode.x = névoa, SearchMode.y = chiado do Sem-rosto,
 //   ParamInfo.w = névoa vermelha, VarInfo.y = pulso do grito da Carpideira (0..2).
 // Com isso: aberração cromática, grão de verdade, distorção e bordas desfocadas.
+// Sprint 0018 (ADR-016): o gradiente vale NOM_MARKER + bloom·NOM_BLOOM_SCALE, com o bloom
+// da opção do jogador (0..2); o canal fica tomado também fora da névoa quando há bloom.
+// Bloom de uma passada: o claro da cena num anel em volta, somado por cima, mais forte e
+// com o limiar mais baixo na névoa, avermelhado na vermelha. Curto (uma passada só).
 //
 // Limite: o jogo compila este arquivo uma vez por sessão, na primeira carga de
 // mundo (spike do shader). Ligou ou desligou o mod: reinicie o jogo.
@@ -35,6 +39,7 @@ uniform float BlurFactor;
 in vec2 vUV;
 
 const float NOM_MARKER = 13.0;
+const float NOM_BLOOM_SCALE = 0.25;
 const vec3 NOM_REC709 = vec3(0.2126, 0.7152, 0.0722);
 const float NOM_TAU = 6.2831853;
 
@@ -108,6 +113,21 @@ vec3 nomSoft(vec3 c, vec2 uv, float k)
     return mix(c, acc / 13.0, clamp(k, 0.0, 1.0));
 }
 
+// Claro da cena acima do limiar num anel de 16 pontos em dois raios em volta de uv.
+vec3 nomBloom(vec2 uv, float threshold)
+{
+    vec2 px = 1.0 / nomSceneSize();
+    vec3 acc = vec3(0.0);
+    for (int i = 0; i < 16; i++) {
+        float a = float(i) * (NOM_TAU / 16.0) + 0.3;
+        float r = (i - (i / 2) * 2 == 0) ? 7.0 : 16.0;
+        vec3 c = texture2D(DIFFUSE, uv + vec2(cos(a), sin(a)) * r * px).rgb;
+        float l = dot(c, NOM_REC709);
+        acc += c * (max(l - threshold, 0.0) / max(l, 0.001));
+    }
+    return acc / 16.0;
+}
+
 // Máscara do modo de busca: 0 dentro do raio (em tiles) em volta do personagem,
 // 1 fora, com borda de largura feather (px). O centro segue a câmera deslocada
 // pelo clique direito (ScreenInfo.zw) e sobe ~56 px de tela (a altura do
@@ -144,7 +164,9 @@ void main()
     float frame = floor(timer);
     float clock = timer / 30.0;
 
-    bool ours = VarInfo.x == 0.0 && abs(ParamInfo.z * 2.0 / max(ParamInfo.y, 1.0) - NOM_MARKER) < 0.01;
+    float tag = ParamInfo.z * 2.0 / max(ParamInfo.y, 1.0);
+    bool ours = VarInfo.x == 0.0 && tag > NOM_MARKER - 0.01 && tag < NOM_MARKER + 2.0 * NOM_BLOOM_SCALE + 0.01;
+    float bloom = ours ? clamp((tag - NOM_MARKER) / NOM_BLOOM_SCALE, 0.0, 2.0) : 0.0;
     float fog = ours ? clamp(SearchMode.x, 0.0, 2.0) : 0.0;
     float hiss = ours ? clamp(SearchMode.y, 0.0, 2.0) : 0.0;
     float red = ours ? clamp(ParamInfo.w, 0.0, 2.0) : 0.0;
@@ -202,6 +224,14 @@ void main()
             col = nomGrey(col, rim * 0.45 * (1.0 - 0.6 * min(red, 1.0)));
             col = mix(col, col * vec3(1.2, 0.5, 0.45), rim * min(red, 1.0) * 0.7);
         }
+    }
+
+    if (bloom > 0.0) {
+        float thick = min(fog, 1.0);
+        float reddish = min(red, 1.0);
+        vec3 glow = nomBloom(uv, mix(0.72, 0.55, thick));
+        glow = mix(glow, glow * vec3(1.3, 0.55, 0.45), reddish * 0.6);
+        col += glow * bloom * (0.35 + 0.45 * thick + 0.25 * reddish);
     }
 
     col = nomPunch(nomGrey(clamp(col, 0.0, 1.0), 0.1), 1.2);

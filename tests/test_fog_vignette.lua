@@ -24,6 +24,10 @@ local function setup(opts)
     PZAPI = nil
     NOM_ShaderMod = opts.shader
     require "NOM_FogState"
+    -- bloom do jogador (sprint 0018): 0 nos testes da 0013, que são o canal só da névoa
+    require "NOM_ScreenFxOptions"
+    G.bloom = opts.bloom or 0
+    if NOM_ScreenFxOptions then NOM_ScreenFxOptions.bloom = function() return G.bloom end end
     G.enabled, G.targets, G.managers, G.override, G.fading, G.all = {}, {}, {}, {}, {}, {}
     G.FADE_TICKS = 30
     local function float(pn, name)
@@ -266,5 +270,51 @@ return {
         SandboxVars.NevoaEOutroMundo.FogVignetteIntensity = 0
         G2.seconds(1)
         assert(G2.override[0] == false, "segurou com intensidade 0 no sandbox")
+    end,
+
+    -- Sprint 0018: bloom do shader -------------------------------------------------------
+
+    -- fora da névoa, só pelo bloom: canal tomado, sem efeito da névoa, bloom no marcador
+    vignette_channel_bloom_outside_fog = function()
+        local G = setup({ shader = true, bloom = 1.2 })
+        G.seconds(2)
+        assert(G.override[0] == true and G.enabled[0] ~= true, "não tomou o canal pro bloom")
+        local c = G.all[0]
+        assert(c.blur == 0 and c.darkness == 0 and c.desat == 0)
+        assert(math.abs(c.gradient - (NOM_ScreenFxRules.MARKER + 1.2 * NOM_ScreenFxRules.BLOOM_SCALE)) < 1e-9, "marcador " .. c.gradient)
+        G.bloom = 0.5 -- o jogador mexeu na opção
+        G.tick(1)
+        assert(math.abs(G.all[0].gradient - (NOM_ScreenFxRules.MARKER + 0.5 * NOM_ScreenFxRules.BLOOM_SCALE)) < 1e-9)
+        G.bloom = 0
+        G.seconds(1)
+        assert(G.override[0] == false and G.all[0].gradient == 0, "segurou o canal sem bloom e sem névoa")
+    end,
+
+    vignette_channel_bloom_yields_to_foraging = function()
+        local G = setup({ shader = true, bloom = 1 })
+        G.seconds(1)
+        local m = G.managers[G.p]
+        m.isSearchMode = true
+        G.seconds(1)
+        assert(G.override[0] == false and m.isOverride == false, "segurou com o jogador forrageando")
+        assert(G.enabled[0] == true, "o forrageamento não voltou")
+        m.isSearchMode = false
+        G.seconds(2)
+        assert(G.override[0] == true, "não voltou depois do forrageamento")
+    end,
+
+    -- o sandbox desliga a vinheta da névoa, não o bloom do jogador
+    vignette_channel_bloom_with_sandbox_vignette_off = function()
+        local G = setup({ shader = true, bloom = 1, sandbox = { FogVignette = false } })
+        NOM_FogState.set(true, 1)
+        G.seconds(6)
+        assert(G.override[0] == true and G.all[0].blur == 0, "a névoa voltou pelo bloom")
+        assert(G.all[0].gradient > NOM_ScreenFxRules.MARKER)
+    end,
+
+    vignette_bloom_needs_shader_mod = function()
+        local G = setup({ bloom = 2 })
+        G.seconds(2)
+        assert(G.override[0] ~= true and G.all[0] == nil)
     end,
 }
