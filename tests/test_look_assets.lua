@@ -50,7 +50,16 @@ local SIZE = {
     ["skinned\\hair\\m_balaclavafull"] = 128,        -- Clothes/Hat/Balaclava_Full2.png
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
+    ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
 }
+
+-- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
+-- pra opção desligada e pro shader que não compila) e a casca do Eco.
+local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_EcoVeu" }
+local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
+
+local function xmlOf(name) return read(MEDIA .. "clothing/clothingItems/" .. name .. ".xml") end
+local function tag(xml, t) return xml:match("<" .. t .. ">([^<]*)</" .. t .. ">") end
 
 return {
     look_assets_items_resolve = function()
@@ -71,7 +80,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 6, "esperava 6 itens, achou " .. n)
+        assert(n == 12, "esperava 12 itens, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
@@ -123,5 +132,40 @@ return {
             assert(path and path:find("NOM_Eco", 1, true), "outfit NOM_Eco com item que não é do Eco: " .. guid)
         end
         assert(n == 4, "NOM_Eco feminino e masculino com 2 itens cada, achou " .. n)
+    end,
+
+    look_assets_fx_twins = function()
+        local all = items()
+        for _, name in ipairs(FX) do
+            local a, b = xmlOf(name), xmlOf(name .. "Fx")
+            assert(all[name .. "Fx"], name .. "Fx fora do script")
+            assert(all[name .. "Fx"]:match("BodyLocation = ([%w:]+)") == all[name]:match("BodyLocation = ([%w:]+)"), name .. "Fx em outro lugar")
+            assert(not tag(a, "m_Shader"), name .. " ganhou shader (a opção desligada perde o fallback)")
+            assert(tag(b, "m_Shader") == "NOM_Dissolve", name .. "Fx sem o shader")
+            for _, t in ipairs({ "m_MaleModel", "m_FemaleModel", "m_Static", "m_AttachBone", "textureChoices", "m_MasksFolder", "m_HatCategory" }) do
+                assert(tag(a, t) == tag(b, t), name .. "Fx: " .. t .. " diferente")
+            end
+            assert(tag(a, "m_GUID") ~= tag(b, "m_GUID"))
+        end
+    end,
+
+    -- a casca do Eco: a malha Hazmat vanilla com as mesmas máscaras do corpo do
+    -- HazmatSuit.xml (o buraco da casca mostra o fundo, não a pele), cinza do mod, shader
+    look_assets_eco_shell = function()
+        local x = xmlOf("NOM_EcoCasca")
+        assert(tag(x, "m_MaleModel") == "media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X")
+        assert(tag(x, "m_FemaleModel") == "media\\models_X\\Skinned\\Clothes\\Kate_Hazmat.X")
+        assert(tag(x, "m_Shader") == "NOM_Dissolve" and tag(x, "textureChoices") == "NOM\\NOM_EcoCinza")
+        local masks = {}
+        for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
+        local f = io.open(HAZMAT, "rb")
+        if f then
+            local van = {}
+            for m in f:read("*a"):gmatch("<m_Masks>(%d+)</m_Masks>") do van[#van + 1] = m end
+            f:close()
+            assert(table.concat(masks, ",") == table.concat(van, ","), "máscaras diferentes do HazmatSuit.xml")
+        end
+        assert(#masks == 14)
+        assert(items().NOM_EcoCasca:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a cinza)")
     end,
 }

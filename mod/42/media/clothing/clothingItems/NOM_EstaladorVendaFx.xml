@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gêmeo de NOM_EstaladorVenda com o shader do dissolve (sprint 0018, ADR-016): mesmo modelo vanilla e textura;
+     o mod veste este com a opção de dissolve ligada (client/NOM_VariantLook.lua, client/NOM_EcoFx.lua). -->
+<clothingItem>
+	<m_MaleModel>static\clothes\m_glasses_skigoggles</m_MaleModel>
+	<m_FemaleModel>static\clothes\f_glasses_skigoggles</m_FemaleModel>
+	<m_GUID>87bae58d-960d-4fe5-b9a6-180ce77e51a9</m_GUID>
+	<m_Static>true</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_MasksFolder>none</m_MasksFolder>
+	<textureChoices>NOM\NOM_EstaladorVenda</textureChoices>
+	<m_Shader>NOM_Dissolve</m_Shader>
+</clothingItem>

@@ -25,4 +25,28 @@
 		<path>media/clothing/clothingItems/NOM_EcoCinza.xml</path>
 		<guid>e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d</guid>
 	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EstaladorVendaFx.xml</path>
+		<guid>87bae58d-960d-4fe5-b9a6-180ce77e51a9</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CorredorBocaFx.xml</path>
+		<guid>c7f68146-fec3-410b-9b11-7790d3983a42</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoEstaticaFx.xml</path>
+		<guid>435fa972-4336-49e1-90b5-fab69eced3a0</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraCabeloFx.xml</path>
+		<guid>9df17001-f725-484f-ad1d-38f4e1b99256</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EcoVeuFx.xml</path>
+		<guid>19573452-d035-45e3-9642-0e6665b50005</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EcoCasca.xml</path>
+		<guid>82738c69-4609-4192-b7bf-9f6a8c24c4e6</guid>
+	</files>
 </fileGuidTable>

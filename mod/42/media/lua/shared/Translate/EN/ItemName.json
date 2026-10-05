@@ -4,5 +4,11 @@
     "Base.NOM_SemRostoEstatica": "Static Face",
     "Base.NOM_CarpideiraCabelo": "Matted Hair",
     "Base.NOM_EcoCinza": "Ash",
-    "Base.NOM_EcoVeu": "Smoke Veil"
+    "Base.NOM_EcoVeu": "Smoke Veil",
+    "Base.NOM_EstaladorVendaFx": "Rusted Wire Blindfold",
+    "Base.NOM_CorredorBocaFx": "Torn Mouth",
+    "Base.NOM_SemRostoEstaticaFx": "Static Face",
+    "Base.NOM_CarpideiraCabeloFx": "Matted Hair",
+    "Base.NOM_EcoVeuFx": "Smoke Veil",
+    "Base.NOM_EcoCasca": "Ash Shell"
 }
