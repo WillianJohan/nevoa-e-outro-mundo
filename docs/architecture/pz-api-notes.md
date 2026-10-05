@@ -281,9 +281,14 @@ Fallback: tabela global (`ModData.getOrCreate`, CONFIRMED `server/Foraging/forag
 chaveada por `persistentOutfitID`, com o risco de colisão (o ID mistura outfit e um aleatório).
 Ecos não precisam disso: só existem durante a noite e são removidos no amanhecer.
 
-Para os clientes conhecerem a variante no MP: `sendServerCommand("Nevoa", "variant", { id = z:getOnlineID(), v = ... })`.
-Com a variante derivada do `persistentOutfitID`, o cliente consegue calcular sozinho (UNKNOWN
-se o cliente recebe o mesmo `persistentOutfitID`; `ZombiePacket` provavelmente leva o outfit).
+**Resolvido na sprint 0004 (bytecode): o cliente recebe o mesmo `persistentOutfitID`.**
+`ZombiePacket.set(IsoZombie)` grava `getPersistentOutfitID()` em `outfitId` (offsets 15–18),
+`write/parse` levam o campo, e `NetworkZombieSimulator.parseZombie` (140–152) cria o zumbi com
+`VirtualZombieManager.createRealZombieAlways(outfitId, dir, false, 0)` →
+`PersistentOutfits.getOutfit(id)` (devolve o mesmo ID quando válido; só re-sorteia semente fora de
+1..500) → `createZombieOutsideWorld`. O `OnZombieCreate` do cliente dispara antes do `onlineId`
+ser setado (209). Usado como base da [ADR-006](adr-006-variantes-deterministicas.md):
+variante = f(`persistentOutfitID`, número da noite), calculada igual no servidor e nos clientes.
 
 ### 3.2 Estalador (cego, só ouve)
 
@@ -294,19 +299,37 @@ se o cliente recebe o mesmo `persistentOutfitID`; `ZombiePacket` provavelmente l
   `PZMath.clamp` no fim de `updateVisionRadius` que pode impor piso: UNKNOWN.
 - `z:setUseless(true)` (EXISTS) faz o zumbi ignorar tudo (checado em `ZombieIdleState`,
   `WalkTowardState`). Não serve para cego: mata a audição também.
-- Recomendado: Sight=3 e Hearing=1 via 2.1 + item com `VisionModifier` + regra Lua no cliente dono:
-  se o alvo é jogador e não houve som dele (agachado `player:isSneaking()`, sem correr
-  `isRunning()/isSprinting()`), `z:setTarget(nil)`. EXISTS; testar se `setTarget(nil)` não
-  reentra no mesmo frame.
+- **Usado na sprint 0004:** Sight=3 e Hearing=1 via 2.1 + regra Lua no dono. A visão "ruim"
+  não cega (piso de 10 tiles em `updateVisionRadius`). O spot é só `setTarget`:
+  `IsoPlayer.TestZombieSpotPlayer` → `IsoZombie.spotted` → `spottedNew`, que zera o alvo ele
+  mesmo quando o zumbi é `useless` (191–208) ou está na fumaça (209–235). `OnZombieUpdate`
+  dispara em `IsoZombie.updateInternal` 696, **antes** de `IsoGameCharacter.update` (1029, a
+  máquina de estados): `z:setTarget(nil)` ali, com o alvo `IsoPlayer` agachado
+  (`isSneaking()`) e sem `isRunning()`/`isSprinting()`, faz o zumbi não agir no que viu.
+  `setTarget`, `getTarget`, `isSneaking`, `isRunning`, `isSprinting`: EXISTS (públicos). Som
+  não passa por alvo (vai pelo `WorldSoundManager`): o Estalador continua indo até o barulho.
+  UNKNOWN: se o `pathToCharacter` do `spottedNew` (2434) deixa o zumbi andando até a posição
+  do jogador mesmo sem alvo (roteiro da sprint 0004).
 - Clique periódico: ver seção 4 (`sendPlaySound` no servidor / `z:playSound` no solo).
-- Agarrão letal: B42 tem grapple (`ZombiesDragDown` no sandbox). Letalidade por variante:
-  UNKNOWN; caminho provável é detectar `z:isAttacking()` e aplicar dano (2.2).
+- Agarrão letal: **não existe caminho por golpe** (sprint 0004). `AttackState.triggerPlayerReaction`
+  → `BodyDamage.AddRandomDamageFromZombie(zumbi, …)` lê do zumbi só `crawling`, `inactive`,
+  `scratch`/`laceration` e `cantBite()`, e o `ZombieLore.Strength`/`ZombiesDragDown` globais;
+  nenhum evento Lua no caminho. `OnPlayerGetDamage` sai de `BodyDamage.Update` (POISON, HUNGRY,
+  SICK, BLEEDING, THIRST), `IsoGameCharacter.Hit` (arma), queda, fogo e carro;
+  `OnWeaponHitCharacter`/`OnHitZombie` saem de `Hit` com arma. Sobra só observar a vida do
+  jogador e `getAttackedBy()` (EXISTS) depois do golpe — não feito (pendência).
 
 ### 3.3 Corredor (sprinter que grita)
 
-Velocidade via 2.1 (`Speed = 1`). Grito: `sendPlaySound("NevoaScream", false, z)` no servidor
-(CONFIRMED `server/Fishing/BuildingObjects/FishingNet.lua:86`) ou `z:playSound(...)` no solo, mais
-`addSound(z, x, y, z, raio, volume)` para puxar a horda (2.3).
+Velocidade via 2.1 (`Speed = 1`). Grito: `sendPlaySound("NOM_CorredorScream", false, z)` no
+servidor (CONFIRMED `server/Fishing/BuildingObjects/FishingNet.lua:86`) ou
+`z:getEmitter():playSound(...)` no solo (CONFIRMED `shared/TimedActions/ISDrinkFluidAction.lua:34`),
+mais `addSound(z, x, y, z, raio, volume)` para puxar a horda (2.3).
+
+**Sprint 0004:** o servidor não sabe o alvo do zumbi no MP (o `target` não viaja; `PFBData` só
+restaura o caminho no cliente que assume a posse, `NetworkZombieMind.doRestorePFBTarget`). O dono
+vê a borda "pegou um jogador de alvo" no `OnZombieUpdate` e manda `corredorSaw` com o `onlineID`;
+o servidor confere a variante e o cooldown e grita.
 
 ### 3.4 Sem-rosto (some quando visto ou iluminado)
 
@@ -467,8 +490,8 @@ Validar cada nome com `getSprite(name) ~= nil` (CONFIRMED `server/ClientCommands
 | `OnZombieDead` | (zombie) | `IsoZombie.onKilled`, antes do corpo | CONFIRMED | `Steps.lua:840` |
 | `OnDeadBodySpawn` | (body) | construtor de `IsoDeadBody`, **nunca no servidor dedicado** | CONFIRMED | `ISWorldObjectContextMenu.lua:2782`; bytecode `IsoDeadBody.<init>` 1298–1311 |
 | `OnZombieCreate` | (zombie) | `VirtualZombieManager.createRealZombieAlways`, antes de entrar em `getZombieList()` e, no spawn por Lua, antes de vestir | EXISTS | bytecode |
-| `OnZombieUpdate` | (zombie) | `IsoZombie.updateInternal` | EXISTS | bytecode; caro, filtre cedo |
-| `OnHitZombie` | (zombie, attacker, bodyPart, weapon) | `IsoZombie` | EXISTS | bytecode (params não verificados) |
+| `OnZombieUpdate` | (zombie) | `IsoZombie.updateInternal` (696), antes da máquina de estados (1029) | EXISTS | bytecode; caro, filtre cedo |
+| `OnHitZombie` | (zombie, wielder, bodyPart, weapon) | `IsoZombie.Hit` | CONFIRMED | `shared/Definitions/DamageModelDefinitions.lua:24,69` |
 | `OnPlayerUpdate` | (player) | `IsoPlayer` | EXISTS | bytecode |
 | `OnGameStart` | — | `IngameState` (cliente/SP) | CONFIRMED | `shared/TimedActions/ISGrabCorpseAction.lua:168` |
 | `OnServerStarted` | — | `GameServer` (só dedicado) | EXISTS | bytecode |
@@ -529,4 +552,7 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 5. `teleportTo` em zumbi no MP: teleporta, desliza ou volta?
 6. `VisionModifier` baixo em item vestido no zumbi deixa ele efetivamente cego?
 7. Override de `media/shaders/screen.frag` por mod é aplicado (ordem boot × ativação de mod)?
+9. Som de mod declarado com `file = media/sound/x.ogg` toca (sprint 0004: `NOM_sounds.txt`)?
+10. `require` de arquivo do servidor por outro arquivo do servidor roda uma vez só: sim, por
+    bytecode (`LuaManager.RunLuaInternal` 11–30 devolve `loadedReturn` se o caminho já está em `loaded`).
 8. ~~`setValue` em opção de sandbox dispara sync?~~ Não, nem salva (§2.1).
