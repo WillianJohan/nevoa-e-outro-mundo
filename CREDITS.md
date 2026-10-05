@@ -43,6 +43,8 @@ desenhado à mão porque a fonte embutida não tem o caractere.
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
 | `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`): o "N" na névoa |
 | `docs/workshop/preview.png` | 256×256 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
+| `mod2/42/poster.png` | 512×512 | painel do mod opcional do shader: o pôster com as cores separadas e "SHADER" |
+| `mod2/42/icon.png` | 64×64 | ícone do mod opcional do shader: o "N" com as cores separadas |
 
 Pra regerar: `python3 scripts/gen_images.py`.
 

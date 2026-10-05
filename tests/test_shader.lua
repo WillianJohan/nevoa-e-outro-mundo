@@ -138,6 +138,24 @@ return {
         end
     end,
 
+    -- poster= e icon= resolvem em 42/ (readModInfoAux 221–272, 652–700); gerados por
+    -- scripts/gen_images.py e citados no CREDITS
+    shader_mod_images = function()
+        local info = assert(read("mod2/42/mod.info"))
+        local credits = assert(read("CREDITS.md"))
+        for key, size in pairs({ poster = 512, icon = 64 }) do
+            local name = info:match("\n" .. key .. "=([^\n]+)")
+            assert(name, "mod.info do mod2 sem " .. key .. "=")
+            local path = "mod2/42/" .. name
+            local f = assert(io.open(path, "rb"), "falta " .. path)
+            local png = f:read("*a")
+            f:close()
+            local function u32(i) return png:byte(i) * 16777216 + png:byte(i + 1) * 65536 + png:byte(i + 2) * 256 + png:byte(i + 3) end
+            assert(png:sub(2, 4) == "PNG" and u32(17) == size and u32(21) == size, path .. " não é PNG " .. size)
+            assert(credits:find(path, 1, true), "CREDITS.md não cita " .. path)
+        end
+    end,
+
     -- a flag que o NOM_FogVignette e o NOM_ScreenFx leem (shared carrega antes do client)
     shader_flag_file = function()
         NOM_ShaderMod = nil

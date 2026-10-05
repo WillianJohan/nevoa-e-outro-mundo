@@ -44,7 +44,7 @@ Esperado (o número de arquivos muda com o mod):
 ```
 destino: /home/<você>/Zomboid/Workshop/NevoaEOutroMundo
 Contents/mods/NevoaEOutroMundo/ <- mod/ do commit <hash> (45 arquivos, cópia limpa)
-Contents/mods/NevoaEOutroMundo_Shader/ <- mod2/ do mesmo commit (6 arquivos; mod opcional do shader, ADR-013)
+Contents/mods/NevoaEOutroMundo_Shader/ <- mod2/ do mesmo commit (8 arquivos; mod opcional do shader, ADR-013)
 preview.png <- docs/workshop/preview.png (82862 bytes)
 workshop.txt <- docs/workshop/description-en.txt + description-ptbr.txt (5980 bytes); sem id (primeiro upload), visibility=unlisted
 pronto. Abra o jogo: menu principal > Workshop > Névoa e Outro Mundo.
