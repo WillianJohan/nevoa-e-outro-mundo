@@ -27,6 +27,7 @@ import zombie.iso.IsoDepthHelper;
 import zombie.iso.IsoWorld;
 import zombie.iso.Vector2;
 import zombie.iso.weather.ClimateManager;
+import zombie.iso.weather.fog.ImprovedFog;
 import zombie.scripting.objects.VehicleScript;
 import zombie.vehicles.BaseVehicle;
 import zombie.vehicles.VehicleLight;
@@ -50,7 +51,7 @@ public final class RenderContext {
     static final float CHAR_RANGE = 20f;
     static final int MAX_TORCHES = 4;
     static final float TORCH_RANGE = 40f;
-    // ponytail: a origem pula a cada 256 tiles (o ruído da névoa dá um salto lá); suave se incomodar
+    // a origem pula a cada 256 tiles; o ruído da névoa fica no mundo (uDrift), então não salta
     static final double ORIGIN_SNAP = 256;
 
     // params que o Lua empurra (NOMRender_setParam); 4 x vec4
@@ -58,10 +59,13 @@ public final class RenderContext {
     static final long t0 = System.nanoTime();
     static final int PARAM_LOOK = 5;            // NOMRender_setParam(5, 0) volta pro visual antigo da névoa
     static final int PARAM_QUALITY = 6;         // 0 baixa, 1 média, 2 alta (Opções > Mods, pelo Lua)
+    static final int PARAM_HAZE = 7;            // escala do véu de fundo da névoa (0 = só rolos)
+    static final int PARAM_VANILLA_FOG = 8;     // 1 devolve a névoa vanilla (ImprovedFog) por baixo da nossa
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
+        luaParams[PARAM_HAZE] = 1f;
     }
 
     // ---------- Lua ----------
@@ -76,6 +80,15 @@ public final class RenderContext {
 
     @LuaMethod(name = "NOMRender_isActive", global = true)
     public static boolean isActive() { return true; }
+
+    /**
+     * A névoa vanilla para antes da borda de baixo da tela (maxYOffset -5) e com zoom afastado vira
+     * uma faixa limpa; a nossa cobre a tela toda, com véu de fundo. Se o passe morreu, a vanilla fica.
+     */
+    public static void afterVanillaFogUpdate() {
+        if (disabled || luaParams[PARAM_VANILLA_FOG] >= 0.5f) return;
+        ImprovedFog.setBaseAlpha(0f);
+    }
 
     /** Estado da névoa fluida, no console e no console.txt. */
     @LuaMethod(name = "NOMRender_flowInfo", global = true)

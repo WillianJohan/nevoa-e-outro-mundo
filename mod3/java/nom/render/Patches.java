@@ -17,4 +17,17 @@ public class Patches {
             try { RenderContext.onWorldEnd(playerIndex); } catch (Throwable t) { }
         }
     }
+
+    /**
+     * ImprovedFog.update() roda no IsoWorld.updateInternal (48), antes do desenho do quadro
+     * (FBORenderCell.renderFog), e recalcula o baseAlpha pela névoa do clima (update 43–73).
+     * Na saída, a névoa vanilla pode ser zerada pro quadro inteiro.
+     */
+    @Patch(className = "zombie.iso.weather.fog.ImprovedFog", methodName = "update")
+    public static class VanillaFogUpdate {
+        @Patch.OnExit
+        public static void exit() {
+            try { RenderContext.afterVanillaFogUpdate(); } catch (Throwable t) { }
+        }
+    }
 }
