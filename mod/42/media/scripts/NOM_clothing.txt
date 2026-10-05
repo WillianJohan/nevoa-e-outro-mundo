@@ -72,7 +72,7 @@ module Base
         ClothingItem = NOM_EcoVeu,
     }
 
-    /* Sprint 0018: gêmeos *Fx com o shader do dissolve (clothingItems/*Fx.xml) e a casca de
+    /* Sprint 0018: gêmeos *Fx com o shader do dissolve (os XML em clothingItems com sufixo Fx) e a casca de
        cinza do Eco. Mesmo lugar das originais; a casca em base:zeddmg (multi-item) pra não
        expulsar a cinza do base:boilersuit. */
     item NOM_EstaladorVendaFx
