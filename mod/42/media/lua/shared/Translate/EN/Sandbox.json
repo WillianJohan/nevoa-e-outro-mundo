@@ -63,7 +63,7 @@
     "Sandbox_NevoaEOutroMundo.FogAmbience": "Fog: ambient sound",
     "Sandbox_NevoaEOutroMundo.FogAmbience_tooltip": "In fog a low drone and distant metallic noises replace the ambience. Only on your game.",
     "Sandbox_NevoaEOutroMundo.FogOverlays": "Fog: blood and decay on floors and walls",
-    "Sandbox_NevoaEOutroMundo.FogOverlays_tooltip": "In fog, the world around you turns into the Otherworld: pools and trails of blood, grime and cracks on the ground, heavier in red fog. Only you see them; they vanish when the fog lifts and nothing stays on the map or in the save. Each player sets the amount in Options > Mods.",
+    "Sandbox_NevoaEOutroMundo.FogOverlays_tooltip": "In fog, the world around you turns into the Otherworld: pools and trails of blood, grime and cracks on floors and walls, burnt floors indoors, weeds and vines outdoors, heavier in red fog. Only you see them; they vanish when the fog lifts and nothing stays on the map or in the save. Each player sets the amount in Options > Mods.",
     "Sandbox_NevoaEOutroMundo.FogVignette": "Fog: screen vignette",
     "Sandbox_NevoaEOutroMundo.FogVignette_tooltip": "In fog the screen edges darken and blur. It steps aside while you forage.",
     "Sandbox_NevoaEOutroMundo.FogVignetteIntensity": "Fog vignette intensity",

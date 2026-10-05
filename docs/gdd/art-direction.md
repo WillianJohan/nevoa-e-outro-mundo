@@ -153,10 +153,13 @@ Na névoa, o lugar em volta é o mesmo lugar, abandonado há décadas e onde alg
 - **Sangue que conta história:** poças (o miolo escuro, de camadas sobrepostas) com um rastro
   saindo, como algo arrastado; respingo solto entre elas. Nas paredes, escorrido. Não é carpete
   uniforme: é onde aconteceu alguma coisa.
-- **Erosão no máximo:** sujeira e rachadura no chão. O que a natureza levaria anos pra fazer, a
-  névoa faz em segundos. A sujeira vem em manchas, nunca um losango por tile (lia como xadrez,
-  print de 05/10); planta e trepadeira saíram na sprint 0021 (eram objetos em pé e cobriam o
-  jogador), e as paredes estão desligadas.
+- **Erosão no máximo:** sujeira e rachadura no chão e nas paredes; trepadeira subindo as paredes de
+  fora e mato rasteiro no chão de fora; dentro, o chão queimado da casa destruída (o miolo do cômodo
+  carbonizado, a borda só marcada). O que a natureza levaria anos pra fazer, a névoa faz em
+  segundos. A sujeira vem em manchas, nunca um losango por tile (lia como xadrez, print de 05/10).
+  Desde a sprint 0023 tudo vai colado no chão e na parede de verdade: embaixo dos pés, com a luz e o
+  recorte do jogo.
 - **Vermelha é pior:** mais poças, mais rastro, mais parede suja.
-- Só sprites vanilla pelo nome (nada copiado nem gerado); escurecidos pela luz do lugar, com um
-  piso pra ainda se lerem no breu. Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md).
+- Só sprites vanilla pelo nome (nada copiado nem gerado), com a luz do lugar (desde a 0023 o breu
+  esconde de verdade; a lanterna revela). Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md),
+  [ADR-017](../architecture/adr-017-outro-mundo-anexado.md).

@@ -77,6 +77,7 @@ Sem-rosto, som, chão, vinheta e a névoa do clima, que é toda do mod desde a s
 - [ ] Dentro do save, `NOM_Debug.status()` imprime as duas linhas. **Se** `NOM_Debug`
       for `nil`: o jogo não está em `-debug` (ou o mod não está ativo no save).
 - [ ] Painel e atalhos (sprint 0020): [roteiro da 0020](sprints/sprint-0020-debug-amigavel/README.md#roteiro-in-game).
+- [ ] Outro Mundo anexado e o save limpo (sprint 0023, **save descartável**): [roteiro da 0023](sprints/sprint-0023-outro-mundo-anexado/README.md#roteiro-in-game).
 
 ## Parte 1 — Solo (~40 min)
 

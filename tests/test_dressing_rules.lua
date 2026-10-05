@@ -38,7 +38,8 @@ local function sweep(R, period, d, size)
     return n, layers, pools
 end
 
--- Medida do pack (scripts/audit_floor_sprites.py, sprint 0021): por nome, flat, zone, cov, spill.
+-- Medida do pack (scripts/audit_floor_sprites.py, sprints 0021 e 0023): por nome, inside, cov,
+-- rise, wind (geometria do sprite anexado ao piso).
 local AUDIT = dofile("tests/floor_sprites.lua")
 
 local function floorNames(R)
@@ -51,52 +52,146 @@ local function floorNames(R)
     return out
 end
 
+local function isPlant(name)
+    return name:find("^d_plants") ~= nil or name:find("^d_floorleaves") ~= nil
+end
+
+-- conta camadas por set num quarteirão, dentro ou fora
+local function kinds(R, outside, d)
+    local n = {}
+    for x = 0, 59 do
+        for y = 0, 59 do
+            local f = R.floor(4000 + x, 4000 + y, 0, 5, d or 1, outside)
+            for _, l in ipairs(f or {}) do n[l[1]] = (n[l[1]] or 0) + 1 end
+        end
+    end
+    return n
+end
+
+local function count(n, pattern)
+    local c = 0
+    for k, v in pairs(n) do if k:find(pattern) then c = c + v end end
+    return c
+end
+
 return {
-    -- prints 9 e 10 do Johan (05/10): planta em pé desenhada como decalque cobre o jogador.
-    -- Todo sprite do chão é decalque chato (conteúdo no diamante do chão, sem MoveWithWind)
-    dressing_rules_floor_pool_flat_only = function()
+    -- sprint 0023: o sprite vai anexado ao piso e sai na posição do piso. Decalque (sangue,
+    -- sujeira, rachadura, queimado) com o conteúdo deitado no diamante do chão (não flutua); mato
+    -- e folha rasteiros (quase tudo no diamante e no máximo 8 px acima dele: o anexo do piso sai
+    -- antes dos personagens e das paredes, um mato alto ficaria por baixo do que está atrás dele)
+    dressing_rules_floor_pools_lie_on_floor = function()
         local R = load()
         local names = floorNames(R)
-        assert(#names > 50, "pool vazio demais: " .. #names)
+        assert(#names > 150, "pool vazio demais: " .. #names)
         for _, n in ipairs(names) do
             local a = AUDIT[n.name]
             assert(a, "sprite fora da auditoria: " .. n.name)
-            assert(a.flat, "sprite em pé no chão: " .. n.name)
-        end
-    end,
-
-    -- o IsoMarker põe a base do recorte no centro do tile (meio tile acima): o pool não invade
-    -- o centro dos tiles de trás (N, W, NW). Heurística de vazamento, não garantia de corpo
-    -- limpo (com o pé fora do centro todo sprite alcança; quem garante é o cliente apagando
-    -- 4 tiles por personagem: overlays_player_tiles_clear_every_tick, review 0021)
-    dressing_rules_floor_pool_spares_tile_centres = function()
-        local R = load()
-        for _, n in ipairs(floorNames(R)) do
-            assert(AUDIT[n.name].zone == 0, "invade o centro do tile de trás: " .. n.name .. " (" .. AUDIT[n.name].zone .. " px)")
-        end
-    end,
-
-    -- d_plants_1_* é planta de erosão (objeto em pé, tiledefinitions_erosion): fora do chão
-    dressing_rules_no_plants = function()
-        local R = load()
-        for _, n in ipairs(floorNames(R)) do assert(not n.name:find("^d_plants"), "planta no chão: " .. n.name) end
-        for x = 0, 59 do
-            for y = 0, 59 do
-                for _, l in ipairs(R.floor(2000 + x, 3000 + y, 0, 4, 3.2) or {}) do
-                    assert(R.SETS[l[1]] and not R.SETS[l[1]].prefix:find("^d_plants"), "camada de planta")
-                end
+            if isPlant(n.name) then
+                assert(a.inside >= 0.8 and a.rise <= 8, "mato alto no chão: " .. n.name)
+            else
+                assert(a.inside >= 0.95, "decalque fora do chão: " .. n.name)
             end
         end
     end,
 
+    -- chão queimado é de casa destruída (dentro); mato e folha são de fora
+    dressing_rules_burnt_only_inside_plants_only_outside = function()
+        local R = load()
+        local inside, outside = kinds(R, false), kinds(R, true)
+        assert(count(inside, "^burnt") > 100, "casa sem chão queimado: " .. count(inside, "^burnt"))
+        assert(count(inside, "^plants") + count(inside, "^leaves") == 0, "mato dentro de casa")
+        assert(count(outside, "^plants") + count(outside, "^leaves") > 100, "rua sem mato")
+        assert(count(outside, "^burnt") == 0, "chão queimado na rua")
+    end,
+
+    -- o queimado vem em manchas (não tile a tile): troca queimado/limpo entre vizinhos bem menor
+    -- que a de um sorteio por tile; o miolo cheio fica dentro da mancha (quase todo tile cheio
+    -- tem vizinho queimado dos 4 lados: o ruído anda até ~0,3 por tile, o corte não garante 100%)
+    dressing_rules_burnt_patches = function()
+        local R = load()
+        for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
+            local has, full, n, tot = {}, {}, 0, 0
+            for x = 0, 89 do
+                for y = 0, 89 do
+                    local k = x .. "," .. y
+                    for _, l in ipairs(R.floor(6000 + x, 6000 + y, 0, 4, d, false) or {}) do
+                        if l[1]:find("^burnt") then has[k] = true end
+                        if l[1] == "burntFloorF" then full[k] = true end
+                    end
+                    if has[k] then n = n + 1 end
+                    tot = tot + 1
+                end
+            end
+            local p = n / tot
+            assert(p > 0.05 and p < 0.45, "fração de queimado: d=" .. d .. " " .. p)
+            local flips, pairs_ = 0, 0
+            for x = 0, 88 do
+                for y = 0, 88 do
+                    for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+                        pairs_ = pairs_ + 1
+                        if (has[x .. "," .. y] or false) ~= (has[(x + o[1]) .. "," .. (y + o[2])] or false) then flips = flips + 1 end
+                    end
+                end
+            end
+            assert(flips / pairs_ / (2 * p * (1 - p)) < 0.6, "queimado tile a tile: d=" .. d)
+            local fulls, edge = 0, 0
+            for x = 1, 88 do
+                for y = 1, 88 do
+                    if full[x .. "," .. y] then
+                        fulls = fulls + 1
+                        for _, o in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                            if not has[(x + o[1]) .. "," .. (y + o[2])] then edge = edge + 1 break end
+                        end
+                    end
+                end
+            end
+            assert(fulls > 50, "pouco queimado cheio: d=" .. d .. " " .. fulls)
+            assert(edge <= fulls * 0.05, "queimado cheio na borda da mancha: d=" .. d .. " " .. edge .. "/" .. fulls)
+        end
+    end,
+
+    -- o nome só do mod (ninguém no vanilla anexa floors_burnt_01_*, ADR-017): R.own diz
+    -- exatamente os nomes dos sets de queimado; nenhum outro set usa o prefixo
+    dressing_rules_own_prefix_only_burnt = function()
+        local R = load()
+        local burnt = 0
+        for setName, s in pairs(R.SETS) do
+            for _, i in ipairs(s.idx) do
+                local name = R.name({ setName, i })
+                assert(name == s.prefix .. i)
+                assert(R.own(name) == (setName:find("^burnt") ~= nil), "dono errado: " .. name)
+                if R.own(name) then burnt = burnt + 1 end
+            end
+        end
+        assert(burnt >= 20, "poucos queimados: " .. burnt)
+        assert(not R.own("overlay_blood_floor_01_3") and not R.own("blends_natural_01_5") and not R.own(nil))
+    end,
+
+    -- trepadeira é de parede de fora (erosão vanilla: WallVines só em parede externa)
+    dressing_rules_vines_only_outside = function()
+        local R = load()
+        local vinesIn, vinesOut = 0, 0
+        for x = 0, 59 do
+            for y = 0, 59 do
+                for _, north in ipairs({ true, false }) do
+                    local a = R.wall(800 + x, 900 + y, 0, 6, 1, north, false)
+                    local b = R.wall(800 + x, 900 + y, 0, 6, 1, north, true)
+                    if a and a[1]:find("^vines") then vinesIn = vinesIn + 1 end
+                    if b and b[1]:find("^vines") then vinesOut = vinesOut + 1 end
+                end
+            end
+        end
+        assert(vinesIn == 0, "trepadeira dentro: " .. vinesIn)
+        assert(vinesOut > 200, "pouca trepadeira fora: " .. vinesOut)
+    end,
+
     -- print 7 (05/10): sujeira de tile cheio, um losango por tile, lia como xadrez. Só
-    -- sujeira parcial (cobertura < 50% do diamante) e que não é faixa de borda de tile
+    -- sujeira parcial (cobertura < 50% do diamante), a lista da sprint 0021
     dressing_rules_grime_partial_only = function()
         local R = load()
         for _, i in ipairs(R.SETS.grimeFloor.idx) do
             local a = AUDIT[R.SETS.grimeFloor.prefix .. i]
             assert(a.cov < 0.5, "sujeira de tile cheio: " .. i .. " (" .. a.cov .. ")")
-            assert(a.spill < 0.9, "sujeira de borda de tile: " .. i .. " (" .. a.spill .. ")")
         end
         assert(R.GRIME_ALPHA and R.GRIME_ALPHA > 0 and R.GRIME_ALPHA < 1, "sujeira sem alfa próprio")
     end,
@@ -277,7 +372,7 @@ return {
         for x = 0, 59 do
             for y = 0, 59 do
                 for _, north in ipairs({ true, false }) do
-                    local w = R.wall(800 + x, 900 + y, 0, 6, 1, north)
+                    local w = R.wall(800 + x, 900 + y, 0, 6, 1, north, true)
                     if w then
                         local s = R.SETS[w[1]]
                         assert(s.wall == (north and "N" or "W"), w[1] .. " no lado errado")
@@ -338,6 +433,6 @@ return {
         end
         assert(R.OFFSETS[1][1] == 0 and R.OFFSETS[1][2] == 0)
         assert(seen[R.RADIUS .. ",0"] and seen["0,-" .. R.RADIUS])
-        assert(#R.OFFSETS > 1900, "raio pequeno: " .. #R.OFFSETS)
+        assert(#R.OFFSETS > 3 * R.RADIUS * R.RADIUS, "raio pequeno: " .. #R.OFFSETS)
     end,
 }

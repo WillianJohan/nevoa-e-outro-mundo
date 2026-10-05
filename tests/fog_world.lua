@@ -15,10 +15,9 @@
 --   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
 -- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
 -- * Square: qualquer método além dos de leitura listados explode (nada de mexer no mapa).
---   Leituras da sprint 0015: getWall(north) (o objeto com cutN/cutW, IsoGridSquare.getWall(Z);
---   G.walls[k] = "N", "W" ou "NW"), getObjects():size() (piso + paredes, ou G.objects[k]),
---   getLightLevel(pn) (máx. de r,g,b da luz do square; G.light[k] ou G.lightAll, 0..1).
---   G.sqCalls conta toda chamada de método em square (cada uma é uma ida ao Java).
+--   getFloor() e getWall(north) (o objeto com cutN/cutW, IsoGridSquare.getWall(Z)) vêm de
+--   tests/attached_world.lua (G.floorOf, G.wallOf), que modela os anexos (sprint 0023); sem
+--   ele, nil. G.sqCalls conta toda chamada de método em square (cada uma é uma ida ao Java).
 -- * Prédios (sprint 0021): square:isOutside() (server/Farming/SFarmingSystem.lua:295) é falso
 --   sob telhado; square:getBuilding() é o prédio do cômodo, nil fora (server/ClientCommands.lua:676);
 --   player:getBuilding() é o do square dele (client/ISUI/ISWorldObjectContextMenu.lua:1679).
@@ -46,7 +45,7 @@ end
 function W.new(opts)
     opts = opts or {}
     local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
-        holes = {}, blocked = {}, interior = {}, roofed = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, flags = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
+        holes = {}, blocked = {}, interior = {}, roofed = {}, lit = {}, water = {}, flags = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
     local handlers = {}
     G.handlers = handlers
     function G.fire(name, ...)
@@ -75,7 +74,7 @@ function W.new(opts)
         local k = key(x, y, z)
         if G.holes[k] then return nil end
         if squares[k] then return squares[k] end
-        local sq = { x = x, y = y, z = z, free = true }
+        local sq = { x = x, y = y, z = z, free = true, kind = "square" }
         local api = {
             getX = function() return x end,
             getY = function() return y end,
@@ -90,19 +89,8 @@ function W.new(opts)
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             isOutside = function() return G.interior[k] == nil and not G.roofed[k] end,
             getBuilding = function() return G.interior[k] end,
-            getWall = function(_, north)
-                local w = G.walls[k]
-                if w and w:find(north and "N" or "W") then
-                    return setmetatable({}, { __index = function(_, m) error("parede:" .. tostring(m) .. " (mexe no mapa?)", 2) end })
-                end
-                return nil
-            end,
-            getObjects = function()
-                local w = G.walls[k]
-                local n = G.objects[k] or (1 + (w and #w or 0))
-                return { size = function() return n end }
-            end,
-            getLightLevel = function(_, _) return G.light[k] or G.lightAll or 1 end,
+            getFloor = function() return G.floorOf and G.floorOf(x, y, z) or nil end,
+            getWall = function(_, north) return G.wallOf and G.wallOf(x, y, z, north) or nil end,
             isCanSee = function(_, pn)
                 if not couldSee(pn, x, y, z) then return false end
                 if not G.dark or G.lit[k] then return true end

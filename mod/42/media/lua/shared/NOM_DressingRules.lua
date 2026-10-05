@@ -1,8 +1,8 @@
--- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021): o que cada square
--- ganha na névoa. Chão: rachadura e sangue (poças e rastros) num marcador, sujeira em
--- manchas noutro. Parede: um sprite por lado (sangue, sujeira, rachadura, trepadeira), hoje
--- desligada (WALLS). Sem API do jogo, testável com ./run-tests.sh. Quem desenha:
--- client/NOM_FogOverlays.lua.
+-- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021, anexado na 0023): o
+-- que cada square ganha na névoa. Chão: chão queimado (dentro) ou mato e folha (fora),
+-- rachadura e sangue (poças e rastros), e sujeira em manchas à parte (mais leve). Parede: um
+-- sprite por lado (sangue, sujeira, rachadura; trepadeira só fora). Sem API do jogo, testável
+-- com ./run-tests.sh. Quem anexa: client/NOM_FogOverlays.lua (ADR-017).
 --
 -- Nada é guardado: a resposta é função do square, do período de névoa e da
 -- densidade (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
@@ -10,14 +10,11 @@ require "NOM_VariantRules"
 require "NOM_Math"
 
 NOM_DressingRules = {
-    RADIUS = 25,       -- tiles do jogador
-    MAX_FLOOR = 600,   -- marcadores de chão vivos (sangue e sujeira contam à parte, e os que apagam também)
-    MAX_WALL = 120,    -- paredes desenhadas por quadro
-    -- Hotfix 2026-10-05: o desenho de fantasma não tem profundidade e, no jogo, cobriu o
-    -- jogador e pintou de preto as paredes cortadas. Sprint 0021: fica desligado; o porquê
-    -- (sai depois do renderPlayers e por cima de tudo já desenhado) está na ADR-015.
-    WALLS = false,
-    MAX_LAYERS = 4,    -- texturas num marcador de chão
+    -- Tiles do jogador (sprint 0023). O anexo vai pro save com o chunk: fica bem dentro da
+    -- distância em que o chunk sai do mapa e é gravado (≥ 48 tiles, IsoChunkMap.chunkGridWidth
+    -- 13 × 8; ADR-017).
+    RADIUS = 15,
+    MAX_LAYERS = 4,    -- camadas no piso (a sujeira, à parte)
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
     CELL = 7,          -- uma poça possível por célula de 7×7
     -- Calibrado pro zoom do Johan (print de 05/10, névoa vermelha: ~6×6 tiles na tela e
@@ -35,6 +32,20 @@ NOM_DressingRules = {
     GRIME_FINE = 2,    -- o ruído fino passa de GRIME_CUT: borda irregular, sem furo isolado
     GRIME_CUT = 0.3,
     GRIME_ALPHA = 0.5,
+    -- Chão queimado (só dentro, sprint 0023: "casa destruída"): manchas pelo ruído numa rede de
+    -- BURNT_CELL tiles, como a sujeira; no miolo o tile cheio, na borda a marca pequena.
+    BURNT = 0.3,       -- o ruído passa de 1 − min(BURNT·d, BURNT_MAX)
+    BURNT_MAX = 0.35,
+    BURNT_CELL = 5,
+    BURNT_FULL = 0.22, -- acima do corte: cheio; acima de BURNT_MID: médio; senão pequeno
+    BURNT_MID = 0.1,
+    -- Mato e folha (só fora): manchas do mesmo jeito.
+    PLANTS = 0.35,
+    PLANTS_MAX = 0.45,
+    PLANTS_CELL = 4,
+    -- O prefixo que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*: ADR-017). Um
+    -- anexo com ele que não é nosso agora é vazado de uma sessão que caiu: sai no LoadGridsquare.
+    OWN_PREFIX = "floors_burnt_01_",
     WALL = 0.75,       -- chance de cada parede ter algo
 }
 
@@ -58,18 +69,25 @@ end
 -- Sprites vanilla por nome (<prefixo><índice>). Índices conferidos no pack Tiles2x
 -- e o lado (N/W) pelo recorte da textura e por tileDepthTextureAssignments.txt
 -- (pz-api-notes §16). O cliente ainda confere cada nome com getTexture.
--- Chão (sprint 0021, pz-api-notes §16.5): só decalque chato que, desenhado pelo IsoMarker
--- (base do recorte no centro do tile, depois dos personagens), não alcança um personagem
--- em pé no tile de trás. Medido por scripts/audit_floor_sprites.py (tests/floor_sprites.lua).
--- Planta (d_plants_1_*) é objeto em pé: fora.
+-- Chão (sprint 0023, pz-api-notes §16.6): o sprite vai anexado ao piso e sai na posição dele.
+-- Decalque com o conteúdo deitado no diamante do chão; mato e folha rasteiros (o anexo do piso
+-- sai antes de personagens e paredes). Medido por scripts/audit_floor_sprites.py
+-- (tests/floor_sprites.lua).
 R.SETS = {
-    bloodFloor = { prefix = "overlay_blood_floor_01_",
-        idx = { 0, 1, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27,
-            34, 35, 37, 38, 39, 40, 43, 44, 45, 46 } },
-    -- sujeira: além disso, parcial (cobertura < 50%) e sem as faixas de borda de tile (30, 80)
+    bloodFloor = { prefix = "overlay_blood_floor_01_", idx = every(0, 1, 27) },
+    -- sujeira: além disso, parcial (cobertura < 50%) e sem as faixas de borda de tile (sprint 0021)
     grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 38, 88 } },
     cracksFloor = { prefix = "d_streetcracks_1_",
-        idx = { 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 18, 20, 21, 22 } },
+        idx = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+            27, 28, 31, 32, 33, 35, 36, 38, 39, 40, 43, 44, 48, 49, 51, 52, 55, 56, 57, 59, 60, 63, 65, 67, 68,
+            72, 76, 79, 87, 96, 100, 103, 111 } },
+    -- queimado: marca pequena (borda da mancha), média e o tile cheio (miolo)
+    burntFloorS = { prefix = "floors_burnt_01_", idx = { 16, 17, 18, 19, 20, 21, 22, 23, 28, 29, 30, 31 } },
+    burntFloorM = { prefix = "floors_burnt_01_", idx = { 1, 9, 10, 11, 12, 24, 25, 26, 27 } },
+    burntFloorF = { prefix = "floors_burnt_01_", idx = { 0, 8, 13, 14, 15 } },
+    plantsFloor = { prefix = "d_plants_1_", idx = { 0, 1, 3, 4, 6, 7, 8, 11, 14, 23, 38, 39, 49, 50, 51, 52, 53,
+        55, 57, 58, 59 } },
+    leavesFloor = { prefix = "d_floorleaves_1_", idx = every(0, 1, 11) },
     bloodWallW = { wall = "W", prefix = "overlay_blood_wall_01_", idx = { 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19 } },
     bloodWallN = { wall = "N", prefix = "overlay_blood_wall_01_", idx = { 4, 5, 13, 14, 15, 20, 21, 22, 23 } },
     grimeWallW = { wall = "W", prefix = "overlay_grime_wall_01_", idx = every(0, 4, 32) },
@@ -81,6 +99,17 @@ R.SETS = {
     vinesWallW = { wall = "W", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [0] = true, [1] = true }) },
     vinesWallN = { wall = "N", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [2] = true, [3] = true }) },
 }
+for i = 32, 46 do R.SETS.bloodFloor.idx[#R.SETS.bloodFloor.idx + 1] = i end
+
+-- Nome do sprite de uma camada { set, índice }.
+function R.name(layer)
+    return R.SETS[layer[1]].prefix .. layer[2]
+end
+
+-- O nome é do prefixo que só o mod anexa?
+function R.own(name)
+    return type(name) == "string" and name:sub(1, #R.OWN_PREFIX) == R.OWN_PREFIX
+end
 
 -- Faixas do sorteio da parede, por tipo (somam 1): sangue manda.
 local WALL_KINDS = { { "blood", 0.45 }, { "grime", 0.25 }, { "cracks", 0.15 }, { "vines", 0.15 } }
@@ -214,13 +243,35 @@ local function bloodLevel(x, y, z, id, period, d)
     return level
 end
 
--- Camadas do chão do square, de baixo pra cima (rachadura, depois sangue), e a sujeira à
--- parte em out.grime (marcador próprio, mais leve), ou nil.
-function R.floor(x, y, z, period, d)
+-- Mancha pelo ruído: quanto o ruído passa do corte (≥ 0), ou nil fora da mancha.
+local function patch(x, y, z, period, d, base, max, cell, salt)
+    local over = noise(x, y, z, period, cell, salt) - (1 - math.min(max, base * d))
+    if over >= 0 then return over end
+    return nil
+end
+
+-- Camada de baixo: queimado dentro (cheio no miolo da mancha, pequeno na borda), mato ou folha
+-- fora; ou nil.
+local function ground(x, y, z, id, period, d, outside)
+    if outside then
+        if not patch(x, y, z, period, d, R.PLANTS, R.PLANTS_MAX, R.PLANTS_CELL, 57) then return nil end
+        return pick(u(id, period, 63) < 0.5 and "plantsFloor" or "leavesFloor", id, period, 64)
+    end
+    local over = patch(x, y, z, period, d, R.BURNT, R.BURNT_MAX, R.BURNT_CELL, 56)
+    if not over then return nil end
+    local set = over >= R.BURNT_FULL and "burntFloorF" or over >= R.BURNT_MID and "burntFloorM" or "burntFloorS"
+    return pick(set, id, period, 65)
+end
+
+-- Camadas do chão do square, de baixo pra cima (queimado ou mato, rachadura, depois sangue), e
+-- a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o square é de fora
+-- (sem telhado).
+function R.floor(x, y, z, period, d, outside)
     if not d or d <= 0 then return nil end
     fresh(period, d)
     local id = sqId(x, y, z)
     local out = {}
+    out[1] = ground(x, y, z, id, period, d, outside)
     -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
     local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
         and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
@@ -233,8 +284,10 @@ function R.floor(x, y, z, period, d)
     return out
 end
 
--- Sprite da parede norte (north = true) ou oeste do square, ou nil.
-function R.wall(x, y, z, period, d, north)
+-- Sprite da parede norte (north = true) ou oeste do square, ou nil. A face que se vê é a do
+-- square dono da parede: trepadeira só se ele é de fora (outside); dentro, a faixa dela vira
+-- sangue.
+function R.wall(x, y, z, period, d, north, outside)
     if not d or d <= 0 then return nil end
     local id = sqId(x, y, z)
     local salt = north and 70 or 80
@@ -243,7 +296,9 @@ function R.wall(x, y, z, period, d, north)
     for _, k in ipairs(WALL_KINDS) do
         acc = acc + k[2]
         if roll < acc or k == WALL_KINDS[#WALL_KINDS] then
-            return pick(k[1] .. "Wall" .. (north and "N" or "W"), id, period, salt + 2)
+            local kind = k[1]
+            if kind == "vines" and not outside then kind = "blood" end
+            return pick(kind .. "Wall" .. (north and "N" or "W"), id, period, salt + 2)
         end
     end
 end
