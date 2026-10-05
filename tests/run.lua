@@ -24,6 +24,7 @@ local FILES = {
     "tests/test_fog_client.lua",
     "tests/test_fog_sound.lua",
     "tests/test_fog_vignette.lua",
+    "tests/test_fog_overlays.lua",
 }
 
 local pass, fail = 0, 0
