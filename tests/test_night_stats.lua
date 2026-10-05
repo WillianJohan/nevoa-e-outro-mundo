@@ -155,6 +155,15 @@ local function setup(opts)
         return z
     end
     function G.unload(z) G.zombies:remove(z) end
+    -- IsoZombie.resetForReuse: o mesmo objeto Java volta pra outro zumbi, modData
+    -- zerado (getModData():wipe()), e passa de novo pelo OnZombieCreate
+    function G.reuse(z, o)
+        G.zombies:remove(z)
+        z.md = {}
+        z.outfitID = (o and o.id) or 0
+        fire("OnZombieCreate", z)
+        G.zombies:add(z)
+    end
     -- update dos zumbis (updateActiveState) e depois o OnTick do Lua
     function G.tick(n)
         for _ = 1, n or 1 do
@@ -587,5 +596,26 @@ return {
         NOM_NightStats.setNight(false, 1)
         G.converge()
         assert(z.md.NOM_alert == nil and z.md.NOM_hunting == nil, "estado da variante sobrou de dia")
+    end,
+    -- conjunto Lua das variantes locais (o OnZombieUpdate olha só ele, sem chamar Java)
+    stats_variant_set_tracks_life = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local id = idFor("estalador", 1, sb)
+        local z, plain = G.spawn({ id = id }), G.spawn()
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        assert(NOM_NightStats.variants[z] == "estalador" and NOM_NightStats.variants[plain] == nil)
+        NOM_NightStats.setNight(false, 1)
+        G.converge()
+        assert(NOM_NightStats.variants[z] == nil, "ficou no conjunto de dia")
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        G.kill(z)
+        assert(NOM_NightStats.variants[z] == nil, "morto ficou no conjunto")
+        local r = G.spawn({ id = id })
+        G.converge()
+        G.reuse(r)
+        assert(NOM_NightStats.variants[r] == nil, "objeto reaproveitado herdou a variante")
     end,
 }

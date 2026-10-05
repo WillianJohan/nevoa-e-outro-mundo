@@ -11,7 +11,10 @@ require "NOM_NightRules"
 require "NOM_VariantRules"
 require "NOM_Config"
 
-NOM_NightStats = { night = false, BATCH = 20 }
+-- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
+-- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
+-- antes de qualquer chamada Java.
+NOM_NightStats = { night = false, BATCH = 20, variants = {} }
 
 local LORE = {
     speed = "ZombieLore.Speed",
@@ -99,11 +102,13 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
         md.NOM_variant = nil
         md.NOM_alert = nil
         md.NOM_hunting = nil
+        NOM_NightStats.variants[z] = nil
     else
         md.NOM_night = key
         md.NOM_dayTier = dayTier
         -- Lido pelo NOM_VariantAI (cego, estalo, grito). Só em memória, como o resto.
         md.NOM_variant = kind ~= "eco" and kind or nil
+        NOM_NightStats.variants[z] = md.NOM_variant
     end
 end
 
@@ -182,12 +187,15 @@ function NOM_NightStats.setNight(on, nightNumber)
 end
 
 -- OnZombieCreate: inclusive zumbi que volta do virtual com stats re-sorteados.
+-- Objeto reaproveitado (resetForReuse) passa por aqui: sai do conjunto.
 function NOM_NightStats.enqueue(z)
+    NOM_NightStats.variants[z] = nil
     queue[#queue + 1] = z
 end
 
 -- O corpo copia o modData do zumbi (IsoDeadBody.<init>): a chave não vai pro save.
 function NOM_NightStats.forget(z)
+    NOM_NightStats.variants[z] = nil
     if not z:hasModData() then return end
     local md = z:getModData()
     md.NOM_night = nil
