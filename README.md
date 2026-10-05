@@ -16,7 +16,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
   é monstro.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0011
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0012
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
@@ -35,6 +35,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Névoa como evento | sirene 30 s reais antes, hora aleatória a cada ~3 dias, 2–6 h; névoa natural do jogo some | 0009 |
 | Névoa vermelha | 10% das névoas: sirene própria, névoa e luz vermelhas, todo zumbi é monstro (1/4 de cada) | 0010 |
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
+| Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça | 0012 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 
@@ -132,7 +133,8 @@ git push origin --delete sprint/0001-estado-e-clima
 - Testes: `brew install luajit`, depois `./run-tests.sh` (lógica pura, traduções,
   créditos e o build do Workshop, com `HOME` temporário).
 - Teste in-game com o jogo em modo `-debug`: [roteiro consolidado](docs/teste-in-game.md).
-- Sons e imagens são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_images.py`);
+- Sons, imagens e texturas são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_images.py`,
+  `scripts/gen_textures.py`);
   nada de terceiros ([CREDITS.md](CREDITS.md)).
 - Publicar e atualizar no Workshop: [docs/publicar.md](docs/publicar.md)
   (`scripts/build-workshop.sh` monta a pasta de upload).

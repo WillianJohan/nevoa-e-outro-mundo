@@ -63,3 +63,6 @@ sandbox sempre que o zumbi volta do virtual (`createZombieOutsideWorld` →
 - Teste de MP com dois clientes é obrigatório pra fechar a sprint 0003.
 - Variantes (sprints 0004/0005) seguem o mesmo desenho: o servidor decide e avisa,
   quem simula aplica.
+- Emenda de 2026-10-05 (sprint 0012): o **visual** da variante não é simulação, é desenho.
+  Vai em toda máquina que renderiza o zumbi (solo e cada cliente, cópia dona ou remota),
+  nunca no servidor dedicado ([ADR-012](adr-012-visual-das-variantes.md)).

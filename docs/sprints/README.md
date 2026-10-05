@@ -18,6 +18,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0009](sprint-0009-nevoa-evento/README.md) | Névoa como evento: sirene 30 s antes, hora aleatória, 2–6 h; sem névoa natural | `em teste` — [roteiro](sprint-0009-nevoa-evento/README.md#roteiro-in-game) |
 | [0010](sprint-0010-nevoa-vermelha/README.md) | Névoa vermelha: sirene própria, névoa e luz vermelhas, todo zumbi é variante | `em teste` — [roteiro](sprint-0010-nevoa-vermelha/README.md#roteiro-in-game) |
 | [0011](sprint-0011-carpideira/README.md) | Carpideira: parada e soluçando na névoa, grita (horda) e caça quem a acorda | `em teste` — [roteiro](sprint-0011-carpideira/README.md#roteiro-in-game) |
+| [0012](sprint-0012-visual-variantes/README.md) | Visual das variantes e do Eco: pele e peça por textura procedural em modelo vanilla | `em teste` — [roteiro](sprint-0012-visual-variantes/README.md#roteiro-in-game) |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão arquivado |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
