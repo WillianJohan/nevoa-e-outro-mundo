@@ -41,7 +41,7 @@ local function setup(opts)
     end
     function G.zombie(o)
         local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false,
-            onlineID = o.onlineID or -1, sounds = {}, dead = false, useless = o.useless or false,
+            onlineID = o.onlineID or -1, sounds = {}, netSounds = {}, dead = false, useless = o.useless or false,
             bonusSpotTime = 0, calls = 0, outfitName = o.outfit }
         local function def(name, fn)
             z[name] = function(...) z.calls = z.calls + 1; return fn(...) end
@@ -60,9 +60,12 @@ local function setup(opts)
         def("setUseless", function(self, b) self.useless = b end)
         def("getOnlineID", function(self) return self.onlineID end)
         def("getOutfitName", function(self) return self.outfitName end)
+        -- emitter:playSound manda PacketType.PlaySound no cliente de MP
+        -- (FMODSoundEmitter.playSound 0–104); playSoundLocal = playSoundImpl(nome, nil), sem pacote
         def("getEmitter", function()
-            return { playSound = function(_, name) z.sounds[#z.sounds + 1] = name; return 1 end }
+            return { playSound = function(_, name) z.netSounds[#z.netSounds + 1] = name; return 1 end }
         end)
+        def("playSoundLocal", function(_, name) z.sounds[#z.sounds + 1] = name; return 1 end)
         G.zombies[#G.zombies + 1] = z
         return z
     end
@@ -124,7 +127,7 @@ local function setup(opts)
 
     instanceof = function(o, cls) return o.class == cls end
     ZombRand = function(n) return G.rand % n end
-    isClient = function() return false end
+    isClient = function() return opts.client == true end
     isServer = function() return false end
     getDebug = function() return false end
     SandboxVars = {}
@@ -361,5 +364,14 @@ return {
             for _, h in ipairs(G.handlers.OnZombieUpdate) do h(z) end
         end
         assert(z.calls == before, "chamadas Java no zumbi comum: " .. (z.calls - before))
+    end,
+    -- o estalo é tocado em toda cópia de todo cliente: tem que ser local, senão
+    -- cada cliente manda PlaySound e os outros ouvem o estalo N vezes
+    ai_click_is_local_on_mp_client = function()
+        local G = setup({ client = true })
+        local e = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true })
+        G.minutes(3)
+        assert(#e.netSounds == 0, "estalo foi pra rede")
+        assert(#e.sounds == 3 and e.sounds[1] == NOM_VariantAI.CLICK_SOUND)
     end,
 }
