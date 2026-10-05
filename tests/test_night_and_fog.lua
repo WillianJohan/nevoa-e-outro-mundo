@@ -44,7 +44,6 @@ local function setup()
     end
     G.addSounds = {}
     addSound = function(...) G.addSounds[#G.addSounds + 1] = { ... } end
-    instanceof = function(o, cls) return o.class == cls end
     G.enabled = {}
     getSearchMode = function()
         local function f() return { setTargets = function() end } end
@@ -61,14 +60,7 @@ local function setup()
         managers[p] = managers[p] or { isOverride = false, isSearchMode = false }
         return managers[p]
     end }
-    G.markers = 0
-    getIsoMarkers = function()
-        return { addIsoMarker = function()
-            G.markers = G.markers + 1
-            return { setAlpha = function() end, setColor = function() end, remove = function() end }
-        end }
-    end
-    getTexture = function(name) return { name = name } end
+    dofile("tests/attached_world.lua").install(G) -- anexos no piso e na parede (sprint 0023)
     local seed = 99
     ZombRand = function(n)
         seed = (seed * 1103515245 + 12345) % 2147483648
@@ -151,7 +143,7 @@ return {
         assert(#G.playing("NOM_FogDrone") == 1, "drone não tocou à noite")
         assert(#G.playing("NOM_RadioStatic") == 1, "rádio não chiou à noite")
         assert(G.enabled[0] == true, "vinheta não ligou à noite")
-        assert(G.markers > 0, "sem overlays à noite")
+        assert(G.ours() > 0, "sem Outro Mundo à noite")
         -- amanhece com névoa: a noite sai, o Estalador continua (é da névoa)
         G.set(8, 0.9)
         G.frame(30)

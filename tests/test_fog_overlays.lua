@@ -1,15 +1,12 @@
--- client/NOM_FogOverlays.lua (Outro Mundo sangrento, sprint 0015) contra o mundo falso
--- de tests/fog_world.lua e fakes que imitam o jogo (bytecode B42.21, pz-api-notes §16):
--- * getIsoMarkers():addIsoMarker(tabela de nomes, square, r, g, b, a): uma textura por
---   nome (ISBaseIcon.lua:579), lista em memória, sem save nem rede; marker:setColor,
---   setAlpha, remove. Marcador só desenha no andar do jogador (renderIsoMarkers).
--- * getSprite(nome) (IsoSpriteManager.getSprite cria sprite vazio pra nome desconhecido:
---   o fake explode se o mod pedir sem ter conferido a textura); sprite:RenderGhostTileColor(
---   x, y, z, r, g, b, a) é desenho imediato, só vale dentro do RenderOpaqueObjectsInWorld
---   (FBORenderCell.renderOpaqueObjectsEvent, todo quadro, por jogador). Qualquer outro método
---   do sprite (anexar, overlay: salvos no chunk) explode.
--- * O square falso explode em escrita; addBloodSplat também.
+-- client/NOM_FogOverlays.lua (Outro Mundo anexado, sprint 0023) contra o mundo falso de
+-- tests/fog_world.lua com os anexos de tests/attached_world.lua, que imitam o jogo (bytecode
+-- B42.21, pz-api-notes §16.6): lista viva de IsoSpriteInstance por objeto, retirada que desloca
+-- os índices e devolve a instância pro pool, nome sem sprite que não faz nada, anexos vanilla
+-- (blend de grama em todo piso) que têm de sobreviver, OnSave antes da gravação do chunk,
+-- LoadGridsquare ao carregar. O mod não pode chamar RemoveAttachedAnims, transmit* nem
+-- AttachExistingAnim (o fake explode).
 local W = dofile("tests/fog_world.lua")
+local A = dofile("tests/attached_world.lua")
 local FILE = "mod/42/media/lua/client/NOM_FogOverlays.lua"
 
 local function setup(opts)
@@ -20,971 +17,582 @@ local function setup(opts)
     require "NOM_FogState"
     require "NOM_ScreenFxOptions"
     if opts.density then NOM_ScreenFxOptions.overlayDensity = function() return opts.density end end
-    -- paredes ficam desligadas por padrão no mod (hotfix: sem profundidade, cobriam o jogador);
-    -- os testes do mecanismo ligam; walls = "default" testa o padrão do mod
     require "NOM_DressingRules"
-    if opts.walls ~= "default" then NOM_DressingRules.WALLS = opts.walls ~= false end
-    G.markers, G.draws, G.inFrame = {}, {}, false
-    G.java = 0 -- chamadas em marcador, sprite, célula (as do square: G.sqCalls)
-    getIsoMarkers = function()
-        G.java = G.java + 1
-        return {
-            addIsoMarker = function(_, names, sq, r, g, b, a)
-                G.java = G.java + 1
-                assert(type(names) == "table" and #names >= 1 and #names <= 4, "addIsoMarker sem a tabela de nomes")
-                for _, n in ipairs(names) do assert(type(n) == "string") end
-                assert(sq and sq.getX and a == 0, "argumento errado")
-                local m = { names = names, sq = sq, a = a, color = { r, g, b }, removed = false }
-                function m:setColor(rr, gg, bb, aa)
-                    G.java = G.java + 1
-                    self.color = { rr, gg, bb }
-                    self.a = aa
-                end
-                function m:setAlpha(v) G.java = G.java + 1; self.a = v end
-                function m:remove() G.java = G.java + 1; self.removed = true end
-                G.markers[#G.markers + 1] = m
-                return m
-            end,
-        }
-    end
-    G.textures = {}
-    getTexture = function(name)
-        G.java = G.java + 1
-        if opts.noTextures or (opts.missing and name:find(opts.missing)) then return nil end
-        G.textures[name] = true
-        return { name = name }
-    end
-    getSprite = function(name)
-        G.java = G.java + 1
-        assert(G.textures[name], "getSprite sem conferir a textura: " .. name)
-        return setmetatable({ name = name }, { __index = function(_, m)
-            if m ~= "RenderGhostTileColor" then error("sprite:" .. m .. " não devia ser chamado", 2) end
-            return function(self, x, y, z, r, gg, b, a, extra)
-                G.java = G.java + 1
-                assert(G.inFrame, "desenho fora do quadro do mundo")
-                assert(extra == nil and a ~= nil, "RenderGhostTileColor com 7 argumentos")
-                G.draws[#G.draws + 1] = { name = self.name, x = x, y = y, z = z, a = a, l = r }
-            end
-        end })
-    end
-    addBloodSplat = function() error("addBloodSplat salva no chunk") end
+    A.install(G)
     local cell = getCell
     getCell = function() G.java = G.java + 1; return cell() end
-    MainScreen = nil
     dofile(FILE)
     G.p = G.player({ x = 100, y = 100 })
-    -- pickedOutside: o tile do mouse fora do mundo; o jogo não dispara o evento nesse
-    -- quadro (IsoWorld.isValidSquare em FBORenderCell.renderOpaqueObjectsEvent 82–92)
-    function G.frame(pickedOutside)
-        G.draws = {}
-        G.inFrame = true
-        if not pickedOutside then G.fire("RenderOpaqueObjectsInWorld", 0, 100, 100, math.floor(G.p.z), nil) end
-        G.inFrame = false
-        return G.draws
-    end
     return G
-end
-
-local function alive(G)
-    local out = {}
-    for _, m in ipairs(G.markers) do if not m.removed then out[#out + 1] = m end end
-    return out
-end
-
--- desenho por square (sangue e sujeira são dois marcadores do mesmo square)
-local function layout(G)
-    local out = {}
-    for _, m in ipairs(alive(G)) do
-        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
-        local v = table.concat(m.names, "|")
-        if out[k] then
-            out[k] = out[k] < v and out[k] .. "+" .. v or v .. "+" .. out[k]
-        else
-            out[k] = v
-        end
-    end
-    return out
-end
-
--- squares com marcador vivo (o teto é por square)
-local function squares(G)
-    local n = 0
-    for _ in pairs(layout(G)) do n = n + 1 end
-    return n
-end
-
--- um marcador vivo fora do tile do jogador (o do tile dele fica apagado)
-local function awayFromPlayer(G, list)
-    for _, m in ipairs(list or alive(G)) do
-        if m.sq.x ~= math.floor(G.p.x) or m.sq.y ~= math.floor(G.p.y) then return m end
-    end
-end
-
-local function textures(G, noGrime, r)
-    local n = 0
-    for _, m in ipairs(alive(G)) do
-        local dx, dy = m.sq.x - math.floor(G.p.x), m.sq.y - math.floor(G.p.y)
-        if r and dx * dx + dy * dy > r * r then m = { names = {} } end
-        for _, name in ipairs(m.names) do
-            if not (noGrime and name:find("^overlay_grime")) then n = n + 1 end
-        end
-    end
-    return n
-end
-
--- paredes em volta: um quarteirão com paredes N e W em todo square de uma faixa
-local function addWalls(G, x0, y0, n)
-    for x = x0, x0 + n - 1 do
-        for y = y0, y0 + n - 1 do G.walls[x .. "," .. y .. ",0"] = "NW" end
-    end
 end
 
 local O = function() return NOM_FogOverlays end
 local D = function() return NOM_DressingRules end
 
--- Fração do quadrado (2r+1)² em volta do jogador com marcador vivo no andar dele, e a
--- fração que a regra pede (o máximo possível: o mundo falso tem todo square livre).
-local function coverage(G, r)
-    local set = {}
-    local pz = math.floor(G.p.z)
-    for _, m in ipairs(alive(G)) do if m.sq.z == pz then set[m.sq.x .. "," .. m.sq.y] = true end end
-    local px, py = math.floor(G.p.x), math.floor(G.p.y)
-    local d = D().density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
-    local have, want, tot = 0, 0, 0
-    for x = px - r, px + r do
-        for y = py - r, py + r do
-            tot = tot + 1
-            if set[x .. "," .. y] then have = have + 1 end
-            if D().floor(x, y, pz, NOM_FogState.period or 0, d) then want = want + 1 end
+local function density()
+    return D().density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+end
+
+-- o que a regra pede pro objeto (kind "F", "N", "W") do square, na ordem em que o mod anexa
+local function expect(G, x, y, z, kind)
+    local sq = G.square(x, y, z)
+    local outside = sq:isOutside()
+    local per, d = NOM_FogState.period or 0, density()
+    local out = {}
+    if kind == "F" then
+        local f = D().floor(x, y, z, per, d, outside)
+        for _, l in ipairs(f or {}) do out[#out + 1] = D().name(l) end
+        if f and f.grime then out[#out + 1] = D().name(f.grime) end
+    else
+        local w = D().wall(x, y, z, per, d, kind == "N", outside)
+        if w then out[1] = D().name(w) end
+    end
+    return table.concat(out, "|")
+end
+
+local function mods(G, o) return table.concat(G.attachedNames(o, "mod"), "|") end
+
+-- paredes N e W (objetos simples) em todo square de um bloco
+local function walls(G, x0, y0, n)
+    for x = x0, x0 + n - 1 do
+        for y = y0, y0 + n - 1 do
+            G.obj(x, y, 0, "N")
+            G.obj(x, y, 0, "W")
         end
     end
-    return have / tot, want > 0 and have / want or 1
 end
 
--- tile do personagem e os S, E e SE dele (os decalques que alcançam o corpo)
-local FOUR = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
-
--- ticks pra duas voltas do rodízio de personagens (a volta velha só sai no fim da nova)
-local function rotation(G)
-    return 2 * (math.ceil(#G.zombies / O().CHAR_PER_TICK) + 1) + 1
-end
-
-local function at(G, x, y)
-    local out = {}
-    for _, m in ipairs(alive(G)) do
-        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 then out[#out + 1] = m end
-    end
-    return out
-end
-
--- marcadores vivos por square: { main = marcador sem sujeira, grime = marcador da sujeira }
-local function bySquare(G)
-    local out = {}
-    for _, m in ipairs(alive(G)) do
-        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
-        out[k] = out[k] or {}
-        if #m.names == 1 and m.names[1]:find("^overlay_grime") then out[k].grime = m else out[k].main = m end
-    end
-    return out
-end
-
--- prédio: squares de dentro de x0..x1, y0..y1 no andar 0
-local function building(G, x0, y0, x1, y1)
-    local b = { name = "prédio " .. x0 .. "," .. y0 }
-    for x = x0, x1 do for y = y0, y1 do G.interior[x .. "," .. y .. ",0"] = b end end
-    return b
-end
-
--- marcador que se vê (alfa > 0) em (x, y, 0)?
-local function shown(G, x, y)
-    for _, m in ipairs(alive(G)) do
-        if m.sq.x == x and m.sq.y == y and m.sq.z == 0 and m.a > 0 then return true end
-    end
-    return false
-end
-
--- quantos squares de fora, perto do jogador e fora de qualquer sombra, têm marcador à vista
-local function shownOutside(G, r, skip)
+-- todo objeto carregado a até r tiles do jogador tem exatamente o que a regra pede
+local function laidOut(G, r)
+    local px, py, pz = math.floor(G.p.x), math.floor(G.p.y), math.floor(G.p.z)
     local n = 0
-    for x = 100 - r, 100 + r do
-        for y = 100 - r, 100 + r do
-            if not skip(x, y) and shown(G, x, y) then n = n + 1 end
+    for _, o in pairs(G.objs) do
+        local dx, dy = o.x - px, o.y - py
+        if o.z == pz and dx * dx + dy * dy <= r * r and o.class == "IsoObject" then
+            local want = expect(G, o.x, o.y, o.z, o.kind)
+            assert(mods(G, o) == want, o.kind .. " " .. o.x .. "," .. o.y .. ": tem " .. mods(G, o) .. ", pede " .. want)
+            if want ~= "" then n = n + 1 end
         end
     end
     return n
 end
 
+-- os anexos vanilla de todo objeto, pra comparar depois
+local function vanillaOf(G)
+    local out = {}
+    for k, o in pairs(G.objs) do out[k] = table.concat(G.attachedNames(o, "vanilla"), "|") end
+    return out
+end
+
+local function sameVanilla(G, before, skip)
+    for k, v in pairs(before) do
+        if not (skip and skip[k]) then
+            assert(table.concat(G.attachedNames(G.objs[k], "vanilla"), "|") == v, "anexo vanilla mexido em " .. k)
+        end
+    end
+end
+
+-- maior distância de um anexo do mod até (x, y)
+local function farthest(G, x, y)
+    local m = 0
+    for _, o in pairs(G.objs) do
+        if #G.attachedNames(o, "mod") > 0 then
+            m = math.max(m, math.sqrt((o.x - x) ^ 2 + (o.y - y) ^ 2))
+        end
+    end
+    return m
+end
+
+-- primeiro square perto do jogador cujo piso a regra enche com a condição pedida
+local function findFloor(G, cond)
+    for r = 1, 10 do
+        for x = 100 - r, 100 + r do
+            for y = 100 - r, 100 + r do
+                local w = expect(G, x, y, 0, "F")
+                if w ~= "" and cond(w, x, y) then return x, y, w end
+            end
+        end
+    end
+    error("nenhum square com a condição")
+end
+
 return {
-    -- prints 9 e 10 (05/10): o marcador sai depois dos personagens, meio tile acima, com o
-    -- losango centrado no canto N do tile. Com o pé em qualquer lugar do tile, o decalque do
-    -- próprio tile e dos tiles S, E e SE alcança o corpo (review 0021): os 4 ficam apagados
-    overlays_player_tiles_clear_every_tick = function()
+    -- o piso e as paredes N/W ganham, anexados pelo nome, exatamente o que a regra pede (fora e
+    -- dentro); o blend vanilla de cada piso fica
+    overlays_attach_floor_and_walls = function()
+        local G = setup({ density = 1 })
+        walls(G, 96, 96, 8)
+        for x = 102, 110 do for y = 102, 110 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+        NOM_FogState.set(true, 3)
+        G.seconds(5)
+        local n = laidOut(G, D().RADIUS)
+        assert(n > 400, "pouco anexado: " .. n)
+        local wallsDressed = 0
+        for _, o in pairs(G.objs) do
+            if o.kind ~= "F" and mods(G, o) ~= "" then wallsDressed = wallsDressed + 1 end
+        end
+        assert(wallsDressed > 40, "paredes sem nada: " .. wallsDressed)
+        local fl, wl = O().count()
+        assert(fl > 300 and wl == wallsDressed, "count: " .. fl .. "/" .. wl)
+    end,
+
+    -- review focus: o anexo vanilla (blend em todo piso, trepadeira de erosão na parede, sujeira
+    -- do mapa) sobrevive a todo caminho: sair do raio, voltar, ação, save, densidade, fim da névoa
+    overlays_vanilla_attachments_survive_every_path = function()
         local G = setup({ density = 2 })
-        NOM_FogState.set(true, 1, true)
-        G.seconds(20)
-        local hidden = 0
-        for step = 1, 12 do
-            local ox, oy = math.floor(G.p.x), math.floor(G.p.y)
-            G.p.x = G.p.x + 1
-            G.tick(1)
-            local px, py = math.floor(G.p.x), math.floor(G.p.y)
-            for _, o in ipairs(FOUR) do
-                for _, m in ipairs(at(G, px + o[1], py + o[2])) do
-                    assert(m.a == 0, "marcador visível em " .. o[1] .. "," .. o[2] .. " do jogador, passo " .. step)
-                    hidden = hidden + 1
+        walls(G, 96, 96, 8)
+        G.vanillaAttach(G.objs["97,97,0N"], "f_wallvines_1_2")
+        G.vanillaAttach(G.floorOf(99, 101, 0), "overlay_grime_floor_01_40")
+        for x = 80, 130 do for y = 80, 130 do G.floorOf(x, y, 0) end end
+        local before = vanillaOf(G)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        assert(G.ours() > 500, "não encheu")
+        sameVanilla(G, before)
+        for _ = 1, 50 do G.p.x = G.p.x + 0.5; G.tick(1) end -- 25 tiles de carro
+        G.seconds(3)
+        for _ = 1, 50 do G.p.x = G.p.x - 0.5; G.tick(1) end
+        G.seconds(3)
+        sameVanilla(G, before)
+        G.action(G.p, { character = G.p, square = G.square(99, 101, 0) })
+        G.seconds(1)
+        G.action(G.p, nil)
+        G.seconds(3)
+        G.saveSnapshot()
+        G.seconds(3)
+        NOM_ScreenFxOptions.overlayDensity = function() return 1 end
+        G.seconds(5)
+        sameVanilla(G, before)
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(G.ours() == 0, "sobrou anexo do mod: " .. G.ours())
+        sameVanilla(G, before)
+    end,
+
+    -- review focus: decalque do mapa com o MESMO nome que o do mod no mesmo piso, antes e depois
+    -- do do mod na lista: o mod tira só a instância que pôs
+    overlays_same_name_vanilla_decal_survives = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        local x, y, want = findFloor(G, function(w) return w:find("overlay_blood_floor") ~= nil end)
+        local name = want:match("(overlay_blood_floor_01_%d+)")
+        local floor = G.floorOf(x, y, 0)
+        G.vanillaAttach(floor, name)
+        G.seconds(3)
+        assert(mods(G, floor) == want, "não anexou: " .. mods(G, floor))
+        G.vanillaAttach(floor, name) -- outro, depois do do mod (erosão, mapa): o de trás pra frente o acha primeiro
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(mods(G, floor) == "", "sobrou do mod")
+        local v = table.concat(G.attachedNames(floor, "vanilla"), "|")
+        assert(select(2, v:gsub(name:gsub("_", "%%_"), "")) == 2, "decalque vanilla de mesmo nome tirado: " .. v)
+    end,
+
+    -- review focus: a pá limpa a lista (RemoveAttachedAnims: as instâncias, inclusive as do mod,
+    -- voltam pro pool) e o vanilla anexa um blend novo, que reusa a instância que era do mod. O
+    -- mod nunca tira esse blend
+    overlays_pool_reuse_never_removes_vanilla = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        local x, y = findFloor(G, function() return true end)
+        G.seconds(3)
+        local floor = G.floorOf(x, y, 0)
+        local reused = rawget(floor, "list")[#rawget(floor, "list")] -- a última instância do mod
+        assert(not reused.vanilla)
+        G.wipe(floor)
+        G.vanillaAttach(floor, "blends_natural_01_9")
+        assert(rawget(floor, "list")[1] == reused, "o fake não reusou a instância (teste não mede)")
+        NOM_FogState.set(false)
+        G.seconds(5)
+        local v = table.concat(G.attachedNames(floor, "vanilla"), "|")
+        assert(v == "blends_natural_01_9", "o blend novo sumiu: " .. v)
+    end,
+
+    -- só piso e parede simples: nada em construção do jogador (IsoThumpable), porta, janela,
+    -- parede com batente de porta/janela no lado, nem piso de água
+    overlays_targets_only_plain_objects = function()
+        local G = setup({ density = 2 })
+        G.obj(101, 100, 0, "F", { class = "IsoThumpable" })
+        G.obj(101, 100, 0, "N", { class = "IsoThumpable" })
+        G.obj(102, 100, 0, "N", { class = "IsoDoor" })
+        G.obj(103, 100, 0, "W", { class = "IsoWindow" })
+        G.obj(104, 100, 0, "N")
+        G.flags["104,100,0"] = { DoorWallN = true }
+        G.obj(105, 100, 0, "W")
+        G.flags["105,100,0"] = { WindowW = true }
+        G.water["106,100,0"] = true
+        G.floorOf(106, 100, 0)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        for _, k in ipairs({ "101,100,0F", "101,100,0N", "102,100,0N", "103,100,0W", "104,100,0N", "105,100,0W", "106,100,0F" }) do
+            assert(mods(G, G.objs[k]) == "", "anexou em " .. k)
+        end
+        assert(mods(G, G.floorOf(105, 100, 0)) ~= "" or expect(G, 105, 100, 0, "F") == "", "o piso do square com batente também saiu")
+    end,
+
+    -- a sujeira vai mais leve: a instância dela com alfa GRIME_ALPHA (e o alvo do alfa igual: o
+    -- jogo não puxa de volta); o resto, 1
+    overlays_grime_lighter = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        local x, y = findFloor(G, function(w) return w:find("overlay_grime_floor") ~= nil end)
+        G.seconds(3)
+        local seen = 0
+        for _, inst in ipairs(rawget(G.floorOf(x, y, 0), "list")) do
+            if not inst.vanilla then
+                local grime = inst.name:find("^overlay_grime") ~= nil
+                assert(inst.alpha == (grime and D().GRIME_ALPHA or 1) and inst.target == inst.alpha, inst.name .. " alfa " .. inst.alpha)
+                if grime then seen = seen + 1 end
+            end
+        end
+        assert(seen == 1)
+    end,
+
+    -- chão queimado só dentro, mato e folha só fora (o cliente lê isOutside do square)
+    overlays_burnt_inside_plants_outside = function()
+        local G = setup({ density = 2 })
+        for x = 100, 115 do for y = 85, 115 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        local burnt, plants = 0, 0
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                local inside = o.x >= 100 and o.x <= 115 and o.y >= 85 and o.y <= 115
+                if D().own(n) then
+                    assert(inside, "queimado fora: " .. o.x .. "," .. o.y)
+                    burnt = burnt + 1
                 end
-            end
-            G.tick(1)
-            -- o tile deixado e o S dele saíram dos 4 (andou pra leste)
-            for _, m in ipairs(at(G, ox, oy)) do assert(m.a > 0, "o tile deixado ficou apagado, passo " .. step) end
-            for _, m in ipairs(at(G, ox, oy + 1)) do assert(m.a > 0, "o S do tile deixado ficou apagado") end
-        end
-        assert(hidden >= 24, "o caminho não tinha marcador (teste não mede): " .. hidden)
-    end,
-
-    -- review 0021: zumbi em pé em decalque (o caso comum): os mesmos 4 tiles, perto do
-    -- jogador, em rodízio; volta quando ele sai
-    overlays_zombie_tiles_clear = function()
-        local G = setup({ density = 2 })
-        NOM_FogState.set(true, 1, true)
-        G.seconds(20)
-        for i = 1, 150 do G.zombie({ x = 300 + i, y = 300, id = i }) end -- longe: fora do raio
-        local z = G.zombie({ x = 104, y = 97, id = 999 })
-        local far = G.zombie({ x = 100 + O().CHAR_RADIUS + 3, y = 100, id = 998 })
-        G.tick(rotation(G))
-        local hidden = 0
-        for _, o in ipairs(FOUR) do
-            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do
-                assert(m.a == 0, "decalque visível debaixo do zumbi em " .. o[1] .. "," .. o[2])
-                hidden = hidden + 1
-            end
-        end
-        assert(hidden > 0, "o zumbi não estava em decalque (teste não mede)")
-        local fx = math.floor(far.x)
-        for _, m in ipairs(at(G, fx, 100)) do assert(m.a > 0 or m.a == nil, "zumbi longe apagou o chão") end
-        z.x = 96.5
-        G.tick(rotation(G))
-        for _, o in ipairs(FOUR) do
-            for _, m in ipairs(at(G, 104 + o[1], 97 + o[2])) do assert(m.a > 0, "o chão não voltou depois do zumbi sair") end
-        end
-    end,
-
-    -- custo por tick limitado com muitos zumbis perto
-    overlays_zombie_scan_bounded = function()
-        local G = setup({ density = 2 })
-        NOM_FogState.set(true, 1, true)
-        G.seconds(20)
-        for i = 1, 300 do G.zombie({ x = 90 + i % 20, y = 90 + math.floor(i / 20), id = i }) end
-        local gets = 0
-        local cell = getCell
-        getCell = function()
-            local c = cell()
-            local list = c.getZombieList
-            c.getZombieList = function(self)
-                local l = list(self)
-                local get = l.get
-                l.get = function(me, i) gets = gets + 1; return get(me, i) end
-                return l
-            end
-            return c
-        end
-        for _ = 1, 30 do
-            gets = 0
-            G.tick(1)
-            assert(gets <= O().CHAR_PER_TICK, "zumbis lidos num tick: " .. gets)
-        end
-    end,
-
-    -- review 0021: outro jogador do MP em pé em decalque
-    overlays_remote_player_tiles_clear = function()
-        local G = setup({ density = 2, client = true })
-        NOM_FogState.set(true, 1, true)
-        G.seconds(20)
-        G.player({ x = 97, y = 103 })
-        G.tick(rotation(G))
-        local hidden = 0
-        for _, o in ipairs(FOUR) do
-            for _, m in ipairs(at(G, 97 + o[1], 103 + o[2])) do
-                assert(m.a == 0, "decalque visível debaixo do outro jogador")
-                hidden = hidden + 1
-            end
-        end
-        assert(hidden > 0, "o outro jogador não estava em decalque (teste não mede)")
-    end,
-
-    -- print 7 (05/10): com o jogador fora, o chão de dentro da casa saía por cima do telhado
-    overlays_outside_player_skips_interior = function()
-        local G = setup()
-        building(G, 104, 92, 112, 108)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        for x = 104, 112 do
-            for y = 92, 108 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
-        end
-        assert(shownOutside(G, 3, function() return false end) > 15, "o chão de fora sumiu junto")
-    end,
-
-    -- o marcador não é tapado pelo mundo: de fora, o prédio cobre na tela os squares de fora
-    -- até SHADOW tiles atrás dele na diagonal (um andar de altura = 3 tiles na tela)
-    overlays_outside_player_skips_building_shadow = function()
-        local G = setup()
-        G.p.x, G.p.y = 95.5, 95.5
-        building(G, 106, 106, 114, 114)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        local function inShadow(x, y)
-            for k = 1, O().SHADOW do
-                if G.interior[(x + k) .. "," .. (y + k) .. ",0"] then return true end
-            end
-            return false
-        end
-        local hidden, total = 0, 0
-        for x = 98, 114 do
-            for y = 98, 114 do
-                if not G.interior[x .. "," .. y .. ",0"] and inShadow(x, y) then
-                    total = total + 1
-                    assert(not shown(G, x, y), "chão de fora atrás do prédio: " .. x .. "," .. y)
-                end
-            end
-        end
-        assert(total > 10, "teste não mediu a sombra: " .. total)
-    end,
-
-    -- dentro: o prédio dele e o de fora (o jogo corta as paredes e o telhado dele); o outro
-    -- prédio e a sombra dele não
-    overlays_inside_player_sees_own_building = function()
-        local G = setup()
-        local own = building(G, 95, 95, 104, 104)
-        building(G, 80, 106, 88, 114)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        assert(G.p:getBuilding() == own)
-        local inside = 0
-        for x = 95, 104 do for y = 95, 104 do if shown(G, x, y) then inside = inside + 1 end end end
-        assert(inside > 30, "o prédio do jogador ficou limpo: " .. inside)
-        for x = 80, 88 do
-            for y = 106, 114 do assert(not shown(G, x, y), "chão do outro prédio: " .. x .. "," .. y) end
-        end
-        -- review 0021: de fora, atrás das paredes N/W do prédio dele (que o jogo não corta):
-        -- a parede tapa na tela, o marcador sairia por cima dela
-        local shadowOwn = 0
-        for x = 88, 104 do
-            for y = 88, 104 do
-                for k = G.interior[x .. "," .. y .. ",0"] and O().SHADOW + 1 or 1, O().SHADOW do
-                    if G.interior[(x + k) .. "," .. (y + k) .. ",0"] == own then
-                        shadowOwn = shadowOwn + 1
-                        assert(not shown(G, x, y), "chão de fora atrás da parede do prédio dele: " .. x .. "," .. y)
-                        break
-                    end
+                if n:find("^d_plants") or n:find("^d_floorleaves") then
+                    assert(not inside, "mato dentro: " .. o.x .. "," .. o.y)
+                    plants = plants + 1
                 end
             end
         end
-        assert(shadowOwn > 10, "teste não mediu a sombra do prédio dele: " .. shadowOwn)
-        -- e a rua do outro lado (sul/leste, longe de prédio) continua
-        local street = 0
-        for x = 106, 110 do for y = 96, 104 do if shown(G, x, y) then street = street + 1 end end end
-        assert(street > 10, "a rua sumiu de dentro: " .. street)
-        -- sai: o de dentro apaga com fade e o de fora continua
-        G.p.x, G.p.y = 92.5, 100.5
-        G.seconds(O().FADE_MS / 2000)
-        local fading = 0
-        for _, m in ipairs(alive(G)) do
-            if G.interior[m.sq.x .. "," .. m.sq.y .. ",0"] == own and m.a > 0 and m.a < 1 then fading = fading + 1 end
-        end
-        assert(fading > 10, "o de dentro sumiu sem fade: " .. fading)
-        G.seconds(O().FADE_MS / 1000)
-        for x = 95, 104 do
-            for y = 95, 104 do assert(not shown(G, x, y), "chão de dentro visto de fora: " .. x .. "," .. y) end
-        end
+        assert(burnt > 10 and plants > 10, "queimado " .. burnt .. ", mato " .. plants)
     end,
 
-    -- review focus: na porta, entrando e saindo a cada passo, nada é tirado e posto de novo
-    overlays_building_doorway_no_flicker = function()
-        local G = setup()
-        building(G, 101, 90, 110, 110)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        local near = {}
-        for _, m in ipairs(alive(G)) do
-            local dx, dy = m.sq.x - 100, m.sq.y - 100
-            if dx * dx + dy * dy <= 36 then near[#near + 1] = m end
+    -- o chunk que sai do mapa é gravado (ChunkSaveWorker) a ≥ 48 tiles: andando de carro (meio
+    -- tile por tick), nada do mod passa de RADIUS + SLACK mais o que o carro anda numa
+    -- atualização, em nenhum tick; parado, de RADIUS
+    overlays_leaving_radius_strips = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(3)
+        for _ = 1, 160 do
+            G.p.x = G.p.x + 0.5
+            G.p.y = G.p.y + 0.25
+            G.tick(1)
+            local f = farthest(G, G.p.x, G.p.y)
+            assert(f <= D().RADIUS + O().SLACK + 0.6 * O().UPDATE_TICKS and f < 40, "anexo a " .. f .. " tiles andando")
         end
-        assert(#near > 10, "pouco chão perto da porta: " .. #near)
-        for step = 1, 10 do
-            G.p.x = step % 2 == 1 and 101.5 or 100.5
-            G.seconds(0.5)
-        end
-        for _, m in ipairs(near) do assert(not m.removed, "marcador tirado na porta (pisca): " .. m.sq.x .. "," .. m.sq.y .. " raio " .. O().reach()) end
+        G.seconds(3)
+        assert(farthest(G, G.p.x, G.p.y) <= D().RADIUS + 1, "parado, longe demais: " .. farthest(G, G.p.x, G.p.y))
+        assert(laidOut(G, D().RADIUS - 1) > 300, "o lugar novo não encheu")
     end,
 
-    -- review focus: square da diagonal sem chunk conta como livre, sem erro
-    overlays_shadow_missing_square = function()
-        local G = setup()
-        for x = 101, 130 do for y = 101, 130 do G.holes[x .. "," .. y .. ",0"] = true end end
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        assert(shown(G, 99, 99) or shown(G, 98, 99) or shown(G, 99, 98), "borda carregada sem chão")
-        assert(shownOutside(G, 3, function(x, y) return x > 100 and y > 100 end) > 15)
+    -- fim da névoa: tudo do mod sai, em lotes de STRIP_BUDGET alvos por atualização
+    overlays_fog_end_strips_all = function()
+        local G = setup({ density = 2 })
+        walls(G, 95, 95, 10)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        local fl, wl = O().count()
+        local total = fl + wl
+        assert(total > 2 * O().STRIP_BUDGET, "pouco pra medir o lote: " .. total)
+        NOM_FogState.set(false)
+        local updates = 0
+        while true do
+            local a, b = O().count()
+            if a + b == 0 then break end
+            G.tick(O().UPDATE_TICKS)
+            updates = updates + 1
+            local c, e = O().count()
+            assert(a + b - (c + e) <= O().STRIP_BUDGET, "lote grande demais: " .. (a + b - c - e))
+            assert(updates < 40, "não esvaziou")
+        end
+        assert(G.ours() == 0, "registro vazio mas sobrou anexo: " .. G.ours())
     end,
 
-    -- print 7 (05/10): sujeira cheia, uma por tile, lia como xadrez. Ela vai num marcador
-    -- próprio, mais leve que o sangue do mesmo square (o marcador tem uma cor só)
-    overlays_grime_own_marker_lighter = function()
-        local G = setup()
-        NOM_FogState.set(true, 1)
+    -- período ou densidade novos: outro desenho, sem duplicar nada
+    overlays_period_and_density_redraw = function()
+        local G = setup({ density = 1 })
+        walls(G, 96, 96, 8)
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        laidOut(G, D().RADIUS)
+        NOM_FogState.set(true, 4)
+        G.seconds(8)
+        laidOut(G, D().RADIUS)
+        NOM_ScreenFxOptions.overlayDensity = function() return 2 end
+        G.seconds(8)
+        laidOut(G, D().RADIUS)
+        NOM_FogState.set(true, 4, true)
+        G.seconds(8)
+        assert(laidOut(G, D().RADIUS) > 500, "vermelha rala")
+    end,
+
+    -- o slider anda de 0,1 em 0,1: a densidade nova só vale parada DENSITY_MS
+    overlays_density_debounced = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        local x, y = findFloor(G, function() return true end)
+        local before = mods(G, G.floorOf(x, y, 0))
+        for i = 1, 6 do
+            NOM_ScreenFxOptions.overlayDensity = function() return 1 + i / 10 end
+            G.seconds(0.4)
+            assert(mods(G, G.floorOf(x, y, 0)) == before, "redesenhou com o slider andando")
+        end
+        G.seconds(8)
+        laidOut(G, D().RADIUS)
+    end,
+
+    -- a lista mexida por baixo (pá do vanilla limpa tudo; MP: o servidor manda a lista dele):
+    -- o mod põe de novo o que falta, sem duplicar e sem nada explodir
+    overlays_reapply_after_list_wiped = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        local x, y, want = findFloor(G, function() return true end)
+        G.seconds(3)
+        local floor = G.floorOf(x, y, 0)
+        G.wipe(floor)
         G.seconds(15)
-        local both = 0
-        for k, s in pairs(bySquare(G)) do
-            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
-            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 1, D().density(1, false))
-            assert((s.grime ~= nil) == (f.grime ~= nil), "sujeira não bate com a regra em " .. k)
-            for _, n in ipairs(s.main and s.main.names or {}) do assert(not n:find("grime"), "sujeira no marcador do sangue") end
-            if s.grime and s.main then
-                both = both + 1
-                assert(math.abs(s.grime.a - s.main.a * D().GRIME_ALPHA) < 1e-6, "alfa da sujeira: " .. s.grime.a)
+        assert(mods(G, floor) == want, "não voltou: " .. mods(G, floor) .. " / " .. want)
+        laidOut(G, D().RADIUS)
+    end,
+
+    -- o objeto trocado (pacote do servidor no MP): o novo ganha o desenho; o velho, fora do
+    -- mundo, não é tocado
+    overlays_reapply_after_object_replaced = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        local x, y, want = findFloor(G, function() return true end)
+        G.seconds(3)
+        local old = G.floorOf(x, y, 0)
+        local oldNames = table.concat(G.attachedNames(old), "|")
+        local new = G.replace(x, y, 0, "F")
+        G.seconds(15)
+        assert(mods(G, new) == want, "o novo ficou sem: " .. mods(G, new))
+        assert(table.concat(G.attachedNames(old), "|") == oldNames, "mexeu no objeto velho")
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(mods(G, new) == "", "sobrou no novo")
+    end,
+
+    -- review focus: nome sem sprite (pack diferente): nada anexado com ele, nada explode, o
+    -- resto sai normal
+    overlays_missing_sprites = function()
+        local G = setup({ density = 2 })
+        for i = 0, 46 do G.unknown["overlay_blood_floor_01_" .. i] = true end
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        local any = 0
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                assert(not n:find("^overlay_blood_floor"), "anexou nome sem sprite")
+                any = any + 1
             end
         end
-        assert(both > 20, "poucos squares com sujeira e sangue: " .. both)
-    end,
-
-    -- os dois marcadores de um square saem juntos (fim da névoa, densidade nova)
-    overlays_grime_marker_follows_entry = function()
-        local G = setup()
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        local grimes = 0
-        for _, s in pairs(bySquare(G)) do if s.grime then grimes = grimes + 1 end end
-        assert(grimes > 20, "sem sujeira: " .. grimes)
-        local old = alive(G)
-        NOM_FogState.set(true, 1, true) -- densidade nova (vermelha forçada): redesenha depois de 1 s
-        G.seconds(1.5)
-        for _, m in ipairs(old) do assert(m.removed, "marcador velho ficou") end
-        NOM_FogState.set(false, 1)
-        G.seconds(O().FADE_MS / 1000 + 2)
-        assert(#alive(G) == 0, "sobrou marcador: " .. #alive(G))
-    end,
-
-    overlays_walls_off_by_default = function()
-        -- visto no jogo (print do Johan): desenho de fantasma sem profundidade cobre o
-        -- jogador e pinta de preto paredes cortadas; o padrão é não desenhar paredes
-        local G = setup({ walls = "default" })
-        assert(NOM_DressingRules.WALLS == false, "paredes ligadas por padrão")
-        assert(#G.frame() == 0, "parede desenhada com WALLS desligado")
+        assert(any > 100, "o resto não saiu")
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(G.ours() == 0)
     end,
 
     overlays_inert_on_dedicated = function()
         local G = setup({ server = true })
-        NOM_FogState.set(true, 1)
-        G.seconds(30)
-        assert(#G.markers == 0 and G.handlers.RenderOpaqueObjectsInWorld == nil)
+        assert(G.handlers.OnTick == nil and G.handlers.OnSave == nil and G.handlers.LoadGridsquare == nil,
+            "o cliente roda no dedicado")
     end,
 
-    -- critério: chão denso em poucos segundos, nada sem névoa, com fade de entrada
-    overlays_fill_dense_floor = function()
-        local G = setup()
-        G.seconds(10)
-        assert(#G.markers == 0, "mancha sem névoa")
-        NOM_FogState.set(true, 1)
-        G.seconds(1)
-        local first = awayFromPlayer(G, G.markers)
-        assert(first and first.a < 0.5, "nasceu sem fade")
-        G.seconds(10)
-        local n = #alive(G)
-        assert(n >= 300, "chão pouco coberto: " .. n)
-        assert(math.abs(first.a - 1) < 1e-6, "não chegou no alfa cheio: " .. first.a)
-        for _, m in ipairs(alive(G)) do
-            local dx, dy = m.sq.x - 100, m.sq.y - 100
-            assert(dx * dx + dy * dy <= D().RADIUS * D().RADIUS, "fora do raio")
-        end
-        assert(textures(G) > n * 1.3, "poças sem camadas: " .. textures(G) .. "/" .. n)
-    end,
-
-    overlays_red_denser = function()
-        local G = setup()
-        NOM_FogState.set(true, 3, false)
-        G.seconds(20)
-        -- sangue e rachadura num raio que as duas cobrem inteiro (o teto encolhe o raio da
-        -- vermelha); a sujeira tem teto (GRIME_MAX) e não cresce com a densidade
-        local normal = textures(G, true, 8)
-        local R = setup()
+    -- nada pela rede (o fake de objeto explode em transmit*)
+    overlays_never_touch_the_network = function()
+        local G = setup({ density = 2, client = true })
+        walls(G, 96, 96, 8)
         NOM_FogState.set(true, 3, true)
-        R.seconds(20)
-        assert(textures(R, true, 8) > normal * 1.15, "vermelha não é mais densa: " .. textures(R, true, 8) .. " vs " .. normal)
-    end,
-
-    -- review 0015 (crítico): com o teto cheio, andar não pode deixar o jogador no limpo.
-    -- O teto serve a área mais perto: o que sai do raio efetivo cai na hora.
-    overlays_walk_keeps_nearby_covered = function()
-        for _, red in ipairs({ false, true }) do
-            local G = setup()
-            NOM_FogState.set(true, 1, red)
-            G.seconds(20)
-            for step = 1, 25 do
-                G.p.x = G.p.x + 1
-                G.seconds(1)
-                if step > 3 then
-                    local _, rel = coverage(G, 3)
-                    assert(rel >= 0.85, (red and "vermelha" or "normal") .. ": andando, 7×7 com " .. rel .. " do que a regra pede, passo " .. step)
-                end
-                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando: " .. #alive(G) .. " marcadores")
-            end
-            G.seconds(2)
-            local abs = coverage(G, 3)
-            assert(abs >= (red and 0.8 or 0.6), (red and "vermelha" or "normal") .. ": parado, 7×7 coberto " .. abs)
-        end
-    end,
-
-    overlays_teleport_and_floor_change = function()
-        local G = setup()
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        G.p.x, G.p.y = G.p.x + 60, G.p.y - 40
-        G.seconds(3)
-        assert(select(2, coverage(G, 3)) >= 0.9, "teleporte: 7×7 vazio")
-        G.p.z = 1.2
-        G.tick(O().UPDATE_TICKS)
-        for _, m in ipairs(alive(G)) do assert(m.sq.z == 1, "mancha de outro andar ficou ocupando o teto") end
-        G.seconds(3)
-        assert(select(2, coverage(G, 3)) >= 0.9, "andar novo: 7×7 vazio")
-    end,
-
-    -- período desconhecido (MP, antes do comando) e depois conhecido: troca na hora
-    overlays_period_known_after_nil = function()
-        local G = setup()
-        NOM_FogState.set(true, nil)
-        G.seconds(20)
-        NOM_FogState.set(true, 5)
-        G.seconds(3)
-        assert(select(2, coverage(G, 3)) >= 0.9, "período conhecido: 7×7 vazio")
-        for _, m in ipairs(alive(G)) do
-            local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
-            local f = D().floor(m.sq.x, m.sq.y, m.sq.z, 5, D().density(1, false))
-            assert(f, "mancha do período velho ficou: " .. k)
-        end
-    end,
-
-    -- densidade trocada no meio da névoa (opção, ou a vermelha forçada no debug): redesenha
-    overlays_density_change_redresses = function()
-        local G = setup()
-        NOM_FogState.set(true, 2, false)
-        G.seconds(20)
-        local old = alive(G)
-        NOM_FogState.set(true, 2, true)
+        G.seconds(4)
+        G.saveSnapshot()
+        NOM_FogState.set(false)
         G.seconds(5)
-        for _, m in ipairs(old) do assert(m.removed, "vermelha forçada não redesenhou") end
-        local d = D().density(1, true)
-        for k, v in pairs(layout(G)) do
-            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
-            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 2, d)
-            assert(f, "square sem nada na regra vermelha: " .. k)
-            assert(v:find(D().SETS[(f[#f] or f.grime)[1]].prefix .. (f[#f] or f.grime)[2], 1, true), "desenho não é o da vermelha: " .. k)
-        end
-        assert(select(2, coverage(G, 3)) >= 0.9)
+        assert(#G.sentServer == 0 and #G.sentClient == 0, "mandou comando")
     end,
 
-    -- review 0015: parede que não estava à vista na varredura (porta fechada) aparece depois
-    overlays_walls_door_closed_then_opened = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 92, 92, 6)
-        for x = 92, 97 do for y = 92, 97 do G.blocked[x .. "," .. y .. ",0"] = true end end
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        assert(#G.frame() == 0, "parede sem linha de visão desenhada")
-        G.blocked = {}
-        G.p.x, G.p.y = 97.5, 97.5
-        G.seconds(8)
-        assert(#G.frame() >= 10, "porta aberta e a sala limpa: " .. #G.frame())
-    end,
-
-    overlays_walls_survive_turning_around = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 90, 90, 8)
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        local first = #G.frame()
-        assert(first >= 10)
-        G.p.face = math.rad(45)
-        G.seconds(6)
-        assert(#G.frame() == 0, "de costas e desenhou")
-        G.p.face = math.rad(225)
-        G.seconds(6)
-        assert(#G.frame() >= first * 0.9, "virou de volta e as paredes sumiram: " .. #G.frame() .. "/" .. first)
-    end,
-
-    -- batente vazio de porta ou janela: o desenho taparia o buraco
-    overlays_walls_skip_door_and_window_frames = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 85, 85, 16)
-        local flags = { "DoorWallN", "WindowN", "doorN", "windowN" }
-        for x = 85, 100 do
-            for y = 85, 100 do
-                local f = flags[(x + y) % 4 + 1]
-                G.flags[x .. "," .. y .. ",0"] = { [f] = true, [f:sub(1, -2) .. "W"] = true }
-            end
-        end
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        assert(#G.frame() == 0, "parede em batente")
-    end,
-
-    -- a parede do decalque sumiu (destruída) ou ganhou móvel: o decalque sai no rodízio
-    overlays_stale_wall_dropped = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 90, 90, 8)
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        assert(#G.frame() > 0)
-        G.walls = {}
-        G.seconds(15)
-        assert(#G.frame() == 0, "decalque em parede que não existe mais")
-        assert(select(2, O().count()) == 0)
-    end,
-
-    -- verificação 0015: com o raio do chão encolhido, o anel de fora não é reolhado todo lote
-    overlays_open_terrain_probing_stops = function()
-        local G = setup({ density = 2 })
-        NOM_FogState.set(true, 1, true)
-        G.seconds(40)
-        assert(O().reach() < D().RADIUS, "o teto nem encolheu o raio (teste não mede nada)")
-        local c0 = G.java + G.sqCalls
-        G.tick(O().UPDATE_TICKS * 20)
-        local per = (G.java + G.sqCalls - c0) / 20
-        assert(per <= O().LIGHT_BUDGET + 10 + O().UPDATE_TICKS, -- + 1 getCell por tick (rodízio de personagens)
-            "parado e ainda sondando: " .. per .. " chamadas por atualização")
-    end,
-
-    -- parede de costas não ocupa o teto: o raio das paredes fica largo num mundo cheio delas
-    overlays_back_facing_walls_skip_cap = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        -- bairro de cômodos 4×4: parede W a cada 4 colunas, N a cada 4 linhas
-        for x = 60, 140 do
-            for y = 60, 140 do
-                local w = (x % 4 == 0 and "W" or "") .. (y % 4 == 0 and "N" or "")
-                if w ~= "" then G.walls[x .. "," .. y .. ",0"] = w end
-            end
-        end
-        NOM_FogState.set(true, 1)
-        G.seconds(40)
-        local _, wr = O().reach()
-        -- só as de frente cabem no teto: ~0,19·π·r² = 120 → r ≈ 14 (com as de costas, ~10)
-        assert(wr >= 12, "raio das paredes encolheu: " .. wr)
-        for _, d in ipairs(G.frame()) do assert(d.x <= 100 or d.y <= 100) end
-        -- anda pro sudeste: as que eram de costas passam a ser de frente e entram
-        local before = #G.frame()
-        G.p.x, G.p.y = G.p.x + 6, G.p.y + 6
-        G.seconds(15)
-        assert(#G.frame() > 0 and before > 0)
-    end,
-
-    -- o slider anda de 0,1 em 0,1: só redesenha depois de ~1 s parado
-    overlays_density_debounced = function()
-        local G = setup()
-        local dens = 1
-        NOM_ScreenFxOptions.overlayDensity = function() return dens end
-        NOM_FogState.set(true, 2)
-        G.seconds(20)
-        local removed0 = 0
-        for _, m in ipairs(G.markers) do if m.removed then removed0 = removed0 + 1 end end
-        for step = 1, 8 do
-            dens = 1 + step * 0.1
-            G.seconds(0.2)
-        end
-        local removed = 0
-        for _, m in ipairs(G.markers) do if m.removed then removed = removed + 1 end end
-        assert(removed == removed0, "redesenhou no meio do arrasto: " .. removed - removed0)
-        G.seconds(3)
-        removed = 0
-        for _, m in ipairs(G.markers) do if m.removed then removed = removed + 1 end end
-        assert(removed > removed0, "não redesenhou depois de parar")
-        assert(select(2, coverage(G, 3)) >= 0.9)
-    end,
-
-    overlays_capped = function()
-        local G = setup({ density = 2 })
-        G.p.face = math.rad(225)
-        addWalls(G, 70, 70, 60)
-        NOM_FogState.set(true, 1, true)
-        G.seconds(60)
-        -- review 0021: o teto é de marcadores de verdade (sujeira é o segundo do square), e
-        -- conta os que estão apagando
-        assert(#alive(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. #alive(G))
-        assert(#alive(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. #alive(G))
-        assert(O().count() == #alive(G), "count não conta marcadores: " .. O().count() .. " vs " .. #alive(G))
-        local draws = G.frame()
-        assert(select(2, O().count()) <= D().MAX_WALL, "passou do teto das paredes")
-        -- as de costas e fora do cone ficam na reserva, apagadas (voltam ao virar)
-        assert(#draws <= D().MAX_WALL and #draws > D().MAX_WALL / 4, "paredes por quadro: " .. #draws)
-    end,
-
-    -- critério: parede desenhada só no quadro do mundo, no lugar dela, de frente e visível
-    overlays_walls_drawn_in_frame = function()
-        local G = setup()
-        G.p.face = math.rad(225) -- olhando pro noroeste (pra -x, -y)
-        addWalls(G, 85, 85, 30) -- 85..114: o jogador no meio
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        local draws = G.frame()
-        assert(#draws >= 40, "poucas paredes: " .. #draws)
-        local sides = {}
-        for _, set in pairs(D().SETS) do
-            -- o mesmo nome não pode estar dos dois lados (o pack separa)
-            for _, i in ipairs(set.idx) do
-                if set.wall then sides[set.prefix .. i] = set.wall end
-            end
-        end
-        for _, d in ipairs(draws) do
-            assert(G.walls[d.x .. "," .. d.y .. "," .. d.z], "parede onde não tem")
-            assert(d.name:find("_wall_") or d.name:find("wallcracks") or d.name:find("wallvines"), d.name)
-            -- de frente: N só com y <= jogador, W só com x <= jogador (o resto o jogo corta)
-            local side = sides[d.name]
-            assert(side, "sprite de parede desconhecido: " .. d.name)
-            if side == "N" then assert(d.y <= 100, "parede N de costas") else assert(d.x <= 100, "parede W de costas") end
-            assert(G.square(d.x, d.y, 0):isCouldSee(0), "parede fora da visão")
-            assert(d.a > 0 and d.a <= 1 and d.l > 0 and d.l <= 1)
-        end
-        -- quadro sem o evento (mouse fora do mapa): nada nele, e o seguinte volta normal
-        assert(#G.frame(true) == 0 and #G.frame() == #draws, "quadro sem evento estragou o seguinte")
-        -- outro jogador da tela dividida: nada
-        G.draws, G.inFrame = {}, true
-        G.fire("RenderOpaqueObjectsInWorld", 1, 0, 0, 0, nil)
-        G.inFrame = false
-        assert(#G.draws == 0, "desenhou pro jogador 1")
-    end,
-
-    -- só parede limpa (piso + parede): móvel na frente ficaria por baixo do desenho sem profundidade
-    overlays_walls_skip_cluttered = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 85, 85, 16)
-        for x = 85, 100 do for y = 85, 100 do G.objects[x .. "," .. y .. ",0"] = 4 end end
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        assert(#G.frame() == 0, "parede com móvel desenhada")
-    end,
-
-    -- luz do square: escuro escurece (sem chegar no preto), claro fica claro
-    overlays_follow_square_light = function()
-        local G = setup()
-        G.lightAll = 0
-        NOM_FogState.set(true, 1)
-        G.seconds(12)
-        local m = awayFromPlayer(G)
-        assert(m.color[1] < 0.75 and m.color[1] >= O().LIGHT_FLOOR - 1e-6, "luz no escuro: " .. m.color[1])
-        G.lightAll = 1
-        G.seconds(20)
-        assert(math.abs(m.color[1] - 1) < 1e-6, "luz não foi relida: " .. m.color[1])
-    end,
-
-    -- critério: some com a névoa (fade, depois remove) e não desenha mais
-    overlays_fade_out_and_removed_on_fog_end = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 85, 85, 30)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        assert(#alive(G) > 0 and #G.frame() > 0)
-        NOM_FogState.set(false, 1)
-        G.seconds(O().FADE_MS / 2000)
-        local m = awayFromPlayer(G)
-        assert(m and m.a < 1 and m.a > 0, "sumiu sem fade")
-        G.seconds(O().FADE_MS / 1000)
-        assert(#alive(G) == 0, "sobrou mancha: " .. #alive(G))
-        assert(#G.frame() == 0, "parede depois da névoa")
-        local n = #G.markers
-        G.seconds(30)
-        assert(#G.markers == n, "nasceu mancha sem névoa")
-    end,
-
-    overlays_cleared_on_death_and_menu = function()
-        local G = setup()
-        G.p.face = math.rad(225)
-        addWalls(G, 85, 85, 30)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        G.p.dead = true
-        G.tick(O().UPDATE_TICKS)
-        assert(#alive(G) == 0 and #G.frame() == 0, "morto e ainda com sangue")
-        G.p.dead = false
-        G.seconds(20)
-        assert(#alive(G) > 0)
-        G.fire("OnMainMenuEnter")
-        assert(#alive(G) == 0 and #G.frame() == 0, "menu e ainda com sangue")
-        assert(O().count() == 0)
-    end,
-
-    -- critério: nada no mapa nem no save nem na rede
-    overlays_never_touch_the_map = function()
-        local G = setup({ density = 2 })
-        G.p.face = math.rad(225)
-        addWalls(G, 85, 85, 30)
-        NOM_FogState.set(true, 1, true)
-        G.seconds(60)
-        G.frame()
-        NOM_FogState.set(false, 1)
-        G.seconds(20)
-        assert(#G.markers > 0)
-        assert(#G.sentClient == 0 and #G.sentServer == 0, "mandou pacote")
-        for _ in pairs(G.globalMD) do error("escreveu ModData") end
-    end,
-
-    -- critério: determinístico por square e período, estável ao andar
+    -- andar e voltar: o mesmo desenho; o que fica no raio não é tirado e posto de novo
     overlays_deterministic_and_stable_while_walking = function()
-        local A = setup()
-        NOM_FogState.set(true, 4)
-        A.seconds(20)
-        local la = layout(A)
-        local B = setup()
-        NOM_FogState.set(true, 4)
-        B.seconds(20)
-        local lb = layout(B)
-        local same = 0
-        for k, v in pairs(la) do
-            if lb[k] then
-                assert(lb[k] == v, "mesmo square, desenho diferente: " .. k)
-                same = same + 1
-            end
-        end
-        assert(same >= 200, "pouca sobreposição: " .. same)
-        -- anda 1 tile por segundo: quem fica dentro do raio efetivo (o que o teto aguenta)
-        -- não troca nem pisca
-        local before = {}
-        for _, m in ipairs(alive(B)) do before[m] = table.concat(m.names, "|") end
-        local removedNear = 0
-        for _ = 1, 5 do
-            B.p.x = B.p.x + 1
-            B.seconds(1)
-            for m in pairs(before) do
-                local dx, dy = m.sq.x - math.floor(B.p.x), m.sq.y - math.floor(B.p.y)
-                local reach = O().reach()
-                if m.removed and dx * dx + dy * dy < (reach - 2) ^ 2 then removedNear = removedNear + 1 end
-            end
-        end
-        assert(removedNear == 0, "mancha perto sumiu andando: " .. removedNear)
-        assert(O().reach() >= 10, "raio efetivo pequeno demais: " .. O().reach())
-        for k, v in pairs(layout(B)) do
-            if la[k] then assert(la[k] == v, "desenho mudou andando") end
-        end
-    end,
-
-    overlays_new_period_new_layout = function()
-        local G = setup()
-        NOM_FogState.set(true, 2)
-        G.seconds(20)
-        local old = layout(G)
+        local G = setup({ density = 1 })
         NOM_FogState.set(true, 3)
-        G.seconds(O().FADE_MS / 1000 + 20)
-        local new, diff = layout(G), 0
-        for k, v in pairs(new) do if old[k] ~= v then diff = diff + 1 end end
-        assert(diff > 100, "período novo com o desenho velho: " .. diff)
-        -- período desconhecido (cliente de MP antes do comando): desenha, sem erro
-        local M = setup()
-        NOM_FogState.set(true, nil)
-        M.seconds(15)
-        assert(#alive(M) > 0)
-    end,
-
-    -- andar e trocar de andar: as de longe e as do outro andar saem, nascem perto
-    overlays_far_and_other_floor_removed = function()
-        local G = setup()
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        local old = alive(G)
-        G.p.x = G.p.x + 80
-        G.seconds(O().FADE_MS / 1000 + 25)
-        for _, m in ipairs(old) do assert(m.removed, "mancha longe ficou") end
-        assert(#alive(G) > 100, "parou de nascer perto do jogador novo")
-        G.p.z = 1.4 -- escada
-        G.seconds(O().FADE_MS / 1000 + 25)
-        for _, m in ipairs(alive(G)) do assert(m.sq.z == 1, "mancha de outro andar") end
-    end,
-
-    -- square sem chunk: tenta de novo quando carrega
-    overlays_missing_square_retried = function()
-        local G = setup()
-        for x = 75, 125 do for y = 75, 125 do G.holes[x .. "," .. y .. ",0"] = true end end
-        NOM_FogState.set(true, 1)
-        G.seconds(15)
-        assert(#G.markers == 0)
-        G.holes = {}
-        G.seconds(15)
-        assert(#alive(G) > 200, "não tentou de novo: " .. #alive(G))
-    end,
-
-    overlays_density_zero_and_toggle = function()
-        local G = setup({ density = 0 })
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        assert(#G.markers == 0, "densidade 0 com mancha")
-        local S = setup({ sandbox = { FogOverlays = false } })
-        NOM_FogState.set(true, 1)
-        S.seconds(20)
-        assert(#S.markers == 0, "desligado e nasceu mancha")
-        -- densidade vai a 0 no meio da névoa: some com fade
-        local M = setup()
-        NOM_FogState.set(true, 1)
-        M.seconds(20)
-        NOM_ScreenFxOptions.overlayDensity = function() return 0 end
-        M.seconds(O().FADE_MS / 1000 + 2)
-        assert(#alive(M) == 0, "densidade 0 e sobrou")
-    end,
-
-    overlays_missing_sprites = function()
-        local G = setup({ noTextures = true })
-        addWalls(G, 85, 85, 30)
-        NOM_FogState.set(true, 1)
-        G.seconds(20)
-        assert(#G.markers == 0 and #G.frame() == 0, "desenho sem textura")
-        local B = setup({ missing = "^overlay_blood" })
-        NOM_FogState.set(true, 1)
-        B.seconds(20)
-        assert(#alive(B) > 0)
-        for _, m in ipairs(alive(B)) do
-            for _, n in ipairs(m.names) do assert(not n:find("^overlay_blood"), "nome sem textura: " .. n) end
+        G.seconds(4)
+        -- a instância de cada anexo do mod a até 8 tiles (fica no raio o caminho todo)
+        local near = {}
+        for _, o in pairs(G.objs) do
+            if (o.x - 100) ^ 2 + (o.y - 100) ^ 2 <= 64 then
+                for _, inst in ipairs(rawget(o, "list") or {}) do
+                    if not inst.vanilla then near[inst] = o end
+                end
+            end
         end
+        assert(next(near), "nada perto (teste não mede)")
+        for _ = 1, 4 do G.p.x = G.p.x + 1; G.seconds(0.5) end
+        for _ = 1, 4 do G.p.x = G.p.x - 1; G.seconds(0.5) end
+        G.seconds(3)
+        for inst, o in pairs(near) do
+            local still = false
+            for _, i in ipairs(rawget(o, "list")) do if i == inst then still = true end end
+            assert(still, "o anexo perto foi tirado e posto de novo andando: " .. o.x .. "," .. o.y)
+        end
+        laidOut(G, D().RADIUS)
     end,
 
-    -- critério: orçamento. Por atualização (a cada 10 ticks): a varredura toca no máximo
-    -- SCAN_BUDGET squares; parada (tudo posto, jogador parado) quase nada. Por quadro:
-    -- uma chamada por parede desenhada, zero fora da névoa.
+    -- trocou de andar: o andar velho sai, o novo enche
+    overlays_other_floor_stripped = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        G.p.z = 1
+        G.seconds(5)
+        for _, o in pairs(G.objs) do
+            if o.z == 0 then assert(mods(G, o) == "", "sobrou no andar de baixo") end
+        end
+        assert(laidOut(G, D().RADIUS) > 300, "o andar de cima não encheu")
+    end,
+
+    -- custo por atualização (10 ticks): enchendo e parado
     overlays_budget = function()
         local G = setup({ density = 2 })
-        G.p.face = math.rad(225)
-        addWalls(G, 70, 70, 60)
-        NOM_FogState.set(true, 1, true)
-        local worst, first = 0, nil
-        for _ = 1, 60 do
-            local c0 = G.java + G.sqCalls
+        walls(G, 90, 90, 20)
+        NOM_FogState.set(true, 3, true)
+        local maxFill, maxIdle, maxInv = 0, 0, 0
+        for i = 1, 60 do
+            local j, inv = G.java + G.sqCalls, G.invalidations
             G.tick(O().UPDATE_TICKS)
-            if first then worst = math.max(worst, G.java + G.sqCalls - c0) else first = G.java + G.sqCalls - c0 end
+            local cost = G.java + G.sqCalls - j
+            if i <= 10 then maxFill = math.max(maxFill, cost) elseif i > 40 then maxIdle = math.max(maxIdle, cost) end
+            maxInv = math.max(maxInv, G.invalidations - inv)
         end
-        local names = 0
-        for _, set in pairs(D().SETS) do names = names + #set.idx end
-        -- carga dos sprites (uma vez, 404 getTexture) fica no 1º lote; o resto:
-        -- ≤ 8 por square varrido + 2 por entrada (fade/luz/visão)
-        local steady = 0
-        G.seconds(30)
-        for _ = 1, 10 do
-            local c0 = G.java + G.sqCalls
+        assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
+        assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
+        -- ≤ 80 squares por lote, até 3 alvos e 5 anexos no piso
+        assert(maxInv <= O().SCAN_BUDGET * 7, "invalidações por lote: " .. maxInv)
+        print(string.format("[budget] outro mundo: enchendo %d, parado %d chamadas, %d invalidações por atualização", maxFill, maxIdle, maxInv))
+    end,
+
+    -- SAVE (Task 4) ------------------------------------------------------------------------
+
+    -- o OnSave sai antes do IsoCell.save gravar os chunks (GameWindow.save 302 → 364): o que o
+    -- save grava não tem nada do mod; o vanilla fica
+    overlays_on_save_nothing_ours = function()
+        local G = setup({ density = 2 })
+        walls(G, 96, 96, 8)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        local before = vanillaOf(G)
+        assert(G.ours() > 500)
+        local snap = G.saveSnapshot()
+        assert(snap.ours == 0, "o save gravaria " .. snap.ours .. " anexos do mod")
+        sameVanilla(G, before)
+    end,
+
+    -- volta depois do save, igual, sem precisar do OnPostSave (só sai na saída do jogo; acordar
+    -- salva sem ele: SleepingEvent.wakeUp)
+    overlays_back_after_save = function()
+        local G = setup({ density = 1 })
+        walls(G, 96, 96, 8)
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        local n = laidOut(G, D().RADIUS)
+        G.saveSnapshot()
+        G.seconds(3)
+        assert(laidOut(G, D().RADIUS) == n, "não voltou igual depois do save")
+    end,
+
+    -- review focus: save no meio do lote (fim da névoa tirando, ou enchendo): nada do mod
+    overlays_save_mid_batch_clean = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.tick(O().UPDATE_TICKS * 3) -- enchendo
+        assert(G.ours() > 0)
+        assert(G.saveSnapshot().ours == 0, "save enchendo")
+        G.seconds(4)
+        NOM_FogState.set(false)
+        G.tick(O().UPDATE_TICKS)
+        assert(G.ours() > 0, "esvaziou de uma vez (teste não mede o lote)")
+        assert(G.saveSnapshot().ours == 0, "save no meio do fim")
+        G.seconds(3)
+        assert(G.ours() == 0, "voltou depois da névoa")
+    end,
+
+    -- teleporte (debug, mapa): o chunk velho sai do mapa no mesmo tick; o mod tira tudo no tick
+    overlays_jump_strips_now = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        G.p.x = G.p.x + 200
+        G.tick(1)
+        assert(G.ours() == 0, "sobrou depois do salto: " .. G.ours())
+        G.seconds(3)
+        assert(laidOut(G, D().RADIUS) > 300, "não encheu no lugar novo")
+    end,
+
+    -- morte (no solo o jogo salva logo depois): tudo sai na hora
+    overlays_death_strips_now = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        G.p.dead = true
+        G.tick(1)
+        assert(G.ours() == 0, "sobrou na morte: " .. G.ours())
+        local fl, wl = O().count()
+        assert(fl + wl == 0)
+    end,
+
+    -- crash depois de um hot save: o chunk volta do disco com anexos do mod. floors_burnt_01_*
+    -- (ninguém no vanilla anexa) sai no LoadGridsquare, com e sem névoa; nome vanilla vazado fica
+    -- (indistinguível do mapa: custo aceito na ADR-017); o vanilla do square fica
+    overlays_load_scrub_removes_own_prefix = function()
+        local G = setup({ density = 1 })
+        for _, fog in ipairs({ false, true }) do
+            NOM_FogState.set(fog, 3)
+            local x = fog and 300 or 310
+            G.loadSquare(x, 300, 0, { F = { "floors_burnt_01_14", "overlay_blood_floor_01_3" },
+                vanillaF = { "blends_natural_01_1", "overlay_grime_floor_01_5" }, N = { "floors_burnt_01_2" },
+                vanillaN = { "f_wallvines_1_3" } })
+            local f, n = G.objs[x .. ",300,0F"], G.objs[x .. ",300,0N"]
+            assert(mods(G, f) == "overlay_blood_floor_01_3", "piso: " .. mods(G, f))
+            assert(mods(G, n) == "", "parede: " .. mods(G, n))
+            assert(table.concat(G.attachedNames(f, "vanilla"), "|") == "blends_natural_01_1|overlay_grime_floor_01_5")
+            assert(table.concat(G.attachedNames(n, "vanilla"), "|") == "f_wallvines_1_3")
+        end
+    end,
+
+    -- a ação do jogador em curso (pá, marreta, pegar móvel: mexem nos anexos e, no MP, mandam a
+    -- lista pro servidor): o square do alvo fica limpo enquanto ela é a atual e volta depois; o
+    -- personagem da ação não conta
+    overlays_timed_action_holds_square = function()
+        local G = setup({ density = 2 })
+        walls(G, 96, 96, 10)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        local cases = {
+            { field = "square", value = G.square(102, 101, 0), sq = "102,101,0" },
+            { field = "object", value = G.objs["103,99,0N"], sq = "103,99,0" },
+            { field = "thumpable", value = G.objs["98,103,0W"], sq = "98,103,0" },
+        }
+        for _, c in ipairs(cases) do
+            local want = {}
+            for _, kind in ipairs({ "F", "N", "W" }) do
+                local o = G.objs[c.sq .. kind]
+                if o then want[kind] = mods(G, o) end
+            end
+            assert(want.F ~= "" or want.N ~= "" or want.W ~= "", "o square do alvo estava vazio (teste não mede)")
+            G.action(G.p, { character = G.p, [c.field] = c.value, maxTime = 100 })
             G.tick(O().UPDATE_TICKS)
-            steady = math.max(steady, G.java + G.sqCalls - c0)
+            for kind in pairs(want) do assert(mods(G, G.objs[c.sq .. kind]) == "", c.field .. ": " .. kind .. " não limpou") end
+            assert(mods(G, G.floorOf(100, 100, 0)) == expect(G, 100, 100, 0, "F"), "limpou o square do personagem")
+            G.seconds(2)
+            for kind in pairs(want) do assert(mods(G, G.objs[c.sq .. kind]) == "", c.field .. ": voltou com a ação em curso") end
+            G.action(G.p, nil)
+            G.seconds(3)
+            for kind, v in pairs(want) do assert(mods(G, G.objs[c.sq .. kind]) == v, c.field .. ": " .. kind .. " não voltou") end
         end
-        if os.getenv("NOM_BUDGET") then print("orçamento: 1º", first, "lote", worst, "parado", steady) end
-        local bound = 8 * O().SCAN_BUDGET + 2 * (D().MAX_FLOOR + D().MAX_WALL)
-        assert(steady <= O().LIGHT_BUDGET * 2 + D().MAX_WALL + 10, "parado e caro: " .. steady)
-        assert(worst <= bound, "lote caro: " .. worst)
-        assert(first <= bound + names, "1º lote caro: " .. first)
-        local c0 = G.java + G.sqCalls
-        local draws = #G.frame()
-        assert(G.java + G.sqCalls - c0 == draws and draws <= D().MAX_WALL, "quadro: " .. (G.java + G.sqCalls - c0))
-        NOM_FogState.set(false, 1)
-        G.seconds(O().FADE_MS / 1000 + 2)
-        c0 = G.java + G.sqCalls
-        G.frame()
-        assert(G.java + G.sqCalls - c0 == 0, "quadro fora da névoa com chamada")
     end,
 }
