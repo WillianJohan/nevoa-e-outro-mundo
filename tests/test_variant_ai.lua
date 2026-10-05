@@ -374,4 +374,17 @@ return {
         assert(#e.netSounds == 0, "estalo foi pra rede")
         assert(#e.sounds == 3 and e.sounds[1] == NOM_VariantAI.CLICK_SOUND)
     end,
+
+    -- orçamento: o estalo (1/min à noite) não chama nada no zumbi comum
+    ai_click_touches_only_estaladores = function()
+        local G = setup()
+        local zs = {}
+        for i = 1, 300 do zs[i] = G.zombie({ x = i, y = 0 }) end
+        local e = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        G.minutes(10)
+        local n = 0
+        for _, z in ipairs(zs) do n = n + z.calls end
+        assert(n == 0, "estalo chamou zumbi comum: " .. n)
+        assert(#e.sounds == 10, "Estalador não estalou")
+    end,
 }

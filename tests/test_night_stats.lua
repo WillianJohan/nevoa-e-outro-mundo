@@ -618,4 +618,37 @@ return {
         G.reuse(r)
         assert(NOM_NightStats.variants[r] == nil, "objeto reaproveitado herdou a variante")
     end,
+
+    -- orçamento: de dia, depois de devolver tudo e de uma passada limpa, o tick não
+    -- toca em zumbi nenhum nem no sandbox (docs/architecture/README.md#orçamento)
+    stats_day_idle_only_after_clean_pass = function()
+        local G = setup()
+        local zs = {}
+        for i = 1, 300 do zs[i] = G.spawn() end
+        NOM_NightStats.setNight(true)
+        G.converge()
+        NOM_NightStats.setNight(false)
+        G.converge() -- passada do amanhecer: devolve todos
+        for _, z in ipairs(zs) do assert(z.md.NOM_night == nil, "ficou com stat da noite") end
+        G.converge() -- passada limpa
+        -- makeInactive é o update do jogo (updateActiveState), não o mod
+        local c = dofile("tests/calls.lua")(zs, { makeInactive = true })
+        local reads = 0
+        local orig = getSandboxOptions
+        getSandboxOptions = function() reads = reads + 1; return orig() end
+        G.tick(50)
+        getSandboxOptions = orig
+        assert(c.n == 0 and reads == 0, "de dia ocioso e mexeu: zumbi=" .. c.n .. " sandbox=" .. reads)
+    end,
+    -- ocioso de dia não pode atrasar a noite seguinte, nem pra zumbi que nasceu dormindo
+    stats_day_idle_wakes_at_night = function()
+        local G = setup()
+        G.spawn()
+        G.converge()
+        G.converge()
+        local z = G.spawn()
+        NOM_NightStats.setNight(true)
+        G.converge()
+        assert(z.speedType == 1, "não acordou à noite: " .. z.speedType)
+    end,
 }

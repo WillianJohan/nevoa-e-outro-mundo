@@ -116,8 +116,9 @@ local function clicks()
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if z:hasModData() and z:getModData().NOM_variant == "estalador" and not z:isDead()
-            and ZombRand(CLICK_ODDS) == 0 then
+        -- tabela Lua antes de qualquer chamada no zumbi: o comum não custa nada
+        if NOM_NightStats.variants[z] == "estalador" and z:getModData().NOM_variant == "estalador"
+            and not z:isDead() and ZombRand(CLICK_ODDS) == 0 then
             z:playSoundLocal(NOM_VariantAI.CLICK_SOUND)
         end
     end

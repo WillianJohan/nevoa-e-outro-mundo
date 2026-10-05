@@ -33,6 +33,14 @@ local ECO_OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 local cursor = 0
 local queue = {}
 local pass = { seen = 0, applied = 0 }
+-- De dia, uma passada inteira sem nada a devolver quer dizer que ninguém tem stat
+-- da noite: o tick dorme até a próxima flag. Zumbi que volta do virtual ou é
+-- reaproveitado nasce limpo (objeto novo ou modData zerado), então nada novo
+-- aparece de dia. Orçamento em docs/architecture/README.md.
+-- ponytail: zumbi pulado numa passada (a lista mudou embaixo do cursor) e de novo
+-- na seguinte fica com o stat da noite até ir pro virtual; improvável, aceito.
+local idle = false
+local sweep = { seen = 0, applied = 0 }
 
 local function option(name)
     return getSandboxOptions():getOptionByName(name)
@@ -161,11 +169,13 @@ end
 
 -- Até BATCH zumbis por tick: primeiro os recém-criados, depois round-robin.
 function NOM_NightStats.tick()
+    if idle then return end
     local list = getCell():getZombieList()
     local size = list:size()
     if size == 0 and #queue == 0 then return end
     local c = config()
     local budget, applied = NOM_NightStats.BATCH, 0
+    local fromQueue = #queue
     while budget > 0 and #queue > 0 do
         local z = table.remove(queue)
         budget = budget - 1
@@ -177,11 +187,20 @@ function NOM_NightStats.tick()
     end
     cursor = size > 0 and (cursor + n) % size or 0
     logPass(size, n, applied)
+    if NOM_NightStats.night then return end
+    sweep.seen = sweep.seen + n
+    sweep.applied = sweep.applied + applied
+    if sweep.seen >= size and fromQueue == 0 then
+        idle = sweep.applied == 0 and #queue == 0
+        sweep.seen, sweep.applied = 0, 0
+    end
 end
 
 -- nightNumber: número da noite do servidor (NOM_NightCount), base do sorteio
 -- das variantes. nil enquanto o cliente não souber.
 function NOM_NightStats.setNight(on, nightNumber)
+    idle = false
+    sweep.seen, sweep.applied = 0, 0
     NOM_NightStats.night = on
     NOM_NightStats.nightNumber = nightNumber
 end
@@ -190,6 +209,7 @@ end
 -- Objeto reaproveitado (resetForReuse) passa por aqui: sai do conjunto.
 function NOM_NightStats.enqueue(z)
     NOM_NightStats.variants[z] = nil
+    if idle then return end -- de dia e dormindo: nasce limpo, nada a devolver
     queue[#queue + 1] = z
 end
 

@@ -623,4 +623,20 @@ return {
         G.tenMinutes()
         assert(#G.ecos() == 5, "Ecos: " .. #G.ecos())
     end,
+    -- orçamento: a varredura escala com jogadores × raio², não com o mapa nem com a
+    -- horda; zumbi comum custa 1 chamada (o modData) por varredura
+    eco_scan_budget_independent_of_horde = function()
+        local G = setup({ sandbox = { EcoRadius = 10 } })
+        bodies(G, 5, 102, 102)
+        bodies(G, 50, 300, 300) -- fora do raio: nunca lidos
+        local zs = {}
+        for i = 1, 2000 do zs[i] = G.normalZombie(100 + i % 50, 300 + math.floor(i / 50)) end
+        local c = dofile("tests/calls.lua")(zs)
+        G.tenMinutes()
+        local squares = 0
+        for _ in pairs(G.squareCalls) do squares = squares + 1 end
+        assert(squares <= 21 * 21, "squares lidos: " .. squares)
+        assert(c.n <= #zs, "chamadas em zumbi comum: " .. c.n)
+        assert(#G.ecos() == 5)
+    end,
 }
