@@ -44,12 +44,16 @@ quando volta. E **bloom**. Duas spikes estáticas mostraram o caminho sem Java
    fora e só então faz o `strip` (a roupa volta). A mesma variante pedida de novo no meio
    cancela a saída. Troca de tipo, morte e reaproveitamento continuam instantâneos. Os efeitos
    nascem nos lotes do `NightStats` e duram o mesmo tempo: os `strip` continuam espalhados.
-5. **Morte do Eco** (`client/NOM_EcoFx.lua`): no `OnZombieDead`, o véu vira o gêmeo e uma
-   **casca** (malha Hazmat vanilla com as máscaras do `HazmatSuit.xml`, cinza do mod, shader)
-   entra pelo **`WornItems`** (com `onKillDone` o modelo da animação de morte sai do
-   `WornItems`), `resetModelNextFrame`, efeito "death" (queima, depois fade, e segura o Alpha
-   em 0 até o corpo nascer), brasas pelo overlay da 0013 (`client/NOM_Embers.lua`), e o corpo
-   que nasce fica com `setDoRender(false)` até o servidor tirá-lo. A casca está atrás de
+5. **Morte do Eco** (`client/NOM_EcoFx.lua`): o `OnZombieDead` começa o efeito "death" (queima,
+   fade, e segura o Alpha em 0 enquanto o Eco morto tiver square) e as brasas
+   (`client/NOM_Embers.lua`), e enfileira o zumbi. No **tick seguinte**, cópias novas
+   (`instanceItem`) da cinza, do véu gêmeo e de uma **casca** (malha Hazmat vanilla com as
+   máscaras do `HazmatSuit.xml`, cinza do mod, shader) entram no **`WornItems`** (com
+   `onKillDone` o modelo da queda sai dele) e `resetModelNextFrame`. No tick seguinte porque, no
+   solo, o `OnZombieDead` do servidor roda depois do nosso e limpa inventário e `WornItems` (sem
+   loot, ADR-003); a outra saída, o servidor pular a limpeza quando o dissolve do cliente está
+   ligado, amarraria a regra do servidor a uma opção de cliente. Nada vai pro inventário. O
+   corpo que nasce fica com `setDoRender(false)` e o `WornItems` limpo até o servidor tirá-lo. A casca está atrás de
    `NOM_EcoFx.SHELL` (decisão de arte do Johan pendente). Cliente de MP: sem janela de
    animação (`dieNetwork`), só brasas e o corpo escondido.
 6. **Bloom** no `screen.frag` do mod2: claro da cena num anel de 16 amostras, mais forte e com

@@ -12,7 +12,7 @@ Monstro = zumbi com outfit/textura própria e comportamento via Lua. Sem modelo
 
 **Todo monstro, menos o Eco, só existe na névoa** (decisão do Johan, 05/10/2026):
 Estalador, Corredor, Sem-rosto e Carpideira aparecem com a névoa, de dia ou de
-noite, e somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias, anunciado pela sirene
+noite, e somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias no começo do save e mais frequente com os dias (sprint 0019), anunciado pela sirene
 ([world-states.md](world-states.md)). A noite fica com a agressividade dos zumbis comuns
 ([night.md](night.md)) e o Eco.
 
@@ -32,14 +32,14 @@ salvar e recarregar; na névoa seguinte é outro sorteio. Zumbis de chunks
 carregados depois também entram. Ecos nunca são variantes.
 
 **Um sorteio só pra todas:** cada zumbi tira um número de 0 a 99, e as chances
-viram faixas seguidas (o chapéu que cai não muda o sorteio: sprint 0017) — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`,
-Carpideira `[12, 15)` com o padrão. Ninguém é duas coisas, e o total é a soma (15% com
+viram faixas seguidas (o chapéu que cai não muda o sorteio: sprint 0017) — Estalador `[0, 5)`, Corredor `[5, 8)`, Sem-rosto `[8, 11)`,
+Carpideira `[11, 14)` com o padrão (5/3/3/3 desde a sprint 0019). Ninguém é duas coisas, e o total é a soma (14% com
 o padrão). Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante
 nova entra no fim da lista (a Carpideira entrou assim na sprint 0011: quem era
 Estalador, Corredor ou Sem-rosto continua sendo).
 
 **Névoa vermelha** (sprint 0010, [ADR-010](../architecture/adr-010-nevoa-vermelha.md)):
-`RedFogChance`% das névoas (10 por padrão) vêm vermelhas, com sirene própria. Nelas
+`RedFogChance`% das névoas (10 por padrão) vêm vermelhas, com sirene própria; nenhuma nos primeiros `RedFogGraceDays` (7) dias do save, e com `FogEscalation` a chance sobe do dia 30 até o dobro no dia 90 (sprint 0019, [sandbox.md](sandbox.md#curva-de-tensão-sprint-0019)). Nelas
 **todo zumbi é monstro**: a chance de virar variante vai a 100% e o tipo sai de um
 segundo sorteio do mesmo ID e período, dividido por igual entre os tipos que existem
 (1/4 Estalador, 1/4 Corredor, 1/4 Sem-rosto, 1/4 Carpideira, desde a sprint 0011). Cada
@@ -82,7 +82,7 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
 
 | Quando | Origem | Sandbox |
 |---|---|---|
-| névoa | sorteado | `CorredorEnabled`, `CorredorChance` % (2), `CorredorScreamRadius` (40 tiles) |
+| névoa | sorteado | `CorredorEnabled`, `CorredorChance` % (3), `CorredorScreamRadius` (40 tiles) |
 
 - Sem névoa é zumbi comum; na névoa é sprinter (mesmo com `NightFaster` desligado).
   Exceção aceita: com "Ativos só à noite" (`ZombieLore.ActiveOnly`), na névoa de dia
@@ -96,7 +96,7 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
 
 | Quando | Origem | Sandbox |
 |---|---|---|
-| névoa | sorteado | `SemRostoEnabled`, `SemRostoChance` % (5) |
+| névoa | sorteado | `SemRostoEnabled`, `SemRostoChance` % (3) |
 
 - Só existe no evento de névoa. Sorteado uma vez por
   **névoa**, no mesmo sorteio do Estalador e do Corredor (faixa própria): um
@@ -125,7 +125,7 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
 
 | Quando | Origem | Sandbox |
 |---|---|---|
-| névoa | sorteado | `CarpideiraEnabled`, `CarpideiraChance` % (3), `CarpideiraTriggerRadius` (4 tiles), `CarpideiraScreamRadius` (60 tiles) |
+| névoa | sorteado | `CarpideiraEnabled`, `CarpideiraChance` % (3), `CarpideiraTriggerRadius` (4 tiles), `CarpideiraScreamRadius` (50 tiles) |
 
 Pedido do Johan (05/10/2026): um monstro que grita muito alto, na linha da Witch do
 L4D ou do grito que chama a horda no Back 4 Blood. **Inspirado, não copiado:** o nome é
@@ -141,7 +141,7 @@ o das mulheres pagas pra chorar em velório.
   - barulho alto perto: um som do jogador com alcance de 30 tiles ou mais (tiro), nascido
     a até 10 tiles dela. Tarefas barulhentas comuns (raio até 20) não acordam.
 - **Grito:** ensurdecedor, ouvido de longe, e chama todo zumbi a `CarpideiraScreamRadius`
-  tiles (60) até ela. Depois ela vira corredora e caça **quem a acordou**.
+  tiles (50) até ela. Depois ela vira corredora e caça **quem a acordou**.
 - **Um grito por névoa por Carpideira**, valendo no MP: o servidor decide e guarda (salvar
   e carregar no meio da névoa não deixa gritar de novo). Na névoa seguinte, se o sorteio
   a fizer Carpideira de novo, ela recomeça calma.
@@ -156,7 +156,7 @@ o das mulheres pagas pra chorar em velório.
 
 | Quando | Origem | Sandbox |
 |---|---|---|
-| noite | spawnado de corpo | `EcoMaxPerPlayer` (30), `EcoRadius` (40) |
+| noite | spawnado de corpo | `EcoMaxPerPlayer` (20), `EcoRadius` (30) |
 
 A alma de um morto. Fraco sozinho; perigoso onde há muitos corpos.
 

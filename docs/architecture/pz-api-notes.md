@@ -1232,6 +1232,8 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
 | `WornItems.setItem(ItemBodyLocation, InventoryItem)` local; `InventoryItem.getBodyLocation()`, `getVisual()` públicos; `instanceItem` CONFIRMED (Lua vanilla) | EXISTS | métodos públicos de `WornItems`, `InventoryItem` |
 | `IsoDeadBody.getOutfitName()` (`HumanVisual.getOutfit().name`), `setDoRender(Z)` (+ `setInvalidateNextRender`) | EXISTS | `IsoDeadBody.getOutfitName` 0–22, `setDoRender` 0–18 |
 | Cliente de MP: `dieNetwork` faz `Kill` e logo `becomeCorpse`: sem janela de animação | EXISTS | `IsoGameCharacter.dieNetwork` 0–10 (§14.4) |
+| No solo, o `OnZombieDead` do `client/` roda antes do do `server/` (ordem de carga); o `server/NOM_Eco.lua` limpa o `WornItems` do Eco: o cliente veste no tick seguinte | CONFIRMED (mod) | `server/NOM_Eco.lua` `onZombieDead`; `ecofx_sp_with_server_handler` |
+| `IsoDeadBody.getWornItems()` público (o corpo copia o do zumbi no construtor, antes do `OnDeadBodySpawn`) | EXISTS | `IsoDeadBody.getWornItems`, `<init>` 661–710 |
 | **UNKNOWN:** `resetModelNextFrame` durante a animação de morte refaz o modelo sem piscar nem travar a pose; o corpo some com `setDoRender(false)`; a casca Hazmat cobre o corpo e a cabeça fica de fora (máscaras 1 e 2 não estão na lista) | UNKNOWN | roteiro, passos 4–6 |
 
 ### 17.4 Bloom

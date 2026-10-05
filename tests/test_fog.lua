@@ -192,7 +192,7 @@ return {
     end,
     -- névoa vermelha: o servidor confere o Sem-rosto com a divisão da vermelha
     fog_server_red_fog_accepts_red_semrosto = function()
-        local G = setup({ server = true, sandbox = { RedFogChance = 100 } })
+        local G = setup({ server = true, sandbox = { RedFogChance = 100, RedFogGraceDays = 0 } })
         G.setFog(0.9)
         assert(NOM_World.red == true)
         local p = G.player({ x = 100, y = 100, face = 0 })

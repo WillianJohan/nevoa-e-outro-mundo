@@ -328,13 +328,13 @@ return {
         local G = setup()
         bodies(G, 60, 95, 95)
         G.tenMinutes()
-        assert(#G.ecos() == 30, "Ecos: " .. #G.ecos())
+        assert(#G.ecos() == 20, "Ecos: " .. #G.ecos())
         G.tenMinutes()
-        assert(#G.ecos() == 30, "passou do teto: " .. #G.ecos())
+        assert(#G.ecos() == 20, "passou do teto: " .. #G.ecos())
         for i = 1, 5 do G.kill(G.ecos()[i]) end
         G.tick(10)
         G.tenMinutes()
-        assert(#G.ecos() == 30, "não repôs até o teto: " .. #G.ecos())
+        assert(#G.ecos() == 20, "não repôs até o teto: " .. #G.ecos())
     end,
     eco_periodic_scan_catches_new_bodies = function()
         local G = setup()
@@ -651,7 +651,7 @@ return {
     end,
     -- pilha no meio de dois jogadores: os Ecos perto contam no teto dos dois
     eco_overlapping_players_share_nearby_ecos_in_cap = function()
-        local G = setup({ sandbox = { EcoMaxPerPlayer = 5 },
+        local G = setup({ sandbox = { EcoMaxPerPlayer = 5, EcoRadius = 40 },
             players = { { x = 100, y = 100, z = 0 }, { x = 160, y = 100, z = 0 } } })
         bodies(G, 20, 125, 100) -- a pilha fica a até 40 dos dois
         G.tenMinutes()

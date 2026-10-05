@@ -5,8 +5,19 @@
 local W = dofile("tests/fog_world.lua")
 local FOG_FILE = "mod/42/media/lua/server/NOM_Fog.lua"
 
+-- Os testes do mecanismo (sprints 0009/0010) medem com a agenda fixa de antes da
+-- sprint 0019: intervalo 3 dias, 2 a 6 h, sem curva e sem carência. Os da curva
+-- (sprint 0019) ligam o que medem; opts.defaults = o sandbox do jogo, sem fixar nada.
+local BASE = { FogEventEveryDays = 3, FogMinHours = 2, FogMaxHours = 6, FogEscalation = false, RedFogGraceDays = 0 }
+
 local function setup(opts)
     opts = opts or {}
+    if not opts.defaults then
+        local sb = {}
+        for k, v in pairs(BASE) do sb[k] = v end
+        for k, v in pairs(opts.sandbox or {}) do sb[k] = v end
+        opts.sandbox = sb
+    end
     local G = W.new(opts)
     G.world.hours = opts.hours or 100
     G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto" })
@@ -341,5 +352,143 @@ return {
             G.seconds(31)
             assert(NOM_World.red == NOM_VariantRules.redFog(1, c, s), "semente " .. s)
         end
+    end,
+    -- curva de tensão (sprint 0019) -----------------------------------------------
+
+    -- bornAt gravado uma vez (como a semente); save antigo ganha no primeiro uso, e a
+    -- curva dele começa ali
+    fog_event_born_at_saved_once = function()
+        local G = setup({ hours = 100 })
+        assert(fogMD(G).bornAt == 100, "bornAt: " .. tostring(fogMD(G).bornAt))
+        setup({ globalMD = G.globalMD, hours = 900 })
+        assert(fogMD(G).bornAt == 100, "recarga trocou o bornAt")
+        -- save veterano (já tem agenda, sem bornAt): nasce no ponto neutro da curva (dia
+        -- 30: intervalo 1×, vermelha 1×), não no dia 0
+        local old = { NevoaEOutroMundo = { fog = { night = 4, next = 5000, seed = 3 } } }
+        setup({ globalMD = old, hours = 4800 })
+        assert(old.NevoaEOutroMundo.fog.bornAt == 4800 - 30 * 24, "veterano: " .. tostring(old.NevoaEOutroMundo.fog.bornAt))
+        assert(old.NevoaEOutroMundo.fog.next == 5000, "save antigo reagendado")
+        local only = { NevoaEOutroMundo = { fog = { night = 2, seed = 3 } } }
+        setup({ globalMD = only, hours = 800 })
+        assert(only.NevoaEOutroMundo.fog.bornAt == 800 - 30 * 24, "veterano só com night")
+    end,
+    -- bornAt no futuro (relógio voltou, save editado): vira agora
+    fog_event_born_at_clamped_to_now = function()
+        local md = { NevoaEOutroMundo = { fog = { bornAt = 9000, seed = 3 } } }
+        setup({ globalMD = md, hours = 100 })
+        assert(md.NevoaEOutroMundo.fog.bornAt == 100, "bornAt: " .. tostring(md.NevoaEOutroMundo.fog.bornAt))
+    end,
+    -- veterano não sente a curva: sem carência (d começa em 30 ≥ 7) e intervalo 1× da base
+    fog_event_veteran_no_grace_no_change = function()
+        local md = { NevoaEOutroMundo = { fog = { night = 4, next = 110, seed = 3 } } }
+        local G = setup({ globalMD = md, hours = 100,
+            sandbox = { FogEscalation = true, FogEventEveryDays = 2, RedFogGraceDays = 7, RedFogChance = 100 } })
+        G.advance(10)
+        assert(G.played("NOM_SirenRed") == 1, "veterano caiu na carência")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == true)
+        NOM_FogEvent.stop()
+        local gap = fogMD(G).next - G.world.hours -- dia 30,4: fator ~0,99 da base 2
+        assert(math.abs(gap - 24) < 0.5, "intervalo do veterano: " .. tostring(gap))
+    end,
+    -- padrão do jogo (escalada ligada, base 2): a primeira névoa do save novo em ~3 dias
+    fog_event_defaults_start_slow = function()
+        local G = setup({ defaults = true, hours = 100 })
+        assert(fogMD(G).next == 136, "próxima: " .. tostring(fogMD(G).next)) -- rand 0: 0,5 × 3 dias
+    end,
+    -- critério 1 no servidor: o next depois do evento do dia 45 sai da média 1,5
+    fog_event_interval_follows_curve = function()
+        local G = setup({ sandbox = { FogEscalation = true, FogEventEveryDays = 2 }, hours = 100 })
+        assert(fogMD(G).next == 136, "dia 0: " .. tostring(fogMD(G).next))
+        G.world.hours = 100 + 45 * 24
+        assert(NOM_FogEvent.siren(true))
+        G.tick(1)
+        assert(NOM_FogEvent.stop())
+        assert(fogMD(G).next == G.world.hours + 18, "dia 45: " .. tostring(fogMD(G).next - G.world.hours))
+    end,
+    -- critério 4 no servidor: escalada desligada = o sandbox em qualquer dia
+    fog_event_escalation_off_is_today = function()
+        local G = setup({ sandbox = { FogEscalation = false, FogEventEveryDays = 2, RedFogGraceDays = 0, RedFogChance = 100 }, hours = 100 })
+        assert(fogMD(G).next == 124)
+        G.world.hours = 100 + 90 * 24
+        assert(NOM_FogEvent.siren(true))
+        G.tick(1)
+        assert(NOM_World.red == true, "chance 100 sem carência")
+        NOM_FogEvent.stop()
+        assert(fogMD(G).next == G.world.hours + 24, "dia 90: " .. tostring(fogMD(G).next - G.world.hours))
+    end,
+    -- critério 2: carência 7, chance 100: 50 névoas forçadas antes do dia 7, nenhuma
+    -- vermelha; no dia 7 já pode
+    fog_event_grace_no_red_in_50_forced_fogs = function()
+        local G = setup({ sandbox = { FogEscalation = true, RedFogGraceDays = 7, RedFogChance = 100 }, hours = 100 })
+        for i = 1, 50 do
+            G.world.hours = 100 + i * 3.3 -- até o dia 6,9
+            assert(NOM_FogEvent.siren(true))
+            G.tick(1)
+            assert(NOM_World.fog and NOM_World.red == false, "vermelha na carência, névoa " .. i)
+            NOM_FogEvent.stop()
+        end
+        assert(G.played("NOM_SirenRed") == 0)
+        G.world.hours = 100 + 7 * 24
+        assert(NOM_FogEvent.siren(true))
+        G.tick(1)
+        assert(NOM_World.red == true, "dia 7 sem vermelha")
+    end,
+    -- o debug vence a carência: NOM_Debug.redFog(true) no dia 0 abre vermelha
+    fog_event_debug_red_ignores_grace = function()
+        local G = setup({ sandbox = { RedFogGraceDays = 7, RedFogChance = 100 }, hours = 100 })
+        assert(NOM_FogEvent.setRed(true))
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == true)
+    end,
+    -- critério 3: a vermelha é decidida na sirene e salva; recarregar durante a sirene
+    -- toca a vermelha de novo e abre vermelha, mesmo com a chance zerada no sandbox
+    -- (ou pela curva: carência maior que o dia)
+    fog_event_red_saved_at_siren_survives_reload = function()
+        for _, sb in ipairs({ { RedFogChance = 0 }, { RedFogChance = 100, RedFogGraceDays = 60 } }) do
+            local G = setup({ sandbox = { RedFogChance = 100 } })
+            G.advance(36)
+            assert(G.played("NOM_SirenRed") == 1 and fogMD(G).red == true, "não salvou na sirene")
+            G.seconds(10)
+            local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours, sandbox = sb })
+            assert(G2.played("NOM_SirenRed") == 1 and G2.played("NOM_Siren") == 0, "recarga tocou a sirene errada")
+            assert(NOM_FogEvent.status().sirenRed == true)
+            G2.seconds(31)
+            assert(NOM_World.fog and NOM_World.red == true, "recarga perdeu a vermelha da sirene")
+        end
+    end,
+    -- sirene cancelada esquece a vermelha: a próxima sorteia de novo
+    fog_event_cancelled_siren_forgets_red = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        assert(fogMD(G).red == true)
+        NOM_FogEvent.stop()
+        assert(fogMD(G).red == nil, "vermelha da sirene cancelada ficou salva")
+        SandboxVars.NevoaEOutroMundo.RedFogChance = 0
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == false)
+    end,
+    -- review da 0019: o log da sirene diz a chance sorteada; na recarga durante a sirene a
+    -- cor salva é reaproveitada e a chance sai "-" (não houve sorteio)
+    fog_event_siren_log_reused_colour = function()
+        local realPrint, lines = print, {}
+        print = function(m) lines[#lines + 1] = m end
+        local ok, err = pcall(function()
+            local G = setup({ sandbox = { RedFogChance = 100 }, debug = true })
+            G.advance(36)
+            G.seconds(10)
+            setup({ globalMD = G.globalMD, hours = G.world.hours, debug = true })
+        end)
+        print = realPrint
+        assert(ok, err)
+        local sirens = {}
+        for _, l in ipairs(lines) do
+            if l:find("nevoa sirene", 1, true) then sirens[#sirens + 1] = l end
+        end
+        assert(sirens[1] and sirens[1]:find("vermelha=true", 1, true) and sirens[1]:find("chance=100.00", 1, true),
+            "primeira sirene: " .. tostring(sirens[1]))
+        assert(#sirens == 2 and sirens[2]:find("vermelha=true", 1, true) and sirens[2]:find("chance=-", 1, true),
+            "sirene da recarga: " .. tostring(sirens[2]))
     end,
 }

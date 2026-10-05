@@ -131,3 +131,24 @@ Só viram escopo por promoção explícita.
   ([art-direction.md](art-direction.md#queimar-ao-surgir-e-ao-sumir-sprint-0018),
   [atmosphere.md](atmosphere.md#shader-opcional-mod-névoa-e-outro-mundo--shader),
   [ADR-016](../architecture/adr-016-dissolve-e-bloom.md)).
+- **2026-10-05** — **Balanceamento do PO e curva de tensão** (sprint 0019): a análise do PO foi
+  aprovada integralmente pelo Johan. Ela muda cinco decisões anteriores dele, cada uma com o
+  limiar de volta no [playtest](../teste-in-game.md#balanceamento):
+  1. `FogEventEveryDays` 3 → **2** (decisão da sprint 0009). Motivo do PO: com a curva de
+     tensão o começo do save continua ~3 dias efetivos; o 2 é o ritmo do save maduro (dia 30).
+  2. `FogMinHours` 2 → **3** (sprint 0009). Duração 3–6 h; volta a subir pra 4 se duas névoas
+     seguidas terminarem com "já acabou?" (item 8).
+  3. `CorredorChance` 2 → **3** (05/10, "chances 5/2/3/5"). Sobe pra 4 se três névoas passarem
+     sem perseguição (item 6).
+  4. `SemRostoChance` 5 → **3** (mesma decisão). Volta a 2 se o rádio chiar mais de 70% do
+     tempo na cidade, a 4 se três névoas passarem sem ver nenhum (item 4).
+  5. `CarpideiraScreamRadius` 60 → **50** (sprint 0011). 60 se ninguém conseguir fugir do
+     grito, 40 se ele matar em 2 de 3 névoas (item 5).
+
+  Junto: Eco 20 num raio de 30, caça a cada 90 min num raio de 25, 14% de monstros somados, e
+  duas opções novas: **`FogEscalation`** (ligada: a névoa começa a cada ~3 dias e chega a ~1,5
+  do dia 45; a vermelha sobe do dia 30 até o dobro no dia 90) e **`RedFogGraceDays`** (7:
+  nenhuma vermelha na primeira semana). As chances dos monstros e a noite não seguem a curva.
+  Presets Leve ("primeira visita"), Padrão ("o mundo tem horário") e Pesadelo ("a cidade é
+  proibida") revistos ([sandbox.md](sandbox.md#curva-de-tensão-sprint-0019),
+  [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md), [ADR-010](../architecture/adr-010-nevoa-vermelha.md)).

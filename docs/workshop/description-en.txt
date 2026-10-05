@@ -10,12 +10,12 @@ Horror for Build 42, inspired by The Last of Us and Silent Hill. [b]The night br
 [/list]
 
 [h2]Fog[/h2]
-Every few days, at any hour, an air-raid siren wails across the whole map. Thirty seconds later the fog rolls in, by day or by night, for 2 to 6 hours: the world darkens and loses color, a low drone replaces the ambience, blood and rust creep across the ground, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
+Every few days, at any hour, an air-raid siren wails across the whole map. Thirty seconds later the fog rolls in, by day or by night, for 3 to 6 hours: the world darkens and loses color, a low drone replaces the ambience, blood and rust creep across the ground, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
 [list]
 [*][b]Clickers[/b]: blind, guided only by sound, clicking as a warning. Crouch, stay quiet and walk right past.
 [*][b]Runners[/b]: sprinters that scream when they spot you and call the zombies around. They start the horde.
 [/list]
-[b]The Mourner[/b] stands still in the fog, sobbing quietly. Get close, point your flashlight at her or fire a shot nearby and she screams: every zombie for 60 tiles comes, and she runs straight at you.
+[b]The Mourner[/b] stands still in the fog, sobbing quietly. Get close, point your flashlight at her or fire a shot nearby and she screams: every zombie for 50 tiles comes, and she runs straight at you.
 [b]The Faceless[/b] walks in the fog. Look at it, or shine a light on it, and it vanishes, only to come back closer, behind you. Get too close and it attacks. Your head fills with radio static when one is near.
 Sometimes the siren sounds lower and torn: that is the [b]red fog[/b]. Fog and light turn red and every zombie inside it is a monster.
 Night and fog together: everything at once. The worst night possible, on purpose.
@@ -23,10 +23,10 @@ Night and fog together: everything at once. The worst night possible, on purpose
 [h2]Sandbox[/h2]
 Own page, "Fog and Otherworld". Every system has a toggle and numbers (defaults in parentheses):
 [list]
-[*]Dark climate (on), intensity (1.0); fog every (3) days on average, lasting (2) to (6) hours
-[*]Night: faster (on, x1.5), sharper senses (on, x1.5), hunt (on, every 60 min, 30 tiles)
-[*]Clickers (on, 5%), Runners (on, 2%, scream 40 tiles), Faceless (on, 5%), Mourners (on, 3%, wake at 4 tiles, scream 60 tiles), per fog
-[*]Echoes (on, up to 30 per player, 40 tiles)
+[*]Dark climate (on), intensity (1.0); fog every (2) days on average, rarer at the start of the save and more frequent as it ages (on), lasting (3) to (6) hours; no red fog in the first (7) days
+[*]Night: faster (on, x1.5), sharper senses (on, x1.5), hunt (on, every 90 min, 25 tiles)
+[*]Clickers (on, 5%), Runners (on, 3%, scream 40 tiles), Faceless (on, 3%), Mourners (on, 3%, wake at 4 tiles, scream 50 tiles), per fog
+[*]Echoes (on, up to 20 per player, 30 tiles)
 [*]Fog: ambient sound, blood and rust, vignette (all on, vignette 1.0)
 [/list]
 "Light" and "Nightmare" presets are documented on GitHub; save them as your own sandbox preset.

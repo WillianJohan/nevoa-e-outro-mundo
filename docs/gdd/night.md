@@ -18,8 +18,8 @@ próprio no sandbox e tudo volta ao normal ao amanhecer.
    sentido aleatório usa "normal" como base. Lanterna ligada ao ar livre vira
    farol: a cada 5 minutos de jogo chama os zumbis a até `20 × NightSenseMult`
    tiles (20 é o teto da visão do zumbi no jogo).
-3. **Caça ativa** (`NightHunt`) — a cada `HuntIntervalMinutes` (tempo de jogo),
-   zumbis a até `HuntRadius` tiles recebem um som na posição de cada jogador e vão
+3. **Caça ativa** (`NightHunt`) — a cada `HuntIntervalMinutes` (90, tempo de jogo),
+   zumbis a até `HuntRadius` (25) tiles recebem um som na posição de cada jogador e vão
    até lá, mesmo sem vê-lo.
 4. **Eco** — o único monstro da noite ([monsters.md](monsters.md#eco)). Ele **não**
    recebe o bônus: fica lento e com a audição do dia, então ouve a caça e a

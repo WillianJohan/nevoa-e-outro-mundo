@@ -48,10 +48,15 @@ vira variante e volta; e bloom.
       147–308 destrói o programa, `Model.DrawSolid` usa o programa 0) em
       [pz-api-notes §17.1](../../architecture/pz-api-notes.md#171-shader-de-peça); o fallback é a
       opção desligada (peça sem shader), coberto por `dissolve_look_off_plain`.
-- [x] Morte do Eco: véu gêmeo e casca pelo `WornItems` (o modelo da animação de morte sai dele
-      com `onKillDone`), efeito até o corpo nascer, corpo escondido, brasas; MP sem janela: corpo
-      escondido e brasas, com a linha `janela ms=0`; constante da casca; desligado e zumbi comum
-      intocados; teto — `tests/test_eco_fx.lua` (`ecofx_*`).
+- [x] Morte do Eco: cinza, véu gêmeo e casca vestidos no `WornItems` **no tick seguinte** (o
+      modelo da queda sai do `WornItems` com `onKillDone`, e no solo o `OnZombieDead` do servidor,
+      que roda depois, limpa o `WornItems`), efeito até o corpo nascer, corpo escondido e sem nada
+      vestido, inventário vazio (sem loot, regra da 0002); MP sem janela: corpo escondido e
+      brasas, com a linha `janela ms=0`, janela por Eco (mortes juntas); constante da casca;
+      desligado e zumbi comum intocados; teto — `tests/test_eco_fx.lua` (`ecofx_*`;
+      `ecofx_sp_with_server_handler` carrega o `server/NOM_Eco.lua` de verdade, na ordem do jogo).
+- [x] Eco morto e ainda no square não é solto pelo teto de 5 s (a animação longa não o traz de
+      volta na casca) — `dissolve_death_holds_while_dead_on_square`.
 - [x] Brasas pelo overlay da 0013 com ou sem névoa, perto do Eco, encolhendo com o zoom, sem menu,
       somem no fim, teto, quadro sem brasa ainda 1 chamada — `embers_*` em
       `tests/test_screen_fx.lua`; regras em `tests/test_ember_rules.lua`.
@@ -59,7 +64,10 @@ vira variante e volta; e bloom.
       (`13 + bloom·0,25`), canal tomado fora da névoa só com bloom, solta pro forrageamento, o
       sandbox da vinheta não desliga o bloom, sem o mod2 nada — `shader_marker_matches_lua`,
       `shader_bloom`, `screenfx_rules_channel_bloom`, `vignette_channel_bloom_*`,
-      `vignette_bloom_needs_shader_mod`; `shader_compiles` (330) e 120 à mão.
+      `vignette_bloom_needs_shader_mod`; `shader_compiles` (330 e a reescrita GL 2.1 de
+      `tests/gl21.lua`). Com o bloom ligado (padrão 1), o canal fica tomado o tempo todo: ao
+      começar a forragear, o círculo de busca do jogo aparece só na volta seguinte da
+      atualização do canal (até ~10 ticks); aceito pelo coordenador (ADR-016).
 - [x] Opções do jogador: "Dissolve" (ligado) e "Bloom" (1,0, 0–2), EN/PTBR —
       `dissolve_and_bloom_options`, `translations_*`.
 - [x] Orçamento — `dissolve_budget`, `embers_cap_and_budget`, `embers_idle_cheap`; tabela no
@@ -72,7 +80,7 @@ vira variante e volta; e bloom.
 - [ ] Bloom no jogo, FPS — **falta o jogo:** passo 7.
 - [ ] Opções > Mods mostra e aplica "Dissolve" e "Bloom" — **falta o jogo:** passo 8.
 
-`./run-tests.sh`: `total=620 passou=620 falhou=0` (Lua), `contraste total=4 passou=4`,
+`./run-tests.sh`: `total=645 passou=645 falhou=0` (Lua, com a 0019), `contraste total=4 passou=4`,
 `build total=25 passou=25`.
 
 **Decisão de arte do Johan pendente:** a casca de cinza do Eco (`NOM_EcoFx.SHELL`, ligada) usa a
@@ -141,6 +149,10 @@ compilam na primeira carga da sessão) e carregar o save. Os passos são os prob
   e se desfaz, shader `NOM_Dissolve`, morte do Eco com casca e brasas, bloom no mod2. Testes verdes.
 - **04/10/2026** — Docs: ADR-016, pz-api-notes §6 (correção) e §17, GDD, orçamento, correção da
   spike-motor-visual, roteiro com os probes. Em teste.
+- **04/10/2026** — Review: no solo o `OnZombieDead` do servidor limpa o `WornItems` depois do
+  nosso (o Eco cairia pelado): a morte enfileira e o tick seguinte veste cópias novas; o corpo
+  nasce sem nada vestido. Eco morto no square não é solto pelo teto; janela por Eco; brasas por
+  cima das camadas da névoa; `screen.frag` testado também em 120. Merge da `main` (sprint 0019).
 
 ## Aprendizados
 
@@ -154,6 +166,9 @@ compilam na primeira carga da sessão) e carregar o save. Os passos são os prob
 - **A reescrita GL 2.1 do jogo é por regex, linha a linha.** No `.frag`, toda linha que começa com
   `in` e termina em `;` vira `varying` (`int k;` vira `varying t k;`), e linha que começa com
   `colour` vira `gl_FragColor`. O teste compila o shader depois da mesma reescrita.
+- **No solo, o `OnZombieDead` do cliente roda antes do do servidor** (ordem de carga shared →
+  client → server). O que o cliente vestir no evento, o `server/NOM_Eco.lua` limpa em seguida
+  (`WornItems:clear()`). Mexer no zumbi que morre fica pro tick seguinte.
 - **`dofile` não registra em `package.loaded`:** um `require` do mesmo módulo depois carrega de
   novo (no teste, dois overlays). Registrar antes de carregar quem dá `require` nele.
 

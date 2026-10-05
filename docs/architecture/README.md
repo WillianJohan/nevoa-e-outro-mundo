@@ -10,8 +10,8 @@
 | [adr-006-variantes-deterministicas.md](adr-006-variantes-deterministicas.md) | Variante = função do ID do outfit e da noite (substitui o mecanismo da ADR-001) |
 | [adr-007-sem-rosto-e-atmosfera-local.md](adr-007-sem-rosto-e-atmosfera-local.md) | Sem-rosto: quem vê avisa, o servidor confere, o dono move; som, chão e tela da névoa só locais |
 | [adr-008-noite-pela-luz-global.md](adr-008-noite-pela-luz-global.md) | A noite escurece pela cor e força da luz global, os canais que o render usa (emenda a ADR-004) |
-| [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
-| [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
+| [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 3–6 h; intervalo pela curva de tensão desde a 0019) e o mod é dono do canal de névoa |
+| [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período (chance pela carência e pela curva desde a 0019), salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
 | [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
 | [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit. Emenda da 0016: a roupa vanilla some na variante e volta (loot exato na morte) |
 | [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |

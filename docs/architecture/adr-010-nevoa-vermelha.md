@@ -5,6 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Emenda | [ADR-006](adr-006-variantes-deterministicas.md) (4º argumento `red` no sorteio) e [ADR-009](adr-009-nevoa-evento-do-mod.md) (`data.fog.red`, comando `fog` com `red`, cor da névoa) |
+| Emendada por | [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-carência-escalada-e-cor-salva-na-sirene) (carência, escalada da chance, cor salva na sirene) |
 
 ## Contexto
 
@@ -90,3 +91,20 @@ O que o bytecode do B42.21 diz ([pz-api-notes §12](pz-api-notes.md#12-névoa-ve
 - Com `fogQuality` legado o jogo pode desenhar a névoa sem o `ImprovedFog`; aí só a
   luz fica vermelha (roteiro in-game).
 - Save da sprint 0009 com evento aberto: `red` ausente = normal.
+
+## Emenda de 2026-10-05 — sprint 0019: carência, escalada e cor salva na sirene
+
+1. **Chance pela curva.** Na sirene, o servidor troca o `redFogChance` do `cfg` do sorteio
+   por `NOM_FogEventRules.redChance(RedFogChance, cfg, d)`: **0 antes de `RedFogGraceDays`**
+   (padrão 7, faixa 0–60, vale com ou sem a escalada; 0 desliga); depois, com
+   `FogEscalation`, `RedFogChance × clamp(1 + (d − 30)/60, 1, 2)` (10% do dia 7 ao 30, 20% do
+   90 em diante). O sorteio continua o hash puro do período e da semente (decisão 1); só o
+   limiar muda. `d` = dias desde `data.fog.bornAt` ([ADR-009, emenda](adr-009-nevoa-evento-do-mod.md#emenda-de-2026-10-05--sprint-0019-curva-de-tensão)).
+2. **Cor salva na sirene** (substitui a parte "recarregar durante a sirene re-sorteia" da
+   decisão 2). Com a chance dependendo do dia, re-sortear na recarga podia trocar a cor de
+   uma sirene que o jogador já ouviu. A sirene grava `data.fog.red`; recarregar durante ela
+   toca de novo **a mesma** sirene e abre com a mesma cor, mesmo com a chance mudada. O
+   `R.stop` limpa (fim do evento ou sirene cancelada), e o `NOM_World.setFog` continua dando
+   `red` falso enquanto não há névoa. O forçado do debug (`NOM_Debug.redFog`) passa por cima
+   da carência e continua só em memória.
+3. **Log** (`-debug`): `[NOM] nevoa sirene contagem=30000 vermelha=false dias=1.50 chance=0.00`.
