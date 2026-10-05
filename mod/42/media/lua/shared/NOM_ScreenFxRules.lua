@@ -16,6 +16,16 @@ NOM_ScreenFxRules = {
     -- manda gradient·tile/2 em ParamInfo.z e tile em ParamInfo.y; o vanilla usa
     -- raios de poucos tiles). Igual ao NOM_MARKER do screen.frag do mod2.
     MARKER = 13,
+    -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
+    TEXTURES = {
+        grain = {
+            "media/textures/NOM/ScreenFx/NOM_Grain1.png", "media/textures/NOM/ScreenFx/NOM_Grain2.png",
+            "media/textures/NOM/ScreenFx/NOM_Grain3.png", "media/textures/NOM/ScreenFx/NOM_Grain4.png",
+        },
+        vignette = "media/textures/NOM/ScreenFx/NOM_Vignette.png",
+        lines = "media/textures/NOM/ScreenFx/NOM_Lines.png",
+        white = "media/textures/NOM/ScreenFx/NOM_White.png",
+    },
 }
 
 local R = NOM_ScreenFxRules

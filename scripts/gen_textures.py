@@ -17,6 +17,12 @@ Saída (mod/42/media/textures/):
   NOM/NOM_EcoCinza.png           256  cinza e fumaça no corpo todo (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  fumaça clara (véu)
 
+Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
+  NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
+  NOM/ScreenFx/NOM_Vignette.png  512  vinheta: alfa 0 no centro, sobe pras bordas
+  NOM/ScreenFx/NOM_Lines.png     512×256  linhas horizontais de chiado, falhadas
+  NOM/ScreenFx/NOM_White.png     8    branco opaco (o pulso do grito, tingido de vermelho)
+
 Semente fixa: rodar de novo dá os mesmos bytes. Uso: python3 scripts/gen_textures.py
 """
 import os
@@ -171,6 +177,28 @@ def eco_veu(rng, size=128):
     return color((226, 228, 234), 0.75 + 0.25 * smoke)
 
 
+def screen_grain(rng, size=256):
+    # ruído em blocos de 2 px, esparso: a maioria quase transparente, poucos grãos fortes
+    cells = rng.random((size // 2, size // 2)).astype(np.float32) ** 3
+    a = np.kron(cells, np.ones((2, 2), np.float32))
+    return np.full((size, size, 3), 255, np.float32), a
+
+
+def screen_vignette(size=512):
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    d = np.hypot(x - (size - 1) / 2, y - (size - 1) / 2) / (size / 2)  # 0 no centro, ~1.41 no canto
+    a = np.clip((d - 0.45) / 0.85, 0, 1) ** 1.6
+    return np.full((size, size, 3), 255, np.float32), a
+
+
+def screen_lines(rng, w=512, h=256):
+    # cada linha da textura: chiado ou nada; as que chiam têm falhas ao longo do x
+    row = (rng.random(h) > 0.82).astype(np.float32) * (0.35 + 0.65 * rng.random(h).astype(np.float32))
+    gaps = np.clip(noise(rng, w, 32)[:h, :] * 1.6 - 0.3, 0, 1)
+    a = row[:, None] * gaps
+    return np.full((h, w, 3), 255, np.float32), a
+
+
 def main():
     rng = np.random.default_rng(SEED)
     save(estalador_skin(rng), "Body/NOM_Estalador.png")
@@ -183,6 +211,16 @@ def main():
     # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
     save(eco_cinza(rng), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng), "NOM/NOM_EcoVeu.png")
+    # efeitos de tela: gerador próprio, pra não mudar as texturas acima
+    srng = np.random.default_rng(SEED + 13)
+    for i in range(1, 5):
+        rgb, a = screen_grain(srng)
+        save(rgb, "NOM/ScreenFx/NOM_Grain%d.png" % i, alpha=a)
+    rgb, a = screen_vignette()
+    save(rgb, "NOM/ScreenFx/NOM_Vignette.png", alpha=a)
+    rgb, a = screen_lines(srng)
+    save(rgb, "NOM/ScreenFx/NOM_Lines.png", alpha=a)
+    save(np.full((8, 8, 3), 255, np.float32), "NOM/ScreenFx/NOM_White.png", alpha=np.ones((8, 8), np.float32))
 
 
 if __name__ == "__main__":
