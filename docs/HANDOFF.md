@@ -68,7 +68,19 @@ O primeiro efeito a usar a ponte é a **névoa volumétrica**: raymarch, densida
 - o que precisa pra compilar (JDK)?
 - como distribuir? O Workshop sozinho não roda javaagent.
 
-**Como retomar:** worktree em `.claude/worktrees/spike-volumetric`. Ver o que foi commitado em `mod3/`.
+**Resultado (commit `b1b2720`, compilado e sincronizado, falta teste no jogo):**
+- **A profundidade existe.** O FBO da cena guarda a profundidade num renderbuffer D24S8, e um `glBlitFramebuffer` copia pra uma textura nossa (~0,1 ms).
+- Profundidade e tela iso são afins, então o shader reconstrói a posição de mundo de cada pixel. `tests/test_mod3_depth.py` trava essa álgebra.
+- O passe entra com `@Patch` em `Core.EndFrame(int)` e `SpriteRenderer.drawGeneric`, depois do mundo e antes do `screen.frag` e da UI.
+- O contrato do ZombieBuddy (lido no fonte do ZB, item 3619862853):
+  - `mod.info` com `require=...,\ZombieBuddy`, `javaJarFile`, `javaPkgName=nom.render`;
+  - `@Patch` e `@LuaMethod(global=true)` encontrados sozinhos.
+- Efeito novo = `media/shaders/NOM_X.frag` + o nome dele em `RenderContext.PASSES`, com o cabeçalho `NOM_RenderContext.glsl`.
+- O Lua conversa pela ponte com `NOMRender_setParam(i, v)` e `NOMRender_isActive()`.
+- Ainda não feito: luzes (`IsoCell.getLamppostPositions`, `roomLights`, `lightInfo.torches`), cor da cena, normais, in-scattering e cortar a névoa vanilla quando o mod3 estiver ativo.
+- Build: `scripts/build-mod3.sh`, com `openjdk` via brew compilando `--release 25`. O jogo roda no Zulu 25. O jar fica fora do git.
+- Checklist no jogo: `docs/sprints/spike-volumetrica/README.md` §7, com modos de debug pelo `NOMRender_setParam(1, 1|2)`.
+- Worktree: `.claude/worktrees/spike-volumetric`.
 
 ## Fila depois disso (decidida pelo Johan)
 
