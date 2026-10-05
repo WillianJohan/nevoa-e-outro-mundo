@@ -33,6 +33,7 @@ NOM_FogOverlays = {
     RESEEN_TILES = 8,    -- andou isso desde a última varredura limpa: olha tudo de novo
     LIGHT_FLOOR = 0.5,   -- no escuro total (e sob a névoa vermelha) o sangue ainda se lê
     MIN_REACH = 5,       -- o teto nunca encolhe o raio efetivo abaixo disto
+    DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
 }
 
 local O = NOM_FogOverlays
@@ -51,8 +52,11 @@ local sprites = {} -- [nome] = IsoSprite
 local F = { list = {}, max = D.MAX_FLOOR, reach = D.RADIUS }
 local W = { list = {}, max = D.MAX_WALL, reach = D.RADIUS }
 local taken = {}   -- [k] = true: já tem entrada (k = square; na parede, + o lado)
-local seen = {}    -- [x,y,z] = true: decidido nesta varredura
+-- Decidido nesta varredura, por reserva: [x,y,z] no chão, [x,y,z .. "N"|"W"] na parede.
+-- Fora do raio efetivo, recusado pelo teto, sem chunk ou parede de costas: não entra.
+local seenF, seenW = {}, {}
 local cursor, gen, anchorX, anchorY, lastMs = 1, nil, nil, nil, nil
+local density, pendingD, pendingAt -- densidade em vigor e a que o jogador está mexendo
 local lightAt, wallAt = 1, 1
 
 local function loadSprites()
@@ -110,7 +114,8 @@ local function drop(pool, i)
     local e = pool.list[i]
     if e.m then e.m:remove() end
     taken[e.k] = nil
-    seen[e.sk] = nil -- voltando pra cá, entra de novo (mesmo desenho)
+    -- voltando pra cá, entra de novo (mesmo desenho)
+    if e.m then seenF[e.k] = nil else seenW[e.k] = nil end
     table.remove(pool.list, i)
 end
 
@@ -122,8 +127,9 @@ end
 function O.clear()
     dropAll(F)
     dropAll(W)
-    taken, seen = {}, {}
+    taken, seenF, seenW = {}, {}, {}
     cursor, gen, anchorX, anchorY = 1, nil, nil, nil
+    density, pendingD, pendingAt = nil, nil, nil
 end
 
 function O.count()
@@ -162,16 +168,18 @@ local function shrink(pool, o2)
     pool.reach = math.max(O.MIN_REACH, math.min(pool.reach, math.floor(math.sqrt(o2)) - 1))
 end
 
--- Volta completa com folga: o raio efetivo cresce de novo, até o raio cheio. Folga de
--- 20% (um anel perto do teto tem ~70 squares): sem ela, enche, encolhe e cresce sem parar.
+-- Volta completa com folga: o raio efetivo cresce um tile se o anel novo cabe (a
+-- conta pela área: n·(r+1)²/r²). Sem isso enche, encolhe e cresce sem parar, e cada
+-- volta põe e tira o anel inteiro.
 local function sweepDone()
     for _, pool in ipairs({ F, W }) do
-        if pool.reach < D.RADIUS and #pool.list < pool.max * 0.8 then pool.reach = pool.reach + 1 end
+        local r = pool.reach
+        if r < D.RADIUS and #pool.list * (r + 1) * (r + 1) / (r * r) < pool.max * 0.95 then pool.reach = r + 1 end
     end
 end
 
 -- Um lote da varredura: mais perto primeiro (D.OFFSETS, até o maior raio efetivo), a
--- regra antes do Java. O lado da parede não é filtrado aqui: a visão decide no fade.
+-- regra antes do Java, cada reserva decidida uma vez por square (e por lado).
 local function scan(px, py, pz, per, d)
     local cell = getCell()
     for _ = 1, O.SCAN_BUDGET do
@@ -185,31 +193,40 @@ local function scan(px, py, pz, per, d)
         local o2 = o[1] * o[1] + o[2] * o[2]
         local x, y = px + o[1], py + o[2]
         local sk = x .. "," .. y .. "," .. pz
-        if not seen[sk] then
-            local inF, inW = o2 <= F.reach * F.reach, o2 <= W.reach * W.reach
-            local layers = inF and not taken[sk] and D.floor(x, y, pz, per, d) or nil
-            local wn = inW and not taken[sk .. "N"] and D.wall(x, y, pz, per, d, true) or nil
-            local ww = inW and not taken[sk .. "W"] and D.wall(x, y, pz, per, d, false) or nil
-            local later = not (inF and inW)
-            if layers and #F.list >= F.max then
-                shrink(F, o2)
-                layers, later = nil, true
+        local skN, skW = sk .. "N", sk .. "W"
+        local sq -- lido no máximo uma vez
+        local function square()
+            if sq == nil then sq = cell:getGridSquare(x, y, pz) or false end
+            return sq
+        end
+        if o2 <= F.reach * F.reach and not seenF[sk] and not taken[sk] then
+            local layers = D.floor(x, y, pz, per, d)
+            if not layers then
+                seenF[sk] = true
+            elseif #F.list >= F.max then
+                shrink(F, o2) -- cheio: tenta de novo quando o raio voltar
+            elseif square() then -- sem chunk: tenta na próxima volta
+                addFloor(sq, x, y, pz, sk, layers)
+                seenF[sk] = true
             end
-            if (wn or ww) and #W.list >= W.max then
-                shrink(W, o2)
-                wn, ww, later = nil, nil, true
-            end
-            if layers or wn or ww then
-                local sq = cell:getGridSquare(x, y, pz)
-                if sq then
-                    if layers then addFloor(sq, x, y, pz, sk, layers) end
-                    if wn then addWall(sq, x, y, pz, sk, wn, true) end
-                    if ww then addWall(sq, x, y, pz, sk, ww, false) end
-                else
-                    later = true -- sem chunk: tenta na próxima volta
+        end
+        if o2 <= W.reach * W.reach then
+            -- de frente (N com o jogador ao sul, W com ele a leste: a outra face o jogo
+            -- corta); a de costas fica pra quando ele andar pro outro lado
+            for _, side in ipairs({ { skN, true, y <= py }, { skW, false, x <= px } }) do
+                local k, north, front = side[1], side[2], side[3]
+                if front and not seenW[k] and not taken[k] then
+                    local layer = D.wall(x, y, pz, per, d, north)
+                    if not layer then
+                        seenW[k] = true
+                    elseif #W.list >= W.max then
+                        shrink(W, o2)
+                    elseif square() then
+                        addWall(sq, x, y, pz, sk, layer, north)
+                        seenW[k] = true
+                    end
                 end
             end
-            if not later then seen[sk] = true end
         end
     end
 end
@@ -270,21 +287,25 @@ local function update()
         if #F.list + #W.list > 0 then O.clear() end
         return
     end
-    local d = D.density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+    -- densidade em vigor: a nova só depois de parada DENSITY_MS (a primeira, na hora)
+    local raw = D.density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+    if raw ~= pendingD then pendingD, pendingAt = raw, now end
+    if density == nil or (density ~= pendingD and now - pendingAt >= O.DENSITY_MS) then density = pendingD end
+    local d = density
     local on = NOM_FogState.on and NOM_Config.get("FogOverlays") and d > 0
     local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
     local per = NOM_FogState.period or 0
     if on then
         if not valid then loadSprites() end
-        -- período ou densidade novos (opção, vermelha forçada): outro desenho, na hora
+        -- período ou densidade novos (opção, vermelha forçada): outro desenho
         local g = per .. ":" .. d
         if g ~= gen then
             dropAll(F)
             dropAll(W)
-            gen, seen, cursor = g, {}, 1
+            gen, seenF, seenW, cursor = g, {}, {}, 1
         end
         if not anchorX or math.abs(px - anchorX) >= O.RESEEN_TILES or math.abs(py - anchorY) >= O.RESEEN_TILES then
-            anchorX, anchorY, seen, cursor = px, py, {}, 1 -- recomeça do mais perto
+            anchorX, anchorY, seenF, seenW, cursor = px, py, {}, {}, 1 -- recomeça do mais perto
         end
         prune(F, px, py, pz)
         prune(W, px, py, pz)

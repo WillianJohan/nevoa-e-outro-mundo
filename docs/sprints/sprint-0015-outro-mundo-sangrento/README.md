@@ -48,11 +48,15 @@ lixeira estavam limpos, só a cor mudava.
       com o teto cheio, o 7×7 em volta fica com ≥ 85% do que a regra pede e, parado, ≥ 60% coberto
       (≥ 80% na vermelha); teleporte, troca de andar e período conhecido depois de nil enchem em 3 s —
       `overlays_capped`, `overlays_walk_keeps_nearby_covered`, `overlays_teleport_and_floor_change`,
-      `overlays_period_known_after_nil` (review).
+      `overlays_period_known_after_nil` (review); parado com o raio encolhido, o anel de fora não é
+      reolhado (`overlays_open_terrain_probing_stops`, contador de chamadas); parede de costas fora do
+      teto, raio das paredes ≥ 12 num bairro de cômodos 4×4 (`overlays_back_facing_walls_skip_cap`)
+      (verificação).
 - [x] Vermelha mais densa (×1,6); densidade do jogador 0–2 em Opções > Mods (`FogOverlayDensity`),
       `FogOverlays` do sandbox continua o liga/desliga — `dressing_rules_red_denser_and_zero_empty`,
       `overlays_red_denser`, `overlay_density_option`, `overlays_density_zero_and_toggle`; trocar a
-      densidade (ou forçar a vermelha) redesenha — `overlays_density_change_redresses`;
+      densidade (ou forçar a vermelha) redesenha, só depois de 1 s parada — `overlays_density_change_redresses`,
+      `overlays_density_debounced`;
       traduções EN/PTBR (`translations_lua_keys_defined`).
 - [x] Fade de 4 s ao surgir e ao sumir; fim da névoa remove tudo; morte e menu na hora —
       `overlays_fill_dense_floor`, `overlays_fade_out_and_removed_on_fog_end`,
@@ -67,7 +71,7 @@ lixeira estavam limpos, só a cor mudava.
 - [ ] Sem engasgo com o teto cheio — **falta o jogo:** passo 5.
 - [ ] Some no fim, na morte e no menu — **falta o jogo:** passo 6.
 
-`./run-tests.sh`: `total=532 passou=532 falhou=0` (Lua), `contraste total=4 passou=4 falhou=0` e `build total=25 passou=25 falhou=0`.
+`./run-tests.sh`: `total=535 passou=535 falhou=0` (Lua), `contraste total=4 passou=4 falhou=0` e `build total=25 passou=25 falhou=0`.
 
 ## Roteiro in-game
 
@@ -110,6 +114,9 @@ Console em `~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt`.
 - **04/10/2026** — Review: o teto cheio deixava quem anda no limpo (agora serve o mais perto),
   paredes fora da vista perdidas (agora só apagam), batentes de porta e janela, parede conferida em
   rodízio, redesenho ao trocar período ou densidade. Merge da main (sprint 0014).
+- **04/10/2026** — Verificação: cada reserva decide o square uma vez (o anel de fora parou de ser
+  sondado), parede de costas fora do teto, densidade com espera de 1 s, raio que só cresce se o anel
+  cabe.
 
 ## Aprendizados
 

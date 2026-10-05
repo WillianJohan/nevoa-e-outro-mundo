@@ -46,8 +46,9 @@ de sempre vale: nada no save nem na rede (ADR-007). O que o B42.21 dá
    com `RenderGhostTileColor(x, y, z, l, l, l, alfa)`. Pra compensar a falta de profundidade, só
    parede **limpa** (no square só piso e parede, sem batente de porta ou janela), **de frente** (N
    com o jogador ao sul, W com ele a leste: a outra face o jogo corta) e **à vista** (`isCouldSee`,
-   relido a cada atualização). De costas ou fora da vista a parede só apaga (fade) e fica na
-   reserva: ao virar, volta. Em rodízio (12 por atualização) cada parede é conferida de novo e sai
+   relido a cada atualização). Parede de costas nem entra na reserva (não ocupa o teto); entra
+   quando o jogador passa pro outro lado. Fora da vista (cone, porta fechada) a parede só apaga
+   (fade) e fica na reserva: ao virar, volta. Em rodízio (12 por atualização) cada parede é conferida de novo e sai
    se a parede sumiu ou ganhou móvel ou batente.
 5. **Varredura** em lotes de 80 squares a cada 10 ticks, do mais perto ao mais longe no raio de
    25; a regra pura antes de qualquer chamada ao Java. Teto: 600 marcadores e 120 paredes, **a
@@ -55,7 +56,8 @@ de sempre vale: nada no save nem na rede (ADR-007). O que o B42.21 dá
    não coube e o que fica fora dele, ou em outro andar, sai na hora; com folga ele cresce de novo.
    Andar, teleportar ou trocar de andar não deixa o jogador no limpo.
    Fade de 4 s ao surgir e ao sumir; fim da névoa ou densidade 0 → tudo some com fade; período ou
-   densidade novos (a vermelha forçada no debug) → redesenha na hora; morte e menu → some na hora.
+   densidade novos (a vermelha forçada no debug) → redesenha (a densidade nova vale depois de 1 s
+   parada: o slider anda de 0,1 em 0,1); morte e menu → some na hora.
 
 ## Consequências
 

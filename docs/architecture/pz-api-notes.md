@@ -1118,11 +1118,14 @@ Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_flo
 - Atualização (a cada 10 ticks): a regra pura custa ~3,5 µs por square no luajit sem JIT
   (`-joff`); no Kahlua, estimado 10–30× isso: o lote de 80 squares fica em poucos ms. Chamadas
   Java: ≤ ~1040 enquanto enche (getGridSquare, isFree, getWall×2, getObjects, luz, marcador),
-  ~160 parado (luz em rodízio, paredes conferidas, visão das paredes); a 1ª vez, +404 `getTexture`. Contado em
+  ~180 parado (luz em rodízio, paredes conferidas, visão das paredes); a 1ª vez, +404 `getTexture`. Contado em
   `overlays_budget`.
 - **Teto que serve o perto:** com a reserva cheia, o raio efetivo encolhe pra antes do anel que
   não coube, e tudo fora dele (ou de outro andar) sai na hora; numa volta inteira com folga de 20%
-  ele cresce um tile. Com 600 marcadores e ~85% do chão coberto, fica em ~13–15 tiles.
+  ele cresce um tile se o anel novo cabe (`n·(r+1)²/r² < 95%` do teto). Cada reserva marca o
+  square como decidido uma vez (o chão e cada lado da parede à parte): o anel fora do raio do chão
+  não é reolhado a cada volta. Parede de costas não entra na reserva (nem fica marcada): entra
+  quando o jogador passa pro outro lado. Com 600 marcadores e ~85% do chão coberto, fica em ~13–15 tiles.
 - `RenderOpaqueObjectsInWorld` só sai com o tile do mouse dentro do mundo
   (`IsoWorld.isValidSquare`, `renderOpaqueObjectsEvent` 82–92): mouse fora do mapa, sem parede
   naquele quadro.

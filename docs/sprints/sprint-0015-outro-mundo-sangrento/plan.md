@@ -92,3 +92,7 @@ Comportamento (depois do review):
 
 - [x] Teto a serviço do perto (raio efetivo, `prune`), redesenho por `gen`, paredes apagadas em vez de removidas, batentes, parede conferida em rodízio, `sqId` com andar de -32 a 31, chave numérica nas poças, evento do quadro só com o mouse no mundo (fake). Testes: `overlays_walk_keeps_nearby_covered`, `overlays_teleport_and_floor_change`, `overlays_period_known_after_nil`, `overlays_density_change_redresses`, `overlays_walls_door_closed_then_opened`, `overlays_walls_survive_turning_around`, `overlays_walls_skip_door_and_window_frames`, `overlays_stale_wall_dropped`, `dressing_rules_z_independent`, `dressing_rules_offsets_within`.
 - [x] Merge da main (sprint 0014), `./run-tests.sh`.
+
+### Task 5: Verificação
+
+- [x] `seen` por reserva (chão; cada lado da parede), parede de costas fora da reserva sem marcar, densidade com espera de 1 s (`DENSITY_MS`), raio que cresce só se o anel cabe. Testes: `overlays_open_terrain_probing_stops`, `overlays_back_facing_walls_skip_cap`, `overlays_density_debounced`.

@@ -292,6 +292,65 @@ return {
         assert(select(2, O().count()) == 0)
     end,
 
+    -- verificação 0015: com o raio do chão encolhido, o anel de fora não é reolhado todo lote
+    overlays_open_terrain_probing_stops = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(40)
+        assert(O().reach() < D().RADIUS, "o teto nem encolheu o raio (teste não mede nada)")
+        local c0 = G.java + G.sqCalls
+        G.tick(O().UPDATE_TICKS * 20)
+        local per = (G.java + G.sqCalls - c0) / 20
+        assert(per <= O().LIGHT_BUDGET + 10, "parado e ainda sondando: " .. per .. " chamadas por atualização")
+    end,
+
+    -- parede de costas não ocupa o teto: o raio das paredes fica largo num mundo cheio delas
+    overlays_back_facing_walls_skip_cap = function()
+        local G = setup()
+        G.p.face = math.rad(225)
+        -- bairro de cômodos 4×4: parede W a cada 4 colunas, N a cada 4 linhas
+        for x = 60, 140 do
+            for y = 60, 140 do
+                local w = (x % 4 == 0 and "W" or "") .. (y % 4 == 0 and "N" or "")
+                if w ~= "" then G.walls[x .. "," .. y .. ",0"] = w end
+            end
+        end
+        NOM_FogState.set(true, 1)
+        G.seconds(40)
+        local _, wr = O().reach()
+        -- só as de frente cabem no teto: ~0,19·π·r² = 120 → r ≈ 14 (com as de costas, ~10)
+        assert(wr >= 12, "raio das paredes encolheu: " .. wr)
+        for _, d in ipairs(G.frame()) do assert(d.x <= 100 or d.y <= 100) end
+        -- anda pro sudeste: as que eram de costas passam a ser de frente e entram
+        local before = #G.frame()
+        G.p.x, G.p.y = G.p.x + 6, G.p.y + 6
+        G.seconds(15)
+        assert(#G.frame() > 0 and before > 0)
+    end,
+
+    -- o slider anda de 0,1 em 0,1: só redesenha depois de ~1 s parado
+    overlays_density_debounced = function()
+        local G = setup()
+        local dens = 1
+        NOM_ScreenFxOptions.overlayDensity = function() return dens end
+        NOM_FogState.set(true, 2)
+        G.seconds(20)
+        local removed0 = 0
+        for _, m in ipairs(G.markers) do if m.removed then removed0 = removed0 + 1 end end
+        for step = 1, 8 do
+            dens = 1 + step * 0.1
+            G.seconds(0.2)
+        end
+        local removed = 0
+        for _, m in ipairs(G.markers) do if m.removed then removed = removed + 1 end end
+        assert(removed == removed0, "redesenhou no meio do arrasto: " .. removed - removed0)
+        G.seconds(3)
+        removed = 0
+        for _, m in ipairs(G.markers) do if m.removed then removed = removed + 1 end end
+        assert(removed > removed0, "não redesenhou depois de parar")
+        assert(select(2, coverage(G, 3)) >= 0.9)
+    end,
+
     overlays_capped = function()
         local G = setup({ density = 2 })
         G.p.face = math.rad(225)
