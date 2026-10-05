@@ -1,11 +1,13 @@
 require "NOM_Rules"
-require "NOM_Config"
 
--- Flags night/fog derivadas do clima vanilla.
+-- Flags night/fog do mundo. A noite vem do relógio (NOM_World.update, no
+-- OnClimateTick do servidor); a névoa é um evento do mod (server/NOM_FogEvent.lua,
+-- ADR-009), ligada por NOM_World.setFog.
 NOM_World = { night = false, fog = false }
 
--- Estados forçados pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
--- night = true/false, fog = intensidade 0..1; nil = do clima. Só em memória.
+-- Noite forçada pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
+-- night = true/false; nil = do relógio. Só em memória. A névoa forçada é um
+-- evento de verdade (NOM_FogEvent).
 NOM_World.forced = {}
 
 local listeners = {}
@@ -22,22 +24,22 @@ local function notify(flag, was)
     end
 end
 
--- fogIntensity: névoa vanilla limpa, sem a camada do mod (quem chama sabe ler).
-function NOM_World.update(fogIntensity)
+function NOM_World.update()
     local season = getClimateManager():getSeason()
-    local wasNight, wasFog = NOM_World.night, NOM_World.fog
+    local wasNight = NOM_World.night
     NOM_World.tod = getGameTime():getTimeOfDay()
     NOM_World.dawn = season:getDawn()
     NOM_World.dusk = season:getDusk()
-    local forced = NOM_World.forced
-    if forced.fog ~= nil then fogIntensity = forced.fog end
-    NOM_World.fogIntensity = fogIntensity
     NOM_World.night = NOM_Rules.isNight(NOM_World.tod, NOM_World.dawn, NOM_World.dusk)
-    if forced.night ~= nil then NOM_World.night = forced.night end
-    NOM_World.fog = NOM_Rules.isFog(fogIntensity, NOM_Config.get("FogThreshold"), NOM_World.fog)
+    if NOM_World.forced.night ~= nil then NOM_World.night = NOM_World.forced.night end
     notify("night", wasNight)
-    notify("fog", wasFog)
     return NOM_World
+end
+
+function NOM_World.setFog(on)
+    local was = NOM_World.fog
+    NOM_World.fog = on == true
+    notify("fog", was)
 end
 
 return NOM_World

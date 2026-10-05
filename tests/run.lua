@@ -22,6 +22,7 @@ local FILES = {
     "tests/test_atmosphere_rules.lua",
     "tests/test_semrosto.lua",
     "tests/test_fog.lua",
+    "tests/test_fog_event.lua",
     "tests/test_fog_client.lua",
     "tests/test_fog_sound.lua",
     "tests/test_fog_vignette.lua",

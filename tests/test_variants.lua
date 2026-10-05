@@ -89,7 +89,7 @@ local function setup(opts)
         end,
     })
     for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players", "NOM_NightCount", "NOM_Night", "NOM_VariantAI",
-        "NOM_FogState", "NOM_SemRosto", "NOM_Fog" }) do
+        "NOM_FogState", "NOM_SemRosto", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -104,7 +104,17 @@ local function setup(opts)
     G.fog = opts.fog or 0.9
     function G.setTime(tod)
         G.world.tod = tod
-        NOM_World.update(G.fog)
+        NOM_World.update()
+        -- névoa é evento (NOM_FogEvent, ADR-009): o estado salvo abre pela regra
+        -- do evento (período novo) e a flag vai pro NOM_World
+        local md = ModData.getOrCreate("NevoaEOutroMundo")
+        md.fog = md.fog or {}
+        if G.fog >= 0.5 then
+            NOM_FogEventRules.start(md.fog, G.hours, { minHours = 2, maxHours = 6 }, function() return 0 end)
+        else
+            md.fog.inNight = false
+        end
+        NOM_World.setFog(G.fog >= 0.5)
     end
     -- jogador que manda o comando: perto do zumbi (10, 10) por padrão
     function G.player(x, y)

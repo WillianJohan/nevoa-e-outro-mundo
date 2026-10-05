@@ -25,7 +25,7 @@ end
 
 local function setup()
     local G = W.new({ tod = 12, sandbox = SANDBOX })
-    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_SemRosto", "NOM_NightStats", "NOM_Night", "NOM_Players",
+    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto", "NOM_NightStats", "NOM_Night", "NOM_Players",
         "NOM_NightCount", "NOM_VariantAI", "NOM_Variants", "NOM_FogSound", "NOM_FogVignette", "NOM_FogOverlays" })
     local lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 2, Memory = 2 }
     getSandboxOptions = function()
@@ -110,7 +110,14 @@ local function setup()
     end
     function G.set(tod, fog)
         G.world.tod = tod
-        NOM_World.update(fog)
+        NOM_World.update()
+        -- névoa é evento (NOM_FogEvent, ADR-009): abre sem a espera da sirene
+        if fog >= 0.5 then
+            NOM_FogEvent.siren(true)
+            G.tick(1)
+        else
+            NOM_FogEvent.stop()
+        end
     end
     G.set(12, 0)
     return G

@@ -19,16 +19,6 @@ return {
         assert(NOM_Rules.isNight(6, 6, 21) == false)
     end,
 
-    fog_turns_on_at_threshold = function()
-        assert(NOM_Rules.isFog(0.5, 0.5, false) == true)
-        assert(NOM_Rules.isFog(0.49, 0.5, false) == false)
-    end,
-    fog_hysteresis_keeps_on_slightly_below = function()
-        assert(NOM_Rules.isFog(0.47, 0.5, true) == true)
-    end,
-    fog_hysteresis_turns_off_below_band = function()
-        assert(NOM_Rules.isFog(0.44, 0.5, true) == false)
-    end,
 
     -- rampa anda um passo por minuto de jogo (um OnClimateTick)
     ramp_goes_up = function()
@@ -57,12 +47,18 @@ return {
     end,
     -- à noite só os canais que o render usa no escuro: a dessaturação vai a zero
     -- com a noite (PlayerRenderSettings 594–606: × (1 − darkness))
-    mix_night_only_has_no_fog_channel = function()
+    mix_night_only_has_no_desaturation = function()
         local look = NOM_Rules.mix(1, 0, 1)
-        assert(look.fog.weight == 0)
         assert(look.desaturation.weight == 0)
         assert(look.ambient.weight > 0)
         assert(look.tint.weight > 0)
+    end,
+    -- o canal de névoa é do evento (NOM_ClimateLook + NOM_FogEventRules.DENSITY,
+    -- ADR-009), não do look: a névoa existe mesmo com DarkEnabled desligado
+    look_has_no_fog_channel = function()
+        assert(NOM_Rules.mix(1, 1, 2).fog == nil)
+        assert(NOM_Rules.LOOKS.fog.fog == nil and NOM_Rules.LOOKS.night.fog == nil)
+        for _, ch in ipairs(NOM_Rules.CHANNELS) do assert(ch ~= "fog") end
     end,
     mix_intensity_scales_weight = function()
         local half = NOM_Rules.mix(1, 0, 0.5)
@@ -162,10 +158,6 @@ return {
         end
     end,
 
-    fog_exits_at_minimum_threshold = function()
-        -- C2: limite 0.05 com histerese 0.05 nunca saía (0 >= 0)
-        assert(NOM_Rules.isFog(0, 0.05, true) == false)
-    end,
     blend_moves_from_vanilla_toward_target = function()
         assert(near(NOM_Rules.blend(0.2, 1, 0.25), 0.4))
         assert(NOM_Rules.blend(0.7, 0, 0) == 0.7)

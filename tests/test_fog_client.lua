@@ -6,7 +6,7 @@ local function setup(opts)
     opts = opts or {}
     if opts.client == nil then opts.client = true end
     local G = W.new(opts)
-    G.reload({ "NOM_FogState", "NOM_SemRosto" })
+    G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_Siren" })
     dofile(FILE)
     function G.server(command, args) G.fire("OnServerCommand", "NevoaEOutroMundo", command, args) end
     return G
@@ -25,6 +25,17 @@ return {
         assert(NOM_FogState.on == true)
         G.server("fog", { on = false, period = 3 })
         assert(NOM_FogState.on == false)
+    end,
+    -- sirene do evento de névoa (comando do servidor): toca local, volume cheio, sem pacote
+    fog_client_plays_siren = function()
+        local G = setup()
+        G.server("siren", {})
+        assert(G.played("NOM_Siren") == 0, "tocou sem jogador")
+        G.player({ x = 0, y = 0 })
+        G.server("siren", {})
+        assert(G.played("NOM_Siren") == 1 and G.playing("NOM_Siren")[1].volume == 1)
+        G.fire("OnServerCommand", "OutroMod", "siren", {})
+        assert(G.played("NOM_Siren") == 1)
     end,
     fog_client_asks_state_on_join = function()
         local G = setup()
