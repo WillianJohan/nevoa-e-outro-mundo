@@ -84,7 +84,8 @@ O que o bytecode do B42.21 diz ([pz-api-notes §12](pz-api-notes.md#12-névoa-ve
   com vários Sem-rosto vistos de uma vez, o que não foi sai na varredura seguinte, em
   vez de ficar mudo os 4 s do cooldown dele.
 
-- Um tipo novo em `KINDS` (Carpideira, sprint 0011) re-divide a vermelha (1/4 cada).
+- Um tipo novo em `KINDS` re-divide a vermelha: com a Carpideira (sprint 0011,
+  [ADR-011](adr-011-carpideira.md)), 1/4 de cada.
   A faixa normal não muda.
 - Com `fogQuality` legado o jogo pode desenhar a névoa sem o `ImprovedFog`; aí só a
   luz fica vermelha (roteiro in-game).

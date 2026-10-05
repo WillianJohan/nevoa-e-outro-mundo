@@ -12,6 +12,7 @@
 | [adr-008-noite-pela-luz-global.md](adr-008-noite-pela-luz-global.md) | A noite escurece pela cor e força da luz global, os canais que o render usa (emenda a ADR-004) |
 | [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
 | [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
+| [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -41,10 +42,12 @@ mod/
     lua/server/NOM_Night.lua        decide a noite, caça e lanterna; avisa os clientes
     lua/client/NOM_NightClient.lua  cliente de MP segue a flag e aplica os stats
     lua/shared/NOM_VariantRules.lua sorteio único das variantes por período de névoa, névoa vermelha e a divisão dela, cooldown do grito (puro)
-    lua/shared/NOM_VariantAI.lua    Estalador cego e estalando, Corredor visto (onde o zumbi é simulado)
+    lua/shared/NOM_VariantAI.lua    Estalador cego e estalando, Corredor visto, Carpideira parada (onde o zumbi é simulado)
+    lua/shared/NOM_CarpideiraRules.lua  o que acorda a Carpideira e quem já gritou no período (puro)
+    lua/shared/NOM_Carpideira.lua   Carpideira parada, soluço local, aviso de quem a acorda, efeitos do grito (solo e cliente)
     lua/server/NOM_NightCount.lua   número e hora de início da noite (ModData global), do Eco
-    lua/server/NOM_Variants.lua     decide o grito do Corredor (som + chamado da horda)
-    lua/client/NOM_VariantsClient.lua  cliente de MP roda o NOM_VariantAI e avisa o servidor
+    lua/server/NOM_Variants.lua     decide os gritos do Corredor e da Carpideira (som + chamado da horda), ouve o barulho que a acorda
+    lua/client/NOM_VariantsClient.lua  cliente de MP roda o NOM_VariantAI e o NOM_Carpideira, avisa o servidor e aplica o grito
     lua/shared/NOM_SemRostoRules.lua   destino, cooldown, validação e volume do rádio (puro)
     lua/shared/NOM_AtmosphereRules.lua fade e valores da vinheta (puro)
     lua/shared/NOM_FogState.lua     flag e período de névoa do lado de quem vê
@@ -58,7 +61,7 @@ mod/
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
-    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio, sirene, sirene vermelha)
+    scripts/NOM_sounds.txt          sons do mod (estalo, gritos, soluço, drone, metal, rádio, sirene, sirene vermelha)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
@@ -76,7 +79,8 @@ zumbi (o próprio processo no solo, o cliente dono no MP) aplica os stats da noi
 e, na névoa, o perfil da variante sorteada pelo período, em lotes por tick
 ([ADR-005](adr-005-quem-simula-aplica.md),
 [ADR-006](adr-006-variantes-deterministicas.md)) e roda o `VariantAI`; o
-servidor decide o grito do Corredor (`Variants`). O cliente vê o Sem-rosto (`SemRosto`), o
+servidor decide os gritos do Corredor e da Carpideira (`Variants`;
+a Carpideira, [ADR-011](adr-011-carpideira.md)). O cliente vê o Sem-rosto (`SemRosto`), o
 servidor confere e o dono do zumbi move ([ADR-007](adr-007-sem-rosto-e-atmosfera-local.md));
 som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
 
@@ -109,17 +113,19 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 |---|---|---|---|
 | `NightStats.tick` | todo tick à noite e na passada do amanhecer | ≤ `BATCH` (20) zumbis + 5 leituras de sandbox por tick | `stats_batch_bounded_with_200` |
 | `NightStats.tick` de dia | depois de uma passada sem nada a devolver | **zero** (dorme até a próxima flag ou a próxima hora de jogo, quando faz uma passada de conferência) | `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `stats_day_idle_wakes_every_hour` |
-| `VariantAI` (`OnZombieUpdate`) | todo frame, todo zumbi | zumbi comum: 2 consultas de tabela Lua, zero chamada | `ai_common_zombie_no_java_calls` |
+| `VariantAI` (`OnZombieUpdate`) | todo frame, todo zumbi | zumbi comum: 3 consultas de tabela Lua, zero chamada | `ai_common_zombie_no_java_calls` |
+| Varredura da Carpideira (sprint 0011) | a cada 10 ticks, na névoa, no solo e em cada cliente | zero chamada no zumbi que não é Carpideira; ~8 por Carpideira calma com um jogador local (+3 por jogador a mais, +1 com lanterna perto) | `carpideira_scan_budget` |
+| Barulho que acorda a Carpideira | por `addSound` com raio ≥ 30 de jogador, na névoa, servidor | uma volta na lista, 1 chamada por zumbi (o ID); barulho baixo ou fora da névoa, zero | `carpideira_noise_scan_one_call_per_common_zombie` |
 | Estalo do Estalador | 1/min de jogo na névoa | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
 | Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
-| Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown` |
-| **Névoa vermelha** (sprint 0010): ninguém é comum, 1/3 de cada tipo | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0 → ~2,3·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~3·N (~0,3·N por frame); **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~800 chamadas por frame. Contra a névoa normal (12% variantes): ~0,3·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `stats_batch_bounded_with_200` |
+| Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |
+| **Névoa vermelha** (sprint 0010; 1/4 de cada desde a 0011): ninguém é comum | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0, Carpideira 2 (calma ou furiosa; 3 a mais no primeiro frame) → ~2,25·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~2,5·N; **por varredura da Carpideira** (a cada 10 ticks) ~8 por Carpideira calma → ~2·N; as duas varreduras somam ~0,45·N por frame; **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~810 chamadas por frame. Contra a névoa normal (15% variantes): ~0,4·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `carpideira_scan_budget`, `stats_batch_bounded_with_200` |
 
-Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,3·N pra ~2,3·N
+Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,4·N pra ~2,7·N
 chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a
 horda no jogo ([roteiro, parte 3](../teste-in-game.md#parte-3--medições-15-min)).
 

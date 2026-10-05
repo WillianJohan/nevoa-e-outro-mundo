@@ -5,14 +5,14 @@
 | Status | `accepted` |
 | Data | 2026-10-04 |
 | Substitui | o mecanismo da [ADR-001](adr-001-variantes-por-moddata.md) (`NOM_variant`/`NOM_orig`/`NOM_rolledAt` no `modData`) |
-| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)) |
+| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)). 2026-10-05 (sprint 0011): Carpideira, 4º tipo no fim de `KINDS` ([ADR-011](adr-011-carpideira.md)) |
 
 > **Emenda de 2026-10-05.** Decisão do Johan: todo monstro, menos o Eco, só existe na
 > névoa. A entrada do sorteio passou a ser o **número do período de névoa**
 > (`NOM_Fog.period()` no servidor, `NOM_FogState.period` em quem simula e vê), e
 > Estalador, Corredor e Sem-rosto saem de **um sorteio só**: `roll` 0–99, faixas
 > contíguas na ordem de `NOM_VariantRules.KINDS` (`estalador`, `corredor`,
-> `semrosto`; variante nova entra no fim, sem mexer nas de hoje). O tipo desligado
+> `semrosto`, `carpideira`; variante nova entra no fim, sem mexer nas de antes). O tipo desligado
 > mantém a faixa vazia. O perfil vale enquanto a névoa durar (`NOM_FogState.on`), de
 > dia ou de noite; à noite ele vai por cima dos stats da noite. Onde o texto abaixo
 > diz "noite", leia "período de névoa" para as variantes; o contador de noites

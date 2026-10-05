@@ -15,6 +15,7 @@ De tempos em tempos, numa hora qualquer, uma sirene toca no mapa inteiro. Trinta
 [*][b]Estaladores[/b]: cegos, guiados só por som, estalam de aviso. Agachado e em silêncio, dá pra passar do lado.
 [*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.
 [/list]
+[b]A Carpideira[/b] fica parada na névoa, soluçando baixinho. Chegue perto, aponte a lanterna pra ela ou atire por perto e ela grita: todo zumbi a 60 tiles vem, e ela corre direto pra você.
 [b]O Sem-rosto[/b] anda na névoa. Olhe pra ele, ou ilumine, e ele some, pra voltar mais perto, atrás de você. Colado, ataca. O rádio chia na sua cabeça quando ele está perto.
 Às vezes a sirene toca mais grave e rasgada: é a [b]névoa vermelha[/b]. A névoa e a luz ficam vermelhas e todo zumbi dentro dela é monstro.
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
@@ -24,7 +25,7 @@ Página própria, "Névoa e Outro Mundo". Todo sistema tem liga/desliga e númer
 [list]
 [*]Clima sombrio (ligado), intensidade (1.0); névoa a cada (3) dias em média, durando de (2) a (6) horas
 [*]Noite: mais rápidos (ligado, x1.5), sentidos (ligado, x1.5), caça (ligada, a cada 60 min, 30 tiles)
-[*]Estaladores (5%), Corredores (2%, grito de 40 tiles), Sem-rosto (5%), por névoa
+[*]Estaladores (5%), Corredores (2%, grito de 40 tiles), Sem-rosto (5%), Carpideiras (3%, acorda a 4 tiles, grito de 60), por névoa
 [*]Ecos (até 30 por jogador, 40 tiles)
 [*]Névoa: som ambiente, sangue e ferrugem, vinheta (tudo ligado, vinheta 1.0)
 [/list]

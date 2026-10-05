@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -545,6 +545,7 @@ carregar; o mod valida só na primeira mancha.
 | `OnZombieCreate` | (zombie) | `VirtualZombieManager.createRealZombieAlways`, antes de entrar em `getZombieList()` e, no spawn por Lua, antes de vestir | EXISTS | bytecode |
 | `OnZombieUpdate` | (zombie) | `IsoZombie.updateInternal` (696), antes da máquina de estados (1029) | EXISTS | bytecode; caro, filtre cedo |
 | `OnHitZombie` | (zombie, wielder, bodyPart, weapon) | `IsoZombie.Hit` | CONFIRMED | `shared/Definitions/DamageModelDefinitions.lua:24,69` |
+| `OnWorldSound` | (x, y, z, radius, volume, source) | `WorldSoundManager$WorldSound.init` (todo `addSound`), no processo que chama o `addSound`; no servidor também pro som de cliente (`WorldSoundPacket.processServer`) | EXISTS, **usado** (sprint 0011) | bytecode §13 |
 | `OnPlayerUpdate` | (player) | `IsoPlayer` | EXISTS | bytecode |
 | `OnGameStart` | — | `IngameState` (cliente/SP) | CONFIRMED | `shared/TimedActions/ISGrabCorpseAction.lua:168` |
 | `OnServerStarted` | — | `GameServer` (só dedicado) | EXISTS | bytecode |
@@ -838,6 +839,63 @@ gerado por `scripts/gen_sounds.py`).
 
 ---
 
+## 13. Carpideira (sprint 0011)
+
+Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-011](adr-011-carpideira.md).
+
+### 13.1 Barulho: `Events.OnWorldSound`
+
+- `WorldSoundManager$WorldSound.init(Object,IIIIIFFS)` 129–155:
+  `LuaEventManager.triggerEvent("OnWorldSound", x, y, z, radius, volume, source)`. Os
+  outros `init` caem nele (`(Object,IIIII)` 13 → `(Object,IIIIIZFF)` 31 → este).
+- `WorldSoundManager.addSound(Object,IIIIIFFZZZZS)` 16–34 (`getNew` + `init`), e todas as
+  sobrecargas de `addSound` caem nela: **todo `addSound` dispara o evento**, na hora,
+  no processo que chama. Depois, no cliente de MP manda `GameClient.sendWorldSound`
+  (304–315); no servidor, `GameServer.sendWorldSound` (321–330).
+- `WorldSoundPacket.processServer` 90–139: o servidor recebe o som do cliente e chama
+  `WorldSoundManager.addSound` com `CharacterID.getCharacter()` (o jogador) de fonte →
+  o `OnWorldSound` dispara **no servidor** com o jogador. `processClient` 38–87 faz o
+  mesmo nos outros clientes.
+- Raio: tarefas vanilla de 6 a 20 (`shared/TimedActions/ISRemoveBush.lua:41`,
+  `ISRemoveGrass.lua:30`, `ISPickupBrokenGlass.lua:22`, `ISRemoveBrokenGlass.lua:23`,
+  `ISDestroyStuffAction.lua:69`); `SoundRadius` de arma de fogo nos scripts de item, de 50 a
+  200. O mod chama "alto" a partir de 30.
+- O `addSound` do próprio mod (caça, lanterna, gritos: `NOM_Night.call`) também
+  dispara: marcado com `NOM_Night.calling` durante a chamada.
+
+### 13.2 Parar e soltar
+
+- Parada: `setUseless(true)` (§3.2; CONFIRMED `client/DebugUIs/DebugContextMenu.lua:566`),
+  mais `setTarget(nil)` uma vez (uma caçada em andamento continuaria: o useless só zera o
+  alvo no próximo spot). `WalkTowardState` em andamento segue até a última posição vista.
+- Caçar quem a acordou: `IsoZombie.spotted(IsoMovingObject,Z)` público (→ `spottedNew`
+  com `ZombieLore.spottedLogic`, senão `spottedOld`). No `spottedNew`, `forced` faz a
+  chance de spot 1 000 000 (1114–1120); o spot grava `target` e `lastTargetSeenX/Y/Z`
+  (1909–1950). Antes disso, zumbi `useless` volta com alvo nulo (191–208), e um alvo
+  atual mais perto que o novo faz voltar (1042–1113). Mesmo spot forçado que o jogo usa
+  pra manter a caçada (`updateInternal` 956–991). UNKNOWN: o efeito no jogo (roteiro).
+- `getPlayerByOnlineID(id)` no cliente: CONFIRMED `client/ServerCommands.lua:10`.
+
+### 13.3 Soluço no zumbi
+
+- `IsoGameCharacter.playSoundLocal(String)J` = `getEmitter().playSoundImpl(nome, null)`
+  (§4.3); `getEmitter()` devolve `BaseCharacterSoundEmitter`, com `isPlaying(J)Z`,
+  `stopSoundLocal(J)V`, `setVolume(JF)V` e `stopAll()V` abstratos, implementados no
+  `CharacterSoundEmitter`.
+- `IsoZombie.removeFromWorld` 0–191 só chama `getEmitter().stopOrTriggerSoundByName`
+  (um nome) e não para os outros sons: um loop do mod continuaria. O mod para o soluço de
+  quem saiu da lista de zumbis.
+- `volume` dentro do `clip`: CONFIRMED `media/scripts/generated/sounds/zombies/sounds_zombie_foley.txt:243`.
+
+### 13.4 Lanterna
+
+- `player:getActiveLightItem()` (§2.4) e `square:isCanSee(pn)` (§3.4) no cliente.
+- Direção do jogador no servidor: `PlayerPacket` → `NetworkPlayerAI.set` grava
+  `Prediction.direction` (158); quem aplica no servidor não foi seguido. UNKNOWN, não usado:
+  o servidor confere só lanterna acesa e distância.
+
+---
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -860,6 +918,8 @@ gerado por `scripts/gen_sounds.py`).
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
+| Barulho do jogador no servidor | `Events.OnWorldSound` (todo `addSound`, inclusive o de cliente refeito no servidor) (§13) | — |
+| Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 
 ## Testes in-game prioritários (UNKNOWNs)
