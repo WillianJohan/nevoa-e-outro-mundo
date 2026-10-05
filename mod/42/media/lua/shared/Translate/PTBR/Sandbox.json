@@ -15,7 +15,7 @@
     "Sandbox_NevoaEOutroMundo.RedFogChance": "Chance de névoa vermelha (%%)",
     "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Porcentagem das névoas que vêm vermelhas. Sorteada uma vez por névoa: salvar e carregar não muda.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Ecos",
-    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Corpos perto dos jogadores soltam Ecos à noite, uma vez por corpo, mas só de quem morreu antes do anoitecer: quem morre de noite espera a próxima. Queime ou enterre os mortos.",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Corpos perto dos jogadores soltam Ecos à noite, uma vez por corpo, mas só de quem morreu antes do anoitecer: quem morre de noite espera a próxima. Queime ou enterre os mortos. A mordida do Eco infecta como a de qualquer zumbi.",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Máximo de Ecos por jogador",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "Quantos Ecos podem estar vivos perto de cada jogador ao mesmo tempo.",
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Raio dos Ecos (tiles)",

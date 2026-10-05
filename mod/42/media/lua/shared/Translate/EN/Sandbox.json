@@ -15,7 +15,7 @@
     "Sandbox_NevoaEOutroMundo.RedFogChance": "Red fog chance (%%)",
     "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Percentage of fogs that come red. Rolled once per fog: saving and loading does not change it.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",
-    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Bodies near players release Echoes at night, once per body, but only bodies that died before dusk: whoever dies at night waits for the next one. Burn or bury the dead.",
+    "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Bodies near players release Echoes at night, once per body, but only bodies that died before dusk: whoever dies at night waits for the next one. Burn or bury the dead. An Echo's bite infects like any zombie's.",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Max Echoes per player",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer_tooltip": "How many Echoes can be alive near each player at the same time.",
     "Sandbox_NevoaEOutroMundo.EcoRadius": "Echo radius (tiles)",

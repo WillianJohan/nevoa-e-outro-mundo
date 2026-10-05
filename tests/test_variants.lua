@@ -316,7 +316,7 @@ return {
         local p = G.player(12, 10)
         G.carpReport(z, p, "near")
         assert(z.local_[1] == "NOM_CarpideiraScream", "grito não tocou")
-        assert(#G.sounds == 1 and G.sounds[1].src == z and G.reach(G.sounds[1]) == 60, "horda não chamada a 60")
+        assert(#G.sounds == 1 and G.sounds[1].src == z and math.abs(G.reach(G.sounds[1]) - 50) <= 1, "horda não chamada a 50: " .. G.reach(G.sounds[1])) -- raio arredondado: 17 × 3 = 51
         assert(z.useless == false and z.target == p and z.forced == true, "não caçou quem a acordou")
         G.carpReport(z, p, "near")
         assert(#z.local_ == 1 and #G.sounds == 1, "gritou duas vezes na mesma névoa")

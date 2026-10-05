@@ -5,8 +5,19 @@
 local W = dofile("tests/fog_world.lua")
 local FOG_FILE = "mod/42/media/lua/server/NOM_Fog.lua"
 
+-- Os testes do mecanismo (sprints 0009/0010) medem com a agenda fixa de antes da
+-- sprint 0019: intervalo 3 dias, 2 a 6 h, sem curva e sem carência. Os da curva
+-- (sprint 0019) ligam o que medem; opts.defaults = o sandbox do jogo, sem fixar nada.
+local BASE = { FogEventEveryDays = 3, FogMinHours = 2, FogMaxHours = 6, FogEscalation = false, RedFogGraceDays = 0 }
+
 local function setup(opts)
     opts = opts or {}
+    if not opts.defaults then
+        local sb = {}
+        for k, v in pairs(BASE) do sb[k] = v end
+        for k, v in pairs(opts.sandbox or {}) do sb[k] = v end
+        opts.sandbox = sb
+    end
     local G = W.new(opts)
     G.world.hours = opts.hours or 100
     G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto" })
