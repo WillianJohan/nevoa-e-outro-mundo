@@ -17,7 +17,7 @@ uniform int uCharCount;
 uniform vec4 uChars[8];        // x, y (relativos), z, raio: jogadores locais e zumbis mais perto
 uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i, v)
 // Névoa fluida (Flow.java / FlowGrid.java): grade de uFlow.z x uFlow.z tiles, 1 a 3 texels por tile, linear.
-// r = densidade (0..1), gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
+// r = densidade / NOM_FLOW_DMAX, gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
 uniform sampler2D uFlowTex;
 uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), tiles por lado, 1 = simulação ligada
 uniform vec4 uDrift;           // xy = uOrigin menos o quanto o vento já levou a névoa (o mesmo dos bancos); zw = vento agora (tiles/s)
@@ -28,11 +28,13 @@ uniform vec4 uTorchDir[4];     // direção unitária (em tiles), cos do meio-â
 uniform vec4 uTorchColor[4];   // r, g, b, força
 
 const float NOM_FLOW_VMAX = 4.0;
+const float NOM_FLOW_DMAX = 1.5;      // a densidade acumula até 1,5 contra o obstáculo (FlowGrid.D_MAX)
 const int NOM_FLOW_SOLID = 1;
 const int NOM_FLOW_TREE = 2;
 const int NOM_FLOW_INDOOR = 4;
 const int NOM_FLOW_WALL_W = 8;
 const int NOM_FLOW_WALL_N = 16;
+const int NOM_FLOW_LOW = 64;          // carro: obstáculo baixo, o ar passa freado
 
 out vec4 fragColor;
 
@@ -80,7 +82,7 @@ float nomFlowDensity(vec2 xy) {
     if (!nomFlowOn()) return 1.0;
     vec2 uv = nomFlowUV(xy);
     vec2 e = smoothstep(vec2(0.0), vec2(0.06), uv) * smoothstep(vec2(0.0), vec2(0.06), 1.0 - uv);
-    return mix(0.7, texture(uFlowTex, uv).r, e.x * e.y);
+    return mix(0.7, texture(uFlowTex, uv).r * NOM_FLOW_DMAX, e.x * e.y);
 }
 
 // Velocidade do fluido em tiles/s; `fallback` com a simulação desligada ou fora da grade.

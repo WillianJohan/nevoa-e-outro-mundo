@@ -49,6 +49,7 @@ final class Flow {
     static final float VEHICLE_RADIUS = 3f;
     static final int LOUD_RADIUS = 20;     // som com raio de pelo menos isso (tiro, explosão) empurra a névoa
     static final int MAX_BLASTS = 8;
+    static final float STILL_DECAY = 0.08f;   // 1/s, com o vácuo ligado (o da 0026)
     static final int PARAM_ON = 4;         // NOMRender_setParam(4, 0) desliga, (4, 1) liga
     static final int UNIT = 6;
     static final int W_OPEN = 1 << 8, N_OPEN = 1 << 9;   // na máscara empilhada, junto das flags
@@ -89,6 +90,7 @@ final class Flow {
         int blastCount;
         final float[] winds = new float[MAX_PENDING_STEPS * 2];
         int steps;
+        float stillDecay;   // sorvedouro do ar parado: o vácuo atrás dos prédios (PARAM_VACUUM)
 
         boolean hasWork() { return reset || scroll || maskCount > 0 || steps > 0; }
 
@@ -132,7 +134,7 @@ final class Flow {
         g.inertia = true;
         g.windRelax = 0.15f;
         g.outdoorRefill = 0f;
-        g.stillDecay = 0.08f;
+        g.stillDecay = 0f;              // a esteira enche; o vácuo é opção (PARAM_VACUUM)
         g.doorPuff = 0.35f;
         g.vorticity = 0.6f;             // por tile; o dobro fecha o vácuo atrás do prédio
         return g;
@@ -207,6 +209,8 @@ final class Flow {
                         for (int k = 0; k < Math.abs(dy); k++) buildRow(cell, in, dy > 0 ? TILES - 1 - k : k);
                     }
                 }
+                float vac = RenderContext.luaParams[RenderContext.PARAM_VACUUM];
+                in.stillDecay = STILL_DECAY * (vac < 0f ? 0f : (vac > 1f ? 1f : vac));
                 for (int r = 0; r < ROWS_PER_FRAME; r++) {
                     buildRow(cell, in, maskRow);
                     maskRow = (maskRow + 1) % TILES;
@@ -291,9 +295,9 @@ final class Flow {
         boolean openW = true, openN = true;
         if (sq != null) {
             if (sq.isSolid()) f |= FlowGrid.F_SOLID;
-            if (sq.HasTree()) f |= FlowGrid.F_SOLID | FlowGrid.F_TREE;
+            if (sq.HasTree()) f |= FlowGrid.F_TREE;
             if (!sq.isOutside()) f |= FlowGrid.F_INDOOR;
-            if ((f & FlowGrid.F_SOLID) == 0 && sq.getVehicleContainer() != null) f |= FlowGrid.F_SOLID;
+            if ((f & FlowGrid.F_SOLID) == 0 && sq.getVehicleContainer() != null) f |= FlowGrid.F_LOW;
             IsoGridSquare w = cell.getGridSquare(x - 1, y, z);
             if (w != null && sq.isBlockedTo(w)) openW = false;
             IsoGridSquare n = cell.getGridSquare(x, y - 1, z);
@@ -416,6 +420,7 @@ final class Flow {
         }
         if (grid == null) return;
         if (in.scroll) grid.scroll(in.sx0, in.sy0);
+        grid.stillDecay = in.stillDecay;
         for (int k = 0; k < in.maskCount; k += 3) {
             int ti = in.mask[k] - grid.x0, tj = in.mask[k + 1] - grid.y0, code = in.mask[k + 2];
             if (ti < 0 || tj < 0 || ti >= TILES || tj >= TILES) continue;
