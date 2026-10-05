@@ -10,6 +10,8 @@
     "UI_NOM_Dissolve_tooltip": "Monster pieces form and fall apart with a burning edge when a zombie turns and turns back, and Echoes burn away with embers when they die. Off: instant swap, as before.",
     "UI_NOM_Bloom": "Bloom (Shader mod)",
     "UI_NOM_Bloom_tooltip": "Glow around bright lights, stronger in the fog. Only with the optional Shader mod (not with ShadowZ). 0 turns it off.",
+    "UI_NOM_FogQuality": "Fog quality (Volumetric mod)",
+    "UI_NOM_FogQuality_tooltip": "0 low, 1 medium, 2 high: how many steps the volumetric fog uses per pixel. Lower it if the FPS drops in the fog. Only with the optional Volumetric mod (Java).",
     "UI_NOM_BodyEmbers": "Whole body burns",
     "UI_NOM_BodyEmbers_tooltip": "With burn in and out on: when a zombie turns into a monster and back, its whole body burns away in embers instead of only the monster piece. Off: only the piece burns.",
     "UI_NOM_DebugPanelKey": "Mod debug panel (-debug only)",

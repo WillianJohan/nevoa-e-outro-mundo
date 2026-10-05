@@ -136,4 +136,11 @@ idx = int(jl.group(1))
 comp = "uParams[%d].%s" % (idx // 4, "xyzw"[idx % 4])
 volfog = (src.parent.parent.parent / "42/media/shaders/NOM_VolFog.frag").read_text()
 assert comp in volfog, "mod3: NOM_VolFog não lê " + comp + " (PARAM_LOOK)"
+# Qualidade (sprint 0026): NOMRender_setParam(6, q), padrão alta, lida pelo shader no componente certo.
+jq = re.search(r"PARAM_QUALITY = (\d+);", java)
+assert jq and re.search(r"luaParams\[PARAM_QUALITY\] = 2f", java), "mod3: PARAM_QUALITY ausente ou sem padrão alto"
+qi = int(jq.group(1))
+assert "uParams[%d].%s" % (qi // 4, "xyzw"[qi % 4]) in volfog, "mod3: NOM_VolFog não lê a qualidade"
+for name in ("uTorchCount", "uTorchPos", "uTorchDir", "uTorchColor"):
+    assert name in volfog, "mod3: NOM_VolFog não usa " + name
 print("mod3 contrato Java/GLSL ok")

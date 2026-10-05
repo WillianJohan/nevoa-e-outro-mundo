@@ -1356,6 +1356,19 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 | Spawn espalhado | CONFIRMED | `addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance)` → `ArrayList` (`Steps.lua:2123`): n vezes `addZombiesInOutfit` em `Rand.Next(x1, x2)` (fim exclusivo, bytecode 0–54); outfit `nil` sorteia (`ISSpawnHordeUI.lua:73, 276`); nomes válidos por `getAllOutfits(false/true)` (`ISSpawnHordeUI.lua:71-72`). No servidor dedicado: UNKNOWN, o mesmo do Eco (item 2 abaixo) |
 | Frente do jogador | CONFIRMED | `player:getForwardDirection():getDirection()` em radianos (`shared/Fishing/FishingRod.lua:286`) |
 
+## 19. Névoa viajante e luz na névoa (mod3, sprint 0026)
+
+Bytecode do B42.21 (`javap -c` no `projectzomboid.jar`). Tudo lido na thread principal, no `Core.EndFrame`.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Lista de sons do mundo | EXISTS | `WorldSoundManager.instance` (estático final); `soundList` é `public final List<WorldSound>`. `WorldSound`: `x`, `y`, `z`, `radius`, `volume`, `life` (int), `sourceIsZombie`, `repeating` públicos; `sourceIsVehicle()` |
+| Carros da célula | EXISTS | `IsoCell.getVehicles()` → `Set<BaseVehicle>`; `BaseVehicle extends IsoMovingObject` (`getX/getY/getZ`) |
+| Luz ativa do personagem | EXISTS | `IsoGameCharacter.getActiveLightItems(ArrayList)`: mão secundária, primária e itens presos, cada um por `addActiveLightItem`, que só põe se `InventoryItem.isEmittingLight()` |
+| Lanterna como o jogo monta | EXISTS | `IsoGameCharacter$TorchInfo.set(IsoPlayer, InventoryItem)`: posição do jogador, direção `IsoPlayer.getLookVector(Vector2)`, `getLightDistance()` (int), `getLightStrength()`, `isTorchCone()`, `getTorchDot()` |
+| Farol como o jogo monta | EXISTS | `TorchInfo.set(VehiclePart)`: local = (`offset.x * extents.x / 2`, 0, `offset.y * extents.z / 2`) → `BaseVehicle.getWorldPos(local, out)` dá x, y, z do mundo; direção `getForwardVector` (x, z), invertida se `getId()` contém `"Rear"`; `VehiclePart.getLightDistance()`, `getLightIntensity()`, `VehicleLight.dot`, `r/g/b`. Faróis: `BaseVehicle.getHeadlightsOn()`, `getLightCount()`, `getLightByIndex(i)` |
+| UNKNOWN | — | o raio real dos sons de tiro e explosão (o mod usa raio ≥ 20 como "alto"); se o facho da lanterna na névoa bate com a luz do jogo (roteiro da 0026) |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

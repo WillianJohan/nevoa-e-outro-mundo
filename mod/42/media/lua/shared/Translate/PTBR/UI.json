@@ -10,6 +10,8 @@
     "UI_NOM_Dissolve_tooltip": "As peças dos monstros se formam e se desfazem com borda em brasa quando o zumbi vira monstro e volta, e o Eco queima e some em brasas ao morrer. Desligado: troca instantânea, como antes.",
     "UI_NOM_Bloom": "Bloom (mod do Shader)",
     "UI_NOM_Bloom_tooltip": "Brilho em volta das luzes fortes, mais forte na névoa. Só com o mod opcional do Shader (não com ShadowZ). 0 desliga.",
+    "UI_NOM_FogQuality": "Qualidade da névoa (mod Volumétrica)",
+    "UI_NOM_FogQuality_tooltip": "0 baixa, 1 média, 2 alta: quantos passos a névoa volumétrica usa por pixel. Baixe se o FPS cair na névoa. Só com o mod opcional Volumétrica (Java).",
     "UI_NOM_BodyEmbers": "Brasa no corpo inteiro",
     "UI_NOM_BodyEmbers_tooltip": "Com a queima ligada: quando o zumbi vira monstro e volta, o corpo inteiro queima em brasa, não só a peça do monstro. Desligado: só a peça queima.",
     "UI_NOM_DebugPanelKey": "Painel de debug do mod (só com -debug)",
