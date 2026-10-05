@@ -12,7 +12,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0003](sprint-0003-noite-agressiva/README.md) | Noite agressiva (todo zumbi) | `em teste` |
 | [0004](sprint-0004-estalador-corredor/README.md) | Estalador + Corredor noturno | `em teste` |
 | [0005](sprint-0005-sem-rosto-e-nevoa/README.md) | Sem-rosto + atmosfera da névoa | `em teste` |
-| [0006](sprint-0006-balanceamento-mp/README.md) | Balanceamento, MP e performance | `backlog` |
+| [0006](sprint-0006-balanceamento-mp/README.md) | Balanceamento, MP e performance | `em teste` — [roteiro in-game consolidado](../teste-in-game.md) |
 | [0007](sprint-0007-workshop/README.md) | Publicação no Workshop | `backlog` |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão arquivado |
 
