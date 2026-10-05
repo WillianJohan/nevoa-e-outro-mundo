@@ -132,7 +132,7 @@ return {
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren" }) do
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren", "NOM_SirenRed" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,
