@@ -12,7 +12,8 @@
 -- option.value depois.
 if isServer() then return end
 
-NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1 }
+NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1,
+    DEFAULT_FOG_QUALITY = 2 }
 
 local O = NOM_ScreenFxOptions
 local page
@@ -27,6 +28,8 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
     page:addTickBox("BodyEmbers", "UI_NOM_BodyEmbers", true, "UI_NOM_BodyEmbers_tooltip")
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
+    -- qualidade da névoa do mod Java opcional (sprint 0026, client/NOM_FogQualitySync.lua)
+    page:addSlider("FogQuality", "UI_NOM_FogQuality", 0, 2, 1, O.DEFAULT_FOG_QUALITY, "UI_NOM_FogQuality_tooltip")
     -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
     -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods. Insert: F7 abre o
     -- editor de veículos do vanilla em -debug (IngameState.updateInternal 547–606), F2/F8/F9
@@ -76,6 +79,12 @@ end
 function O.bloom()
     local v = tonumber(value("Bloom", O.DEFAULT_BLOOM)) or O.DEFAULT_BLOOM
     return math.max(0, math.min(2, v))
+end
+
+-- 0 baixa, 1 média, 2 alta: qualidade da névoa do mod Java opcional (sem ele, não faz nada).
+function O.fogQuality()
+    local v = tonumber(value("FogQuality", O.DEFAULT_FOG_QUALITY)) or O.DEFAULT_FOG_QUALITY
+    return math.max(0, math.min(2, math.floor(v + 0.5)))
 end
 
 -- Código da tecla do painel de debug; nil fora do -debug. Insert sem a página.

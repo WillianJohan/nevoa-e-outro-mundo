@@ -126,6 +126,21 @@ return {
         assert(O.bodyEmbers() == false, "sem o dissolve não há casca")
         assert(load(false).bodyEmbers() == true, "sem a API: padrão")
     end,
+    -- sprint 0026: qualidade da névoa do mod Java (0 baixa, 1 média, 2 alta), inteira
+    fog_quality_option = function()
+        local O = load(true)
+        local q = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("FogQuality")
+        assert(q and q.type == "slider" and q.min == 0 and q.max == 2 and q.step == 1 and q.value == 2)
+        assert(q.name:find("^UI_NOM_") and q.tooltip:find("^UI_NOM_"))
+        assert(O.fogQuality() == 2)
+        q.value = 1.4
+        assert(O.fogQuality() == 1, "não arredondou")
+        q.value = 0
+        assert(O.fogQuality() == 0)
+        q.value = 9
+        assert(O.fogQuality() == 2, "fora da faixa")
+        assert(load(false).fogQuality() == 2, "sem a API: alta")
+    end,
     -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
     screenfx_options_debug_key_only_in_debug = function()
         local O = load(true, true)
