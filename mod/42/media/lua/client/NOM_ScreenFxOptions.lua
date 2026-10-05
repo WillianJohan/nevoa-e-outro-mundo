@@ -13,7 +13,7 @@
 if isServer() then return end
 
 NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1,
-    DEFAULT_FOG_QUALITY = 2 }
+    DEFAULT_FOG_QUALITY = 2, DEFAULT_FLOW_RESOLUTION = 2 }
 
 local O = NOM_ScreenFxOptions
 local page
@@ -30,6 +30,9 @@ if PZAPI and PZAPI.ModOptions then
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
     -- qualidade da névoa do mod Java opcional (sprint 0026, client/NOM_FogQualitySync.lua)
     page:addSlider("FogQuality", "UI_NOM_FogQuality", 0, 2, 1, O.DEFAULT_FOG_QUALITY, "UI_NOM_FogQuality_tooltip")
+    -- resolução da névoa fluida do mesmo mod (sprint 0030): células por tile
+    page:addSlider("FlowResolution", "UI_NOM_FlowResolution", 1, 3, 1, O.DEFAULT_FLOW_RESOLUTION,
+        "UI_NOM_FlowResolution_tooltip")
     -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
     -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods. Insert: F7 abre o
     -- editor de veículos do vanilla em -debug (IngameState.updateInternal 547–606), F2/F8/F9
@@ -85,6 +88,12 @@ end
 function O.fogQuality()
     local v = tonumber(value("FogQuality", O.DEFAULT_FOG_QUALITY)) or O.DEFAULT_FOG_QUALITY
     return math.max(0, math.min(2, math.floor(v + 0.5)))
+end
+
+-- 1 a 3 células por tile na névoa fluida do mod Java opcional (sem ele, não faz nada).
+function O.flowResolution()
+    local v = tonumber(value("FlowResolution", O.DEFAULT_FLOW_RESOLUTION)) or O.DEFAULT_FLOW_RESOLUTION
+    return math.max(1, math.min(3, math.floor(v + 0.5)))
 end
 
 -- Código da tecla do painel de debug; nil fora do -debug. Insert sem a página.
