@@ -149,6 +149,40 @@ return {
         assert(got.N > 3600 * 0.5 and got.W > 3600 * 0.5, "parede pouco suja: " .. got.N .. "/" .. got.W)
     end,
 
+    -- porão (z < 0) e andar alto (z ≥ 8): o id do square não pode colidir entre andares
+    dressing_rules_z_independent = function()
+        local R = load()
+        local function key(f)
+            if not f then return "-" end
+            local t = {}
+            -- só a erosão: ela sai direto do id do square (o sangue vem das células)
+            for _, l in ipairs(f) do if l[1] ~= "bloodFloor" then t[#t + 1] = l[1] .. l[2] end end
+            return table.concat(t, ";")
+        end
+        -- { z1, z2, dy }: com um id que só soma z, (x, y, z1) e (x, y + dy, z2) colidiriam
+        for _, pair in ipairs({ { 8, 0, 1 }, { -1, 7, -1 }, { 9, 1, 1 }, { 0, 0, 0 } }) do
+            local same = 0
+            for x = 0, 29 do
+                for y = 0, 29 do
+                    if pair[3] ~= 0 and key(R.floor(400 + x, 400 + y, pair[1], 2, 1)) == key(R.floor(400 + x, 400 + y + pair[3], pair[2], 2, 1)) then
+                        same = same + 1
+                    end
+                end
+            end
+            assert(same < 200, "andares " .. pair[1] .. " e " .. pair[2] .. " iguais: " .. same)
+        end
+    end,
+
+    -- quantos deslocamentos há até cada raio (a varredura limita o cursor por ele)
+    dressing_rules_offsets_within = function()
+        local R = load()
+        for r = 0, R.RADIUS do
+            local n = 0
+            for _, o in ipairs(R.OFFSETS) do if o[1] * o[1] + o[2] * o[2] <= r * r then n = n + 1 end end
+            assert(R.WITHIN[r] == n, "WITHIN[" .. r .. "]")
+        end
+    end,
+
     dressing_rules_offsets_nearest_first = function()
         local R = load()
         local last = -1

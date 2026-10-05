@@ -69,10 +69,12 @@ local function setup(opts)
     MainScreen = nil
     dofile(FILE)
     G.p = G.player({ x = 100, y = 100 })
-    function G.frame()
+    -- pickedOutside: o tile do mouse fora do mundo; o jogo não dispara o evento nesse
+    -- quadro (IsoWorld.isValidSquare em FBORenderCell.renderOpaqueObjectsEvent 82–92)
+    function G.frame(pickedOutside)
         G.draws = {}
         G.inFrame = true
-        G.fire("RenderOpaqueObjectsInWorld", 0, 100, 100, math.floor(G.p.z), nil)
+        if not pickedOutside then G.fire("RenderOpaqueObjectsInWorld", 0, 100, 100, math.floor(G.p.z), nil) end
         G.inFrame = false
         return G.draws
     end
@@ -106,6 +108,25 @@ end
 
 local O = function() return NOM_FogOverlays end
 local D = function() return NOM_DressingRules end
+
+-- Fração do quadrado (2r+1)² em volta do jogador com marcador vivo no andar dele, e a
+-- fração que a regra pede (o máximo possível: o mundo falso tem todo square livre).
+local function coverage(G, r)
+    local set = {}
+    local pz = math.floor(G.p.z)
+    for _, m in ipairs(alive(G)) do if m.sq.z == pz then set[m.sq.x .. "," .. m.sq.y] = true end end
+    local px, py = math.floor(G.p.x), math.floor(G.p.y)
+    local d = D().density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+    local have, want, tot = 0, 0, 0
+    for x = px - r, px + r do
+        for y = py - r, py + r do
+            tot = tot + 1
+            if set[x .. "," .. y] then have = have + 1 end
+            if D().floor(x, y, pz, NOM_FogState.period or 0, d) then want = want + 1 end
+        end
+    end
+    return have / tot, want > 0 and have / want or 1
+end
 
 return {
     overlays_inert_on_dedicated = function()
@@ -146,15 +167,143 @@ return {
         assert(textures(R) > normal * 1.15, "vermelha não é mais densa: " .. textures(R) .. " vs " .. normal)
     end,
 
+    -- review 0015 (crítico): com o teto cheio, andar não pode deixar o jogador no limpo.
+    -- O teto serve a área mais perto: o que sai do raio efetivo cai na hora.
+    overlays_walk_keeps_nearby_covered = function()
+        for _, red in ipairs({ false, true }) do
+            local G = setup()
+            NOM_FogState.set(true, 1, red)
+            G.seconds(20)
+            for step = 1, 25 do
+                G.p.x = G.p.x + 1
+                G.seconds(1)
+                if step > 3 then
+                    local _, rel = coverage(G, 3)
+                    assert(rel >= 0.85, (red and "vermelha" or "normal") .. ": andando, 7×7 com " .. rel .. " do que a regra pede, passo " .. step)
+                end
+                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando")
+            end
+            G.seconds(2)
+            local abs = coverage(G, 3)
+            assert(abs >= (red and 0.8 or 0.6), (red and "vermelha" or "normal") .. ": parado, 7×7 coberto " .. abs)
+        end
+    end,
+
+    overlays_teleport_and_floor_change = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(20)
+        G.p.x, G.p.y = G.p.x + 60, G.p.y - 40
+        G.seconds(3)
+        assert(select(2, coverage(G, 3)) >= 0.9, "teleporte: 7×7 vazio")
+        G.p.z = 1.2
+        G.tick(O().UPDATE_TICKS)
+        for _, m in ipairs(alive(G)) do assert(m.sq.z == 1, "mancha de outro andar ficou ocupando o teto") end
+        G.seconds(3)
+        assert(select(2, coverage(G, 3)) >= 0.9, "andar novo: 7×7 vazio")
+    end,
+
+    -- período desconhecido (MP, antes do comando) e depois conhecido: troca na hora
+    overlays_period_known_after_nil = function()
+        local G = setup()
+        NOM_FogState.set(true, nil)
+        G.seconds(20)
+        NOM_FogState.set(true, 5)
+        G.seconds(3)
+        assert(select(2, coverage(G, 3)) >= 0.9, "período conhecido: 7×7 vazio")
+        for _, m in ipairs(alive(G)) do
+            local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
+            local f = D().floor(m.sq.x, m.sq.y, m.sq.z, 5, D().density(1, false))
+            assert(f, "mancha do período velho ficou: " .. k)
+        end
+    end,
+
+    -- densidade trocada no meio da névoa (opção, ou a vermelha forçada no debug): redesenha
+    overlays_density_change_redresses = function()
+        local G = setup()
+        NOM_FogState.set(true, 2, false)
+        G.seconds(20)
+        local before = textures(G)
+        NOM_FogState.set(true, 2, true)
+        G.seconds(5)
+        assert(textures(G) > before * 1.1, "vermelha forçada não redesenhou: " .. textures(G) .. " vs " .. before)
+        assert(select(2, coverage(G, 3)) >= 0.9)
+    end,
+
+    -- review 0015: parede que não estava à vista na varredura (porta fechada) aparece depois
+    overlays_walls_door_closed_then_opened = function()
+        local G = setup()
+        G.p.face = math.rad(225)
+        addWalls(G, 92, 92, 6)
+        for x = 92, 97 do for y = 92, 97 do G.blocked[x .. "," .. y .. ",0"] = true end end
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        assert(#G.frame() == 0, "parede sem linha de visão desenhada")
+        G.blocked = {}
+        G.p.x, G.p.y = 97.5, 97.5
+        G.seconds(8)
+        assert(#G.frame() >= 10, "porta aberta e a sala limpa: " .. #G.frame())
+    end,
+
+    overlays_walls_survive_turning_around = function()
+        local G = setup()
+        G.p.face = math.rad(225)
+        addWalls(G, 90, 90, 8)
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        local first = #G.frame()
+        assert(first >= 10)
+        G.p.face = math.rad(45)
+        G.seconds(6)
+        assert(#G.frame() == 0, "de costas e desenhou")
+        G.p.face = math.rad(225)
+        G.seconds(6)
+        assert(#G.frame() >= first * 0.9, "virou de volta e as paredes sumiram: " .. #G.frame() .. "/" .. first)
+    end,
+
+    -- batente vazio de porta ou janela: o desenho taparia o buraco
+    overlays_walls_skip_door_and_window_frames = function()
+        local G = setup()
+        G.p.face = math.rad(225)
+        addWalls(G, 85, 85, 16)
+        local flags = { "DoorWallN", "WindowN", "doorN", "windowN" }
+        for x = 85, 100 do
+            for y = 85, 100 do
+                local f = flags[(x + y) % 4 + 1]
+                G.flags[x .. "," .. y .. ",0"] = { [f] = true, [f:sub(1, -2) .. "W"] = true }
+            end
+        end
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        assert(#G.frame() == 0, "parede em batente")
+    end,
+
+    -- a parede do decalque sumiu (destruída) ou ganhou móvel: o decalque sai no rodízio
+    overlays_stale_wall_dropped = function()
+        local G = setup()
+        G.p.face = math.rad(225)
+        addWalls(G, 90, 90, 8)
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        assert(#G.frame() > 0)
+        G.walls = {}
+        G.seconds(15)
+        assert(#G.frame() == 0, "decalque em parede que não existe mais")
+        assert(select(2, O().count()) == 0)
+    end,
+
     overlays_capped = function()
         local G = setup({ density = 2 })
+        G.p.face = math.rad(225)
         addWalls(G, 70, 70, 60)
         NOM_FogState.set(true, 1, true)
         G.seconds(60)
         assert(#alive(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. #alive(G))
-        assert(#alive(G) >= D().MAX_FLOOR * 0.9, "não encheu até o teto: " .. #alive(G))
+        assert(#alive(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. #alive(G))
         local draws = G.frame()
-        assert(#draws <= D().MAX_WALL and #draws > D().MAX_WALL / 2, "paredes por quadro: " .. #draws)
+        assert(select(2, O().count()) <= D().MAX_WALL, "passou do teto das paredes")
+        -- as de costas e fora do cone ficam na reserva, apagadas (voltam ao virar)
+        assert(#draws <= D().MAX_WALL and #draws > D().MAX_WALL / 4, "paredes por quadro: " .. #draws)
     end,
 
     -- critério: parede desenhada só no quadro do mundo, no lugar dela, de frente e visível
@@ -183,6 +332,8 @@ return {
             assert(G.square(d.x, d.y, 0):isCouldSee(0), "parede fora da visão")
             assert(d.a > 0 and d.a <= 1 and d.l > 0 and d.l <= 1)
         end
+        -- quadro sem o evento (mouse fora do mapa): nada nele, e o seguinte volta normal
+        assert(#G.frame(true) == 0 and #G.frame() == #draws, "quadro sem evento estragou o seguinte")
         -- outro jogador da tela dividida: nada
         G.draws, G.inFrame = {}, true
         G.fire("RenderOpaqueObjectsInWorld", 1, 0, 0, 0, nil)
@@ -284,7 +435,8 @@ return {
             end
         end
         assert(same >= 200, "pouca sobreposição: " .. same)
-        -- anda 1 tile por segundo: quem fica no raio não troca nem pisca
+        -- anda 1 tile por segundo: quem fica dentro do raio efetivo (o que o teto aguenta)
+        -- não troca nem pisca
         local before = {}
         for _, m in ipairs(alive(B)) do before[m] = table.concat(m.names, "|") end
         local removedNear = 0
@@ -293,10 +445,12 @@ return {
             B.seconds(1)
             for m in pairs(before) do
                 local dx, dy = m.sq.x - math.floor(B.p.x), m.sq.y - math.floor(B.p.y)
-                if m.removed and dx * dx + dy * dy < (D().RADIUS - 2) ^ 2 then removedNear = removedNear + 1 end
+                local reach = O().reach()
+                if m.removed and dx * dx + dy * dy < (reach - 2) ^ 2 then removedNear = removedNear + 1 end
             end
         end
         assert(removedNear == 0, "mancha perto sumiu andando: " .. removedNear)
+        assert(O().reach() >= 10, "raio efetivo pequeno demais: " .. O().reach())
         for _, m in ipairs(alive(B)) do
             local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
             if la[k] then assert(la[k] == table.concat(m.names, "|"), "desenho mudou andando") end

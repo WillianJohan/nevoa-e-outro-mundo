@@ -18,7 +18,7 @@ NOM_DressingRules = {
     -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
     POOL = 0.85,       -- chance de poça por célula, na densidade 1
     BACKGROUND = 0.15, -- respingo solto por square
-    GRIME = 0.45, CRACKS = 0.3, MOSS = 0.15,
+    GRIME = 0.5, CRACKS = 0.35, MOSS = 0.2,
     WALL = 0.75,       -- chance de cada parede ter algo
 }
 
@@ -75,8 +75,9 @@ local function u(id, period, salt)
     return V.hash(id, period or 0, salt) / V.Q
 end
 
+-- Andar de -32 a 31 (porão no B42) sem colidir com o vizinho; fora disso, só repete o desenho.
 local function sqId(x, y, z)
-    return (x * 16411 + y) * 8 + z
+    return (x * 16411 + y) * 64 + (z + 32) % 64
 end
 
 local function pick(set, id, period, salt)
@@ -106,12 +107,11 @@ end
 
 -- Cada square olha 9 células: guardadas por período e densidade (o hash é o caro no
 -- Kahlua). Zera quando um dos dois muda; cresce com o caminho andado numa névoa.
-local pools, poolsKey = {}, nil
+local pools, poolsPeriod, poolsD = {}, nil, nil
 
 local function pool(cx, cy, z, period, d)
-    local key = tostring(period) .. ":" .. d
-    if key ~= poolsKey then pools, poolsKey = {}, key end
-    local k = cx .. "," .. cy .. "," .. z
+    if period ~= poolsPeriod or d ~= poolsD then pools, poolsPeriod, poolsD = {}, period, d end
+    local k = sqId(cx, cy, z) -- chave numérica: nada de string por chamada
     local p = pools[k]
     if p == nil then
         p = makePool(cx, cy, z, period, d)
@@ -192,5 +192,15 @@ table.sort(R.OFFSETS, function(a, b)
     if a[1] ~= b[1] then return a[1] < b[1] end
     return a[2] < b[2]
 end)
+
+-- WITHIN[r] = quantos deslocamentos estão a até r tiles (os primeiros de OFFSETS).
+R.WITHIN = {}
+for r = 0, R.RADIUS do
+    local n = 0
+    for _, o in ipairs(R.OFFSETS) do
+        if o[1] * o[1] + o[2] * o[2] <= r * r then n = n + 1 end
+    end
+    R.WITHIN[r] = n
+end
 
 return NOM_DressingRules

@@ -41,7 +41,7 @@ end
 function W.new(opts)
     opts = opts or {}
     local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
-        holes = {}, blocked = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
+        holes = {}, blocked = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, flags = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
     local handlers = {}
     G.handlers = handlers
     function G.fire(name, ...)
@@ -77,7 +77,10 @@ function W.new(opts)
             getZ = function() return z end,
             isFree = function(_, _) return sq.free and not G.noFree end,
             getProperties = function()
-                return { has = function(_, flag) return flag == IsoFlagType.water and G.water[k] == true end }
+                return { has = function(_, flag)
+                    if flag == IsoFlagType.water then return G.water[k] == true end
+                    return G.flags[k] ~= nil and G.flags[k][flag] == true
+                end }
             end,
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             getWall = function(_, north)
@@ -236,7 +239,10 @@ function W.new(opts)
     getSpecificPlayer = function(i) return G.players[i + 1] end
     -- getPlayer() é o jogador em foco (tela dividida); o mod usa getSpecificPlayer(0)
     getPlayer = function() error("use getSpecificPlayer(0)", 2) end
-    IsoFlagType = { water = "water" }
+    -- batentes: as do sprite de porta/janela somam nas propriedades do square
+    -- (ISBuildIsoEntity.lua:195-198); G.flags[k] = { DoorWallN = true, ... }
+    IsoFlagType = { water = "water", DoorWallN = "DoorWallN", DoorWallW = "DoorWallW", WindowN = "WindowN",
+        WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW" }
     getOnlinePlayers = function() return jlist(G.players) end
     getCell = function()
         return {
