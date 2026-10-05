@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | backlog |
+| Status | em andamento |
 | Branch | `sprint/0005-sem-rosto-e-nevoa` |
-| Plano | a escrever (`plan.md`) |
+| Plano | [plan.md](plan.md) |
 | GDD | [monsters.md#sem-rosto](../../gdd/monsters.md#sem-rosto), [atmosphere.md](../../gdd/atmosphere.md) |
 
 ## Objetivo
@@ -29,3 +29,5 @@ Quando a névoa sobe, o Outro Mundo acorda: o som muda, o rádio chia, o chão s
 ## Pendências que a próxima sprint herda
 
 ## Sessões
+
+- 2026-10-04 — abd764e2-7a9a-416b-b9b3-1630ab9e761f — pesquisa no bytecode, plano e implementação da sprint
