@@ -9,8 +9,10 @@ JAVAC="$JDK/bin/javac"; JAVA="$JDK/bin/java"
 [ -x "$JAVA" ] || JAVA="$(command -v java)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java tests/java/FlowGridTest.java
+"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java mod3/java/nom/render/FogBanks.java \
+    tests/java/FlowGridTest.java tests/java/FlowTravelTest.java
 "$JAVA" -ea -cp "$TMP" FlowGridTest
+"$JAVA" -ea -cp "$TMP" FlowTravelTest
 
 # Shaders: o RenderContext.init monta cabeçalho + "#line 1" + passe; compila igual.
 if command -v glslangValidator >/dev/null; then

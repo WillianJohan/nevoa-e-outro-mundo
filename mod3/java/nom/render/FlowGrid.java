@@ -40,6 +40,12 @@ public final class FlowGrid {
     public float indoorSeep = 1.2f;
     public int iterations = 16;         // 128x128: ~0,9 ms por passo (Ryzen 7600X); 24 passa de 1 ms
 
+    // Névoa viajante (sprint 0026). Tudo desligado aqui; o Flow liga.
+    public FogBanks banks;              // fora da grade e célula nova vêm dos bancos (null: ambient)
+    public boolean inertia;             // a velocidade é levada por ela mesma: esteira e redemoinho
+    public float stillDecay;            // 1/s: fora, onde o ar para (atrás de prédio), a névoa se desfaz
+    public float doorPuff;              // fração da diferença que uma porta que abre sopra pra dentro
+
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
     private final float[] d, dn, div, invSum, p;
     private final float[] cW, cE, cN, cS;  // peso de cada vizinho na pressão (face aberta / nº de faces abertas)
@@ -49,6 +55,10 @@ public final class FlowGrid {
     private final byte[] flags;
     private final float[] tmpF;
     private final byte[] tmpB;
+    private final float[] edgeW, edgeE, edgeN, edgeS;  // densidade logo fora da grade, por linha / coluna
+    private final float[] u2, v2;
+    private final int[] doors = new int[64];           // faces que abriram: f = face u, ~f = face v
+    private int doorCount;
     private boolean facesDirty = true;
 
     public FlowGrid(int n) {
@@ -73,6 +83,12 @@ public final class FlowGrid {
         flags = new byte[n * n];
         tmpF = new float[nu * n];
         tmpB = new byte[nu * n];
+        edgeW = new float[n];
+        edgeE = new float[n];
+        edgeN = new float[n];
+        edgeS = new float[n];
+        u2 = new float[nu * n];
+        v2 = new float[n * nu];
         reset(0, 0);
     }
 
@@ -87,7 +103,15 @@ public final class FlowGrid {
         Arrays.fill(openU, (byte) 1);
         Arrays.fill(openV, (byte) 1);
         Arrays.fill(flags, (byte) F_FRESH);
+        if (banks != null)
+            for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) d[j * n + i] = freshDensity(i, j);
+        doorCount = 0;
         facesDirty = true;
+        refreshEdges();
+    }
+
+    private float freshDensity(int i, int j) {
+        return banks == null ? ambient : ambient * banks.sample(x0 + i + 0.5, y0 + j + 0.5);
     }
 
     /** Flags do square (F_SOLID, F_TREE, F_INDOOR). Célula que acabou de entrar na grade e é interior começa vazia. */
@@ -105,14 +129,24 @@ public final class FlowGrid {
     public void setOpenW(int i, int j, boolean open) {
         int f = j * nu + i;
         byte b = (byte) (open ? 1 : 0);
-        if (openU[f] != b) { openU[f] = b; facesDirty = true; }
+        if (openU[f] == b) return;
+        if (open) queueDoor(f);
+        openU[f] = b;
+        facesDirty = true;
+    }
+
+    private void queueDoor(int code) {
+        if (doorPuff > 0f && doorCount < doors.length) doors[doorCount++] = code;
     }
 
     /** Face norte da célula (i, j); j vai até n (a face sul da última linha). */
     public void setOpenN(int i, int j, boolean open) {
         int f = j * n + i;
         byte b = (byte) (open ? 1 : 0);
-        if (openV[f] != b) { openV[f] = b; facesDirty = true; }
+        if (openV[f] == b) return;
+        if (open) queueDoor(~f);
+        openV[f] = b;
+        facesDirty = true;
     }
 
     public boolean isOpenW(int i, int j) { return openU[j * nu + i] != 0; }
@@ -158,7 +192,7 @@ public final class FlowGrid {
         int dx = newX0 - x0, dy = newY0 - y0;
         if (dx == 0 && dy == 0) return;
         if (Math.abs(dx) >= n || Math.abs(dy) >= n) { reset(newX0, newY0); return; }
-        shift(d, n, n, dx, dy, ambient);
+        shift(d, n, n, dx, dy, Float.NaN);
         shift(u, nu, n, dx, dy, 0f);
         shift(v, n, nu, dx, dy, 0f);
         shift(flags, n, n, dx, dy, (byte) F_FRESH);
@@ -166,7 +200,11 @@ public final class FlowGrid {
         shift(openV, n, nu, dx, dy, (byte) 1);
         x0 = newX0;
         y0 = newY0;
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) if (Float.isNaN(d[j * n + i])) d[j * n + i] = freshDensity(i, j);
+        doorCount = 0;
         facesDirty = true;
+        refreshEdges();
     }
 
     private void shift(float[] a, int w, int h, int dx, int dy, float fill) {
@@ -229,8 +267,62 @@ public final class FlowGrid {
 
     // ---------- passo ----------
 
+    /**
+     * Tiro ou explosão em (wx, wy): a névoa do miolo (raio r) é empurrada pra um anel em volta, sem
+     * criar nem sumir massa. Interior não recebe (a onda não atravessa parede de casa fechada).
+     */
+    public void blast(float wx, float wy, float radius) {
+        if (radius <= 0f) return;
+        float lx = wx - x0, ly = wy - y0, outer = radius * 1.6f, mid = (radius + outer) * 0.5f, half = (outer - radius) * 0.5f;
+        int i0 = Math.max(0, (int) Math.floor(lx - outer)), i1 = Math.min(n - 1, (int) Math.ceil(lx + outer));
+        int j0 = Math.max(0, (int) Math.floor(ly - outer)), j1 = Math.min(n - 1, (int) Math.ceil(ly + outer));
+        if (i0 > i1 || j0 > j1) return;
+        double taken = 0, ringW = 0;
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) {
+                int c = j * n + i;
+                if ((flags[c] & F_SOLID) != 0) continue;
+                float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                if (dist < radius) {
+                    float q = dist / radius, t = d[c] * 0.85f * (1f - q * q);
+                    d[c] -= t;
+                    dn[c] = t;
+                    taken += t;
+                } else if (dist < outer && (flags[c] & F_INDOOR) == 0) {
+                    ringW += 1f - Math.abs(dist - mid) / half;
+                }
+            }
+        double left = taken;
+        if (ringW > 0)
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++) {
+                    int c = j * n + i;
+                    if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
+                    float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                    if (dist < radius || dist >= outer) continue;
+                    float put = (float) (taken * (1f - Math.abs(dist - mid) / half) / ringW);
+                    put = Math.min(put, D_MAX - d[c]);
+                    if (put <= 0f) continue;
+                    d[c] += put;
+                    left -= put;
+                }
+        if (left > 1e-6 && taken > 0) {           // o que não coube no anel volta pro miolo
+            float back = (float) (left / taken);
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++) {
+                    int c = j * n + i;
+                    if ((flags[c] & F_SOLID) != 0) continue;
+                    if (Math.hypot(i + 0.5f - lx, j + 0.5f - ly) < radius) d[c] += dn[c] * back;
+                }
+        }
+    }
+
     public void step(float dt) {
         if (facesDirty) rebuildFaces();
+        if (banks != null) banks.advance(windX, windY, dt);
+        refreshEdges();
+        puffDoors();
+        if (inertia) advectVelocity(dt);
         float k = 1f - (float) Math.exp(-windRelax * dt);
         for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * wu[f];
         for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * wv[f];
@@ -241,6 +333,93 @@ public final class FlowGrid {
     }
 
     private static float clampV(float x) { return x > V_CLAMP ? V_CLAMP : (x < -V_CLAMP ? -V_CLAMP : x); }
+
+    private void refreshEdges() {
+        if (banks == null) {
+            Arrays.fill(edgeW, ambient); Arrays.fill(edgeE, ambient);
+            Arrays.fill(edgeN, ambient); Arrays.fill(edgeS, ambient);
+            return;
+        }
+        for (int k = 0; k < n; k++) {
+            edgeW[k] = ambient * banks.sample(x0 - 0.5, y0 + k + 0.5);
+            edgeE[k] = ambient * banks.sample(x0 + n + 0.5, y0 + k + 0.5);
+            edgeN[k] = ambient * banks.sample(x0 + k + 0.5, y0 - 0.5);
+            edgeS[k] = ambient * banks.sample(x0 + k + 0.5, y0 + n + 0.5);
+        }
+    }
+
+    /** Porta (ou janela) que acabou de abrir: troca parte da diferença de névoa entre os dois lados. */
+    private void puffDoors() {
+        for (int k = 0; k < doorCount; k++) {
+            int f = doors[k], a, b;
+            if (f >= 0) {
+                int j = f / nu, i = f % nu;
+                if (i == 0 || i == n || wu[f] == 0f) continue;
+                a = j * n + i - 1;
+                b = a + 1;
+            } else {
+                f = ~f;
+                int j = f / n, i = f % n;
+                if (j == 0 || j == n || wv[f] == 0f) continue;
+                a = (j - 1) * n + i;
+                b = j * n + i;
+            }
+            float amt = doorPuff * (d[a] - d[b]);
+            d[a] -= amt;
+            d[b] += amt;
+        }
+        doorCount = 0;
+    }
+
+    /** Semi-lagrangiano: cada face pega a velocidade de onde o ar dela veio. */
+    private void advectVelocity(float dt) {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i <= n; i++) {
+                int f = j * nu + i;
+                u2[f] = wu[f] == 0f ? 0f : sampleU(i - u[f] * dt, j + 0.5f - vAtU(i, j) * dt);
+            }
+        for (int j = 0; j <= n; j++)
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                v2[f] = wv[f] == 0f ? 0f : sampleV(i + 0.5f - uAtV(i, j) * dt, j - v[f] * dt);
+            }
+        System.arraycopy(u2, 0, u, 0, u.length);
+        System.arraycopy(v2, 0, v, 0, v.length);
+    }
+
+    /** v nas quatro faces em volta da face oeste da célula (i, j). */
+    private float vAtU(int i, int j) {
+        int a = Math.max(0, i - 1), b = Math.min(n - 1, i);
+        return 0.25f * (v[j * n + a] + v[j * n + b] + v[(j + 1) * n + a] + v[(j + 1) * n + b]);
+    }
+
+    /** u nas quatro faces em volta da face norte da célula (i, j). */
+    private float uAtV(int i, int j) {
+        int a = Math.max(0, j - 1), b = Math.min(n - 1, j);
+        return 0.25f * (u[a * nu + i] + u[a * nu + i + 1] + u[b * nu + i] + u[b * nu + i + 1]);
+    }
+
+    /** u mora em (i, j + 0,5): i em [0, n], j em [0, n - 1]. */
+    private float sampleU(float x, float y) {
+        float gy = y - 0.5f;
+        x = x < 0f ? 0f : (x > n ? n : x);
+        gy = gy < 0f ? 0f : (gy > n - 1 ? n - 1 : gy);
+        int i0 = Math.min((int) x, n - 1), j0 = Math.min((int) gy, n - 2);
+        float fx = x - i0, fy = gy - j0;
+        int f = j0 * nu + i0;
+        return (u[f] * (1 - fx) + u[f + 1] * fx) * (1 - fy) + (u[f + nu] * (1 - fx) + u[f + nu + 1] * fx) * fy;
+    }
+
+    /** v mora em (i + 0,5, j): i em [0, n - 1], j em [0, n]. */
+    private float sampleV(float x, float y) {
+        float gx = x - 0.5f;
+        gx = gx < 0f ? 0f : (gx > n - 1 ? n - 1 : gx);
+        y = y < 0f ? 0f : (y > n ? n : y);
+        int i0 = Math.min((int) gx, n - 2), j0 = Math.min((int) y, n - 1);
+        float fx = gx - i0, fy = y - j0;
+        int f = j0 * n + i0;
+        return (v[f] * (1 - fx) + v[f + 1] * fx) * (1 - fy) + (v[f + n] * (1 - fx) + v[f + n + 1] * fx) * fy;
+    }
 
     private boolean solid(int i, int j) {
         return i >= 0 && i < n && j >= 0 && j < n && (flags[j * n + i] & F_SOLID) != 0;
@@ -318,7 +497,7 @@ public final class FlowGrid {
                 int f = j * nu + i;
                 if (wu[f] == 0f) continue;
                 float c = limit(u[f] * dt);
-                float src = c > 0 ? (i > 0 ? d[j * n + i - 1] : ambient) : (i < n ? d[j * n + i] : ambient);
+                float src = c > 0 ? (i > 0 ? d[j * n + i - 1] : edgeW[j]) : (i < n ? d[j * n + i] : edgeE[j]);
                 move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, c * src);
             }
         for (int j = 0; j <= n; j++)
@@ -326,7 +505,7 @@ public final class FlowGrid {
                 int f = j * n + i;
                 if (wv[f] == 0f) continue;
                 float c = limit(v[f] * dt);
-                float src = c > 0 ? (j > 0 ? d[f - n] : ambient) : (j < n ? d[f] : ambient);
+                float src = c > 0 ? (j > 0 ? d[f - n] : edgeN[i]) : (j < n ? d[f] : edgeS[i]);
                 move(j > 0 ? f - n : -1, j < n ? f : -1, c * src);
             }
         System.arraycopy(dn, 0, d, 0, d.length);
@@ -350,7 +529,7 @@ public final class FlowGrid {
             for (int i = 0; i <= n; i++) {
                 if (wu[j * nu + i] == 0f) continue;
                 int lc = i > 0 ? j * n + i - 1 : -1, rc = i < n ? j * n + i : -1;
-                float l = lc >= 0 ? d[lc] : ambient, r = rc >= 0 ? d[rc] : ambient;
+                float l = lc >= 0 ? d[lc] : edgeW[j], r = rc >= 0 ? d[rc] : edgeE[j];
                 move(lc, rc, (indoor(lc) || indoor(rc) ? aIn : aOut) * (l - r));
             }
         for (int j = 0; j <= n; j++)
@@ -358,7 +537,7 @@ public final class FlowGrid {
                 int f = j * n + i;
                 if (wv[f] == 0f) continue;
                 int tc = j > 0 ? f - n : -1, bc = j < n ? f : -1;
-                float t = tc >= 0 ? d[tc] : ambient, b = bc >= 0 ? d[bc] : ambient;
+                float t = tc >= 0 ? d[tc] : edgeN[i], b = bc >= 0 ? d[bc] : edgeS[i];
                 move(tc, bc, (indoor(tc) || indoor(bc) ? aIn : aOut) * (t - b));
             }
         System.arraycopy(dn, 0, d, 0, d.length);
@@ -370,6 +549,9 @@ public final class FlowGrid {
         float kOut = 1f - (float) Math.exp(-outdoorRefill * dt);
         float kIn = (float) Math.exp(-indoorDecay * dt);
         float kEdge = 1f - (float) Math.exp(-edgeRefill * dt);
+        float wind = (float) Math.hypot(windX, windY);
+        boolean still = stillDecay > 0f && wind > 0.1f;
+        float invHalfWind = still ? 2f / wind : 0f, kStill = stillDecay * dt;
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++) {
                 int c = j * n + i;
@@ -377,8 +559,19 @@ public final class FlowGrid {
                 if ((f & F_SOLID) != 0) continue;
                 float x = d[c];
                 if ((f & F_INDOOR) != 0) x *= kIn;
-                else x += (ambient - x) * kOut;
-                if (i == 0 || j == 0 || i == n - 1 || j == n - 1) x += (ambient - x) * kEdge;
+                else {
+                    x += (ambient - x) * kOut;
+                    if (still) {    // ar parado (abaixo da metade do vento): a névoa se desfaz
+                        int fw = j * nu + i;
+                        float sx = (u[fw] + u[fw + 1]) * 0.5f, sy = (v[c] + v[c + n]) * 0.5f;
+                        float s = 1f - (float) Math.sqrt(sx * sx + sy * sy) * invHalfWind;
+                        if (s > 0f) x *= 1f - kStill * s * s;
+                    }
+                }
+                if (i == 0 || j == 0 || i == n - 1 || j == n - 1) {
+                    float edge = i == 0 ? edgeW[j] : i == n - 1 ? edgeE[j] : j == 0 ? edgeN[i] : edgeS[i];
+                    x += (edge - x) * kEdge;
+                }
                 d[c] = x < 0f ? 0f : (x > D_MAX ? D_MAX : x);
             }
     }
