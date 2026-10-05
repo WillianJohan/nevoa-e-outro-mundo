@@ -26,11 +26,14 @@ end
 -- são: no solo pela marca do server/NOM_Eco.lua, no cliente de MP pelo outfit.
 -- cfg = NOM_VariantRules.semRostoConfig(...) (opcional: quem varre a lista passa
 -- um só pra todos).
+-- O sorteio (uma chamada Java, o ID) vem primeiro: a varredura passa por todo
+-- zumbi carregado a cada SCAN_TICKS na névoa, e o comum para aí.
 function NOM_SemRosto.isSemRosto(z, period, cfg)
-    if not period or z:isDead() then return false end
-    if (z:hasModData() and z:getModData().NOM_eco) or z:getOutfitName() == ECO_OUTFIT then return false end
+    if not period then return false end
     cfg = cfg or NOM_VariantRules.semRostoConfig(NOM_Config.get)
-    return NOM_VariantRules.semRosto(z:getPersistentOutfitID(), period, cfg)
+    if not NOM_VariantRules.semRosto(z:getPersistentOutfitID(), period, cfg) then return false end
+    if z:isDead() then return false end
+    return not ((z:hasModData() and z:getModData().NOM_eco) or z:getOutfitName() == ECO_OUTFIT)
 end
 
 -- Chão onde o Sem-rosto pode reaparecer: square existe, livre e não é água.

@@ -568,6 +568,40 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 
 ---
 
+## 8. Remover o mod de um save (sprint 0006)
+
+**Verificado na sprint 0006** (bytecode B42.20.4). Conclusão: **nada quebra**; o que
+fica no save é ignorado pelo jogo. Nenhuma correção foi necessária. Falta o teste no
+jogo ([roteiro](../teste-in-game.md)).
+
+O que o mod grava no save e o que acontece sem ele:
+
+| O que fica | Onde | Sem o mod | Evidência |
+|---|---|---|---|
+| `ModData` global `NevoaEOutroMundo` (`eco.night/inNight/ids`, `fog.night/inNight`) | `global_mod_data.bin` | carregado como tabela qualquer e nunca lido: órfão, sem efeito | `GlobalModData.load` lê `nome → createModDataTable()` pra toda chave do arquivo, sem conferir quem é dono (offsets 125–183) |
+| `modData` de corpo: `NOM_ecoReleased`, e `NOM_eco` num cadáver de Eco que escapou da remoção | chunk (`IsoMovingObject.save`, §1.2) | chave a mais numa `KahluaTable`; corpo comum | só o mod lê essas chaves |
+| A lista de outfits (o mod registra `NOM_Eco`) | todo `persistentOutfitID` salvo (popman, chunk) | o ID guarda o **índice** do outfit (bits 16–30) na lista ordenada por nome, refeita a cada boot. Tirar o `NOM_Eco` desloca em −1 o índice de **todo outfit que vem depois dele** na lista: zumbis virtuais e corpos com esses outfits voltam com a roupa do vizinho, e (com o mod de volta, ou sem) o sorteio das variantes deles muda, porque é função do ID. Instalar o mod num save faz o mesmo no sentido contrário (+1). Índice que cai fora da lista: `PersistentOutfits.getOutfit(I)` devolve 0 (40–58) e `dressInOutfit` sai sem vestir (6–10), zumbi sem roupa. **Nada dá erro**: é o que acontece com qualquer mod que traz outfit (ADR-003) | bytecode `PersistentOutfits` |
+| Opções `NevoaEOutroMundo.*` | `map_sand.bin` (save) e `<servidor>_SandboxVars.lua` (dedicado) | `.bin`: `SandboxOptions.load(ByteBuffer)` acha a opção pelo nome e, sem ela, só loga e pula (95–110). `.lua`: `readLuaFile` percorre as opções **conhecidas** e lê cada uma da tabela (`fromTable`, 235–272): chave desconhecida nunca é olhada | bytecode `SandboxOptions` |
+
+O que **não** vai pro save (nada a limpar):
+
+- Camada modded do clima: `ClimateManager.save` grava só os valores de admin
+  (`ClimateFloat.saveAdmin`: `isAdminOverride` + `adminValue`; `ClimateColor.saveAdmin` idem).
+- Troca do `ZombieLore` (§2.1): volta na mesma chamada.
+- `modData` de zumbi, variante, useless, bote: não são salvos (fato transversal 3); o
+  zumbi recarregado volta com os stats do sandbox.
+- `IsoMarkers` (§5), `SearchMode`/`isOverride` (§6), sons locais: só em memória.
+- Estados forçados do `NOM_Debug`: a tabela fica em memória, **mas a noite e a névoa
+  forçadas avançam os contadores salvos** (`eco.night`, `fog.night` acima). Num save de
+  verdade isso muda o número da noite pra sempre (sorteio das variantes, noite dos
+  Ecos): debug só em save descartável.
+
+Recolocar o mod num save que rodou sem ele: o `ModData` órfão volta a valer. Se o save
+foi salvo de noite com o mod e reaberto de dia, a primeira leitura do clima fecha a
+noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
+
+---
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

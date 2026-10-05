@@ -4,6 +4,10 @@ require "NOM_Config"
 -- Flags night/fog derivadas do clima vanilla.
 NOM_World = { night = false, fog = false }
 
+-- Estados forçados pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
+-- night = true/false, fog = intensidade 0..1; nil = do clima. Só em memória.
+NOM_World.forced = {}
+
 local listeners = {}
 
 -- fn(flag, value) é chamada só na borda: flag "night" ou "fog".
@@ -25,8 +29,11 @@ function NOM_World.update(fogIntensity)
     NOM_World.tod = getGameTime():getTimeOfDay()
     NOM_World.dawn = season:getDawn()
     NOM_World.dusk = season:getDusk()
+    local forced = NOM_World.forced
+    if forced.fog ~= nil then fogIntensity = forced.fog end
     NOM_World.fogIntensity = fogIntensity
     NOM_World.night = NOM_Rules.isNight(NOM_World.tod, NOM_World.dawn, NOM_World.dusk)
+    if forced.night ~= nil then NOM_World.night = forced.night end
     NOM_World.fog = NOM_Rules.isFog(fogIntensity, NOM_Config.get("FogThreshold"), NOM_World.fog)
     notify("night", wasNight)
     notify("fog", wasFog)

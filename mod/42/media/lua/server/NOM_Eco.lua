@@ -53,11 +53,13 @@ local function isEco(z)
     return z:getModData().NOM_eco == true
 end
 
-local function spawnFrom(body, night)
-    local sq = body:getSquare()
-    local list = addZombiesInOutfit(sq:getX(), sq:getY(), sq:getZ(), 1, OUTFIT, FEMALE_CHANCE)
+NOM_Eco = {}
+
+-- Um Eco em (x, y, zz), contado na noite night. Devolve o zumbi ou nil.
+local function spawn(x, y, zz, night)
+    local list = addZombiesInOutfit(x, y, zz, 1, OUTFIT, FEMALE_CHANCE)
     if not list or list:size() == 0 then
-        return false
+        return nil
     end
     local z = list:get(0)
     -- OnZombieCreate já disparou antes do outfit ser vestido: marca aqui.
@@ -70,6 +72,14 @@ local function spawnFrom(body, night)
     else
         debugLog("outfit " .. OUTFIT .. " não carregou (persistentOutfitID 0)")
     end
+    return z
+end
+
+local function spawnFrom(body, night)
+    -- corpo da lista compartilhada da varredura pode ter sido removido entre ticks
+    local sq = body:getSquare()
+    if not sq then return false end
+    if not spawn(sq:getX(), sq:getY(), sq:getZ(), night) then return false end
     body:getModData().NOM_ecoReleased = true
     return true
 end
@@ -102,6 +112,18 @@ local function loadedEcos()
     return out
 end
 
+-- Debug (server/NOM_DebugServer.lua): Eco sem corpo, só à noite (de dia não
+-- haveria amanhecer pra levá-lo).
+function NOM_Eco.spawnAt(x, y, zz)
+    local night = currentNight()
+    if not night or not NOM_World.night then return false end
+    return spawn(x, y, zz, night) ~= nil
+end
+
+function NOM_Eco.loaded()
+    return #loadedEcos()
+end
+
 -- Corpo de Eco carrega o modData do Eco (o construtor do IsoDeadBody copia).
 -- removeCorpse(body, false) no servidor avisa os clientes (RemoveCorpseFromMap).
 local function removeEcoCorpses(sq)
@@ -122,64 +144,62 @@ local function near(a, b, r2)
     return a.z == b.z and dx * dx + dy * dy <= r2
 end
 
--- Uma passada na lista de zumbis conta os Ecos perto de cada jogador.
-local function countEcosNear(cell, ps, radius)
-    local counts, r2 = {}, radius * radius
-    for i = 1, #ps do counts[i] = 0 end
+-- Ecos vivos perto do jogador p (uma passada na lista de zumbis). Conta também os
+-- que a varredura acabou de spawnar pra outro jogador: o Eco novo entra no teto de
+-- todo jogador perto dele.
+local function countEcosNear(cell, p, radius)
+    local n, r2 = 0, radius * radius
     local list = cell:getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if isEco(z) and not z:isDead() then
             local pos = { x = math.floor(z:getX()), y = math.floor(z:getY()), z = math.floor(z:getZ()) }
-            for j, p in ipairs(ps) do
-                if near(pos, p, r2) then counts[j] = counts[j] + 1 end
-            end
+            if near(pos, p, r2) then n = n + 1 end
         end
     end
-    return counts
+    return n
 end
 
--- Corpos ainda sem Eco no raio de qualquer jogador. Cada square é lido uma vez
--- por varredura, mesmo com jogadores juntos. Corpo já liberado é pulado antes
--- de alocar qualquer coisa; cadáver de Eco que escapou da remoção é varrido.
+-- Junta em cands os corpos ainda sem Eco no raio do jogador p. visited vale pela
+-- varredura inteira: square já lido pra outro jogador não é lido de novo, e o
+-- corpo dele já está em cands. Corpo já liberado é pulado antes de alocar
+-- qualquer coisa; cadáver de Eco que escapou da remoção é varrido.
 -- ponytail: só o andar do jogador; corpo em outro andar fica de fora.
-local function bodiesAround(cell, ps, radius)
-    local cands, visited = {}, {}
-    for _, p in ipairs(ps) do
-        for x = p.x - radius, p.x + radius do
-            for y = p.y - radius, p.y + radius do
-                local key = (x * 100000 + y) * 100 + p.z + 50
-                if not visited[key] then
-                    visited[key] = true
-                    local sq = cell:getGridSquare(x, y, p.z)
-                    if sq then
-                        local list, sweep = sq:getDeadBodys(), false
-                        for i = 0, list:size() - 1 do
-                            local b = list:get(i)
-                            if not b:isAnimal() then
-                                local md = b:hasModData() and b:getModData() or nil
-                                if md and md.NOM_eco then
-                                    sweep = true
-                                elseif not (md and md.NOM_ecoReleased) then
-                                    cands[#cands + 1] = { body = b, x = x, y = y, z = p.z }
-                                end
+local function bodiesAround(cell, p, radius, visited, cands)
+    for x = p.x - radius, p.x + radius do
+        for y = p.y - radius, p.y + radius do
+            local key = (x * 100000 + y) * 100 + p.z + 50
+            if not visited[key] then
+                visited[key] = true
+                local sq = cell:getGridSquare(x, y, p.z)
+                if sq then
+                    local list, sweep = sq:getDeadBodys(), false
+                    for i = 0, list:size() - 1 do
+                        local b = list:get(i)
+                        if not b:isAnimal() then
+                            local md = b:hasModData() and b:getModData() or nil
+                            if md and md.NOM_eco then
+                                sweep = true
+                            elseif not (md and md.NOM_ecoReleased) then
+                                cands[#cands + 1] = { body = b, x = x, y = y, z = p.z }
                             end
                         end
-                        if sweep then removeEcoCorpses(sq) end
                     end
+                    if sweep then removeEcoCorpses(sq) end
                 end
             end
         end
     end
-    return cands
 end
 
-local function scan()
+-- Varredura em andamento: { ps, i, visited, cands, night, radius, cap, spawned }.
+-- Um jogador por tick (o pico é o raio de um jogador, (2R+1)² squares, não N×).
+local scanning
+
+local function startScan()
+    scanning = nil
     local night = currentNight()
     if not night or not NOM_World.night or not NOM_Config.get("EcoEnabled") then return end
-    local cell = getCell()
-    local radius = NOM_Config.get("EcoRadius")
-    local cap = NOM_Config.get("EcoMaxPerPlayer")
     local ps = {}
     for _, p in ipairs(NOM_Players.all()) do
         if not p:isDead() then
@@ -187,23 +207,30 @@ local function scan()
         end
     end
     if #ps == 0 then return end
-    local counts = countEcosNear(cell, ps, radius)
-    local cands = bodiesAround(cell, ps, radius)
-    local r2, spawned = radius * radius, 0
-    for i, p in ipairs(ps) do
-        local quota = NOM_EcoRules.quota(cap, counts[i])
-        for _, c in ipairs(NOM_EcoRules.pick(cands, p.x, p.y, p.z, radius, quota)) do
-            if spawnFrom(c.body, night) then
-                c.released = true
-                spawned = spawned + 1
-                -- o Eco novo conta no teto de todo jogador perto dele
-                for j, q in ipairs(ps) do
-                    if near(c, q, r2) then counts[j] = counts[j] + 1 end
-                end
-            end
+    scanning = { ps = ps, i = 1, visited = {}, cands = {}, night = night, spawned = 0,
+        radius = NOM_Config.get("EcoRadius"), cap = NOM_Config.get("EcoMaxPerPlayer") }
+end
+
+local function scanStep()
+    local s = scanning
+    if not NOM_World.night or currentNight() ~= s.night then -- amanheceu no meio
+        scanning = nil
+        return
+    end
+    local cell, p = getCell(), s.ps[s.i]
+    local quota = NOM_EcoRules.quota(s.cap, countEcosNear(cell, p, s.radius))
+    bodiesAround(cell, p, s.radius, s.visited, s.cands)
+    for _, c in ipairs(NOM_EcoRules.pick(s.cands, p.x, p.y, p.z, s.radius, quota)) do
+        if spawnFrom(c.body, s.night) then
+            c.released = true
+            s.spawned = s.spawned + 1
         end
     end
-    if spawned > 0 then debugLog("spawn=" .. spawned) end
+    s.i = s.i + 1
+    if s.i > #s.ps then
+        if s.spawned > 0 then debugLog("spawn=" .. s.spawned) end
+        scanning = nil
+    end
 end
 
 -- Eco que volta de chunk descarregado: o modData dele não foi salvo, só o
@@ -263,6 +290,7 @@ local function onTick()
             removeEcos(gone)
         end
     end
+    if scanning then scanStep() end
     if #dying == 0 then return end
     local cell = getCell()
     for i = #dying, 1, -1 do
@@ -282,7 +310,7 @@ NOM_World.onChange(function(flag, on)
     end
 end)
 
-Events.EveryTenMinutes.Add(scan)
+Events.EveryTenMinutes.Add(startScan)
 Events.OnZombieCreate.Add(onZombieCreate)
 Events.OnZombieDead.Add(onZombieDead)
 Events.OnTick.Add(onTick)

@@ -5,6 +5,12 @@
 -- recarregar o chunk ou o save.
 NOM_VariantRules = {}
 
+-- Forçado pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
+-- [persistentOutfitID] = "estalador" | "corredor" | "semrosto". Vale contra
+-- chance e toggle, mas não sem noite/período conhecido. Só em memória; servidor e
+-- clientes recebem o mesmo, então concordam (ADR-006).
+NOM_VariantRules.forced = {}
+
 -- Grito do Corredor: no máximo um por zumbi a cada meia hora de jogo.
 NOM_VariantRules.SCREAM_COOLDOWN_HOURS = 0.5
 
@@ -39,6 +45,8 @@ end
 
 function NOM_VariantRules.variant(id, night, cfg)
     if not id or id == 0 or not night then return nil end
+    local f = NOM_VariantRules.forced[id]
+    if f == "estalador" or f == "corredor" then return f end
     local roll = roll(id, night, 0)
     local e = cfg.estaladorOn and cfg.estaladorChance or 0
     local c = cfg.corredorOn and cfg.corredorChance or 0
@@ -63,7 +71,9 @@ end
 local SEM_ROSTO_SALT = 4999999
 
 function NOM_VariantRules.semRosto(id, period, cfg)
-    if not id or id == 0 or not period or not cfg.semRostoOn then return false end
+    if not id or id == 0 or not period then return false end
+    if NOM_VariantRules.forced[id] == "semrosto" then return true end
+    if not cfg.semRostoOn then return false end
     return roll(id, period, SEM_ROSTO_SALT) < cfg.semRostoChance
 end
 

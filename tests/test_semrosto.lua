@@ -186,4 +186,15 @@ return {
         assert(#G.reports == 1 and G.reports[1].zz == 0, "z quebrado travou o Sem-rosto")
         assert(NOM_SemRosto.nearest(p) ~= nil, "rádio comparou z float")
     end,
+
+    -- orçamento: na névoa, a varredura faz no máximo 1 chamada por zumbi comum
+    semrosto_scan_one_call_per_common_zombie = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        local zs = {}
+        for i = 1, 200 do zs[i] = G.zombie({ x = 100 + i % 20, y = 120 + math.floor(i / 20), id = G.COMMON }) end
+        local c = dofile("tests/calls.lua")(zs)
+        G.tick(NOM_SemRosto.SCAN_TICKS * 3)
+        assert(c.n <= #zs * 3, "varredura chamou demais: " .. c.n .. " em 3 varreduras de " .. #zs)
+    end,
 }

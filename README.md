@@ -12,7 +12,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Com névoa forte, o mundo escurece, o rádio chia e o **Sem-rosto** aparece.
   Olhe pra ele e ele some. Pra reaparecer mais perto.
 
-> Estado: **em design**. Ainda não há código jogável. Ver o [roadmap](docs/sprints/README.md).
+> Estado: **em teste**. Sprints 0001–0006 implementadas, esperando a sessão in-game ([roteiro](docs/teste-in-game.md)). Ver o [roadmap](docs/sprints/README.md).
 
 ---
 

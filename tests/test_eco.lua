@@ -186,7 +186,12 @@ local function setup(opts)
             fire("OnTick", 0)
         end
     end
-    function G.tenMinutes() fire("EveryTenMinutes") end
+    -- EveryTenMinutes começa a varredura; ela anda um jogador por tick (OnTick)
+    function G.fireTenMinutes() fire("EveryTenMinutes") end
+    function G.tenMinutes()
+        fire("EveryTenMinutes")
+        for _ = 1, #G.players do fire("OnTick", 0) end
+    end
     function G.setTime(tod)
         G.world.tod = tod
         NOM_World.update(0)
@@ -623,4 +628,76 @@ return {
         G.tenMinutes()
         assert(#G.ecos() == 5, "Ecos: " .. #G.ecos())
     end,
+    -- orçamento: a varredura escala com jogadores × raio², não com o mapa nem com a
+    -- horda; zumbi comum custa 1 chamada (o modData) por varredura
+    eco_scan_budget_independent_of_horde = function()
+        local G = setup({ sandbox = { EcoRadius = 10 } })
+        bodies(G, 5, 102, 102)
+        bodies(G, 50, 300, 300) -- fora do raio: nunca lidos
+        local zs = {}
+        for i = 1, 2000 do zs[i] = G.normalZombie(100 + i % 50, 300 + math.floor(i / 50)) end
+        local c = dofile("tests/calls.lua")(zs)
+        G.tenMinutes()
+        local squares = 0
+        for _ in pairs(G.squareCalls) do squares = squares + 1 end
+        assert(squares <= 21 * 21, "squares lidos: " .. squares)
+        assert(c.n <= #zs, "chamadas em zumbi comum: " .. c.n)
+        assert(#G.ecos() == 5)
+    end,
+    -- debug (NOM_Debug.spawnEco): Eco no lugar pedido, só à noite, contado na
+    -- noite atual como os outros (some no amanhecer)
+    eco_spawn_at_only_at_night = function()
+        local G = setup({ tod = 12 })
+        assert(NOM_Eco.spawnAt(100, 100, 0) == false, "spawnou de dia")
+        assert(#G.ecos() == 0)
+        G.setTime(23)
+        assert(NOM_Eco.spawnAt(100, 100, 0) == true)
+        local e = G.ecos()[1]
+        assert(e and e.md.NOM_eco == true and e.health == 0.3, "Eco sem marca ou sem vida baixa")
+        assert(NOM_Eco.loaded() == 1)
+        local ids = G.globalMD.NevoaEOutroMundo.eco.ids
+        assert(ids[e.outfitID] and ids[e.outfitID][G.globalMD.NevoaEOutroMundo.eco.night], "ID não guardado na noite")
+        G.setTime(7)
+        assert(#G.ecos() == 0 and NOM_Eco.loaded() == 0, "Eco do debug não sumiu no amanhecer")
+    end,
+    -- a varredura é espalhada: um jogador por tick, com os squares já lidos
+    -- compartilhados entre os ticks; o pico é o raio de um jogador, não N×
+    eco_scan_one_player_per_tick = function()
+        local G = setup({ sandbox = { EcoRadius = 10 },
+            players = { { x = 100, y = 100, z = 0 }, { x = 300, y = 100, z = 0 }, { x = 500, y = 100, z = 0 } } })
+        bodies(G, 3, 101, 101)
+        bodies(G, 3, 301, 101)
+        bodies(G, 3, 501, 101)
+        G.fireTenMinutes()
+        local perTick = {}
+        for i = 1, 4 do
+            G.squareCalls = {}
+            G.tick()
+            local n = 0
+            for _ in pairs(G.squareCalls) do n = n + 1 end
+            perTick[i] = n
+            assert(n <= 21 * 21, "tick " .. i .. " leu " .. n .. " squares")
+        end
+        assert(perTick[1] > 0 and perTick[2] > 0 and perTick[3] > 0 and perTick[4] == 0,
+            "não andou um jogador por tick: " .. table.concat(perTick, ","))
+        assert(#G.ecos() == 9, "Ecos: " .. #G.ecos())
+    end,
+    eco_scan_skips_body_removed_mid_scan = function()
+        -- corpo achado num tick da varredura (lista compartilhada) e removido
+        -- (queimado, carregado) antes do tick do outro jogador que ia usá-lo:
+        -- sem erro, sem Eco desse corpo, varredura segue
+        local G = setup({ sandbox = { EcoRadius = 10, EcoMaxPerPlayer = 1 },
+            players = { { x = 100, y = 100, z = 0 }, { x = 117, y = 100, z = 0 } } })
+        local bs = { G.body(105, 100, 0), G.body(109, 100, 0) }
+        G.fireTenMinutes()
+        G.tick()
+        local gone
+        for _, b in ipairs(bs) do if not b.md.NOM_ecoReleased then gone = b end end
+        assert(gone, "o primeiro tick deveria liberar só um corpo")
+        gone.square:removeCorpse(gone, false)
+        for _ = 1, 3 do G.tick() end
+        assert(not gone.md.NOM_ecoReleased)
+        assert(#G.ecos() == 1, "Ecos: " .. #G.ecos())
+    end,
 }
+
