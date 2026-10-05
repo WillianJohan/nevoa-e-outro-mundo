@@ -72,6 +72,12 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 
+## Shader
+
+| Arquivo | O que é |
+|---|---|
+| `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
+
 ## Conteúdo vanilla referenciado (nada copiado)
 
 | Onde | O que | Referência |

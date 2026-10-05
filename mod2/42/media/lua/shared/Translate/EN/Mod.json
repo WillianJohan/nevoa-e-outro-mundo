@@ -1,0 +1,4 @@
+{
+    "name": "Fog and Otherworld - Shader (not compatible with ShadowZ)",
+    "description": "Optional. Replaces the game's screen shader with its own: chromatic aberration, grain and distortion in the fog. Requires Fog and Otherworld. Do not use with ShadowZ or any other mod that changes screen.frag. The game compiles the shader once per session, on the first world loaded: after turning it on or off, restart the game."
+}

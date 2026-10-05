@@ -3,6 +3,7 @@
 #
 #   <pasta do jogo>/Workshop/NevoaEOutroMundo/ (~/Zomboid, ou a da Steam Flatpak)
 #     Contents/mods/NevoaEOutroMundo/   ← mod/ como está no último commit (git archive)
+#     Contents/mods/NevoaEOutroMundo_Shader/  ← mod2/ (shader opcional, sprint 0013)
 #     preview.png                       ← docs/workshop/preview.png
 #     workshop.txt                      ← gerado de docs/workshop/description-*.txt
 #
@@ -20,6 +21,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MOD_ID="NevoaEOutroMundo"
+SHADER_ID="NevoaEOutroMundo_Shader" # segundo mod do mesmo item (validateModsFolder valida cada pasta)
 TITLE="Névoa e Outro Mundo"
 TAGS="Build 42;Hardmode;Multiplayer" # permitidas em media/WorkshopTags.txt do jogo
 DEFAULT_VISIBILITY="unlisted"        # primeiro upload: só com o link, até o teste da instalação limpa
@@ -35,6 +37,7 @@ else
 fi
 DEST="$ZOMBOID_DIR/Workshop/$MOD_ID"
 SRC_MOD="$REPO/mod"
+SRC_SHADER="$REPO/mod2"
 PREVIEW="$REPO/docs/workshop/preview.png"
 DESC_EN="$REPO/docs/workshop/description-en.txt"
 DESC_PT="$REPO/docs/workshop/description-ptbr.txt"
@@ -56,10 +59,11 @@ warn() { echo "AVISO: $*" >&2; }
 say() { if [ "$DRY" = 1 ]; then echo "[dry-run] $*"; else echo "$*"; fi; }
 
 # --- conferências antes de escrever qualquer coisa ---
-for f in "$SRC_MOD/42/mod.info" "$SRC_MOD/common" "$PREVIEW" "$DESC_EN" "$DESC_PT"; do
+for f in "$SRC_MOD/42/mod.info" "$SRC_MOD/common" "$SRC_SHADER/42/mod.info" "$SRC_SHADER/common" "$PREVIEW" "$DESC_EN" "$DESC_PT"; do
     [ -e "$f" ] || die "falta $f"
 done
 grep -qx "id=$MOD_ID" "$SRC_MOD/42/mod.info" || die "mod/42/mod.info sem id=$MOD_ID"
+grep -qx "id=$SHADER_ID" "$SRC_SHADER/42/mod.info" || die "mod2/42/mod.info sem id=$SHADER_ID"
 
 size=$(wc -c <"$PREVIEW")
 [ "$size" -le "$MAX_PREVIEW_BYTES" ] || die "preview.png com $size bytes (o jogo recusa acima de $MAX_PREVIEW_BYTES)"
@@ -73,17 +77,17 @@ desc_bytes=$(($(wc -c <"$DESC_EN") + $(wc -c <"$DESC_PT") + 1))
 
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || die "$REPO não é um repositório git"
 # o mod sai do HEAD (git archive): sem estes no commit, a pasta sairia pela metade
-for f in mod/42/mod.info mod/common/.gitkeep; do
+for f in mod/42/mod.info mod/common/.gitkeep mod2/42/mod.info mod2/common/.gitkeep; do
     git -C "$REPO" cat-file -e "HEAD:$f" 2>/dev/null || die "o HEAD não tem $f: commite antes (o upload sai do último commit)"
 done
 # texto, preview e ID do Workshop também têm de ser os do commit que leva a tag
 untracked=()
 while IFS= read -r line; do
     case "$line" in
-        "?? mod/"*) untracked+=("${line#?? }") ;;
-        *) die "mudança não commitada em mod/ ou docs/workshop/ ($line): commite antes, o upload é o último commit" ;;
+        "?? mod/"* | "?? mod2/"*) untracked+=("${line#?? }") ;;
+        *) die "mudança não commitada em mod/, mod2/ ou docs/workshop/ ($line): commite antes, o upload é o último commit" ;;
     esac
-done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod docs/workshop)
+done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod mod2 docs/workshop)
 for f in ${untracked[@]+"${untracked[@]}"}; do warn "$f não está no git: fica fora do upload"; done
 
 repo_id=""
@@ -111,6 +115,7 @@ fi
 
 say "destino: $DEST"
 say "Contents/mods/$MOD_ID/ <- mod/ do commit $(git -C "$REPO" rev-parse --short HEAD) ($(git -C "$REPO" ls-files mod | wc -l) arquivos, cópia limpa)"
+say "Contents/mods/$SHADER_ID/ <- mod2/ do mesmo commit ($(git -C "$REPO" ls-files mod2 | wc -l) arquivos)"
 say "preview.png <- docs/workshop/preview.png ($size bytes)"
 say "workshop.txt <- docs/workshop/description-en.txt + description-ptbr.txt ($desc_bytes bytes);" \
     "${id_line:-sem id (primeiro upload)}, visibility=$visibility"
@@ -121,6 +126,8 @@ mkdir -p "$DEST"
 rm -rf "$DEST/Contents"
 mkdir -p "$DEST/Contents/mods/$MOD_ID"
 git -C "$REPO" archive HEAD mod | tar -x -C "$DEST/Contents/mods/$MOD_ID" --strip-components=1
+mkdir -p "$DEST/Contents/mods/$SHADER_ID"
+git -C "$REPO" archive HEAD mod2 | tar -x -C "$DEST/Contents/mods/$SHADER_ID" --strip-components=1
 cp "$PREVIEW" "$DEST/preview.png"
 
 # Formato lido por SteamWorkshopItem.readWorkshopTxt: uma linha description= por

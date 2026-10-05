@@ -26,6 +26,7 @@ local FILES = {
     "tests/test_screen_fx_assets.lua",
     "tests/test_screen_fx_options.lua",
     "tests/test_screen_fx.lua",
+    "tests/test_shader.lua",
     "tests/test_semrosto.lua",
     "tests/test_fog.lua",
     "tests/test_fog_event.lua",
@@ -47,6 +48,7 @@ local pass, fail = 0, 0
 for _, file in ipairs(FILES) do
     local tests = dofile(file)
     for name, fn in pairs(tests) do
+        NOM_ShaderMod = nil -- flag do mod do shader (mod2): só quem testa liga
         local ok, err = pcall(fn)
         if ok then
             pass = pass + 1

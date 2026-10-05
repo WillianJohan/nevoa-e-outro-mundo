@@ -10,7 +10,7 @@ Horror for Build 42, inspired by The Last of Us and Silent Hill. [b]The night br
 [/list]
 
 [h2]Fog[/h2]
-Every few days, at any hour, an air-raid siren wails across the whole map. Thirty seconds later the fog rolls in, by day or by night, for 2 to 6 hours: the world darkens and loses color, a low drone replaces the ambience, blood and rust creep across the ground and the screen edges close in. There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
+Every few days, at any hour, an air-raid siren wails across the whole map. Thirty seconds later the fog rolls in, by day or by night, for 2 to 6 hours: the world darkens and loses color, a low drone replaces the ambience, blood and rust creep across the ground, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
 [list]
 [*][b]Clickers[/b]: blind, guided only by sound, clicking as a warning. Crouch, stay quiet and walk right past.
 [*][b]Runners[/b]: sprinters that scream when they spot you and call the zombies around. They start the horde.
@@ -43,9 +43,8 @@ Works in solo and on dedicated servers, same code. The server decides night, fog
 
 [h2]Known limits[/h2]
 [list]
-[*]Variants have no look of their own: you recognize them by sound and behavior.
-[*]Echoes wear vanilla clothing (hospital gown and veil).
-[*]Fog atmosphere (sound, stains, vignette) follows only the first player in split screen.
+[*]Optional second mod in this item, [b]Shader[/b]: chromatic aberration, grain and distortion in the fog. Not with ShadowZ; restart the game after turning it on or off.
+[*]Fog atmosphere (sound, stains, screen) follows only the first player in split screen.
 [/list]
 
 Source, design docs and bug reports: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
