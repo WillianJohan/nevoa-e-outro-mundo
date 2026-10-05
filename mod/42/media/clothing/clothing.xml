@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Outfit do Eco. Só referencia itens vanilla por GUID (media/fileGuidTable.xml):
-     ae2071bc-... = Gown_Hospital, edf2b504-... = Hat_WeddingVeil. -->
+<!-- Outfit do Eco (sprint 0012): itens do mod, por GUID (media/fileGuidTable.xml do mod):
+     e8a21b0f-... = NOM_EcoCinza (cinza no corpo todo), 82f80e18-... = NOM_EcoVeu (véu de fumaça).
+     Os modelos são vanilla, citados pelo nome nos XML de clothing/clothingItems/. -->
 <outfitManager>
 	<m_FemaleOutfits>
 		<m_Name>NOM_Eco</m_Name>
@@ -11,10 +12,10 @@
 		<m_AllowTopTint>false</m_AllowTopTint>
 		<m_AllowTShirtDecal>false</m_AllowTShirtDecal>
 		<m_items>
-			<itemGUID>ae2071bc-0d47-4041-b0a5-28c8cfa46c05</itemGUID>
+			<itemGUID>e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d</itemGUID>
 		</m_items>
 		<m_items>
-			<itemGUID>edf2b504-261e-4baf-9440-48884d80a8bb</itemGUID>
+			<itemGUID>82f80e18-a7cf-4312-949c-23879a1e3820</itemGUID>
 		</m_items>
 	</m_FemaleOutfits>
 	<m_MaleOutfits>
@@ -26,10 +27,10 @@
 		<m_AllowTopTint>false</m_AllowTopTint>
 		<m_AllowTShirtDecal>false</m_AllowTShirtDecal>
 		<m_items>
-			<itemGUID>ae2071bc-0d47-4041-b0a5-28c8cfa46c05</itemGUID>
+			<itemGUID>e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d</itemGUID>
 		</m_items>
 		<m_items>
-			<itemGUID>edf2b504-261e-4baf-9440-48884d80a8bb</itemGUID>
+			<itemGUID>82f80e18-a7cf-4312-949c-23879a1e3820</itemGUID>
 		</m_items>
 	</m_MaleOutfits>
 </outfitManager>

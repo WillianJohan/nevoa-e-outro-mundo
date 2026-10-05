@@ -1,6 +1,6 @@
 # Créditos
 
-**Nada de terceiros.** Todo arquivo de som e imagem do mod é original, gerado por
+**Nada de terceiros.** Todo arquivo de som, imagem e textura do mod é original, gerado por
 script deste repositório; o resto do que o mod mostra é conteúdo vanilla do Project
 Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum
 código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
@@ -46,13 +46,41 @@ desenhado à mão porque a fonte embutida não tem o caractere.
 
 Pra regerar: `python3 scripts/gen_images.py`.
 
+## Texturas
+
+Geradas pelo script [`scripts/gen_textures.py`](scripts/gen_textures.py) (numpy + Pillow,
+semente fixa; rodar de novo dá os mesmos bytes): rachaduras de Voronoi, veias em
+isolinhas de ruído, chiado por pixel, fios e escorridos desenhados por código. Nenhum
+pixel do jogo: da textura vanilla que cada modelo usa só se conferiu o **tamanho**.
+Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
+
+| Arquivo | Tamanho | Uso |
+|---|---|---|
+| `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador: porcelana rachada, costuras escuras |
+| `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza esticada, veias quase pretas |
+| `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: pálida, escorridos de fuligem |
+| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura manchada e arame enferrujado |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor: carne escura, rasgos, dentes |
+| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV cinza |
+| `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo embolado da Carpideira caindo no rosto |
+| `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | cinza e fumaça no corpo todo do Eco |
+| `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu de fumaça do Eco |
+
+Pra regerar: `python3 scripts/gen_textures.py`.
+
 ## Conteúdo vanilla referenciado (nada copiado)
 
 | Onde | O que | Referência |
 |---|---|---|
-| `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | camisola de hospital | GUID `ae2071bc-0d47-4041-b0a5-28c8cfa46c05` (`Gown_Hospital`) |
-| `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | véu de noiva | GUID `edf2b504-261e-4baf-9440-48884d80a8bb` (`Hat_WeddingVeil`) |
+| `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | cinza no corpo todo (item do mod, sem modelo: camada no corpo como a do `Gown_Hospital`) | GUID `e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d` (`NOM_EcoCinza`, do mod) |
+| `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | véu de fumaça (item do mod) | GUID `82f80e18-a7cf-4312-949c-23879a1e3820` (`NOM_EcoVeu`, do mod) |
+| `clothingItems/NOM_EstaladorVenda.xml` | modelo dos óculos de esqui (`Glasses_SkiGoggles`) | `static\clothes\m_glasses_skigoggles`, `static\clothes\f_glasses_skigoggles` |
+| `clothingItems/NOM_CorredorBoca.xml` | modelo da máscara cirúrgica (`Hat_SurgicalMask`) | `static\clothes\m_surgicalmask`, `static\clothes\f_surgicalmask` |
+| `clothingItems/NOM_SemRostoEstatica.xml` | modelo da balaclava inteira (`Hat_BalaclavaFull`) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
+| `clothingItems/NOM_CarpideiraCabelo.xml`, `NOM_EcoVeu.xml` | modelo do véu de noiva (`Hat_WeddingVeil`) | `skinned\clothes\m_weddingveil`, `skinned\clothes\f_weddingveil` |
+| `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |
+| `scripts/NOM_clothing.txt` | ícones dos itens | `SkiGogglesWhite`, `SurgicalMaskBlue`, `Balaclava`, `VeilWedding`, `HospitalGown`, pelo nome |
 | `NOM_FogOverlays.lua` | manchas de sangue no chão | sprites `overlay_blood_floor_01_0` a `_27`, por nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |
 | `NOM_FogVignette.lua` | vinheta da névoa | efeito de tela do modo de busca do jogo (`getSearchMode()`), sem textura própria |
-| Variantes, Eco, Sem-rosto, Carpideira | corpo e animação | zumbis vanilla; o mod só muda comportamento |
+| Variantes, Eco, Sem-rosto, Carpideira | corpo e animação | zumbis vanilla; o mod muda comportamento, pele e peças por cima (texturas acima) |

@@ -41,6 +41,7 @@ Corredores, Sem-rosto, Carpideiras → amanhecer → repetir.
 | [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Carpideira, Eco | `accepted` |
 | [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `accepted` |
 | [sandbox.md](sandbox.md) | Opções de sandbox | `accepted` |
+| [art-direction.md](art-direction.md) | Visual dos monstros: o que cada um veste e por quê | `accepted` |
 
 ## Fora do MVP (`later`)
 
@@ -85,3 +86,10 @@ Só viram escopo por promoção explícita.
   (decisão do Johan), na faixa depois das outras (15% somados); na névoa vermelha, 1/4
   de cada tipo. Um grito por névoa ([monsters.md](monsters.md#carpideira),
   [ADR-011](../architecture/adr-011-carpideira.md)).
+- **2026-10-05** — **Visual dos monstros** (sprint 0012), decisão do Johan: cada monstro com
+  cara própria, de **textura procedural original em modelo 3D vanilla** (máscara, véu, camada
+  no corpo), sem modelo 3D novo por enquanto. "Não quero ser igual TLOU... quero me inspirar,
+  então pode ser criativo": nada de cabeça de fungo nem de cópia de Silent Hill; o visual conta
+  o que o monstro faz. A roupa do zumbi fica e o outfit não muda (o sorteio depende dele)
+  ([art-direction.md](art-direction.md),
+  [ADR-012](../architecture/adr-012-visual-das-variantes.md)).

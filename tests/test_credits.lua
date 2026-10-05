@@ -39,19 +39,33 @@ return {
     end,
 
     credits_generators_exist = function()
-        for _, script in ipairs({ "scripts/gen_sounds.py", "scripts/gen_images.py" }) do
+        for _, script in ipairs({ "scripts/gen_sounds.py", "scripts/gen_images.py", "scripts/gen_textures.py" }) do
             assert(io.open(script, "r"), "falta " .. script)
             assert(listed(script), "CREDITS.md não cita " .. script)
         end
     end,
 
-    credits_vanilla_guids_listed = function()
+    -- outfit do Eco (itens do mod desde a sprint 0012) e modelos vanilla citados por
+    -- nome nos itens de roupa do mod: tudo na tabela do CREDITS.md
+    credits_clothing_listed = function()
         local n = 0
         for guid in read("mod/42/media/clothing/clothing.xml"):gmatch("<itemGUID>([%x%-]+)</itemGUID>") do
             n = n + 1
-            assert(listed(guid), "CREDITS.md não cita o GUID vanilla " .. guid)
+            assert(listed(guid), "CREDITS.md não cita o GUID " .. guid)
         end
         assert(n > 0)
+        local models = 0
+        for _, path in ipairs(find("find mod/42/media/clothing/clothingItems -name '*.xml'")) do
+            local xml = read(path)
+            for tag in ("m_MaleModel m_FemaleModel"):gmatch("%S+") do
+                local model = xml:match("<" .. tag .. ">([^<]+)</" .. tag .. ">")
+                if model then
+                    models = models + 1
+                    assert(listed(model), "CREDITS.md não cita o modelo vanilla " .. model .. " (" .. path .. ")")
+                end
+            end
+        end
+        assert(models > 0)
     end,
 
     -- ChooseGameInfo.readModInfoAux: poster=/icon= resolvem em 42/ (e caem em common/)

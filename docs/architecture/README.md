@@ -13,6 +13,7 @@
 | [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
 | [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
 | [adr-011-carpideira.md](adr-011-carpideira.md) | Carpideira: o dono a deixa parada (useless), quem vê avisa (perto, lanterna), o servidor ouve o barulho (`OnWorldSound`), decide o grito e guarda quem gritou no `ModData` |
+| [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -57,15 +58,20 @@ mod/
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
     lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode (só local)
     lua/client/NOM_FogOverlays.lua  sangue/ferrugem no chão via IsoMarkers (só local, sem save)
+    lua/client/NOM_VariantLook.lua  pele e peça da variante na cópia local, enquanto a névoa dura (gancho do NightStats; não no dedicado)
     lua/shared/NOM_DebugRules.lua   confere os comandos de debug e formata a linha de status (puro)
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
-    clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
+    clothing/clothing.xml           outfit NOM_Eco (itens do mod por GUID: cinza e véu de fumaça)
+    clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod
+    fileGuidTable.xml               GUIDs dos itens de roupa do mod (o jogo junta com a vanilla)
+    scripts/NOM_clothing.txt        itens de script do visual (Base.NOM_*, sem ChanceToFall)
+    textures/Body/NOM_*.png, textures/NOM/*.png   geradas por scripts/gen_textures.py (CREDITS.md)
     scripts/NOM_sounds.txt          sons do mod (estalo, gritos, soluço, drone, metal, rádio, sirene, sirene vermelha)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
-scripts/                            gen_sounds.py, gen_images.py, build-workshop.sh (pasta de upload, só o mod/ commitado)
+scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, build-workshop.sh (pasta de upload, só o mod/ commitado)
 docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
 ```
 
@@ -87,6 +93,7 @@ som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
 ## Robustez
 
 - Nada da variante é guardado: ela é recalculada do `persistentOutfitID` e da noite ([ADR-006](adr-006-variantes-deterministicas.md)); ao amanhecer o perfil volta a "dia".
+- O visual da variante (pele e peça, [ADR-012](adr-012-visual-das-variantes.md)) é só da cópia local: não viaja no pacote do zumbi, não vai pro popman e sai antes do corpo nascer (sem loot nem pele no save). O Eco veste itens do mod pelo outfit, mas o corpo dele é removido e o inventário limpo ([ADR-003](adr-003-eco-spawnado.md)); um corpo de Eco que escapasse ficaria com `Base.NOM_EcoCinza`/`NOM_EcoVeu` no save.
 - Mod removido do save: nada quebra. `ModData` global órfão é carregado e nunca lido,
   opções de sandbox desconhecidas são puladas, Eco virtual com índice de outfit fora da
   lista volta sem roupa (`getOutfit` devolve 0). Clima, stats, overlays e vinheta não vão
@@ -124,10 +131,16 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |
 | **Névoa vermelha** (sprint 0010; 1/4 de cada desde a 0011): ninguém é comum | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0, Carpideira 2 (calma ou furiosa; 3 a mais no primeiro frame) → ~2,25·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~2,5·N; **por varredura da Carpideira** (a cada 10 ticks) ~8 por Carpideira calma → ~2·N; as duas varreduras somam ~0,45·N por frame; **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~810 chamadas por frame. Contra a névoa normal (15% variantes): ~0,4·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `carpideira_scan_budget`, `stats_batch_bounded_with_200` |
+| **Visual das variantes** (sprint 0012) | na passada do `NightStats` (lotes de 20 por tick), solo e cada cliente | sem troca: **zero** chamada (uma consulta de tabela Lua por zumbi da passada); pôr: ≤ 9 chamadas por zumbi, uma vez por névoa; tirar: ≤ 5, na borda do fim (todos de uma vez) ou na morte (+5: item vestido e do inventário). Cada troca refaz a textura do modelo daquele zumbi (`resetModelNextFrame`): na vermelha, todo zumbi carregado entra no 1º giro dos lotes (300 zumbis ≈ 15 ticks, ≤ 180 chamadas por tick) e sai todo no mesmo tick do fim | `look_budget`, `look_common_zombie_untouched` |
 
 Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,4·N pra ~2,7·N
 chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a
 horda no jogo ([roteiro, parte 3](../teste-in-game.md#parte-3--medições-15-min)).
+
+Ponto de atenção do visual (sprint 0012): o fim da névoa refaz o modelo de todo zumbi
+com visual no mesmo tick (na vermelha, todos os carregados). A conta de chamadas é pequena;
+o custo de verdade é o do jogo recompor a textura de cada modelo. Medir o engasgo no fim de
+uma névoa vermelha com horda ([roteiro da sprint](../sprints/sprint-0012-visual-variantes/README.md#roteiro-in-game)).
 
 Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561
 squares num tick (o raio de um jogador), a cada 10 minutos de jogo. É o maior pico do

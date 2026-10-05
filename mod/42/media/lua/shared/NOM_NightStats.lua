@@ -131,6 +131,15 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
     end
 end
 
+-- Visual da variante (client/NOM_VariantLook.lua, sprint 0012), se instalado. Em
+-- pcall: uma surpresa da API no jogo não pode parar a passada dos stats.
+local function look(z, kind, id)
+    local fn = NOM_NightStats.look
+    if not fn then return end
+    local ok, err = pcall(fn, z, kind, id)
+    if not ok then print("[NOM] visual: erro: " .. tostring(err)) end
+end
+
 -- Leva o zumbi ao perfil certo. Devolve true se aplicou.
 local function process(z, c)
     if z:isDead() then return false end
@@ -140,19 +149,25 @@ local function process(z, c)
     local md = z:getModData()
     local cur = md.NOM_night
     local fog = NOM_FogState.on
-    if cur == nil and not NOM_NightStats.night and not fog then return false end -- dia sem névoa, intocado
+    if cur == nil and not NOM_NightStats.night and not fog then -- dia sem névoa, intocado
+        look(z, nil)
+        return false
+    end
     -- Eco primeiro: nunca é variante. A variante é derivada a cada passada do ID
     -- atual (ADR-006): o spawn por outfit troca o ID depois do OnZombieCreate. Só
     -- existe na névoa (decisão do Johan, 05/10), sorteada pelo período de névoa; na
     -- névoa vermelha, todo zumbi (sprint 0010).
     -- O Sem-rosto não tem stats: aqui ele é zumbi comum (server/NOM_Fog.lua).
-    local kind = nil
+    local kind, id = nil, nil
     if isEco(z, md) then
         kind = "eco"
     elseif fog then
-        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_FogState.period, c.variants, NOM_FogState.red)
-        if kind == "semrosto" then kind = nil end
+        id = z:getPersistentOutfitID()
+        kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red)
     end
+    -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit
+    look(z, kind ~= "eco" and kind or nil, id)
+    if kind == "semrosto" then kind = nil end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
     -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.
     local dayTier = md.NOM_dayTier

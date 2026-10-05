@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-04 |
 | Substitui | o mecanismo da [ADR-001](adr-001-variantes-por-moddata.md) (`NOM_variant`/`NOM_orig`/`NOM_rolledAt` no `modData`) |
-| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)). 2026-10-05 (sprint 0011): Carpideira, 4º tipo no fim de `KINDS` ([ADR-011](adr-011-carpideira.md)) |
+| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)). 2026-10-05 (sprint 0011): Carpideira, 4º tipo no fim de `KINDS` ([ADR-011](adr-011-carpideira.md)). 2026-10-05 (sprint 0012): a variante ganha visual (pele e peça) sem trocar o outfit ([ADR-012](adr-012-visual-das-variantes.md)) |
 
 > **Emenda de 2026-10-05.** Decisão do Johan: todo monstro, menos o Eco, só existe na
 > névoa. A entrada do sorteio passou a ser o **número do período de névoa**
@@ -77,8 +77,9 @@ e determinística: mesma entrada, mesma resposta, em qualquer máquina.
   1..500) têm a mesma variante na mesma noite. Com a população toda, o efeito é
   só estatístico; a taxa bate com o sandbox (`variant_rules_rate_matches_chance`).
 - Zumbi sem outfit (ID 0) nunca é variante.
-- A variante não tem roupa própria: vestir outro outfit troca o
-  `persistentOutfitID` e, com ele, a variante. O aviso é sonoro (estalo, grito).
+- A variante não tem **outfit** próprio: vestir outro outfit troca o
+  `persistentOutfitID` e, com ele, a variante. O visual (sprint 0012) vai por cima, na
+  cópia local, sem mexer no outfit ([ADR-012](adr-012-visual-das-variantes.md)).
 - O laço do `NOM_NightStats` passa a ler o ID e sortear a cada zumbi processado:
   custo de aritmética, dentro do mesmo lote de 20 por tick.
 - A mudança da lista de outfits (outro mod, update) muda os IDs e, com eles, quem

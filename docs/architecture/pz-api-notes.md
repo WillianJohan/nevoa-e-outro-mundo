@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -896,6 +896,74 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-011](adr-011-ca
 
 ---
 
+## 14. Visual das variantes (sprint 0012)
+
+Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-visual-das-variantes.md).
+
+### 14.1 Pele
+
+- `HumanVisual.getSkinTexture()` 0–11: com `skinTextureName != null`, devolve ele; senão
+  calcula a pele (zumbi: `PopTemplateManager.*SkinsZombie1..3` pelo `zombieRotStage`).
+  `setSkinTextureName(String)` só grava o campo (0–5). EXISTS (`HumanVisual` no Exposer).
+- Quem grava o campo: `clear`, `copyFrom`, `load`, `setSkinTextureName`; o único chamador
+  do setter é o `IsoMannequin`. Zumbi normal tem nulo: tirar = `setSkinTextureName(nil)`.
+- `ModelInstanceTextureCreator.init` 489–497 põe a pele em `baseTexture`, montada como
+  `media/textures/Body/<nome>.png` (string do pool). **UNKNOWN:** a textura do mod nesse
+  caminho é achada (roteiro).
+
+### 14.2 Peça (`ItemVisual`)
+
+- `IsoZombie.getItemVisuals()` → `ItemVisuals extends ArrayList<ItemVisual>`. `ItemVisual` e
+  `ItemVisuals` no `LuaManager$Exposer` (2998, 3005): `ItemVisual.new()` EXISTS, sem uso vanilla.
+- `ItemVisual.<init>()` deixa `textureChoice = -1`; `getTextureChoice(ClothingItem)` 17–49
+  sorteia na hora. `getClothingItem()` sai do item de script (`getScriptItem` →
+  `ScriptManager.getItem(fullType)` → `getClothingItemAsset`): basta `setItemType("Base.X")`.
+- `HumanVisual.addClothingItem(ItemVisuals, Item)` tira da lista quem ocupa o mesmo lugar
+  (251, 300): não usado.
+- `resetModelNextFrame()` no zumbi depois de mexer no visual: CONFIRMED
+  `client/Tutorial/Steps.lua:832-838`, `:1152`.
+- Item de roupa do mod: script com `ClothingItem = X` → `OutfitManager.getClothingItem` pelo
+  GUID → caminho pela `fileGuidTable`; o mod traz a dele (`ZomboidFileSystem.loadFileGuidTable`
+  113–312: lê `<pasta do mod>/media/fileGuidTable.xml` e `mergeFrom`). Textura em
+  `media/textures/<textureChoices>.png`.
+- `IsoZombie.helmetFallFromVisuals` 62–70: só cai item com `getChanceToFall() > 0`.
+- **Lugar da peça (review da 0012):** `WornItems.setItem` 5–19: lugar que não é multi-item e
+  já está ocupado → tira quem está (106); 35–96: tira quem é exclusivo do lugar novo. O
+  `DoZombieInventory` veste na ordem da lista, então uma peça do mod num lugar comum
+  (`base:eyes`, `base:mask`, `base:hat`) expulsa a do zumbi, que some do corpo e do loot. As
+  peças das variantes vão em `base:zeddmg`: `setMultiItem(ItemBodyLocation.ZED_DMG, true)` em
+  `shared/NPCs/BodyLocations.lua:859`, sem `setExclusive` nem `setHideModel` (77 itens
+  vanilla `ZedDmg_*`, todos camadas sem modelo). **UNKNOWN:** a peça com modelo nesse lugar
+  aparece na cabeça (roteiro).
+
+### 14.3 Rede, save, reaproveitamento, morte
+
+- `ZombiePacket.set(IsoZombie)`: `outfitId` (15–18) e `skinTextureIndex` (259–265, o
+  índice, não o nome). Nada mais do visual. `SharedDescriptors` (que manda `ItemVisuals`) é
+  dos zumbis de jogador reanimado.
+- `IsoZombie.dressInPersistentOutfitID(I)` 1–43: `HumanVisual.clear()`, `itemVisuals.clear()`,
+  grava o mesmo ID, veste (`PersistentOutfits.dressInOutfit`). Quem chama: o
+  `ModelManager.dressInRandomOutfit` quando `!isPersistentOutfitInit()` (116–128 e, no
+  cliente de MP, 29–58) — o jogo veste tarde — e o `DoZombieInventory` no servidor (15–33).
+- `VirtualZombieManager.createZombieOutsideWorld` 177–230 (objeto reaproveitado):
+  `HumanVisual.clear()` e `setPersistentOutfitID(I)` (init = false). A lista de
+  `ItemVisual` só é limpa quando o jogo veste.
+- `IsoZombie.onKilled` 45–52: `DoZombieInventory()` antes do `OnZombieDead`.
+  `DoZombieInventory(Z)` 54–73: `WornItems.setFromItemVisuals` (cria item de todo
+  `ItemVisual` cujo tipo existe, `InventoryItemFactory.CreateItem`) e
+  `addItemsToItemContainer`. O corpo (`IsoDeadBody.<init>` 661–710) copia a `HumanVisual`, o
+  inventário e o `WornItems`.
+- `WornItems.remove(InventoryItem)` e `ItemContainer.Remove(InventoryItem)` são locais.
+  `IsoGameCharacter.removeWornItem` → `setWornItem` manda `SyncClothing` no cliente de MP
+  (352–378): não usado.
+- **UNKNOWN:** no cliente de MP, o `OnZombieDead` dispara na cópia local antes de um corpo
+  local (se houver)? O corpo do servidor sai limpo (ele nunca pinta).
+- **Jogador reanimado:** `IsoZombie.save` só é chamado pelo `ReanimatedPlayers` (fato
+  transversal 3) e grava a `HumanVisual` (`HumanVisual.save` escreve o `skinTextureName`, que
+  o `load` lê). O mod não pinta quem tem `isReanimatedPlayer()` (EXISTS, `IsoZombie`).
+- Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
+  (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -921,6 +989,7 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-011](adr-011-ca
 | Barulho do jogador no servidor | `Events.OnWorldSound` (todo `addSound`, inclusive o de cliente refeito no servidor) (§13) | — |
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
+| Visual da variante | pele `setSkinTextureName` + `ItemVisual` na lista + `resetModelNextFrame`, na cópia local de quem renderiza (§14) | — (outfit troca o ID) |
 
 ## Testes in-game prioritários (UNKNOWNs)
 
@@ -943,3 +1012,6 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-011](adr-011-ca
 12. A caixa de descrição da página 2 do envio (`ISTextEntryBox` multilinha, sem
     `setMaxTextLength` no Lua) aceita os ~6000 bytes da descrição sem cortar? (sprint
     0007, conferir na página do Steam: [publicar.md §3](../publicar.md#3-conferir-a-página-2-min))
+13. Visual das variantes (sprint 0012): textura do mod em `media/textures/Body/` e
+    `media/textures/NOM/` é achada? `ItemVisual.new()` responde no Lua? O Kahlua escolhe
+    `ItemVisuals.remove(Object)` com o `ItemVisual` (e não `remove(int)`)? (§14)

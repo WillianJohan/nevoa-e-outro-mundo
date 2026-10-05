@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Escrito em | sprint 0006 (2026-10-04) |
-| Cobre | o evento de névoa da [0009](sprints/sprint-0009-nevoa-evento/README.md#roteiro-in-game) a névoa vermelha da [0010](sprints/sprint-0010-nevoa-vermelha/README.md#roteiro-in-game) e a Carpideira da [0011](sprints/sprint-0011-carpideira/README.md#roteiro-in-game) (roteiros próprios) e os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
+| Cobre | o evento de névoa da [0009](sprints/sprint-0009-nevoa-evento/README.md#roteiro-in-game) a névoa vermelha da [0010](sprints/sprint-0010-nevoa-vermelha/README.md#roteiro-in-game) a Carpideira da [0011](sprints/sprint-0011-carpideira/README.md#roteiro-in-game) e o visual dos monstros da [0012](sprints/sprint-0012-visual-variantes/README.md#roteiro-in-game) (roteiros próprios) e os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
 | Duração | ~60–90 min: solo ~40, MP ~30, medições e remoção ~15 |
 
 > **⚠️ Use um save descartável.** `NOM_Debug.night` e `NOM_Debug.fog` avançam os

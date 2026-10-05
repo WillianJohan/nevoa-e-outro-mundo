@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira), 0012 (visual) |
 
 ## Regra geral
 
@@ -47,8 +47,11 @@ salvar e carregar no meio não muda nada.
 Numa noite com névoa a variante vai por cima dos stats da noite (o Estalador corre
 como os outros da noite e continua cego); de dia, por cima dos stats do jogo.
 
-As variantes não têm roupa própria (trocar o outfit trocaria o ID e, com ele, o
-sorteio): quem avisa é o som (estalo, grito, rádio, soluço).
+**Visual** (sprint 0012, [art-direction.md](art-direction.md)): enquanto a névoa dura, cada
+variante ganha pele e uma peça no rosto, por cima da roupa que o zumbi já tinha; quando a
+névoa baixa, volta a ser o zumbi de antes. O outfit não muda (trocar o outfit trocaria o ID e,
+com ele, o sorteio). O visual é de cada tela: no MP, cada jogador vê o mesmo, porque cada um
+calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço).
 
 ## Estalador
 
@@ -64,6 +67,7 @@ sorteio): quem avisa é o som (estalo, grito, rádio, soluço).
 - Agarrão letal rápido: **pendente** — o jogo não tem dano por zumbi nem evento
   no golpe do zumbi (ver Pendências da [sprint 0004](../sprints/sprint-0004-estalador-corredor/README.md)).
 - Estalo audível, em média a cada 2 minutos de jogo, que serve de aviso.
+- Visual: olhos tapados por atadura manchada e arame enferrujado, pele de porcelana rachada.
 - Quando a névoa baixa, volta a ser zumbi comum.
 
 ## Corredor
@@ -77,6 +81,7 @@ sorteio): quem avisa é o som (estalo, grito, rádio, soluço).
   (a fase inativa do jogo) ele fica arrastado como todos — a regra vanilla vence.
 - Ao ver o jogador, grita e atrai os zumbis num raio. É ele que começa a horda.
   No máximo um grito por Corredor a cada meia hora de jogo, de dia ou de noite.
+- Visual: boca rasgada larga demais, pele cinza esticada com veias escuras.
 - Quando a névoa baixa, volta a ser zumbi comum.
 
 ## Sem-rosto
@@ -103,6 +108,7 @@ sorteio): quem avisa é o som (estalo, grito, rádio, soluço).
   tiles, mudo a partir de 30). Não exige rádio no inventário.
 - Quando a névoa baixa, volta a ser zumbi comum: aquele zumbi qualquer *era* a coisa.
   Ele não tem stats próprios, então não há nada a desfazer.
+- Visual: a cabeça inteira é chiado de TV cinza, o mesmo chiado do rádio.
 - Ecos nunca são Sem-rosto.
 
 ## Carpideira
@@ -132,8 +138,9 @@ o das mulheres pagas pra chorar em velório.
 - Zumbis com o mesmo ID de outfit são a mesma variante (ADR-006): quando uma grita, as
   outras com o mesmo ID (raras) ficam furiosas também, sem gritar.
 - Quando a névoa baixa, volta a ser zumbi comum (e anda de novo).
-- Sem visual próprio (roupa trocaria o ID, ver acima); o soluço é o aviso.
-  Técnica: [ADR-011](../architecture/adr-011-carpideira.md).
+- Visual: cabelo preto embolado caindo no rosto, pele pálida com escorridos de fuligem
+  ([art-direction.md](art-direction.md)); o soluço continua sendo o aviso de longe.
+  Técnica: [ADR-011](../architecture/adr-011-carpideira.md), [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Eco
 
@@ -163,8 +170,8 @@ Sem cadáver: o corpo do Eco é removido pelo servidor logo depois que nasce
 (técnica na [ADR-003](../architecture/adr-003-eco-spawnado.md)). Validação em MP
 no roteiro da [sprint 0002](../sprints/sprint-0002-eco/README.md#roteiro-in-game).
 
-Visual atual (placeholder): camisola de hospital e véu de noiva vanilla, outfit
-`NOM_Eco`. Vida baixa e lento (arrastado, sem o bônus da noite) desde a sprint
+Visual (sprint 0012): cinza e fumaça no corpo todo e um véu de fumaça, itens do mod no
+outfit `NOM_Eco` ([art-direction.md](art-direction.md)). Vida baixa e lento (arrastado, sem o bônus da noite) desde a sprint
 0003. Dano baixo não existe por zumbi no jogo e não será feito ([night.md](night.md#sem-força-e-sem-dano-à-noite)).
 
 ## Sobreposição

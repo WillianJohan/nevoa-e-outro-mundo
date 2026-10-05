@@ -81,6 +81,8 @@ function NOM_Debug.status()
         corredores = kinds.corredor,
         carpideiras = kinds.carpideira,
         semRostoPerto = near and math.floor(near) or "nenhum",
+        -- zumbis com o visual da variante nesta tela (client/NOM_VariantLook.lua, sprint 0012)
+        visuais = NOM_VariantLook and NOM_VariantLook.count() or 0,
     }))
     send({ op = "status" })
 end
