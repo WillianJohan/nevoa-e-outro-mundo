@@ -171,5 +171,47 @@ return {
             assert(math.abs(a[i] - b[i]) < 0.02, "pulo no canal " .. i)
         end
     end,
+    -- névoa vermelha (sprint 0010): a luz fica vermelha (verde e azul caem muito mais
+    -- que o vermelho) e MAIS ESCURA que a vanilla em todo caminho: as três névoas,
+    -- as duas noites, DarkIntensity 1 e 2, e no meio da rampa do vermelho
+    rules_red_fog_darker_than_vanilla_on_every_path = function()
+        local function drop(van, look)
+            local t = look.tint
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local br, bg, bb = NOM_Rules.skyMod(unpack(van))
+            local r, g, b = NOM_Rules.skyMod(unpack(c))
+            return 1 - r / br, 1 - g / bg, 1 - b / bb
+        end
+        local function f(name, r, g, b) return string.format("%s: r %.0f%% g %.0f%% b %.0f%%", name, r * 100, g * 100, b * 100) end
+        for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
+            for _, I in ipairs({ 1, 2 }) do
+                for _, red in ipairs({ 0.5, 1 }) do
+                    local r, g, b = drop(van, NOM_Rules.mix(0, 1, I, red))
+                    assert(r >= 0.15 and g >= 0.15 and b >= 0.15, "vermelha clareou: " .. f(name, r, g, b))
+                end
+                local r, g, b = drop(van, NOM_Rules.mix(0, 1, I, 1))
+                if I == 1 then assert(g >= r + 0.15 and b >= r + 0.15, "não ficou vermelha: " .. f(name, r, g, b)) end
+            end
+            local r, g, b = drop(van, NOM_Rules.mix(1, 1, 1, 1))
+            assert(r >= 0.25 and g >= 0.25 and b >= 0.25, "noite+vermelha contra névoa: " .. f(name, r, g, b))
+        end
+        for name, van in pairs(NOM_Rules.VANILLA_NIGHTS) do
+            local r, g, b = drop(van, NOM_Rules.mix(1, 1, 1, 1))
+            assert(r >= 0.3 and g >= 0.3 and b >= 0.3, "noite+vermelha: " .. f(name, r, g, b))
+        end
+        -- a névoa em si: mais escura que a branca vanilla
+        local v, c = NOM_Rules.FOG_COLOR, NOM_Rules.RED_FOG_COLOR
+        for i = 1, 3 do assert(c[i] < v[i], "névoa vermelha mais clara no canal " .. i) end
+        assert(c[1] > c[2] + 0.3 and c[1] > c[3] + 0.3, "névoa não é vermelha")
+    end,
+    -- sem vermelho (nil ou 0), o look é o de sempre
+    rules_mix_red_zero_is_normal = function()
+        for _, red in ipairs({ 0, false }) do
+            local a, b = NOM_Rules.mix(1, 1, 1), NOM_Rules.mix(1, 1, 1, red or nil)
+            for _, ch in ipairs(NOM_Rules.CHANNELS) do assert(near(a[ch].weight, b[ch].weight)) end
+        end
+        local n, r = NOM_Rules.mix(0, 1, 1, 0), NOM_Rules.mix(0, 1, 1, 0)
+        for i = 1, 4 do assert(near(n.tint.value[i], NOM_Rules.LOOKS.fog.tint.value[i]) and near(r.tint.value[i], n.tint.value[i])) end
+    end,
 }
-

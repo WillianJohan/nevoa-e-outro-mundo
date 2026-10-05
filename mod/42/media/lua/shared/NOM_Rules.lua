@@ -29,7 +29,23 @@ NOM_Rules.LOOKS = {
         -- cai 29–46% com DarkIntensity 1, o azul mais (teste rules_fog_darker_*)
         tint         = { value = { 0.14, 0.11, 0.08, 0.95 }, weight = 0.6 },
     },
+    -- Névoa vermelha (sprint 0010): o look da névoa puxado pra cá pela rampa do
+    -- vermelho (mix, redRamp). Luz vermelha escura: contra as três névoas vanilla o
+    -- vermelho cai 17–32% e verde/azul ~50% com DarkIntensity 1; com a noite junto,
+    -- ≥ 30% em todo canal (teste rules_red_fog_darker_than_vanilla_on_every_path).
+    -- Dessaturação puxada pra 0: a da névoa (1) lavaria o vermelho.
+    redFog = {
+        desaturation = { value = 0, weight = 0.6 },
+        ambient      = { value = 0, weight = 0.3 },
+        tint         = { value = { 0.22, 0.02, 0.02, 0.95 }, weight = 0.6 },
+    },
 }
+
+-- Cor da névoa (ClimateManager COLOR_NEW_FOG, id 1), que o ImprovedFog desenha
+-- (update 132–174 → FogShader.setColorInfo). Vanilla: <init> 324–361, exterior e
+-- interior; nenhum Lua vanilla troca. Na névoa vermelha, RED_FOG_COLOR.
+NOM_Rules.FOG_COLOR = { 0.9, 0.9, 0.95, 1 }
+NOM_Rules.RED_FOG_COLOR = { 0.55, 0.06, 0.05, 1 }
 
 -- Luz global (exterior) vanilla de madrugada. O construtor do ClimateManager põe
 -- 0.33/alfa 0.4 (<init> 250–323), mas o server/Climate/ClimateMain.lua:14-22 troca
@@ -87,11 +103,26 @@ local function blendColor(a, aw, b, bw)
     return out
 end
 
-function NOM_Rules.mix(nightRamp, fogRamp, intensity)
+-- Entrada do look da névoa no canal ch, puxada pro redFog por red (0..1).
+local function fogLook(ch, red)
+    local f, r = NOM_Rules.LOOKS.fog[ch], NOM_Rules.LOOKS.redFog[ch]
+    if not red or red <= 0 or not f or not r then return f end
+    local value
+    if type(f.value) == "table" then
+        value = {}
+        for i = 1, 4 do value[i] = NOM_Rules.blend(f.value[i], r.value[i], red) end
+    else
+        value = NOM_Rules.blend(f.value, r.value, red)
+    end
+    return { value = value, weight = NOM_Rules.blend(f.weight, r.weight, red) }
+end
+
+-- redRamp: rampa da névoa vermelha (0..1, sprint 0010); nil = 0.
+function NOM_Rules.mix(nightRamp, fogRamp, intensity, redRamp)
     local out = {}
     for _, ch in ipairs(NOM_Rules.CHANNELS) do
         local n = NOM_Rules.LOOKS.night[ch]
-        local f = NOM_Rules.LOOKS.fog[ch]
+        local f = fogLook(ch, redRamp)
         local nw = n and n.weight * nightRamp or 0
         local fw = f and f.weight * fogRamp or 0
         local value
