@@ -1,4 +1,5 @@
--- Cliente de MP: segue a flag de névoa do servidor (server/NOM_Fog.lua) e faz a
+-- Cliente de MP: segue a flag de névoa do servidor (server/NOM_Fog.lua), toca a
+-- sirene do evento (server/NOM_FogEvent.lua) e faz a
 -- parte do Sem-rosto que é do cliente (ADR-007): ver (luz e visão são calculadas
 -- aqui) e, se for dono do zumbi, mover. Quem decide é o servidor. No solo o
 -- servidor roda no mesmo processo e faz tudo direto.
@@ -6,6 +7,7 @@ if not isClient() then return end
 
 require "NOM_FogState"
 require "NOM_SemRosto"
+require "NOM_Siren"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -44,6 +46,8 @@ Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "fog" then
         NOM_FogState.set(args.on == true, args.period)
+    elseif command == "siren" then -- evento de névoa: 30 s reais antes (NOM_FogEvent)
+        NOM_Siren.play()
     elseif command == "semRostoMove" and args.id ~= -1 then
         moveIfOwner(args)
     end

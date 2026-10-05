@@ -1,9 +1,9 @@
 -- Lógica pura: sem API do jogo, testável com ./run-tests.sh.
 NOM_Rules = {}
 
-NOM_Rules.FOG_HYSTERESIS = 0.05
-NOM_Rules.FOG_EXIT_FLOOR = 0.01
-NOM_Rules.CHANNELS = { "desaturation", "ambient", "fog", "tint" }
+-- A densidade da névoa não é do look: o canal de névoa é do evento (sprint 0009,
+-- ADR-009; NOM_ClimateLook com NOM_FogEventRules.DENSITY), com ou sem DarkEnabled.
+NOM_Rules.CHANNELS = { "desaturation", "ambient", "tint" }
 
 -- value = alvo da camada modded do clima; weight = quanto puxar até ele (0..1).
 -- Canais escolhidos pelo que o render lê de verdade (sprint 0008, pz-api-notes §10):
@@ -25,7 +25,6 @@ NOM_Rules.LOOKS = {
     fog = {
         desaturation = { value = 1, weight = 0.6 },
         ambient      = { value = 0, weight = 0.3 },
-        fog          = { value = 1, weight = 0.3 },
         -- sépia bem escuro: contra as três cores vanilla de névoa (VANILLA_FOGS) a luz
         -- cai 29–46% com DarkIntensity 1, o azul mais (teste rules_fog_darker_*)
         tint         = { value = { 0.14, 0.11, 0.08, 0.95 }, weight = 0.6 },
@@ -61,13 +60,6 @@ end
 
 function NOM_Rules.isNight(tod, dawn, dusk)
     return tod >= dusk or tod < dawn
-end
-
-function NOM_Rules.isFog(intensity, threshold, wasFog)
-    if wasFog then
-        return intensity >= math.max(threshold - NOM_Rules.FOG_HYSTERESIS, NOM_Rules.FOG_EXIT_FLOOR)
-    end
-    return intensity >= threshold
 end
 
 -- Valor absoluto que o mod escreve no clima: vanilla puxado até o alvo pelo peso.

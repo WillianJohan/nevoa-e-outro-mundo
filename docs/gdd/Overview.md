@@ -29,14 +29,14 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 
 Dia: saquear, limpar corpos (queimar/enterrar), preparar abrigo →
 noite: sobreviver aos infectados agressivos e aos Ecos →
-névoa (de dia ou de noite): fugir ou se esconder do Outro Mundo — Estaladores,
+sirene → névoa (de dia ou de noite, a cada ~3 dias): fugir ou se esconder do Outro Mundo — Estaladores,
 Corredores, Sem-rosto → amanhecer → repetir.
 
 ## Índice de sistemas
 
 | Doc | Assunto | Status |
 |-----|---------|--------|
-| [world-states.md](world-states.md) | Detecção de noite e névoa | `accepted` |
+| [world-states.md](world-states.md) | Noite e evento de névoa (sirene) | `accepted` |
 | [night.md](night.md) | Noite agressiva (todos os zumbis) | `accepted` |
 | [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Eco | `accepted` |
 | [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `accepted` |
@@ -45,13 +45,15 @@ Corredores, Sem-rosto → amanhecer → repetir.
 ## Fora do MVP (`later`)
 
 Carrasco (Pyramid Head-like), modelos 3D próprios, criaturas com esqueleto e
-animação próprios, troca real de tiles, preset ReShade, evento com sirene.
+animação próprios, troca real de tiles, preset ReShade. (O evento com sirene foi
+promovido na sprint 0009.)
 Só viram escopo por promoção explícita.
 
 ## Decisões do autor
 
 - **2026-10-04** — Público: Workshop (solo + MP, com sandbox).
-- **2026-10-04** — Gatilho do Outro Mundo: névoa natural do clima, sem evento próprio.
+- **2026-10-04** — ~~Gatilho do Outro Mundo: névoa natural do clima, sem evento próprio.~~
+  Revertida em 05/10 (abaixo).
 - **2026-10-04** — Monstros por comportamento + visual simples, sem animação nova.
 - **2026-10-04** — Eco: corpo solta Eco uma vez na vida; corpo queimado/enterrado não solta.
 - **2026-10-04** — Visual: clima via Lua como base + spike de shader.
@@ -63,3 +65,9 @@ Só viram escopo por promoção explícita.
   noite espera o próximo entardecer ([monsters.md](monsters.md#eco)).
 - **2026-10-05** — A noite tem que ser claramente mais escura que a vanilla
   ([atmosphere.md](atmosphere.md#clima)).
+- **2026-10-05** — **A névoa é um evento do mod, não clima** (reverte a decisão de
+  04/10 "gatilho = névoa natural do clima"): numa hora aleatória, em média a cada ~3
+  dias de jogo (`FogEventEveryDays`), uma sirene toca 30 segundos reais antes; dura de
+  2 a 6 horas de jogo (`FogMinHours`, `FogMaxHours`). Névoa natural vanilla não existe:
+  o mod é dono do canal de névoa ([world-states.md](world-states.md),
+  [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)).

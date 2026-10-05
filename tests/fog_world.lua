@@ -187,6 +187,8 @@ function W.new(opts)
         end,
     }
     getTimestampMs = function() return G.now end
+    -- GameTime.isGamePaused: solo = velocidade 0; dedicado = vazio com PauseEmpty
+    isGamePaused = function() return G.paused == true end
     G.rand = 0
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
@@ -226,7 +228,9 @@ function W.new(opts)
     end
     G.world = { tod = opts.tod or 12 }
     getGameTime = function()
-        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end }
+        -- horas de mundo: G.world.hours quando o teste usa (evento de névoa), senão a hora do dia
+        return { getTimeOfDay = function() return G.world.tod end,
+            getWorldAgeHours = function() return G.world.hours or G.world.tod end }
     end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }

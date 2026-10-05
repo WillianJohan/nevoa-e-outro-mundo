@@ -4,6 +4,8 @@
 if isClient() then return end
 
 require "NOM_World"
+require "NOM_Config"
+require "NOM_FogEventRules"
 
 -- Em minutos de jogo: cobre pelo menos 2 pacotes de clima do MP (1 a cada 10).
 local TRANSITION_MINUTES = 20
@@ -13,10 +15,11 @@ local TRANSITION_MINUTES = 20
 local FLOATS = {
     desaturation = ClimateManager.FLOAT_DESATURATION,
     ambient = ClimateManager.FLOAT_AMBIENT,
-    fog = ClimateManager.FLOAT_FOG_INTENSITY,
 }
 
-local state = { nightRamp = 0, fogRamp = 0 }
+-- eventRamp: densidade da névoa do evento (0..1 de NOM_FogEventRules.DENSITY), não
+-- depende de DarkEnabled: a névoa é o evento, o look é por cima (ADR-009).
+local state = { nightRamp = 0, fogRamp = 0, eventRamp = 0 }
 local applied = {} -- canal -> true enquanto a camada modded dele está ligada por nós
 local tintInfo = nil
 
@@ -42,30 +45,27 @@ local function apply(ch, target, weight, setValue)
     target:setModdedInterpolate(1)
 end
 
--- Override de valor do sandbox (bytecode: updateSandboxOverrides liga quando
--- FogCycle é "sem névoa"/"névoa eterna" ou ClimateCycle é "nevasca eterna"):
--- o final ignora o interno, e a nossa camada modded não chega na tela.
-local function fogValueOverride()
-    local sv = SandboxVars or {}
-    return (sv.FogCycle or 1) >= 2 or sv.ClimateCycle == 6
-end
-
--- Névoa vanilla efetiva, sem a do mod. O WeatherPeriod usa setOverride(0, t)
--- sem ser de valor: o jogo mistura em cima do interno (onde mora a nossa
--- névoa), então a mistura é refeita aqui com o interno limpo.
-local function vanillaFog(f)
-    local internal = f:getInternalValue()
-    if not f:isEnableOverride() then
-        return internal
+-- O mod é dono do canal de névoa (ADR-009): fora do evento 0, no evento a
+-- densidade com rampa, sempre com valor absoluto e interpolate 1. Quem passa por
+-- cima do interno é o override, e o jogo religa ele todo minuto ANTES deste
+-- evento (ClimateManager.update 363–402: updateSandboxOverrides, updateValues,
+-- WeatherPeriod.update, depois OnClimateTick, depois calculate):
+-- * sandbox FogCycle "sem névoa"/"névoa eterna" e ClimateCycle "nevasca eterna":
+--   override de valor (o final ignora o interno), ligado na troca e, na névoa
+--   eterna, de novo a cada hora por setOverride (updateSandboxOverrides 555–672);
+-- * WeatherPeriod.updateCurrentStage: setOverride(0, t) ou setOverride(névoa do
+--   estágio, t) a cada minuto de chuva/tempestade (895–906, 1259–1270).
+-- setEnableOverride(false) só zera isOverride (ClimateFloat.setEnableOverride 0–5)
+-- e não vai pro save (ClimateManager.save grava só o admin). Admin passa por cima
+-- de tudo (calculate 0–21) e fica: é escolha explícita de quem administra.
+local function ownFog(f)
+    if not applied.fog then
+        f:setEnableModded(true)
+        applied.fog = true
     end
-    if fogValueOverride() then
-        return f:getFinalValue()
-    end
-    local t = f:getOverrideInterpolate()
-    if t <= 0 then
-        return internal
-    end
-    return NOM_Rules.blend(internal, f:getOverride(), t)
+    if f:isEnableOverride() then f:setEnableOverride(false) end
+    f:setModdedValue(NOM_FogEventRules.DENSITY * state.eventRamp)
+    f:setModdedInterpolate(1)
 end
 
 -- rgba[4] = alfa: a força da cor no render (blendIntensity), é o que escurece.
@@ -78,17 +78,17 @@ end
 
 local lastNight, lastFog, lastHour
 -- As rampas nascem em 0: save carregado de noite também loga a borda do 1.
-local lastEdge = { nightRamp = 0, fogRamp = 0 }
+local lastEdge = { nightRamp = 0, fogRamp = 0, eventRamp = 0 }
 -- Devolve true quando é hora do bloco canal a canal (logChannels): borda da rampa,
 -- ou hora de jogo nova à noite.
 local function logDebug(w)
     if not getDebug() then return false end
     if w.night ~= lastNight or w.fog ~= lastFog then
-        print(string.format("[NOM] night=%s fog=%s fogI=%.2f", tostring(w.night), tostring(w.fog), w.fogIntensity))
+        print(string.format("[NOM] night=%s fog=%s", tostring(w.night), tostring(w.fog)))
         lastNight, lastFog = w.night, w.fog
     end
     local edged = false
-    for _, k in ipairs({ "nightRamp", "fogRamp" }) do
+    for _, k in ipairs({ "nightRamp", "fogRamp", "eventRamp" }) do
         local v = state[k]
         local edge = (v == 0 or v == 1) and v or nil
         if edge and edge ~= lastEdge[k] then
@@ -97,7 +97,8 @@ local function logDebug(w)
         end
     end
     if edged then
-        print(string.format("[NOM] nightRamp=%.2f fogRamp=%.2f", state.nightRamp, state.fogRamp))
+        print(string.format("[NOM] nightRamp=%.2f fogRamp=%.2f nevoa=%.2f", state.nightRamp, state.fogRamp,
+            NOM_FogEventRules.DENSITY * state.eventRamp))
     end
     local hour = math.floor(w.tod)
     local hourly = w.night and lastHour ~= nil and hour ~= lastHour
@@ -115,13 +116,17 @@ end
 -- bater com o escrito. Se não bate, outra camada (admin, override de clima, outro
 -- mod) está por cima. luz = multiplicador da luz do céu por canal (NOM_Rules.skyMod).
 local function logChannels(clim, look)
-    for _, ch in ipairs({ "desaturation", "ambient", "fog" }) do
+    for _, ch in ipairs({ "desaturation", "ambient" }) do
         local f, l = clim:getClimateFloat(FLOATS[ch]), look[ch]
         local vanilla = f:getInternalValue()
         local written = l.weight > 0 and string.format("%.2f", NOM_Rules.blend(vanilla, l.value, l.weight)) or "-"
         print(string.format("[NOM] clima %s vanilla=%.2f escrito=%s final=%.2f peso=%.2f",
             ch, vanilla, written, f:getFinalValue(), l.weight))
     end
+    -- névoa: vanilla = a natural que o jogo calculou (e que o mod apaga)
+    local f = clim:getClimateFloat(ClimateManager.FLOAT_FOG_INTENSITY)
+    print(string.format("[NOM] clima fog vanilla=%.2f escrito=%.2f final=%.2f",
+        f:getInternalValue(), NOM_FogEventRules.DENSITY * state.eventRamp, f:getFinalValue()))
     local c, t = clim:getClimateColor(ClimateManager.COLOR_GLOBAL_LIGHT), look.tint
     local final = c:getFinalValue():getExterior()
     local mr, mg, mb = NOM_Rules.skyMod(final:getRedFloat(), final:getGreenFloat(), final:getBlueFloat(), final:getAlphaFloat())
@@ -132,12 +137,17 @@ end
 
 -- Roda logo depois de updateValues(): os valores internos são o vanilla limpo.
 local function onClimateTick(clim)
-    local fogFloat = clim:getClimateFloat(FLOATS.fog)
     local enabled = NOM_Config.get("DarkEnabled")
-    local w = NOM_World.update(vanillaFog(fogFloat))
+    local w = NOM_World.update()
+    -- A flag de névoa é a de agora: o evento abre no OnTick (fim da sirene) e o
+    -- fim/carga acertam no OnClimateTick do NOM_FogEvent, que roda depois deste
+    -- (ordem alfabética de carga). A rampa começa até 1 minuto de jogo depois da
+    -- borda; com 20 minutos de rampa não se vê.
+    state.eventRamp = NOM_Rules.ramp(state.eventRamp, w.fog, TRANSITION_MINUTES)
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
     state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, TRANSITION_MINUTES)
     local dump = logDebug(w)
+    ownFog(clim:getClimateFloat(ClimateManager.FLOAT_FOG_INTENSITY))
 
     local look = NOM_Rules.mix(state.nightRamp, state.fogRamp, NOM_Config.get("DarkIntensity"))
     for ch, id in pairs(FLOATS) do

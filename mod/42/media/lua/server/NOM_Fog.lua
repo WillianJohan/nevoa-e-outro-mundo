@@ -1,11 +1,11 @@
--- Névoa, lado do servidor: conta os períodos de névoa, avisa quem vê (no solo,
--- o próprio processo; no dedicado, os clientes) e decide o sumiço do Sem-rosto
--- (ADR-007). Cada período tem um número, base do sorteio do Sem-rosto (ADR-006),
--- contado como as noites: pelo estado salvo no ModData global, não pela borda.
+-- Névoa, lado do servidor: avisa quem vê (no solo, o próprio processo; no
+-- dedicado, os clientes) e decide o sumiço do Sem-rosto (ADR-007). A névoa e o
+-- número do período, base do sorteio das variantes (ADR-006), vêm do evento de
+-- névoa (server/NOM_FogEvent.lua, ADR-009).
 if isClient() then return end
 
 require "NOM_World"
-require "NOM_EcoRules"
+require "NOM_FogEvent"
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_SemRostoRules"
@@ -19,16 +19,8 @@ end
 
 NOM_Fog = {}
 
-local function state()
-    local data = ModData.getOrCreate(MODULE)
-    data.fog = data.fog or {}
-    return data.fog
-end
-
--- nil antes do primeiro OnClimateTick (estado do clima desconhecido).
 function NOM_Fog.period()
-    if NOM_World.tod == nil then return nil end
-    return NOM_EcoRules.syncNight(state(), NOM_World.fog)
+    return NOM_FogEvent.period()
 end
 
 NOM_World.onChange(function(flag, on)
@@ -42,22 +34,12 @@ NOM_World.onChange(function(flag, on)
     debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period))
 end)
 
--- Save com a névoa aberta (inNight salvo true) carregado sem névoa: não há borda
--- e o período ficaria aberto, e a névoa seguinte herdaria o número (e o sorteio)
--- da velha. Na primeira leitura do clima, o estado salvo é acertado. Roda depois
--- do OnClimateTick do NOM_ClimateLook (que atualiza o NOM_World): carga em ordem
--- alfabética; se vier antes, tenta de novo no próximo.
-local synced = false
-Events.OnClimateTick.Add(function()
-    if synced or NOM_World.tod == nil then return end
-    NOM_Fog.period()
-    synced = true
-end)
-
--- Cliente que entra no meio da névoa não viu a borda: pergunta.
+-- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
+-- durante a contagem, ouve a sirene também (atrasada, mas avisa).
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
     sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period() })
+    if NOM_FogEvent.status().sirenMs then sendServerCommand(player, MODULE, "siren", {}) end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------

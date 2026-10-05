@@ -8,10 +8,13 @@ return {
         assert(a.op == "night" and a.value == true)
         a = D.parse({ op = "night" })
         assert(a.op == "night" and a.value == nil, "nil devolve pro clima")
-        a = D.parse({ op = "fog", value = 0.8 })
-        assert(a.value == 0.8)
-        assert(D.parse({ op = "fog", value = 3 }).value == 1, "névoa acima de 1 não foi presa")
-        assert(D.parse({ op = "fog", value = -1 }).value == 0)
+        -- névoa é evento (sprint 0009): true começa (skip pula a espera da sirene), false/nil termina
+        a = D.parse({ op = "fog", value = true, skip = true })
+        assert(a.value == true and a.skip == true)
+        a = D.parse({ op = "fog", value = true })
+        assert(a.value == true and a.skip == false)
+        assert(D.parse({ op = "fog" }).value == false, "nil termina")
+        assert(D.parse({ op = "fog", value = false }).value == false)
         a = D.parse({ op = "variant", id = -2147000000, kind = "estalador" })
         assert(a.id == -2147000000 and a.kind == "estalador")
         assert(D.parse({ op = "variant", id = 5 }).kind == nil, "kind nil limpa")
@@ -23,6 +26,8 @@ return {
         assert(D.parse({ op = "kill" }) == nil)
         assert(D.parse({ op = "night", value = "sim" }) == nil)
         assert(D.parse({ op = "fog", value = "muito" }) == nil)
+        assert(D.parse({ op = "fog", value = 0.8 }) == nil, "intensidade não existe mais")
+        assert(D.parse({ op = "fog", value = true, skip = "sim" }) == nil)
         assert(D.parse({ op = "variant", id = 0, kind = "corredor" }) == nil, "ID 0 é zumbi sem outfit")
         assert(D.parse({ op = "variant", kind = "corredor" }) == nil)
         assert(D.parse({ op = "variant", id = 5, kind = "carrasco" }) == nil)
@@ -36,7 +41,6 @@ return {
     debug_rules_parse_rejects_nan = function()
         local nan = 0 / 0
         assert(D.parse({ op = "variant", id = nan, kind = "corredor" }) == nil)
-        assert(D.parse({ op = "fog", value = nan }) == nil)
     end,
 }
 

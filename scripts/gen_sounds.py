@@ -101,6 +101,34 @@ def radio_static(rng):
     return loopable(hiss * flutter + crackle + hum, 0.3)
 
 
+def siren(rng):
+    """Sirene de ataque aéreo do evento de névoa: sobe, segura e cai, duas vezes, ~24 s.
+
+    Rotor de sirene: onda quase quadrada (harmônicos ímpares) com um segundo rotor
+    levemente desafinado (batimento), ecoando longe como numa cidade vazia.
+    """
+    cycle = [0, 4.0, 7.0, 12.0]  # sobe 4 s, segura 3 s, cai 5 s
+    knots_t, knots_f = [], []
+    for k in range(2):
+        for ct, f in zip(cycle, (170, 620, 620, 150)):
+            knots_t.append(k * 12.0 + ct)
+            knots_f.append(f)
+    dur = 24.0
+    t = np.arange(int(dur * RATE)) / RATE
+    f0 = np.interp(t, knots_t, knots_f) * (1 + 0.004 * np.sin(2 * np.pi * 5.5 * t))
+    out = np.zeros_like(t)
+    for detune, gain in ((1.0, 1.0), (1.012, 0.6)):
+        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
+        out += gain * sum(np.sin(k * phase) / k for k in (1, 3, 5, 7, 9))
+    env = np.minimum(1, t / 0.3) * np.minimum(1, (dur - t) / 1.5)
+    out = out * env
+    wet = out.copy()
+    for delay, gain in ((0.19, 0.35), (0.43, 0.25), (0.77, 0.15)):  # prédios longe
+        k = int(delay * RATE)
+        wet[k:] += gain * out[:-k]
+    return np.tanh(1.2 * wet / np.max(np.abs(wet)))
+
+
 def write(name, signal):
     signal = signal / np.max(np.abs(signal)) * 0.9
     pcm = (signal * 32767).astype(np.int16)
@@ -126,6 +154,8 @@ def main():
     write("NOM_FogDrone", drone(np.random.default_rng(SEED + 1)))
     write("NOM_FogMetal", metal(np.random.default_rng(SEED + 2)))
     write("NOM_RadioStatic", radio_static(np.random.default_rng(SEED + 3)))
+    # sprint 0009: sirene do evento de névoa
+    write("NOM_Siren", siren(np.random.default_rng(SEED + 4)))
 
 
 if __name__ == "__main__":

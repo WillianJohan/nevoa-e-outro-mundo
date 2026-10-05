@@ -17,15 +17,17 @@ return {
         local world = load(12)
         local seen = {}
         NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
-        NOM_World.update(0)
-        NOM_World.update(0)
+        NOM_World.update()
+        NOM_World.update()
         assert(#seen == 0, "avisou sem mudar: " .. table.concat(seen, ","))
         world.tod = 22
-        NOM_World.update(0)
-        NOM_World.update(0)
-        NOM_World.update(0.9)
+        NOM_World.update()
+        NOM_World.update()
+        NOM_World.setFog(true)
+        NOM_World.setFog(true)
         world.tod = 7
-        NOM_World.update(0)
+        NOM_World.update()
+        NOM_World.setFog(false)
         assert(table.concat(seen, ",") == "night=true,fog=true,night=false,fog=false", table.concat(seen, ","))
     end,
     -- primeira leitura já de noite (servidor subiu à noite) conta como borda
@@ -33,23 +35,32 @@ return {
         load(23)
         local seen = {}
         NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
-        NOM_World.update(0)
+        NOM_World.update()
         assert(table.concat(seen, ",") == "night=true")
     end,
-    -- NOM_Debug (só em -debug) força noite e névoa; nil devolve pro clima
-    world_forced_overrides_climate_and_clears = function()
+    -- NOM_Debug (só em -debug) força a noite; nil devolve pro relógio
+    world_forced_overrides_clock_and_clears = function()
         local world = load(12)
         NOM_World.forced.night = true
-        NOM_World.forced.fog = 0.8
-        NOM_World.update(0)
-        assert(NOM_World.night and NOM_World.fog and NOM_World.fogIntensity == 0.8, "forçado ignorado")
-        NOM_World.forced.night, NOM_World.forced.fog = nil, nil
-        NOM_World.update(0)
-        assert(not NOM_World.night and not NOM_World.fog, "não voltou pro clima")
+        NOM_World.update()
+        assert(NOM_World.night, "forçado ignorado")
+        NOM_World.forced.night = nil
+        NOM_World.update()
+        assert(not NOM_World.night, "não voltou pro relógio")
         world.tod = 23
         NOM_World.forced.night = false
-        NOM_World.forced.fog = 0
-        NOM_World.update(0.9)
-        assert(not NOM_World.night and not NOM_World.fog, "false/0 forçado ignorado")
+        NOM_World.update()
+        assert(not NOM_World.night, "false forçado ignorado")
+    end,
+    -- a névoa é evento (ADR-009): o relógio nunca mexe nela
+    world_update_never_touches_fog = function()
+        local world = load(12)
+        NOM_World.setFog(true)
+        world.tod = 23
+        NOM_World.update()
+        assert(NOM_World.fog == true)
+        NOM_World.setFog(false)
+        NOM_World.update()
+        assert(NOM_World.fog == false)
     end,
 }

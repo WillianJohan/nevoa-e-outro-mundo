@@ -37,7 +37,7 @@ ADR-004 (servidor, `OnClimateTick`, valor absoluto, `setModdedInterpolate(1)`):
 | `COLOR_GLOBAL_LIGHT` (cor **e alfa**) | quase preto, puxado pro azul (0.00, 0.03, 0.06), alfa 0.95, peso 0.55 | sépia bem escuro (0.14, 0.11, 0.08), alfa 0.95, peso 0.6 | único canal com folga de madrugada; o alfa é a força |
 | `FLOAT_AMBIENT` | → 0, peso 0.5 | → 0, peso 0.3 | escurece o anoitecer e a névoa de dia |
 | `FLOAT_DESATURATION` | — | → 1, peso 0.6 | só vale de dia |
-| `FLOAT_FOG_INTENSITY` | — | → 1, peso 0.3 | a névoa vanilla lê o final |
+| `FLOAT_FOG_INTENSITY` | — | ~~→ 1, peso 0.3~~ | **saiu do look na sprint 0009:** o canal é do evento de névoa ([ADR-009](adr-009-nevoa-evento-do-mod.md)) |
 
 Os pesos são multiplicados por `DarkIntensity` (teto 1). Como a vanilla já usa alfa
 0.8, quem escurece é a cor. Queda da luz do céu contra a vanilla real:

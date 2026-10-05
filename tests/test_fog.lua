@@ -7,15 +7,21 @@ local FILE = "mod/42/media/lua/server/NOM_Fog.lua"
 local function setup(opts)
     opts = opts or {}
     local G = W.new(opts)
-    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_SemRosto" })
+    G.world.hours = 100
+    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto" })
     dofile(FILE)
-    -- o ClimateLook atualiza o NOM_World no OnClimateTick; os outros arquivos do
-    -- servidor rodam depois dele na mesma volta (ordem alfabética de carga)
+    -- a névoa é evento (NOM_FogEvent, ADR-009): v ≥ 0.5 abre um (sem a espera da
+    -- sirene), menos que isso fecha
     function G.setFog(v)
-        NOM_World.update(v)
-        G.fire("OnClimateTick")
+        if v >= 0.5 then
+            NOM_FogEvent.siren(true)
+            G.tick(1)
+        else
+            NOM_FogEvent.stop()
+        end
     end
     function G.clientCommand(module, command, p, args) G.fire("OnClientCommand", module, command, p, args) end
+    G.fire("OnClimateTick") -- primeira leitura: agenda e acerta a flag salva
     G.setFog(opts.fog or 0)
     return G
 end
@@ -138,15 +144,6 @@ return {
         G2.now = G2.now + NOM_SemRostoRules.COOLDOWN_MS
         G2.clientCommand("NevoaEOutroMundo", "semRostoSeen", p2, { id = 7, x = 97, y = 100, z = 0 })
         assert(#G2.spawned == 0 and z2.teleports == 2)
-    end,
-    -- save com a névoa aberta (inNight = true) carregado sem névoa: a primeira
-    -- leitura fecha o período, e a névoa seguinte é outra
-    fog_period_closes_stale_after_reload = function()
-        local md = { NevoaEOutroMundo = { fog = { night = 1, inNight = true } } }
-        local G = setup({ globalMD = md })
-        assert(md.NevoaEOutroMundo.fog.inNight == false, "período velho ficou aberto")
-        G.setFog(0.9)
-        assert(NOM_FogState.period == 2, "névoa nova com o número da velha: " .. tostring(NOM_FogState.period))
     end,
     -- o destino que o cliente mandou tem que ser chão de verdade no andar de quem viu
     fog_server_rejects_bad_destination = function()

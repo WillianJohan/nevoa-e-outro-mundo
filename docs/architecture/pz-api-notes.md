@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 |
+| Data | 2026-10-04 (§11: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -583,7 +583,7 @@ O que o mod grava no save e o que acontece sem ele:
 
 | O que fica | Onde | Sem o mod | Evidência |
 |---|---|---|---|
-| `ModData` global `NevoaEOutroMundo` (`eco.night/inNight/ids`, `fog.night/inNight`) | `global_mod_data.bin` | carregado como tabela qualquer e nunca lido: órfão, sem efeito | `GlobalModData.load` lê `nome → createModDataTable()` pra toda chave do arquivo, sem conferir quem é dono (offsets 125–183) |
+| `ModData` global `NevoaEOutroMundo` (`eco.night/inNight/ids/start`, `fog.night/inNight/next/endAt`) | `global_mod_data.bin` | carregado como tabela qualquer e nunca lido: órfão, sem efeito | `GlobalModData.load` lê `nome → createModDataTable()` pra toda chave do arquivo, sem conferir quem é dono (offsets 125–183) |
 | `modData` de corpo: `NOM_ecoReleased`, e `NOM_eco` num cadáver de Eco que escapou da remoção | chunk (`IsoMovingObject.save`, §1.2) | chave a mais numa `KahluaTable`; corpo comum | só o mod lê essas chaves |
 | A lista de outfits (o mod registra `NOM_Eco`) | todo `persistentOutfitID` salvo (popman, chunk) | o ID guarda o **índice** do outfit (bits 16–30) na lista ordenada por nome, refeita a cada boot. Tirar o `NOM_Eco` desloca em −1 o índice de **todo outfit que vem depois dele** na lista: zumbis virtuais e corpos com esses outfits voltam com a roupa do vizinho, e (com o mod de volta, ou sem) o sorteio das variantes deles muda, porque é função do ID. Instalar o mod num save faz o mesmo no sentido contrário (+1). Índice que cai fora da lista: `PersistentOutfits.getOutfit(I)` devolve 0 (40–58) e `dressInOutfit` sai sem vestir (6–10), zumbi sem roupa. **Nada dá erro**: é o que acontece com qualquer mod que traz outfit (ADR-003) | bytecode `PersistentOutfits` |
 | Opções `NevoaEOutroMundo.*` | `map_sand.bin` (save) e `<servidor>_SandboxVars.lua` (dedicado) | `.bin`: `SandboxOptions.load(ByteBuffer)` acha a opção pelo nome e, sem ela, só loga e pula (95–110). `.lua`: `readLuaFile` percorre as opções **conhecidas** e lê cada uma da tabela (`fromTable`, 235–272): chave desconhecida nunca é olhada | bytecode `SandboxOptions` |
@@ -747,6 +747,57 @@ Decisão do Johan (05/10/2026): Estalador, Corredor e Sem-rosto só na névoa. A
 [ADR-006](adr-006-variantes-deterministicas.md) passa a usar o número do período de
 névoa e um sorteio só (faixas contíguas). Nenhuma API nova.
 
+## 11. Névoa como evento (sprint 0009)
+
+**Verificado na sprint 0009** (bytecode do `projectzomboid.jar` instalado, 42.21).
+Decisão na [ADR-009](adr-009-nevoa-evento-do-mod.md).
+
+### 11.1 Ordem por minuto de jogo e quem mexe na névoa
+
+`ClimateManager.update` (servidor/solo; o cliente de MP só recebe): `updateSandboxOverrides()`
+(377) → `updateValues()` (381) → `weatherPeriod.update()` (392) → `OnClimateTick` (402)
+→ `ClimateColor.calculate` / `ClimateFloat.calculate` (411–458) → `updateFx` lê
+`fogIntensity.finalValue` (77–83). O nosso `OnClimateTick` é o último a mexer antes do
+`calculate`.
+
+| Quem | O que faz no `fogIntensity` | Quando | Evidência |
+|---|---|---|---|
+| `updateValues` | recalcula o **interno** (névoa natural do dia, ou 0) e, com ele, puxa a luz global pra `colFog*`, a dessaturação, corta nuvem, sobe umidade | todo minuto | 1019–1037, 1144–1149, 1199–1341, 1644–1770 |
+| `updateSandboxOverrides` | `fogOverride = (ClimateCycle == 6 && FogCycle != 2) ? 4 : FogCycle`; **na troca**: `setEnableOverride(>1)`, `setOverrideValue(>1)`; `== 2` → `setOverride(0, 1)`; `>= 3` → `overrideInternal = 0.5` e `setOverride(Rand(0.1, 1), t)` a cada hora | troca do sandbox; hora | 471–675 |
+| `WeatherPeriod.updateCurrentStage` | `setOverride(0, linearT)`, `setOverride(0, 1)`, `setOverride(fogStrength, t)` (estágios de névoa) | todo minuto com período ativo (`update` 354) | 114–125, 334–339, 895–906, 963–1010, 1259–1300 |
+| admin (painel de clima) | `isAdminOverride` → `final = adminValue` e sai | sempre que ligado | `ClimateFloat.calculate` 0–21 |
+
+`ClimateFloat`: `setOverride(FF)` grava valor, `interpolate` e **liga** `isOverride` (0–15);
+`setOverrideValue(Z)` grava `isOverrideValue` e `isOverride` (0–10); `setEnableOverride(Z)`
+só grava `isOverride` (0–5); `isEnableOverride()` lê (EXISTS, já usado na sprint 0001).
+`ClimateManager.save` grava só o admin (`saveAdmin`, 167–172): desligar o override não
+vai pro save. `getFogIntensity()` = `finalValue` (0–7); `updateViewDistance` lê o final (9–12).
+
+**Uso (sprint 0009):** no `OnClimateTick`, camada modded da névoa sempre ligada, valor
+absoluto (0 ou a densidade do evento), `setModdedInterpolate(1)` e
+`setEnableOverride(false)` se `isEnableOverride()`. O `calculate` do minuto inteiro dá o
+valor do mod. O cinza que a névoa natural põe na luz (`updateValues`) **fica**: é o que o
+`FogCycle` "Sem névoa" da vanilla também deixa.
+
+### 11.2 Tempo real e pausa
+
+| API | Status | Evidência |
+|---|---|---|
+| `getTimestampMs()` no servidor | CONFIRMED | `server/ISObjectClickHandler.lua:352` |
+| `isGamePaused()` | CONFIRMED | `client/ISUI/ISJoystickButtonRadialMenu.lua:68`; `GlobalObject.isGamePaused` → `GameTime.isGamePaused` (0–63): dedicado = `Players` vazio e `PauseEmpty`; cliente de MP = `GameClient.IsClientPaused`; solo = velocidade 0 |
+| `OnTick` | CONFIRMED | `IngameState.onTick` (0–11) só dispara o evento. No dedicado vazio com `PauseEmpty` o `OnTick` **para de todo** (`IngameState.updateInternal` 888–943); o primeiro tick depois traz um `dt` enorme, que o teto de 1 s por frame (`NOM_FogEventRules.MAX_STEP_MS`) absorve |
+| `getGameTime():getWorldAgeHours()` | CONFIRMED | `shared/Definitions/animal/ButcheringUtil.lua:594` |
+| `ZombRand(n)` | CONFIRMED | uso vanilla amplo; inteiro em `[0, n)` |
+
+### 11.3 Sirene
+
+Tocada por `player:playSoundLocal("NOM_Siren")` + `getEmitter():setVolume(id, 1)` no
+jogador 0 (§4.3): sem pacote, sai da posição do próprio jogador, então se ouve em
+qualquer lugar. Som declarado com `file = media/sound/NOM_Siren.ogg` (§4.1), sem `loop`
+e sem `master` (volume de efeitos). No MP o servidor manda `sendServerCommand(MODULE,
+"siren", {})` e cada cliente toca a dele. UNKNOWN: se o emitter do jogador pausa o som
+com o jogo pausado (a contagem para de qualquer jeito).
+
 ---
 
 ## Abordagem recomendada por mecânica (resumo)
@@ -769,6 +820,8 @@ névoa e um sorteio só (faixas contíguas). Nenhuma API nova.
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
 | Decal local | `getIsoMarkers():addIsoMarker(sprite, sq, r,g,b,a)` | `addGridSquareMarker` |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
+| Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
+| Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 
 ## Testes in-game prioritários (UNKNOWNs)
 
