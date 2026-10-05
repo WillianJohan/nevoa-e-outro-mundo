@@ -57,7 +57,7 @@ end
 -- segue o som mais forte; volume baixo perderia pra barulho vanilla.
 NOM_Night = {}
 
--- src: jogador (caça, lanterna) ou zumbi (grito do Corredor, server/NOM_Variants.lua,
+-- src: jogador (caça, lanterna) ou zumbi (gritos do Corredor e da Carpideira, server/NOM_Variants.lua,
 -- que pode vir de dia na névoa: aí ninguém tem o degrau da noite e o raio é o do jogo).
 function NOM_Night.call(src, reach)
     local radius = NOM_NightRules.soundRadius(reach, {
@@ -65,7 +65,11 @@ function NOM_Night.call(src, reach)
         senseMult = NOM_Config.get("NightSenseMult"),
         hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
     })
+    -- calling: o addSound dispara o OnWorldSound na hora (WorldSound.init 129–155); o
+    -- barulho que acorda a Carpideira (server/NOM_Variants.lua) ignora os chamados do mod.
+    NOM_Night.calling = true
     addSound(src, math.floor(src:getX()), math.floor(src:getY()), math.floor(src:getZ()), radius, reach)
+    NOM_Night.calling = false
 end
 
 -- O vanilla sincroniza o liga/desliga da luz (syncItemActivated, client/ISUI/
