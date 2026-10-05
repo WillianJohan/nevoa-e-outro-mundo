@@ -65,8 +65,9 @@ local function setup(opts)
         [5] = float("f5", 0),    -- névoa
         [9] = float("f9", 0.5),  -- ambient (0 de madrugada no jogo; 0.5 pra ver a mistura)
     }
-    -- colNight do jogo (ClimateManager.<init> 250–269): cinza 0.33, alfa 0.4
-    local VANILLA_EXT, VANILLA_INT = { 0.33, 0.33, 0.33, 0.4 }, { 0.33, 0.33, 0.33, 0.4 }
+    -- noite de lua cheia do jogo (server/Climate/ClimateMain.lua:20-22): cinza 0.33,
+    -- alfa 0.8 no exterior; interior azulado 0.12/0.13/0.4, alfa 0.4
+    local VANILLA_EXT, VANILLA_INT = { 0.33, 0.33, 0.33, 0.8 }, { 0.12, 0.13, 0.4, 0.4 }
     local color = { internal = newColorInfo(VANILLA_EXT, VANILLA_INT), modded = newColorInfo(VANILLA_EXT, VANILLA_INT),
         interp = 0, isModded = false }
     color.final = newColorInfo(VANILLA_EXT, VANILLA_INT)
@@ -163,9 +164,9 @@ return {
             assert(near(env.floats[0].final, 0.2), "K=" .. K .. " mexeu na dessaturação à noite (o render zera)")
             local tint, w = NOM_Rules.LOOKS.night.tint.value, nightWeight("tint")
             assert(near(env.color.final.ext[1], 0.33 + (tint[1] - 0.33) * w), "K=" .. K .. " tint exterior composto")
-            assert(near(env.color.final.int[3], 0.33 + (tint[3] - 0.33) * w), "K=" .. K .. " tint interior composto")
+            assert(near(env.color.final.int[3], 0.4 + (tint[3] - 0.4) * w), "K=" .. K .. " tint interior composto")
             -- o alfa é a força da cor (blendIntensity): é ele que escurece
-            assert(near(env.color.final.ext[4], 0.4 + (tint[4] - 0.4) * w), "K=" .. K .. " alfa não escrito")
+            assert(near(env.color.final.ext[4], 0.8 + (tint[4] - 0.8) * w), "K=" .. K .. " alfa não escrito")
         end
     end,
 
@@ -309,7 +310,7 @@ return {
                 "linha do ambient: " .. tostring(amb))
             local tint
             for _, l in ipairs(lines) do if l:find("[NOM] clima tint", 1, true) then tint = l end end
-            assert(tint:find("vanilla=0.33,0.33,0.33,0.40", 1, true) and tint:find("luz=", 1, true), "linha do tint: " .. tint)
+            assert(tint:find("vanilla=0.33,0.33,0.33,0.80", 1, true) and tint:find("luz=", 1, true), "linha do tint: " .. tint)
         end)
         print = orig
         assert(ok, err)

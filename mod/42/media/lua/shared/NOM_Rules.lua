@@ -9,7 +9,10 @@ NOM_Rules.CHANNELS = { "desaturation", "ambient", "fog", "tint" }
 -- Canais escolhidos pelo que o render lê de verdade (sprint 0008, pz-api-notes §10):
 -- * tint = cor E alfa da luz global (r, g, b, a). O alfa é a força da cor: a luz do
 --   céu é 2 × mod × ambient, mod = 1 − alfa × (1 − cor). É o único canal com folga
---   de madrugada; puxar pra um azul escuro com alfa alto escurece e esfria.
+--   de madrugada; a vanilla já usa alfa 0.8 (VANILLA_NIGHTS), então o que escurece é
+--   a cor quase preta, com um pouco mais de azul (fria). Contra a noite vanilla, com
+--   e sem lua: DarkIntensity 1 tira 46% do vermelho e 39–40% do azul; 2 tira 73–89%
+--   (teste rules_night_darker_and_colder_than_vanilla).
 -- * ambient: de madrugada o jogo já põe 0 (quem clareia é o piso do sandbox
 --   NightDarkness, somado depois do clima); vale no anoitecer e na névoa de dia.
 -- * desaturation: o render multiplica por (1 − darkness), zero à noite: só na névoa de dia.
@@ -17,7 +20,7 @@ NOM_Rules.CHANNELS = { "desaturation", "ambient", "fog", "tint" }
 NOM_Rules.LOOKS = {
     night = {
         ambient = { value = 0, weight = 0.5 },
-        tint    = { value = { 0.10, 0.14, 0.30, 0.85 }, weight = 0.6 },
+        tint    = { value = { 0.0, 0.03, 0.06, 0.95 }, weight = 0.55 },
     },
     fog = {
         desaturation = { value = 1, weight = 0.6 },
@@ -27,8 +30,14 @@ NOM_Rules.LOOKS = {
     },
 }
 
--- Luz global vanilla de madrugada (colNight, ClimateManager.<init> 250–269).
-NOM_Rules.VANILLA_NIGHT = { 0.33, 0.33, 0.33, 0.4 }
+-- Luz global (exterior) vanilla de madrugada. O construtor do ClimateManager põe
+-- 0.33/alfa 0.4 (<init> 250–323), mas o server/Climate/ClimateMain.lua:14-22 troca
+-- no OnClimateManagerInit (disparado no <init>, 590, a cada carga): sem lua 0.25,
+-- lua cheia 0.33, alfa 0.8; o updateValues mistura as duas pela lua (1794–1841).
+NOM_Rules.VANILLA_NIGHTS = {
+    noMoon = { 0.25, 0.25, 0.25, 0.8 },
+    moon = { 0.33, 0.33, 0.33, 0.8 },
+}
 
 -- Multiplicador da luz por canal que a cor (r, g, b, alfa) da luz global dá no
 -- render: rmod = lerp(1, cor, alfa) (RenderSettings$PlayerRenderSettings 662–725;

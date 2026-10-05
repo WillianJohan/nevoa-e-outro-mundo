@@ -70,29 +70,37 @@ return {
         assert(near(half.tint.weight * 2, full.tint.weight))
     end,
     -- luz do céu = 2 × mod × ambient (GameTime.getSkyLightLevel 10–77), mod = 1 − alfa ×
-    -- (1 − cor) (PlayerRenderSettings 662–725); noite vanilla = cinza 0.33 com alfa 0.4
+    -- (1 − cor) (PlayerRenderSettings 662–725). Noite vanilla de verdade: o
+    -- server/Climate/ClimateMain.lua:14-22 troca as cores no OnClimateManagerInit;
+    -- sem lua cinza 0.25, lua cheia 0.33, alfa 0.8 nas duas (mod 0.40 e 0.464)
     rules_sky_mod_matches_render = function()
-        local r, g, b = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHT))
-        assert(near(r, 1 - 0.4 * 0.67) and near(g, r) and near(b, r))
-        local w = NOM_Rules.skyMod(1, 1, 1, 0.9)
-        assert(near(w, 1), "cor branca não escurece")
+        local r, g, b = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHTS.noMoon))
+        assert(near(r, 1 - 0.8 * 0.75) and near(g, r) and near(b, r), "sem lua " .. r)
+        assert(near(NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHTS.moon)), 1 - 0.8 * 0.67), "lua cheia")
+        assert(near(NOM_Rules.skyMod(1, 1, 1, 0.9), 1), "cor branca não escurece")
     end,
-    -- "a noite parece clara igual dia": a noite do mod tem que ser bem mais escura e
-    -- mais fria que a vanilla com DarkIntensity 1, e muito escura com 2
+    -- "a noite parece clara igual dia": contra a noite vanilla REAL, com e sem lua,
+    -- a luz do céu cai ≥ 35% em todo canal com DarkIntensity 1 e ≥ 60% com 2; o
+    -- azul cai menos que o vermelho (frio), mas também cai os 35%
     rules_night_darker_and_colder_than_vanilla = function()
-        local van = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHT))
-        local function night(intensity)
+        local function night(van, intensity)
             local t = NOM_Rules.mix(1, 0, intensity).tint
             local c = {}
-            for i = 1, 4 do c[i] = NOM_Rules.blend(NOM_Rules.VANILLA_NIGHT[i], t.value[i], t.weight) end
-            return NOM_Rules.skyMod(unpack(c))
+            for i = 1, 4 do c[i] = NOM_Rules.blend(van[i], t.value[i], t.weight) end
+            local base = NOM_Rules.skyMod(unpack(van))
+            local r, g, b = NOM_Rules.skyMod(unpack(c))
+            return 1 - r / base, 1 - g / base, 1 - b / base
         end
-        local r, g, b = night(1)
-        assert(r / van <= 0.7 and g / van <= 0.7, string.format("DarkIntensity 1 pouco escuro: %.2f %.2f", r / van, g / van))
-        assert(r / van >= 0.45, "DarkIntensity 1 escuro demais pra jogar: " .. r / van)
-        assert(b > r, "não ficou mais fria (azul)")
-        local r2 = night(2)
-        assert(r2 / van <= 0.4, "DarkIntensity 2 não ficou muito escuro: " .. r2 / van)
+        for name, van in pairs(NOM_Rules.VANILLA_NIGHTS) do
+            local r, g, b = night(van, 1)
+            local f = string.format("%s DI1: r %.0f%% g %.0f%% b %.0f%%", name, r * 100, g * 100, b * 100)
+            assert(r >= 0.35 and g >= 0.35 and b >= 0.35, "pouco escuro: " .. f)
+            assert(r <= 0.55, "escuro demais pra jogar: " .. f)
+            assert(r > b + 0.03, "não ficou mais fria: " .. f)
+            local r2, g2, b2 = night(van, 2)
+            assert(r2 >= 0.6 and g2 >= 0.6 and b2 >= 0.6,
+                string.format("%s DI2: r %.0f%% g %.0f%% b %.0f%%", name, r2 * 100, g2 * 100, b2 * 100))
+        end
     end,
     mix_overlap_takes_strongest_not_sum = function()
         local both = NOM_Rules.mix(1, 1, 1)
