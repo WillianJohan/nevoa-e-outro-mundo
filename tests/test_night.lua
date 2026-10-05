@@ -65,7 +65,9 @@ local function setup(opts)
             G.sent[#G.sent + 1] = { player = a, module = b, command = c, args = d }
         end
     end
-    getGameTime = function() return { getTimeOfDay = function() return G.world.tod end } end
+    getGameTime = function()
+        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end }
+    end
     getSandboxOptions = function()
         return {
             getOptionByName = function(_, name)

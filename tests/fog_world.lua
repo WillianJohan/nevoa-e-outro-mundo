@@ -225,7 +225,9 @@ function W.new(opts)
         end
     end
     G.world = { tod = opts.tod or 12 }
-    getGameTime = function() return { getTimeOfDay = function() return G.world.tod end } end
+    getGameTime = function()
+        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end }
+    end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
     end

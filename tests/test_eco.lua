@@ -9,6 +9,8 @@
 -- * morte: DoZombieInventory enche o inventário, OnZombieDead dispara, o corpo
 --   nasce ticks depois (pode cair no square vizinho) com o modData copiado.
 --   OnDeadBodySpawn não dispara no servidor dedicado: o fake nem tem.
+-- * IsoDeadBody.deathTime: o construtor grava GameTime.getWorldAgeHours()
+--   (<init> 1333–1341), save/load guardam; corpo antigo do mapa tem um valor velho.
 require "NOM_EcoRules"
 
 local ECO_FILE = "mod/42/media/lua/server/NOM_Eco.lua"
@@ -49,7 +51,7 @@ local function setup(opts)
         dying = {},
         seed = 0,
         nextOnline = 1,
-        world = { tod = opts.tod or 23 },
+        world = { tod = opts.tod or 23, age = opts.age or 1000 },
     }
     local handlers = {}
     local function fire(name, ...)
@@ -97,7 +99,7 @@ local function setup(opts)
     end
     function G.body(x, y, z, extra)
         local sq = G.square(x, y, z or 0)
-        local b = { x = x, y = y, z = z or 0, md = {}, animal = false, square = sq }
+        local b = { x = x, y = y, z = z or 0, md = {}, animal = false, square = sq, deathTime = 0 }
         for k, v in pairs(extra or {}) do b[k] = v end
         function b:getModData() return self.md end
         function b:hasModData() return next(self.md) ~= nil end
@@ -106,6 +108,7 @@ local function setup(opts)
         function b:getY() return self.y end
         function b:getZ() return self.z end
         function b:isAnimal() return self.animal end
+        function b:getDeathTime() return self.deathTime end
         sq.bodies:add(b)
         return b
     end
@@ -180,7 +183,8 @@ local function setup(opts)
                 if d.ticks <= 0 then
                     table.remove(G.dying, i)
                     G.zombies:remove(d.z)
-                    G.body(math.floor(d.z.x) + d.dx, math.floor(d.z.y), d.z.z, { md = copy(d.z.md), items = d.z.inv })
+                    G.body(math.floor(d.z.x) + d.dx, math.floor(d.z.y), d.z.z,
+                        { md = copy(d.z.md), items = d.z.inv, deathTime = G.world.age })
                 end
             end
             fire("OnTick", 0)
@@ -192,8 +196,9 @@ local function setup(opts)
         fire("EveryTenMinutes")
         for _ = 1, #G.players do fire("OnTick", 0) end
     end
-    function G.setTime(tod)
+    function G.setTime(tod, age)
         G.world.tod = tod
+        G.world.age = age or G.world.age
         NOM_World.update(0)
     end
 
@@ -251,7 +256,12 @@ local function setup(opts)
     sendServerCommand = function(module, command, args)
         G.sent[#G.sent + 1] = { module = module, command = command, args = args }
     end
-    getGameTime = function() return { getTimeOfDay = function() return G.world.tod end } end
+    getGameTime = function()
+        return {
+            getTimeOfDay = function() return G.world.tod end,
+            getWorldAgeHours = function() return G.world.age end,
+        }
+    end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
     end
@@ -699,5 +709,47 @@ return {
         assert(not gone.md.NOM_ecoReleased)
         assert(#G.ecos() == 1, "Ecos: " .. #G.ecos())
     end,
+    -- regra do Johan (05/10): zumbi morto durante a noite não solta Eco nela
+    eco_killed_tonight_waits_next_night = function()
+        local G = setup() -- a noite abre na hora 1000
+        G.world.age = 1001
+        G.kill(G.normalZombie(103, 103))
+        G.tick(10)
+        assert(G.bodiesAt(103, 103) == 1, "o fake não criou o corpo")
+        G.tenMinutes()
+        assert(#G.ecos() == 0, "Eco nasceu do zumbi recém-morto")
+        G.setTime(7, 1009)
+        G.setTime(21, 1024)
+        G.tenMinutes()
+        assert(#G.ecos() == 1, "não soltou na noite seguinte")
+    end,
+    eco_died_before_dusk_releases_tonight = function()
+        local G = setup({ tod = 12 })
+        G.kill(G.normalZombie(103, 103))
+        G.tick(10)
+        G.setTime(21, 1009)
+        G.tenMinutes()
+        assert(#G.ecos() == 1)
+    end,
+    -- noite forçada pelo debug: abre na hora em que foi forçada
+    eco_forced_night_counts_from_forcing = function()
+        local G = setup({ tod = 12 })
+        G.body(103, 103, 0, { deathTime = 999 })
+        G.body(104, 103, 0, { deathTime = 1002 })
+        NOM_World.forced.night = true
+        G.setTime(12, 1001)
+        G.tenMinutes()
+        NOM_World.forced.night = nil
+        assert(#G.ecos() == 1, "Ecos: " .. #G.ecos())
+    end,
+    -- reiniciar o servidor no meio da noite não muda o início dela
+    eco_restart_keeps_night_start = function()
+        local G = setup()
+        G.world.age = 1003
+        G.kill(G.normalZombie(103, 103))
+        G.tick(10)
+        local G2 = setup({ squares = G.squares, globalMD = G.globalMD, age = 1005 })
+        G2.tenMinutes()
+        assert(#G2.ecos() == 0, "reinício abriu a noite de novo e soltou o recém-morto")
+    end,
 }
-
