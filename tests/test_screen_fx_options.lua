@@ -112,6 +112,20 @@ return {
         assert(O2.dissolve() == true and O2.bloom() == 1, "sem a API: padrão")
     end,
 
+    -- sprint 0022: "Brasa no corpo inteiro", sub-opção do dissolve (ligada)
+    body_embers_option = function()
+        local O = load(true)
+        local opts = PZAPI.ModOptions:getOptions("NevoaEOutroMundo")
+        local e = opts:getOption("BodyEmbers")
+        assert(e and e.type == "tickbox" and e.value == true and e.name:find("^UI_NOM_") and e.tooltip:find("^UI_NOM_"))
+        assert(O.bodyEmbers() == true)
+        e.value = false
+        assert(O.bodyEmbers() == false)
+        e.value = true
+        opts:getOption("Dissolve").value = false
+        assert(O.bodyEmbers() == false, "sem o dissolve não há casca")
+        assert(load(false).bodyEmbers() == true, "sem a API: padrão")
+    end,
     -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
     screenfx_options_debug_key_only_in_debug = function()
         local O = load(true, true)

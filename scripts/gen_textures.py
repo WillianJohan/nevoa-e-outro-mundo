@@ -18,6 +18,7 @@ Saída (mod/42/media/textures/):
   NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
+  NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
@@ -217,6 +218,22 @@ def eco_veu(rng, size=128):
     return eco_ash(rng, size, (246, 246, 250), 0.22)                     # borda do véu mais escura
 
 
+def ember_shell(rng, size=256):
+    # casca de brasa da mutação (sprint 0022): carvão quase preto em placas grandes,
+    # rachaduras largas em laranja de brasa com o miolo amarelado. Vista só por ~1 s, queimando
+    # (o shader soma a borda laranja): tem de ler como "o corpo inteiro em brasa", não como roupa.
+    rgb = color((34, 26, 22), 0.85 + 0.3 * fbm(rng, size))             # carvão
+    # placas por grade com jitter (pontos sorteados soltos encostam e abrem leques de brasa)
+    g = 5
+    pts = (np.stack(np.mgrid[0:g, 0:g], -1).reshape(-1, 2) + 0.2 + 0.6 * rng.random((g * g, 2))) * size / g
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    d = np.sort(np.stack([np.hypot(x - px, y - py) for py, px in pts]), axis=0)
+    c = d[1] - d[0]
+    glow = np.clip((7.0 - c) / 3.0, 0, 1)                                # rachadura de ~10 px
+    rgb = mix(rgb, (255, 112, 20), glow)                                 # brasa
+    return mix(rgb, (255, 214, 120), np.clip((3.0 - c) / 1.5, 0, 1))    # miolo quente
+
+
 def screen_grain(rng, size=256):
     # ruído em blocos de 2 px, esparso: a maioria quase transparente, poucos grãos fortes
     cells = rng.random((size // 2, size // 2)).astype(np.float32) ** 3
@@ -253,6 +270,8 @@ def main():
     # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
+    # casca de brasa: corpo inteiro (malha Hazmat), opaca como a cinza
+    save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)
     for i in range(1, 5):

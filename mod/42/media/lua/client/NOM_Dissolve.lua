@@ -79,7 +79,8 @@ Events.OnTick.Add(function()
         local ok, done = pcall(apply, z, a, players, now)
         if not ok then
             print("[NOM] dissolve: erro: " .. tostring(done))
-            finished[#finished + 1] = { z = z }
+            -- o fim roda mesmo assim: quem pôs algo no zumbi (a casca de brasa) tira
+            finished[#finished + 1] = { z = z, done = a.done }
         elseif done then
             finished[#finished + 1] = { z = z, done = a.done }
         end

@@ -139,4 +139,18 @@ module Base
         CanHaveHoles = false,
         ClothingItem = NOM_EcoCasca,
     }
+
+    /* Sprint 0022: casca de brasa do corpo inteiro na mutação e na volta. Em base:zeddmg
+       (multi-item: não expulsa a peça nem a roupa no DoZombieInventory) e sem BloodLocation
+       nem defesa (getBodyPartClothingDefense pula o item: nenhum efeito de jogo). */
+    item NOM_Brasa
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Hazmatsuit,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_Brasa,
+    }
 }

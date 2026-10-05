@@ -20,6 +20,9 @@ NOM_DissolveRules = {
     -- (o alfa volta como antes); a animação de morte nunca chega perto disso.
     BACKSTOP_MS = 30000,
     CAP = 12,      -- efeitos ao mesmo tempo; o resto é instantâneo (névoa vermelha)
+    -- casca de brasa no corpo inteiro (sprint 0022, client/NOM_EmberShell.lua), dentro do
+    -- CAP: na horda, as primeiras queimam inteiras, as seguintes só a peça, o resto na hora
+    SHELL_CAP = 6,
 }
 
 local R = NOM_DissolveRules

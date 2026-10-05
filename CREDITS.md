@@ -68,6 +68,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
 | `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco do Eco, salpicado, mais escuro nas bordas |
+| `mod/42/media/textures/NOM/NOM_Brasa.png` | 256×256 | casca de brasa da mutação (sprint 0022): carvão quase preto em placas, rachaduras largas em brasa laranja |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
@@ -80,7 +81,7 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | Arquivo | O que é |
 |---|---|
 | `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
-| `mod/42/media/shaders/NOM_Dissolve.vert`, `mod/42/media/shaders/NOM_Dissolve_static.vert`, `mod/42/media/shaders/NOM_Dissolve.frag` | dissolve das peças do mod (sprint 0018, ADR-016), pelo `<m_Shader>` dos itens `*Fx` e da casca do Eco: **código original**, escrito pro mod (MIT). Do jogo só a interface: atributos pelo índice, paleta de ossos, nomes e tipos dos uniforms que o Java do `skinnedmodel.Shader` manda e a saída `gl_FragColor`. Nenhuma linha do `basicEffect*.vert/.frag` da The Indie Stone (`tests/test_dissolve_shader.lua` confere contra os arquivos instalados) |
+| `mod/42/media/shaders/NOM_Dissolve.vert`, `mod/42/media/shaders/NOM_Dissolve_static.vert`, `mod/42/media/shaders/NOM_Dissolve.frag` | dissolve das peças do mod (sprint 0018, ADR-016), pelo `<m_Shader>` dos itens `*Fx`, da casca do Eco e da casca de brasa (sprint 0022): **código original**, escrito pro mod (MIT). Do jogo só a interface: atributos pelo índice, paleta de ossos, nomes e tipos dos uniforms que o Java do `skinnedmodel.Shader` manda e a saída `gl_FragColor`. Nenhuma linha do `basicEffect*.vert/.frag` da The Indie Stone (`tests/test_dissolve_shader.lua` confere contra os arquivos instalados) |
 
 ## Conteúdo vanilla referenciado (nada copiado)
 
@@ -93,6 +94,7 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | `clothingItems/NOM_SemRostoEstatica.xml` | modelo da balaclava inteira (`Hat_BalaclavaFull`) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
 | `clothingItems/NOM_CarpideiraCabelo.xml`, `NOM_EcoVeu.xml` | modelo do véu de noiva (`Hat_WeddingVeil`) | `skinned\clothes\m_weddingveil`, `skinned\clothes\f_weddingveil` |
 | `clothingItems/NOM_*Fx.xml` (sprint 0018) | gêmeos das peças com o shader do dissolve | os mesmos modelos vanilla das peças acima, pelo nome |
+| `clothingItems/NOM_Brasa.xml` (sprint 0022) | modelo da roupa de proteção (`HazmatSuit`), casca de brasa do corpo inteiro na mutação, sem máscara | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |
 | `scripts/NOM_clothing.txt` | ícones dos itens | `SkiGogglesWhite`, `SurgicalMaskBlue`, `Balaclava`, `VeilWedding`, `HospitalGown`, `Hazmatsuit`, pelo nome |

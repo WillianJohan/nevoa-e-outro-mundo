@@ -10,6 +10,8 @@
     "UI_NOM_Dissolve_tooltip": "As peças dos monstros se formam e se desfazem com borda em brasa quando o zumbi vira monstro e volta, e o Eco queima e some em brasas ao morrer. Desligado: troca instantânea, como antes.",
     "UI_NOM_Bloom": "Bloom (mod do Shader)",
     "UI_NOM_Bloom_tooltip": "Brilho em volta das luzes fortes, mais forte na névoa. Só com o mod opcional do Shader (não com ShadowZ). 0 desliga.",
+    "UI_NOM_BodyEmbers": "Brasa no corpo inteiro",
+    "UI_NOM_BodyEmbers_tooltip": "Com a queima ligada: quando o zumbi vira monstro e volta, o corpo inteiro queima em brasa, não só a peça do monstro. Desligado: só a peça queima.",
     "UI_NOM_DebugPanelKey": "Painel de debug do mod (só com -debug)",
     "UI_NOM_DebugPanelKey_tooltip": "Abre e fecha o painel de botões do debug do Névoa e Outro Mundo. Só aparece com o jogo em -debug. Padrão: Insert (F7 abre o editor de veículos do jogo em -debug). No console: NOM.panel().",
     "UI_NOM_Debug_Title": "Névoa e Outro Mundo: debug",
