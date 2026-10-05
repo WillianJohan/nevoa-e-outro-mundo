@@ -9,7 +9,8 @@ NOM_SemRostoRules.REPORT_RANGE = 30 -- até onde o jogador "vê" o Sem-rosto
 NOM_SemRostoRules.STATIC_NEAR = 3   -- rádio no máximo
 NOM_SemRostoRules.STATIC_FAR = 30   -- rádio mudo
 
--- Arredondar o ponto pro tile põe o destino até ~0,71 tile fora do raio.
+-- O destino é o tile que contém o ponto do círculo: o centro dele fica até ~0,71
+-- tile fora do raio.
 local SLACK = 0.75
 
 local function dist(ax, ay, bx, by)
@@ -20,7 +21,8 @@ function NOM_SemRostoRules.nextRadius(d)
     return math.max(NOM_SemRostoRules.MIN_DIST, d - NOM_SemRostoRules.STEP)
 end
 
--- Tiles no círculo de raio r em volta de (px, py), começando atrás do jogador
+-- Tiles (coordenada inteira do canto) no círculo de raio r em volta do ponto
+-- (px, py) (posição real do jogador, em float), começando atrás do jogador
 -- (faceAngle + π, em radianos, como getForwardDirection():getDirection()) e
 -- abrindo 30° de cada lado até ±120°: nunca na frente.
 function NOM_SemRostoRules.spots(px, py, faceAngle, r)
@@ -29,8 +31,8 @@ function NOM_SemRostoRules.spots(px, py, faceAngle, r)
     for k = 0, 8 do
         local step = math.floor((k + 1) / 2) * math.rad(30)
         local a = back + ((k % 2 == 1) and step or -step)
-        local x = math.floor(px + r * math.cos(a) + 0.5)
-        local y = math.floor(py + r * math.sin(a) + 0.5)
+        local x = math.floor(px + r * math.cos(a))
+        local y = math.floor(py + r * math.sin(a))
         local key = x .. "," .. y
         if not seen[key] then
             seen[key] = true

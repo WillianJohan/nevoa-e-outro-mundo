@@ -62,4 +62,76 @@ return {
         assert(#G.sentServer == 1 and G.sentServer[1].player == who)
         assert(G.sentServer[1].command == "fog" and G.sentServer[1].args.on == true and G.sentServer[1].args.period == 1)
     end,
+    -- solo: o processo é dono, vê e move; o servidor confere antes
+    fog_sp_seen_moves_zombie = function()
+        local G = setup({ fog = 0.9 })
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local z = G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true) })
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(z.teleports == 1, "não moveu")
+        assert(not z:getCurrentSquare():isCanSee(0), "continua à vista")
+        assert(math.sqrt((z.x - p.x) ^ 2 + (z.y - p.y) ^ 2) < 12, "não chegou mais perto")
+        assert(#G.sentServer == 0, "solo mandou comando")
+    end,
+    -- o servidor não confia no cliente: período, variante, distância, cooldown
+    fog_server_rejects_bad_move = function()
+        local G = setup({ server = true, fog = 0.9 })
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local sem = G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true), onlineID = 7 })
+        local common = G.zombie({ x = 112, y = 101, id = W.semRostoID(1, false), onlineID = 8 })
+        local function seen(id, x, y) G.clientCommand("NevoaEOutroMundo", "semRostoSeen", p, { id = id, x = x, y = y, z = 0 }) G.now = G.now + 1000 end
+        seen(8, 95, 100)            -- não é Sem-rosto
+        seen(7, 80, 100)            -- mais longe que o zumbi
+        seen(7, 100, 100)           -- em cima do jogador
+        seen(7, "x", 100)           -- lixo
+        seen(-1, 95, 100)           -- sem ID de rede
+        assert(sem.teleports == nil and common.teleports == nil, "aceitou movimento inválido")
+        assert(#G.commands(G.sentServer, "semRostoMove") == 0)
+        seen(7, 95, 100)
+        assert(sem.teleports == 1, "recusou movimento bom")
+        seen(7, 96, 100)            -- 1 s depois: cooldown
+        assert(sem.teleports == 1, "piscou")
+        G.setFog(0)
+        G.now = G.now + 10000
+        seen(7, 96, 100)            -- névoa acabou: zumbi comum
+        assert(sem.teleports == 1, "Sem-rosto sem névoa")
+    end,
+    -- dedicado: move a cópia do servidor (vale se ninguém é dono) e manda o dono mover
+    fog_server_relays_move = function()
+        local G = setup({ server = true, fog = 0.9 })
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local z = G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true), onlineID = 7 })
+        G.clientCommand("NevoaEOutroMundo", "semRostoSeen", p, { id = 7, x = 95, y = 100, z = 0 })
+        local mv = G.commands(G.sentServer, "semRostoMove")
+        assert(#mv == 1 and mv[1].player == nil, "não avisou todos")
+        assert(mv[1].args.id == 7 and mv[1].args.x == 95 and mv[1].args.y == 100 and mv[1].args.z == 0)
+        assert(z.x == 95 and z.y == 100)
+    end,
+    -- fallback: o dono não aplicou (o pacote dele devolveu a posição velha); na
+    -- próxima vez que é visto ali, o servidor troca por um zumbi com o mesmo ID
+    fog_server_fallback_replaces_stuck = function()
+        local G = setup({ server = true, fog = 0.9 })
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local id = W.semRostoID(1, true)
+        local z = G.zombie({ x = 112, y = 100, id = id, onlineID = 7, female = true, outfit = "Doctor" })
+        G.clientCommand("NevoaEOutroMundo", "semRostoSeen", p, { id = 7, x = 95, y = 100, z = 0 })
+        G.ownerPacket(z, 112, 100)
+        G.now = G.now + NOM_SemRostoRules.COOLDOWN_MS
+        G.clientCommand("NevoaEOutroMundo", "semRostoSeen", p, { id = 7, x = 96, y = 101, z = 0 })
+        assert(z.removed and z.offSquare, "o travado ficou")
+        assert(#G.spawned == 1, "não spawnou o substituto")
+        local nz = G.spawned[1]
+        assert(nz.id == id, "substituto com outro ID (outra variante)")
+        assert(nz.x == 96 and nz.y == 101 and nz.outfitName == "Doctor" and nz.femaleChance == 100)
+        local gone = G.commands(G.sentServer, "semRostoGone")
+        assert(#gone == 1 and gone[1].args.ids[1] == 7)
+        -- andou de verdade: não é travado, segue o caminho normal
+        local G2 = setup({ server = true, fog = 0.9 })
+        local p2 = G2.player({ x = 100, y = 100, face = 0 })
+        local z2 = G2.zombie({ x = 112, y = 100, id = id, onlineID = 7 })
+        G2.clientCommand("NevoaEOutroMundo", "semRostoSeen", p2, { id = 7, x = 95, y = 100, z = 0 })
+        G2.now = G2.now + NOM_SemRostoRules.COOLDOWN_MS
+        G2.clientCommand("NevoaEOutroMundo", "semRostoSeen", p2, { id = 7, x = 97, y = 100, z = 0 })
+        assert(#G2.spawned == 0 and z2.teleports == 2)
+    end,
 }

@@ -14,13 +14,15 @@ return {
     -- o primeiro ponto é atrás do jogador; os outros abrem pros lados, nunca na frente
     semrosto_rules_spots_behind_first = function()
         local face = 0 -- olhando pra +x
-        local s = R.spots(100, 100, face, 6)
+        -- jogador no centro do tile (100, 100)
+        local s = R.spots(100.5, 100.5, face, 6)
         assert(#s >= 9, "poucos pontos: " .. #s)
         assert(s[1].x == 94 and s[1].y == 100, "primeiro ponto não é atrás: " .. s[1].x .. "," .. s[1].y)
         for _, p in ipairs(s) do
             assert(p.x == math.floor(p.x) and p.y == math.floor(p.y), "ponto não inteiro")
-            assert(math.abs(dist(100, 100, p.x, p.y) - 6) < 0.75, "fora do raio")
-            assert(p.x <= 100 + 6 * math.cos(math.rad(60)) + 0.5, "ponto na frente do jogador")
+            -- centro do tile de destino
+            assert(math.abs(dist(100.5, 100.5, p.x + 0.5, p.y + 0.5) - 6) < 0.75, "fora do raio")
+            assert(p.x + 0.5 <= 100.5 + 6 * math.cos(math.rad(60)) + 0.75, "ponto na frente do jogador")
         end
     end,
     -- sem duplicata (raio pequeno arredonda pro mesmo tile)

@@ -58,7 +58,7 @@ function W.new(opts)
             getX = function() return x end,
             getY = function() return y end,
             getZ = function() return z end,
-            isFree = function(_, _) return sq.free end,
+            isFree = function(_, _) return sq.free and not G.noFree end,
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             isCanSee = function(_, pn)
                 if not couldSee(pn, x, y, z) then return false end
