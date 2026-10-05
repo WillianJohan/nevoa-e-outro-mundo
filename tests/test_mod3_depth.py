@@ -128,4 +128,12 @@ for jname, gname in [("F_SOLID", "SOLID"), ("F_TREE", "TREE"), ("F_INDOOR", "IND
 jv = re.search(r"VEL_MAX = ([\d.]+)f", flow)
 gv = re.search(r"const float NOM_FLOW_VMAX = ([\d.]+);", header)
 assert jv and gv and float(jv.group(1)) == float(gv.group(1)), "mod3: VEL_MAX diverge de NOM_FLOW_VMAX"
+# Visual novo da névoa (sprint 0025): NOMRender_setParam(5, v) chega no shader como uParams[1].y.
+jl = re.search(r"PARAM_LOOK = (\d+);", java)
+assert jl, "mod3: PARAM_LOOK ausente no Java"
+assert re.search(r"luaParams\[PARAM_LOOK\] = 1f", java), "mod3: o visual novo tem que ser o padrão"
+idx = int(jl.group(1))
+comp = "uParams[%d].%s" % (idx // 4, "xyzw"[idx % 4])
+volfog = (src.parent.parent.parent / "42/media/shaders/NOM_VolFog.frag").read_text()
+assert comp in volfog, "mod3: NOM_VolFog não lê " + comp + " (PARAM_LOOK)"
 print("mod3 contrato Java/GLSL ok")

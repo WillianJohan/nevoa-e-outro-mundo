@@ -4,7 +4,7 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3) e 0025 (luz e volume na névoa) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
 - 707 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 15 do núcleo da névoa fluida em Java (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
@@ -52,6 +52,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 7)` | fluido: velocidade |
 | `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
+| `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -66,6 +67,12 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 4. **O advice é inlinado dentro da classe do jogo.** Todo método do mod3 chamado do `@Patch` precisa ser `public`, senão dá `IllegalAccessError` e o jogo crasha. Há um teste pra isso em `tests/test_mod3_depth.py`.
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
+
+## Em teste: luz e volume na névoa (sprint 0025)
+
+O Johan quer a névoa "viva", com física convincente (referência: fumaça interativa do Batman Arkham Knight). Antes de partir pra simulação 3D na GPU, a 0025 testa se o chapado vem da luz: rolos com silhueta, sombra própria e fiapos, só no shader. Roteiro e decisão que ela destrava em [sprints/sprint-0025-luz-da-nevoa/README.md](sprints/sprint-0025-luz-da-nevoa/README.md).
+
+**Próximo, se ainda parecer chapado:** simulação 3D na GPU (OpenGL 3.3, sem compute shader: shaders de fragmento alternando entre duas texturas 3D), quebrada em spike → núcleo 3D → visual com sombra → fontes (jogador, zumbis, carros, porta, tiros e explosões) → opção de qualidade baixa/média/alta. O Johan quer todas essas fontes e aceita o custo desde que tenha opção de qualidade.
 
 ## Em teste: névoa fluida no mod3 (sprint 0024)
 
