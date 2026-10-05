@@ -1,4 +1,5 @@
--- Opções de cliente dos efeitos de tela (sprint 0013): cada jogador escolhe no
+-- Opções de cliente dos efeitos de tela (sprint 0013) e da densidade do sangue e da
+-- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua): cada jogador escolhe no
 -- próprio jogo (Opções > Mods), não o servidor. PZAPI.ModOptions do B42
 -- (client/PZAPI/ModOptions.lua: create, addTickBox, addSlider, getOption/getValue),
 -- gravado no ModOptions.ini da máquina. A tela de opções (MainOptions:addModOptionsPanel,
@@ -9,7 +10,7 @@
 -- option.value depois.
 if isServer() then return end
 
-NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1 }
+NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1 }
 
 local O = NOM_ScreenFxOptions
 local page
@@ -19,6 +20,8 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("ScreenFx", "UI_NOM_ScreenFx", true, "UI_NOM_ScreenFx_tooltip")
     page:addSlider("ScreenFxIntensity", "UI_NOM_ScreenFxIntensity", 0, 2, 0.1, O.DEFAULT_INTENSITY,
         "UI_NOM_ScreenFxIntensity_tooltip")
+    page:addSlider("FogOverlayDensity", "UI_NOM_FogOverlayDensity", 0, 2, 0.1, O.DEFAULT_DENSITY,
+        "UI_NOM_FogOverlayDensity_tooltip")
 end
 
 local function value(id, default)
@@ -37,6 +40,12 @@ end
 function O.intensity()
     if not O.enabled() then return 0 end
     local v = tonumber(value("ScreenFxIntensity", O.DEFAULT_INTENSITY)) or O.DEFAULT_INTENSITY
+    return math.max(0, math.min(2, v))
+end
+
+-- 0..2: quanto sangue e erosão a névoa põe em volta (1 = o padrão, já pesado).
+function O.overlayDensity()
+    local v = tonumber(value("FogOverlayDensity", O.DEFAULT_DENSITY)) or O.DEFAULT_DENSITY
     return math.max(0, math.min(2, v))
 end
 

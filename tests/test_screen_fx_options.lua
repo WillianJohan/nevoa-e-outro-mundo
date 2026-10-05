@@ -66,5 +66,21 @@ return {
     screenfx_options_without_api_use_defaults = function()
         local O = load(false)
         assert(O.enabled() == true and O.intensity() == 1)
+        assert(O.overlayDensity() == 1)
+    end,
+
+    -- sprint 0015: densidade do sangue e da erosão, do jogador, na mesma página
+    overlay_density_option = function()
+        local O = load(true)
+        local opt = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("FogOverlayDensity")
+        assert(opt and opt.type == "slider" and opt.min == 0 and opt.max == 2 and opt.value == 1)
+        assert(opt.name:find("^UI_NOM_") and opt.tooltip:find("^UI_NOM_"))
+        assert(O.overlayDensity() == 1)
+        opt.value = 1.7
+        assert(O.overlayDensity() == 1.7)
+        opt.value = -1
+        assert(O.overlayDensity() == 0)
+        opt.value = 5
+        assert(O.overlayDensity() == 2)
     end,
 }

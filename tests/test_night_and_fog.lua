@@ -64,7 +64,7 @@ local function setup()
     getIsoMarkers = function()
         return { addIsoMarker = function()
             G.markers = G.markers + 1
-            return { setAlpha = function() end, remove = function() end }
+            return { setAlpha = function() end, setColor = function() end, remove = function() end }
         end }
     end
     getTexture = function(name) return { name = name } end

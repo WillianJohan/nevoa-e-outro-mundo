@@ -15,6 +15,10 @@
 --   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
 -- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
 -- * Square: qualquer método além dos de leitura listados explode (nada de mexer no mapa).
+--   Leituras da sprint 0015: getWall(north) (o objeto com cutN/cutW, IsoGridSquare.getWall(Z);
+--   G.walls[k] = "N", "W" ou "NW"), getObjects():size() (piso + paredes, ou G.objects[k]),
+--   getLightLevel(pn) (máx. de r,g,b da luz do square; G.light[k] ou G.lightAll, 0..1).
+--   G.sqCalls conta toda chamada de método em square (cada uma é uma ida ao Java).
 -- * Zumbi (sprint 0011): playSoundLocal no emitter dele (IsoGameCharacter.playSoundLocal),
 --   getEmitter() com isPlaying/stopSoundLocal (BaseCharacterSoundEmitter); setUseless,
 --   setTarget, spotted(p, forçado) (IsoZombie, públicos). removeFromWorld não para o
@@ -37,7 +41,7 @@ end
 function W.new(opts)
     opts = opts or {}
     local G = { players = {}, zombies = {}, sentServer = {}, sentClient = {}, now = 0, ticks = 0,
-        holes = {}, blocked = {}, lit = {}, water = {}, dark = opts.dark or false, nextID = 1000, spawned = {} }
+        holes = {}, blocked = {}, lit = {}, water = {}, walls = {}, objects = {}, light = {}, sqCalls = 0, dark = opts.dark or false, nextID = 1000, spawned = {} }
     local handlers = {}
     G.handlers = handlers
     function G.fire(name, ...)
@@ -76,6 +80,19 @@ function W.new(opts)
                 return { has = function(_, flag) return flag == IsoFlagType.water and G.water[k] == true end }
             end,
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
+            getWall = function(_, north)
+                local w = G.walls[k]
+                if w and w:find(north and "N" or "W") then
+                    return setmetatable({}, { __index = function(_, m) error("parede:" .. tostring(m) .. " (mexe no mapa?)", 2) end })
+                end
+                return nil
+            end,
+            getObjects = function()
+                local w = G.walls[k]
+                local n = G.objects[k] or (1 + (w and #w or 0))
+                return { size = function() return n end }
+            end,
+            getLightLevel = function(_, _) return G.light[k] or G.lightAll or 1 end,
             isCanSee = function(_, pn)
                 if not couldSee(pn, x, y, z) then return false end
                 if not G.dark or G.lit[k] then return true end
@@ -85,7 +102,10 @@ function W.new(opts)
             end,
         }
         setmetatable(sq, { __index = function(_, name)
-            if api[name] then return api[name] end
+            if api[name] then
+                G.sqCalls = G.sqCalls + 1
+                return api[name]
+            end
             error("square:" .. tostring(name) .. " não devia ser chamado (mexe no mapa?)", 2)
         end })
         squares[k] = sq
