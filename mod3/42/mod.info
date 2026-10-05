@@ -1,0 +1,13 @@
+name=Névoa e Outro Mundo — Volumétrica (Java, ZombieBuddy)
+id=NevoaEOutroMundo_Volumetrica
+require=NevoaEOutroMundo,\ZombieBuddy
+javaJarFile=media/java/client/NevoaEOutroMundo_Volumetrica.jar
+javaPkgName=nom.render
+ZBVersionMin=2.3.2
+author=Johan
+modversion=0.0.1-spike
+versionMin=42.20
+poster=poster.png
+icon=icon.png
+url=https://github.com/WillianJohan/nevoa-e-outro-mundo
+description=Opcional e experimental. Névoa volumétrica de verdade (densidade em 3D, se abre em volta dos personagens). Precisa do Névoa e Outro Mundo e do ZombieBuddy instalado à mão (-javaagent). Só visual, só no cliente: sem o ZombieBuddy o jogo segue com a névoa normal.

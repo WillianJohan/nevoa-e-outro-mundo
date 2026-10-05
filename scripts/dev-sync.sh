@@ -22,3 +22,5 @@ sync_mod() { # pasta do repo, id do mod
 }
 sync_mod mod NevoaEOutroMundo
 sync_mod mod2 NevoaEOutroMundo_Shader
+# mod3/ (spike volumétrica, Java via ZombieBuddy): rode scripts/build-mod3.sh antes.
+if [ -f "$REPO/mod3/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar" ]; then sync_mod mod3 NevoaEOutroMundo_Volumetrica; fi
