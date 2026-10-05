@@ -1,16 +1,21 @@
 -- Morte do Eco com dissolve (sprint 0018, ADR-016), só no jogo de quem vê (solo e cliente
--- de MP): o véu vira o gêmeo com shader, uma casca de cinza (malha Hazmat vanilla com as
--- máscaras do corpo) veste o corpo, os dois queimam pelo Alpha (client/NOM_Dissolve.lua,
--- modo "death") durante a animação de morte, brasas sobem (client/NOM_Embers.lua) e o
--- corpo que nasce fica escondido até o servidor tirá-lo (server/NOM_Eco.lua, como antes).
+-- de MP): o Eco veste o véu gêmeo com shader e uma casca de cinza (malha Hazmat vanilla com
+-- as máscaras do corpo), os dois queimam pelo Alpha (client/NOM_Dissolve.lua, modo "death")
+-- durante a animação de morte, brasas sobem (client/NOM_Embers.lua) e o corpo que nasce fica
+-- escondido e sem nada vestido até o servidor tirá-lo (server/NOM_Eco.lua, como antes).
 --
--- Por que pelo WornItems (bytecode B42.21): IsoGameCharacter.Kill 35–50 liga o onKillDone
--- logo depois do onKilled (que dispara o OnZombieDead), e com ele IsoZombie.getItemVisuals
--- sai do WornItems (isUsingWornItems; getItemVisuals 0–38). O modelo refeito na animação de
--- morte (resetModelNextFrame) é o do WornItems: o véu troca no visual do item vestido, e a
--- casca entra por WornItems.setItem (local; o setWornItem do personagem mandaria
--- SyncClothing no MP). A lista de ItemVisual também troca, pro caso de o modelo ser refeito
--- antes. No solo o WornItems já veio do DoZombieInventory; no cliente de MP, do servidor.
+-- Por que pelo WornItems e no tick seguinte (bytecode B42.21, review da 0018):
+-- * IsoGameCharacter.Kill 35–50 liga o onKillDone logo depois do onKilled (que dispara o
+--   OnZombieDead), e com ele IsoZombie.getItemVisuals sai do WornItems (isUsingWornItems;
+--   getItemVisuals 0–38): o modelo refeito na queda (resetModelNextFrame) é o do WornItems.
+-- * No solo o OnZombieDead do servidor (server/NOM_Eco.lua) roda no mesmo processo, DEPOIS
+--   deste (shared → client → server), e limpa inventário e WornItems (sem loot, sprint 0002).
+--   Vestir no evento seria apagado. Por isso a morte só enfileira, e o próximo OnTick veste
+--   cópias novas (instanceItem) da cinza, do véu gêmeo e da casca no WornItems já limpo
+--   (WornItems.setItem é local; o setWornItem do personagem mandaria SyncClothing no MP).
+--   Nada vai pro inventário: o loot continua vazio. O corpo copia o WornItems
+--   (IsoDeadBody.<init> 661–710), então o OnDeadBodySpawn o limpa além de escondê-lo.
+-- * O modelo velho segue na tela até o reset: a limpeza do servidor não pisca.
 --
 -- Cliente de MP: dieNetwork 0–10 faz Kill e logo becomeCorpse, então não há janela: o
 -- corpo nasce no mesmo tick e só as brasas aparecem (o console mostra "janela ms=0").
@@ -21,51 +26,93 @@ require "NOM_Embers"
 
 NOM_EcoFx = {
     OUTFIT = "NOM_Eco", -- media/clothing/clothing.xml
+    ASH = "Base.NOM_EcoCinza",
     VEIL = "Base.NOM_EcoVeu",
     VEIL_FX = "Base.NOM_EcoVeuFx",
     SHELL_ITEM = "Base.NOM_EcoCasca",
-    -- Decisão de arte do Johan pendente: a casca Hazmat muda a silhueta do Eco no segundo
-    -- da morte. false = só o véu queima e o corpo some em fade.
+    -- Decisão de arte do Johan pendente: a casca Hazmat muda a silhueta do Eco no segundo da
+    -- morte. false = só o véu queima e o corpo some em fade.
     SHELL = true,
+    NEAR = 2,          -- tiles: o corpo pode cair no square vizinho
+    FORGET_MS = 10000, -- morte sem corpo (cliente que não o viu nascer) sai da lista
 }
 
 local F = NOM_EcoFx
-local lastDeath
+local deaths = {}  -- { x, y, z, at }: a janela de cada Eco, achada pelo lugar do corpo
+local pending = {} -- zumbis a vestir no próximo tick
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] eco: " .. msg) end
 end
 
-local function swap(v)
-    if v and v:getItemType() == F.VEIL then v:setItemType(F.VEIL_FX) end
+local function add(wi, fullType)
+    local it = instanceItem(fullType)
+    if it then wi:setItem(it:getBodyLocation(), it) end
 end
 
 local function dress(z)
-    local list = z:getItemVisuals()
-    for i = 0, list:size() - 1 do swap(list:get(i)) end
     local wi = z:getWornItems()
-    for i = 0, wi:size() - 1 do swap(wi:get(i):getItem():getVisual()) end
-    if F.SHELL then
-        local it = instanceItem(F.SHELL_ITEM)
-        if it then wi:setItem(it:getBodyLocation(), it) end
+    local ash = false
+    for i = wi:size() - 1, 0, -1 do
+        local it = wi:get(i):getItem()
+        local t = it:getFullType()
+        if t == F.VEIL then wi:remove(it) elseif t == F.ASH then ash = true end
     end
+    if not ash then add(wi, F.ASH) end
+    add(wi, F.VEIL_FX)
+    if F.SHELL then add(wi, F.SHELL_ITEM) end
     z:resetModelNextFrame()
 end
 
 local function dead(z)
     if z:getOutfitName() ~= F.OUTFIT or not NOM_Dissolve.enabled() then return end
-    lastDeath = getTimestampMs()
-    NOM_Embers.burst(z:getX(), z:getY(), z:getZ())
+    local now = getTimestampMs()
+    local x, y, zz = z:getX(), z:getY(), z:getZ()
+    deaths[#deaths + 1] = { x = x, y = y, z = zz, at = now }
+    NOM_Embers.burst(x, y, zz)
     if NOM_Dissolve.run(z, "death") then
-        dress(z)
+        pending[#pending + 1] = z
         debugLog("morte com dissolve")
     end
+end
+
+-- A morte mais perto do corpo (mesmo andar, até NEAR tiles); sai da lista.
+local function takeDeath(b)
+    local bx, by, bz = b:getX(), b:getY(), b:getZ()
+    local best, bd
+    for i, d in ipairs(deaths) do
+        local dx, dy = d.x - bx, d.y - by
+        local dist = dx * dx + dy * dy
+        if math.floor(d.z) == math.floor(bz) and dist <= F.NEAR * F.NEAR and (not bd or dist < bd) then
+            best, bd = i, dist
+        end
+    end
+    if not best then return nil end
+    return table.remove(deaths, best)
 end
 
 local function body(b)
     if b:isAnimal() or b:getOutfitName() ~= F.OUTFIT or not NOM_Dissolve.enabled() then return end
     b:setDoRender(false)
-    debugLog("corpo escondido, janela ms=" .. tostring(lastDeath and math.floor(getTimestampMs() - lastDeath) or -1))
+    b:getWornItems():clear()
+    local d = takeDeath(b)
+    debugLog("corpo escondido, janela ms=" .. tostring(d and math.floor(getTimestampMs() - d.at) or -1))
+end
+
+local function tick()
+    if #pending > 0 then
+        local list = pending
+        pending = {}
+        for _, z in ipairs(list) do
+            if z:getCurrentSquare() then dress(z) end -- sem square: o corpo já nasceu
+        end
+    end
+    if #deaths > 0 then
+        local now = getTimestampMs()
+        for i = #deaths, 1, -1 do
+            if now - deaths[i].at > F.FORGET_MS then table.remove(deaths, i) end
+        end
+    end
 end
 
 -- pcall: uma surpresa da API não pode quebrar o evento dos outros.
@@ -78,5 +125,10 @@ end
 
 Events.OnZombieDead.Add(safe(dead))
 Events.OnDeadBodySpawn.Add(safe(body))
+Events.OnTick.Add(safe(tick))
+Events.OnMainMenuEnter.Add(function()
+    deaths = {}
+    pending = {}
+end)
 
 return NOM_EcoFx

@@ -113,6 +113,12 @@ return {
             os.execute("command -v glslangValidator >/dev/null 2>&1") ~= true then return end
         local ok = os.execute("glslangValidator -S frag " .. SHADER .. " >/tmp/nom_glsl.txt 2>&1")
         assert(ok == 0 or ok == true, "não compila: " .. (read("/tmp/nom_glsl.txt") or ""))
+        -- e depois da reescrita GL 2.1 que o jogo faz (review da 0018)
+        local f = assert(io.open("/tmp/nom_screen_120.frag", "w"))
+        f:write(dofile("tests/gl21.lua")(assert(read(SHADER)), false))
+        f:close()
+        ok = os.execute("glslangValidator -S frag /tmp/nom_screen_120.frag >/tmp/nom_glsl.txt 2>&1")
+        assert(ok == 0 or ok == true, "não compila em 120: " .. (read("/tmp/nom_glsl.txt") or ""))
     end,
 
     -- sprint 0018: o bloom só lê a cena do DIFFUSE, sai do marcador e cresce com a névoa

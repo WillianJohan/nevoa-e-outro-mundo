@@ -75,9 +75,7 @@ local function frame(now)
     return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity())
 end
 
-local function draw(el)
-    local now = getTimestampMs()
-    for i = 1, #S.extra do S.extra[i](el, now) end
+local function layers(el, now)
     local l = frame(now)
     if not R.visible(l) then return end -- fora da névoa: só a hora acima
     if MainScreen and MainScreen.instance and MainScreen.instance:isReallyVisible() then return end
@@ -108,6 +106,13 @@ local function draw(el)
     end
     local f = tex(T.white)
     if f and l.flash > 0 then el:drawTextureScaled(f, x, y, w, h, l.flash, 0.6, 0.02, 0.02) end
+end
+
+-- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco).
+local function draw(el)
+    local now = getTimestampMs()
+    layers(el, now)
+    for i = 1, #S.extra do S.extra[i](el, now) end
 end
 
 local function updateStatic()

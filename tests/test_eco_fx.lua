@@ -10,12 +10,25 @@
 --   Kill (OnZombieDead) e logo becomeCorpse: o corpo nasce no mesmo tick.
 -- * resetModelNextFrame: o modelo é refeito no quadro seguinte, de getItemVisuals().
 -- * IsoDeadBody.getOutfitName (HumanVisual.getOutfit().name), setDoRender(Z), isAnimal.
--- * instanceItem(tipo) cria o InventoryItem (getBodyLocation, getVisual) sem rede;
---   WornItems.setItem(lugar, item) é local.
+-- * instanceItem(tipo) cria o InventoryItem (getBodyLocation, getVisual, getFullType) sem
+--   rede; WornItems.setItem(lugar, item), remove(item) e clear() são locais.
+-- * Kill: setHealth(0) antes do onKilled (isDead já vale no OnZombieDead).
+-- * Solo: o server/NOM_Eco.lua roda no mesmo processo; com opts.server o teste carrega os
+--   dois na ordem do jogo (shared → client → server): o OnZombieDead do NOM_EcoFx roda
+--   ANTES do do servidor, que limpa inventário e WornItems (0002/0012: sem loot, sem corpo).
+-- * O corpo (IsoDeadBody.<init> 661–710) copia o inventário e o WornItems do zumbi e só
+--   depois dispara o OnDeadBodySpawn.
 local FILE = "mod/42/media/lua/client/NOM_EcoFx.lua"
 
-local LOC = { ["Base.NOM_EcoCinza"] = "boilersuit", ["Base.NOM_EcoVeu"] = "hat", ["Base.NOM_EcoCasca"] = "zeddmg",
-    ["Base.Tshirt_DefaultTEXTURE"] = "tshirt" }
+-- BodyLocation de cada item (mod: o script de verdade; vanilla: generated/items/clothing.txt)
+local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt" }
+do
+    local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
+    for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
+        LOC["Base." .. name] = body:match("BodyLocation = base:(%w+)")
+    end
+    f:close()
+end
 
 local function setup(opts)
     opts = opts or {}
@@ -56,6 +69,7 @@ local function setup(opts)
     local function item(t)
         local it = { type = t, visual = visual(t) }
         function it:getVisual() vc(); return self.visual end
+        function it:getFullType() vc(); return self.type end
         function it:getBodyLocation() vc(); return { loc = assert(LOC[t], "sem lugar " .. t) } end
         return it
     end
@@ -77,6 +91,14 @@ local function setup(opts)
         z.ivs = jlist(ivs)
         z.worn = {}
         function z:getOutfitName() vc(); return self.outfit end
+        z.md = { NOM_eco = z.outfit == "NOM_Eco" or nil }
+        z.inv = {}
+        function z:getModData() return self.md end
+        function z:isDead() vc(); return self.dead == true end
+        function z:getInventory()
+            local me = self
+            return { removeAllItems = function() vc(); me.inv = {} end }
+        end
         function z:getItemVisuals()
             vc()
             if not self.killDone then return self.ivs end
@@ -98,6 +120,11 @@ local function setup(opts)
                 end
                 me.worn[#me.worn + 1] = { loc = loc.loc, item = it }
             end
+            function wi:remove(it)
+                vc()
+                for i, w in ipairs(me.worn) do if w.item == it then table.remove(me.worn, i) return end end
+            end
+            function wi:clear() vc(); me.worn = {} end
             return wi
         end
         function z:resetModelNextFrame() vc(); self.resets = self.resets + 1; self.pendingReset = true end
@@ -131,10 +158,16 @@ local function setup(opts)
         end
     end
     local function corpse(z)
-        local b = { outfit = z.outfit, render = true, animal = false }
+        local b = { outfit = z.outfit, render = true, animal = false, inv = {}, worn = {} }
+        for _, t in ipairs(z.inv) do b.inv[#b.inv + 1] = t end
+        for _, w in ipairs(z.worn) do b.worn[#b.worn + 1] = w.item.visual.type end
+        function b:getWornItems() vc(); return { clear = function() vc(); b.worn = {} end } end
         function b:getOutfitName() vc(); return self.outfit end
         function b:isAnimal() vc(); return self.animal end
         function b:setDoRender(v) vc(); self.render = v end
+        function b:getX() vc(); return z.x end
+        function b:getY() vc(); return z.y end
+        function b:getZ() vc(); return z.zz end
         z.onSquare = false
         G.bodies[#G.bodies + 1] = b
         G.fire("OnDeadBodySpawn", b)
@@ -142,13 +175,19 @@ local function setup(opts)
     end
     -- how: "solo" (animação de animMs antes do corpo) ou "client" (corpo no mesmo tick)
     function G.kill(z, how, animMs)
-        if how == "client" then
-            z.worn = {}
-            for _, v in ipairs(z.ivs.items) do z.worn[#z.worn + 1] = { loc = LOC[v.type], item = item(v.type) } end
-        else
-            z.worn = {}
-            for _, v in ipairs(z.ivs.items) do z.worn[#z.worn + 1] = { loc = LOC[v.type], item = item(v.type) } end
+        -- solo: DoZombieInventory (vestidos e inventário da lista); cliente de MP: o que o
+        -- servidor mandou (opts.serverWorn, o servidor do Eco já limpou: vazio)
+        z.worn, z.inv = {}, {}
+        local from = z.ivs.items
+        if how == "client" and opts.serverWorn then
+            from = {}
+            for _, t in ipairs(opts.serverWorn) do from[#from + 1] = visual(t) end
         end
+        for _, v in ipairs(from) do
+            z.worn[#z.worn + 1] = { loc = LOC[v.type], item = item(v.type) }
+            z.inv[#z.inv + 1] = v.type
+        end
+        z.dead = true
         G.fire("OnZombieDead", z)
         z.killDone = true
         if how == "client" then return corpse(z) end
@@ -156,6 +195,18 @@ local function setup(opts)
         return corpse(z)
     end
     dofile(FILE)
+    if opts.server then -- solo: o servidor no mesmo processo, carregado depois do client
+        getCell = function() return { getGridSquare = function() return nil end, getZombieList = function()
+            return { size = function() return 0 end }
+        end } end
+        ModData = { getOrCreate = function() return {} end }
+        SandboxVars = { NevoaEOutroMundo = {} }
+        for _, m in ipairs({ "NOM_Eco", "NOM_World", "NOM_NightCount", "NOM_Players" }) do
+            _G[m] = nil
+            package.loaded[m] = nil
+        end
+        dofile("mod/42/media/lua/server/NOM_Eco.lua")
+    end
     return G
 end
 
@@ -254,5 +305,63 @@ return {
         assert(NOM_Dissolve.count() == NOM_DissolveRules.CAP)
         assert(NOM_Embers.count() <= NOM_EmberRules.CAP)
         G.restore()
+    end,
+
+    -- Review da 0018: no solo os dois OnZombieDead rodam no mesmo processo, o do servidor
+    -- depois, e limpa o WornItems. A morte tem que queimar mesmo assim, e o corpo nasce sem
+    -- loot e sem nada vestido (regra da 0002)
+    ecofx_sp_with_server_handler = function()
+        local G = setup({ server = true })
+        local z = G.zombie()
+        local b = G.kill(z, "solo", 1600)
+        G.restore()
+        local model = split(z.model)
+        assert(has(model, "Base.NOM_EcoVeuFx") and has(model, "Base.NOM_EcoCasca") and has(model, "Base.NOM_EcoCinza"),
+            "o Eco caiu sem nada pra queimar: " .. tostring(z.model))
+        assert(not has(model, "Base.NOM_EcoVeu"), "véu sem shader")
+        assert(#b.inv == 0, "loot no corpo: " .. table.concat(b.inv, ","))
+        assert(#b.worn == 0, "corpo vestido: " .. table.concat(b.worn, ","))
+        assert(b.render == false)
+    end,
+
+    -- cliente de MP com o que o servidor mandou (vazio: ele já limpou) e o corpo no mesmo tick
+    ecofx_mp_client_empty_worn = function()
+        local G = setup({ client = true, serverWorn = {} })
+        local z = G.zombie()
+        local b = G.kill(z, "client")
+        G.frame(2)
+        G.restore()
+        assert(b.render == false and #b.worn == 0 and NOM_Embers.count() == 1)
+    end,
+
+    -- duas mortes ao mesmo tempo: cada corpo loga a janela do seu Eco
+    ecofx_window_per_zombie = function()
+        local G = setup()
+        local a, c = G.zombie(), G.zombie()
+        c.x, c.y = 30.5, 40.5
+        a.dead = true
+        G.fire("OnZombieDead", a)
+        a.killDone = true
+        G.frame(math.ceil(800 / 16))
+        c.dead = true
+        G.fire("OnZombieDead", c)
+        c.killDone = true
+        G.frame(math.ceil(400 / 16))
+        G.prints = {}
+        -- corpo do primeiro (morto há ~1200 ms)
+        a.onSquare = false
+        local b = { outfit = "NOM_Eco", x = 10, y = 20 }
+        function b:getOutfitName() return self.outfit end
+        function b:isAnimal() return false end
+        function b:setDoRender() end
+        function b:getWornItems() return { clear = function() end } end
+        function b:getX() return 10.5 end
+        function b:getY() return 20.5 end
+        function b:getZ() return 0 end
+        G.fire("OnDeadBodySpawn", b)
+        G.restore()
+        local ms
+        for _, p in ipairs(G.prints) do ms = ms or tonumber(p:match("janela ms=(%d+)")) end
+        assert(ms and ms >= 1100 and ms <= 1300, "janela do Eco errado: " .. tostring(ms))
     end,
 }

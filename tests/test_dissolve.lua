@@ -53,6 +53,7 @@ local function setup(opts)
         end
         function z:getAlpha(pn) c(); return self.alpha[pn] end
         function z:getCurrentSquare() c(); return self.sq and {} or nil end
+        function z:isDead() c(); return self.dead == true end
         G.zombies[#G.zombies + 1] = z
         return z
     end
@@ -241,5 +242,26 @@ return {
         G.calls = 0
         G.frame(1)
         assert(G.calls <= 1 + 5 * (1 + 2 * 2), "custou " .. G.calls)
+    end,
+
+    -- review da 0018: morto e ainda no square (animação de morte longa), o teto não solta o
+    -- alfa: soltar traria o Eco de volta na casca. Só sai quando deixa o square
+    dissolve_death_holds_while_dead_on_square = function()
+        local G = setup()
+        local R2 = NOM_DissolveRules
+        local z = G.zombie()
+        z.dead = true
+        local ended = false
+        NOM_Dissolve.run(z, "death", function() ended = true end)
+        G.ms(R2.MS + R2.FADE_MS + R2.HOLD_MS + 500)
+        assert(not ended and NOM_Dissolve.busy(z) and z.drawn[0] == 0, "soltou o Eco morto ainda caindo")
+        z.sq = false
+        G.frame(1)
+        assert(ended and not NOM_Dissolve.busy(z))
+        -- vivo (não devia acontecer): o teto ainda solta
+        local w = G.zombie()
+        NOM_Dissolve.run(w, "death")
+        G.ms(R2.MS + R2.FADE_MS + R2.HOLD_MS + 100)
+        assert(not NOM_Dissolve.busy(w), "o teto não soltou o vivo")
     end,
 }

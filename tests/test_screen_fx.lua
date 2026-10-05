@@ -465,4 +465,19 @@ return {
         G.java = 0
         assert(#mine(G.frameDraws()) == 0 and G.java <= 1, "custou " .. G.java)
     end,
+
+    -- review da 0018: as brasas por cima do grão e da vinheta
+    embers_over_fog_layers = function()
+        local G = setup({ embers = true })
+        fogOn(G)
+        NOM_Embers.burst(10.5, 20.5, 0)
+        G.frame(3)
+        local d = mine(G.frameDraws())
+        local vig, firstEmber
+        for i, e in ipairs(d) do
+            if e.tex == NOM_ScreenFxRules.TEXTURES.vignette then vig = i end
+            if e.tex == NOM_Embers.TEXTURE and not firstEmber then firstEmber = i end
+        end
+        assert(vig and firstEmber and firstEmber > vig, "brasa por baixo da vinheta")
+    end,
 }

@@ -60,6 +60,9 @@ end
 local function apply(z, a, players, now)
     if not z:getCurrentSquare() then return true end
     local alpha, done = R.step(a.e, now)
+    -- morte: morto e ainda no square (animação longa), o teto não solta; soltar traria o
+    -- Eco de volta. Sai quando deixa o square (o corpo nasceu), na linha de cima.
+    if done and a.e.mode == "death" and z:isDead() then done = false end
     for pn = 0, players - 1 do
         z:setAlpha(pn, math.min(alpha, z:getAlpha(pn)))
     end

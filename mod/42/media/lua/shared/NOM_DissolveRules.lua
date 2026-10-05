@@ -13,7 +13,8 @@ NOM_DissolveRules = {
     FADE_MS = 500, -- morte: depois da queima, o que sobra do corpo some em fade
     -- morte: depois do fade, segura o Alpha em 0 até o corpo nascer (o zumbi sai do
     -- square e o efeito acaba); soltar antes deixaria o jogo trazê-lo de volta no fim da
-    -- animação. Teto pra quem nunca vira corpo.
+    -- animação. Teto pra quem nunca vira corpo e não está morto (o driver não solta um
+    -- morto que ainda tem square, client/NOM_Dissolve.lua).
     HOLD_MS = 5000,
     CAP = 12,      -- efeitos ao mesmo tempo; o resto é instantâneo (névoa vermelha)
 }
