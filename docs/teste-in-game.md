@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Escrito em | sprint 0006 (2026-10-04) |
-| Cobre | os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
+| Cobre | os critérios in-game das sprints [0001](sprints/sprint-0001-estado-e-clima/README.md) a [0006](sprints/sprint-0006-balanceamento-mp/README.md) e a lista de mods da [0007](sprints/sprint-0007-workshop/README.md) (o teste da cópia do Workshop fica no [publicar.md](publicar.md)), menos o que está em [Fora desta sessão](#fora-desta-sessão) |
 | Duração | ~60–90 min: solo ~40, MP ~30, medições e remoção ~15 |
 
 > **⚠️ Use um save descartável.** `NOM_Debug.night` e `NOM_Debug.fog` avançam os
@@ -25,6 +25,9 @@ seção [Balanceamento](#balanceamento) e os números das [medições](#parte-3-
 ## Antes de começar (~5 min)
 
 - [ ] Mod linkado: `ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`.
+- [ ] **Sem** `~/Zomboid/Workshop/NevoaEOutroMundo/` (a pasta do build do Workshop):
+      se existir, o jogo carrega ela no lugar do symlink, uma cópia velha
+      ([publicar.md](publicar.md#o-build-ganha-do-symlink)). `ls ~/Zomboid/Workshop`.
 - [ ] Jogo aberto com `-debug` (opção de inicialização da Steam).
 - [ ] Toda linha do mod começa com `[NOM]`. No MP, o que é do servidor sai no console
       do **servidor** (noite, névoa, Eco, grito) e o que é de quem simula ou vê sai no
@@ -57,6 +60,10 @@ começando de dia, numa cidade (Muldraugh serve).
 
 ### 1.1 Menu e carga (5 min)
 
+- [ ] **Lista de mods (Mods no menu principal):** "Névoa e Outro Mundo" aparece
+      disponível, com o ícone (figura na névoa) na linha e o poster no painel de
+      informações; descrição em PT-BR, e em inglês depois de trocar o idioma (vem do
+      `Mod.json`). → [0007: textos, poster e ícone](sprints/sprint-0007-workshop/README.md#roteiro-in-game)
 - [ ] **Sandbox:** a página "Névoa e Outro Mundo" mostra as 24 opções com rótulo e
       tooltip em PT-BR; trocar o idioma pra inglês e conferir "Clickers", "Runners",
       "Faceless". → [0001: tradução](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite),

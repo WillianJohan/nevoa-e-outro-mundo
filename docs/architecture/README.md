@@ -17,13 +17,14 @@ entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
 
 ```
 mod/
-  42/mod.info
+  42/mod.info                       poster, ícone, versionMin=42.20 (pz-api-notes §9)
+  42/poster.png, 42/icon.png        gerados por scripts/gen_images.py
   42/media/
     sandbox-options.txt
     lua/shared/NOM_Rules.lua        lógica pura (sem API do jogo), testável
     lua/shared/NOM_Config.lua       sandbox + defaults
     lua/shared/NOM_World.lua        flags night/fog derivadas do clima vanilla
-    lua/shared/Translate/<LANG>/    traduções em JSON (B42.20)
+    lua/shared/Translate/<LANG>/    traduções em JSON (B42.20): Sandbox.json e Mod.json (nome/descrição do mod)
     lua/shared/NOM_EcoRules.lua     elegibilidade do corpo e chave de outfit (puro)
     lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
@@ -54,7 +55,9 @@ mod/
     scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
-tests/                              asserts de lua puro (./run-tests.sh, luajit)
+tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
+scripts/                            gen_sounds.py, gen_images.py, build-workshop.sh (pasta de upload)
+docs/workshop/                      descrições do Workshop (BBCode) e preview.png
 ```
 
 Fluxo: `World` deriva o estado do clima vanilla → `ClimateLook` escurece o
@@ -112,3 +115,7 @@ fatiar também o raio de um jogador.
   `lua` puro do terminal: `./run-tests.sh`.
 - In-game: checklist da sprint no modo `-debug` (forçar hora, névoa, spawn).
 - MP: servidor local + dois clientes.
+- Traduções e créditos: `test_translations.lua`, `test_credits.lua` (chave usada sem
+  tradução, EN fora do ASCII, asset sem origem no `CREDITS.md`, linha do `mod.info`
+  lida como outra chave).
+- Build do Workshop: `tests/test_build_workshop.sh`, com `HOME` temporário.

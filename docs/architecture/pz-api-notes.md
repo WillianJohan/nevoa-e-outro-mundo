@@ -602,6 +602,68 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
 
 ---
 
+## 9. Publicação: mod.info, traduções e Workshop (sprint 0007)
+
+**Verificado na sprint 0007** (bytecode B42.20.4 e Lua vanilla).
+
+**`mod.info`** — `ChooseGameInfo.readModInfoAux` (CONFIRMED pelo bytecode):
+
+- Cada linha casa por `String.contains`, numa cadeia `if/else` nesta ordem (offsets
+  152–1325): `name=`, `poster=`, `description=`, `require=`, `incompatible=`,
+  `loadModAfter=`, `loadModBefore=`, `id=`, `author=`, `modversion=`, `icon=`,
+  `category=`, `url=`, `pack=`, `type=`, `tiledef=`, `versionMax=`, `versionMin=`.
+  **Armadilha:** uma linha cujo valor contenha uma chave anterior vira essa chave
+  (`url=…?id=…` seria lido como `id=`). Travado por `modinfo_lines_match_own_key`.
+- `poster=` (pode repetir) e `icon=` resolvem em `42/` e, se não existir, em `common/`
+  (221–272, 652–700). Lista de mods desenha o ícone a 28 px
+  (`client/OptionScreens/ModSelector/ModOrderListBox.lua:235`); o poster vai no painel
+  de informações (`ModInfoPanelDesc.lua:37`).
+- `versionMin=42.20`: `GameVersion.parse` usa `([0-9]+)\.([0-9]+)(.*)` e
+  `getInt() = major*1000 + minor`; `Mod.isAvailableSelf` só recusa se
+  `versionMin.isGreaterThan(atual)`, que compara `getInt`. 42.20.4 = 42020: aceito.
+
+**Traduções** — `Translator`:
+
+- Nome e descrição do mod traduzidos por `Translate/<LANG>/Mod.json`, chaves `name` e
+  `description`, lidos de `common/` e de `42/` (`readModTranslation` e o lambda dele).
+  Sem a chave, fica o texto do `mod.info`.
+- JSON lido em **modo estrito** (`JSONParserConfiguration.withStrictMode(true)`, em
+  `tryFillMapFromFile`): vírgula sobrando é erro ("JSON Error in: …").
+- Todo JSON **EN** que não seja `Mod` passa por `cryAboutUnicodeConfusables`, que
+  **lança `IllegalStateException`** se achar caractere parecido com ASCII (aspas
+  curvas e afins). EN do mod fica só em ASCII (`translations_en_is_ascii`).
+
+**Workshop** — `SteamWorkshopItem` e `client/OptionScreens/WorkshopSubmitScreen.lua`:
+
+- Pasta de upload: `~/Zomboid/Workshop/<nome>/` com `Contents/mods/<mod>/`,
+  `preview.png` e `workshop.txt` (é o formato do `Workshop/ModTemplate` que vem com o jogo).
+- `readWorkshopTxt`: linhas `version=`, `id=`, `title=`, `description=` (uma por linha,
+  juntadas com `\n`; linha vazia vira linha vazia), `tags=` (`;`), `visibility=`
+  (`public`, `friendsOnly`, `private`, `unlisted`); `#` e `//` comentam. Tags
+  permitidas: `media/WorkshopTags.txt`.
+- O jogo **reescreve** o `workshop.txt` (`writeWorkshopTxt`) ao sair da página 2
+  (`WorkshopSubmitScreen.lua:351`) e ao criar o item, gravando o `id=` (1157–1158).
+  Sem o `id=`, o próximo envio cria outro item.
+- `getSubmitDescription` anexa "Workshop ID" e "Mod ID" à descrição. O Steam corta em
+  8000 caracteres: o build recusa acima de 7900 bytes.
+- `validatePreviewImage`: existe, < 1 024 000 bytes (constante `long` 1024000), PNG
+  quadrado de **256 ou 512** px.
+- `validateContents`: em `Contents/` só pastas (`mods`, `buildings`, `creative`);
+  `validateModFolder`: no mod, pastas `common` ou de versão (`42`, entre a mínima e a
+  atual), cada uma com `mod.info` válido (`id=` não vazio) se tiver; arquivo solto é
+  ignorado. `validateFileTypes` recusa `.exe .dll .bat .app .dylib .sh .so .zip`
+  (menos `pyramid.zip`).
+- **Ordem de busca de mods:** `ZomboidFileSystem.getAllModFolders` usa
+  `workshop,steam,mods` (pastas de upload, itens inscritos, `~/Zomboid/mods`) e
+  `ChooseGameInfo.getModDetails` para no primeiro `id` igual: **a pasta de upload ganha
+  do symlink de dev e da inscrição** ([publicar.md](../publicar.md#o-build-ganha-do-symlink)).
+- `common/` não é obrigatória pra achar o mod (`getAllModFoldersAux` aceita `mod.info`
+  em `common/` **ou** na pasta de versão); o mod manda a dele com `.gitkeep` mesmo assim.
+- O `workshop.txt` é lido com `FileReader` (charset padrão); o jogo roda no Java 25
+  (`jre64/release`), onde o padrão é UTF-8: título com acento passa.
+
+---
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -641,3 +703,6 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
 8. ~~`setValue` em opção de sandbox dispara sync?~~ Não, nem salva (§2.1).
 11. Sprite de tile por nome em `addIsoMarker` aparece (`Texture.trygetTexture`)? (sprint 0005;
     `loop = true` em `file` e `emitter:setVolume` resolvidos por bytecode, §4.3)
+12. A caixa de descrição da página 2 do envio (`ISTextEntryBox` multilinha, sem
+    `setMaxTextLength` no Lua) aceita os ~6000 bytes da descrição sem cortar? (sprint
+    0007, conferir na página do Steam: [publicar.md §3](../publicar.md#3-conferir-a-página-2-min))
