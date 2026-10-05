@@ -24,14 +24,14 @@ seção [Balanceamento](#balanceamento) e os números das [medições](#parte-3-
 
 > **Steam Flatpak (o caso deste PC):** o jogo roda em sandbox e a pasta de dados é
 > `~/.var/app/com.valvesoftware.Steam/Zomboid`, não `~/Zomboid` — vale pra `mods/`,
-> `Workshop/` e `console.txt` em todo este documento. O mod de dev precisa de
-> `flatpak override --user --filesystem=$PWD/mod:ro com.valvesoftware.Steam` (rodado na raiz
-> do repo, e reiniciar a Steam) e do link em `~/.var/app/com.valvesoftware.Steam/Zomboid/mods/`.
+> `Workshop/` e `console.txt` em todo este documento. Mod de dev: **`scripts/dev-sync.sh`** copia `mod/`
+> pra pasta de mods do jogo (rodar de novo a cada mudança e recarregar o save). **Não use
+> symlink**: com link o jogo não lê `media/scripts/*.txt` (itens de visual somem).
 > O `build-workshop.sh` detecta essa pasta sozinho (ou use `ZOMBOID_DIR=...`).
 
 ## Antes de começar (~5 min)
 
-- [ ] Mod linkado: `ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`.
+- [ ] Mod linkado: `scripts/dev-sync.sh`.
 - [ ] **Sem** `~/Zomboid/Workshop/NevoaEOutroMundo/` (a pasta do build do Workshop):
       se existir, o jogo carrega ela no lugar do symlink, uma cópia velha
       ([publicar.md](publicar.md#o-build-ganha-do-symlink)). `ls ~/Zomboid/Workshop`.
