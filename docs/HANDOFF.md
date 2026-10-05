@@ -4,8 +4,8 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa) e 0026 (névoa viajante, luz que abre a névoa) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
-- 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 25 do núcleo da névoa fluida em Java (15 da 0024, 10 da viajante) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa) e 0027 (névoa orgânica, sem vai e vem) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 28 do núcleo da névoa fluida em Java (15 da 0024, 13 da viajante e do vento) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -68,6 +68,10 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 4. **O advice é inlinado dentro da classe do jogo.** Todo método do mod3 chamado do `@Patch` precisa ser `public`, senão dá `IllegalAccessError` e o jogo crasha. Há um teste pra isso em `tests/test_mod3_depth.py`.
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
+
+## Em teste: névoa orgânica (sprint 0027)
+
+O Johan detestou o "vai e vem" (rolos subindo e descendo juntos no lugar). Era o flow map de duas fases do shader. Agora o ruído anda pelo vento acumulado (`uDrift`, o mesmo dos bancos) e o vento vem de ruído (`Wind`). Roteiro em [sprints/sprint-0027-nevoa-organica/README.md](sprints/sprint-0027-nevoa-organica/README.md).
 
 ## Em teste: névoa viajante e luz na névoa (sprint 0026)
 
