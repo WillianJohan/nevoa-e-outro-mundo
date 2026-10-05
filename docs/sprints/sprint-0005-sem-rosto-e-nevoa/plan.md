@@ -95,7 +95,7 @@ Opções: `SemRostoEnabled` (true), `SemRostoChance` (5, inteiro 0–100), `FogA
 - Drone em loop (`FogAmbience`) com fade de 8 s reais; metal one-shot a cada 20–60 s reais; estática em loop com volume = `staticVolume(nearest)` (fade curto), só com `SemRostoEnabled`. Tudo por `player:playSoundLocal` + `getEmitter():setVolume/stopSoundLocal/isPlaying`; se o loop parou (arquivo sem loop), toca de novo.
 - Fim da névoa: fade a 0 e `stopSoundLocal`.
 
-- [ ] Testes contra fake de emitter (ids, volume, parar local, rede nunca): `sound_drone_fades_in_and_out`, `sound_static_follows_distance`, `sound_never_networked`, `sound_restarts_dead_loop`, `sound_toggles`. Sons declarados (`config_sound_scripts_point_to_files`). Verde, commit.
+- [ ] Testes contra fake de emitter (ids, volume, parar local, rede nunca): `sound_drone_fades_in_and_out`, `sound_metal_spread_in_fog`, `sound_static_follows_distance`, `sound_restarts_dead_loop`, `sound_toggles` (o fake explode em `emitter:playSound`/`stopSound`). Sons declarados (`config_sound_scripts_point_to_files`). Verde, commit.
 
 ### Task 6: Vinheta
 

@@ -11,10 +11,10 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0002](sprint-0002-eco/README.md) | Eco: corpos soltam almas à noite | `em teste` |
 | [0003](sprint-0003-noite-agressiva/README.md) | Noite agressiva (todo zumbi) | `em teste` |
 | [0004](sprint-0004-estalador-corredor/README.md) | Estalador + Corredor noturno | `em teste` |
-| [0005](sprint-0005-sem-rosto-e-nevoa/README.md) | Sem-rosto + atmosfera da névoa | `backlog` |
+| [0005](sprint-0005-sem-rosto-e-nevoa/README.md) | Sem-rosto + atmosfera da névoa | `em teste` |
 | [0006](sprint-0006-balanceamento-mp/README.md) | Balanceamento, MP e performance | `backlog` |
 | [0007](sprint-0007-workshop/README.md) | Publicação no Workshop | `backlog` |
-| [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode vai na 0005; grão arquivado |
+| [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão arquivado |
 
 A ordem é deliberada: 0001 é a fundação (estado do mundo) que todo o resto
 consome; 0002 vem antes da noite agressiva porque o Eco é o sistema mais

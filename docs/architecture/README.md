@@ -8,6 +8,7 @@
 | [adr-004-clima-antes-de-shader.md](adr-004-clima-antes-de-shader.md) | Visual dark via clima, shader é spike |
 | [adr-005-quem-simula-aplica.md](adr-005-quem-simula-aplica.md) | O servidor decide, quem simula o zumbi aplica (emenda a ADR-002) |
 | [adr-006-variantes-deterministicas.md](adr-006-variantes-deterministicas.md) | Variante = função do ID do outfit e da noite (substitui o mecanismo da ADR-001) |
+| [adr-007-sem-rosto-e-atmosfera-local.md](adr-007-sem-rosto-e-atmosfera-local.md) | Sem-rosto: quem vê avisa, o servidor confere, o dono move; som, chão e tela da névoa só locais |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -37,10 +38,17 @@ mod/
     lua/server/NOM_NightCount.lua   número da noite (ModData global), do Eco e das variantes
     lua/server/NOM_Variants.lua     decide o grito do Corredor (som + chamado da horda)
     lua/client/NOM_VariantsClient.lua  cliente de MP roda o NOM_VariantAI e avisa o servidor
-    lua/client/NOM_Atmosphere.lua   (sprint 0005) som de névoa, rádio
-    lua/client/NOM_Overlays.lua     (sprint 0005) sangue/ferrugem locais
+    lua/shared/NOM_SemRostoRules.lua   destino, cooldown, validação e volume do rádio (puro)
+    lua/shared/NOM_AtmosphereRules.lua fade e valores da vinheta (puro)
+    lua/shared/NOM_FogState.lua     flag e período de névoa do lado de quem vê
+    lua/shared/NOM_SemRosto.lua     quem vê o Sem-rosto e pra onde ele pode ir (solo e cliente)
+    lua/server/NOM_Fog.lua          período de névoa, flag pros clientes, decide o sumiço do Sem-rosto
+    lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, avisa que viu, dono move
+    lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
+    lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode (só local)
+    lua/client/NOM_FogOverlays.lua  sangue/ferrugem no chão via IsoMarkers (só local, sem save)
     clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
-    scripts/NOM_sounds.txt          sons do mod (estalo, grito)
+    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit)
@@ -52,7 +60,10 @@ chama os zumbis e avisa os clientes (flag + número da noite) → quem simula o
 zumbi (o próprio processo no solo, o cliente dono no MP) aplica os stats e o
 perfil da variante em lotes por tick ([ADR-005](adr-005-quem-simula-aplica.md),
 [ADR-006](adr-006-variantes-deterministicas.md)) e roda o `VariantAI`; o
-servidor decide o grito do Corredor (`Variants`).
+servidor decide o grito do Corredor (`Variants`). Na névoa, `Fog` conta o
+período e avisa quem vê (`FogState`); o cliente vê o Sem-rosto (`SemRosto`), o
+servidor confere e o dono do zumbi move ([ADR-007](adr-007-sem-rosto-e-atmosfera-local.md));
+som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
 
 ## Robustez
 

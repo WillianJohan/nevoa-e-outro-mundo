@@ -349,33 +349,42 @@ O limite de 2 s roda antes da validação: um segundo aviso legítimo do mesmo j
 
 ### 3.4 Sem-rosto (some quando visto ou iluminado)
 
+**Verificado na sprint 0005** (bytecode B42.20.4). Implementado em `shared/NOM_SemRosto.lua`
+e `server/NOM_Fog.lua`; decisão na [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md).
+
 Testes de "está sendo visto":
 
 | API | Lado | Status | Evidência |
 |---|---|---|---|
-| `player:CanSee(obj)` | ambos | EXISTS | bytecode: só `LosUtil.lineClear`, sem luz e sem cone de visão |
-| `square:isCouldSee(playerNum)` | cliente | CONFIRMED | `server/FireFighting/ISExtinguishCursor.lua:48` |
-| `square:isSeen(playerNum)` | cliente | CONFIRMED | `server/ISObjectClickHandler.lua:10` |
-| `square:isCanSee(playerNum)` | cliente | EXISTS | bytecode `IsoGridSquare.isCanSee(I)` |
-| `z:getTargetAlpha(playerNum)` / `z:isOnScreen()` | cliente | EXISTS | bytecode `IsoObject.getTargetAlpha(I)`, `IsoMovingObject.isOnScreen()` |
-| `player:getForwardDirection()` | ambos | EXISTS | para cone (produto escalar) no servidor |
-| `square:getLightLevel(playerNum)` | cliente | EXISTS | usado por `IsoZombie.updateVisionRadius` |
+| `square:isCanSee(pn)` | cliente | EXISTS, **usado** | bit 2 de `LightingJNI$JNILighting.vis` (linha de visão + cone + luz). É o teste do jogo pra "o jogador vê este zumbi": `IsoZombie.checkZombieEntersPlayerBuilding` 26–44 (`getCurrentSquare().isCanSee(playerIndex)`), `canSeeHeadSquare` |
+| `square:isCouldSee(pn)` | cliente | CONFIRMED, **usado** | `server/FireFighting/ISExtinguishCursor.lua:48`; bit 4 do `vis` (linha de visão/cone, sem luz). "Fora da vista" do destino |
+| `square:isSeen(playerNum)` | cliente | CONFIRMED | `server/ISObjectClickHandler.lua:10` (memória: já foi visto) |
+| `IsoGameCharacter.TestIfSeen(pn, player)` | cliente | **protegido** (0x4) | distância ≤ `getViewDist`, `isCouldSee`/`isCanSee` (ou `ServerLOS` no servidor), luz ≥ 0.6, `getDotWithForwardDirection`; zera o `targetAlpha` quando falha (`updateSeenVisibility`). Não alcançável do Lua |
+| `z:getTargetAlpha(pn)` | cliente | EXISTS | zerado por `updateSeenVisibility`; quem sobe é o render do square. Não usado (depende da ordem de render) |
+| `player:CanSee(obj)` | ambos | EXISTS | só `LosUtil.lineClear`, sem luz e sem cone: no escuro todo zumbi à frente "seria visto" |
+| `player:getForwardDirection():getDirection()` | ambos | CONFIRMED | `shared/Fishing/FishingRod.lua:286` (radianos) |
+| `square:isFree(false)` | ambos | CONFIRMED | `client/ISUI/ISWorldObjectContextMenu.lua:2199` |
 
 As funções por `playerNum` dependem do cálculo de luz/LOS do cliente; no dedicado não valem.
-Recomendado: cliente detecta (`getTargetAlpha(pn) > 0` ou `isCanSee`), manda
-`sendClientCommand("Nevoa", "seen", { id = z:getOnlineID() })`; servidor valida com `CanSee` + cone
-e decide o reposicionamento.
 
 Mover o zumbi:
 
 | API | Status | Evidência |
 |---|---|---|
-| `z:teleportTo(x, y, z)` | EXISTS | bytecode `IsoGameCharacter.teleportTo(FFI)` e variantes |
-| `z:setX/setY/setZ` + `setCurrentSquareFromPosition()` / `setCurrent(sq)` | EXISTS | bytecode `IsoMovingObject` |
-| `z:setInvisible(true)` | EXISTS | bytecode `IsoGameCharacter.setInvisible(Z)`; efeito em zumbi UNKNOWN |
+| `z:teleportTo(x, y, z)` | EXISTS, **usado no dono** | `IsoGameCharacter.teleportTo(III)`: `setX/Y/Z`, `setLastX/Y`, `ensureOnTile`; sem rede. Sem uso vanilla em Lua |
+| `z:setX/setY/setZ` | EXISTS | `server/ClientCommands.lua:845` usa `animal:setX` |
+| `z:setInvisible(true)` | EXISTS | efeito em zumbi UNKNOWN; não usado |
+| `z:dressInPersistentOutfitID(id)` | EXISTS, **fallback** | grava `persistentOutfitId` e veste (`PersistentOutfits.dressInOutfit`) |
+| `z:isFemale()` | EXISTS | `IsoGameCharacter.isFemale` (final, público) |
 
-UNKNOWN: no MP, teleporte feito no servidor pode ser desfeito pelo cliente dono ou interpolado
-(deslizar). Fallback: remover (1.6) e spawnar outro Sem-rosto mais perto, fora da vista (1.3).
+**Resolvido na sprint 0005 (bytecode): teleporte no servidor volta; no dono, vale.**
+`NetworkZombiePacker.parseZombie` (servidor) ignora o pacote de quem não é dono (64–88:
+`getOwner() != conexão` → `recheck` e sai) e `applyZombie` aplica `realX/realY/realZ` do dono
+direto (`setX/setNextX/setLastX`, 41–97), sem conferir distância. No cliente, a cópia remota
+recebe a posição como alvo (`NetworkZombieAI.parse` 51–80: `targetX/targetY`, ou
+`pathToLocationF` com `usePathFind`) e anda até ela; `IsoZombie.moveUnmodded` (181–283) acelera
+até 2× (`smoothstep(0.5, 1.5, dist)`). Ou seja: **teleporte no dono é aceito pelo servidor, e as
+outras cópias deslizam até lá**. UNKNOWN: como fica na tela de um terceiro jogador.
 
 ### 3.5 Outfits
 
@@ -434,38 +443,52 @@ mod.
 Som audível **não** atrai zumbi. Atração é `addSound` (2.3), separado.
 Recomendado: helper `if isServer() then sendPlaySound(n, false, z) elseif not isClient() then z:playSound(n) end`.
 
+**Sprint 0005 (bytecode): `emitter:playSound(nome)` não é local no cliente de MP.**
+`FMODSoundEmitter.playSound(String)` (0–104), com `GameClient.client` e o dono do emitter
+sendo `IsoMovingObject`, manda `PacketType.PlaySound` (ou `GameClient.PlayWorldSound`) antes
+de tocar; `stopSound(id)` chama `sendStopSound`. Isso vale pro emitter de zumbi também: o
+estalo do Estalador (`z:getEmitter():playSound`, tocado em toda cópia local, sprint 0004) sai
+de cada cliente pra rede. Pendência registrada na sprint 0005.
+
 ### 4.3 Som 2D/ambiente só para o jogador local
 
 | API | Status | Evidência |
 |---|---|---|
-| `getSoundManager():playUISound(name)` → id | CONFIRMED | `server/BuildingObjects/ISMoveableCursor.lua:179` |
+| `player:playSoundLocal(name)` → id | CONFIRMED, **usado** | `client/ISUI/Maps/ISMap.lua:210`; bytecode `IsoGameCharacter.playSoundLocal` = `getEmitter().playSoundImpl(name, null)`, sem pacote |
+| `player:getEmitter():setVolume(id, v)` | EXISTS, **usado** | `CharacterSoundEmitter.setVolume(JF)` → `FMODSoundEmitter.setVolume` (volume da instância) |
+| `player:getEmitter():stopSoundLocal(id)` | EXISTS, **usado** | `FMODSoundEmitter.stopSoundLocal(J)`: para e solta, sem `sendStopSound` |
+| `player:getEmitter():isPlaying(id)` | EXISTS, **usado** | `FMODSoundEmitter.isPlaying(J)` |
+| `getSoundManager():playUISound(name)` → id | CONFIRMED | `server/BuildingObjects/ISMoveableCursor.lua:179`; local (`uiEmitter.playClip`), mas sem controle de volume pelo Lua |
 | `getSoundManager():stopUISound(id)`, `isPlayingUISound(id)` | EXISTS | bytecode `SoundManager` |
-| `player:playSoundLocal(name)` | EXISTS | bytecode `IsoGameCharacter.playSoundLocal(String)` |
 
-Loop: declarar `loop = true` no script e parar com `stopUISound(id)`.
-
----
+Loop: `loop = true` no nível do `sound` (como `media/scripts/generated/sounds/sounds_ambience.txt:3-11`).
+UNKNOWN: se `loop` vale pra clip de `file` (vanilla só usa com `event`); o mod toca de novo se
+`isPlaying(id)` cair.
 
 ## 5. Overlays de chão locais (sprint 0005)
 
 | Opção | Local? | Salva? | Status | Evidência |
 |---|---|---|---|---|
-| `getIsoMarkers():addIsoMarker(spriteName, square, r, g, b, a)` → marker; `marker:remove()`, `setAlpha`, `setPos` | só cliente | não | CONFIRMED | `client/Foraging/ISBaseIcon.lua:577`, `:559`; bytecode `IsoMarkers` sem save/load |
+| `getIsoMarkers():addIsoMarker(spriteName, square, r, g, b, a)` → marker; `marker:remove()`, `setAlpha`, `setPos` | só cliente | não | CONFIRMED, **usado** | `client/Foraging/ISBaseIcon.lua:577`, `:559`; bytecode abaixo |
 | `getWorldMarkers():addGridSquareMarker(...)` | só cliente | não | CONFIRMED | `client/ISUI/Maps/ISWorldMap.lua:1457` (versão com coordenadas no mapa); bytecode tem `(String tex, String overlay, IsoGridSquare, r,g,b, doAlpha, size)` |
 | `addBloodSplat(square, n[, dx, dy])` | sem envio de rede | **salva** no chunk (SP) | CONFIRMED | `shared/TimedActions/Animals/ISRemoveMeatFromAnimal.lua:121`; bytecode `IsoChunk.addBloodSplat` → `floorBloodSplats`, salvo por `IsoFloorBloodSplat.save` |
 | `obj:addAttachedAnimSpriteByName`, `setOverlaySprite` em objeto do square | mexe no objeto do mapa | salva/sincroniza | EXISTS | bytecode `IsoObject`; **evitar** |
 
-Recomendado: `IsoMarkers`. Nada vai para a rede nem para o save. Fallback: `addGridSquareMarker`.
-Sangue de verdade só se a persistência no solo for aceitável.
+**Verificado na sprint 0005 (bytecode `IsoMarkers`):** `addIsoMarker(String, IsoGridSquare, FFFF)`
+volta `null` no servidor (offset 0, `GameServer.server`), cria um `IsoMarker`, `setSquare`,
+`init(nome, …)` (que acha a textura com `Texture.trygetTexture(nome)`) e põe na lista
+`IsoMarkers.markers`, em memória. A classe só tem `reset/update/render/add/remove/get`: nenhum
+`save`/`load`, nenhum pacote. `update()` só tira da lista o marcador com `isRemoved()`. O
+marcador não é objeto do square. Usado em `client/NOM_FogOverlays.lua`.
 
 Sprites vanilla de overlay de chão (nomes `<tileset>_<índice>`):
-- `overlay_blood_floor_01_0` … (43 entradas em `media/tileDepthTextureAssignments.txt`)
+- `overlay_blood_floor_01_0` … `_27` e `_32` … `_46` (em `media/tileDepthTextureAssignments.txt`)
 - `overlay_grime_floor_01_0` … `_95` (mesmo arquivo)
 - `floors_overlay_tiles_01_*`, `floors_overlay_tiles_02_0..15` (`server/Items/FloorTileOverlays.lua:4`)
 - `d_floorleaves_1_*`, `floors_burnt_01_*` (tilesets em `media/tiledefinitions_overlays.tiles`)
-Validar cada nome com `getSprite(name) ~= nil` (CONFIRMED `server/ClientCommands.lua:195`).
-
----
+Validar cada nome com `getTexture(name) ~= nil` (`LuaManager.GlobalObject.getTexture` =
+`Texture.getSharedTexture`). UNKNOWN: se a textura de tile é achada pelo nome antes de o mundo
+carregar; o mod valida só na primeira mancha.
 
 ## 6. Spike de shader
 
@@ -491,6 +514,12 @@ Validar cada nome com `getSprite(name) ~= nil` (CONFIRMED `server/ClientCommands
   - `getSearchMode():setOverride(pn, true)` / `setEnabled(pn, true)` (CONFIRMED `ISSearchMode.lua:268-270`)
   Conflita com o forrageamento real (o `ISSearchManager` checa `isOverrideSearchManager`, `:1102`).
   **Recomendação para efeito de tela: SearchMode antes de qualquer shader.**
+- **Sprint 0005:** vinheta da névoa em `client/NOM_FogVignette.lua`, como o spike propôs:
+  `getSearchMode():setEnabled(pn, true)` + alvos por `setTargets`, e
+  `ISSearchManager.getManager(player).isOverride = true` (`ISSearchManager.lua:68`, `:1056`)
+  só durante a névoa e enquanto `manager.isSearchMode` (forrageamento, `:1416-1428`) é falso.
+  `SearchMode.isEnabled(I)` existe (bytecode) e guarda o estado de antes quando o override
+  era de outro.
 - Neblina: `ClimateManager` (exposto) e `zombie/iso/weather/fog/ImprovedFog` (exposto) são o
   caminho da ADR-004.
 
@@ -549,11 +578,11 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 | Atrair | `addSound` global no servidor | `pathToSound` no cliente dono |
 | Lanterna | `player:getActiveLightItem()` + `square:isOutside()` → `addSound` | — |
 | Variante persistente | derivada do `persistentOutfitID`, reaplicada em `OnZombieCreate` | `ModData` global por ID |
-| Visto/iluminado | cliente detecta (`getTargetAlpha`, `isCanSee`) → comando → servidor valida com `CanSee` | só `CanSee` + cone no servidor |
-| Teleporte | `teleportTo` no servidor | remover + spawnar perto |
+| Visto/iluminado | cliente detecta (`square:isCanSee(pn)`) → comando → servidor confere distância e cooldown (ADR-007) | — |
+| Teleporte | `teleportTo` no **dono** (servidor repassa `semRostoMove`) | remover + spawnar com `dressInPersistentOutfitID` |
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
-| Ambiente local | `playUISound` + `stopUISound` | `playSoundLocal` |
+| Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
 | Decal local | `getIsoMarkers():addIsoMarker(sprite, sq, r,g,b,a)` | `addGridSquareMarker` |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 
@@ -565,10 +594,13 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 3. `removeFromWorld` no servidor sem `deleteZombie`: o cliente fica com fantasma?
 4. `OnDeadBodySpawn` dispara no servidor dedicado na morte de zumbi? `removeCorpse` no tick
    seguinte some com o corpo para todos?
-5. `teleportTo` em zumbi no MP: teleporta, desliza ou volta?
+5. ~~`teleportTo` em zumbi no MP: teleporta, desliza ou volta?~~ Por bytecode (§3.4): no
+   servidor volta; no dono vale e as outras cópias deslizam. Falta ver no jogo (sprint 0005).
 6. `VisionModifier` baixo em item vestido no zumbi deixa ele efetivamente cego?
 7. Override de `media/shaders/screen.frag` por mod é aplicado (ordem boot × ativação de mod)?
 9. Som de mod declarado com `file = media/sound/x.ogg` toca (sprint 0004: `NOM_sounds.txt`)?
 10. `require` de arquivo do servidor por outro arquivo do servidor roda uma vez só: sim, por
     bytecode (`LuaManager.RunLuaInternal` 11–30 devolve `loadedReturn` se o caminho já está em `loaded`).
 8. ~~`setValue` em opção de sandbox dispara sync?~~ Não, nem salva (§2.1).
+11. Sprite de tile por nome em `addIsoMarker` aparece (`Texture.trygetTexture`)? `loop = true` vale
+    pra som de `file`? `emitter:setVolume` muda o volume do som do mod? (sprint 0005)
