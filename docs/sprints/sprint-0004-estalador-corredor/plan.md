@@ -93,7 +93,7 @@ end
 - `md.NOM_variant` = kind (só Estalador/Corredor), apagado no dia e no `forget`.
 - Variante = `NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_NightStats.nightNumber, cfg)`, Eco primeiro.
 
-- [ ] Testes: `stats_corredor_sprints_at_night_and_returns`, `stats_estalador_blind_and_sharp_ears`, `stats_variant_follows_outfit_id`, `stats_eco_never_variant`, `stats_variant_needs_night_number`, `stats_dead_forgets` (estendido), regras puras de `wanted` com `kind`.
+- [ ] Testes: `stats_corredor_sprints_at_night_and_returns`, `stats_estalador_blind_and_sharp_ears`, `stats_variant_follows_outfit_id`, `stats_eco_never_variant`, `stats_variant_needs_night_number`, `stats_dead_variant_forgets`, regras puras de `wanted` com `kind`.
 - [ ] Implementar, verde, commit.
 
 ### Task 5: Comportamento onde o zumbi é simulado (`NOM_VariantAI`)
@@ -106,7 +106,7 @@ Regra de cego: à noite, Estalador não alerta, alvo `instanceof(t, "IsoPlayer")
 
 Cliente MP: `report = function(z) sendClientCommand("NevoaEOutroMundo", "corredorSaw", { id = z:getOnlineID() }) end`.
 
-- [ ] Testes contra fake que imita a ordem do jogo (spot → `OnZombieUpdate` → máquina de estados; ataque só com alvo): `ai_estalador_ignores_silent_crouched`, `ai_estalador_hears_walking_player`, `ai_estalador_hit_wakes_it`, `ai_corredor_reports_once_per_acquire`, `ai_remote_untouched`, `ai_day_does_nothing`, `ai_click_every_minute_only_estalador`, `variants_client_reports_by_online_id`.
+- [ ] Testes contra fake que imita a ordem do jogo (spot → `OnZombieUpdate` → máquina de estados; ataque só com alvo): `ai_estalador_ignores_silent_crouched`, `ai_estalador_hears_walking_player`, `ai_estalador_hit_wakes_it`, `ai_corredor_reports_once_per_acquire`, `ai_remote_untouched`, `ai_day_does_nothing`, `ai_click_only_estalador`, `ai_click_is_spread`, `variants_client_reports_by_online_id`.
 - [ ] Implementar, verde, commit.
 
 ### Task 6: Servidor decide o grito (`server/NOM_Variants.lua`)
