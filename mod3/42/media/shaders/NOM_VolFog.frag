@@ -9,8 +9,8 @@
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
-const float FLOW_PERIOD = 2.0;   // s: ciclo do flow map (o ruído é levado pela velocidade e recomeça)
-const vec2 CALM_WIND = vec2(0.35, 0.15); // tiles/s, sem a simulação
+const float WARP_S = 0.8;        // s: o ruído dobra onde o fluido desvia do vento (atrás de prédio, rastro)
+const float MORPH = 0.06;        // forma mudando devagar (unidades de ruído por s)
 
 vec3 gP;        // ponto visível do pixel (mundo relativo)
 float gTree;    // árvore em volta de gP (0..1)
@@ -34,22 +34,33 @@ float fbm2(vec3 p) {
     return 0.62 * noise(p) + 0.38 * noise(p * 2.07 + 7.1);
 }
 
-// Ruído levado pela velocidade do fluido: duas fases defasadas, cada uma recomeça quando o peso dela é 0.
-float flowNoise(vec3 m, vec2 vel) {
-    float a = fract(uTime / FLOW_PERIOD);
-    float b = fract(uTime / FLOW_PERIOD + 0.5);
-    vec3 rise = vec3(0.0, 0.0, 0.04 * uTime);
-    vec3 p1 = m - vec3(vel * (a * FLOW_PERIOD), 0.0);
-    vec3 p2 = m - vec3(vel * (b * FLOW_PERIOD), 0.0) + vec3(5.2, 1.3, 0.0);
-    return mix(fbm2(p1 * 0.18 + rise), fbm2(p2 * 0.18 + rise), abs(2.0 * a - 1.0));
+// Ponto do ruído em tiles: o mundo levado pelo vento acumulado (uDrift.xy, o mesmo dos bancos),
+// dobrado onde o fluido desvia do vento e torcido por um ruído largo que muda devagar. Nada recomeça
+// (o flow map de duas fases recomeçava a cada 2 s e a altura dos rolos ia e voltava junto na tela).
+vec2 driftXY(vec2 xy, vec2 vel) {
+    vec2 q = xy + uDrift.xy - (vel - uDrift.zw) * WARP_S;
+    vec2 c = q * 0.07;
+    float tz = 0.02 * uTime + dot(c, vec2(0.61, 0.43));
+    vec2 curl = vec2(noise(vec3(c, tz)), noise(vec3(c + 31.7, tz + 5.3))) - 0.5;
+    return q + curl * 3.0;
+}
+
+// O tempo entra inclinado no espaço: cada lugar muda de forma num momento diferente. Ruído de valor
+// perde contraste entre os nós; se a tela toda passasse pelo meio junto, pulsaria.
+float morphZ(vec2 q, float z) { return MORPH * uTime + dot(q, vec2(0.6, 0.45)) + z; }
+
+// Ruído levado pelo vento (fbm, ~1/scale tiles por tufo). m = (x, y em tiles, altura em tiles).
+float flowNoise(vec3 m, vec2 vel, float scale) {
+    vec2 q = driftXY(m.xy, vel) * scale;
+    return fbm2(vec3(q, morphZ(q, m.z * scale)));
 }
 
 // Densidade em w e, em `wisp`, o quanto ela é tufo de ruído (0) ou camada lisa do chão (1).
 float density(vec3 w, float ground, float top, out float wisp) {
-    vec2 vel = nomFlowVel(w.xy, CALM_WIND);
+    vec2 vel = nomFlowVel(w.xy, uDrift.zw);
     float fd = nomFlowDensity(w.xy);
     vec3 m = vec3(w.xy, w.z * LEVEL_TILES);
-    float n = smoothstep(0.22, 0.78, flowNoise(m, vel));
+    float n = smoothstep(0.22, 0.78, flowNoise(m, vel, 0.18));
     float h = clamp((w.z - ground) / max(top - ground, 0.01), 0.0, 1.0);
     float tufts = n * exp(-2.8 * h);                 // tufos, mais finos subindo
     float floorLayer = 0.45 * exp(-10.0 * h);        // camada lisa e densa rente ao chão
@@ -69,19 +80,13 @@ float density(vec3 w, float ground, float top, out float wisp) {
 const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
 const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
 
-float ruido2Fases(vec3 m, vec2 vel, float scale) {
-    float a = fract(uTime / FLOW_PERIOD);
-    float b = fract(uTime / FLOW_PERIOD + 0.5);
-    vec3 p1 = m - vec3(vel * (a * FLOW_PERIOD), 0.0);
-    vec3 p2 = m - vec3(vel * (b * FLOW_PERIOD), 0.0) + vec3(5.2, 1.3, 0.0);
-    return mix(noise(p1 * scale), noise(p2 * scale), abs(2.0 * a - 1.0));
-}
-
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
-float rollTop(vec2 xy, float layer) {
-    vec2 vel = nomFlowVel(xy, CALM_WIND);
+// `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
+float rollTop(vec2 xy, float layer, out vec2 q) {
     float fd = nomFlowDensity(xy);
-    float n = flowNoise(vec3(xy * 1.55, 0.0), vel * 1.55);       // ~3,5 tiles por rolo, andando com o fluido
+    q = driftXY(xy, nomFlowVel(xy, uDrift.zw));
+    vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
+    float n = fbm2(vec3(r, morphZ(r, 0.0)));
     float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
     return layer * min(fd, 1.5) * (0.25 + 0.8 * puff);
 }
@@ -89,14 +94,15 @@ float rollTop(vec2 xy, float layer) {
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
 float densityLook(vec3 w, float ground, float layer, out float shade) {
     float hz = w.z - ground;
-    float top = rollTop(w.xy, layer);
-    vec2 vel = nomFlowVel(w.xy, CALM_WIND);
-    float fiapo = ruido2Fases(vec3(w.xy, w.z * LEVEL_TILES), vel, 0.9) - 0.5; // fiapos de ~1 tile
+    vec2 q, qs;
+    float top = rollTop(w.xy, layer, q);
+    vec2 f = q * 0.9;                                                         // fiapos de ~1 tile
+    float fiapo = noise(vec3(f, morphZ(f, w.z * LEVEL_TILES * 0.9) * 1.7)) - 0.5;
     float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
     d *= 1.15 - 0.45 * clamp(hz / layer, 0.0, 1.0);                         // mais densa embaixo
     d += gTree * 0.9 * exp(-5.0 * hz / layer) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
     vec3 s = w + SUN_STEP;
-    shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layer) - (s.z - ground));
+    shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layer, qs) - (s.z - ground));
     for (int i = 0; i < uCharCount; i++) {
         vec4 c = uChars[i];
         float r = length(w.xy - c.xy);

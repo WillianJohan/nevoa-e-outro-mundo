@@ -20,6 +20,7 @@ uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i,
 // r = densidade (0..1), gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
 uniform sampler2D uFlowTex;
 uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), n, 1 = simulação ligada
+uniform vec4 uDrift;           // xy = uOrigin menos o quanto o vento já levou a névoa (o mesmo dos bancos); zw = vento agora (tiles/s)
 // Lanternas e faróis perto (RenderContext.collectTorches), pro facho na névoa.
 uniform int uTorchCount;
 uniform vec4 uTorchPos[4];     // x, y (relativos a uOrigin), z (andares), alcance (tiles)

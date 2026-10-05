@@ -33,6 +33,11 @@ public final class FogBanks {
         morph += MORPH_RATE * dt;
     }
 
+    /** Quanto o vento já levou o desenho (tiles); o shader anda o ruído dos rolos junto. */
+    public double offsetX() { return offX; }
+
+    public double offsetY() { return offY; }
+
     /** Densidade dos bancos no ponto do mundo: 0 (vácuo) a 1 (banco cheio). */
     public float sample(double x, double y) {
         float n = fbm((x - offX) / scale, (y - offY) / scale, morph);
