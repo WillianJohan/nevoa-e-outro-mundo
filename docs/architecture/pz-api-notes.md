@@ -314,6 +314,12 @@ variante = f(`persistentOutfitID`, número da noite), calculada igual no servido
   `ZombieIdleState.execute` (191) checam useless, mas um `WalkTowardState` em andamento segue até
   `lastTargetSeenX/Y/Z` (`execute` 169–213), sem alvo e sem ataque. O mod liga useless numa
   janela curta, só enquanto o jogador agachado e silencioso é o alvo, e só desliga o que ligou.
+  Outros efeitos do useless: `WalkTowardState.enter` manda pro idle, o idle não perambula, e o
+  zumbi sai dos grupos (`ZombieGroupManager`). **O useless viaja na rede** (não é salvo): o dono
+  manda `isUseless` em todo pacote (`NetworkZombieAI.set` → `NetworkZombieVariables.getBooleanVariables`
+  86–89) e o remoto aplica (`NetworkZombieAI.parse` 204–252, `NetworkZombieSimulator.parseZombie`
+  520). Quem assume a posse no meio da janela herda o useless sem saber: o mod desliga useless de
+  Estalador local que ele não ligou, exceto o outfit de debug com "Useless" (`updateInternal` 47–58).
   `isSneaking`, `isRunning`, `isSprinting`: EXISTS (públicos). UNKNOWN: o efeito no jogo da
   caminhada até a última posição vista (roteiro da sprint 0004).
 - Clique periódico: ver seção 4 (`sendPlaySound` no servidor / `z:playSound` no solo).
@@ -338,6 +344,8 @@ vê a borda "pegou um jogador de alvo" no `OnZombieUpdate` e manda `corredorSaw`
 o servidor confere a variante, a distância de quem avisou (`player:DistTo(x, y)` ≤ 25, CONFIRMED
 `client/Vehicles/TimedActions/ISDetachTrailerFromVehicle.lua:34`), um aviso a cada 2 s reais por
 jogador (`getTimestampMs()`, CONFIRMED `server/ISObjectClickHandler.lua:352`) e o cooldown, e grita.
+O limite de 2 s roda antes da validação: um segundo aviso legítimo do mesmo jogador em menos de
+2 s (outro Corredor) é descartado. Aceito: o grito do primeiro já chamou a horda.
 
 ### 3.4 Sem-rosto (some quando visto ou iluminado)
 
