@@ -76,6 +76,12 @@ principal brigaria com ele. O que o B42 dá ([pz-api-notes §15](pz-api-notes.md
   na névoa ≤ 4 desenhos (o grão em ladrilhos é uma chamada, ~40 quads no Java a 1080p) e
   ~12 chamadas; com o shader, +11 por tick do canal.
 - Só o jogador 0 na tela dividida (como o som e a vinheta).
+- Desenhado pela UI: esconder a UI esconde o efeito, e ele anda no ritmo de quadros da UI.
+- MP: o mod2 vale pelo que o servidor carrega (lista de mods); por jogador só a intensidade e o
+  liga/desliga. No modo do shader o canal também obedece ao sandbox `FogVignette` e é escalado por
+  `FogVignetteIntensity` (decisão do admin continua valendo).
+- O shader refaz o vanilla nas cores e no tom; os desfoques (óculos, bêbado, busca) usam outro
+  padrão de amostras e podem diferir um pouco.
 - O shader vale do primeiro mundo carregado até fechar o jogo; ligar ou desligar o mod2
   pede reiniciar. Com ShadowZ junto, ganha quem o jogo carregar por último no mapa de
   arquivos: o outro some. A descrição do mod2 avisa.

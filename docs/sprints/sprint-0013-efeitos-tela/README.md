@@ -63,7 +63,7 @@ tela): opção 3 — overlay Lua por padrão + shader opcional.
 - [ ] Menu, morte, resolução, sair e voltar — **falta o jogo:** passo 8.
 - [ ] Shader opcional compila e aparece (sem ShadowZ) — **falta o jogo:** passo 9.
 
-`./run-tests.sh`: `total=499 passou=499 falhou=0` (Lua) e `build total=25 passou=25 falhou=0`.
+`./run-tests.sh`: `total=502 passou=502 falhou=0` (Lua) e `build total=25 passou=25 falhou=0`.
 
 ## Roteiro in-game
 
@@ -96,11 +96,14 @@ Passos 1–8 **sem** o mod do shader ativo (o ShadowZ pode continuar).
 8. **Menu, morte, resolução.** Com a névoa: Esc (o efeito some atrás do menu), trocar a resolução
    ou a janela de tamanho (o efeito cobre a tela nova), morrer (some; no personagem novo, entra
    com fade), sair pro menu principal e carregar o save de novo (`overlay criado` uma vez só).
-9. **Shader (opcional, só sem ShadowZ).** Desativar o ShadowZ, ativar "Névoa e Outro Mundo — Shader"
+9. **Shader (opcional, só sem ShadowZ).** Com o ShadowZ ativo, a lista de mods tem de marcar o
+   "Shader" como incompatível (`incompatible=\ShadowZ`). Desativar o ShadowZ, ativar "Névoa e Outro Mundo — Shader"
    no save, **fechar e abrir o jogo** (o shader compila no primeiro mundo da sessão), carregar.
    **Esperado:** console com `[NOM] tela: overlay criado (shader=true)` e sem erro de compilação
-   do `screen`; fora da névoa a tela igual à vanilla (cores, forrageamento com o círculo, óculos
-   de visão noturna verdes); na névoa, bordas desfocadas e sem cor, cores separando nas bordas
+   do `screen`; fora da névoa a tela parecida com a vanilla: as mesmas cores e
+   tom, o círculo de busca no forrageamento, óculos de visão noturna verdes. O desfoque dos
+   óculos de grau, do bêbado e do círculo de busca usa outro padrão de amostras: pode sair um
+   pouco diferente (registrar se incomodar); na névoa, bordas desfocadas e sem cor, cores separando nas bordas
    (aberração), grão forte, onda leve; com o Sem-rosto perto, faixas escorregando; na vermelha,
    bordas avermelhadas. Forragear na névoa: o círculo de busca normal; parar: o efeito volta.
    **Se** a tela ficar preta ou rosa: erro de compilação (copiar as linhas do console).
@@ -113,6 +116,9 @@ Passos 1–8 **sem** o mod do shader ativo (o ShadowZ pode continuar).
 - **04/10/2026** — Regras puras, texturas, opções de cliente, overlay de 1 px, canal do shader no
   `NOM_FogVignette`, mod2 com `screen.frag` original, build e dev-sync. Docs: ADR-013,
   pz-api-notes §15, GDD, orçamento. Em teste.
+- **04/10/2026** — Review: texel do shader pelo `TextureSize` (tamanho real do FBO; o
+  `bgl_RenderedTexture*` muda com o zoom), `incompatible=\ShadowZ`, canal segue o sandbox da
+  vinheta, pôster e ícone do mod2, docs (MP, UI, "parecido" com o vanilla).
 
 ## Aprendizados
 
@@ -134,6 +140,11 @@ Passos 1–8 **sem** o mod do shader ativo (o ShadowZ pode continuar).
 - Tudo do roteiro acima; em especial os UNKNOWNs do [pz-api-notes §15](../../architecture/pz-api-notes.md#15-efeitos-de-tela-sprint-0013):
   texturas pelo `getTexture`, a página de opções, o shader no driver.
 - Tela dividida: só o jogador 0 tem o efeito.
+- O efeito é desenhado pela UI: some quando o jogador esconde a UI (tecla de esconder o HUD) e anda
+  no ritmo de quadros da UI do jogo, não no do mundo.
+- MP: a lista de mods do servidor decide se o mod do shader vale pra todos; por jogador, só a
+  intensidade (e o liga/desliga) das Opções > Mods. O sandbox `FogVignette`/`FogVignetteIntensity`
+  também vale pro canal do shader.
 - `incompatible=\ShadowZ` no `mod.info` do mod2 (id `ShadowZ`, passado pelo coordenador no review):
   falta ver no jogo que a lista de mods recusa os dois juntos (roteiro, passo 9).
 - Antes de subir pro Workshop: decidir se o mod2 vai no mesmo item (como está no build) ou num

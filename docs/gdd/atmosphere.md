@@ -114,6 +114,8 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
 - **Fora da névoa, nada**, nem à noite: a noite é escuridão; o filme granulado é a assinatura do
   Outro Mundo (decisão da sprint 0013, ADR-013).
 - Só o primeiro jogador na tela dividida; some com o menu aberto e morto.
+- É desenhado pela UI: esconder a UI (tecla do HUD) esconde o efeito, e ele anda no ritmo de
+  quadros da UI do jogo.
 
 ## Shader opcional (mod "Névoa e Outro Mundo — Shader")
 
@@ -127,6 +129,12 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
 - **Incompatível com ShadowZ** e com qualquer mod que troque o `screen.frag`: só um vale.
 - O jogo compila o shader **uma vez por sessão**, no primeiro mundo carregado: ligou ou
   desligou o mod, reinicie o jogo.
+- **MP:** é a lista de mods do servidor que decide (vale pra todo mundo); cada jogador só escolhe a
+  intensidade e o liga/desliga nas Opções > Mods. A vinheta do sandbox (`FogVignette`,
+  `FogVignetteIntensity`) também liga e escala os efeitos do shader.
+- Fora da névoa a tela fica como a vanilla nas cores e no tom; os desfoques do jogo (óculos de grau,
+  bêbado, círculo de busca) são refeitos com outro padrão de amostras e podem sair um pouco
+  diferentes.
 - Com ele, a vinheta do modo de busca na névoa (acima) sai: as bordas desfocadas são do shader.
   Forragear continua igual.
 
