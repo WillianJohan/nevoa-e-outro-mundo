@@ -5,7 +5,7 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 ## Estado da `main`
 
 - Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
-- 707 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 12 do núcleo da névoa fluida em Java (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 707 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 15 do núcleo da névoa fluida em Java (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -86,7 +86,7 @@ Tudo em [sprints/sprint-0024-nevoa-fluida/README.md](sprints/sprint-0024-nevoa-f
 **O que o Johan precisa conferir no jogo:**
 - o log `fluido: passo X ms, máscara Y ms/quadro`;
 - o debug de obstáculos (porta abrindo e fechando);
-- o rastro e a língua de névoa entrando pela porta;
+- o rastro e a língua de névoa entrando pela porta (corrigido depois do primeiro teste: casa com uma porta só não enchia; agora escorre ~5 tiles pra dentro em ~30 s);
 - o FPS com e sem a simulação (`NOMRender_setParam(4, 0/1)`).
 
 Tudo isso é visual: os parâmetros (`outdoorRefill`, `indoorDecay`, força do impulso, cores) devem precisar de ajuste depois do primeiro print.

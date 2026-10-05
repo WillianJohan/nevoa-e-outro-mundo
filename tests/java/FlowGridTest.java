@@ -11,6 +11,8 @@ public class FlowGridTest {
         run("caixa fechada não deixa entrar névoa", FlowGridTest::closedBox);
         run("parede com fresta de 1 tile deixa passar", FlowGridTest::wallGap);
         run("casa com porta e janela abertas enche", FlowGridTest::houseTwoOpenings);
+        run("corredor com uma porta só enche pela porta", FlowGridTest::corridorOneDoor);
+        run("porta fechada: o corredor esvazia", FlowGridTest::corridorDoorClosed);
         run("rolagem preserva a densidade no mundo", FlowGridTest::scrollKeepsWorld);
         run("impulso desloca a densidade", FlowGridTest::impulseMovesBlob);
         run("quem anda deixa rastro", FlowGridTest::walkerLeavesTrail);
@@ -113,6 +115,38 @@ public class FlowGridTest {
         fill(g, 12, 12, 6, 0f);
         for (int s = 0; s < 300; s++) g.step(DT);
         check(mean(g, 12, 12, 6) > 0.2f, "casa com duas aberturas não encheu: " + mean(g, 12, 12, 6));
+    }
+
+    /** Corredor interior 8 x 2 (x 12..19, y 15..16), todo fechado, com a porta na face oeste de (12, 15). */
+    static FlowGrid corridor(boolean doorOpen) {
+        FlowGrid g = new FlowGrid(32);
+        g.reset(0, 0);
+        g.windX = 0.5f;
+        for (int j = 15; j < 17; j++) {
+            g.setOpenW(12, j, false);
+            g.setOpenW(20, j, false);
+            for (int i = 12; i < 20; i++) g.setCell(i, j, FlowGrid.F_INDOOR);
+        }
+        for (int i = 12; i < 20; i++) { g.setOpenN(i, 15, false); g.setOpenN(i, 17, false); }
+        g.setOpenW(12, 15, doorOpen);
+        return g;
+    }
+
+    static void corridorOneDoor() {
+        FlowGrid g = corridor(true);
+        for (int s = 0; s < 600; s++) g.step(DT);   // 30 s
+        float near = g.density(14, 15), far = g.density(17, 15);
+        check(near > 0.25f, "2 tiles depois da porta: " + near);
+        check(far > 0.1f, "5 tiles depois da porta: " + far);
+        check(near > far, "não diminui com a distância da porta");
+    }
+
+    static void corridorDoorClosed() {
+        FlowGrid g = corridor(true);
+        for (int s = 0; s < 600; s++) g.step(DT);
+        g.setOpenW(12, 15, false);
+        for (int s = 0; s < 600; s++) g.step(DT);   // 30 s fechada
+        check(g.density(13, 15) < 0.15f, "corredor fechado não esvaziou: " + g.density(13, 15));
     }
 
     static void scrollKeepsWorld() {
@@ -219,7 +253,7 @@ public class FlowGridTest {
         check(g.density(5, 5) == 0.7f, "célula já simulada zerou ao virar interior");
         box(g, 5, 5, 1);
         g.setDensity(5, 5, 1f);
-        for (int s = 0; s < 200; s++) g.step(DT);
+        for (int s = 0; s < 400; s++) g.step(DT);   // 20 s
         check(g.density(5, 5) < 0.5f, "interior fechado não esvaziou: " + g.density(5, 5));
     }
 
