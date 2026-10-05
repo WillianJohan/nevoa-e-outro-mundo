@@ -10,5 +10,6 @@
     "Base.NOM_SemRostoEstaticaFx": "Static Face",
     "Base.NOM_CarpideiraCabeloFx": "Matted Hair",
     "Base.NOM_EcoVeuFx": "Smoke Veil",
-    "Base.NOM_EcoCasca": "Ash Shell"
+    "Base.NOM_EcoCasca": "Ash Shell",
+    "Base.NOM_Brasa": "Ember Shell"
 }

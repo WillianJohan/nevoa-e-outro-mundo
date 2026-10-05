@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Casca de brasa da mutação (sprint 0022, emenda da ADR-016): malha Hazmat vanilla citada pelo nome,
+     SEM máscara (o buraco da queima mostra o monstro ou o zumbi embaixo, não o fundo), textura de carvão e
+     brasa do mod e o shader do dissolve. Vestida só no cliente, por ~1 s, na lista de ItemVisual do zumbi
+     vivo (client/NOM_EmberShell.lua). -->
+<clothingItem>
+	<m_MaleModel>media\models_X\Skinned\Clothes\Bob_Hazmat.X</m_MaleModel>
+	<m_FemaleModel>media\models_X\Skinned\Clothes\Kate_Hazmat.X</m_FemaleModel>
+	<m_GUID>fe983ae1-0282-4519-8c3c-b49642d89d42</m_GUID>
+	<m_Static>false</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone></m_AttachBone>
+	<textureChoices>NOM\NOM_Brasa</textureChoices>
+	<m_Shader>NOM_Dissolve</m_Shader>
+</clothingItem>

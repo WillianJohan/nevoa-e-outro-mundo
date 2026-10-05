@@ -9,5 +9,7 @@
     "UI_NOM_Dissolve": "Monstros queimam ao surgir e sumir",
     "UI_NOM_Dissolve_tooltip": "As peças dos monstros se formam e se desfazem com borda em brasa quando o zumbi vira monstro e volta, e o Eco queima e some em brasas ao morrer. Desligado: troca instantânea, como antes.",
     "UI_NOM_Bloom": "Bloom (mod do Shader)",
-    "UI_NOM_Bloom_tooltip": "Brilho em volta das luzes fortes, mais forte na névoa. Só com o mod opcional do Shader (não com ShadowZ). 0 desliga."
+    "UI_NOM_Bloom_tooltip": "Brilho em volta das luzes fortes, mais forte na névoa. Só com o mod opcional do Shader (não com ShadowZ). 0 desliga.",
+    "UI_NOM_BodyEmbers": "Brasa no corpo inteiro",
+    "UI_NOM_BodyEmbers_tooltip": "Com a queima ligada: quando o zumbi vira monstro e volta, o corpo inteiro queima em brasa, não só a peça do monstro. Desligado: só a peça queima."
 }
