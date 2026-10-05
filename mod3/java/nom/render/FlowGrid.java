@@ -15,6 +15,9 @@ import java.util.Arrays;
  */
 public final class FlowGrid {
     public static final int F_SOLID = 1, F_TREE = 2, F_INDOOR = 4;
+    /** Obstáculo baixo (carro): o ar passa por cima, freado; em 2D, arrasto forte (sprint 0031). */
+    public static final int F_LOW = 64;
+    static final int CELL_FLAGS = F_SOLID | F_TREE | F_INDOOR | F_LOW;
     /** Só na textura (canal a): a face oeste / norte da célula está fechada na máscara. */
     public static final int T_WALL_W = 8, T_WALL_N = 16;
     static final int F_FRESH = 32;
@@ -50,12 +53,17 @@ public final class FlowGrid {
     public float doorPuff;              // fração da diferença que uma porta que abre sopra pra dentro
     public float vorticity;             // reforço de redemoinho (sprint 0029), por tile: a esteira enrola em ondas
     public float vorticityRadius = 2f;  // tiles: o reforço age no giro médio dessa vizinhança (sprint 0030)
+    public float treeDrag = 1.2f;       // 1/s: árvore é porosa, o ar passa freado (sprint 0031)
+    public float lowDrag = 4f;          // 1/s: carro, o ar desvia pelos lados e pouco passa por cima
+    public boolean warmPressure = true; // a pressão começa da do passo anterior (sprint 0031)
 
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
     private final float[] d, dn, div, invSum, p;
     private final float[] cW, cE, cN, cS;  // peso de cada vizinho na pressão (face aberta / nº de faces abertas)
     private final float[] u, v;          // u: face oeste da célula (i, j) em j*nu + i; v: face norte em j*n + i
     private final byte[] openU, openV;   // máscara do jogo (parede, porta, janela)
+    private final byte[] dragU, dragV;   // a face encosta em árvore ou carro: o ar ali é freado
+    private boolean pressureStale = true;
     private final float[] wu, wv;        // 1 = face aberta de verdade (máscara e nenhum lado sólido)
     private final byte[] flags;
     private final float[] tmpF;
@@ -90,6 +98,8 @@ public final class FlowGrid {
         v = new float[n * nu];
         openU = new byte[nu * n];
         openV = new byte[n * nu];
+        dragU = new byte[nu * n];
+        dragV = new byte[n * nu];
         wu = new float[nu * n];
         wv = new float[n * nu];
         flags = new byte[n * n];
@@ -164,11 +174,11 @@ public final class FlowGrid {
         int c = j * n + i;
         int old = flags[c];
         if ((old & F_FRESH) != 0 && (f & F_INDOOR) != 0) d[c] = 0f;
-        if (((old ^ f) & F_SOLID) != 0) facesDirty = true;
-        flags[c] = (byte) (f & (F_SOLID | F_TREE | F_INDOOR));
+        if (((old ^ f) & (F_SOLID | F_LOW | F_TREE)) != 0) facesDirty = true;
+        flags[c] = (byte) (f & CELL_FLAGS);
     }
 
-    public int cellFlags(int i, int j) { return flags[j * n + i] & (F_SOLID | F_TREE | F_INDOOR); }
+    public int cellFlags(int i, int j) { return flags[j * n + i] & CELL_FLAGS; }
 
     /** Face oeste da célula (i, j); i vai até n (a face leste da última coluna). */
     public void setOpenW(int i, int j, boolean open) {
@@ -372,8 +382,9 @@ public final class FlowGrid {
         if (inertia) advectVelocity(dt);
         if (vorticity > 0f) confine(dt);
         float k = 1f - (float) Math.exp(-windRelax * dt);
-        for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * wu[f];
-        for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * wv[f];
+        float[] keep = { 1f, (float) Math.exp(-treeDrag * dt), (float) Math.exp(-lowDrag * dt) };
+        for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * keep[dragU[f]] * wu[f];
+        for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * keep[dragV[f]] * wv[f];
         project();
         advect(dt);
         diffuse(dt);
@@ -545,17 +556,27 @@ public final class FlowGrid {
         return i >= 0 && i < n && j >= 0 && j < n && (flags[j * n + i] & F_SOLID) != 0;
     }
 
+    /** Arrasto da célula: 0 nenhum, 1 árvore, 2 obstáculo baixo (índice em keep[] do relax). */
+    private int drag(int i, int j) {
+        if (i < 0 || i >= n || j < 0 || j >= n) return 0;
+        int f = flags[j * n + i];
+        return (f & F_LOW) != 0 ? 2 : (f & F_TREE) != 0 ? 1 : 0;
+    }
+
     private void rebuildFaces() {
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {
                 int f = j * nu + i;
                 wu[f] = (openU[f] != 0 && !solid(i - 1, j) && !solid(i, j)) ? 1f : 0f;
+                dragU[f] = (byte) Math.max(drag(i - 1, j), drag(i, j));
             }
         for (int j = 0; j <= n; j++)
             for (int i = 0; i < n; i++) {
                 int f = j * n + i;
                 wv[f] = (openV[f] != 0 && !solid(i, j - 1) && !solid(i, j)) ? 1f : 0f;
+                dragV[f] = (byte) Math.max(drag(i, j - 1), drag(i, j));
             }
+        pressureStale = true;
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++) {
                 int c = j * n + i, fw = j * nu + i;
@@ -570,18 +591,36 @@ public final class FlowGrid {
         facesDirty = false;
     }
 
+    /** Fluxo líquido saindo da célula (face fechada tem velocidade 0). */
+    private float divergence(int c, int fw) {
+        return u[fw + 1] - u[fw] + v[c + n] - v[c];
+    }
+
+    /** Maior |divergência| que sobrou (diagnóstico; 0 = incompressível de verdade). */
+    public float maxDivergence() {
+        float m = 0f;
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i;
+                if ((flags[c] & F_SOLID) != 0) continue;
+                m = Math.max(m, Math.abs(divergence(c, j * nu + i)));
+            }
+        return m;
+    }
+
     /**
      * Tira a divergência (SOR red-black: a célula de uma cor só lê vizinhos da outra, sem cadeia de
-     * dependência no laço). Começa do zero a cada passo: a velocidade que fica já é quase sem
-     * divergência, e o que sobrar volta no passo seguinte.
+     * dependência no laço). Começa da pressão do passo anterior (o vento muda devagar, é um chute
+     * bom: Bridson 2007, §4.3); do zero depois de rolar ou mudar a máscara.
      */
     private void project() {
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++) {
                 int c = j * n + i, fw = j * nu + i;
-                div[c] = (u[fw + 1] - u[fw] + v[c + n] - v[c]) * invSum[c];
+                div[c] = divergence(c, fw) * invSum[c];
             }
-        Arrays.fill(p, 0f);
+        if (!warmPressure || pressureStale) Arrays.fill(p, 0f);
+        pressureStale = false;
         for (int it = 0; it < iterations; it++) {
             for (int color = 0; color < 2; color++) {
                 for (int j = 0; j < n; j++) {
@@ -721,9 +760,9 @@ public final class FlowGrid {
         for (int j = 0; j < n; j++)
             for (int i = 0; i < n; i++) {
                 int c = j * n + i, fw = j * nu + i, o = c * 4;
-                int f = flags[c] & (F_SOLID | F_TREE | F_INDOOR);
+                int f = flags[c] & CELL_FLAGS;
                 float dens = (f & F_SOLID) != 0 ? neighborDensity(i, j) : d[c];
-                out[o] = (byte) Math.round(Math.max(0f, Math.min(1f, dens)) * 255f);
+                out[o] = (byte) Math.round(Math.max(0f, Math.min(1f, dens / D_MAX)) * 255f);   // o shader multiplica por D_MAX
                 out[o + 1] = encodeVel((u[fw] + u[fw + 1]) * 0.5f);
                 out[o + 2] = encodeVel((v[c] + v[c + n]) * 0.5f);
                 if (openU[fw] == 0) f |= T_WALL_W;

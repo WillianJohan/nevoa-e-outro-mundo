@@ -4,7 +4,7 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos) e 0030 (névoa em alta resolução) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução) e 0031 (névoa que contorna) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
 - 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 30 do núcleo da névoa fluida em Java (15 da 0024, 15 da viajante, do vento e do redemoinho) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
@@ -57,6 +57,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão 1; 0 = só rolos, sprint 0028) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
+| `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 0 a névoa enche o outro lado (padrão), 1 o vácuo da 0026 (sprint 0031, A/B pro Johan escolher) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -72,11 +73,23 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: névoa que contorna (sprint 0031)
+
+O Johan viu a névoa como fumaça passando entre os objetos, sem desviar nem encher o outro lado. A [pesquisa](architecture/pesquisa-nevoa-volumetrica.md) achou seis causas no nosso código. Esta sprint é a etapa 1 dela:
+- o vácuo atrás do prédio virou opção (`NOMRender_setParam(10, v)`, padrão 0 = enche);
+- árvore é porosa (arrasto) e carro é obstáculo baixo (`F_LOW`, arrasto forte);
+- a pressão começa da do passo anterior;
+- a textura leva o acúmulo até 1,5;
+- o rolo só sobe com obstáculo logo à frente no vento, não mais na esteira.
+
+Roteiro em [sprints/sprint-0031-nevoa-que-contorna/README.md](sprints/sprint-0031-nevoa-que-contorna/README.md).
+
+**Próxima:** etapa 2 da pesquisa (camada rasa com altura de obstáculo, 2,5D) ou a 0032 (quadrado censurado com chiado de TV sobre a cara do Sem Rosto, passe do mod3), a decidir com o Johan depois do A/B do vácuo.
+
 ## Em teste: névoa em alta resolução (sprint 0030)
 
 No debug de velocidade apareceu um xadrez: o reforço de redemoinho da 0029 lia a parede fina como giro (ar mexendo dentro da casa fechada) e criava redemoinhos do tamanho da célula. Agora a grade tem 1 a 3 células por tile (padrão 2), roda na thread `NOM-fluido` (a principal só lê o jogo e empilha a entrada; a grade é só da simulação, um teste estático garante) e o reforço age no giro médio de 2 tiles, sem parede nem interior. Roteiro em [sprints/sprint-0030-nevoa-em-alta-resolucao/README.md](sprints/sprint-0030-nevoa-em-alta-resolucao/README.md).
 
-**Próxima (0031):** quadrado censurado com chiado de TV sobre a cara do Sem Rosto, passe do mod3 (ideia do Johan).
 
 ## Em teste: ondas nos obstáculos (sprint 0029)
 

@@ -181,4 +181,24 @@ flow = (src / "Flow.java").read_text()
 assert 'new Thread(Flow::workLoop, "NOM-fluido")' in flow, "mod3: a simulação tem que rodar na thread própria"
 main_part = flow.split("// ---------- main thread ----------")[1].split("// ---------- thread da simulação ----------")[0]
 assert "grid." not in main_part, "mod3: a thread principal não pode mexer na grade (é da thread da simulação)"
+# Névoa que contorna (sprint 0031): NOMRender_setParam(10, v) liga o vácuo atrás dos prédios (padrão
+# 0, enche); a textura vai até D_MAX e o shader desfaz; árvore é porosa e carro é obstáculo baixo;
+# o rolo só sobe onde há obstáculo logo à frente no vento, não na esteira.
+assert re.search(r"PARAM_VACUUM = 10;", java) and re.search(r"luaParams\[PARAM_VACUUM\] = 0f", java), \
+    "mod3: PARAM_VACUUM (10) ausente ou sem padrão 0"
+assert "PARAM_VACUUM" in main_part and "stillDecay" in flow.split("private static void apply")[1], \
+    "mod3: o vácuo tem que ir da thread principal pra simulação pelo Input"
+gv = re.search(r"const float NOM_FLOW_DMAX = ([\d.]+);", header)
+jv = re.search(r"D_MAX = ([\d.]+)f", (src / "FlowGrid.java").read_text())
+assert gv and jv and float(gv.group(1)) == float(jv.group(1)), "mod3: D_MAX diverge de NOM_FLOW_DMAX"
+assert "NOM_FLOW_DMAX" in ctx.split("float nomFlowDensity")[1].split("vec2 nomFlowVel")[0], \
+    "mod3: nomFlowDensity tem que desfazer a divisão por D_MAX"
+gl = re.search(r"const int NOM_FLOW_LOW = (\d+);", header)
+jl = re.search(r"F_LOW = (\d+);", (src / "FlowGrid.java").read_text())
+assert gl and jl and gl.group(1) == jl.group(1), "mod3: F_LOW diverge de NOM_FLOW_LOW"
+cell_fn = flow.split("private static void buildCell")[1].split("private static void wind")[0]
+assert re.search(r"HasTree\(\)\) f \|= FlowGrid\.F_TREE;", cell_fn), "mod3: árvore tem que ser porosa (sem F_SOLID)"
+assert re.search(r"getVehicleContainer\(\) != null\) f \|= FlowGrid\.F_LOW;", cell_fn), "mod3: carro tem que ser F_LOW"
+pile = volfog.split("float pileUp")[1].split("float rollTop")[0]
+assert "nomFlowFlags(" in pile, "mod3: o pileUp tem que olhar se há obstáculo à frente no vento"
 print("mod3 contrato Java/GLSL ok")

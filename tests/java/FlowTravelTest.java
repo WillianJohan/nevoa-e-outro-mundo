@@ -426,6 +426,8 @@ public class FlowTravelTest {
      */
     static void vorticityNoSpeckle() {
         FlowGrid plain = windyHouse(0f, GAME_SCALE), curled = windyHouse(VORT, GAME_SCALE);
+        // régua da 0030 (aprovada no jogo): com o chute, a referência fica limpa demais e deixa de ser régua
+        plain.warmPressure = false;
         double na = 0, nb = 0, wa = 0, wb = 0;
         for (int s = 0; s < 600; s++) {
             plain.step(DT);

@@ -85,11 +85,18 @@ const float PILE = 0.5;                       // quanto o rolo sobe onde o ar pa
 
 // Ar mais lento que o vento livre (freando contra a parede) empurra a névoa pra cima; o que acelera
 // na quina, pra baixo (pressão pela velocidade, Bernoulli). Fração de altura a somar no rolo.
-float pileUp(vec2 vel) {
+// Só sobe com obstáculo logo à frente no vento: na esteira o ar também é lento, mas ali a névoa
+// assenta (sprint 0031).
+const int PILE_BLOCK = NOM_FLOW_SOLID | NOM_FLOW_INDOOR | NOM_FLOW_LOW;
+float pileUp(vec2 xy, vec2 vel) {
     float w2 = dot(uDrift.zw, uDrift.zw);
     if (w2 < 0.04) return 0.0;
     float s = clamp(1.0 - dot(vel, vel) / w2, -1.0, 1.0);
-    return s > 0.0 ? PILE * s : 0.5 * PILE * s;
+    if (s <= 0.0) return 0.5 * PILE * s;
+    vec2 ahead = uDrift.zw * inversesqrt(w2);
+    float block = (nomFlowFlags(xy + ahead) & PILE_BLOCK) != 0 ? 1.0
+                : (nomFlowFlags(xy + 2.5 * ahead) & PILE_BLOCK) != 0 ? 0.6 : 0.0;
+    return PILE * s * block;
 }
 
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
@@ -101,7 +108,7 @@ float rollTop(vec2 xy, float layer, out vec2 q) {
     vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
     float n = fbm2(vec3(r, morphZ(r, 0.0)));
     float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
-    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(vel));
+    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
 }
 
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
@@ -214,16 +221,17 @@ void main() {
         vec2 uv = nomFlowUV(P.xy);
         if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { fragColor = vec4(0.0, 0.0, 0.35, 1.0); return; } // fora da grade
     }
-    if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, parede/porta fechada branca
+    if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, carro laranja, parede/porta fechada branca
         int f = nomFlowFlags(P.xy);
         vec2 e = fract(P.xy);
         vec3 c = vec3((f & NOM_FLOW_SOLID) != 0 ? 0.8 : 0.0, (f & NOM_FLOW_TREE) != 0 ? 0.8 : 0.0,
                       (f & NOM_FLOW_INDOOR) != 0 ? 0.6 : 0.0);
+        if ((f & NOM_FLOW_LOW) != 0) c = vec3(0.9, 0.5, 0.0);   // carro, laranja
         if (((f & NOM_FLOW_WALL_W) != 0 && e.x < 0.12) || ((f & NOM_FLOW_WALL_N) != 0 && e.y < 0.12)) c = vec3(1.0);
         fragColor = vec4(c * 0.7, 0.7);
         return;
     }
-    if (dbg == 6) { fragColor = vec4(vec3(texture(uFlowTex, nomFlowUV(P.xy)).r), 1.0); return; } // preto vazio, branco cheio
+    if (dbg == 6) { fragColor = vec4(vec3(texture(uFlowTex, nomFlowUV(P.xy)).r), 1.0); return; } // preto vazio, cinza 1,0, branco 1,5
     if (dbg == 7) { // velocidade, saturando em 1 tile/s: vermelho = +x, verde = +y, cinza = parado
         vec2 v = clamp(nomFlowVel(P.xy, vec2(0.0)), -1.0, 1.0);
         fragColor = vec4(0.5 + 0.5 * v.x, 0.5 + 0.5 * v.y, 0.5, 1.0);
