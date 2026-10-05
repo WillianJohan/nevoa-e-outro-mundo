@@ -39,7 +39,8 @@ final class Flow {
     private static boolean dead, running;
     private static int z = Integer.MIN_VALUE, maskRow, frameStamp;
     private static long lastNanos;
-    private static float acc, simTime;
+    private static float acc, simTime, camX, camY;
+    private static volatile float sentX, sentY, sentOn = -1f;   // último uFlow mandado ao shader
 
     // quem anda: posição anterior por personagem (x, y, segundos, quadro em que foi visto)
     private static final IdentityHashMap<IsoGameCharacter, float[]> prev = new IdentityHashMap<>();
@@ -73,6 +74,8 @@ final class Flow {
             frameStamp++;
 
             float cx = fs.camCharacterX, cy = fs.camCharacterY;
+            camX = cx;
+            camY = cy;
             int cz = (int) Math.floor(fs.camCharacterZ);
             int nx0 = (int) Math.floor(cx) - N / 2, ny0 = (int) Math.floor(cy) - N / 2;
             long m0 = System.nanoTime();
@@ -214,9 +217,25 @@ final class Flow {
     private static void logStats() {
         RenderContext.log(String.format("fluido: passo %.3f ms, máscara %.3f ms/quadro",
                 statStepNanos / 1e6 / 600, statMaskNanos / 1e6 / Math.max(1, statFrames)));
+        RenderContext.log(info());
         statStepNanos = 0;
         statMaskNanos = 0;
         statFrames = 0;
+    }
+
+    /** Estado real da simulação (thread principal): o que ela achou no mundo e o que o shader recebeu. */
+    static String info() {
+        int i = (int) Math.floor(camX) - grid.x0, j = (int) Math.floor(camY) - grid.y0;
+        boolean in = i >= 0 && j >= 0 && i < N && j < N;
+        float[] s = grid.densityStats();
+        return String.format("fluido: %s param4=%.0f andar=%d grade=(%d,%d) interior=%d sólido=%d árvore=%d"
+                        + " faces fechadas=%d densidade min/média/max=%.2f/%.2f/%.2f sob o jogador=%s flags=%s"
+                        + " publicada=%d enviada=%d shader uFlow=(%.0f,%.0f,%.0f) tex0=(%d,%d)",
+                dead ? "MORTO" : running ? "rodando" : "parado", RenderContext.luaParams[PARAM_ON], z,
+                grid.x0, grid.y0, grid.countCells(FlowGrid.F_INDOOR), grid.countCells(FlowGrid.F_SOLID),
+                grid.countCells(FlowGrid.F_TREE), grid.closedFaces(), s[0], s[1], s[2],
+                in ? String.format("%.2f", grid.density(i, j)) : "fora", in ? Integer.toString(grid.cellFlags(i, j)) : "-",
+                pubVersion, texVersion, sentX, sentY, sentOn, texX0, texY0);
     }
 
     // ---------- render thread ----------
@@ -268,8 +287,10 @@ final class Flow {
     /** uFlowTex e uFlow (x0, y0 relativos à origem do quadro, n, ligado). */
     static void bindUniforms(int prog, float originX, float originY) {
         boolean on = !dead && pubOn && texVersion >= 0;
+        sentX = (float) (texX0 - (double) originX);
+        sentY = (float) (texY0 - (double) originY);
+        sentOn = on ? 1f : 0f;
         glUniform1i(glGetUniformLocation(prog, "uFlowTex"), UNIT);
-        glUniform4f(glGetUniformLocation(prog, "uFlow"),
-                (float) (texX0 - (double) originX), (float) (texY0 - (double) originY), N, on ? 1f : 0f);
+        glUniform4f(glGetUniformLocation(prog, "uFlow"), sentX, sentY, N, sentOn);
     }
 }

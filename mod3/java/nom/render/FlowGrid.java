@@ -118,6 +118,29 @@ public final class FlowGrid {
     public float faceU(int i, int j) { return u[j * nu + i]; }
     public float faceV(int i, int j) { return v[j * n + i]; }
 
+    // ---------- diagnóstico ----------
+
+    public int countCells(int flag) {
+        int k = 0;
+        for (byte f : flags) if ((f & flag) != 0) k++;
+        return k;
+    }
+
+    public int closedFaces() {
+        int k = 0;
+        for (byte b : openU) if (b == 0) k++;
+        for (byte b : openV) if (b == 0) k++;
+        return k;
+    }
+
+    /** min, média, max da densidade. */
+    public float[] densityStats() {
+        float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+        double s = 0;
+        for (float x : d) { lo = Math.min(lo, x); hi = Math.max(hi, x); s += x; }
+        return new float[] { lo, (float) (s / d.length), hi };
+    }
+
     public float totalMass() {
         double s = 0;
         for (float x : d) s += x;
