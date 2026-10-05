@@ -21,7 +21,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 |---|---|
 | `FogEventEveryDays` (3, faixa 0.5–30 dias de jogo): média entre névoas; cada intervalo sorteado entre 0,5× e 1,5×, contado do fim da anterior | [world-states.md](world-states.md) |
 | `FogMinHours` (2), `FogMaxHours` (6), faixa 0.5–48 horas de jogo: duração sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
-| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela (recarregar não muda) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
+| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult` (1.5, faixa 1–3, em degraus: 1.5 sobe um, 2.5 sobe dois) | [night.md](night.md) |

@@ -81,8 +81,18 @@ end
 -- interpolate 1 o interno vira o escrito. Desligar a camada direto deixaria a névoa
 -- vermelha até recarregar; então, no fim, um minuto escrevendo o vanilla e só
 -- depois desliga. A tempestade religa o override da cor todo minuto
--- (WeatherPeriod.updateCurrentStage 909–957): na vermelha, o mod desliga.
+-- (WeatherPeriod.updateCurrentStage 909–957): na vermelha, o mod desliga. A rampa
+-- sai da cor que estava na tela quando a vermelha começou (getFinalValue: a do
+-- minuto anterior, com o tom da tempestade se havia), senão desligar o override
+-- pularia do marrom pro branco no primeiro minuto. A saída volta pra essa mesma
+-- cor e, no minuto do vanilla, o override da tempestade (se ainda houver) volta.
 local fogColorInfo
+local fogBase -- { ext = {r,g,b,a}, int = {r,g,b,a} }
+
+local function rgbaOf(col)
+    return { col:getRedFloat(), col:getGreenFloat(), col:getBlueFloat(), col:getAlphaFloat() }
+end
+
 local function paintFogColor(c)
     local r = state.redRamp
     if r <= 0 then
@@ -92,14 +102,22 @@ local function paintFogColor(c)
         end
         if not applied.fogColor then return end
     end
-    if not applied.fogColor then c:setEnableModded(true) end
+    if not applied.fogColor then
+        local f = c:getFinalValue()
+        fogBase = { ext = rgbaOf(f:getExterior()), int = rgbaOf(f:getInterior()) }
+        c:setEnableModded(true)
+    end
     if r > 0 and c:isEnableOverride() then c:setEnableOverride(false) end
-    local v, red = NOM_Rules.FOG_COLOR, NOM_Rules.RED_FOG_COLOR
-    local x = {}
-    for i = 1, 4 do x[i] = NOM_Rules.blend(v[i], red[i], r) end
+    local red = NOM_Rules.RED_FOG_COLOR
+    local x, y = {}, {}
+    for i = 1, 4 do
+        -- r = 0 aqui é o minuto do vanilla: o interno volta ao do jogo
+        x[i] = r > 0 and NOM_Rules.blend(fogBase.ext[i], red[i], r) or NOM_Rules.FOG_COLOR[i]
+        y[i] = r > 0 and NOM_Rules.blend(fogBase.int[i], red[i], r) or NOM_Rules.FOG_COLOR[i]
+    end
     fogColorInfo = fogColorInfo or ClimateColorInfo.new(1, 1, 1, 1, 1, 1, 1, 1)
     fogColorInfo:setExterior(x[1], x[2], x[3], x[4])
-    fogColorInfo:setInterior(x[1], x[2], x[3], x[4])
+    fogColorInfo:setInterior(y[1], y[2], y[3], y[4])
     c:setModdedValue(fogColorInfo)
     c:setModdedInterpolate(1)
     applied.fogColor = r > 0 or "vanilla"

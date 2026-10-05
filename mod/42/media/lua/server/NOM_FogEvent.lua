@@ -21,7 +21,9 @@ NOM_FogEvent = {}
 
 local countdown, lastMs -- ms reais até a névoa; nil = sem sirene tocando
 -- Névoa vermelha (sprint 0010): pendingRed = o que a sirene tocando decidiu;
--- forcedRed = NOM_Debug.redFog(true) pra próxima sirene (nil = sorteio).
+-- forcedRed = NOM_Debug.redFog(true) pra próxima sirene (nil = sorteio). Os dois só
+-- em memória: recarregar durante a sirene re-sorteia (mesmo resultado do sorteio) e
+-- perde o forçado do debug (aceito: só debug).
 local pendingRed, forcedRed
 
 local function debugLog(msg)

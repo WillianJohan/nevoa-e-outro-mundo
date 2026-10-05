@@ -40,7 +40,8 @@ segundo sorteio do mesmo ID e período, dividido por igual entre os tipos que ex
 (hoje 1/3 Estalador, 1/3 Corredor, 1/3 Sem-rosto; com a Carpideira, 1/4 cada). Cada
 um com o comportamento de sempre. Um tipo desligado no sandbox deixa a fatia dele como
 zumbi comum (não redistribui). O Eco continua Eco. Se a névoa é vermelha é sorteado
-pelo número do período: salvar e carregar no meio não muda nada.
+pelo número do período e por uma semente do mundo (cada save tem a sua agenda):
+salvar e carregar no meio não muda nada.
 
 Numa noite com névoa a variante vai por cima dos stats da noite (o Estalador corre
 como os outros da noite e continua cego); de dia, por cima dos stats do jogo.

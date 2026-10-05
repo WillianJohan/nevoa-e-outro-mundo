@@ -173,7 +173,7 @@ return {
     end,
     -- névoa vermelha (sprint 0010): a luz fica vermelha (verde e azul caem muito mais
     -- que o vermelho) e MAIS ESCURA que a vanilla em todo caminho: as três névoas,
-    -- as duas noites, DarkIntensity 1 e 2, e no meio da rampa do vermelho
+    -- as duas noites, DarkIntensity 0.5, 1 e 2, e no meio da rampa do vermelho
     rules_red_fog_darker_than_vanilla_on_every_path = function()
         local function drop(van, look)
             local t = look.tint
@@ -185,10 +185,12 @@ return {
         end
         local function f(name, r, g, b) return string.format("%s: r %.0f%% g %.0f%% b %.0f%%", name, r * 100, g * 100, b * 100) end
         for name, van in pairs(NOM_Rules.VANILLA_FOGS) do
-            for _, I in ipairs({ 1, 2 }) do
+            for _, I in ipairs({ 0.5, 1, 2 }) do
                 for _, red in ipairs({ 0.5, 1 }) do
+                    -- DarkIntensity 0.5 (peso 0.3): mais escura ainda, por menos
+                    local min = I < 1 and 0.05 or 0.15
                     local r, g, b = drop(van, NOM_Rules.mix(0, 1, I, red))
-                    assert(r >= 0.15 and g >= 0.15 and b >= 0.15, "vermelha clareou: " .. f(name, r, g, b))
+                    assert(r >= min and g >= min and b >= min, "vermelha clareou: DI" .. I .. " " .. f(name, r, g, b))
                 end
                 local r, g, b = drop(van, NOM_Rules.mix(0, 1, I, 1))
                 if I == 1 then assert(g >= r + 0.15 and b >= r + 0.15, "não ficou vermelha: " .. f(name, r, g, b)) end

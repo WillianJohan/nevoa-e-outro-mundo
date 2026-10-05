@@ -509,4 +509,27 @@ return {
         assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR))
         assert(near(env.color.final.ext[1], 0.33), "luz pintada com o look desligado")
     end,
+    -- review: a vermelha que começa na tempestade sai da cor que estava na tela (a do
+    -- override), não pula pra branca vanilla no primeiro minuto
+    look_red_fog_color_starts_from_storm_tint = function()
+        local storm = { 0.5, 0.45, 0.4, 1 }
+        local env = setup({ tod = 12, K = 10 })
+        env.storm = storm
+        NOM_World.setFog(true)
+        env.run(5)
+        local before = { unpack(env.fogColor.final.ext) }
+        NOM_World.setFog(true, true)
+        env.run(1)
+        local after = env.fogColor.final.ext
+        for i = 1, 3 do
+            assert(math.abs(after[i] - before[i]) < 0.06, "pulou no 1º minuto: " .. fmtColor(before) .. " → " .. fmtColor(after))
+        end
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR))
+        -- e sem tempestade continua saindo da vanilla
+        local env2 = setup({ tod = 12, K = 10 })
+        NOM_World.setFog(true, true)
+        env2.run(1)
+        assert(math.abs(env2.fogColor.final.ext[1] - 0.9) < 0.06)
+    end,
 }

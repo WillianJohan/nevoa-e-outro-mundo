@@ -33,7 +33,11 @@ Decisões do Johan (05/10/2026):
       `variant_rules_red_fog_deterministic_per_period` (2000 períodos: 150–250 com 10%,
       0% e 100% exatos, desligada nunca, mesmo período mesma resposta),
       `fog_event_red_matches_pure_roll` (o servidor bate com o sorteio puro em 6
-      períodos com 50%), `fog_event_red_chance_zero_or_disabled_is_normal`.
+      períodos com 50%), `fog_event_red_chance_zero_or_disabled_is_normal`. Cada save
+      com a sua agenda (semente do mundo, review): `variant_rules_red_fog_seed_changes_schedule`
+      (50 sementes, 50 agendas, taxa 10% ± 1,5), `fog_event_world_seed_saved_once`
+      (sorteada uma vez, a mesma depois de recarregar, save antigo ganha uma),
+      `fog_event_red_depends_on_world_seed`.
 - [x] Recarregar no meio da névoa vermelha mantém vermelha — `fog_event_red_reload_mid_fog_stays_red`
       (`data.fog.red` no `ModData`, mesmo período, sem sirene de novo, mesmo com o
       sandbox mudado pra 0%); `fog_event_rules_start_stores_red`.
@@ -60,13 +64,15 @@ Decisões do Johan (05/10/2026):
       interno), `look_red_fog_color_ramps`, `look_red_fog_color_restored_after` (o
       interno da cor da névoa não volta sozinho, `setup()` 324–361 (chamado pelo `<init>` no 525)), `look_red_fog_color_wins_storm_override`
       (`WeatherPeriod` 909–957), `look_normal_fog_touches_no_fog_color`,
-      `look_red_fog_color_without_dark`; cor da névoa lida pelo `ImprovedFog.update`
+      `look_red_fog_color_without_dark`, `look_red_fog_color_starts_from_storm_tint`; cor da névoa lida pelo `ImprovedFog.update`
       132–174 (pz-api-notes §12.1). **Falta o jogo:** roteiro passos 2–5.
 - [x] A névoa vermelha é mais escura que a vanilla em todo caminho —
       `rules_red_fog_darker_than_vanilla_on_every_path` (contra as três luzes de névoa e
       as duas noites vanilla da ADR-008, `DarkIntensity` 1 e 2, meio da rampa e cheia:
       ≥ 15% em todo canal, verde/azul ≥ 15 pontos a mais que o vermelho; com a noite,
-      ≥ 30%; cor da névoa mais escura que a branca vanilla), `rules_mix_red_zero_is_normal`.
+      ≥ 30%; com `DarkIntensity` 0.5, ≥ 5%; cor da névoa mais escura que a branca
+      vanilla), `rules_mix_red_zero_is_normal`. Com `DarkEnabled` desligado só a cor da
+      névoa fica vermelha (`look_red_fog_color_without_dark`).
 - [x] Vinheta: sem cor no `SearchMode` (só blur, desat, radius, gradientWidth,
       darkness; bytecode, pz-api-notes §12.2), fica a da névoa normal.
 - [x] Sandbox `RedFogEnabled` (true) e `RedFogChance` (10), PT-BR e EN — `config_red_fog_defaults`,
@@ -76,11 +82,16 @@ Decisões do Johan (05/10/2026):
       `debug_red_fog_forwards_to_event` (sem permissão no dedicado não passa),
       `debug_status_shows_red`, `fog_event_set_red_starts_red_event`,
       `fog_event_set_red_flips_open_event`, `fog_event_set_red_during_siren`.
+- [x] Orçamento da vermelha contado (ninguém é comum): `ai_red_fog_budget_per_frame`
+      (Estalador 4 chamadas por frame, Corredor 3, Sem-rosto 0), `semrosto_scan_budget_red_fog`
+      (Sem-rosto 7 por varredura, os outros 1); Sem-rosto descartado pelo limite do
+      servidor não fica mudo o cooldown: `semrosto_second_report_waits_rate_not_cooldown`.
+      Falta o FPS com horda: [teste in-game, parte 3](../../teste-in-game.md#parte-3--medições-15-min).
 - [x] Docs: GDD (atmosphere, monsters, sandbox com presets, Overview), ADR-010 nova e
       indexada, ADR-006/009 emendadas, pz-api-notes §12, teste in-game, README,
       Workshop, CREDITS.
 
-`./run-tests.sh`: `total=381 passou=381 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=388 passou=388 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -110,11 +121,15 @@ novo só carrega ao recarregar o save.
    `NOM_Debug.fog(true, true)`: névoa **branca**, zumbis voltam ao sorteio normal
    (poucos monstros). Se essa sair vermelha também (10% de chance, o log diz
    `vermelha=true`), `NOM_Debug.redFog(false)` e conferir que volta a branca.
+   (Recarregar durante a sirene de um `NOM_Debug.redFog(true)` perde o forçado: a
+   sirene toca de novo e a névoa sai do sorteio. Só debug.)
 5. **Salvar e carregar.** Numa vermelha aberta: salvar, sair, carregar. **Esperado:**
    continua vermelha (`NOM_Debug.status()` com `vermelha=true` e o mesmo `nevoaN`), sem
    sirene. Com tempestade (Debug → Climate, Trigger storm) durante a vermelha: a névoa
    segue vermelha.
-6. **MP (dedicado + 2 clientes).** `NOM_Debug.redFog(true)` como admin: os dois ouvem a
+6. **Horda.** Parte 3 do [teste in-game](../../teste-in-game.md#parte-3--medições-15-min):
+   FPS sem névoa, com névoa normal e com a vermelha, perto de ~200 zumbis.
+7. **MP (dedicado + 2 clientes).** `NOM_Debug.redFog(true)` como admin: os dois ouvem a
    sirene vermelha; névoa e luz vermelhas nos dois. Um terceiro cliente entra no meio:
    névoa vermelha e `vermelha=true` no `NOM_Debug.status()` dele.
 
@@ -127,6 +142,11 @@ novo só carrega ao recarregar o save.
 - **04/10/2026** — Sorteio puro (vermelho e divisão), evento decidindo/salvando/espalhando,
   consumidores do sorteio, clima vermelho, debug, sirene procedural.
 - **04/10/2026** — Docs: ADR-010, GDD, pz-api-notes §12, roteiro. Em teste.
+- **04/10/2026** — Review (sem Critical): todo save tinha a mesma agenda de vermelhas
+  (semente do mundo no `data.fog.seed`); orçamento da vermelha contado e medição com
+  horda no roteiro; Sem-rosto descartado pelo limite do servidor ficava mudo 4 s
+  (cliente espaça em 300 ms); a cor da névoa sai do marrom da tempestade em rampa;
+  citações do `setup()`; tooltips "tipos ligados"; caso `DarkIntensity` 0.5.
 
 ## Aprendizados
 
@@ -135,12 +155,15 @@ novo só carrega ao recarregar o save.
    interpolate 1, desligar a camada deixa o último valor escrito até recarregar o
    save. Antes de desligar uma camada modded, confira se o jogo reescreve o interno
    todo minuto (`updateValues`); se não, escreva o vanilla antes.
-2. **`ClimateManager.COLOR_NEW_FOG` não existe no Lua.** Só `COLOR_GLOBAL_LIGHT` e
+2. **Sorteio "determinístico" sem entrada do mundo é igual em todo save.** Hash só do
+   número do período deu a mesma agenda de vermelhas pra todo mundo. Semente sorteada
+   uma vez e salva no `ModData` resolve e continua determinística.
+3. **`ClimateManager.COLOR_NEW_FOG` não existe no Lua.** Só `COLOR_GLOBAL_LIGHT` e
    `COLOR_MAX` são campos; o id 1 vem do construtor e do painel de admin vanilla.
 
 ## Pendências que a próxima sprint herda
 
-- Roteiro in-game acima (passos 1–6) e marcar os dois critérios abertos.
+- Roteiro in-game acima (passos 1–7) e marcar os dois critérios abertos.
 - Calibrar no jogo: `LOOKS.redFog.tint` e `RED_FOG_COLOR` (vermelho demais ou de menos;
   a cena tem que ficar jogável).
 - Carpideira (0011) entra no fim de `KINDS`: a vermelha vira 1/4 de cada

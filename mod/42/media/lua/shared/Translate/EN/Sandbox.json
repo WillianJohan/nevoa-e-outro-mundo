@@ -11,7 +11,7 @@
     "Sandbox_NevoaEOutroMundo.FogMaxHours": "Fog: maximum duration (hours)",
     "Sandbox_NevoaEOutroMundo.FogMaxHours_tooltip": "Longest fog, in in-game hours. Each fog lasts a random value between the minimum and the maximum.",
     "Sandbox_NevoaEOutroMundo.RedFogEnabled": "Red fog",
-    "Sandbox_NevoaEOutroMundo.RedFogEnabled_tooltip": "Sometimes the fog comes red: a lower, harsher siren warns, fog and light turn red and every zombie inside it is a monster (Clicker, Runner or Faceless, split evenly). Echoes stay Echoes.",
+    "Sandbox_NevoaEOutroMundo.RedFogEnabled_tooltip": "Sometimes the fog comes red: a lower, harsher siren warns, the fog turns red (the light too, with the dark climate on) and every zombie inside it is a monster, split evenly among the enabled types (Clicker, Runner, Faceless); a disabled type's share stays normal. Echoes stay Echoes.",
     "Sandbox_NevoaEOutroMundo.RedFogChance": "Red fog chance (%%)",
     "Sandbox_NevoaEOutroMundo.RedFogChance_tooltip": "Percentage of fogs that come red. Rolled once per fog: saving and loading does not change it.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",

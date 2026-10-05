@@ -29,12 +29,14 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
 - **Névoa vermelha** ([ADR-010](../architecture/adr-010-nevoa-vermelha.md)): a névoa
   em si fica vermelha escura (a cor que o jogo usa pra desenhar a névoa), com a mesma
-  rampa de ~20 minutos, e isso vale com o clima sombrio desligado (é o evento). Por
+  rampa de ~20 minutos, e isso vale com o clima sombrio desligado (é o evento): **com
+  `DarkEnabled` desligado, só a cor da névoa fica vermelha**, a luz não. Por
   cima, com o clima sombrio ligado, a luz vai pra um vermelho escuro: contra as três
   luzes de névoa vanilla a luz do céu cai 17–32% no vermelho e ~50% no verde e no
   azul com `DarkIntensity` 1; com a noite junto, ≥ 30% em todo canal. A dessaturação
-  vai pra baixo (a da névoa normal lavaria o vermelho). Na tempestade com névoa o
-  jogo pinta a névoa de marrom: na vermelha, o mod passa por cima. Quando acaba, a
+  vai pra baixo (a da névoa normal lavaria o vermelho). Com `DarkIntensity` 0.5 a luz
+  ainda escurece, por menos (≥ 5%). Na tempestade com névoa o jogo pinta a névoa de
+  marrom: na vermelha, o mod passa por cima, saindo do marrom em rampa. Quando acaba, a
   cor volta à branca vanilla. A vinheta **não** fica vermelha: o efeito de tela do
   jogo não tem cor (só desfoque, dessaturação, raio e escurecimento).
 - Por que esses canais ([ADR-008](../architecture/adr-008-noite-pela-luz-global.md)):

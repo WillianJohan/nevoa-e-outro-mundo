@@ -822,7 +822,16 @@ Decisão na [ADR-010](adr-010-nevoa-vermelha.md).
 `getGradientWidth` e `getDarkness` (`SearchModeFloat`), sem cor (lista de métodos do
 bytecode). A vinheta não tinge.
 
-### 12.3 Sirene vermelha
+### 12.3 Semente do mundo
+
+`ZombRand(n)` (CONFIRMED, uso vanilla amplo) é `LuaManager$GlobalObject.ZombRand(D)D`
+(0–35): `n == 0` → 0; negativo → `-Next(-n)`; senão `RandLua.INSTANCE.Next((long) n)`,
+que faz `Next((int) n, rand)` (`RandAbstract.Next(JLjava/util/Random;)J` 0–8): inteiro
+em `[0, n)`. O `RandLua` é semeado por `PZSeedGenerator` (`RandLua.init`), diferente a
+cada sessão. A semente da vermelha usa `ZombRand(67108859)` uma vez e salva no
+`ModData` (`data.fog.seed`).
+
+### 12.4 Sirene vermelha
 
 Mesmo caminho da §11.3 com o som `NOM_SirenRed` (`media/sound/NOM_SirenRed.ogg`, ~28 s,
 gerado por `scripts/gen_sounds.py`).
