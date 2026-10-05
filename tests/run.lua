@@ -22,6 +22,7 @@ local FILES = {
     "tests/test_semrosto.lua",
     "tests/test_fog.lua",
     "tests/test_fog_client.lua",
+    "tests/test_fog_sound.lua",
 }
 
 local pass, fail = 0, 0

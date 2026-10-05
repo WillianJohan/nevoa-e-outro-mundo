@@ -19,4 +19,36 @@ module Base
             distanceMax = 80,
         }
     }
+
+    sound NOM_FogDrone
+    {
+        category = World,
+        master = Ambient,
+        loop = true,
+        clip
+        {
+            file = media/sound/NOM_FogDrone.ogg,
+        }
+    }
+
+    sound NOM_FogMetal
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_FogMetal.ogg,
+        }
+    }
+
+    sound NOM_RadioStatic
+    {
+        category = World,
+        master = Ambient,
+        loop = true,
+        clip
+        {
+            file = media/sound/NOM_RadioStatic.ogg,
+        }
+    }
 }

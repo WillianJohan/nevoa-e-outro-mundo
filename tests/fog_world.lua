@@ -12,6 +12,11 @@
 --   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
 -- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
 -- * Square: qualquer método além dos de leitura listados explode (nada de mexer no mapa).
+-- * Som: player:playSoundLocal(nome) = getEmitter():playSoundImpl(nome, nil), sem
+--   pacote (IsoGameCharacter.playSoundLocal; client/ISUI/Maps/ISMap.lua:210);
+--   emitter:setVolume(id, v), isPlaying(id), stopSoundLocal(id) são locais. Já
+--   emitter:playSound e stopSound mandam pacote no cliente de MP
+--   (FMODSoundEmitter.playSound 0–104, stopSound → sendStopSound): aqui explodem.
 local W = {}
 
 local function jlist(items)
@@ -76,6 +81,27 @@ function W.new(opts)
         return sq
     end
 
+    G.sounds = {} -- id -> { name, volume, playing }
+    local emitter = {
+        isPlaying = function(_, id) return G.sounds[id] ~= nil and G.sounds[id].playing end,
+        setVolume = function(_, id, v) G.sounds[id].volume = v end,
+        stopSoundLocal = function(_, id) G.sounds[id].playing = false end,
+        playSound = function() error("emitter:playSound manda pacote PlaySound no cliente de MP", 2) end,
+        stopSound = function() error("emitter:stopSound manda sendStopSound", 2) end,
+    }
+    function G.playing(name)
+        local out = {}
+        for id, snd in pairs(G.sounds) do
+            if snd.name == name and snd.playing then out[#out + 1] = snd end
+        end
+        return out
+    end
+    function G.played(name)
+        local n = 0
+        for _, snd in pairs(G.sounds) do if snd.name == name then n = n + 1 end end
+        return n
+    end
+
     G.byNum = {}
     function G.player(o)
         local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = #G.players,
@@ -91,6 +117,12 @@ function W.new(opts)
         end
         function p:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
         function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
+        function p:getEmitter() return emitter end
+        function p:playSoundLocal(name)
+            local id = #G.sounds + 1
+            G.sounds[id] = { name = name, volume = 1, playing = true }
+            return id
+        end
         G.players[#G.players + 1] = p
         G.byNum[p.pn] = p
         return p
@@ -144,6 +176,8 @@ function W.new(opts)
         end,
     }
     getTimestampMs = function() return G.now end
+    G.rand = 0
+    ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end
     getPlayer = function() return G.players[1] end

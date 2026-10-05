@@ -54,6 +54,53 @@ def scream(rng):
     return np.tanh(1.5 * formants / np.max(np.abs(formants)) * env)  # saturação: garganta estourando
 
 
+def loopable(signal, fade):
+    """Funde o fim no começo (crossfade de `fade` s): o loop não estala na emenda."""
+    n = int(fade * RATE)
+    body, tail = signal[:-n].copy(), signal[-n:]
+    ramp = np.linspace(0, 1, n)
+    body[:n] = body[:n] * ramp + tail * (1 - ramp)
+    return body
+
+
+def drone(rng):
+    """Névoa: drone grave que respira, ~8 s em loop sem emenda audível."""
+    dur = 8.0
+    t = np.arange(int((dur + 1.0) * RATE)) / RATE
+    # frequências com número inteiro de ciclos em 8 s: o tom fecha o loop sozinho
+    tone = sum(a * np.sin(2 * np.pi * f * t + rng.uniform(0, 2 * np.pi))
+               for f, a in ((41.25, 1.0), (55.0, 0.7), (82.5, 0.35), (110.125, 0.15)))
+    swell = 0.75 + 0.25 * np.sin(2 * np.pi * t / dur)
+    rumble = resonator(rng.standard_normal(len(t)), 70, 2) * 6
+    return loopable((tone * swell + rumble) * 0.5, 1.0)
+
+
+def metal(rng):
+    """Névoa: pancada metálica distante (parciais inarmônicos + eco longo), ~4 s."""
+    dur = 4.0
+    t = np.arange(int(dur * RATE)) / RATE
+    hit = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d)
+              for f, d in ((187, 1.4), (431, 2.2), (697, 2.9), (1123, 4.0), (1577, 5.5)))
+    hit = hit * np.minimum(1, t / 0.004)
+    out = hit.copy()
+    for delay, gain in ((0.23, 0.45), (0.51, 0.3), (0.87, 0.18), (1.3, 0.1)):  # galpão vazio
+        k = int(delay * RATE)
+        out[k:] += gain * hit[:-k]
+    dist = resonator(out, 500, 0.7)  # longe: perde o brilho
+    return dist * np.exp(-t * 0.4)
+
+
+def radio_static(rng):
+    """Rádio chiando: ruído de banda de rádio com estalos e zumbido, ~4 s em loop."""
+    dur = 4.0
+    t = np.arange(int((dur + 0.3) * RATE)) / RATE
+    hiss = resonator(rng.standard_normal(len(t)), 2400, 0.8) + 0.3 * rng.standard_normal(len(t))
+    flutter = 0.7 + 0.3 * np.sin(2 * np.pi * 3.0 * t) * np.sin(2 * np.pi * 0.5 * t)
+    crackle = (rng.random(len(t)) > 0.9993) * rng.standard_normal(len(t)) * 8
+    hum = 0.15 * np.sin(2 * np.pi * 60 * t)
+    return loopable(hiss * flutter + crackle + hum, 0.3)
+
+
 def write(name, signal):
     signal = signal / np.max(np.abs(signal)) * 0.9
     pcm = (signal * 32767).astype(np.int16)
@@ -75,6 +122,10 @@ def main():
     rng = np.random.default_rng(SEED)
     write("NOM_EstaladorClick", click(rng))
     write("NOM_CorredorScream", scream(rng))
+    # sprint 0005: geradores próprios, pra não mudar os sons acima
+    write("NOM_FogDrone", drone(np.random.default_rng(SEED + 1)))
+    write("NOM_FogMetal", metal(np.random.default_rng(SEED + 2)))
+    write("NOM_RadioStatic", radio_static(np.random.default_rng(SEED + 3)))
 
 
 if __name__ == "__main__":

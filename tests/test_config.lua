@@ -74,6 +74,16 @@ return {
         end
         assert(n >= 24, "esperava as opções da névoa, achou " .. n)
     end,
+    -- drone e rádio tocam em loop; o metal é um golpe só
+    config_fog_sounds_loop = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local function body(name) return txt:match("sound%s+" .. name .. "%s*(%b{})") end
+        assert(body("NOM_FogDrone"):find("loop = true", 1, true), "drone sem loop")
+        assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
+        assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
+    end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -98,8 +108,8 @@ return {
             h:close()
             n = n + 1
         end
-        assert(n >= 2, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream" }) do
+        assert(n >= 5, "sons declarados: " .. n)
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,
