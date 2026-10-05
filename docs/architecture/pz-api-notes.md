@@ -11,6 +11,11 @@
 > e o jogo quebrou. `tests/test_kahlua_compat.lua` varre `mod/` atrás do que o Kahlua
 > não tem. Achou outra função faltando no jogo: acrescente lá.
 
+> **Symlink quebra os scripts (visto no jogo, 2026-10-05):** com o mod linkado por
+> symlink, Lua, texturas, `clothing.xml` e `fileGuidTable.xml` carregam, mas o
+> `ScriptManager` monta `.../Zomboid/mods/var/home/.../nom_clothing.txt` e não acha
+> `media/scripts/*.txt` → `Couldn't find item Base.NOM_*`. Use `scripts/dev-sync.sh` (cópia).
+
 ## Como ler este documento
 
 - **CONFIRMED**: visto em uso no Lua vanilla (arquivo:linha).
