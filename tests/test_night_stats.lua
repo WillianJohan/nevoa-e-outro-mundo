@@ -9,11 +9,14 @@
 --   lore 3 ou t 3 → arrastado; 2/3 de chance de "fake shambler" (speedType = t);
 --   senão lore 2 ou t 2 → rápido; senão lore 1 ou t 1 → corredor.
 -- * zumbi que volta do virtual é objeto novo: stats do sandbox, modData vazio.
+-- * getPersistentOutfitID(): o ID do outfit (0 = sem outfit, nunca variante);
+--   addZombiesInOutfit troca o ID depois do OnZombieCreate (o.id muda).
 -- * ActiveOnly: a cada update o jogo chama makeInactive(isZombieInactivityPhase())
 --   (IsoZombie.updateActiveState). makeInactive(b) volta cedo se nada mudou;
 --   true → speedType 3 + doZombieSpeed() e nunca reafirma; false → speedType -1 +
 --   DoZombieStats(). determineZombieSpeed(-1) com inactive → 3.
 require "NOM_NightRules"
+require "NOM_VariantRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_NightStats.lua"
 local LORE_RANGE = { Speed = 4, Sight = 5, Hearing = 5, Cognition = 4, Memory = 6 }
@@ -68,7 +71,8 @@ local function setup(opts)
     function G.zombie(o)
         o = o or {}
         local z = { md = {}, speedType = -1, cognition = -1, strength = -1, memory = -1, crawling = o.crawling or false,
-            remote = o.remote or false, dead = false, outfitName = o.outfit, canCrawl = true }
+            remote = o.remote or false, dead = false, outfitName = o.outfit, canCrawl = true, outfitID = o.id or 0 }
+        function z:getPersistentOutfitID() return self.outfitID end
         function z:getModData() return self.md end
         function z:hasModData() return next(self.md) ~= nil end
         function z:isDead() return self.dead end
@@ -184,6 +188,20 @@ local function setup(opts)
     dofile(FILE)
     NOM_NightStats.install()
     return G
+end
+
+-- primeiro persistentOutfitID (formato do jogo) que dá a variante pedida
+local function idFor(want, night, sandbox)
+    local c = NOM_VariantRules.config(function(k)
+        local v = sandbox[k]
+        if v == nil then v = NOM_Config.DEFAULTS[k] end
+        return v
+    end)
+    for seed = 1, 500 do
+        local id = 5 * 65536 + seed
+        if NOM_VariantRules.variant(id, night, c) == want then return id end
+    end
+    error("nenhum ID dá " .. tostring(want))
 end
 
 local function sameLore(G, want)
@@ -480,5 +498,82 @@ return {
         G.converge()
         G.kill(z)
         assert(z.md.NOM_night == nil and z.md.NOM_dayTier == nil)
+    end,
+    stats_corredor_sprints_at_night_and_returns = function()
+        local sb = { CorredorChance = 100, EstaladorChance = 0 }
+        local G = setup({ lore = { Speed = 3 }, sandbox = sb })
+        local z = G.spawn({ id = idFor("corredor", 3, sb) })
+        NOM_NightStats.setNight(true, 3)
+        G.converge()
+        assert(z.speedType == 1 and z.md.NOM_variant == "corredor", "corredor: " .. z.speedType)
+        NOM_NightStats.setNight(false, 3)
+        G.converge()
+        assert(z.speedType == 3 and z.md.NOM_variant == nil, "corredor não voltou a comum")
+    end,
+    stats_estalador_blind_and_sharp_ears = function()
+        local sb = { EstaladorChance = 100, NightSharperSenses = false }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("estalador", 2, sb) })
+        NOM_NightStats.setNight(true, 2)
+        G.converge()
+        assert(z.sight == 3 and z.hearing == 1 and z.md.NOM_variant == "estalador")
+        assert(z.speedType == 1, "estalador perdeu a velocidade da noite")
+        assert(G.lore.Sight == 2 and G.lore.Hearing == 2, "sandbox vazou")
+        NOM_NightStats.setNight(false, 2)
+        G.converge()
+        assert(z.sight == 2 and z.hearing == 2 and z.md.NOM_variant == nil)
+    end,
+    -- addZombiesInOutfit veste depois do OnZombieCreate: a variante segue o ID atual
+    stats_variant_follows_outfit_id = function()
+        local sb = { CorredorChance = 50, EstaladorChance = 0 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor(nil, 6, sb) })
+        NOM_NightStats.setNight(true, 6)
+        G.converge()
+        assert(z.md.NOM_variant == nil)
+        z.outfitID = idFor("corredor", 6, sb)
+        G.converge()
+        assert(z.md.NOM_variant == "corredor" and z.speedType == 1, "não seguiu o ID novo")
+        -- outra noite, outro sorteio: o mesmo zumbi pode deixar de ser
+        local other = idFor(nil, 7, sb)
+        z.outfitID = other
+        NOM_NightStats.setNight(true, 7)
+        G.converge()
+        assert(z.md.NOM_variant == nil)
+    end,
+    stats_eco_never_variant = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local id = idFor("estalador", 1, sb)
+        local eco = G.spawn({ id = id })
+        eco.md.NOM_eco = true
+        local ecoMP = G.spawn({ id = id, outfit = "NOM_Eco" })
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        for _, e in ipairs({ eco, ecoMP }) do
+            assert(e.md.NOM_variant == nil and e.speedType == 3 and e.sight == 2, "Eco virou variante")
+        end
+    end,
+    -- cliente que ainda não sabe o número da noite: noite comum, sem variante
+    stats_variant_needs_night_number = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("estalador", 1, sb) })
+        NOM_NightStats.setNight(true, nil)
+        G.converge()
+        assert(z.md.NOM_variant == nil and z.speedType == 1 and z.sight == 1)
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        assert(z.md.NOM_variant == "estalador" and z.sight == 3)
+    end,
+    stats_dead_variant_forgets = function()
+        local sb = { CorredorChance = 100, EstaladorChance = 0 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("corredor", 1, sb) })
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        z.md.NOM_hunting = true
+        G.kill(z)
+        assert(z.md.NOM_variant == nil and z.md.NOM_hunting == nil, "chave de variante foi pro corpo")
     end,
 }
