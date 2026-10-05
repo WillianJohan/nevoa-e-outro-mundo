@@ -785,7 +785,7 @@ valor do mod. O cinza que a névoa natural põe na luz (`updateValues`) **fica**
 |---|---|---|
 | `getTimestampMs()` no servidor | CONFIRMED | `server/ISObjectClickHandler.lua:352` |
 | `isGamePaused()` | CONFIRMED | `client/ISUI/ISJoystickButtonRadialMenu.lua:68`; `GlobalObject.isGamePaused` → `GameTime.isGamePaused` (0–63): dedicado = `Players` vazio e `PauseEmpty`; cliente de MP = `GameClient.IsClientPaused`; solo = velocidade 0 |
-| `OnTick` | CONFIRMED | `IngameState.onTick` (0–11) só dispara o evento |
+| `OnTick` | CONFIRMED | `IngameState.onTick` (0–11) só dispara o evento. No dedicado vazio com `PauseEmpty` o `OnTick` **para de todo** (`IngameState.updateInternal` 888–943); o primeiro tick depois traz um `dt` enorme, que o teto de 1 s por frame (`NOM_FogEventRules.MAX_STEP_MS`) absorve |
 | `getGameTime():getWorldAgeHours()` | CONFIRMED | `shared/Definitions/animal/ButcheringUtil.lua:594` |
 | `ZombRand(n)` | CONFIRMED | uso vanilla amplo; inteiro em `[0, n)` |
 

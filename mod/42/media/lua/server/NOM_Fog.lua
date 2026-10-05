@@ -34,10 +34,12 @@ NOM_World.onChange(function(flag, on)
     debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period))
 end)
 
--- Cliente que entra no meio da névoa não viu a borda: pergunta.
+-- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
+-- durante a contagem, ouve a sirene também (atrasada, mas avisa).
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
     sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period() })
+    if NOM_FogEvent.status().sirenMs then sendServerCommand(player, MODULE, "siren", {}) end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------

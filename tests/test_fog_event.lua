@@ -168,4 +168,32 @@ return {
         G.seconds(31)
         assert(NOM_World.fog == false, "sirene cancelada trouxe névoa")
     end,
+    -- review 1: NOM_Debug.fog(false) cancela a sirene que a AGENDA tocou; o next anda
+    -- pra frente, senão o minuto seguinte tocaria de novo e a névoa viria
+    fog_event_stop_cancels_scheduled_siren = function()
+        local G = setup()
+        G.advance(36)
+        assert(G.played("NOM_Siren") == 1)
+        assert(NOM_FogEvent.stop(), "não cancelou")
+        G.climate()
+        G.seconds(31)
+        assert(NOM_World.fog == false, "névoa veio depois de cancelar")
+        assert(G.played("NOM_Siren") == 1, "sirene tocou de novo: " .. G.played("NOM_Siren"))
+        assert(fogMD(G).next == G.world.hours + 36 and fogMD(G).night == nil)
+    end,
+    -- review 2: quem entra no MP durante a contagem ouve a sirene
+    fog_event_mp_join_during_siren_hears_it = function()
+        local G = setup({ server = true, player = false })
+        G.advance(36)
+        G.seconds(10)
+        G.sentServer = {}
+        local who = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].player == who, "entrou na contagem sem sirene")
+        G.seconds(21)
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        assert(#G.commands(G.sentServer, "siren") == 0, "sirene depois da névoa aberta")
+    end,
 }

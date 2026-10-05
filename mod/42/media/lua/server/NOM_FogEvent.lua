@@ -58,15 +58,20 @@ function NOM_FogEvent.siren(skip)
     else
         NOM_Siren.play()
     end
-    debugLog("sirene contagem=" .. countdown)
+    debugLog("sirene contagem=" .. math.floor(countdown)) -- inteiro: "contagem=30000"
     return true
 end
 
--- Fecha o evento agora (ou cancela a sirene) e agenda o próximo.
+-- Fecha o evento agora (ou cancela a sirene) e agenda o próximo. Sirene
+-- cancelada também reagenda: o next da agenda ficou no passado e o minuto
+-- seguinte tocaria de novo.
 function NOM_FogEvent.stop()
     local was = countdown ~= nil
     countdown = nil
-    if not state().inNight then return was end
+    if not state().inNight then
+        if was then R.stop(state(), now(), cfg(), rand) end
+        return was
+    end
     R.stop(state(), now(), cfg(), rand)
     NOM_World.setFog(false)
     debugLog("evento fim proxima=" .. hours(state().next))

@@ -139,6 +139,10 @@ end
 local function onClimateTick(clim)
     local enabled = NOM_Config.get("DarkEnabled")
     local w = NOM_World.update()
+    -- A flag de névoa é a de agora: o evento abre no OnTick (fim da sirene) e o
+    -- fim/carga acertam no OnClimateTick do NOM_FogEvent, que roda depois deste
+    -- (ordem alfabética de carga). A rampa começa até 1 minuto de jogo depois da
+    -- borda; com 20 minutos de rampa não se vê.
     state.eventRamp = NOM_Rules.ramp(state.eventRamp, w.fog, TRANSITION_MINUTES)
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
     state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, TRANSITION_MINUTES)

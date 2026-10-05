@@ -60,13 +60,13 @@ névoa natural do clima":
       `fog_event_rules_period_once_per_event`, `fog_event_no_compounding_after_long_skip`,
       `fog_event_stale_0008_save_closes`, `fog_period_counts_once_per_fog`.
 - [x] MP: o servidor decide e avisa; quem entra no meio do evento recebe o estado —
-      `fog_event_mp_broadcasts_siren_and_fog`, `fog_event_mp_join_mid_event_gets_state`,
+      `fog_event_mp_broadcasts_siren_and_fog`, `fog_event_mp_join_mid_event_gets_state`, `fog_event_mp_join_during_siren_hears_it`,
       `fog_client_follows_server`, `fog_client_asks_state_on_join`. (Falta o dedicado de
       verdade: roteiro passo 7.)
 - [x] `NOM_Debug.fog(true[, pular])` começa um evento (com ou sem a espera da
       sirene), `NOM_Debug.fog(false)` termina — `debug_fog_starts_and_stops_event`,
       `debug_rules_parse_accepts_known_ops`, `debug_rules_parse_rejects_garbage`,
-      `fog_event_stop_and_skip`, `debug_status_prints_local_and_server` (`proxima`, `fim`, `sirene`).
+      `fog_event_stop_and_skip`, `fog_event_stop_cancels_scheduled_siren`, `debug_status_prints_local_and_server` (`proxima`, `fim`, `sirene`).
 - [x] Textos do menu (PT-BR e EN) das opções novas; `FogThreshold` removida —
       `config_fog_event_defaults`, `config_sandbox_defaults_match_lua`,
       `config_every_option_has_default`, `translations_*` (chave usada sem tradução, EN
@@ -75,7 +75,7 @@ névoa natural do clima":
       Overview com a decisão de 05/10 revertendo a de 04/10), ADR-009 nova e indexada,
       ADR-004/008 emendadas, pz-api-notes §11, teste in-game, README, Workshop, CREDITS.
 
-`./run-tests.sh`: `total=345 passou=345 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=347 passou=347 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -124,6 +124,9 @@ novo só carrega ao recarregar o save.
   real, `ModData`), `NOM_ClimateLook` dono do canal de névoa, debug, sirene
   procedural. `FogThreshold` removida.
 - **04/10/2026** — Docs: ADR-009, GDD revisado, pz-api-notes §11. Em teste.
+- **04/10/2026** — Review (sem Critical): `NOM_Debug.fog(false)` não cancelava a sirene
+  da agenda (o `next` ficava no passado e tocava de novo); quem entra durante a
+  contagem agora ouve a sirene; log da contagem inteiro; nota do `PauseEmpty` no §11.2.
 
 ## Aprendizados
 
@@ -148,8 +151,6 @@ novo só carrega ao recarregar o save.
   evento (o mod sabe o interno da névoa natural no `OnClimateTick`).
 - A sirene não tem toggle nem volume próprio (usa o volume de efeitos). Se pedirem, uma
   opção de sandbox.
-- Quem entra no MP durante a contagem da sirene não ouve a sirene (só recebe a névoa
-  quando ela abrir).
 
 ## Sessões
 
