@@ -64,9 +64,10 @@ function ops.redFog(_, a)
 end
 
 function ops.variant(_, a)
-    NOM_VariantRules.forced[a.id] = a.kind
-    if isServer() then sendServerCommand(MODULE, "debugVariant", { id = a.id, kind = a.kind }) end
-    return "variante id=" .. a.id .. " forcada=" .. tostring(a.kind)
+    local id = NOM_VariantRules.baseId(a.id) -- sem o bit do chapéu caído (o sorteio tira)
+    NOM_VariantRules.forced[id] = a.kind
+    if isServer() then sendServerCommand(MODULE, "debugVariant", { id = id, kind = a.kind }) end
+    return "variante id=" .. id .. " forcada=" .. tostring(a.kind)
 end
 
 function ops.spawnEco(player)
