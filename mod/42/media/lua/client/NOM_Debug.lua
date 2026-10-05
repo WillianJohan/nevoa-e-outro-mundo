@@ -88,6 +88,8 @@ function NOM_Debug.status()
         visuais = NOM_VariantLook and NOM_VariantLook.count() or 0,
         chao = chao,
         paredes = paredes,
+        -- efeitos de dissolve rodando agora (client/NOM_Dissolve.lua, sprint 0018)
+        dissolve = NOM_Dissolve and NOM_Dissolve.count() or 0,
     }))
     send({ op = "status" })
 end

@@ -279,6 +279,16 @@ return {
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*chao=0 .*paredes=0"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0018: efeitos de dissolve rodando nesta tela
+    debug_status_counts_dissolve = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local saved = NOM_Dissolve
+        NOM_Dissolve = { count = function() return 5 end }
+        NOM_Debug.status()
+        NOM_Dissolve = saved
+        assert(has(G.printed, "^%[NOM%] debug local .*dissolve=5"), table.concat(G.printed, "\n"))
+    end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
     -- noite dos Ecos. Por isso o roteiro manda usar um save descartável.
