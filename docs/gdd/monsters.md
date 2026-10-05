@@ -48,8 +48,9 @@ Numa noite com névoa a variante vai por cima dos stats da noite (o Estalador co
 como os outros da noite e continua cego); de dia, por cima dos stats do jogo.
 
 **Visual** (sprint 0012, [art-direction.md](art-direction.md)): enquanto a névoa dura, cada
-variante ganha pele e uma peça no rosto, por cima da roupa que o zumbi já tinha; quando a
-névoa baixa, volta a ser o zumbi de antes. O outfit não muda (trocar o outfit trocaria o ID e,
+variante ganha pele e uma peça no rosto, e a roupa que o zumbi tinha some (sprint 0016:
+ficam só a pele, a peça e as feridas do corpo); quando a névoa baixa, volta a ser o zumbi de
+antes, com a roupa, e morto deixa o loot de um zumbi comum. O outfit não muda (trocar o outfit trocaria o ID e,
 com ele, o sorteio). O visual é de cada tela: no MP, cada jogador vê o mesmo, porque cada um
 calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço).
 

@@ -103,3 +103,11 @@ Só viram escopo por promoção explícita.
   ([atmosphere.md](atmosphere.md#efeitos-de-tela-só-na-névoa),
   [art-direction.md](art-direction.md#a-tela-na-névoa-sprint-0013),
   [ADR-013](../architecture/adr-013-efeitos-de-tela.md)).
+- **2026-10-05** — **Monstro sem roupa comum** (sprint 0016), visto no jogo pelo Johan: "os
+  zombies quando se transformam devem ficar sem roupa ... tudo que contribui pro monstro
+  fica, mas de resto não ... tem monstro que tem coisa na cabeça e fica estranho". Enquanto é
+  variante, a roupa vanilla some; ficam a pele, a peça do mod e as feridas do corpo. Volta
+  quando a variante acaba, e o corpo e o loot são os do zumbi comum. Exceções de roupa (a
+  "saia estranha") numa lista curta, vazia por enquanto. Reverte "a roupa do zumbi fica" da
+  sprint 0012 ([art-direction.md](art-direction.md#regra),
+  [ADR-012](../architecture/adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante)).

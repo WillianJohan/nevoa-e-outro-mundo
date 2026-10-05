@@ -961,13 +961,52 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
 - `WornItems.remove(InventoryItem)` e `ItemContainer.Remove(InventoryItem)` são locais.
   `IsoGameCharacter.removeWornItem` → `setWornItem` manda `SyncClothing` no cliente de MP
   (352–378): não usado.
-- **UNKNOWN:** no cliente de MP, o `OnZombieDead` dispara na cópia local antes de um corpo
-  local (se houver)? O corpo do servidor sai limpo (ele nunca pinta).
+- ~~**UNKNOWN:** no cliente de MP, o `OnZombieDead` dispara na cópia local antes de um corpo
+  local (se houver)?~~ CONFIRMED pelo bytecode na sprint 0016 (§14.4). O corpo do servidor
+  sai limpo (ele nunca pinta).
 - **Jogador reanimado:** `IsoZombie.save` só é chamado pelo `ReanimatedPlayers` (fato
   transversal 3) e grava a `HumanVisual` (`HumanVisual.save` escreve o `skinTextureName`, que
   o `load` lê). O mod não pinta quem tem `isReanimatedPlayer()` (EXISTS, `IsoZombie`).
 - Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
   (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
+
+### 14.4 Esconder a roupa (sprint 0016)
+
+Bytecode do B42.21. Decisão na [emenda da ADR-012](adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante).
+
+- **Sem flag de esconder:** `ItemVisual` só tem tipo, nome de modelo alternativo, tinta, matiz,
+  textura base, escolha de textura, decal, sangue, sujeira, buracos e remendos. `HumanVisual`
+  não tem nada por item. Esconder = tirar da `ItemVisuals` e devolver.
+- **Nenhum evento antes do inventário da morte:** `IsoGameCharacter.die` 15–27 → `Kill` 0–53 →
+  `onKilled` (vazio no `IsoGameCharacter`); `IsoZombie.onKilled` 38–52: `DoZombieInventory()`
+  só fora do cliente de MP, depois `OnZombieDead`. No solo, o corpo (`becomeCorpse`, `die`
+  79–80) vem depois e copia `HumanVisual`, inventário e `WornItems` (`IsoDeadBody.<init>`
+  661–710); o corpo desenha o `WornItems`.
+- `DoZombieInventory(Z)`: 0–14 sai cedo pra jogador reanimado e `wasFakeDead`; 36–73
+  `removeAllItems`, `WornItems.setFromItemVisuals(itemVisuals)`,
+  `addItemsToItemContainer(inventory)`; 76–198 itens presos; 201–325 `itemsToSpawnAtDeath` e
+  `clear()` da lista. `DoZombieInventory()` no Lua: CONFIRMED `client/Tutorial/Steps.lua:1095`,
+  `:1698` (não usado: a segunda chamada perderia os `itemsToSpawnAtDeath`).
+- `WornItems.setFromItemVisuals` 0–105: `clear()`; por `ItemVisual`, `CreateItem(tipo)`,
+  `getVisual().copyFrom(iv)`, `synchWithVisual`, `setItem(lugar, item)`.
+  `addItemsToItemContainer` 0–66: condição pelos buracos e `AddItem`. EXISTS (`WornItems` no
+  `LuaManager$Exposer`, sem uso vanilla desses dois). `getWornItems():size()` e
+  `:get(i):getItem()`: CONFIRMED `client/ISUI/ISFitnessUI.lua:295-296`.
+- **Fogo:** `IsoGameCharacter.FireCheck` 268–290 e `ReduceHealthWhenBurning` 229–251 disparam
+  `OnZombieDead` sem `DoZombieInventory`; `BurntToDeath.execute` 47–58 cria o corpo direto
+  (fora do cliente de MP).
+- **Cliente de MP:** `DeadZombiePacket.parse` → `DeadCharacterPacket.parseCharacterInventory`
+  limpa e lê inventário, `WornItems` e presos do servidor e chama `resetModelNextFrame`;
+  `processClient` 514 → `dieNetwork` 0–10: `Kill` (`OnZombieDead`) e depois `becomeCorpse`.
+  CONFIRMED (bytecode): o `OnZombieDead` do cliente vem antes do corpo local (fecha o UNKNOWN
+  do §14.3), e o corpo do cliente veste o que o servidor mandou.
+- `IsoZombie.getItemVisuals()` com `isUsingWornItems()` (morto, reanimado, `wasFakeDead`)
+  reconstrói a lista a partir do `WornItems` (0–38): mexer na lista de um zumbi desses não
+  dura. O mod só pinta zumbi vivo e não reanimado.
+- **Sair pro menu reinicia o Lua:** `IngameState.exit` 986 `LuaManager.init`, 1314
+  `LoadDirBase`. Estado em tabela Lua não sobrevive.
+- **UNKNOWN:** `ArrayList.remove(Object)` devolve o booleano pro Lua (o Kahlua converte
+  `boolean`); se vier sempre nil, a roupa não volta no fim (roteiro da sprint 0016).
 
 ## 15. Efeitos de tela (sprint 0013)
 
