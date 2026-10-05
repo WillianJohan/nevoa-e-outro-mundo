@@ -69,6 +69,15 @@ return {
         -- mesmos stats de um zumbi comum da noite, chave diferente: o mod sabe que é variante
         assert(n.key ~= R.wanted(true, nil, 2, cfg()).key)
     end,
+    -- Carpideira (sprint 0011): corredora como o Corredor. Calma ela está parada
+    -- (useless, NOM_Carpideira), então a velocidade só aparece depois do grito.
+    night_rules_wanted_carpideira_sprints = function()
+        local R = NOM_NightRules
+        local w = R.wanted(false, "carpideira", 3, cfg())
+        assert(w.speed == R.CORREDOR_SPEED and w.key ~= "day", "de dia na névoa não correu")
+        local n = R.wanted(true, "carpideira", 3, cfg({ fasterOn = false }))
+        assert(n.speed == R.CORREDOR_SPEED and n.key ~= R.wanted(true, "corredor", 3, cfg({ fasterOn = false })).key)
+    end,
     -- Estalador: cego (pior visão) e ouvido apurado, com ou sem os sentidos da noite
     night_rules_wanted_estalador = function()
         local R = NOM_NightRules
