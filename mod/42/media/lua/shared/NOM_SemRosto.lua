@@ -124,10 +124,11 @@ local function scan(report)
                             if x then
                                 lastReport[z] = now
                                 lastSent = now
+                                -- origem lida antes: no solo o report já teleporta (log mostrava destino nos dois)
+                                local ox, oy = math.floor(z:getX()), math.floor(z:getY())
                                 report(z, x, y, zz, p)
                                 if getDebug() then
-                                    print("[NOM] semrosto visto x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
-                                        .. " para x=" .. x .. " y=" .. y)
+                                    print("[NOM] semrosto visto x=" .. ox .. " y=" .. oy .. " para x=" .. x .. " y=" .. y)
                                 end
                             end
                         end
