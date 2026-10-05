@@ -1,7 +1,9 @@
 -- Comandos de console pro teste in-game (docs/teste-in-game.md), só com o jogo em
 -- -debug. Uso no console Lua do debug:
 --   NOM_Debug.night(true|false|nil)   noite forçada; nil devolve pro relógio
---   NOM_Debug.fog(0.8|nil)            intensidade de névoa forçada (0..1); nil devolve pro clima
+--   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene e névoa 30 s
+--                                     reais depois; com o 2º true, a névoa vem já
+--   NOM_Debug.fog(false)              termina o evento (ou cancela a sirene)
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
@@ -27,7 +29,7 @@ local function send(args)
 end
 
 function NOM_Debug.night(on) send({ op = "night", value = on }) end
-function NOM_Debug.fog(v) send({ op = "fog", value = v }) end
+function NOM_Debug.fog(on, skip) send({ op = "fog", value = on, skip = skip }) end
 function NOM_Debug.spawnEco() send({ op = "spawnEco" }) end
 
 -- Zumbi vivo mais perto do jogador 0, no mesmo andar.

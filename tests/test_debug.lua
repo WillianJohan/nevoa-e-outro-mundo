@@ -96,6 +96,13 @@ local function setup(opts)
     package.loaded["NOM_NightCount"] = nil
     -- registradores no lugar dos outros sistemas do servidor e do cliente
     NOM_Fog = { period = function() return G.fogPeriod end }
+    -- evento de névoa: o de verdade mora em test_fog_event; aqui registra o pedido
+    G.fogCalls = {}
+    NOM_FogEvent = {
+        siren = function(skip) G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip); return true end,
+        stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; return true end,
+        status = function() return { next = 136, endAt = nil, sirenMs = 12000 } end,
+    }
     NOM_Eco = {
         spawnAt = function(x, y, z)
             if not NOM_World.night then return false end
@@ -107,7 +114,7 @@ local function setup(opts)
     NOM_NightStats = { night = false, variants = {} }
     NOM_FogState = { on = false }
     NOM_SemRosto = { nearest = function() return nil end }
-    for _, m in ipairs({ "NOM_Fog", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
+    for _, m in ipairs({ "NOM_Fog", "NOM_FogEvent", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
         package.loaded[m] = _G[m]
     end
     require "NOM_World"
@@ -161,23 +168,30 @@ return {
         G.player({ x = 0, y = 0 })
         NOM_Debug.night(true)
         assert(G.sentClient[1].player == G.players[1], "comando sem o jogador 0")
-        NOM_World.update(0)
+        NOM_World.update()
         assert(NOM_World.night == true, "noite forçada não pegou")
         assert(has(G.printed, "^%[NOM%] debug noite forcada=true"), table.concat(G.printed, "\n"))
         assert(#G.sentServer == 0, "solo não responde pela rede")
     end) end,
-    debug_force_clears_back_to_climate = function() run(function()
+    debug_night_clears_back_to_clock = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        NOM_Debug.fog(0.9)
-        NOM_World.update(0)
-        assert(NOM_World.fog == true)
-        NOM_Debug.fog()
         NOM_Debug.night(false)
         NOM_Debug.night()
-        NOM_World.update(0)
-        assert(NOM_World.fog == false and NOM_World.forced.fog == nil and NOM_World.forced.night == nil,
-            "não devolveu pro clima")
+        NOM_World.update()
+        assert(NOM_World.forced.night == nil, "não devolveu pro relógio")
+    end) end,
+    -- NOM_Debug.fog começa um evento de verdade (com sirene, ou sem a espera) e termina
+    debug_fog_starts_and_stops_event = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.fog(true)
+        NOM_Debug.fog(true, true)
+        NOM_Debug.fog(false)
+        NOM_Debug.fog()
+        assert(table.concat(G.fogCalls, ",") == "siren:false,siren:true,stop,stop", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa sirene=true"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "^%[NOM%] debug nevoa fim=true"), table.concat(G.printed, "\n"))
     end) end,
     debug_server_rejects_bad_args = function() run(function()
         local G = setup({ loadClient = false })
@@ -222,7 +236,7 @@ return {
         NOM_Debug.spawnEco()
         assert(#G.spawned == 0)
         G.world.tod = 23
-        NOM_World.update(0)
+        NOM_World.update()
         NOM_Debug.spawnEco()
         assert(#G.spawned == 1 and G.spawned[1].x == 50 and G.spawned[1].y == 60, "Eco fora do jogador")
         assert(has(G.printed, "eco spawn=true"))
@@ -233,12 +247,13 @@ return {
         G.fogPeriod = 2
         G.globalMD.NevoaEOutroMundo = { eco = { night = 2, inNight = false } }
         G.world.tod = 23
-        NOM_World.update(0.7) -- noite 3 abre
+        NOM_World.update() -- noite 3 abre
         NOM_NightStats.night, NOM_NightStats.nightNumber = true, 3
         NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador" }
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*estaladores=2"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*nevoaN=2.*noiteN=3"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "^%[NOM%] debug servidor .*fim=%- .*proxima=136.00 sirene=12000"), table.concat(G.printed, "\n"))
     end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
@@ -246,19 +261,19 @@ return {
     debug_forced_night_advances_saved_counter = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        NOM_World.update(0)
+        NOM_World.update()
         assert(NOM_NightCount.current() == 0)
         NOM_Debug.night(true)
-        NOM_World.update(0)
+        NOM_World.update()
         assert(NOM_NightCount.current() == 1 and G.globalMD.NevoaEOutroMundo.eco.night == 1, "contador não andou")
         NOM_Debug.night()
-        NOM_World.update(0)
+        NOM_World.update()
         NOM_NightCount.current() -- no jogo o Eco e a Noite leem na borda
         NOM_Debug.night(true)
-        NOM_World.update(0)
+        NOM_World.update()
         assert(NOM_NightCount.current() == 2, "segunda noite forçada não contou")
         NOM_Debug.night()
-        NOM_World.update(0)
+        NOM_World.update()
         assert(G.globalMD.NevoaEOutroMundo.eco.night == 2, "devolver pro relógio desfez o contador")
     end) end,
     -- cliente que entra depois (pergunta nightState) recebe o que já foi forçado

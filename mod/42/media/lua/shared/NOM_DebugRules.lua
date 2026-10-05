@@ -14,9 +14,11 @@ function NOM_DebugRules.parse(args)
         if v ~= nil and type(v) ~= "boolean" then return nil end
         return { op = op, value = v }
     elseif op == "fog" then
-        if v ~= nil and (type(v) ~= "number" or v ~= v) then return nil end -- v ~= v: NaN
-        if v then v = math.max(0, math.min(1, v)) end
-        return { op = op, value = v }
+        -- evento de névoa (NOM_FogEvent): true começa (skip pula a espera da
+        -- sirene), false ou nil termina
+        if v ~= nil and type(v) ~= "boolean" then return nil end
+        if args.skip ~= nil and type(args.skip) ~= "boolean" then return nil end
+        return { op = op, value = v == true, skip = args.skip == true }
     elseif op == "variant" then
         if type(args.id) ~= "number" or args.id ~= args.id or args.id == 0 then return nil end
         if args.kind ~= nil and not NOM_DebugRules.KINDS[args.kind] then return nil end

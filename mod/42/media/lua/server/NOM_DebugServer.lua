@@ -1,10 +1,11 @@
 -- Comandos de debug, lado do servidor (no solo, o mesmo processo). Só com o jogo
--- em -debug: força noite e névoa (NOM_World.forced), força a variante de um zumbi
+-- em -debug: força a noite (NOM_World.forced), começa e termina um evento de névoa
+-- (NOM_FogEvent), força a variante de um zumbi
 -- (NOM_VariantRules.forced), spawna um Eco e imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
--- O forçado vive em memória até o servidor reiniciar, MAS a noite e a névoa
--- forçadas avançam os contadores salvos de noites e de névoas (NOM_NightCount e
--- NOM_Fog, ModData global): o número da névoa muda o sorteio das variantes e o da
+-- A noite forçada vive em memória até o servidor reiniciar, MAS ela e o evento de
+-- névoa avançam os contadores salvos de noites e de névoas (NOM_NightCount e
+-- NOM_FogEvent, ModData global): o número da névoa muda o sorteio das variantes e o da
 -- noite, a noite dos Ecos daquele save pra sempre. Use um save descartável.
 if isClient() then return end
 
@@ -13,6 +14,7 @@ require "NOM_VariantRules"
 require "NOM_DebugRules"
 require "NOM_NightCount"
 require "NOM_Fog"
+require "NOM_FogEvent"
 require "NOM_Eco"
 
 local MODULE = "NevoaEOutroMundo"
@@ -47,9 +49,10 @@ function ops.night(_, a)
     return "noite forcada=" .. tostring(a.value)
 end
 
+-- Evento de verdade: sirene (e a névoa 30 s reais depois, ou já com skip), ou fim.
 function ops.fog(_, a)
-    NOM_World.forced.fog = a.value
-    return "nevoa forcada=" .. tostring(a.value)
+    if a.value then return "nevoa sirene=" .. tostring(NOM_FogEvent.siren(a.skip)) end
+    return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
 end
 
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
@@ -67,16 +70,17 @@ function ops.spawnEco(player)
 end
 
 function ops.status()
-    local w, f = NOM_World, NOM_World.forced
+    local w, f, ev = NOM_World, NOM_World.forced, NOM_FogEvent.status()
     return NOM_DebugRules.line("[NOM] debug servidor", {
         hora = fmt(w.tod),
         noite = w.night,
         nevoa = w.fog,
-        nevoaI = fmt(w.fogIntensity),
         noiteN = tostring(NOM_NightCount.current()),
         nevoaN = tostring(NOM_Fog.period()),
+        proxima = ev.next and fmt(ev.next) or "-", -- horas de mundo (getWorldAgeHours)
+        fim = ev.endAt and fmt(ev.endAt) or "-",
+        sirene = ev.sirenMs and math.floor(ev.sirenMs) or "-", -- ms reais até a névoa
         forcarNoite = tostring(f.night),
-        forcarNevoa = tostring(f.fog),
         forcados = count(NOM_VariantRules.forced),
         ecos = NOM_Eco.loaded(),
     })
