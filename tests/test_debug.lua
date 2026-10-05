@@ -289,6 +289,17 @@ return {
         NOM_Dissolve = saved
         assert(has(G.printed, "^%[NOM%] debug local .*dissolve=5"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0022: cascas de brasa queimando nesta tela
+    debug_status_counts_shells = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.status()
+        assert(has(G.printed, "^%[NOM%] debug local .*cascas=0"), table.concat(G.printed, "\n"))
+        NOM_EmberShell = { count = function() return 4 end }
+        NOM_Debug.status()
+        NOM_EmberShell = nil
+        assert(has(G.printed, "^%[NOM%] debug local .*cascas=4"), table.concat(G.printed, "\n"))
+    end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
     -- noite dos Ecos. Por isso o roteiro manda usar um save descartável.

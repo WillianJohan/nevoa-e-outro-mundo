@@ -28,6 +28,9 @@
 --   getAlpha(pn)); o mundo anda o alfa 0,28 por tick pro alvo da visão (updateAlpha) antes
 --   do OnTick; um tick = 16 ms de getTimestampMs. A opção do jogador (dissolve) vem de
 --   opts.dissolve: desligada por padrão, que é o comportamento das sprints 0012–0017.
+-- * Sprint 0022 (casca de brasa): a sub-opção vem de opts.body (desligada por padrão: a
+--   sprint 0018 exata). O NOM_Embers é falso, com o teto do de verdade (NOM_EmberRules.CAP),
+--   e anota cada brasa pedida em G.bursts.
 -- * Rede: nada do visual viaja (ZombiePacket.set leva só outfitId e skinTextureIndex);
 --   sendClientCommand/sendServerCommand aqui explodem.
 local FILE_STATS = "mod/42/media/lua/shared/NOM_NightStats.lua"
@@ -207,6 +210,10 @@ local function setup(opts)
         function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
         function z:getAlpha(pn) vc(); assert(pn == 0); return self.alpha end
         function z:getCurrentSquare() vc(); return self.dead and nil or {} end
+        z.x, z.y, z.z = o.x or 10.5, o.y or 20.5, 0
+        function z:getX() vc(); return self.x end
+        function z:getY() vc(); return self.y end
+        function z:getZ() vc(); return self.z end
         return z
     end
     function G.spawn(o)
@@ -286,8 +293,20 @@ local function setup(opts)
     getTimestampMs = function() return G.now end
     getNumActivePlayers = function() return 1 end
     G.dissolve = opts.dissolve == true
-    NOM_ScreenFxOptions = { dissolve = function() return G.dissolve end }
+    G.body = opts.body == true
+    NOM_ScreenFxOptions = { dissolve = function() return G.dissolve end,
+        bodyEmbers = function() return G.dissolve and G.body end }
     package.loaded.NOM_ScreenFxOptions = NOM_ScreenFxOptions
+    require "NOM_EmberRules"
+    G.bursts = {}
+    NOM_Embers = { burst = function(x, y, z)
+        local live = 0
+        for _, b in ipairs(G.bursts) do if G.now - b.at < NOM_EmberRules.LIFE_MS then live = live + 1 end end
+        if live >= NOM_EmberRules.CAP then return false end
+        G.bursts[#G.bursts + 1] = { x = x, y = y, z = z, at = G.now }
+        return true
+    end }
+    package.loaded.NOM_Embers = NOM_Embers
     sendClientCommand = function() error("visual não vai pela rede", 2) end
     sendServerCommand = function() error("visual não vai pela rede", 2) end
     Events = setmetatable({}, {
@@ -297,7 +316,7 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook", "NOM_Dissolve" }) do
+    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook", "NOM_Dissolve", "NOM_EmberShell" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -330,6 +349,7 @@ local function hasItem(z, t)
 end
 
 local KINDS = { "estalador", "corredor", "semrosto", "carpideira" }
+local SHELL = "Base.NOM_Brasa" -- casca de brasa (sprint 0022)
 
 return {
     look_applied_when_variant_starts = function()
@@ -999,5 +1019,294 @@ return {
         G.minAlpha = {}
         G.ms(500)
         assert(G.minAlpha[z] == 1 and NOM_Dissolve.count() == 0)
+    end,
+
+    -- Sprint 0022 (brasa no corpo inteiro) ----------------------------------------
+
+    -- mutação: o corpo já é o monstro (pele, peça SEM shader, roupa escondida) e a casca de
+    -- brasa entra inteira por cima e se desfaz ("out"); no fim sai e o monstro fica
+    ember_mutation_shell_burns_off = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 60) })
+        fogOn(60)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.estalador
+        assert(hasItem(z, SHELL), "sem a casca: " .. types(z))
+        assert(hasItem(z, look.item) and not hasItem(z, look.fx), "com casca a peça é a sem shader: " .. types(z))
+        assert(not hasItem(z, OUTFIT[1]) and z.hv.name == look.skin, "o monstro não está embaixo")
+        assert(NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 1)
+        assert(z.alpha > 0.97, "a casca começa inteira (desfaz): alfa " .. z.alpha)
+        G.minAlpha = {}
+        G.ms(NOM_DissolveRules.MS + 100)
+        assert(G.minAlpha[z] >= NOM_DissolveRules.BAND - 1e-9, "corpo abaixo da faixa: " .. G.minAlpha[z])
+        assert(not hasItem(z, SHELL), "a casca ficou: " .. types(z))
+        assert(hasItem(z, look.item) and z.hv.name == look.skin, "o monstro sumiu")
+        assert(not NOM_Dissolve.busy(z) and z.alpha == 1 and NOM_EmberShell.count() == 0)
+    end,
+
+    -- volta: a casca se forma por cima do monstro, a troca acontece embaixo dela no fim e
+    -- ela se desfaz revelando o zumbi comum, com a roupa de antes, igualzinha
+    ember_revert_cover_swap_reveal = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("corredor", 61), extra = { "Base.Hat_Army" } })
+        local before = { unpack(z.ivs.items) }
+        fogOn(61)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.corredor
+        assert(hasItem(z, SHELL) and hasItem(z, look.item) and z.hv.name == look.skin, "cobrir: " .. types(z))
+        assert(NOM_Dissolve.busy(z) and z.alpha < 0.9, "a casca não começa sumida (forma): " .. z.alpha)
+        G.ms(NOM_DissolveRules.MS / 2)
+        assert(hasItem(z, look.item), "trocou antes da casca cobrir")
+        G.ms(NOM_DissolveRules.MS / 2 + 50)
+        assert(not hasItem(z, look.item) and z.hv.name == nil and hasItem(z, "Base.Hat_Army"), "sem troca: " .. types(z))
+        assert(hasItem(z, SHELL) and NOM_Dissolve.busy(z), "a casca saiu junto com a troca")
+        assert(NOM_VariantLook.count() == 0)
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(#z.ivs.items == #before, types(z))
+        for i, iv in ipairs(before) do assert(z.ivs.items[i] == iv, "ordem/objeto " .. i .. ": " .. types(z)) end
+        assert(not NOM_Dissolve.busy(z) and z.alpha == 1 and NOM_EmberShell.count() == 0)
+    end,
+
+    -- a névoa volta no meio da volta: a casca que se formava se desfaz de novo e o monstro fica
+    ember_leave_cancelled_by_same_look = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("carpideira", 62) })
+        fogOn(62)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        G.ms(200)
+        fogOn(62)
+        G.converge()
+        G.ms(NOM_DissolveRules.MS * 2)
+        local look = NOM_VariantLook.LOOKS.carpideira
+        assert(hasItem(z, look.item) and z.hv.name == look.skin, "o monstro sumiu: " .. types(z))
+        assert(not hasItem(z, SHELL) and not hasItem(z, OUTFIT[1]), types(z))
+        assert(z.alpha == 1 and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS * 2 + 100)
+        assert(types(z) == table.concat(OUTFIT, ","), "não sai mais: " .. types(z))
+    end,
+
+    -- morte com a casca na lista (solo: o DoZombieInventory faz item e loot de toda a lista)
+    ember_dead_mid_mutation_loot_exact = function()
+        local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash" }
+        local G = setup({ dissolve = true, body = true })
+        local id = idFor("semrosto", 63)
+        local want = G.kill(G.spawn({ id = id, extra = extra }))
+        local z = G.spawn({ id = id, extra = extra })
+        fogOn(63)
+        G.converge()
+        assert(hasItem(z, SHELL))
+        local c = G.kill(z)
+        assert(table.concat(c.inv, ",") == table.concat(want.inv, ","), "loot " .. table.concat(c.inv, ","))
+        assert(table.concat(c.worn, ",") == table.concat(want.worn, ","), "vestidos " .. table.concat(c.worn, ","))
+        assert(c.ivs == want.ivs and c.skin == nil, "lista " .. c.ivs)
+        assert(not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
+        G.ms(NOM_DissolveRules.MS + 50)
+    end,
+
+    -- morte depois da troca, com só a casca queimando: o visual não guarda mais o zumbi,
+    -- quem limpa é a casca
+    ember_dead_after_swap_no_loot = function()
+        local extra = { "Base.Hat_Army" }
+        local G = setup({ dissolve = true, body = true })
+        local id = idFor("estalador", 64)
+        local want = G.kill(G.spawn({ id = id, extra = extra }))
+        local z = G.spawn({ id = id, extra = extra })
+        fogOn(64)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(hasItem(z, SHELL) and NOM_VariantLook.count() == 0, "não está na fase da casca: " .. types(z))
+        local c = G.kill(z)
+        assert(table.concat(c.inv, ",") == table.concat(want.inv, ","), "loot " .. table.concat(c.inv, ","))
+        assert(table.concat(c.worn, ",") == table.concat(want.worn, ","), "vestidos " .. table.concat(c.worn, ","))
+        assert(c.ivs == want.ivs, "lista " .. c.ivs)
+        assert(not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
+    end,
+
+    -- fogo (sem DoZombieInventory) e cliente de MP (vestidos do servidor): a casca só sai da lista
+    ember_dead_fire_and_mp_client = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("corredor", 65), extra = { "Base.Hat_Army" } })
+        fogOn(65)
+        G.converge()
+        local c = G.kill(z, "fire")
+        assert(#c.worn == 0 and #c.inv == 0, "loot inventado: " .. table.concat(c.inv, ","))
+        assert(c.ivs == table.concat(OUTFIT, ",") .. ",Base.Hat_Army", "lista: " .. c.ivs)
+        local G2 = setup({ client = true, dissolve = true, body = true })
+        local y = G2.spawn({ id = idFor("estalador", 65), remote = true })
+        fogOn(65)
+        G2.converge()
+        assert(hasItem(y, SHELL))
+        local server = { OUTFIT[1], OUTFIT[2] }
+        local d = G2.kill(y, "client", server)
+        table.sort(server)
+        assert(table.concat(d.worn, ",") == table.concat(server, ","), "vestidos: " .. table.concat(d.worn, ","))
+        assert(table.concat(d.inv, ",") == table.concat(server, ","), "loot: " .. table.concat(d.inv, ","))
+        assert(not d.ivs:find("NOM_", 1, true), "lista: " .. d.ivs)
+    end,
+
+    ember_reuse_mid_effect_clean = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 66) })
+        fogOn(66)
+        G.converge()
+        assert(hasItem(z, SHELL))
+        G.reuse(z, idFor(nil, 66))
+        assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and not NOM_Dissolve.busy(z), types(z))
+        G.render(z)
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil)
+    end,
+
+    -- vermelha com horda: no máximo SHELL_CAP cascas, depois o dissolve da peça até o teto,
+    -- depois instantâneo; o fim continua em lotes e nada sobra
+    ember_red_fog_cap = function()
+        local G = setup({ dissolve = true, body = true })
+        for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
+        fogOn(67, true)
+        G.converge()
+        local shells, plain = 0, 0
+        for _, z in ipairs(G.zombies) do
+            if hasItem(z, SHELL) then shells = shells + 1 end
+            for _, k in ipairs(KINDS) do if hasItem(z, NOM_VariantLook.LOOKS[k].item) then plain = plain + 1 end end
+        end
+        assert(shells == NOM_DissolveRules.SHELL_CAP and NOM_EmberShell.count() == shells, "cascas: " .. shells)
+        -- além do teto das cascas, o gêmeo da 0018 (que se forma até o teto do dissolve, ou vem inteiro)
+        assert(plain == shells, "peça sem shader sem casca: " .. plain)
+        assert(NOM_Dissolve.count() == NOM_DissolveRules.CAP, "dissolve: " .. NOM_Dissolve.count())
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(NOM_EmberShell.count() == 0)
+        fogOff()
+        local restoredPerTick, before = 0, 40
+        for _ = 1, 300 do
+            G.tick(1)
+            local left = NOM_VariantLook.count()
+            restoredPerTick = math.max(restoredPerTick, before - left)
+            before = left
+            assert(NOM_EmberShell.count() <= NOM_DissolveRules.SHELL_CAP and NOM_Dissolve.count() <= NOM_DissolveRules.CAP)
+        end
+        assert(before == 0, "sobraram " .. before)
+        assert(restoredPerTick <= NOM_NightStats.BATCH, "um tick devolveu " .. restoredPerTick)
+        for _, z in ipairs(G.zombies) do assert(types(z) == table.concat(OUTFIT, ","), types(z)) end
+        assert(NOM_EmberShell.count() == 0 and NOM_Dissolve.count() == 0)
+    end,
+
+    -- a variante volta enquanto a casca da volta ainda queima: a casca não pode entrar na
+    -- lista guardada da 0016 como roupa e voltar no fim
+    ember_shell_not_kept_as_hidden_clothes = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("corredor", 68) })
+        fogOn(68)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(hasItem(z, SHELL) and NOM_VariantLook.count() == 0)
+        fogOn(68)
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item) and hasItem(z, SHELL), types(z))
+        G.ms(NOM_DissolveRules.MS + 100)
+        assert(not hasItem(z, SHELL), types(z))
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS * 2 + 200)
+        assert(types(z) == table.concat(OUTFIT, ","), "a casca voltou como roupa: " .. types(z))
+    end,
+
+    -- a sub-opção desligada no meio: a casca que queima termina e sai; nenhuma nova
+    ember_option_off_mid_effect = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 69) })
+        fogOn(69)
+        G.converge()
+        G.ms(300)
+        G.body = false
+        G.ms(NOM_DissolveRules.MS)
+        assert(not hasItem(z, SHELL) and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0, types(z))
+        fogOff()
+        G.converge()
+        assert(types(z) == table.concat(OUTFIT, ","), "peça sem shader e sem casca troca na hora: " .. types(z))
+        assert(#G.bursts == 1, "brasa sem casca")
+    end,
+
+    -- sub-opção desligada: a sprint 0018 exata (gêmeo com shader, sem casca, sem brasa)
+    ember_off_is_sprint_0018 = function()
+        local G = setup({ dissolve = true, body = false })
+        local z = G.spawn({ id = idFor("estalador", 70) })
+        fogOn(70)
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.fx) and not hasItem(z, SHELL), types(z))
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(#G.bursts == 0 and NOM_EmberShell.count() == 0)
+    end,
+
+    -- brasas do overlay no pé do zumbi, uma no começo de cada transição
+    ember_bursts_at_each_transition = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("semrosto", 71), x = 33.5, y = 44.5 })
+        fogOn(71)
+        G.converge()
+        assert(#G.bursts == 1 and G.bursts[1].x == 33.5 and G.bursts[1].y == 44.5 and G.bursts[1].z == 0)
+        G.ms(1200)
+        assert(#G.bursts == 1)
+        fogOff()
+        G.converge()
+        assert(#G.bursts == 2, "sem brasa na volta")
+        G.ms(NOM_DissolveRules.MS * 2 + 100)
+        assert(#G.bursts == 2, "brasa no meio da volta")
+        assert(types(z) == table.concat(OUTFIT, ","))
+    end,
+
+    ember_skips_reanimated_player = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 72), reanimated = true })
+        fogOn(72)
+        G.converge()
+        assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and #G.bursts == 0)
+    end,
+
+    -- orçamento (docs/architecture/README.md), com N peças vanilla escondidas e 1 jogador
+    -- local (o driver do alfa custa 3 por tick com efeito: getCurrentSquare, getAlpha,
+    -- setAlpha): pôr com casca ≤ 20 + 3·N; a casca sair no fim ≤ 6; passada sem troca 0;
+    -- cobrir ≤ 12; trocar embaixo e revelar ≤ 14 + 2·N
+    ember_budget = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 73), extra = { "Base.Hat_Army" } })
+        local n = #OUTFIT + 1
+        local per = 3
+        fogOn(73)
+        G.vcalls = 0
+        G.converge()
+        local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
+        assert(G.vcalls <= 20 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        G.vcalls = 0
+        local ms = NOM_DissolveRules.MS + 50
+        G.ms(ms)
+        assert(G.vcalls <= per * math.ceil(ms / 16) + 6, "desfazer a casca custou " .. G.vcalls)
+        G.vcalls = 0
+        G.converge()
+        assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
+        fogOff()
+        G.vcalls = 0
+        G.converge()
+        assert(G.vcalls <= 12 + per * ticks, "cobrir custou " .. G.vcalls)
+        G.vcalls = 0
+        G.ms(ms)
+        assert(G.vcalls <= per * math.ceil(ms / 16) + 14 + 2 * n, "trocar embaixo custou " .. G.vcalls)
+        assert(z.hv.name == nil)
     end,
 }

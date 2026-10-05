@@ -18,11 +18,18 @@
 -- desfaz no fim antes de sair da lista (client/NOM_Dissolve.lua dirige o Alpha). A pele
 -- e a roupa trocam de uma vez, no começo da mutação e no fim do desfazer. Desligada:
 -- peça sem shader e troca instantânea, como nas sprints 0012–0017.
+--
+-- Brasa no corpo inteiro (sprint 0022), com a sub-opção ligada e vaga
+-- (client/NOM_EmberShell.lua): na mutação a peça é a SEM shader e uma casca de brasa cobre o
+-- corpo e se desfaz revelando o monstro; na volta a casca se forma por cima, a troca vem no
+-- fim dela e ela se desfaz revelando o zumbi comum. Brasas sobem no começo de cada uma.
+-- Sem vaga de casca: o dissolve da peça (0018); sem vaga nenhuma: na hora.
 if isServer() then return end
 
 require "NOM_NightStats"
 require "NOM_VariantRules"
 require "NOM_Dissolve"
+require "NOM_EmberShell"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
 -- Direção de arte: docs/gdd/art-direction.md.
@@ -105,8 +112,12 @@ local function put(z, kind, id)
     if not z:isPersistentOutfitInit() or z:isReanimatedPlayer() then return end
     local look = LOOKS[kind]
     local fx = NOM_Dissolve.enabled()
-    local w = { kind = kind, id = id, item = fx and look.fx or look.item }
+    local shell = fx and NOM_EmberShell.can(z)
+    local w = { kind = kind, id = id, item = (fx and not shell) and look.fx or look.item }
     worn[z] = w
+    -- a casca de uma volta que ainda queima sai antes do hide (não pode virar roupa
+    -- guardada); o efeito dela segue e o reveal abaixo continua do limiar em que estava
+    NOM_EmberShell.remove(z)
     if look.skin then z:getHumanVisual():setSkinTextureName(look.skin) end
     local iv = ItemVisual.new()
     iv:setItemType(w.item)
@@ -115,7 +126,12 @@ local function put(z, kind, id)
     w.iv = iv
     hide(list, w)
     z:resetModelNextFrame()
-    if fx then NOM_Dissolve.run(z, "in") end -- no teto, a peça já vem inteira
+    if shell then
+        NOM_EmberShell.reveal(z)
+        NOM_EmberShell.burst(z)
+    elseif fx then
+        NOM_Dissolve.run(z, "in") -- no teto, a peça já vem inteira
+    end
 end
 
 local function strip(z)
@@ -123,20 +139,36 @@ local function strip(z)
     if not w then return end
     worn[z] = nil
     NOM_Dissolve.stop(z)
+    NOM_EmberShell.remove(z)
     if w.iv then unhide(z, z:getItemVisuals(), w) end -- remove(Object): os objetos que este processo tirou e pôs
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
 end
 
--- Fim da variante: com o gêmeo, desfaz a peça e só tira no fim do efeito. Os efeitos
--- nascem nos lotes da passada (BATCH por tick) e duram o mesmo tempo: os strips do fim
--- continuam espalhados. Sem efeito (desligado, peça sem shader, teto): na hora.
+-- Fim da variante: com o gêmeo, desfaz a peça e só tira no fim do efeito; com a peça sem
+-- shader e vaga de casca, a casca se forma e a troca vem no fim dela (o strip tira a casca
+-- e o reveal a veste de novo pra desfazer). Os efeitos nascem nos lotes da passada (BATCH
+-- por tick) e duram o mesmo tempo: os strips do fim continuam espalhados. Sem efeito
+-- (desligado, teto): na hora.
 local function leave(z)
     local w = worn[z]
     if w.leaving then return end
     local function done(x)
         if worn[x] == w and w.leaving then strip(x) end
+    end
+    if w.item == LOOKS[w.kind].item and NOM_EmberShell.can(z) then
+        local function swap(x)
+            if worn[x] == w and w.leaving then
+                strip(x)
+                NOM_EmberShell.reveal(x)
+            end
+        end
+        if NOM_EmberShell.cover(z, swap) then
+            w.leaving = true
+            NOM_EmberShell.burst(z)
+            return
+        end
     end
     if w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
         w.leaving = true
@@ -151,9 +183,13 @@ end
 function NOM_VariantLook.sync(z, kind, id)
     local w = worn[z]
     if w and w.kind == kind and w.id == id then
-        if w.leaving then -- voltou antes de sumir: forma de novo do limiar em que estava
+        if w.leaving then -- voltou antes de sumir: do limiar em que estava
             w.leaving = nil
-            if not NOM_Dissolve.run(z, "in") then NOM_Dissolve.stop(z) end
+            if NOM_EmberShell.has(z) then
+                NOM_EmberShell.reveal(z) -- a casca que se formava se desfaz de novo
+            elseif not NOM_Dissolve.run(z, "in") then
+                NOM_Dissolve.stop(z) -- a peça se forma de novo
+            end
         end
         return
     end

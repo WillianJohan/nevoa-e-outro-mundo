@@ -90,6 +90,8 @@ function NOM_Debug.status()
         paredes = paredes,
         -- efeitos de dissolve rodando agora (client/NOM_Dissolve.lua, sprint 0018)
         dissolve = NOM_Dissolve and NOM_Dissolve.count() or 0,
+        -- cascas de brasa no corpo inteiro (client/NOM_EmberShell.lua, sprint 0022)
+        cascas = NOM_EmberShell and NOM_EmberShell.count() or 0,
     }))
     send({ op = "status" })
 end
