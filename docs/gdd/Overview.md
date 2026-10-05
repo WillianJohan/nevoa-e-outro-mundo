@@ -111,7 +111,12 @@ Só viram escopo por promoção explícita.
   (Opções > Mods), `FogOverlays` continua o liga/desliga do servidor
   ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
   [art-direction.md](art-direction.md#o-outro-mundo-sangrento-sprint-0015),
-  [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)).
+  [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)). **Sprint 0023** (05/10, o Johan
+  recusou no jogo o buraco limpo debaixo do jogador e confirmou o anexo): o desenho vai **anexado** ao
+  chão e às paredes de verdade, como a erosão do jogo — embaixo dos personagens, com a luz e o
+  recorte; as paredes voltam (trepadeira, rachadura, sujeira, sangue); chão queimado dentro, mato fora;
+  raio de 15 tiles; o mod tira tudo antes de todo save
+  ([ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).
 - **2026-10-05** — **Monstro sem roupa comum** (sprint 0016), visto no jogo pelo Johan: "os
   zombies quando se transformam devem ficar sem roupa ... tudo que contribui pro monstro
   fica, mas de resto não ... tem monstro que tem coisa na cabeça e fica estranho". Enquanto é

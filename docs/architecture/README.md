@@ -16,6 +16,7 @@
 | [adr-012-visual-das-variantes.md](adr-012-visual-das-variantes.md) | Visual das variantes: pele e peça na cópia local de quem renderiza, pela passada do `NightStats`, sem mexer no outfit; tira no fim da névoa, no reaproveitamento e na morte; o Eco muda só no outfit. Emenda da 0016: a roupa vanilla some na variante e volta (loot exato na morte) |
 | [adr-013-efeitos-de-tela.md](adr-013-efeitos-de-tela.md) | Efeitos de tela: overlay Lua num elemento de 1 px atrás da UI (grão, vinheta, chiado, pulso), opção do jogador; shader original opcional num segundo mod, alimentado pelo `SearchMode` |
 | [adr-015-outro-mundo-sangrento.md](adr-015-outro-mundo-sangrento.md) | Outro Mundo sangrento: chão por `IsoMarker` com camadas, paredes desenhadas no quadro (`RenderGhostTileColor`), só parede limpa, de frente e à vista; regra pura por square e período; densidade do jogador. Emenda 0021: só decalque chato e seguro, sujeira em manchas num marcador próprio, só o chão que o jogador vê, chão apagado debaixo de personagem, paredes desligadas |
+| [adr-017-outro-mundo-anexado.md](adr-017-outro-mundo-anexado.md) | Outro Mundo anexado ao piso e à parede (`addAttachedAnimSpriteByName`, o caminho da erosão): registro do que o mod pôs e só isso sai; tudo sai no `OnSave`, fora do raio de 15, no salto e na morte; `LoadGridsquare` limpa o `floors_burnt_01_*` vazado; a ação do jogador segura o square. Substitui o como da ADR-015 |
 | [adr-016-dissolve-e-bloom.md](adr-016-dissolve-e-bloom.md) | Dissolve: peças gêmeas `*Fx` com o shader `NOM_Dissolve` (`<m_Shader>`), limiar no `Alpha` do personagem dirigido no `OnTick`; a variante se forma e se desfaz, o Eco queima na morte (casca pelo `WornItems`, brasas pelo overlay); bloom no `screen.frag` do mod2 com a intensidade do jogador no canal. Emenda da 0022: casca de brasa no corpo inteiro do zumbi vivo (lista de `ItemVisual`, peça sem shader embaixo, teto de 6) |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
@@ -61,8 +62,8 @@ mod/
     lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, sirene, avisa que viu, dono move
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
     lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode; com o mod do shader, o canal Lua → shader (só local)
-    lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão, sprite de parede N/W, poças e rastros (puro, sprint 0015)
-    lua/client/NOM_FogOverlays.lua  Outro Mundo sangrento: chão por IsoMarker, paredes desenhadas no quadro (só local, sem save; ADR-015)
+    lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão (queimado dentro, mato fora), sprite de parede N/W, poças e rastros (puro, sprints 0015 e 0023)
+    lua/client/NOM_FogOverlays.lua  Outro Mundo sangrento: anexado ao piso e à parede, tirado antes de todo save (só local; ADR-017)
     lua/shared/NOM_ScreenFxRules.lua   alfas das camadas da tela, fade, pulso do grito, canal do shader (puro)
     lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela e da densidade do Outro Mundo (PZAPI.ModOptions), e a tecla do painel de debug
     lua/client/NOM_ScreenFx.lua     overlay de tela na névoa: elemento de 1 px atrás da UI (só local)
@@ -120,8 +121,9 @@ da morte do Eco também (`Dissolve`, `EcoFx`, `Embers`, [ADR-016](adr-016-dissol
 - O visual da variante (pele e peça, [ADR-012](adr-012-visual-das-variantes.md)) é só da cópia local: não viaja no pacote do zumbi, não vai pro popman e sai antes do corpo nascer (sem loot nem pele no save). O Eco veste itens do mod pelo outfit, mas o corpo dele é removido e o inventário limpo ([ADR-003](adr-003-eco-spawnado.md)); um corpo de Eco que escapasse ficaria com `Base.NOM_EcoCinza`/`NOM_EcoVeu` no save.
 - Mod removido do save: nada quebra. `ModData` global órfão é carregado e nunca lido,
   opções de sandbox desconhecidas são puladas, Eco virtual com índice de outfit fora da
-  lista volta sem roupa (`getOutfit` devolve 0). Clima, stats, overlays e vinheta não vão
-  pro save. Detalhe e bytecode em [pz-api-notes §8](pz-api-notes.md#8-remover-o-mod-de-um-save-sprint-0006).
+  lista volta sem roupa (`getOutfit` devolve 0). Clima, stats e vinheta não vão
+  pro save; o Outro Mundo anexado sai antes de todo save ([ADR-017](adr-017-outro-mundo-anexado.md); um crash depois
+  de um hot save pode deixar decalque vanilla no mapa). Detalhe e bytecode em [pz-api-notes §8](pz-api-notes.md#8-remover-o-mod-de-um-save-sprint-0006).
 - Loop de comportamento processa zumbis em lotes por tick, não todos de uma vez.
 - Teto de Ecos por jogador evita travar servidor em vala comum.
 - Comandos de debug (`NOM_Debug`, `NOM`, painel) não existem nem agem fora do `-debug`; no dedicado
@@ -151,7 +153,7 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
 | Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
 | Som, vinheta | a cada 10 ticks, no cliente | por jogador local | — |
-| **Outro Mundo sangrento** (sprint 0015, [ADR-015](adr-015-outro-mundo-sangrento.md)) | atualização a cada 10 ticks na névoa; desenho das paredes todo quadro; solo e cada cliente | por quadro: **1 chamada por parede desenhada** (≤ 120), zero fora da névoa; marcadores de chão (≤ 600 marcadores, até 2 por square e 5 texturas por square) sem Lua por quadro; todo tick, o chão debaixo de personagens (~5 chamadas + ≤ 8 zumbis × 4, em rodízio). Paredes desligadas desde a 0021. Por atualização: varredura de 80 squares (a regra pura antes do Java), ≤ ~1040 chamadas enquanto enche, ~180 parado (luz em rodízio de 30, 12 paredes conferidas, visão das paredes); 1ª vez +196 `getTexture` (0021); +≤ 4 leituras de telhado por square novo (sombra de prédio, em cache por âncora) | `overlays_budget`, `overlays_capped` |
+| **Outro Mundo anexado** (sprints 0015 e 0023, [ADR-017](adr-017-outro-mundo-anexado.md)) | atualização a cada 10 ticks na névoa; o salto e a morte conferidos todo tick; `LoadGridsquare` a cada square carregado; solo e cada cliente | por quadro: **zero** Lua (o anexo sai no FBO do chunk). Todo tick: 3 chamadas (jogador, posição) com algo anexado. Por atualização: varredura de 80 squares (a regra pura antes do Java), enchendo ≤ ~2000 chamadas e ≤ ~410 invalidações de nível de chunk (umas 9 atualizações), parado ~165 (rodízio de 20 alvos conferidos); o que sai do raio e o fim da névoa em lotes de 80 alvos; `OnSave`, salto e morte tiram tudo de uma vez. `LoadGridsquare`: ~3–7 chamadas por square | `overlays_budget`, `overlays_fog_end_strips_all` |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
 | Avisos de cliente (`corredorSaw`, `semRostoSeen`, `carpideiraWoke`) | por pedido, limitado por jogador (2 s / 250 ms / 1 s; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown`, `carpideira_rate_limit_per_player` |

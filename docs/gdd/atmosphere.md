@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento), 0023 (anexado ao chão e às paredes) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -79,38 +79,40 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 Sprint 0015, pedido do Johan: "o Outro Mundo eu imaginei com bastante sangue e com a erosão no
 máximo". Substitui as manchas esparsas da sprint 0005
-([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)).
+([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md); como, desde a sprint 0023:
+[ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).
 
-- **Chão, num raio de 25 tiles:** poças de sangue (até 3 camadas no miolo), rastros saindo delas
-  e respingos soltos, por cima de rachaduras; sujeira em manchas, mais leve que o sangue. Na
-  densidade 1, ~85% dos squares livres mudam; qualquer enquadramento de 7×7 tiles perto do
-  jogador tem sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda não tá o outro
-  mundo": grama verde e asfalto limpos no zoom de perto).
-- **Só decalque chato e só onde se vê** (sprint 0021, prints do Johan de 05/10): nada de planta
-  em pé (cobria o jogador); o chão debaixo do pé do jogador, dos zumbis e dos outros jogadores
-  perto fica limpo; de fora, nada do chão de dentro das casas nem do que a casa tapa na tela
-  (saía em cima do telhado); de dentro, a casa dele e a rua da frente (atrás das paredes do
-  fundo, não). Entrar e sair apaga e acende com fade.
-- **Paredes: desligadas** (sprint 0021). O desenho de parede sai por cima do jogador e do que
-  está na frente, e pintava de preto a parede que o jogo corta; sem jeito confiável de recortar
-  ([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md#emenda-de-2026-10-05--sprint-0021-o-que-o-jogo-mostrou)).
+- **Chão, num raio de 15 tiles:** poças de sangue (até 3 camadas no miolo), rastros saindo delas
+  e respingos soltos, por cima de rachaduras; sujeira em manchas, mais leve que o sangue. Dentro de
+  casa, **chão queimado** em manchas (casa destruída: o miolo todo queimado, a borda só marcada);
+  fora, **mato e folha** rasteiros. Na densidade 1, ~85% dos squares mudam; qualquer enquadramento
+  de 7×7 tiles perto do jogador tem sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda
+  não tá o outro mundo": grama verde e asfalto limpos no zoom de perto).
+- **Paredes** (de volta na sprint 0023): sangue escorrido, sujeira e rachadura; trepadeira nas
+  paredes de fora.
+- **Colado no mundo** (sprint 0023): o desenho vai preso ao chão e à parede de verdade, como a
+  erosão do jogo. Fica embaixo dos personagens, pega a luz do lugar (a lanterna clareia, o breu
+  esconde), some com a parede quando o jogo a corta e com o telhado quando o jogador está fora. Sem
+  buraco debaixo do jogador.
 - **Névoa vermelha = o máximo:** 1,6× a densidade.
 - **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
   outra névoa, outro desenho. Nada pisca enquanto se anda.
-- Enche em ~4 s quando a névoa chega (com fade), acompanha o jogador andando (o teto serve o que
-  está mais perto: cheio, a borda recua pra ~13–15 tiles e nunca falta perto), e some com fade de
-  ~4 s quando ela baixa. Na morte e no menu some na hora.
-- A luz do square escurece o sangue (com piso: no breu ainda se lê); a lanterna clareia.
+- Enche em ~1,5 s quando a névoa chega, do mais perto pro mais longe, acompanha o jogador andando e
+  some do mesmo jeito quando ela baixa. Na morte, no salto e no save some na hora (e volta logo
+  depois do save).
 - **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
   (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.
 - **Locais e só visuais**, sem sincronizar: cada jogador vê o próprio pesadelo (em MP, cada um
-  num lugar diferente). Nada é objeto do mapa: nada fica no save.
+  num lugar diferente). **Nada fica no save:** o mod tira tudo antes de o jogo gravar
+  ([ADR-017](../architecture/adr-017-outro-mundo-anexado.md); o único furo é o jogo cair logo
+  depois de gravar um pedaço do mapa em segundo plano).
+- Enquanto o jogador faz uma ação num lugar (cavar, marretar, pegar um móvel), aquele square fica
+  limpo; volta quando a ação acaba.
 - Sprites vanilla por nome: `overlay_blood_floor_01_*`, `overlay_grime_floor_01_*`,
-  `d_streetcracks_1_*`, `d_plants_1_*`; nas paredes `overlay_blood_wall_01_*`,
-  `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`
+  `d_streetcracks_1_*`, `floors_burnt_01_*`, `d_plants_1_*`, `d_floorleaves_1_*`; nas paredes
+  `overlay_blood_wall_01_*`, `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`
   ([pz-api-notes §16](../architecture/pz-api-notes.md#16-outro-mundo-sangrento-sprint-0015)).
-- Limites: o chão fica meio tile deslocado pra cima (jeito do marcador do jogo); só o andar do
-  jogador; só o jogador 0 na tela dividida tem as paredes.
+- Limites: só o andar do jogador; montado pro jogador 0 na tela dividida.
 
 ## Vinheta (só na névoa)
 

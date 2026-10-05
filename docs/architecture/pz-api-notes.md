@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -491,7 +491,7 @@ ainda toca de novo se `isPlaying(id)` cair (som cortado pelo jogo).
 | `getIsoMarkers():addIsoMarker(spriteName, square, r, g, b, a)` → marker; `marker:remove()`, `setAlpha`, `setPos` | só cliente | não | CONFIRMED, **usado** | `client/Foraging/ISBaseIcon.lua:577`, `:559`; bytecode abaixo |
 | `getWorldMarkers():addGridSquareMarker(...)` | só cliente | não | CONFIRMED | `client/ISUI/Maps/ISWorldMap.lua:1457` (versão com coordenadas no mapa); bytecode tem `(String tex, String overlay, IsoGridSquare, r,g,b, doAlpha, size)` |
 | `addBloodSplat(square, n[, dx, dy])` | sem envio de rede | **salva** no chunk (SP) | CONFIRMED | `shared/TimedActions/Animals/ISRemoveMeatFromAnimal.lua:121`; bytecode `IsoChunk.addBloodSplat` → `floorBloodSplats`, salvo por `IsoFloorBloodSplat.save` |
-| `obj:addAttachedAnimSpriteByName`, `setOverlaySprite` em objeto do square | mexe no objeto do mapa | salva/sincroniza | EXISTS | bytecode `IsoObject`; **evitar** |
+| `obj:addAttachedAnimSpriteByName`, `setOverlaySprite` em objeto do square | mexe no objeto do mapa | salva/sincroniza | anexo: CONFIRMED, **usado desde a 0023** com a retirada antes do save (§16.6); overlay: evitar | bytecode `IsoObject` |
 
 **Verificado na sprint 0005 (bytecode `IsoMarkers`):** `addIsoMarker(String, IsoGridSquare, FFFF)`
 volta `null` no servidor (offset 0, `GameServer.server`), cria um `IsoMarker`, `setSquare`,
@@ -1118,7 +1118,7 @@ Verificado no bytecode do B42.21 (o instalado), no Lua vanilla e nos packs de te
 
 | Mecanismo | Salva? | Rede? | Evidência |
 |---|---|---|---|
-| `IsoObject.attachedAnimSprite` (`addAttachedAnimSprite*`) | **sim** | com o objeto | `IsoObject.save` 64–187 (lista inteira, por ID do sprite) |
+| `IsoObject.attachedAnimSprite` (`addAttachedAnimSprite*`) | **sim** | com o objeto | `IsoObject.save` 64–187 (lista inteira, por ID do sprite). Usado desde a 0023, tirado antes de todo save: §16.6 |
 | `IsoObject` overlay (`setOverlaySprite`) | **sim** (flag 256, nome e cor) | `setOverlaySprite(..., true)` → `UpdateOverlaySprite` / `GameServer.updateOverlayForClients` | `IsoObject.save` 1041–1182; `setOverlaySprite` 203–305 |
 | Sangue de parede (`wallBloodSplats`) | **sim** (até 32) | — | `IsoObject.save` 741–825 |
 | Sangue de chão (`addBloodSplat`) | **sim** | — | §5 |
@@ -1227,6 +1227,55 @@ sujeira em xadrez, arbusto por cima do jogador). Bytecode do B42.21 e packs, só
 - **UNKNOWN (roteiro da 0021):** a latência do rodízio de zumbis (até ~2 voltas de 8 por tick)
   se vê? Prédio de 2+ andares deixa chão de fora em cima do telhado (a sombra conta 3 tiles)?
 
+### 16.6 Anexado ao objeto (sprint 0023)
+
+O `IsoMarker` sai depois dos personagens (§16.5) e o "apagar 4 tiles debaixo de cada
+personagem" deixava um buraco que o Johan recusou no jogo. O caminho da erosão vanilla —
+anexar o sprite ao `IsoObject` do piso ou da parede — sai no FBO do chunk, antes dos
+personagens. Mas vai pro save com o objeto: a sprint inteira é sobre tirar antes de gravar.
+Bytecode do B42.21 (`projectzomboid.jar`, só leitura). Decisão na
+[ADR-017](adr-017-outro-mundo-anexado.md).
+
+**Visto no jogo pelo Johan (05/10):** `floor:addAttachedAnimSpriteByName("overlay_grime_floor_01_5")`
+sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` funciona.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Ordem do quadro: `renderOneChunk` (157; FBO do chunk: `renderFloor` → `renderAttachedAndOverlaySpritesInternal`) **antes** de `renderPlayers` (241); `IsoMarkers.renderIsoMarkers` em 784 | CONFIRMED (bytecode) | `FBORenderCell.performRenderTiles` |
+| `addAttachedAnimSpriteByName(String)`: nome vazio sai; `IsoSprite.getSprite(manager, nome, 0)` lê o `namedMap` e volta **`null` pra nome desconhecido** (não cria sprite vazio, ao contrário de `getSprite` do Lua); `addAttachedAnimSprite(null)` sai; com sprite, `IsoSpriteInstance.get` (pool) → `addAttachedAnimSpriteInstance` (cria a lista se nula, `add` no fim, `invalidateRenderChunkLevel`). **Não** chama `flagForHotSave` | CONFIRMED (bytecode) + visto no jogo | `IsoObject.addAttachedAnimSpriteByName` 0–22, `addAttachedAnimSprite(IsoSprite)` 0–15, `addAttachedAnimSpriteInstance` 0–54; `IsoSprite.getSprite(IsoSpriteManager,String,I)` 0–17 |
+| `RemoveAttachedAnim(I)`: índice fora sai; `Dispose`, `remove(i)` (os de trás andam um), `IsoSpriteInstance.add` (**volta pro pool**: o próximo anexo de qualquer objeto pode receber a mesma instância), invalida o nível | CONFIRMED (bytecode); usado no vanilla (`ISRemoveBush.lua:129`) | `IsoObject.RemoveAttachedAnim` 0–76; `IsoSpriteInstance.get` 0–47 |
+| `RemoveAttachedAnims()` limpa a lista toda (blend de grama, decalque do mapa): **proibido pro mod** | CONFIRMED | `IsoObject.RemoveAttachedAnims` 0–86; `ISShovelGround.lua:63` ("remove blend tiles") |
+| `getAttachedAnimSprite()` devolve a `ArrayList` viva (nil até o 1º anexo); `inst:getParentSprite():getName()` | CONFIRMED | `IsoObject.getAttachedAnimSprite` 0–4; `ISRemoveBush.lua:100-103` |
+| Alfa por anexo: `renderAttachedSprites` põe `ColorInfo.a = inst.alpha` (146–149); `IsoSpriteInstance.SetAlpha(F)` e `SetTargetAlpha(F)` existem; `update()` é vazio (o alfa não volta sozinho) | EXISTS | `IsoObject.renderAttachedSprites`; `IsoSpriteInstance` (lista de métodos) |
+| Recorte e prédio: o anexo da parede é cortado com ela (`CutawayAttachedModifier`, `renderAttachedSprites` 158–178); prédio apagado vale pro anexo (`isBlackedOutBuildingSquare`, `getBlackedOutRoomFadeRatio`, `renderAttachedAndOverlaySpritesInternal` 23–40); posição = a do objeto (`IsoSprite.render(inst, obj, x, y, z, …)` com `offsetX/offsetY/renderYOffset`, 404–438): não flutua | CONFIRMED (bytecode); **UNKNOWN** visual (roteiro) | `IsoObject.renderAttachedSprites`, `renderAttachedAndOverlaySpritesInternal` |
+| `IsoObject.save` grava a lista de anexos inteira (ID do sprite pai), sem filtro | CONFIRMED (bytecode) | `IsoObject.save` 64–187 |
+| `transmitUpdatedSpriteToServer` manda a lista de anexos (IDs) | CONFIRMED (bytecode) | `IsoObject.transmitUpdatedSpriteToServer` 88–138; chamado pelo cliente de MP em `ISDismantleAction.lua:86`, `ISMoveableSpriteProps.lua:1458,1474,2114,2127` |
+| `GameWindow.save(Z)`: `OnSave` (302) antes de `IsoCell.save` (364); no cliente de MP, `OnSave` (68) e sai. `IsoCell.save` espera o `ChunkSaveWorker` (0–26) e chama `IsoChunkMap.Save` → `IsoChunk.Save(Z)` em todo chunk carregado, na mesma thread | CONFIRMED (bytecode) | `GameWindow.save`, `IsoCell.save(DataOutputStream,Z)`, `IsoChunkMap.Save` |
+| Quem chama `GameWindow.save`: `GameWindow.exit`, `IngameState.updateInternal` (sair), **`SleepingEvent.wakeUp`** (acordar no solo), `ModalDialog.Clicked`, `GameLoadingState$1.runInner`, `LuaManager$GlobalObject.save` | CONFIRMED (bytecode) | varredura de referências a `GameWindow.save` |
+| `OnPostSave` só sai na **saída** do jogo (`GameWindow.exit` 127/156, `IngameState.updateInternal` 207 e 1557); **não** depois do save de acordar | CONFIRMED (bytecode) | idem; vanilla: `ISPlayerData.lua:205` (`destroyAllPlayerData` no `OnPostSave`) |
+| `IsoChunk.Save(Z)`: `Core.isNoSave()` ou `GameClient.client` → não grava (o cliente de MP nunca grava chunk) | CONFIRMED (bytecode) | `IsoChunk.Save(Z)` 5–47 |
+| Chunk que sai do mapa: `IsoChunkMap.Up/Down/Left/Right` → `removeFromWorld` → `ChunkSaveWorker.Add` (fila; serializa depois, na thread do `WorldStreamer`); `chunkGridWidth` = 13 → o chunk que sai está a ≥ 48 tiles | CONFIRMED (bytecode) | `IsoChunkMap.Up` 201–208, `<clinit>` 74; `ChunkSaveWorker.Add`, `Update` 141, `WriteQueuedSave` 196 |
+| Hot save (só solo): `IsoChunkMap.updateInternal` 323–429 serializa **na hora** o chunk com `requiresHotSave` (`ChunkSaveWorker.AddHotSave` 42 → `IsoChunk.Save(ByteBuffer,CRC32,Z)`); a bandeira vem de `IsoObject.flagForHotSave` (`addToWorld`, `removeFromWorld`, `transmitModData`, `syncIsoObject`, contêineres). Sem evento Lua | CONFIRMED (bytecode) | `IsoChunk.flagForHotSave` 0–12; `IsoChunkMap.updateInternal` |
+| `LoadGridsquare(square)`: `IsoChunk.doLoadGridsquare` | CONFIRMED | bytecode; `client/DebugUIs/DebugScenarios.lua:101` |
+| Quem anexa no vanilla: `CellLoader.DoTileObjectCreation` (`FloorOverlay` no piso 2018–2061; `WallOverlay`/`attachedN/W/SE` na parede 1673–1970; tampo 1602–1630); piso sólido novo **troca** o sprite (134–265, `setSprite`). Erosão: `ErosionObjOverlay.setOverlay`/`removeOverlay` (por ID); `WallVines.update` 296 | CONFIRMED (bytecode) | `CellLoader`, `ErosionObjOverlay`, `WallVines` |
+| `floors_burnt_01_*`: `solidfloor`, `diamondFloor`, sem `FloorOverlay`; o vanilla usa como sprite de piso (`IsoGridSquare.BurnWalls` 1488), objeto de cinza (`client/Tests/TimedActionsTests.lua:593`) e chão do worldgen (`server/WorldGen/features/ground/burnt.lua`). **Ninguém anexa** | CONFIRMED (bytecode, Lua, `newtiledefinitions.tiles.txt:71445`) | idem |
+| Ações do jogador que mexem nos anexos: `ISDestroyStuffAction.lua:313-321` (solo: a parede de canto nova **copia** os anexos), `ISShovelGround.lua:63/81` (limpa tudo), `ISRemoveBush.lua:100-137` (trepadeira por prefixo), `ISMoveableSpriteProps.lua:1456`, `ISDismantleAction.lua:86`. Fila: `ISTimedActionQueue.queues[personagem].queue[1]` (`ISTimedActionQueue.lua:138-155`); alvos em `square`, `object`, `item`, `thumpable` (`ISMoveablesAction.lua:274-280`, `ISDismantleAction.lua:107`, `ISDestroyStuffAction.lua:362`, `ISRemoveBush.lua:187`) | CONFIRMED (Lua vanilla) | idem |
+| Tabela Lua do Kahlua (`KahluaTableImpl`) é um `Map` do Java percorrido por iterador: o mod não apaga chave no meio do `pairs` (junta e tira depois) | EXISTS (bytecode: `KahluaTableImpl(Map)`, `iterator()`) | `se.krka.kahlua.j2se.KahluaTableImpl` |
+| `instanceof(obj, "IsoThumpable")`, `"IsoDoor"`, `"IsoWindow"`, `"IsoGridSquare"` | CONFIRMED | `server/ClientCommands.lua:705`, `server/BuildRecipeCode/buildRecipeCode.lua:27`, `shared/TimedActions/ISDeviceBatteryAction.lua:48` |
+
+- **Escolha:** anexar ao piso (`getFloor`) e às paredes N/W (`getWall`) que não são
+  `IsoThumpable`, `IsoDoor` nem `IsoWindow`; registro de cada instância posta; tirar só elas (mesma
+  instância **e** mesmo nome, de trás pra frente); `OnSave` tira tudo e a atualização seguinte põe
+  de volta; raio 15 (+8 de folga: além disso sai na hora); `LoadGridsquare` limpa
+  `floors_burnt_01_*` vazado; a ação atual do jogador segura o square do alvo. Saem: `IsoMarker`,
+  `RenderGhostTileColor`, luz relida, fade, visibilidade por prédio.
+- **Custo** (mundo falso, `overlays_budget`): enchendo, ≤ ~2000 chamadas Java e ≤ ~410
+  invalidações de nível por atualização (10 ticks), umas 9 atualizações; parado, ~165 (rodízio de
+  20 alvos conferidos + a volta da varredura). `LoadGridsquare`: ~3–7 chamadas por square carregado.
+- **UNKNOWN (roteiro da 0023):** o mato anexado ao piso fica bem (ele sai antes do que está atrás
+  dele); o recorte de parede e o telhado com anexo; o custo de invalidar ~400 níveis de chunk por
+  lote; o `LoadGridsquare` no cliente de MP.
+
 ## 17. Dissolve e bloom (sprint 0018)
 
 Bytecode do B42.21. Decisão na [ADR-016](adr-016-dissolve-e-bloom.md); a cadeia do `<m_Shader>`
@@ -1325,8 +1374,7 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
-| Decal local de chão | `getIsoMarkers():addIsoMarker({nomes}, sq, r,g,b,a)` (§16) | `addGridSquareMarker` |
-| Decal local de parede | `RenderOpaqueObjectsInWorld` + `sprite:RenderGhostTileColor` (§16) | — |
+| Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio, na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
@@ -1364,9 +1412,8 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 14. Efeitos de tela (sprint 0013): texturas do mod por `getTexture("media/textures/NOM/ScreenFx/...")`,
     o elemento de 1 px por baixo do HUD de verdade, `PZAPI.ModOptions` em Opções > Mods, e o
     `screen.frag` do mod2 compilando e vencendo o vanilla (§15)
-15. Outro Mundo sangrento (sprint 0015): ~~`RenderGhostTileColor` desenha a parede no lugar?~~
-    Não serve: sai depois do jogador e por cima de tudo (prints de 05/10, §16.5; paredes
-    desligadas). O chão por marcador meio tile pra cima incomoda? Quanto custa o quadro com 600
-    squares? Zumbi em cima de decalque, prédio alto (§16.5, roteiro da sprint 0021)
+15. Outro Mundo anexado (sprint 0023, §16.6): o mato anexado ao piso fica bem? Recorte de parede
+    e telhado com anexo; o custo de ~400 invalidações de nível de chunk por lote; save + sair +
+    voltar na névoa e depois dela sem nada sobrando (roteiro da sprint 0023)
 16. Debug amigável (sprint 0020): Insert livre em `-debug` (as 46 classes dizem que sim)? `NOM.time` no dedicado chega nos
     clientes, com a data certa? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)
