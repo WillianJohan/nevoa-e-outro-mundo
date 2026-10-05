@@ -19,8 +19,7 @@
 // mundo (spike do shader). Ligou ou desligou o mod: reinicie o jogo.
 
 uniform sampler2D DIFFUSE;
-uniform float bgl_RenderedTextureWidth;
-uniform float bgl_RenderedTextureHeight;
+uniform vec2 TextureSize;
 uniform float timer;
 uniform float timerWrap;
 uniform float NightValue;
@@ -39,10 +38,12 @@ const float NOM_MARKER = 13.0;
 const vec3 NOM_REC709 = vec3(0.2126, 0.7152, 0.0722);
 const float NOM_TAU = 6.2831853;
 
-// Tamanho da cena em texels (o FBO fora da tela).
+// Tamanho da textura da cena em texels: TextureSize é o tamanho real do FBO
+// (Core.getOffscreenTrueWidth/Height). O bgl_RenderedTexture* do jogo é a área do
+// jogador, que muda com o zoom: não serve pro texel.
 vec2 nomSceneSize()
 {
-    return vec2(max(bgl_RenderedTextureWidth, 1.0), max(bgl_RenderedTextureHeight, 1.0));
+    return max(TextureSize, vec2(1.0));
 }
 
 // Leitura suave da cena: B-spline cúbica com quatro leituras bilineares

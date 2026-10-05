@@ -24,7 +24,7 @@ local BOUND = {
 -- visão noturna, bêbado, óculos, grão) e o canal do mod
 local REQUIRED = { "DIFFUSE", "DesaturationVal", "SearchMode", "ScreenInfo", "ParamInfo", "VarInfo",
     "NightVisionGoggles", "NightValue", "DrunkFactor", "BlurFactor", "timer", "timerWrap",
-    "bgl_RenderedTextureWidth", "bgl_RenderedTextureHeight" }
+    "TextureSize" }
 
 local function read(path)
     local f = io.open(path, "r")
@@ -62,6 +62,22 @@ return {
         assert(src:find("\nin vec2 vUV;", 1, true), "falta in vec2 vUV (saída do screen.vert)")
         assert(src:find("gl_FragColor", 1, true) and src:find("void main()", 1, true))
         assert(not src:find("#include", 1, true), "depende de arquivo do jogo")
+    end,
+
+    -- texel da cena = TextureSize (col2/col3 = Core.getOffscreenTrueWidth/Height, o
+    -- tamanho real da textura); bgl_RenderedTextureWidth/Height é o offscreen do
+    -- jogador, que muda com o zoom (col0/col1, WeatherShader.startMainThread 18–34, 406–422)
+    shader_texel_from_texture_size = function()
+        local src = assert(read(SHADER))
+        assert(uniforms(src).TextureSize == "vec2", "falta uniform vec2 TextureSize")
+        local body = assert(src:match("vec2 nomSceneSize%(%)%s*(%b{})"), "falta nomSceneSize")
+        assert(body:find("TextureSize", 1, true), "o texel não sai do TextureSize")
+        assert(not body:find("bgl_Rendered", 1, true), "o texel ainda usa o offscreen do zoom")
+        for _, fn in ipairs({ "nomSample", "nomSoft" }) do
+            local b = assert(src:match("vec3 " .. fn .. "%([^)]*%)%s*(%b{})"), "falta " .. fn)
+            assert(b:find("nomSceneSize()", 1, true), fn .. " não usa nomSceneSize")
+            assert(not b:find("bgl_Rendered", 1, true), fn .. " usa o offscreen do zoom")
+        end
     end,
 
     shader_marker_matches_lua = function()
