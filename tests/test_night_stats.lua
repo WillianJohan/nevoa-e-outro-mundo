@@ -576,4 +576,16 @@ return {
         G.kill(z)
         assert(z.md.NOM_variant == nil and z.md.NOM_hunting == nil, "chave de variante foi pro corpo")
     end,
+    -- amanhecer: alerta do Estalador e caça do Corredor não passam pra noite seguinte
+    stats_dawn_clears_variant_state = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("estalador", 1, sb) })
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        z.md.NOM_alert, z.md.NOM_hunting = true, true
+        NOM_NightStats.setNight(false, 1)
+        G.converge()
+        assert(z.md.NOM_alert == nil and z.md.NOM_hunting == nil, "estado da variante sobrou de dia")
+    end,
 }

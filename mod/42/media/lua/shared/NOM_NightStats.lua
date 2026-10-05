@@ -97,6 +97,8 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
         md.NOM_night = nil
         md.NOM_dayTier = nil
         md.NOM_variant = nil
+        md.NOM_alert = nil
+        md.NOM_hunting = nil
     else
         md.NOM_night = key
         md.NOM_dayTier = dayTier
