@@ -1,14 +1,21 @@
 -- NOM_VariantAI contra um jogo falso que imita a ORDEM do B42.20 (bytecode) num frame:
--- 1. IsoPlayer.TestZombieSpotPlayer → IsoZombie.spotted → spottedNew: o zumbi vê
---    o jogador e faz setTarget(jogador). A visão do zumbi é presa em 10–20 tiles
---    (updateVisionRadius): até a visão "ruim" vê a 10, então o fake vê a ≤ 10.
--- 2. IsoZombie.updateInternal dispara OnZombieUpdate (offset 696)...
--- 3. ...antes de IsoGameCharacter.update (1029), a máquina de estados: com alvo
---    a ≤ 1 tile ataca (AttackState), com alvo anda até ele; sem alvo, nada.
--- * Som (addSound/WorldSoundManager) faz o zumbi ir até o ponto, sem alvo.
+-- 1. IsoPlayer.TestZombieSpotPlayer → IsoZombie.spotted(p, false) → spottedNew. A visão
+--    do zumbi é presa em 10–20 tiles (updateVisionRadius): até a "ruim" vê a 10, então o
+--    fake vê a ≤ 10. spottedNew: zumbi useless → setTarget(null) + spottedLast = null e
+--    volta (191–208); senão setTarget(p), spottedLast = p, guarda a última posição vista
+--    (lastTargetSeenX/Y) e, no spot não forçado, bonusSpotTime = 720 (1909–1917).
+-- 2. IsoZombie.updateInternal: OnZombieUpdate (696); depois, ainda antes da máquina de
+--    estados, se bonusSpotTime > 0 e spottedLast vivo → spotted(spottedLast, true)
+--    (956–991): o spot forçado refaz setTarget e pathToCharacter (2263–2447).
+-- 3. IsoGameCharacter.update (1029), a máquina de estados: com alvo a ≤ 1 tile ataca
+--    (AttackState), com alvo anda até ele; sem alvo, WalkTowardState segue até a
+--    última posição vista (execute 169–213); sem isso, vai atrás do som ouvido.
+-- * Som: RespondToSound volta cedo com o zumbi useless (8–15).
 -- * OnHitZombie(zombie, wielder, bodyPart, weapon): shared/Definitions/DamageModelDefinitions.lua:24,69.
+-- * setUseless/isUseless: client/DebugUIs/DebugContextMenu.lua:566,673; client/Tutorial/Steps.lua:1107.
 -- * Zumbi remoto (MP, não dono) não roda a IA: a posição vem do pacote.
 -- * EveryOneMinute; ZombRand(n) global (server/ClientCommands.lua:120).
+-- * Toda chamada de método no zumbi conta em z.calls (custo Java por frame).
 require "NOM_VariantRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_VariantAI.lua"
@@ -31,20 +38,39 @@ local function setup(opts)
     end
     function G.zombie(o)
         local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false,
-            variant = o.variant, onlineID = o.onlineID or -1, sounds = {}, dead = false }
-        if o.variant then z.md.NOM_variant = o.variant end
-        function z:hasModData() return next(self.md) ~= nil end
-        function z:getModData() return self.md end
-        function z:isRemoteZombie() return self.remote end
-        function z:isDead() return self.dead end
-        function z:getTarget() return self.target end
-        function z:setTarget(t) self.target = t end
-        function z:getOnlineID() return self.onlineID end
-        function z:getEmitter()
-            return { playSound = function(_, name) z.sounds[#z.sounds + 1] = name; return 1 end }
+            onlineID = o.onlineID or -1, sounds = {}, dead = false, useless = o.useless or false,
+            bonusSpotTime = 0, calls = 0 }
+        local function def(name, fn)
+            z[name] = function(...) z.calls = z.calls + 1; return fn(...) end
         end
+        if o.variant then
+            z.md.NOM_variant = o.variant
+            NOM_NightStats.variants[z] = o.variant -- o que o NOM_NightStats faz no apply
+        end
+        def("hasModData", function(self) return next(self.md) ~= nil end)
+        def("getModData", function(self) return self.md end)
+        def("isRemoteZombie", function(self) return self.remote end)
+        def("isDead", function(self) return self.dead end)
+        def("getTarget", function(self) return self.target end)
+        def("setTarget", function(self, t) self.target = t end)
+        def("isUseless", function(self) return self.useless end)
+        def("setUseless", function(self, b) self.useless = b end)
+        def("getOnlineID", function(self) return self.onlineID end)
+        def("getEmitter", function()
+            return { playSound = function(_, name) z.sounds[#z.sounds + 1] = name; return 1 end }
+        end)
         G.zombies[#G.zombies + 1] = z
         return z
+    end
+    -- spottedNew, como no bytecode
+    local function spotted(z, p, forced)
+        if z.useless then
+            z.target, z.spottedLast = nil, nil
+            return
+        end
+        z.target, z.spottedLast = p, p
+        z.lastSeen = { x = p.x, y = p.y }
+        if not forced then z.bonusSpotTime = 720 end
     end
     local function dist(a, b) return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y)) end
     local function step(a, tx, ty)
@@ -57,18 +83,23 @@ local function setup(opts)
             for _, z in ipairs(G.zombies) do
                 if not z.remote then
                     for _, p in ipairs(G.players) do
-                        if dist(z, p) <= 10 then z.target = p end -- spottedNew → setTarget
+                        if dist(z, p) <= 10 then spotted(z, p, false) end
                     end
                 end
             end
             for _, z in ipairs(G.zombies) do
                 fire("OnZombieUpdate", z)
                 if not z.remote then
+                    if z.bonusSpotTime > 0 and z.spottedLast then spotted(z, z.spottedLast, true) end
+                    z.bonusSpotTime = math.max(0, z.bonusSpotTime - 1)
                     local t = z.target
                     if t and dist(z, t) <= 1 then
                         t.bitten = t.bitten + 1
                     elseif t then
                         step(z, t.x, t.y)
+                    elseif z.lastSeen then -- WalkTowardState até chegar, depois acaba
+                        step(z, z.lastSeen.x, z.lastSeen.y)
+                        if z.x == z.lastSeen.x and z.y == z.lastSeen.y then z.lastSeen = nil end
                     elseif z.sound then
                         step(z, z.sound.x, z.sound.y)
                     end
@@ -76,9 +107,16 @@ local function setup(opts)
             end
         end
     end
-    function G.sound(x, y) for _, z in ipairs(G.zombies) do z.sound = { x = x, y = y } end end
+    -- RespondToSound volta cedo com o zumbi useless
+    function G.sound(x, y)
+        for _, z in ipairs(G.zombies) do
+            if not z.useless then z.sound = { x = x, y = y } end
+        end
+    end
     function G.hit(z, p) fire("OnHitZombie", z, p, nil, nil) end
     function G.minutes(n) for _ = 1, n do fire("EveryOneMinute") end end
+    -- objeto reaproveitado (resetForReuse) passa pelo OnZombieCreate
+    function G.reuse(z) z.md = {}; fire("OnZombieCreate", z) end
 
     instanceof = function(o, cls) return o.class == cls end
     ZombRand = function(n) return G.rand % n end
@@ -118,9 +156,10 @@ return {
         local G = setup()
         local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
         local p = G.player({ x = 1, y = 0, sneaking = true })
-        G.frame(30)
+        -- tempo de sobra pra várias janelas de cegueira abrirem e fecharem
+        G.frame(5 * NOM_VariantAI.BLIND_FRAMES)
         assert(p.bitten == 0, "mordeu jogador agachado: " .. p.bitten)
-        assert(z.target == nil and z.x == 0 and z.y == 0, "foi atrás de quem não fez barulho")
+        assert(z.target == nil, "ficou com o jogador de alvo")
         -- zumbi comum do lado, mesma situação: morde (o fake não é bonzinho)
         local G2 = setup()
         G2.zombie({ x = 0, y = 0 })
@@ -220,5 +259,87 @@ return {
         local e = G.zombie({ x = 0, y = 0, variant = "estalador" })
         G.minutes(4)
         assert(#e.sounds == 0)
+    end,
+    -- a cegueira é uma janela curta: levantou, ele acha; foi embora, ele volta a ouvir
+    ai_estalador_releases_when_player_makes_noise = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        assert(z.useless, "não cegou")
+        p.sneaking = false
+        G.frame(5)
+        assert(not z.useless and p.bitten > 0, "não soltou quando o jogador levantou")
+    end,
+    ai_estalador_window_is_short = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        p.x = 40 -- saiu de perto agachado
+        G.frame(NOM_VariantAI.BLIND_FRAMES + 2)
+        assert(not z.useless, "ficou useless depois que o jogador sumiu")
+        G.sound(0, 20)
+        G.frame(25)
+        assert(z.y == 20, "Estalador surdo depois da janela: " .. z.x .. "," .. z.y)
+    end,
+    -- nunca useless depois do amanhecer, da troca de variante ou do golpe
+    ai_estalador_useless_never_outlives_night = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        assert(z.useless)
+        NOM_NightStats.setNight(false, 1)
+        G.frame(1)
+        assert(not z.useless, "useless passou do amanhecer")
+        -- variante saiu (o lote tirou do conjunto)
+        local G2 = setup()
+        local z2 = G2.zombie({ x = 0, y = 0, variant = "estalador" })
+        G2.player({ x = 1, y = 0, sneaking = true })
+        G2.frame(3)
+        NOM_NightStats.variants[z2] = nil
+        z2.md.NOM_variant = nil
+        G2.frame(1)
+        assert(not z2.useless, "useless sobrou sem variante")
+    end,
+    ai_estalador_hit_releases_now = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        G.hit(z, p)
+        assert(not z.useless and z.md.NOM_alert == true, "golpe não soltou")
+    end,
+    -- objeto reaproveitado pra outro zumbi não pode nascer useless
+    ai_reuse_releases = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        G.reuse(z)
+        assert(not z.useless, "reaproveitado nasceu useless")
+    end,
+    -- useless de outro (tutorial, debug, outro mod): o mod não liga nem desliga
+    ai_foreign_useless_untouched = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true })
+        G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        NOM_NightStats.setNight(false, 1)
+        G.frame(3)
+        G.hit(z, {})
+        assert(z.useless, "desligou um useless que não era do mod")
+    end,
+    -- custo por frame: zumbi comum sai com uma consulta de tabela, sem chamar Java
+    ai_common_zombie_no_java_calls = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        z.target = G.player({ x = 1, y = 0 })
+        local before = z.calls
+        for _ = 1, 50 do
+            for _, h in ipairs(G.handlers.OnZombieUpdate) do h(z) end
+        end
+        assert(z.calls == before, "chamadas Java no zumbi comum: " .. (z.calls - before))
     end,
 }
