@@ -86,6 +86,10 @@ vestir outro **outfit** troca esse ID e, com ele, a variante. O que o B42 dá
   modelo com malha renderize nesse lugar é UNKNOWN (os 77 itens vanilla dele são camadas
   sem modelo). Roteiro da sprint.
 - O zumbi que já usa algo no mesmo lugar fica com as duas peças (podem atravessar).
+- **Visto no jogo (05/10/2026):** o caminho funciona (a peça do Sem-rosto renderizou com a
+  textura do mod), mas o ruído fino virou lã sob a névoa. A sprint 0014 só trocou as
+  texturas (contraste cheio, formas grandes; [art-direction](../gdd/art-direction.md#regra)),
+  sem mudar modelo, item, GUID nem código; `tests/test_look_contrast.py` trava o contraste.
 - Depende de UNKNOWNs que só o jogo responde (roteiro da sprint): textura de mod pelo caminho
   em `Body/` e `NOM/`, `ItemVisual.new()` no Lua, `remove(Object)` escolhido pelo Kahlua,
   `OnZombieDead` no cliente de MP antes do corpo local.

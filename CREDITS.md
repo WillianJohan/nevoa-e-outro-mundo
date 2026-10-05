@@ -52,21 +52,22 @@ Pra regerar: `python3 scripts/gen_images.py`.
 
 Geradas pelo script [`scripts/gen_textures.py`](scripts/gen_textures.py) (numpy + Pillow,
 semente fixa; rodar de novo dá os mesmos bytes): rachaduras de Voronoi, veias em
-isolinhas de ruído, chiado por pixel, fios e escorridos desenhados por código. Nenhum
-pixel do jogo: da textura vanilla que cada modelo usa só se conferiu o **tamanho**.
+isolinhas de ruído, chiado em blocos, fios e escorridos desenhados por código, em contraste
+cheio (sprint 0014). Nenhum pixel do jogo: da textura vanilla que cada modelo usa só se
+conferiu o **tamanho** (e, na pele de zumbi, onde fica o rosto, pra fuligem da Carpideira).
 Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
-| `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador: porcelana rachada, costuras escuras |
-| `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza esticada, veias quase pretas |
-| `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: pálida, escorridos de fuligem |
-| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura manchada e arame enferrujado |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor: carne escura, rasgos, dentes |
-| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV cinza |
-| `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo embolado da Carpideira caindo no rosto |
-| `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | cinza e fumaça no corpo todo do Eco |
-| `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu de fumaça do Eco |
+| `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador: porcelana quase branca, rachaduras grossas pretas |
+| `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza clara, veias grossas quase pretas |
+| `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: muito pálida, escorridos de fuligem, fuligem nos olhos |
+| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura branco-suja e arame ferrugem em X |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor: vermelho escuro, rasgo preto, dentes brancos |
+| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV em blocos preto/branco, faixas rasgadas |
+| `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto |
+| `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpico escuro no corpo todo do Eco |
+| `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco com salpico escuro do Eco |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
