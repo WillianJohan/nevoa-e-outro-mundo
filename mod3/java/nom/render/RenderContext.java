@@ -46,6 +46,7 @@ public final class RenderContext {
     // params que o Lua empurra (NOMRender_setParam); 4 x vec4
     static final float[] luaParams = new float[16];
     static final long t0 = System.nanoTime();
+    static { luaParams[Flow.PARAM_ON] = 1f; }   // névoa fluida ligada por padrão
 
     // ---------- Lua ----------
 
@@ -118,6 +119,7 @@ public final class RenderContext {
             f.fogR = c.r; f.fogG = c.g; f.fogB = c.b;
 
             collectChars(f, cell, cx, cy);
+            if (playerIndex == 0) Flow.update(cell, fs);
             System.arraycopy(luaParams, 0, f.params, 0, 16);
             SpriteRenderer.instance.drawGeneric(f);
         } catch (Throwable t) {
@@ -172,6 +174,8 @@ public final class RenderContext {
         int bSrcRgb = glGetInteger(GL_BLEND_SRC_RGB), bDstRgb = glGetInteger(GL_BLEND_DST_RGB),
             bSrcA = glGetInteger(GL_BLEND_SRC_ALPHA), bDstA = glGetInteger(GL_BLEND_DST_ALPHA);
         boolean depthMask = glGetBoolean(GL_DEPTH_WRITEMASK);
+        glActiveTexture(GL_TEXTURE0 + Flow.UNIT);
+        int prevTexFlow = glGetInteger(GL_TEXTURE_BINDING_2D);
         glActiveTexture(GL_TEXTURE7);
         int prevTex7 = glGetInteger(GL_TEXTURE_BINDING_2D);
         int[] vp = new int[4];
@@ -196,6 +200,8 @@ public final class RenderContext {
             glEnable(GL_BLEND);
             // saída pré-multiplicada; o alfa de destino fica como está
             glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+            Flow.prepare();
+            glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_2D, depthTex);
             glBindVertexArray(vao);
 
@@ -209,6 +215,9 @@ public final class RenderContext {
             fail("renderFrame", t);
         } finally {
             glBindVertexArray(prevVao);
+            glActiveTexture(GL_TEXTURE0 + Flow.UNIT);
+            glBindTexture(GL_TEXTURE_2D, prevTexFlow);
+            glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_2D, prevTex7);
             glActiveTexture(prevActive);
             glUseProgram(prevProg);
@@ -237,6 +246,7 @@ public final class RenderContext {
         glUniform1i(glGetUniformLocation(prog, "uCharCount"), f.charCount);
         glUniform4fv(glGetUniformLocation(prog, "uChars"), f.chars);
         glUniform4fv(glGetUniformLocation(prog, "uParams"), f.params);
+        Flow.bindUniforms(prog, f.originX, f.originY);
     }
 
     private static void init() throws java.io.IOException {
