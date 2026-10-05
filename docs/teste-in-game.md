@@ -308,14 +308,33 @@ de 200 (Debug → Spawn Horde).
 
 ## Balanceamento
 
-Responder em uma linha cada, depois de jogar (vai pros Checkpoints da sprint 0006):
+Playtest dos defaults do PO (sprint 0019, [revisão](gdd/sandbox.md#revisão-do-po-2026-10-05-sprint-0019-aprovada-pelo-johan)),
+com o sandbox padrão e um **save novo** (a curva conta do nascimento do save; save antigo guarda o próprio sandbox, então continua com 3 dias, 2–6 h e os números velhos). Cada item tem um
+alvo e o ajuste se passar do limiar; anotar o resultado em uma linha nos Checkpoints da
+[sprint 0019](sprints/sprint-0019-balanceamento/README.md). Substitui as 5 perguntas da 0006
+(noite injusta, Sem-rosto, Ecos, escuro e caça estão nos itens 1–4 e 9).
 
-1. A noite com o padrão (~60% correndo) ficou divertida ou injusta? O Corredor se
-   destacou dos outros? ([revisão dos defaults](gdd/sandbox.md#revisão-dos-defaults-2026-10-04-sem-jogar))
-2. Quantos Sem-rosto apareceram na cidade com névoa? Rádio virou ruído?
-3. 30 Ecos por jogador foi muito, pouco ou certo?
-4. A escuridão (`DarkIntensity` 1.0) atrapalhou ver o jogo?
-5. A caça a cada hora de jogo ficou presente demais ou passou despercebida?
+1. **Noites 1–3 na cidade**, dentro de casa sem barricada, luz apagada. Morrer dentro de casa →
+   `HuntIntervalMinutes` 120. Morrer na rua com lanterna acesa = ok (é o jogo).
+2. **Zumbis na porta ao amanhecer** (cidade): alvo 5–15. Mais de 25 → `HuntRadius` 20; menos
+   de 3 → `HuntIntervalMinutes` 60.
+3. **Ecos** (`[NOM] eco spawn=N` no console): alvo 5–15 numa noite sem limpar. Teto de 20
+   batido mesmo queimando os corpos do dia → `EcoRadius` 25; três noites sem um Eco fazer o
+   jogador recuar → `EcoMaxPerPlayer` 30.
+4. **Rádio do Sem-rosto** na névoa da cidade: chiando mais de 70% do tempo →
+   `SemRostoChance` 2; três névoas sem ver nenhum → 4.
+5. **Carpideira**, três névoas na cidade: alvo 1–2 gritos, e o soluço ouvido **antes** de
+   cada um. Acordou sem soluço = bug de justiça (volume/alcance do soluço, abrir issue). Zero
+   fugas do grito → `CarpideiraScreamRadius` 60; morreu em 2 de 3 → 40.
+6. **Corredor:** três névoas sem uma perseguição → `CorredorChance` 4.
+7. **Vermelha** forçada por volta do dia 7 (`NOM_Debug.redFog(true)`) numa casa não limpa.
+   Morrer escondido numa casa **limpa** → a vermelha precisa de teto de variantes (sprint
+   nova). FPS abaixo de 90% do da névoa normal com 200 zumbis → **bloqueador de release**.
+8. **Duração:** duas névoas seguidas terminando com "já acabou?" → `FogMinHours` 4.
+9. **Escuro:** ao ar livre, lua cheia, sem luz. Não vê zumbi a 5 tiles → `DarkIntensity` 0.8;
+   vê a 15 → 1.2.
+10. **Overlays:** perdeu item caído no chão ou não achou a poça de uma luta real → densidade
+    do Outro Mundo 0.7 (Opções > Mods).
 
 ## Fora desta sessão
 

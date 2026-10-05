@@ -1,9 +1,10 @@
 -- Evento de névoa, lado do servidor (sprint 0009, ADR-009). A névoa não vem do
 -- clima: numa hora sorteada a sirene toca em todo jogador e, 30 s reais depois,
 -- a névoa começa e dura de FogMinHours a FogMaxHours de jogo. O estado mora no
--- ModData global (data.fog: night = período, inNight, next, endAt, red) e sobrevive a
--- salvar/carregar; a contagem da sirene só existe em memória: recarregar no meio
--- dela toca a sirene de novo e recomeça os 30 s (o next segue no passado).
+-- ModData global (data.fog: night = período, inNight, next, endAt, red, seed, bornAt) e
+-- sobrevive a salvar/carregar; a contagem da sirene só existe em memória: recarregar no
+-- meio dela toca a sirene de novo (a mesma cor, red já salvo) e recomeça os 30 s (o next
+-- segue no passado).
 -- A flag vai pro NOM_World (setFog), e dele pros consumidores (NOM_Fog avisa os
 -- clientes com o período). O canal de névoa do clima é do NOM_ClimateLook.
 if isClient() then return end
@@ -20,11 +21,11 @@ local R = NOM_FogEventRules
 NOM_FogEvent = {}
 
 local countdown, lastMs -- ms reais até a névoa; nil = sem sirene tocando
--- Névoa vermelha (sprint 0010): pendingRed = o que a sirene tocando decidiu;
--- forcedRed = NOM_Debug.redFog(true) pra próxima sirene (nil = sorteio). Os dois só
--- em memória: recarregar durante a sirene re-sorteia (mesmo resultado do sorteio) e
--- perde o forçado do debug (aceito: só debug).
-local pendingRed, forcedRed
+-- Névoa vermelha (sprint 0010): a sirene decide e salva em data.fog.red (sprint 0019:
+-- a chance muda com os dias, então re-sortear na recarga podia trocar a cor);
+-- forcedRed = NOM_Debug.redFog(true) pra próxima sirene (nil = sorteio), só em memória
+-- (recarregar antes da sirene perde o forçado: só debug).
+local forcedRed
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] nevoa " .. msg) end
@@ -34,17 +35,22 @@ end
 -- primeiro uso (save novo ou anterior a ela) e salva. ZombRand(n) no Lua é
 -- LuaManager$GlobalObject.ZombRand(D)D → RandLua.Next(long) → Next(int, Random),
 -- inteiro em [0, n) (bytecode 0–35); n = SEED_RANGE cabe em int.
+-- horas de mundo (shared/Definitions/animal/ButcheringUtil.lua:594)
+local function now() return getGameTime():getWorldAgeHours() end
+
+-- bornAt: hora de mundo em que a curva de tensão começa (sprint 0019), gravada uma vez
+-- como a semente (NOM_FogEventRules.born): save novo agora, save veterano no ponto neutro
+-- da curva (30 dias atrás), que não muda nada pra quem já jogava.
 local function state()
     local data = ModData.getOrCreate(MODULE)
     data.fog = data.fog or {}
     if data.fog.seed == nil then data.fog.seed = ZombRand(NOM_VariantRules.SEED_RANGE) end
+    R.born(data.fog, now())
     return data.fog
 end
 
 -- ZombRand(n): inteiro em [0, n) (uso no mod: client/NOM_FogSound.lua)
 local function rand() return ZombRand(10000) / 10000 end
--- horas de mundo (shared/Definitions/animal/ButcheringUtil.lua:594)
-local function now() return getGameTime():getWorldAgeHours() end
 local function cfg() return R.config(NOM_Config.get) end
 
 local function hours(v) return v and string.format("%.2f", v) or "-" end
@@ -56,29 +62,40 @@ end
 -- { next, endAt, sirenMs, sirenRed } pro status do debug e pra quem entra na contagem.
 function NOM_FogEvent.status()
     local s = state()
-    return { next = s.next, endAt = s.endAt, sirenMs = countdown, sirenRed = countdown and pendingRed }
+    return { next = s.next, endAt = s.endAt, sirenMs = countdown, sirenRed = countdown and s.red == true }
 end
 
--- O vermelho é do período que a sirene anuncia (o próximo): sorteio puro do número,
--- o mesmo em qualquer processo e depois de recarregar (NOM_VariantRules.redFog).
+-- O vermelho é do período que a sirene anuncia (o próximo): sorteio puro do número e da
+-- semente (NOM_VariantRules.redFog), com a chance da curva no dia de agora (carência,
+-- escalada: NOM_FogEventRules.redChance). Devolve a cor e a chance usada (pro log).
 local function decideRed()
-    if forcedRed ~= nil then return forcedRed end
     local s = state()
-    return NOM_VariantRules.redFog((s.night or 0) + 1, NOM_VariantRules.config(NOM_Config.get), s.seed)
+    local vc = NOM_VariantRules.config(NOM_Config.get)
+    vc.redFogChance = R.redChance(vc.redFogChance or 0, cfg(), R.days(s, now()))
+    if forcedRed ~= nil then return forcedRed, vc.redFogChance end
+    return NOM_VariantRules.redFog((s.night or 0) + 1, vc, s.seed), vc.redFogChance
 end
 
 -- Toca a sirene e começa a contagem. skip: a névoa começa no próximo tick (debug).
 -- Recusa se o evento já está aberto ou a sirene já tocou.
+-- A cor fica no data.fog.red: se já estava salva (recarga durante a sirene), vale ela.
 function NOM_FogEvent.siren(skip)
-    if state().inNight or countdown then return false end
+    local s = state()
+    if s.inNight or countdown then return false end
     countdown, lastMs = skip and 0 or R.SIREN_MS, getTimestampMs()
-    pendingRed = decideRed()
-    if isServer() then
-        sendServerCommand(MODULE, "siren", { red = pendingRed })
-    else
-        NOM_Siren.play(pendingRed)
+    local chance = "-" -- cor salva reaproveitada (recarga): não houve sorteio
+    if s.red == nil or forcedRed ~= nil then
+        local red, c = decideRed()
+        s.red, chance = red, hours(c)
     end
-    debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(pendingRed)) -- inteiro: "contagem=30000"
+    if isServer() then
+        sendServerCommand(MODULE, "siren", { red = s.red })
+    else
+        NOM_Siren.play(s.red)
+    end
+    -- inteiro: "contagem=30000"; dias e chance da curva com 2 casas
+    debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
+        " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
     return true
 end
 
@@ -113,7 +130,7 @@ function NOM_FogEvent.setRed(on)
     end
     forcedRed = on and true or nil
     if countdown then
-        pendingRed = on == true
+        s.red = on == true
         return true
     end
     if on then return NOM_FogEvent.siren(false) end
@@ -123,7 +140,7 @@ end
 local function begin()
     countdown = nil
     forcedRed = nil
-    if not R.start(state(), now(), cfg(), rand, pendingRed) then return end
+    if not R.start(state(), now(), cfg(), rand, state().red) then return end
     debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. " vermelha=" .. tostring(state().red))
     NOM_World.setFog(true, state().red)
 end

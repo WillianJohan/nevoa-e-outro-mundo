@@ -11,18 +11,23 @@ option NevoaEOutroMundo.DarkIntensity = {
 }
 
 option NevoaEOutroMundo.FogEventEveryDays = {
-    type = double, min = 0.5, max = 30.0, default = 3.0,
+    type = double, min = 0.5, max = 30.0, default = 2.0,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEventEveryDays,
 }
 
 option NevoaEOutroMundo.FogMinHours = {
-    type = double, min = 0.5, max = 48.0, default = 2.0,
+    type = double, min = 0.5, max = 48.0, default = 3.0,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMinHours,
 }
 
 option NevoaEOutroMundo.FogMaxHours = {
     type = double, min = 0.5, max = 48.0, default = 6.0,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMaxHours,
+}
+
+option NevoaEOutroMundo.FogEscalation = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEscalation,
 }
 
 option NevoaEOutroMundo.RedFogEnabled = {
@@ -35,18 +40,23 @@ option NevoaEOutroMundo.RedFogChance = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogChance,
 }
 
+option NevoaEOutroMundo.RedFogGraceDays = {
+    type = integer, min = 0, max = 60, default = 7,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogGraceDays,
+}
+
 option NevoaEOutroMundo.EcoEnabled = {
     type = boolean, default = true,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EcoEnabled,
 }
 
 option NevoaEOutroMundo.EcoMaxPerPlayer = {
-    type = integer, min = 0, max = 200, default = 30,
+    type = integer, min = 0, max = 200, default = 20,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EcoMaxPerPlayer,
 }
 
 option NevoaEOutroMundo.EcoRadius = {
-    type = integer, min = 5, max = 60, default = 40,
+    type = integer, min = 5, max = 60, default = 30,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EcoRadius,
 }
 
@@ -76,12 +86,12 @@ option NevoaEOutroMundo.NightSenseMult = {
 }
 
 option NevoaEOutroMundo.HuntIntervalMinutes = {
-    type = integer, min = 10, max = 720, default = 60,
+    type = integer, min = 10, max = 720, default = 90,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.HuntIntervalMinutes,
 }
 
 option NevoaEOutroMundo.HuntRadius = {
-    type = integer, min = 5, max = 100, default = 30,
+    type = integer, min = 5, max = 100, default = 25,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.HuntRadius,
 }
 
@@ -101,7 +111,7 @@ option NevoaEOutroMundo.EstaladorChance = {
 }
 
 option NevoaEOutroMundo.CorredorChance = {
-    type = integer, min = 0, max = 100, default = 2,
+    type = integer, min = 0, max = 100, default = 3,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorChance,
 }
 
@@ -116,7 +126,7 @@ option NevoaEOutroMundo.SemRostoEnabled = {
 }
 
 option NevoaEOutroMundo.SemRostoChance = {
-    type = integer, min = 0, max = 100, default = 5,
+    type = integer, min = 0, max = 100, default = 3,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.SemRostoChance,
 }
 
@@ -136,7 +146,7 @@ option NevoaEOutroMundo.CarpideiraTriggerRadius = {
 }
 
 option NevoaEOutroMundo.CarpideiraScreamRadius = {
-    type = integer, min = 5, max = 100, default = 60,
+    type = integer, min = 5, max = 100, default = 50,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraScreamRadius,
 }
 

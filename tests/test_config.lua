@@ -3,7 +3,7 @@ require "NOM_Config"
 return {
     config_missing_sandboxvars_uses_default = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogEventEveryDays") == 3)
+        assert(NOM_Config.get("FogEventEveryDays") == 2)
         assert(NOM_Config.get("DarkEnabled") == true)
     end,
     config_missing_page_uses_default = function()
@@ -21,8 +21,8 @@ return {
     config_eco_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("EcoEnabled") == true)
-        assert(NOM_Config.get("EcoMaxPerPlayer") == 30)
-        assert(NOM_Config.get("EcoRadius") == 40)
+        assert(NOM_Config.get("EcoMaxPerPlayer") == 20)
+        assert(NOM_Config.get("EcoRadius") == 30)
     end,
     config_night_defaults = function()
         SandboxVars = nil
@@ -31,26 +31,26 @@ return {
         assert(NOM_Config.get("NightHunt") == true)
         assert(NOM_Config.get("NightSpeedMult") == 1.5)
         assert(NOM_Config.get("NightSenseMult") == 1.5)
-        assert(NOM_Config.get("HuntIntervalMinutes") == 60)
-        assert(NOM_Config.get("HuntRadius") == 30)
+        assert(NOM_Config.get("HuntIntervalMinutes") == 90)
+        assert(NOM_Config.get("HuntRadius") == 25)
     end,
     config_variant_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("EstaladorEnabled") == true)
         assert(NOM_Config.get("CorredorEnabled") == true)
         assert(NOM_Config.get("EstaladorChance") == 5)
-        assert(NOM_Config.get("CorredorChance") == 2)
+        assert(NOM_Config.get("CorredorChance") == 3)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
-    -- Carpideira (sprint 0011): chance 3 (decisão do Johan, 05/10), raios 4 e 60
+    -- Carpideira (sprint 0011): chance 3 (decisão do Johan, 05/10), raios 4 e 50 (PO, sprint 0019)
     config_carpideira_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("CarpideiraEnabled") == true)
         assert(NOM_Config.get("CarpideiraChance") == 3)
         assert(NOM_Config.get("CarpideiraTriggerRadius") == 4)
-        assert(NOM_Config.get("CarpideiraScreamRadius") == 60)
+        assert(NOM_Config.get("CarpideiraScreamRadius") == 50)
     end,
-    -- névoa é evento (sprint 0009): ~1 a cada 3 dias, 2 a 6 horas; FogThreshold saiu
+    -- névoa é evento (sprint 0009); balanceamento do PO (sprint 0019): base 2 dias, 3 a 6 horas; FogThreshold saiu
     config_red_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("RedFogEnabled") == true)
@@ -58,8 +58,8 @@ return {
     end,
     config_fog_event_defaults = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogEventEveryDays") == 3)
-        assert(NOM_Config.get("FogMinHours") == 2)
+        assert(NOM_Config.get("FogEventEveryDays") == 2)
+        assert(NOM_Config.get("FogMinHours") == 3)
         assert(NOM_Config.get("FogMaxHours") == 6)
         assert(NOM_Config.DEFAULTS.FogThreshold == nil, "FogThreshold ainda no Lua")
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -70,7 +70,7 @@ return {
     config_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("SemRostoEnabled") == true)
-        assert(NOM_Config.get("SemRostoChance") == 5)
+        assert(NOM_Config.get("SemRostoChance") == 3)
         assert(NOM_Config.get("FogAmbience") == true)
         assert(NOM_Config.get("FogOverlays") == true)
         assert(NOM_Config.get("FogVignette") == true)
@@ -103,6 +103,41 @@ return {
             end
         end
         assert(n >= 10, "achou só " .. n .. " opções numéricas")
+    end,
+    -- curva de tensão (sprint 0019): escalada ligada, carência 7 dias (faixa 0–60)
+    config_new_options_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("FogEscalation") == true)
+        assert(NOM_Config.get("RedFogGraceDays") == 7)
+        local f = assert(io.open("mod/42/media/sandbox-options.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local esc = txt:match("option NevoaEOutroMundo%.FogEscalation = {(.-)}")
+        assert(esc and esc:find("type = boolean", 1, true), "FogEscalation fora do menu")
+        local grace = txt:match("option NevoaEOutroMundo%.RedFogGraceDays = {(.-)}")
+        assert(grace and grace:match("min = (%d+)") == "0" and grace:match("max = (%d+)") == "60", "faixa da carência")
+    end,
+    -- review da 0019: o tooltip da chance de vermelha avisa da carência e da escalada
+    config_red_chance_tooltip_mentions_curve = function()
+        for lang, words in pairs({ PTBR = { "carência", "dobro" }, EN = { "grace", "double" } }) do
+            local f = assert(io.open("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json"))
+            local txt = f:read("*a")
+            f:close()
+            local tip = txt:match('"Sandbox_NevoaEOutroMundo%.RedFogChance_tooltip"%s*:%s*"([^"]*)"')
+            for _, w in ipairs(words) do
+                assert(tip and tip:find(w, 1, true), lang .. ": tooltip da chance sem '" .. w .. "'")
+            end
+        end
+    end,
+    -- tooltip do Eco (PO, sprint 0019): a mordida do Eco infecta como a de qualquer zumbi
+    config_eco_tooltip_says_bite_infects = function()
+        for lang, word in pairs({ PTBR = "mordida do Eco infecta", EN = "bite infects" }) do
+            local f = assert(io.open("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json"))
+            local txt = f:read("*a")
+            f:close()
+            local tip = txt:match('"Sandbox_NevoaEOutroMundo%.EcoEnabled_tooltip"%s*:%s*"([^"]*)"')
+            assert(tip and tip:find(word, 1, true), lang .. ": tooltip do Eco sem a mordida")
+        end
     end,
     -- drone e rádio tocam em loop; o metal é um golpe só
     config_fog_sounds_loop = function()

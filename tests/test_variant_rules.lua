@@ -142,15 +142,15 @@ return {
         local c = R.config(NOM_Config.get)
         for period = 1, 3 do
             local n = count(ids, period, c)
-            for kind, want in pairs({ estalador = 5, corredor = 2, semrosto = 5, carpideira = 3 }) do
+            for kind, want in pairs({ estalador = 5, corredor = 3, semrosto = 3, carpideira = 3 }) do
                 local got = n[kind] / #ids * 100
                 assert(math.abs(got - want) < 1.5, kind .. " " .. got .. "%")
             end
         end
     end,
-    -- sprint 0011: 5 + 2 + 5 + 3 = 15%, a Carpideira na faixa [12, 15) depois das três
+    -- sprint 0019 (PO): 5 + 3 + 3 + 3 = 14%, a Carpideira na faixa [11, 14) depois das três
     -- de antes (quem era Estalador, Corredor ou Sem-rosto continua sendo)
-    variant_rules_default_total_15 = function()
+    variant_rules_default_total_14 = function()
         require "NOM_Config"
         local c = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
         local old = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
@@ -159,7 +159,7 @@ return {
         for period = 1, 3 do
             local n = count(ids, period, c)
             local total = (n.estalador + n.corredor + n.semrosto + n.carpideira) / #ids * 100
-            assert(math.abs(total - 15) < 1.5, "total " .. total)
+            assert(math.abs(total - 14) < 1.5, "total " .. total)
         end
         for _, id in ipairs(ids) do
             local k, before = R.variant(id, 2, c), R.variant(id, 2, old)

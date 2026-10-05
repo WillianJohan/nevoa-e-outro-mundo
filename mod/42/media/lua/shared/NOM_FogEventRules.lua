@@ -3,7 +3,8 @@
 --
 -- state = { night = número do período, inNight = evento aberto,
 --           next = hora de mundo da próxima sirene, endAt = hora de mundo do fim,
---           red = névoa vermelha (sprint 0010), só com o evento aberto }
+--           red = névoa vermelha (sprint 0010), decidida na sirene e limpa no fim,
+--           bornAt = hora de mundo do nascimento do save pra curva (sprint 0019) }
 -- salvo no ModData global (data.fog). night/inNight são as chaves da sprint 0005
 -- (névoa natural): saves antigos continuam com o mesmo número de período.
 NOM_FogEventRules = {}
@@ -14,7 +15,48 @@ R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta d
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 
 function R.config(get)
-    return { everyDays = get("FogEventEveryDays"), minHours = get("FogMinHours"), maxHours = get("FogMaxHours") }
+    return { everyDays = get("FogEventEveryDays"), minHours = get("FogMinHours"), maxHours = get("FogMaxHours"),
+        escalation = get("FogEscalation"), redGraceDays = get("RedFogGraceDays") }
+end
+
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+
+-- Curva de tensão (sprint 0019, análise do PO): dias de jogo desde o bornAt.
+-- Ponto neutro da curva: no dia 30 o intervalo é 1× e a vermelha 1× (e a carência,
+-- até 60 dias no sandbox, já passou se for menor que 30).
+R.NEUTRAL_DAYS = 30
+
+-- Grava o bornAt uma vez. Save novo nasce agora; save veterano (já tem agenda: night ou
+-- next, sem bornAt) nasce NEUTRAL_DAYS atrás, pra não sentir a curva (review da 0019).
+-- bornAt no futuro (relógio voltou, save editado) vira agora.
+function R.born(state, now)
+    if state.bornAt == nil then
+        state.bornAt = (state.night ~= nil or state.next ~= nil) and now - R.NEUTRAL_DAYS * 24 or now
+    end
+    if state.bornAt > now then state.bornAt = now end
+end
+
+function R.days(state, now)
+    return math.max(0, now - (state.bornAt or now)) / 24
+end
+
+-- Média do intervalo no dia d: everyDays × clamp(1,5 − d/60, 0,75, 1,5). Com a base 2:
+-- 3 dias no começo, 2 no dia 30, 1,5 do dia 45 em diante. Sem a escalada, o sandbox.
+function R.everyDays(cfg, d)
+    if not cfg.escalation then return cfg.everyDays end
+    return cfg.everyDays * clamp(1.5 - d / 60, 0.75, 1.5)
+end
+
+-- Chance (0–100) de vermelha no dia d: 0 antes de redGraceDays (com ou sem a escalada);
+-- depois chance × clamp(1 + (d − 30)/60, 1, 2): igual até o dia 30, o dobro do 90 em diante.
+function R.redChance(chance, cfg, d)
+    if d < (cfg.redGraceDays or 0) then return 0 end
+    if not cfg.escalation then return chance end
+    return chance * clamp(1 + (d - 30) / 60, 1, 2)
+end
+
+local function gap(state, now, cfg, rand)
+    return R.gapHours(R.everyDays(cfg, R.days(state, now)), rand())
 end
 
 -- Horas até a próxima sirene, contadas do fim do evento anterior: uniforme entre
@@ -40,7 +82,7 @@ function R.update(state, now, cfg, rand)
         R.stop(state, now, cfg, rand)
         return "end"
     end
-    if state.next == nil then state.next = now + R.gapHours(cfg.everyDays, rand()) end
+    if state.next == nil then state.next = now + gap(state, now, cfg, rand) end
     if now >= state.next then return "siren" end
     return nil
 end
@@ -57,12 +99,12 @@ function R.start(state, now, cfg, rand, red)
     return true
 end
 
--- Fecha o evento e agenda a próxima sirene a partir de agora.
+-- Fecha o evento e agenda a próxima sirene a partir de agora, com a média do dia de agora.
 function R.stop(state, now, cfg, rand)
     state.inNight = false
     state.endAt = nil
     state.red = nil
-    state.next = now + R.gapHours(cfg.everyDays, rand())
+    state.next = now + gap(state, now, cfg, rand)
 end
 
 -- Contagem regressiva da sirene em ms reais: parada com o jogo pausado, e um

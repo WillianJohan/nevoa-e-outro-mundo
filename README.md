@@ -8,8 +8,8 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - À noite, bem mais escura que a vanilla, os zumbis caçam, enxergam e ouvem mais longe.
 - Corpos de quem morreu antes do anoitecer soltam **Ecos**: almas fracas que somem
   com o sol. Queime ou enterre os mortos.
-- A cada ~3 dias, numa hora qualquer, uma sirene toca; 30 segundos depois vem a névoa
-  (de 2 a 6 horas, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
+- A cada ~3 dias no começo (e mais seguido com o passar dos dias), numa hora qualquer, uma sirene toca; 30 segundos depois vem a névoa
+  (de 3 a 6 horas, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
   aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda),
   o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto — e a
   **Carpideira**, parada, chorando baixinho, até alguém acordá-la.
@@ -38,6 +38,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça; contraste cheio e formas grandes pra ler sob a névoa | 0012, 0014 |
 | Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
 | Outro Mundo sangrento | na névoa, poças e rastros de sangue, sujeira, rachaduras, musgo e trepadeiras no chão e nas paredes em volta (mais na vermelha); só na tela, nada no save; densidade de cada jogador | 0015 |
+| Balanceamento do PO e curva de tensão | defaults e presets novos (névoa 2 dias e 3–6 h, Eco 20/30, caça 90/25, monstros 5/3/3/3); a névoa começa a cada ~3 dias e aperta com os dias do save, sem vermelha na primeira semana e com o dobro dela no dia 90 | 0019 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 
