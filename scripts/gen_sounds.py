@@ -129,6 +129,38 @@ def siren(rng):
     return np.tanh(1.2 * wet / np.max(np.abs(wet)))
 
 
+def siren_red(rng):
+    """Sirene da névoa vermelha: a mesma sirene, mais grave, rasgada e longa, ~28 s.
+
+    Rotor uns 30% mais grave, subida mais lenta e queda que não volta ao fundo,
+    desafinação que oscila (o rotor "geme"), saturação pesada e um ronco grave
+    embaixo; ecos mais longos.
+    """
+    cycle = [0, 5.0, 9.0, 14.0]  # sobe 5 s, segura 4 s, cai 5 s
+    knots_t, knots_f = [], []
+    for k in range(2):
+        for ct, f in zip(cycle, (110, 430, 410, 120)):
+            knots_t.append(k * 14.0 + ct)
+            knots_f.append(f)
+    dur = 28.0
+    t = np.arange(int(dur * RATE)) / RATE
+    wobble = 1 + 0.012 * np.sin(2 * np.pi * 0.7 * t) + 0.006 * np.sin(2 * np.pi * 6.3 * t)
+    f0 = np.interp(t, knots_t, knots_f) * wobble
+    out = np.zeros_like(t)
+    for detune, gain in ((1.0, 1.0), (1.021, 0.7), (0.5, 0.5)):  # o 0.5 é o ronco uma oitava abaixo
+        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
+        out += gain * sum(np.sin(k * phase) / k for k in (1, 3, 5, 7, 9, 11))
+    out = np.tanh(3.0 * out / np.max(np.abs(out)))  # rasgado
+    out = out + 0.08 * resonator(rng.standard_normal(len(t)), 300, 1.5)  # chiado de alto-falante velho
+    env = np.minimum(1, t / 0.5) * np.minimum(1, (dur - t) / 2.5)
+    out = out * env
+    wet = out.copy()
+    for delay, gain in ((0.27, 0.4), (0.61, 0.3), (1.1, 0.2), (1.7, 0.12)):  # cidade vazia, mais longe
+        k = int(delay * RATE)
+        wet[k:] += gain * out[:-k]
+    return np.tanh(1.5 * wet / np.max(np.abs(wet)))
+
+
 def write(name, signal):
     signal = signal / np.max(np.abs(signal)) * 0.9
     pcm = (signal * 32767).astype(np.int16)
@@ -156,6 +188,8 @@ def main():
     write("NOM_RadioStatic", radio_static(np.random.default_rng(SEED + 3)))
     # sprint 0009: sirene do evento de névoa
     write("NOM_Siren", siren(np.random.default_rng(SEED + 4)))
+    # sprint 0010: sirene da névoa vermelha
+    write("NOM_SirenRed", siren_red(np.random.default_rng(SEED + 5)))
 
 
 if __name__ == "__main__":

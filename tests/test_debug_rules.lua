@@ -42,5 +42,12 @@ return {
         local nan = 0 / 0
         assert(D.parse({ op = "variant", id = nan, kind = "corredor" }) == nil)
     end,
+    -- névoa vermelha (sprint 0010): true força, false/nil desfaz; só booleano
+    debug_rules_parse_red_fog = function()
+        assert(D.parse({ op = "redFog", value = true }).value == true)
+        assert(D.parse({ op = "redFog", value = false }).value == false)
+        assert(D.parse({ op = "redFog" }).value == false)
+        assert(D.parse({ op = "redFog", value = "sim" }) == nil)
+        assert(D.parse({ op = "redFog", value = 1 }) == nil)
+    end,
 }
-

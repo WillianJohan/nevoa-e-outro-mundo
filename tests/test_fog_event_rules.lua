@@ -72,4 +72,14 @@ return {
         local c = R.config(function(k) return t[k] end)
         assert(c.everyDays == 1 and c.minHours == 3 and c.maxHours == 4)
     end,
+    -- névoa vermelha (sprint 0010): o start guarda o que a sirene decidiu, o stop limpa
+    fog_event_rules_start_stores_red = function()
+        local s = { next = 0 }
+        assert(R.start(s, 5, cfg, seq(0), true) and s.red == true)
+        assert(not R.start(s, 6, cfg, seq(0), false) and s.red == true, "evento dentro de evento mexeu no vermelho")
+        R.stop(s, 7, cfg, seq(0))
+        assert(s.red == nil)
+        R.start(s, 50, cfg, seq(0))
+        assert(s.red == false)
+    end,
 }

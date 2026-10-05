@@ -197,4 +197,59 @@ return {
         G.tick(NOM_SemRosto.SCAN_TICKS * 3)
         assert(c.n <= #zs * 3, "varredura chamou demais: " .. c.n .. " em 3 varreduras de " .. #zs)
     end,
+    -- névoa vermelha (sprint 0010): o zumbi que é Sem-rosto só pela divisão da
+    -- vermelha some também; na névoa normal, não
+    semrosto_red_fog_counts_red_split = function()
+        local G = setup({ fog = false })
+        local id = W.semRostoID(PERIOD, true, nil, true)
+        G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = id })
+        NOM_FogState.set(true, PERIOD)
+        G.tick(NOM_SemRosto.SCAN_TICKS * 2)
+        assert(#G.reports == 0, "Sem-rosto da vermelha na névoa normal")
+        NOM_FogState.set(true, PERIOD, true)
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1, "Sem-rosto da vermelha não sumiu")
+    end,
+    -- review: o servidor aceita um semRostoSeen por jogador a cada 250 ms. Dois vistos
+    -- na mesma varredura: o segundo não pode ficar mudo os 4 s do cooldown dele; sai
+    -- numa varredura seguinte, depois da janela do servidor
+    semrosto_second_report_waits_rate_not_cooldown = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = G.SEM })
+        G.zombie({ x = 112, y = 104, id = G.SEM })
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1, "relatos na mesma varredura: " .. #G.reports)
+        local first = G.now
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        if #G.reports == 2 then
+            assert(G.now - first >= NOM_SemRostoRules.REPORT_GAP_MS, "dentro da janela do servidor")
+        end
+        G.tick(NOM_SemRosto.SCAN_TICKS * 2)
+        assert(#G.reports == 2, "o segundo Sem-rosto ficou mudo: " .. #G.reports)
+        assert(G.reports[2].z ~= G.reports[1].z)
+        assert(G.reports[2].z.x ~= nil and G.now - first < NOM_SemRostoRules.COOLDOWN_MS)
+        assert(NOM_SemRostoRules.REPORT_GAP_MS > NOM_SemRostoRules.RATE_MS, "cliente na margem do servidor")
+    end,
+    -- orçamento da névoa vermelha (review): 1/3 dos zumbis é Sem-rosto. Por varredura
+    -- (a cada 10 ticks), o Sem-rosto fora de alcance custa 7 chamadas (ID, isDead,
+    -- hasModData, getOutfitName, getZ, getX, getY), o resto 1 (o ID)
+    semrosto_scan_budget_red_fog = function()
+        local G = setup({ fog = false })
+        G.player({ x = 100, y = 100, face = 0 })
+        local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        local sem, other = {}, {}
+        for seed = 1, 300 do
+            local id = 11 * 65536 + seed
+            local z = G.zombie({ x = 200 + seed % 20, y = 200 + math.floor(seed / 20), id = id })
+            if NOM_VariantRules.variant(id, PERIOD, c, true) == "semrosto" then sem[#sem + 1] = z else other[#other + 1] = z end
+        end
+        NOM_FogState.set(true, PERIOD, true)
+        local cs, co = dofile("tests/calls.lua")(sem), dofile("tests/calls.lua")(other)
+        G.tick(NOM_SemRosto.SCAN_TICKS * 3)
+        assert(#sem > 70 and #sem < 130, "Sem-rostos: " .. #sem)
+        assert(co.n <= #other * 3, "não Sem-rosto: " .. co.n)
+        assert(cs.n <= #sem * 3 * 7, string.format("Sem-rosto: %d chamadas em 3 varreduras de %d", cs.n, #sem))
+    end,
 }

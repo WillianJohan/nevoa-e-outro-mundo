@@ -196,4 +196,150 @@ return {
         G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
         assert(#G.commands(G.sentServer, "siren") == 0, "sirene depois da névoa aberta")
     end,
+    -- névoa vermelha (sprint 0010): decidida na sirene (período que vem), sirene
+    -- própria, flag no mundo e no FogState, salva no ModData
+    fog_event_red_decided_at_siren = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0, "sirene errada")
+        assert(NOM_FogEvent.status().sirenRed == true)
+        assert(NOM_World.red == false, "vermelha antes da névoa")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.red == true)
+        assert(fogMD(G).red == true)
+    end,
+    fog_event_red_chance_zero_or_disabled_is_normal = function()
+        for _, sb in ipairs({ { RedFogChance = 0 }, { RedFogEnabled = false, RedFogChance = 100 } }) do
+            local G = setup({ sandbox = sb })
+            G.advance(36)
+            G.seconds(31)
+            assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0)
+            assert(NOM_World.fog and NOM_World.red == false and fogMD(G).red == false)
+        end
+    end,
+    -- recarregar no meio da vermelha: continua vermelha, mesmo com o sandbox mudado
+    fog_event_red_reload_mid_fog_stays_red = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        G.seconds(31)
+        local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours + 0.5, sandbox = { RedFogChance = 0 } })
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.red == true, "recarga perdeu o vermelho")
+        assert(NOM_FogState.period == 1)
+        assert(G2.played("NOM_SirenRed") == 0 and G2.played("NOM_Siren") == 0, "recarga tocou sirene")
+    end,
+    -- o sorteio é do período: o mesmo período dá a mesma resposta pelo sorteio puro
+    fog_event_red_matches_pure_roll = function()
+        require "NOM_VariantRules"
+        local c = NOM_VariantRules.config(function(k) return ({ RedFogEnabled = true, RedFogChance = 50 })[k] end)
+        local G = setup({ sandbox = { RedFogChance = 50 } })
+        local seed = fogMD(G).seed
+        for p = 1, 6 do
+            G.advance(200)
+            G.seconds(31)
+            assert(NOM_FogEvent.period() == p)
+            assert(NOM_World.red == NOM_VariantRules.redFog(p, c, seed), "período " .. p)
+            G.advance(10)
+        end
+    end,
+    -- fim da vermelha: flag limpa; o próximo evento sorteia de novo
+    fog_event_red_ends_clean = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        G.seconds(31)
+        G.advance(3)
+        assert(NOM_World.fog == false and NOM_World.red == false and NOM_FogState.red == false)
+        assert(fogMD(G).red == nil)
+        SandboxVars.NevoaEOutroMundo.RedFogChance = 0
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == false)
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 1)
+    end,
+    -- dedicado: siren e fog levam o red; quem entra recebe
+    fog_event_red_mp_broadcast = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].args.red == true)
+        local who = {}
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].player == who and siren[1].args.red == true, "entrou na contagem sem a sirene vermelha")
+        G.seconds(31)
+        local fog = G.commands(G.sentServer, "fog")
+        assert(fog[#fog].args.on == true and fog[#fog].args.red == true)
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        assert(G.sentServer[1].args.red == true and G.sentServer[1].args.on == true)
+    end,
+    -- NOM_Debug.redFog: sem evento, toca a sirene vermelha e abre vermelha; com o
+    -- evento aberto, troca na hora (e avisa); false desfaz
+    fog_event_set_red_starts_red_event = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        assert(NOM_FogEvent.setRed(true))
+        assert(G.played("NOM_SirenRed") == 1, "sem sirene vermelha")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red and fogMD(G).red == true)
+        -- o forçado vale só pra esse evento
+        NOM_FogEvent.stop()
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == false, "forçado vazou pro evento seguinte")
+    end,
+    fog_event_set_red_flips_open_event = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 0 } })
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.red == false)
+        G.sentServer = {}
+        assert(NOM_FogEvent.setRed(true))
+        assert(NOM_World.red and fogMD(G).red == true)
+        local fog = G.commands(G.sentServer, "fog")
+        assert(#fog == 1 and fog[1].args.on == true and fog[1].args.red == true, "não avisou os clientes")
+        G.climate(3)
+        assert(NOM_World.red, "o minuto seguinte desfez")
+        assert(NOM_FogEvent.setRed(false))
+        assert(NOM_World.red == false and fogMD(G).red == false)
+        assert(#G.commands(G.sentServer, "fog") == 2)
+    end,
+    -- durante a contagem: a névoa que vem segue o pedido
+    fog_event_set_red_during_siren = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        G.advance(36)
+        assert(NOM_FogEvent.setRed(true))
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "tocou duas sirenes")
+        G.seconds(31)
+        assert(NOM_World.red == true)
+    end,
+    -- semente do mundo (review): sorteada uma vez com ZombRand, salva no data.fog,
+    -- a mesma depois de recarregar; save antigo sem ela ganha uma no primeiro uso
+    fog_event_world_seed_saved_once = function()
+        local G = setup({ rand = 777777 })
+        local seed = fogMD(G).seed
+        assert(seed == 777777 % 67108859 and seed == math.floor(seed), "semente: " .. tostring(seed))
+        local G2 = setup({ globalMD = G.globalMD, rand = 5 })
+        assert(fogMD(G2).seed == seed, "recarga trocou a semente")
+        local old = { NevoaEOutroMundo = { fog = { night = 4, next = 500 } } }
+        local G3 = setup({ globalMD = old, rand = 99 })
+        assert(old.NevoaEOutroMundo.fog.seed == 99, "save antigo sem semente")
+        assert(old.NevoaEOutroMundo.fog.night == 4)
+    end,
+    -- semente diferente, vermelha diferente: o mesmo período sai vermelho num mundo e não no outro
+    fog_event_red_depends_on_world_seed = function()
+        require "NOM_VariantRules"
+        local c = NOM_VariantRules.config(function(k) return ({ RedFogEnabled = true, RedFogChance = 50 })[k] end)
+        local a, b
+        for s = 1, 100 do
+            if NOM_VariantRules.redFog(1, c, s) and not a then a = s end
+            if not NOM_VariantRules.redFog(1, c, s) and not b then b = s end
+        end
+        assert(a and b, "a semente não muda o período 1")
+        for _, s in ipairs({ a, b }) do
+            local G = setup({ sandbox = { RedFogChance = 50 }, globalMD = { NevoaEOutroMundo = { fog = { seed = s } } } })
+            G.advance(36)
+            G.seconds(31)
+            assert(NOM_World.red == NOM_VariantRules.redFog(1, c, s), "semente " .. s)
+        end
+    end,
 }

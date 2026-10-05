@@ -190,4 +190,16 @@ return {
         G2.clientCommand("NevoaEOutroMundo", "semRostoSeen", p2, { id = 7, x = 97, y = 101, z = 0 })
         assert(#G2.spawned == 0 and z2.teleports == 2)
     end,
+    -- névoa vermelha: o servidor confere o Sem-rosto com a divisão da vermelha
+    fog_server_red_fog_accepts_red_semrosto = function()
+        local G = setup({ server = true, sandbox = { RedFogChance = 100 } })
+        G.setFog(0.9)
+        assert(NOM_World.red == true)
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local sem = G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true, nil, true), onlineID = 7 })
+        G.clientCommand("NevoaEOutroMundo", "semRostoSeen", p, { id = 7, x = 95, y = 100, z = 0 })
+        assert(sem.teleports == 1, "recusou o Sem-rosto da vermelha")
+        local fog = G.commands(G.sentServer, "fog")
+        assert(fog[#fog].args.red == true)
+    end,
 }

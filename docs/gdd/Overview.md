@@ -59,7 +59,7 @@ Só viram escopo por promoção explícita.
 - **2026-10-04** — Visual: clima via Lua como base + spike de shader.
 - **2026-10-04** — Noite sem força e sem dano a mais: o jogo não tem isso por zumbi, e trocar o `ZombieLore.Strength` global a noite inteira vazaria pro save. A noite é velocidade, sentidos e caça ([night.md](night.md#sem-força-e-sem-dano-à-noite)).
 - **2026-10-05** — Todos os monstros, exceto os Ecos, só na névoa; chances 5/2/3/5
-  (Estalador, Corredor, Carpideira da sprint 0010, Sem-rosto). A noite fica com a
+  (Estalador, Corredor, Carpideira da sprint 0011, Sem-rosto). A noite fica com a
   agressividade dos zumbis comuns e os Ecos ([monsters.md](monsters.md#regra-geral)).
 - **2026-10-05** — O Eco só nasce de quem morreu antes do anoitecer: quem morre de
   noite espera o próximo entardecer ([monsters.md](monsters.md#eco)).
@@ -71,3 +71,10 @@ Só viram escopo por promoção explícita.
   2 a 6 horas de jogo (`FogMinHours`, `FogMaxHours`). Névoa natural vanilla não existe:
   o mod é dono do canal de névoa ([world-states.md](world-states.md),
   [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)).
+- **2026-10-05** — **Névoa vermelha** (sprint 0010): a cada evento de névoa,
+  `RedFogChance`% (10) de chance de vir vermelha, sorteada pelo número da névoa (salvar
+  e carregar não muda). Sirene própria (mais grave, distorcida e longa) no lugar da
+  normal, névoa e luz vermelhas, e **todo** zumbi nela é monstro, dividido por igual
+  entre os tipos (o Eco continua Eco) ([monsters.md](monsters.md#regra-geral),
+  [atmosphere.md](atmosphere.md#clima),
+  [ADR-010](../architecture/adr-010-nevoa-vermelha.md)).

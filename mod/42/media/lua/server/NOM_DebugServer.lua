@@ -1,6 +1,6 @@
 -- Comandos de debug, lado do servidor (no solo, o mesmo processo). Só com o jogo
 -- em -debug: força a noite (NOM_World.forced), começa e termina um evento de névoa
--- (NOM_FogEvent), força a variante de um zumbi
+-- (NOM_FogEvent), força a névoa vermelha, força a variante de um zumbi
 -- (NOM_VariantRules.forced), spawna um Eco e imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
 -- A noite forçada vive em memória até o servidor reiniciar, MAS ela e o evento de
@@ -58,6 +58,11 @@ end
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
 -- (grito do Corredor, sumiço do Sem-rosto) e os clientes (quem simula e quem vê)
 -- recebem o mesmo forçado.
+-- Névoa vermelha (sprint 0010): aberta vira na hora; senão, sirene vermelha e evento.
+function ops.redFog(_, a)
+    return "nevoa vermelha=" .. tostring(NOM_FogEvent.setRed(a.value))
+end
+
 function ops.variant(_, a)
     NOM_VariantRules.forced[a.id] = a.kind
     if isServer() then sendServerCommand(MODULE, "debugVariant", { id = a.id, kind = a.kind }) end
@@ -77,6 +82,7 @@ function ops.status()
         nevoa = w.fog,
         noiteN = tostring(NOM_NightCount.current()),
         nevoaN = tostring(NOM_Fog.period()),
+        vermelha = w.red,
         proxima = ev.next and fmt(ev.next) or "-", -- horas de mundo (getWorldAgeHours)
         fim = ev.endAt and fmt(ev.endAt) or "-",
         sirene = ev.sirenMs and math.floor(ev.sirenMs) or "-", -- ms reais até a névoa

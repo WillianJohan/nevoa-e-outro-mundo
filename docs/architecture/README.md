@@ -11,6 +11,7 @@
 | [adr-007-sem-rosto-e-atmosfera-local.md](adr-007-sem-rosto-e-atmosfera-local.md) | Sem-rosto: quem vê avisa, o servidor confere, o dono move; som, chão e tela da névoa só locais |
 | [adr-008-noite-pela-luz-global.md](adr-008-noite-pela-luz-global.md) | A noite escurece pela cor e força da luz global, os canais que o render usa (emenda a ADR-004) |
 | [adr-009-nevoa-evento-do-mod.md](adr-009-nevoa-evento-do-mod.md) | A névoa é um evento do mod (sirene, hora aleatória, 2–6 h) e o mod é dono do canal de névoa |
+| [adr-010-nevoa-vermelha.md](adr-010-nevoa-vermelha.md) | Névoa vermelha: decidida na sirene pelo número do período, salva, espalhada no comando `fog`; todo zumbi variante; luz e cor da névoa vermelhas |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -31,7 +32,7 @@ mod/
     lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor; dono do canal de névoa (ADR-009); log canal a canal em -debug (ADR-008)
     lua/shared/NOM_FogEventRules.lua   intervalo, duração e contagem da sirene do evento de névoa (puro)
     lua/server/NOM_FogEvent.lua     agenda o evento de névoa (ModData global), conta a sirene em tempo real, liga a flag
-    lua/shared/NOM_Siren.lua        toca a sirene no jogador local (solo e cliente)
+    lua/shared/NOM_Siren.lua        toca a sirene (normal ou vermelha) no jogador local (solo e cliente)
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
     lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
     lua/shared/NOM_NightRules.lua   degraus de velocidade/sentidos, perfil, caça (puro)
@@ -39,7 +40,7 @@ mod/
     lua/server/NOM_Players.lua      jogadores do lado do servidor (solo e dedicado)
     lua/server/NOM_Night.lua        decide a noite, caça e lanterna; avisa os clientes
     lua/client/NOM_NightClient.lua  cliente de MP segue a flag e aplica os stats
-    lua/shared/NOM_VariantRules.lua sorteio único das variantes por período de névoa, cooldown do grito (puro)
+    lua/shared/NOM_VariantRules.lua sorteio único das variantes por período de névoa, névoa vermelha e a divisão dela, cooldown do grito (puro)
     lua/shared/NOM_VariantAI.lua    Estalador cego e estalando, Corredor visto (onde o zumbi é simulado)
     lua/server/NOM_NightCount.lua   número e hora de início da noite (ModData global), do Eco
     lua/server/NOM_Variants.lua     decide o grito do Corredor (som + chamado da horda)
@@ -57,7 +58,7 @@ mod/
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens vanilla por GUID)
-    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio, sirene)
+    scripts/NOM_sounds.txt          sons do mod (estalo, grito, drone, metal, rádio, sirene, sirene vermelha)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
@@ -66,7 +67,8 @@ docs/workshop/                      descrições do Workshop (BBCode), preview.p
 ```
 
 Fluxo: `World` deriva a noite do relógio; `FogEvent` agenda a névoa, toca a sirene e
-liga a flag de névoa 30 s reais depois ([ADR-009](adr-009-nevoa-evento-do-mod.md)) →
+liga a flag de névoa 30 s reais depois ([ADR-009](adr-009-nevoa-evento-do-mod.md)),
+decidindo na sirene se ela é vermelha ([ADR-010](adr-010-nevoa-vermelha.md)) →
 `ClimateLook` escurece o clima e escreve a névoa do mod (0 fora do evento), que o jogo sincroniza → `NightCount` conta a noite (e guarda quando ela
 abriu), `Eco` spawna dos corpos de antes dela, `Night` chama os zumbis e avisa os
 clientes → na névoa, `Fog` conta o período e avisa (`FogState`) → quem simula o
@@ -114,7 +116,12 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |
 | Clima, caça, lanterna | 1/min de jogo, servidor | constante / por jogador | — |
 | Evento de névoa | agenda 1/min de jogo; contagem da sirene todo tick, só nos 30 s dela | constante, zero chamada em zumbi | — |
-| Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player` |
+| Avisos de cliente (`corredorSaw`, `semRostoSeen`) | por pedido, limitado por jogador (2 s / 250 ms; o cliente espaça os `semRostoSeen` em 300 ms, e o que ficou de fora vai na varredura seguinte) | uma volta na lista de zumbis (`getOnlineID`) | `variants_rate_limit_per_player`, `semrosto_second_report_waits_rate_not_cooldown` |
+| **Névoa vermelha** (sprint 0010): ninguém é comum, 1/3 de cada tipo | a névoa toda | com N zumbis carregados localmente: **por frame** (`VariantAI`) Estalador 4 chamadas, Corredor 3, Sem-rosto 0 → ~2,3·N; **por varredura do Sem-rosto** (a cada 10 ticks) Sem-rosto 7, os outros 1 → ~3·N (~0,3·N por frame); **estalo** 1/min, ≤ 3 por Estalador; `NightStats` reaplica todo mundo uma vez, nos lotes de 20 por tick de sempre. Com 300 zumbis, ~800 chamadas por frame. Contra a névoa normal (12% variantes): ~0,3·N por frame | `ai_red_fog_budget_per_frame`, `semrosto_scan_budget_red_fog`, `stats_batch_bounded_with_200` |
+
+Ponto de atenção da névoa vermelha: o caminho por frame cresce de ~0,3·N pra ~2,3·N
+chamadas (cada uma barata: getters de campo). Não otimizado de propósito; medir com a
+horda no jogo ([roteiro, parte 3](../teste-in-game.md#parte-3--medições-15-min)).
 
 Ponto de atenção: a varredura do Eco, com `EcoRadius` 40, ainda lê até 6 561
 squares num tick (o raio de um jogador), a cada 10 minutos de jogo. É o maior pico do

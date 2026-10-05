@@ -45,9 +45,9 @@ end
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "fog" then
-        NOM_FogState.set(args.on == true, args.period)
+        NOM_FogState.set(args.on == true, args.period, args.red == true)
     elseif command == "siren" then -- evento de névoa: 30 s reais antes (NOM_FogEvent)
-        NOM_Siren.play()
+        NOM_Siren.play(type(args) == "table" and args.red == true)
     elseif command == "semRostoMove" and args.id ~= -1 then
         moveIfOwner(args)
     end

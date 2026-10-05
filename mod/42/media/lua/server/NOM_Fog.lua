@@ -23,23 +23,25 @@ function NOM_Fog.period()
     return NOM_FogEvent.period()
 end
 
-NOM_World.onChange(function(flag, on)
-    if flag ~= "fog" then return end
-    local period = NOM_Fog.period()
+-- Borda da névoa ou do vermelho (sprint 0010; o red só muda sozinho pelo debug).
+NOM_World.onChange(function(flag)
+    if flag ~= "fog" and flag ~= "red" then return end
+    local on, red, period = NOM_World.fog, NOM_World.red, NOM_Fog.period()
     if isServer() then
-        sendServerCommand(MODULE, "fog", { on = on, period = period })
+        sendServerCommand(MODULE, "fog", { on = on, period = period, red = red })
     else
-        NOM_FogState.set(on, period)
+        NOM_FogState.set(on, period, red)
     end
-    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period))
+    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period) .. " vermelha=" .. tostring(red))
 end)
 
 -- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
 -- durante a contagem, ouve a sirene também (atrasada, mas avisa).
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
-    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period() })
-    if NOM_FogEvent.status().sirenMs then sendServerCommand(player, MODULE, "siren", {}) end
+    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red })
+    local ev = NOM_FogEvent.status()
+    if ev.sirenMs then sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed }) end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------
@@ -98,7 +100,7 @@ end
 -- ataca), chão, cooldown.
 function NOM_Fog.seen(player, z, x, y, zz)
     if not NOM_World.fog or not NOM_Config.get("SemRostoEnabled") then return false end
-    if not NOM_SemRosto.isSemRosto(z, NOM_Fog.period()) then return false end
+    if not NOM_SemRosto.isSemRosto(z, NOM_Fog.period(), nil, NOM_World.red) then return false end
     if not R.validMove(player:getX(), player:getY(), z:getX(), z:getY(), x + 0.5, y + 0.5) then return false end
     if not destinationOk(player, x, y, zz) then return false end
     local now, last = getTimestampMs(), moved[z]
@@ -131,8 +133,9 @@ if not isServer() then
 end
 
 -- O aviso vem do cliente. Cada jogador manda no máximo um a cada RATE_MS reais
--- (procurar o zumbi custa uma volta na lista).
-local RATE_MS = 250
+-- (procurar o zumbi custa uma volta na lista). O cliente espaça os dele um pouco
+-- mais (NOM_SemRostoRules.REPORT_GAP_MS).
+local RATE_MS = R.RATE_MS
 -- ponytail: chave é o objeto do jogador; quem desconecta fica até reiniciar.
 local lastSeen = {}
 

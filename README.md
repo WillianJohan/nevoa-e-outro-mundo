@@ -12,8 +12,10 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
   (de 2 a 6 horas, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
   aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda)
   e o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto.
+- Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
+  é monstro.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0009
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0010
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
@@ -30,6 +32,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
 | Ajustes do 1º teste | noite escura pela luz global, monstros só na névoa (5/2/5), Eco só de quem morreu antes do anoitecer | 0008 |
 | Névoa como evento | sirene 30 s reais antes, hora aleatória a cada ~3 dias, 2–6 h; névoa natural do jogo some | 0009 |
+| Névoa vermelha | 10% das névoas: sirene própria, névoa e luz vermelhas, todo zumbi é monstro (1/3 de cada) | 0010 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 

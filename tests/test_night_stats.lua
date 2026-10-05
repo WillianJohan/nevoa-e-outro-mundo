@@ -741,4 +741,32 @@ return {
         G.converge()
         assert(stranded.md.NOM_night == nil, "zumbi preso na noite depois da hora")
     end,
+    -- névoa vermelha (sprint 0010): todo zumbi vira variante (Estalador/Corredor com
+    -- perfil; Sem-rosto sem perfil), dividido por igual; o Eco nunca
+    stats_red_fog_every_zombie_is_variant = function()
+        local G = setup()
+        local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        local zs = {}
+        for seed = 1, 90 do zs[#zs + 1] = G.spawn({ id = 3 * 65536 + seed }) end
+        local eco = G.spawn({ id = 3 * 65536 + 1, outfit = "NOM_Eco" })
+        NOM_FogState.set(true, 4, true)
+        G.converge()
+        local n = { estalador = 0, corredor = 0, semrosto = 0 }
+        for _, z in ipairs(zs) do
+            local k = z.md.NOM_variant
+            if k == nil then
+                assert(NOM_VariantRules.variant(z.outfitID, 4, c, true) == "semrosto", "zumbi comum na vermelha")
+                k = "semrosto"
+            end
+            n[k] = n[k] + 1
+        end
+        for k, v in pairs(n) do assert(v >= 18 and v <= 42, k .. " " .. v) end
+        assert(eco.md.NOM_variant == nil, "Eco virou variante")
+        -- a vermelha acaba (névoa normal no mesmo período): volta ao sorteio normal
+        NOM_FogState.set(true, 4, false)
+        G.converge()
+        local still = 0
+        for _, z in ipairs(zs) do if z.md.NOM_variant then still = still + 1 end end
+        assert(still < 20, "continuou vermelha: " .. still)
+    end,
 }

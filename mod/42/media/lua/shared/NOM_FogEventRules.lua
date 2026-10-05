@@ -2,7 +2,8 @@
 -- testável com ./run-tests.sh. Quem usa é o server/NOM_FogEvent.lua.
 --
 -- state = { night = número do período, inNight = evento aberto,
---           next = hora de mundo da próxima sirene, endAt = hora de mundo do fim }
+--           next = hora de mundo da próxima sirene, endAt = hora de mundo do fim,
+--           red = névoa vermelha (sprint 0010), só com o evento aberto }
 -- salvo no ModData global (data.fog). night/inNight são as chaves da sprint 0005
 -- (névoa natural): saves antigos continuam com o mesmo número de período.
 NOM_FogEventRules = {}
@@ -45,10 +46,12 @@ function R.update(state, now, cfg, rand)
 end
 
 -- Abre o evento: período novo, fim sorteado. Evento dentro de evento não existe.
-function R.start(state, now, cfg, rand)
+-- red: o que a sirene decidiu (névoa vermelha, sprint 0010).
+function R.start(state, now, cfg, rand, red)
     if state.inNight then return false end
     state.night = (state.night or 0) + 1
     state.inNight = true
+    state.red = red == true
     state.endAt = now + R.durationHours(cfg.minHours, cfg.maxHours, rand())
     state.next = nil
     return true
@@ -58,6 +61,7 @@ end
 function R.stop(state, now, cfg, rand)
     state.inNight = false
     state.endAt = nil
+    state.red = nil
     state.next = now + R.gapHours(cfg.everyDays, rand())
 end
 

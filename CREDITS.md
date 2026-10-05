@@ -23,6 +23,7 @@ Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/ge
 | `mod/42/media/sound/NOM_FogMetal.ogg` | pancada metálica distante (parciais inarmônicos + ecos) | ruídos metálicos da névoa |
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
 | `mod/42/media/sound/NOM_Siren.ogg` | sirene de ataque aéreo, sobe e cai duas vezes (~24 s; rotor de harmônicos ímpares, segundo rotor desafinado, ecos) | aviso do evento de névoa, 30 s reais antes |
+| `mod/42/media/sound/NOM_SirenRed.ogg` | a sirene mais grave (~30%), rasgada e longa (~28 s): rotor com desafinação que oscila, ronco uma oitava abaixo, saturação, chiado filtrado, ecos longos | aviso da névoa vermelha, 30 s reais antes |
 
 Pra regerar: `python3 scripts/gen_sounds.py`. Os sons são declarados em
 `mod/42/media/scripts/NOM_sounds.txt`.

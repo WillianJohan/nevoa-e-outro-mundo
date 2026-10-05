@@ -8,6 +8,13 @@ NOM_SemRostoRules.MIN_DIST = 3      -- nunca reaparece colado no jogador
 NOM_SemRostoRules.ATTACK_DIST = 2
 NOM_SemRostoRules.STEP = 3          -- quanto chega mais perto a cada sumiço
 NOM_SemRostoRules.COOLDOWN_MS = 4000 -- tempo real entre sumiços do mesmo zumbi (sem piscar)
+-- O servidor aceita um semRostoSeen por jogador a cada RATE_MS reais
+-- (server/NOM_Fog.lua); o cliente manda no máximo um a cada REPORT_GAP_MS (com
+-- margem pro atraso da rede), senão o servidor descarta o segundo e aquele
+-- Sem-rosto ficaria mudo o COOLDOWN_MS inteiro. O que não foi tem nova chance na
+-- varredura seguinte.
+NOM_SemRostoRules.RATE_MS = 250
+NOM_SemRostoRules.REPORT_GAP_MS = 300
 NOM_SemRostoRules.REPORT_RANGE = 30 -- até onde o jogador "vê" o Sem-rosto
 NOM_SemRostoRules.STATIC_NEAR = 3   -- rádio no máximo
 NOM_SemRostoRules.STATIC_FAR = 30   -- rádio mudo

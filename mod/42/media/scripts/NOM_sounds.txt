@@ -60,4 +60,13 @@ module Base
             file = media/sound/NOM_Siren.ogg,
         }
     }
+
+    sound NOM_SirenRed
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed.ogg,
+        }
+    }
 }

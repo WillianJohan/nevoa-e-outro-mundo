@@ -389,4 +389,27 @@ return {
         assert(n == 0, "estalo chamou zumbi comum: " .. n)
         assert(#e.sounds == 10, "Estalador não estalou")
     end,
+    -- orçamento da névoa vermelha (review): ninguém é comum. Por frame, sem alvo:
+    -- Estalador 4 chamadas (getModData, isRemoteZombie, isUseless, getTarget), Corredor
+    -- 3 (getModData, isRemoteZombie, getTarget); o Sem-rosto não tem IA aqui (0)
+    ai_red_fog_budget_per_frame = function()
+        local G = setup()
+        NOM_FogState.set(true, 1, true)
+        local kinds = { "estalador", "corredor", false }
+        local by = { estalador = {}, corredor = {}, none = {} }
+        for i = 1, 300 do
+            local k = kinds[i % 3 + 1]
+            local z = G.zombie({ x = 100 + i, y = 100, variant = k or nil })
+            table.insert(by[k or "none"], z)
+        end
+        G.frame(10)
+        local function sum(list) local n = 0 for _, z in ipairs(list) do n = n + z.calls end return n end
+        assert(sum(by.estalador) <= 100 * 10 * 4, "Estalador: " .. sum(by.estalador))
+        assert(sum(by.corredor) <= 100 * 10 * 3, "Corredor: " .. sum(by.corredor))
+        assert(sum(by.none) == 0, "Sem-rosto/comum: " .. sum(by.none))
+        -- estalo: 1/min, só nos Estaladores, ≤ 3 chamadas cada (getModData, isDead, playSoundLocal)
+        for _, z in ipairs(G.zombies) do z.calls = 0 end
+        G.minutes(1)
+        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0)
+    end,
 }

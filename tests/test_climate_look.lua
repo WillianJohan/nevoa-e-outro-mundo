@@ -100,6 +100,41 @@ local function setup(opts)
         self.final = newColorInfo(self.internal.ext, self.internal.int)
     end
 
+    -- COLOR_NEW_FOG (id 1): a cor que o ImprovedFog desenha (update 132–174). O
+    -- interno nasce 0.9/0.9/0.95/1 (setup() 324–361) e o jogo NUNCA volta ele: o
+    -- updateValues não escreve, então reset() não existe aqui. O calculate é o mesmo
+    -- da luz (modded no próprio interno), com o override por cima (calculate 61–97),
+    -- que a tempestade liga todo minuto (WeatherPeriod.updateCurrentStage 909–957).
+    local FOG_VANILLA = { 0.9, 0.9, 0.95, 1 }
+    local fogColor = { internal = newColorInfo(FOG_VANILLA, FOG_VANILLA), modded = newColorInfo(FOG_VANILLA, FOG_VANILLA),
+        interp = 0, isModded = false, isOverride = false, overrideInterp = 0 }
+    fogColor.final = newColorInfo(FOG_VANILLA, FOG_VANILLA)
+    function fogColor:getInternalValue() return self.internal end
+    function fogColor:getFinalValue() return self.final end
+    function fogColor:setEnableModded(on) self.isModded = on; calls[#calls + 1] = "fogColor" .. (on and ":on" or ":off") end
+    function fogColor:setModdedValue(info) self.modded = newColorInfo(info.ext, info.int) end
+    function fogColor:setModdedInterpolate(w) self.interp = w end
+    function fogColor:isEnableOverride() return self.isOverride end
+    function fogColor:setEnableOverride(on) self.isOverride = on; calls[#calls + 1] = "fogColor:override=" .. tostring(on) end
+    function fogColor:gameSetOverride(rgba, t)
+        self.override, self.overrideInterp, self.isOverride = newColorInfo(rgba, rgba), t, true
+    end
+    function fogColor:calculate()
+        if self.isModded and self.interp > 0 then
+            for _, k in ipairs({ "ext", "int" }) do
+                for i = 1, 4 do self.internal[k][i] = lerp(self.interp, self.internal[k][i], self.modded[k][i]) end
+            end
+        end
+        local out = newColorInfo(self.internal.ext, self.internal.int)
+        if self.isOverride and self.overrideInterp > 0 then
+            for _, k in ipairs({ "ext", "int" }) do
+                for i = 1, 4 do out[k][i] = lerp(self.overrideInterp, self.internal[k][i], self.override[k][i]) end
+            end
+        end
+        self.final = out
+    end
+    local colors = { [0] = color, [1] = fogColor }
+
     ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_FOG_INTENSITY = 5,
         FLOAT_AMBIENT = 9, COLOR_GLOBAL_LIGHT = 0 }
     ClimateColorInfo = {
@@ -119,7 +154,7 @@ local function setup(opts)
         getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end,
         getFogIntensity = function() return floats[5].final end,
         getClimateFloat = function(_, id) return floats[id] end,
-        getClimateColor = function() return color end,
+        getClimateColor = function(_, id) return colors[id] end,
     }
     getClimateManager = function() return clim end
 
@@ -128,7 +163,7 @@ local function setup(opts)
     dofile(LOOK_FILE)
 
     local K = opts.K or 10
-    local env = { calls = calls, world = world, floats = floats, color = color, minutes = 0 }
+    local env = { calls = calls, world = world, floats = floats, color = color, fogColor = fogColor, minutes = 0 }
     -- updateSandboxOverrides (bytecode 471–675): fogOverride = 4 com nevasca eterna
     -- (ClimateCycle 6) e FogCycle ≠ 2, senão o FogCycle; só na TROCA liga/desliga o
     -- override de valor ("sem névoa" põe 0); névoa eterna (≥ 3) sorteia de hora em hora.
@@ -153,11 +188,13 @@ local function setup(opts)
                 color:reset()
                 sandboxOverrides()
                 if env.weather then floats[5]:gameSetOverride(env.weather.fog, env.weather.t) end
+                if env.storm then fogColor:gameSetOverride(env.storm, 0.8) end
                 for _, h in ipairs(handlers.climate) do h(clim) end
                 env.minutes = env.minutes + 1
             end
             for _, f in pairs(floats) do f:calculate() end
             color:calculate()
+            fogColor:calculate()
             for _, h in ipairs(handlers.tick) do h() end
         end
     end
@@ -184,6 +221,12 @@ local function notFog(calls)
 end
 
 local DENSITY = NOM_FogEventRules.DENSITY
+
+local function sameColor(a, b)
+    for i = 1, 4 do if not near(a[i], b[i]) then return false end end
+    return true
+end
+local function fmtColor(c) return string.format("%.3f,%.3f,%.3f,%.3f", c[1], c[2], c[3], c[4]) end
 
 local function nightWeight(ch, intensity)
     return NOM_Rules.mix(1, 0, intensity or 1)[ch].weight
@@ -294,6 +337,9 @@ return {
             local tint
             for _, l in ipairs(lines) do if l:find("[NOM] clima tint", 1, true) then tint = l end end
             assert(tint:find("vanilla=0.33,0.33,0.33,0.80", 1, true) and tint:find("luz=", 1, true), "linha do tint: " .. tint)
+            local cor
+            for _, l in ipairs(lines) do if l:find("[NOM] clima corNevoa", 1, true) then cor = l end end
+            assert(cor and cor:find("final=0.90,0.90,0.95,1.00", 1, true), "linha da cor da névoa: " .. tostring(cor))
         end)
         print = orig
         assert(ok, err)
@@ -388,5 +434,102 @@ return {
         NOM_World.setFog(true)
         env.run(25)
         assert(env.floats[5].final == 0.3)
+    end,
+    -- névoa vermelha (sprint 0010): luz puxada pro LOOKS.redFog e névoa pintada de
+    -- vermelho, valor absoluto, sem acumular por mais frames que rodem
+    look_red_fog_tints_without_compounding = function()
+        for _, K in ipairs({ 1, 10, 150 }) do
+            local env = setup({ tod = 12, K = K })
+            NOM_World.setFog(true, true)
+            env.run(40)
+            local look = NOM_Rules.mix(0, 1, 1, 1)
+            local t, w = look.tint.value, look.tint.weight
+            assert(near(env.color.final.ext[1], 0.33 + (t[1] - 0.33) * w), "K=" .. K .. " luz vermelha composta")
+            assert(near(env.color.final.ext[2], 0.33 + (t[2] - 0.33) * w))
+            assert(env.color.final.ext[1] > env.color.final.ext[2] + 0.1, "luz não ficou vermelha")
+            assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "K=" .. K .. " névoa " .. fmtColor(env.fogColor.final.ext))
+            assert(sameColor(env.fogColor.final.int, NOM_Rules.RED_FOG_COLOR), "interior da névoa")
+            env.run(30)
+            assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "K=" .. K .. " névoa composta")
+        end
+    end,
+    -- a cor da névoa entra e sai em rampa de 20 minutos de jogo, como a densidade
+    look_red_fog_color_ramps = function()
+        local env = setup({ tod = 12, K = 10 })
+        NOM_World.setFog(true, true)
+        env.run(10)
+        local mid = env.fogColor.final.ext
+        assert(mid[2] < 0.9 - 1e-3 and mid[2] > NOM_Rules.RED_FOG_COLOR[2] + 1e-3, "sem rampa: " .. fmtColor(mid))
+    end,
+    -- o interno da cor da névoa não volta sozinho: ao fim o mod escreve o vanilla e
+    -- só depois desliga a camada; o próximo evento normal vem branco
+    look_red_fog_color_restored_after = function()
+        local env = setup({ tod = 12, K = 10 })
+        NOM_World.setFog(true, true)
+        env.run(40)
+        NOM_World.setFog(false)
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.FOG_COLOR), "ficou vermelha: " .. fmtColor(env.fogColor.final.ext))
+        assert(sameColor(env.fogColor.internal.ext, NOM_Rules.FOG_COLOR), "interno sujo")
+        assert(env.fogColor.isModded == false, "camada da cor ficou ligada")
+        assert(count(env.calls, "fogColor:on") == 1 and count(env.calls, "fogColor:off") == 1)
+        NOM_World.setFog(true)
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.FOG_COLOR), "névoa normal vermelha")
+    end,
+    -- tempestade com névoa religa o override da cor todo minuto: na vermelha, o mod
+    -- desliga; fora dela, a tempestade pinta como sempre
+    look_red_fog_color_wins_storm_override = function()
+        local storm = { 0.5, 0.45, 0.4, 1 }
+        local env = setup({ tod = 12, K = 10 })
+        env.storm = storm
+        NOM_World.setFog(true, true)
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "tempestade venceu: " .. fmtColor(env.fogColor.final.ext))
+        NOM_World.setFog(true, false)
+        env.run(40)
+        assert(not sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "vermelho depois do fim")
+        assert(env.fogColor.final.ext[2] > env.fogColor.final.ext[1] - 0.2, "resto de vermelho")
+    end,
+    -- névoa normal e dia sem evento: a cor da névoa nunca é tocada
+    look_normal_fog_touches_no_fog_color = function()
+        local env = setup({ tod = 12, K = 10 })
+        env.run(10)
+        NOM_World.setFog(true)
+        env.run(40)
+        NOM_World.setFog(false)
+        env.run(40)
+        for _, c in ipairs(env.calls) do assert(c:sub(1, 8) ~= "fogColor", "mexeu na cor: " .. c) end
+    end,
+    -- a cor da névoa é do evento (como a densidade): vale com o look desligado
+    look_red_fog_color_without_dark = function()
+        local env = setup({ tod = 12, K = 10, sandbox = { DarkEnabled = false } })
+        NOM_World.setFog(true, true)
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR))
+        assert(near(env.color.final.ext[1], 0.33), "luz pintada com o look desligado")
+    end,
+    -- review: a vermelha que começa na tempestade sai da cor que estava na tela (a do
+    -- override), não pula pra branca vanilla no primeiro minuto
+    look_red_fog_color_starts_from_storm_tint = function()
+        local storm = { 0.5, 0.45, 0.4, 1 }
+        local env = setup({ tod = 12, K = 10 })
+        env.storm = storm
+        NOM_World.setFog(true)
+        env.run(5)
+        local before = { unpack(env.fogColor.final.ext) }
+        NOM_World.setFog(true, true)
+        env.run(1)
+        local after = env.fogColor.final.ext
+        for i = 1, 3 do
+            assert(math.abs(after[i] - before[i]) < 0.06, "pulou no 1º minuto: " .. fmtColor(before) .. " → " .. fmtColor(after))
+        end
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR))
+        -- e sem tempestade continua saindo da vanilla
+        local env2 = setup({ tod = 12, K = 10 })
+        NOM_World.setFog(true, true)
+        env2.run(1)
+        assert(math.abs(env2.fogColor.final.ext[1] - 0.9) < 0.06)
     end,
 }

@@ -24,7 +24,7 @@ local function isCorredor(z)
     if z:isDead() then return false end
     if z:getModData().NOM_eco or z:getOutfitName() == ECO_OUTFIT then return false end
     local cfg = NOM_VariantRules.config(NOM_Config.get)
-    return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg) == "corredor"
+    return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg, NOM_World.red) == "corredor"
 end
 
 -- Som: no dedicado sendPlaySound manda aos clientes perto (FishingNet.lua:86;

@@ -189,7 +189,7 @@ function W.new(opts)
     getTimestampMs = function() return G.now end
     -- GameTime.isGamePaused: solo = velocidade 0; dedicado = vazio com PauseEmpty
     isGamePaused = function() return G.paused == true end
-    G.rand = 0
+    G.rand = opts.rand or 0
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end
@@ -267,8 +267,9 @@ end
 
 -- persistentOutfitID no formato do jogo; acha um ID que é Sem-rosto no período
 -- (want true) ou zumbi comum, sem variante nenhuma (want false), com o sandbox
--- padrão (a chance do Sem-rosto pode ser trocada).
-function W.semRostoID(period, want, chance)
+-- padrão (a chance do Sem-rosto pode ser trocada). redOnly: Sem-rosto só na névoa
+-- vermelha (comum na névoa normal).
+function W.semRostoID(period, want, chance, redOnly)
     require "NOM_VariantRules"
     require "NOM_Config"
     local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
@@ -276,7 +277,11 @@ function W.semRostoID(period, want, chance)
     for seed = 1, 500 do
         local id = 7 * 65536 + seed
         local v = NOM_VariantRules.variant(id, period, c)
-        if (want and v == "semrosto") or (not want and v == nil) then return id end
+        if redOnly then
+            if v == nil and NOM_VariantRules.variant(id, period, c, true) == "semrosto" then return id end
+        elseif (want and v == "semrosto") or (not want and v == nil) then
+            return id
+        end
     end
     error("nenhum ID")
 end

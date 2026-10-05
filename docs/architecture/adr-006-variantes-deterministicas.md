@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-04 |
 | Substitui | o mecanismo da [ADR-001](adr-001-variantes-por-moddata.md) (`NOM_variant`/`NOM_orig`/`NOM_rolledAt` no `modData`) |
-| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes |
+| Emenda | 2026-10-05 (sprint 0008): o período é o da **névoa**, não o da noite; um sorteio só pra todas as variantes. 2026-10-05 (sprint 0010): na névoa vermelha todo zumbi é variante, por igual ([ADR-010](adr-010-nevoa-vermelha.md)) |
 
 > **Emenda de 2026-10-05.** Decisão do Johan: todo monstro, menos o Eco, só existe na
 > névoa. A entrada do sorteio passou a ser o **número do período de névoa**
