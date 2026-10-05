@@ -174,8 +174,8 @@ void main()
 
     // distorção: faixas de 3 px que escorregam com o chiado; onda lenta na névoa
     float band = floor(gl_FragCoord.y / 3.0);
-    float slip = (nomHash(vec2(band, frame)) - 0.5) * step(0.86, nomHash(vec2(band * 0.37, floor(frame * 0.5))));
-    uv.x += slip * 0.012 * hiss + sin(uv.y * 23.0 + clock * 1.7) * 0.0012 * fog;
+    float slip = (nomHash(vec2(band, frame)) - 0.5) * step(0.93, nomHash(vec2(band * 0.37, floor(frame * 0.5))));
+    uv.x += slip * 0.006 * hiss + sin(uv.y * 23.0 + clock * 1.7) * 0.0012 * fog;
 
     // bêbado: a cena balança devagar, mais forte com o zoom de perto
     if (0.0 < DrunkFactor) {
@@ -236,7 +236,7 @@ void main()
 
     col = nomPunch(nomGrey(clamp(col, 0.0, 1.0), 0.1), 1.2);
     float shade = 1.0 - clamp(dot(col, NOM_REC709), 0.0, 1.0);
-    col += grain * (0.0015 + 0.09 * min(fog, 1.0) + 0.05 * min(hiss, 1.0)) * (0.4 + shade * shade);
+    col += grain * (0.0015 + 0.06 * min(fog, 1.0) + 0.03 * min(hiss, 1.0)) * (0.4 + shade * shade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
