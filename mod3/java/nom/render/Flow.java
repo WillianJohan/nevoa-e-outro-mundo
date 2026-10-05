@@ -54,6 +54,7 @@ final class Flow {
         grid.outdoorRefill = 0f;
         grid.stillDecay = 0.08f;
         grid.doorPuff = 0.35f;
+        grid.vorticity = 0.8f;          // acima de ~1,2 o redemoinho fecha o vácuo atrás do prédio
     }
     private static final Wind gusts = new Wind((int) System.nanoTime() ^ 0x5bd1e995);
     static final float CALM_X = 0.35f, CALM_Y = 0.15f;   // tiles/s, com a simulação desligada

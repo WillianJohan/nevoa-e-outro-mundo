@@ -45,6 +45,7 @@ public final class FlowGrid {
     public boolean inertia;             // a velocidade é levada por ela mesma: esteira e redemoinho
     public float stillDecay;            // 1/s: fora, onde o ar para (atrás de prédio), a névoa se desfaz
     public float doorPuff;              // fração da diferença que uma porta que abre sopra pra dentro
+    public float vorticity;             // reforço de redemoinho (sprint 0029): a esteira enrola em ondas
 
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
     private final float[] d, dn, div, invSum, p;
@@ -57,6 +58,7 @@ public final class FlowGrid {
     private final byte[] tmpB;
     private final float[] edgeW, edgeE, edgeN, edgeS;  // densidade logo fora da grade, por linha / coluna
     private final float[] u2, v2;
+    private final float[] curlCorner, curlCell, forceX, forceY;
     private final int[] doors = new int[64];           // faces que abriram: f = face u, ~f = face v
     private int doorCount;
     private boolean facesDirty = true;
@@ -89,6 +91,10 @@ public final class FlowGrid {
         edgeS = new float[n];
         u2 = new float[nu * n];
         v2 = new float[n * nu];
+        curlCorner = new float[nu * nu];
+        curlCell = new float[n * n];
+        forceX = new float[n * n];
+        forceY = new float[n * n];
         reset(0, 0);
     }
 
@@ -323,6 +329,7 @@ public final class FlowGrid {
         refreshEdges();
         puffDoors();
         if (inertia) advectVelocity(dt);
+        if (vorticity > 0f) confine(dt);
         float k = 1f - (float) Math.exp(-windRelax * dt);
         for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * wu[f];
         for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * wv[f];
@@ -385,6 +392,45 @@ public final class FlowGrid {
             }
         System.arraycopy(u2, 0, u, 0, u.length);
         System.arraycopy(v2, 0, v, 0, v.length);
+    }
+
+    /**
+     * Reforço de redemoinho (vorticity confinement): empurra o ar em volta de cada giro no sentido
+     * dele, devolvendo o que a grade grossa e a volta pro vento apagam. Atrás e nas quinas do
+     * prédio a esteira enrola e solta ondas, em vez de passar lisa.
+     */
+    private void confine(float dt) {
+        for (int j = 1; j < n; j++)
+            for (int i = 1; i < n; i++)
+                curlCorner[j * nu + i] = (v[j * n + i] - v[j * n + i - 1]) - (u[j * nu + i] - u[(j - 1) * nu + i]);
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i, k = j * nu + i;
+                curlCell[c] = (flags[c] & F_SOLID) != 0 ? 0f
+                        : 0.25f * (curlCorner[k] + curlCorner[k + 1] + curlCorner[k + nu] + curlCorner[k + nu + 1]);
+            }
+        Arrays.fill(forceX, 0f);
+        Arrays.fill(forceY, 0f);
+        for (int j = 1; j < n - 1; j++)
+            for (int i = 1; i < n - 1; i++) {
+                int c = j * n + i;
+                float gx = 0.5f * (Math.abs(curlCell[c + 1]) - Math.abs(curlCell[c - 1]));
+                float gy = 0.5f * (Math.abs(curlCell[c + n]) - Math.abs(curlCell[c - n]));
+                float len = (float) Math.sqrt(gx * gx + gy * gy) + 1e-5f;
+                float w = curlCell[c] * vorticity / len;
+                forceX[c] = gy * w;
+                forceY[c] = -gx * w;
+            }
+        for (int j = 0; j < n; j++)
+            for (int i = 1; i < n; i++) {
+                int f = j * nu + i, c = j * n + i;
+                u[f] += dt * 0.5f * (forceX[c - 1] + forceX[c]) * wu[f];
+            }
+        for (int j = 1; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                v[f] += dt * 0.5f * (forceY[f - n] + forceY[f]) * wv[f];
+            }
     }
 
     /** v nas quatro faces em volta da face oeste da célula (i, j). */

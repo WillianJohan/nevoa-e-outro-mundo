@@ -23,6 +23,8 @@ public class FlowTravelTest {
         run("deslocamento dos bancos é o vento acumulado", FlowTravelTest::banksOffsetIsWindIntegral);
         run("vento é contínuo e fica na faixa", FlowTravelTest::windSmoothAndBounded);
         run("vento não se repete (sem ritmo fixo)", FlowTravelTest::windNotPeriodic);
+        run("reforço de redemoinho enrola a esteira do prédio", FlowTravelTest::vorticityCurlsWake);
+        run("reforço de redemoinho não explode e mantém o vácuo", FlowTravelTest::vorticityStable);
         System.out.println("mod3 névoa viajante: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
     }
@@ -221,6 +223,7 @@ public class FlowTravelTest {
     static void travelCost() {
         FlowGrid g = travel(128, new FogBanks(9, 0.7f, 22f));
         g.doorPuff = 0.35f;
+        g.vorticity = 0.8f;
         g.windX = 1.4f; g.windY = 0.5f;
         Random r = new Random(5);
         for (int k = 0; k < 40; k++) {
@@ -292,6 +295,52 @@ public class FlowTravelTest {
             if (c > worst) { worst = c; worstLag = lag; }
         }
         check(worst < 0.8, "repete com " + worstLag * 0.25f + " s (correlação " + worst + ")");
+    }
+
+    /** Prédio no meio do vento, um pouco de lado pra esteira não ficar simétrica. */
+    static FlowGrid windyBlock(float vorticity) {
+        FlowGrid g = travel(64, null);
+        g.vorticity = vorticity;
+        g.windX = 1.5f;
+        g.windY = 0.12f;
+        for (int j = 28; j < 36; j++) for (int i = 24; i < 32; i++) g.setCell(i, j, FlowGrid.F_SOLID);
+        return g;
+    }
+
+    /** Soma de |rotacional| nos cantos das células da esteira (atrás do prédio). */
+    static double wakeSwirl(FlowGrid g) {
+        double s = 0;
+        for (int j = 20; j <= 44; j++)
+            for (int i = 33; i <= 60; i++)
+                s += Math.abs((g.faceV(i, j) - g.faceV(i - 1, j)) - (g.faceU(i, j) - g.faceU(i, j - 1)));
+        return s;
+    }
+
+    static void vorticityCurlsWake() {
+        FlowGrid plain = windyBlock(0f), curled = windyBlock(0.8f);
+        double a = 0, b = 0;
+        for (int s = 0; s < 600; s++) {
+            plain.step(DT);
+            curled.step(DT);
+            if (s >= 400) { a += wakeSwirl(plain); b += wakeSwirl(curled); }
+        }
+        check(b > 1.3 * a, "a esteira não enrolou: sem " + a + ", com " + b);
+    }
+
+    static void vorticityStable() {
+        FlowGrid g = windyBlock(0.8f);
+        float maxV = 0f;
+        for (int s = 0; s < 2000; s++) g.step(DT);  // 100 s
+        for (int j = 0; j < 64; j++)
+            for (int i = 0; i < 64; i++) {
+                float x = Math.abs(g.faceU(i, j)) + Math.abs(g.faceV(i, j));
+                check(!Float.isNaN(x) && !Float.isNaN(g.density(i, j)), "NaN em " + i + "," + j);
+                maxV = Math.max(maxV, x);
+            }
+        check(maxV < 8f, "velocidade disparou: " + maxV);
+        float behind = g.density(34, 31), up = g.density(16, 31);
+        check(behind < 0.7f, "o redemoinho apagou o vácuo atrás do prédio: " + behind);
+        check(up > 0.85f, "a frente do prédio esvaziou: " + up);
     }
 
     static double corr(float[] a, int lag) {
