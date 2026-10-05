@@ -81,12 +81,19 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
   dono. O servidor não roda o `VariantAI`.
 - **Useless herdado** (review): o useless viaja no pacote e o `resetForReuse` não o
   limpa. Quem recebe a posse de um zumbi useless que não parou solta: a furiosa no
-  `hold` (como o Estalador herdado), e qualquer zumbi local (não remoto, fora de
-  `still` e da cegueira do Estalador, sem outfit "Useless") na passada do `NightStats`
+  `hold` (como o Estalador herdado), e na passada do `NightStats`
   (`NOM_NightStats.unstick`, 2 chamadas por zumbi da passada, nos lotes de 20 por tick)
-  e no `OnZombieCreate`. De dia a passada roda na borda da névoa e de hora em hora: um
-  zumbi herdado parado pode esperar até uma hora de jogo. O `letGo` e o `unstick`
-  derrubam também o useless do tutorial e do menu de debug (não dá pra distinguir).
+  e no `OnZombieCreate` o zumbi local (não remoto, fora de `still` e da cegueira do
+  Estalador, sem outfit "Useless") **que o mod pode ter parado**: o ID dele sorteia
+  Carpideira ou Estalador no período de névoa atual ou no anterior, normal ou vermelha
+  (a cor de um período passado não é guardada: as duas contam). Zumbi do tutorial
+  (`client/Tutorial/Steps.lua:847, 1107`) ou de outro mod que nunca foi variante fica; no
+  modo tutorial (`getCore():getGameMode() == "Tutorial"`) nada é solto.
+- **De dia a liberação pode esperar até 1 hora de jogo:** o `NightStats` dorme depois de
+  uma passada limpa e só acorda na borda da névoa ou de hora em hora (`EveryHours`).
+- O useless que o menu de debug liga numa ex-variante (Carpideira ou Estalador no período
+  atual ou no anterior) volta a falso na passada seguinte; o `letGo` também derruba o
+  useless do tutorial ou do debug numa Carpideira que este processo parou.
 - Uma caminhada em andamento quando ela vira Carpideira segue até a última posição vista
   (`WalkTowardState`, como no Estalador): ela pode dar alguns passos antes de parar.
 - Zumbis com o mesmo `persistentOutfitID` são a mesma Carpideira: o grito de uma deixa as

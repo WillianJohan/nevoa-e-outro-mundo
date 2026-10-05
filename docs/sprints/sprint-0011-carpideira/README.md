@@ -45,6 +45,8 @@ quando vem horda no Back 4 Blood". Inspirado, não copiado. Decisões:
       `ai_carpideira_inherited_after_fog_is_released`, `ai_carpideira_inherited_after_scream_is_released`,
       `stats_pass_offers_every_zombie_to_unstick` (useless herdado pela rede é solto: fim da
       névoa, depois do grito, reaproveitamento; o do jogo, o remoto e o deste processo ficam),
+      `ai_unstick_leaves_foreign_useless`, `ai_unstick_releases_previous_period_carpideira`,
+      `ai_unstick_does_nothing_in_tutorial` (só solta quem o mod pode ter parado),
       `ai_carpideira_released_when_fog_ends`; alavanca `setUseless` por bytecode
       (pz-api-notes §3.2, §13.2). **Falta o jogo:** roteiro passo 2.
 - [ ] Soluço audível perto, local, em quem a tem carregada — **por código:**
@@ -91,7 +93,7 @@ quando vem horda no Back 4 Blood". Inspirado, não copiado. Decisões:
 - [x] Sons originais procedurais — `scripts/gen_sounds.py` (`sob`, `wail`; os sons antigos
       saem byte a byte iguais), `CREDITS.md`, `credits_*`, `config_sound_scripts_point_to_files`.
 
-`./run-tests.sh`: `total=426 passou=426 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=429 passou=429 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -174,8 +176,10 @@ só carrega ao recarregar o save. Pra achar Carpideiras rápido: sandbox `Carpid
   que recebeu: parada se o dono saiu com ela calma, até alguém virar dono (e a passada do
   `NightStats` soltar, se a névoa já acabou); andando se nunca teve dono.
 - Zumbi herdado useless de dia espera a passada de conferência (borda da névoa ou de hora
-  em hora) pra ser solto: até uma hora de jogo parado. O `letGo`/`unstick` derrubam também
-  o useless do tutorial e do menu de debug.
+  em hora) pra ser solto: até uma hora de jogo parado. O `unstick` só solta quem foi
+  Carpideira ou Estalador na névoa atual ou na anterior (o tutorial e outros mods ficam;
+  no modo tutorial, nada). O useless do menu de debug numa ex-variante volta na passada
+  seguinte; o `letGo` derruba o do tutorial ou do debug numa Carpideira parada pelo mod.
 - Ao virar Carpideira com uma caminhada em andamento, ela segue até a última posição vista
   antes de parar (`WalkTowardState`).
 - Lanterna aproximada: com a lanterna acesa na mão, ela vista por outra luz também acorda.

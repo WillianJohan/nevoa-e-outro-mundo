@@ -61,7 +61,7 @@ end
 -- outras cópias e a quem herdar a posse.
 function C.hold(z, md)
     if C.still[z] then
-        if md.NOM_furia == NOM_FogState.period then C.letGo(z) end
+        if md.NOM_furia ~= nil and md.NOM_furia == NOM_FogState.period then C.letGo(z) end
         return
     end
     if C.furious(z, md) then

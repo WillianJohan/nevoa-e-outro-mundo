@@ -8,6 +8,8 @@
 require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_Carpideira"
+require "NOM_VariantRules"
+require "NOM_Config"
 
 NOM_VariantAI = {}
 
@@ -115,12 +117,33 @@ end
 -- resetForReuse não o limpa. Se o dono que parou a Carpideira (ou cegou o Estalador)
 -- perde a posse, a névoa acaba ou o objeto é reaproveitado, o novo dono fica com um
 -- zumbi useless que nada aqui marcou, e o onUpdate sai cedo (kind, blind e still nil).
--- Solta o useless de zumbi local que este processo não ligou, salvo o do próprio
--- jogo (outfit "Useless"); o do tutorial e do menu de debug cai junto (não dá pra
--- distinguir). Chamado pela passada do NOM_NightStats e no OnZombieCreate.
+-- Solta o useless de zumbi local que este processo não ligou, mas só de quem o mod
+-- pode ter deixado useless: Carpideira ou Estalador no período de névoa atual ou no
+-- anterior (o sorteio é determinístico, ADR-006), normal ou vermelha (a cor de um
+-- período passado não é guardada: as duas contam). Fica: o do próprio jogo (outfit
+-- "Useless"), o do tutorial (client/Tutorial/Steps.lua:847, 1107; e nada no modo
+-- tutorial, getCore():getGameMode() == "Tutorial", shared/TimedActions/
+-- ISGrabCorpseAction.lua:140) e o de outro mod num zumbi que nunca foi variante. O
+-- useless do menu de debug numa ex-variante cai na passada seguinte.
+-- Chamado pela passada do NOM_NightStats e no OnZombieCreate.
+local HELD = { carpideira = true, estalador = true }
+
+local function heldByMod(id)
+    local period = NOM_FogState.period
+    if not period then return false end
+    local cfg = NOM_VariantRules.config(NOM_Config.get)
+    for n = period - 1, period do
+        if HELD[NOM_VariantRules.variant(id, n, cfg) or ""] or HELD[NOM_VariantRules.variant(id, n, cfg, true) or ""] then
+            return true
+        end
+    end
+    return false
+end
+
 local function unstick(z)
-    if blinded[z] or NOM_Carpideira.still[z] or z:isRemoteZombie() then return end
-    if z:isUseless() and not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
+    if blinded[z] or NOM_Carpideira.still[z] or z:isRemoteZombie() or not z:isUseless() then return end
+    if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
+    if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
 end
 
 -- Objeto reaproveitado pra outro zumbi (resetForReuse → OnZombieCreate) não

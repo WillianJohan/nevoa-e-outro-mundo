@@ -23,6 +23,30 @@ require "NOM_VariantRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_VariantAI.lua"
 
+-- persistentOutfitID (formato do jogo) que, com o sandbox padrão, é `want` no período
+-- (sorteio normal); want nil = nada que o mod deixa useless (nem Carpideira nem
+-- Estalador) nos períodos dados, normal ou vermelha
+local function idFor(want, period, avoid)
+    require "NOM_Config"
+    local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+    local still = { carpideira = true, estalador = true }
+    for seed = 1, 3000 do
+        local id = 11 * 65536 + seed
+        if want then
+            if NOM_VariantRules.variant(id, period, c) == want then return id end
+        else
+            local ok = true
+            for _, n in ipairs(avoid) do
+                for _, red in ipairs({ false, true }) do
+                    if still[NOM_VariantRules.variant(id, n, c, red) or ""] then ok = false end
+                end
+            end
+            if ok then return id end
+        end
+    end
+    error("nenhum ID")
+end
+
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = {}, players = {}, reports = {}, rand = opts.rand or 0 }
@@ -132,6 +156,8 @@ local function setup(opts)
     instanceof = function(o, cls) return o.class == cls end
     ZombRand = function(n) return G.rand % n end
     isClient = function() return opts.client == true end
+    -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
+    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
     isServer = function() return false end
     getDebug = function() return false end
     SandboxVars = {}
@@ -485,7 +511,8 @@ return {
     -- onUpdate sai cedo. A passada do NightStats (unstick) solta.
     ai_carpideira_inherited_after_fog_is_released = function()
         local G = setup({ fog = false })
-        local z = G.zombie({ x = 0, y = 0, useless = true }) -- comum de novo, herdada parada
+        -- foi Carpideira na névoa que acabou (período 1); comum de novo, herdada parada
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
         local p = G.player({ x = 6, y = 0 })
         G.frame(5)
         assert(z.useless, "o fake não modela o useless herdado")
@@ -494,13 +521,13 @@ return {
         assert(not z.useless and p.bitten > 0, "ficou parada pra sempre depois da névoa")
         -- reaproveitado com o useless herdado (resetForReuse não limpa)
         local G2 = setup({ fog = false })
-        local z2 = G2.zombie({ x = 0, y = 0, useless = true })
+        local z2 = G2.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
         G2.reuse(z2)
         assert(not z2.useless, "reaproveitado nasceu parado")
         -- remoto, Useless do jogo (outfit de debug) e parada pelo próprio mod: não mexe
         local G3 = setup()
-        local r = G3.zombie({ x = 0, y = 0, useless = true, remote = true })
-        local dbg = G3.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless" })
+        local r = G3.zombie({ x = 0, y = 0, useless = true, remote = true, id = idFor("carpideira", 1) })
+        local dbg = G3.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor("carpideira", 1) })
         local mine = G3.zombie({ x = 0, y = 9, variant = "carpideira" })
         G3.frame(2)
         for _, z3 in ipairs({ r, dbg, mine }) do NOM_NightStats.unstick(z3) end
@@ -533,5 +560,42 @@ return {
         local p = G.player({ x = 6, y = 0 })
         G.frame(30)
         assert(not z.useless and p.bitten > 0, "furiosa recarregada ficou parada")
+    end,
+    -- verificação da review: o unstick só solta quem o mod pode ter deixado useless
+    -- (Carpideira ou Estalador no período atual ou no anterior, normal ou vermelha).
+    -- Zumbi do tutorial (client/Tutorial/Steps.lua:847, 1107) e de outro mod fica.
+    ai_unstick_leaves_foreign_useless = function()
+        local G = setup({ fog = false })
+        NOM_FogState.set(false, 3)
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
+        NOM_NightStats.unstick(z)
+        G.reuse(z)
+        assert(z.useless, "soltou useless de quem nunca foi Carpideira nem Estalador")
+    end,
+    -- ex-Carpideira da névoa anterior (o período avançou com a nova névoa), herdada parada
+    ai_unstick_releases_previous_period_carpideira = function()
+        local id = idFor("carpideira", 2)
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        require "NOM_Config"
+        local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        assert(NOM_VariantRules.variant(id, 3, c) ~= "carpideira", "escolher outro ID: Carpideira de novo")
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = id })
+        NOM_NightStats.unstick(z)
+        assert(not z.useless, "não soltou a Carpideira da névoa anterior")
+        -- e uma de dois períodos atrás não
+        local G2 = setup()
+        NOM_FogState.set(true, 4)
+        local old = G2.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 3, 4 }) })
+        NOM_NightStats.unstick(old)
+        assert(old.useless)
+    end,
+    -- tutorial: o mod não mexe em useless nenhum
+    ai_unstick_does_nothing_in_tutorial = function()
+        local G = setup({ fog = false, gameMode = "Tutorial" })
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
+        NOM_NightStats.unstick(z)
+        G.reuse(z)
+        assert(z.useless, "mexeu no zumbi do tutorial")
     end,
 }
