@@ -73,4 +73,25 @@ return {
         local block = txt:match("option NevoaEOutroMundo%.EcoRadius = {(.-)}")
         assert(block and block:match("max = (%d+)") == "60", "max do EcoRadius")
     end,
+    -- todo som tocado pelo Lua está declarado e aponta pra arquivo que existe no mod
+    config_sound_scripts_point_to_files = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local declared, n = {}, 0
+        for name, body in txt:gmatch("sound%s+([%w_]+)%s*(%b{})") do
+            declared[name] = true
+            local file = body:match("file%s*=%s*([^,%s]+)")
+            assert(file, "som sem arquivo: " .. name)
+            local h = io.open("mod/42/" .. file, "rb")
+            assert(h, "arquivo do som não existe: " .. file)
+            assert(#h:read("*a") > 1000, "arquivo vazio: " .. file)
+            h:close()
+            n = n + 1
+        end
+        assert(n >= 2, "sons declarados: " .. n)
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream" }) do
+            assert(declared[name], "som usado no Lua sem declaração: " .. name)
+        end
+    end,
 }
