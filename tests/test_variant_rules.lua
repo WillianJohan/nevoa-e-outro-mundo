@@ -85,6 +85,21 @@ return {
         end
         assert(total > 0 and kept / total < 0.5, "Estaladores repetidos de uma noite pra outra: " .. kept .. "/" .. total)
     end,
+    -- noites independentes: P(variante em N e em N+1) ≈ p², não mais
+    variant_rules_nights_independent = function()
+        local ids = realIDs()
+        for _, night in ipairs({ 1, 7, 30 }) do
+            local first, both = 0, 0
+            for _, id in ipairs(ids) do
+                if R.variant(id, night, cfg()) then
+                    first = first + 1
+                    if R.variant(id, night + 1, cfg()) then both = both + 1 end
+                end
+            end
+            local p, joint = first / #ids, both / #ids
+            assert(math.abs(joint - p * p) < 0.006, string.format("noite %d: P(as duas)=%.4f, p²=%.4f", night, joint, p * p))
+        end
+    end,
     variant_rules_config_reads_sandbox = function()
         local vals = { EstaladorEnabled = false, CorredorEnabled = true, EstaladorChance = 7, CorredorChance = 9 }
         local c = R.config(function(k) return vals[k] end)
