@@ -18,7 +18,7 @@ Atualizado em 2026-10-05. Vale pra quem continuar: Cursor, Claude ou humano. As 
 
 ## Em teste no jogo (já na `main`, aguardando o Johan)
 
-### Sprint 0023: Outro Mundo anexado
+### Sprint 0023: Outro Mundo anexado — CONFIRMADA no jogo (chão, telhado, save, FPS ok)
 O chão e as paredes do Outro Mundo agora são sprites anexados ao `IsoObject` real, pelo mesmo caminho da erosão vanilla. Ficam embaixo do pé, sem buraco, e as paredes voltaram.
 - O save seguro está na ADR-017.
 - O roteiro no jogo está em `docs/sprints/sprint-0023-outro-mundo-anexado/README.md`.

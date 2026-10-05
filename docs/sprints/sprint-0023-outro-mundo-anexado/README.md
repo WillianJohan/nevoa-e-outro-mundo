@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | em teste |
+| Status | concluída |
 | Branch | `sprint/0023-outro-mundo-anexado` |
 | Plano | [plan.md](plan.md) |
 | GDD | [atmosphere.md](../../gdd/atmosphere.md#outro-mundo-sangrento-só-na-névoa), [art-direction.md](../../gdd/art-direction.md#o-outro-mundo-sangrento-sprint-0015), [Overview.md](../../gdd/Overview.md#decisões-do-autor) |
@@ -210,3 +210,7 @@ erosão na névoa" em 1.
 ## Sessões
 
 - 2026-10-05 — abd764e2-7a9a-416b-b9b3-1630ab9e761f — bytecode (anexo, save, chunk, hot save), plano, regras, cliente anexado com save seguro, mundo falso com anexos, textos, docs
+
+## Checkpoint 2026-10-05 — teste no jogo (Johan)
+
+Confirmado: decalque embaixo do pé sem buraco e com luz; chão de dentro não vaza sobre o telhado; save/sair/carregar durante a névoa sem sobra depois; FPS ok.
