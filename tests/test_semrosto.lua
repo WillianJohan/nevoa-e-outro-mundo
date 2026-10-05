@@ -197,4 +197,18 @@ return {
         G.tick(NOM_SemRosto.SCAN_TICKS * 3)
         assert(c.n <= #zs * 3, "varredura chamou demais: " .. c.n .. " em 3 varreduras de " .. #zs)
     end,
+    -- névoa vermelha (sprint 0010): o zumbi que é Sem-rosto só pela divisão da
+    -- vermelha some também; na névoa normal, não
+    semrosto_red_fog_counts_red_split = function()
+        local G = setup({ fog = false })
+        local id = W.semRostoID(PERIOD, true, nil, true)
+        G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = id })
+        NOM_FogState.set(true, PERIOD)
+        G.tick(NOM_SemRosto.SCAN_TICKS * 2)
+        assert(#G.reports == 0, "Sem-rosto da vermelha na névoa normal")
+        NOM_FogState.set(true, PERIOD, true)
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1, "Sem-rosto da vermelha não sumiu")
+    end,
 }

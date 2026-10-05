@@ -140,13 +140,14 @@ local function process(z, c)
     if cur == nil and not NOM_NightStats.night and not fog then return false end -- dia sem névoa, intocado
     -- Eco primeiro: nunca é variante. A variante é derivada a cada passada do ID
     -- atual (ADR-006): o spawn por outfit troca o ID depois do OnZombieCreate. Só
-    -- existe na névoa (decisão do Johan, 05/10), sorteada pelo período de névoa.
+    -- existe na névoa (decisão do Johan, 05/10), sorteada pelo período de névoa; na
+    -- névoa vermelha, todo zumbi (sprint 0010).
     -- O Sem-rosto não tem stats: aqui ele é zumbi comum (server/NOM_Fog.lua).
     local kind = nil
     if isEco(z, md) then
         kind = "eco"
     elseif fog then
-        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_FogState.period, c.variants)
+        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_FogState.period, c.variants, NOM_FogState.red)
         if kind == "semrosto" then kind = nil end
     end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre

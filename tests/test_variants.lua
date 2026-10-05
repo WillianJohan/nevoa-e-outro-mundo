@@ -250,4 +250,22 @@ return {
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 1500)
         assert(#G.played == 2, "não liberou depois de 2 s")
     end,
+    -- névoa vermelha: o servidor reconhece o Corredor da divisão da vermelha, mesmo
+    -- com CorredorChance 0
+    variants_red_fog_corredor_screams = function()
+        local sb = { CorredorChance = 0, EstaladorChance = 0, SemRostoChance = 0 }
+        local G = setup({ server = true, sandbox = sb })
+        local c = NOM_VariantRules.config(function(k) local v = sb[k]; if v == nil then v = NOM_Config.DEFAULTS[k] end return v end)
+        local id
+        for seed = 1, 500 do
+            id = 9 * 65536 + seed
+            if NOM_VariantRules.variant(id, 1, c, true) == "corredor" then break end
+        end
+        G.zombie({ id = id, onlineID = 3 })
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 3 })
+        assert(#G.played == 0, "gritou na névoa normal com chance 0")
+        NOM_World.setFog(true, true)
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 3 })
+        assert(#G.played == 1, "Corredor da vermelha não gritou")
+    end,
 }
