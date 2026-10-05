@@ -51,4 +51,43 @@ return {
         assert(D.parse({ op = "redFog", value = "sim" }) == nil)
         assert(D.parse({ op = "redFog", value = 1 }) == nil)
     end,
+    -- sprint 0020: hora do relógio (NOM.time), 0 ≤ h < 24
+    debug_rules_parse_time = function()
+        assert(D.parse({ op = "time", hour = 0 }).hour == 0)
+        assert(D.parse({ op = "time", hour = 23.5 }).hour == 23.5)
+        assert(D.parse({ op = "time", hour = 24 }) == nil)
+        assert(D.parse({ op = "time", hour = -1 }) == nil)
+        assert(D.parse({ op = "time", hour = 0 / 0 }) == nil)
+        assert(D.parse({ op = "time", hour = "12" }) == nil)
+        assert(D.parse({ op = "time" }) == nil)
+    end,
+    -- spawn: 1..50 inteiro; o resto não passa
+    debug_rules_spawn_clamps = function()
+        assert(D.MAX_SPAWN == 50)
+        assert(D.clampSpawn(1000) == 50)
+        assert(D.clampSpawn(-3) == 1)
+        assert(D.clampSpawn(0) == 1)
+        assert(D.clampSpawn(2.7) == 2)
+        assert(D.clampSpawn(10) == 10)
+        assert(D.clampSpawn(0 / 0) == nil)
+        assert(D.clampSpawn(1 / 0) == 50)
+        assert(D.clampSpawn("x") == nil)
+        assert(D.clampSpawn(nil) == nil)
+    end,
+    debug_rules_parse_spawn = function()
+        local a = D.parse({ op = "spawn", n = 500, outfit = "Police", x = 10.5, y = 20.5, z = 0 })
+        assert(a.n == 50 and a.outfit == "Police" and a.x == 10.5 and a.y == 20.5 and a.z == 0)
+        assert(D.parse({ op = "spawn", n = 1, x = 1, y = 1, z = 0 }).outfit == nil, "outfit nil = sorteado")
+        assert(D.parse({ op = "spawn", n = 1, outfit = 5, x = 1, y = 1, z = 0 }) == nil)
+        assert(D.parse({ op = "spawn", n = 1, outfit = string.rep("a", 65), x = 1, y = 1, z = 0 }) == nil)
+        assert(D.parse({ op = "spawn", n = 1, x = 1, y = 0 / 0, z = 0 }) == nil)
+        assert(D.parse({ op = "spawn", n = 1, x = 1, y = 1 }) == nil)
+        assert(D.parse({ op = "spawn", n = "x", x = 1, y = 1, z = 0 }) == nil)
+    end,
+    -- toggle da névoa: quem decide é o servidor (sabe da sirene)
+    debug_rules_parse_fog_toggle = function()
+        assert(D.parse({ op = "fog", toggle = true }).toggle == true)
+        assert(D.parse({ op = "fog", value = true }).toggle == false)
+        assert(D.parse({ op = "fog", toggle = "sim" }) == nil)
+    end,
 }
