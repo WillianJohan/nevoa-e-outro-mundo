@@ -172,3 +172,10 @@ antes do `DoZombieInventory` na morte (a); sobra tirar da lista e refazer o loot
 - UNKNOWN pro roteiro: `ArrayList.remove(Object)` devolvendo booleano no Kahlua (a prova do
   re-vestir); `WornItems.setFromItemVisuals`/`addItemsToItemContainer` chamados do Lua (EXISTS,
   sem uso vanilla); o desenho sem roupa (a pele do mod no corpo todo, sem buraco).
+
+## Emenda de 2026-10-05 — sprint 0018: a peça entra e sai queimando
+
+Com a opção "Dissolve" do jogador ligada, a peça posta é o gêmeo `*Fx` (o mesmo item com o
+shader `NOM_Dissolve`), que se forma no `put`; no fim da variante ela se desfaz e o `strip` (pele
+e roupa de volta) só acontece no fim do efeito. Troca de tipo, morte e reaproveitamento continuam
+instantâneos. Desligada, nada muda. Detalhe em [ADR-016](adr-016-dissolve-e-bloom.md).

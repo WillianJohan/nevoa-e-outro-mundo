@@ -160,5 +160,10 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
   diferentes.
 - Com ele, a vinheta do modo de busca na névoa (acima) sai: as bordas desfocadas são do shader.
   Forragear continua igual.
+- **Bloom (sprint 0018):** luz forte (poste, farol, fogo, a borda em brasa dos monstros) ganha um
+  brilho que vaza em volta, também fora da névoa; na névoa o brilho é mais forte e começa em luz
+  mais fraca (a névoa espalha a luz), e na vermelha puxa pro vermelho. É curto (uma passada só) e
+  custa no 4K. Intensidade do jogador nas Opções > Mods ("Bloom", 1.0, 0–2; 0 desliga)
+  ([ADR-016](../architecture/adr-016-dissolve-e-bloom.md)).
 
 O jogo trata a névoa do mod como névoa de verdade em todo lugar que lê `getFogIntensity()`: visão dos zumbis, do jogador, combate e o parâmetro de áudio de névoa. É intencional.

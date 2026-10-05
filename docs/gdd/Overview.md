@@ -122,3 +122,12 @@ Só viram escopo por promoção explícita.
   visão/audição da roupa, o chapéu não cai); tudo volta no fim
   ([art-direction.md](art-direction.md#regra), [monsters.md](monsters.md),
   [ADR-012](../architecture/adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante)).
+- **2026-10-05** — **Dissolve e bloom** (sprint 0018), pedido do Johan: o efeito de *dissolve* (ruído
+  com borda acesa) quando o Eco morre (antes sumia na hora) e quando o zumbi vira monstro e volta;
+  e **bloom**. A peça do monstro se forma e se desfaz queimando em ~1 s; o Eco queima até a cinza
+  com brasas e não deixa corpo (casca de cinza: decisão de arte do Johan pendente); bloom no shader
+  opcional, mais forte na névoa. Os dois com opção de cada jogador (Opções > Mods). Sem Java: shader
+  próprio nas peças pelo `<m_Shader>` do item, sem tocar no vanilla
+  ([art-direction.md](art-direction.md#queimar-ao-surgir-e-ao-sumir-sprint-0018),
+  [atmosphere.md](atmosphere.md#shader-opcional-mod-névoa-e-outro-mundo--shader),
+  [ADR-016](../architecture/adr-016-dissolve-e-bloom.md)).

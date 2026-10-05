@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -518,8 +518,13 @@ carregar; o mod valida só na primeira mancha.
   existente** colocando `media/shaders/screen.frag` (por exemplo) na sua pasta. EXISTS.
 - UNKNOWN: se o shader já foi compilado antes de o mod ativar (os shaders de cena nascem no boot;
   os mods ativam ao carregar o save). Teste: override com cor absurda, ver se aparece.
-- **Adicionar** shader novo: não dá por Lua. `Shader`/`ShaderProgram` não estão no Exposer;
-  só Java cria programas por nome.
+- ~~**Adicionar** shader novo: não dá por Lua.~~ **Correção (sprint 0018):** vale só pro Lua
+  (`Shader`/`ShaderProgram` não estão no Exposer). Um item de roupa com `<m_Shader>X</m_Shader>`
+  no XML cria um shader **novo** com o nome `X`, lido de `media/shaders/X[_static].vert` e
+  `X.frag` do mod: `ClothingItemXML` → `ClothingItemAssetManager.onFileTaskFinished` 170–173 →
+  `PopTemplateManager.addClothingItem` 100–157 → `ShaderManager.getOrCreateShader` 86–110
+  (arquivo de mod pelo `activeFileMap`, `ZomboidFileSystem.loadMod` 216). EXISTS; usado pelo
+  dissolve ([§17](#17-dissolve-e-bloom-sprint-0018), [ADR-016](adr-016-dissolve-e-bloom.md)).
 - Override é frágil: substitui o shader para todo mundo, quebra a cada patch e conflita com outros
   mods. Fica como último recurso (alinha com ADR-004).
 - **Hook Lua de pós-processamento que já existe: `SearchMode`** (o modo de busca do forrageamento).
@@ -1191,6 +1196,51 @@ Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_flo
   naquele quadro.
 - **UNKNOWN (roteiro):** o tempo de quadro de verdade com 600 marcadores e 120 paredes; se pesar,
   baixar `MAX_FLOOR`/`MAX_WALL` ou o `SCAN_BUDGET`.
+
+## 17. Dissolve e bloom (sprint 0018)
+
+Bytecode do B42.21. Decisão na [ADR-016](adr-016-dissolve-e-bloom.md); a cadeia do `<m_Shader>`
+e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/README.md).
+
+### 17.1 Shader de peça
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `<m_Shader>` cria shader novo pelo nome; caixa diferente de um existente lança `IllegalArgumentException` | EXISTS | `ShaderManager.getOrCreateShader` 0–110 |
+| Arquivos: `<nome>.vert` (peça com esqueleto), `<nome>_static.vert` (`m_Static`), `<nome>.frag` (os dois) | EXISTS | `ShaderProgram.getRootVertFileName` 0–43, `getRootFragFileName` 0–23 |
+| Uniforms: `MatrixPalette`, `transform`, `HueChange`, `LightingAmount`, `Light0..4Colour/Direction`, `TintColour`, `Alpha`, `Texture` (+ veículo); `FinalScale`, `targetDepth`, `DepthBias` pelos setters; `ModelViewProjection` pelo `VertexBufferObject.setModelViewProjection` | EXISTS | `skinnedmodel.Shader.onProgramCompiled`, `setScale`, `setTargetDepth`, `setDepthBias` |
+| Atributos pelo índice do elemento do vértice (`layout (location = N)`) | EXISTS | `VertexBufferObject.BeginDraw` 39–295 (`glVertexAttribPointer(i, …)`) |
+| GL 2.1: reescrita linha a linha (`trim`): `#version` → 120; `layout … in T N;` → `attribute` (regex só com `[A-Za-z0-9]` no tipo e no nome); no `.vert` `out` → `varying`; no `.frag` `in` → `varying` (a regex `^in\s*(\S+)\s*(\S+)\s*;` pega também `int k;`!), `out vec4 colour` some, `colour = X;` → `gl_FragColor`; só `texture2DLod` vira `texture2D` | EXISTS | `ShaderUnit.processShaderSyntax` 32–458, padrões no `<clinit>`; `preProcessShaderFile` 47 (`trim`) |
+| **Falha de compilação:** `compileFailed`, `destroy()` (programa 0) e erro do `DebugType.Shader` com o log do driver; ninguém confere: `Model.DrawSolid` 141–160 faz `effect.Start()` → `glUseProgramObjectARB(0)` (pipeline fixa: peça sem esqueleto nem textura, ou nada). Sem fallback no motor; o do mod é a opção "Dissolve" desligada (peça sem shader) | EXISTS | `ShaderProgram.compile` 147–308, `ShaderProgram.Start` 0–7 |
+| **UNKNOWN:** compila no driver do Johan (passa no `glslangValidator` em 330 e na reescrita 120: `tests/test_dissolve_shader.lua`) | UNKNOWN | roteiro, passo 1 |
+
+### 17.2 Alpha por personagem
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `setAlpha(IF)` (clamp 0..1, sai no servidor), `getAlpha(I)`, públicos | EXISTS | `IsoObject.setAlpha(IF)` 0–39, `getAlpha(I)` 0–14 |
+| Personagem não anda o alfa no render | EXISTS | `IsoGameCharacter.isUpdateAlphaDuringRender` = false |
+| Passo do jogo: `0.28 × GameTime.multiplier × taxa` em direção ao alvo | EXISTS | `IsoObject.updateAlpha(IFF)` 79–188 |
+| O mod escreve `min(efeito, alfa do jogo)`: quem não está à vista (alvo 0) não aparece | — | `client/NOM_Dissolve.lua`, `dissolve_never_reveals_unseen_zombie` |
+
+### 17.3 Morte
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `onKillDone` liga **depois** do `onKilled` (que dispara o `OnZombieDead`) | EXISTS | `IsoGameCharacter.Kill` 35–50 |
+| Com `onKillDone`, `getItemVisuals` sai do `WornItems`: o modelo da animação de morte é feito dele | EXISTS | `IsoZombie.isUsingWornItems` 0–33, `getItemVisuals(ItemVisuals)` 0–38, `WornItems.getItemVisuals` 0–69 (visual de cada item vestido) |
+| `WornItems.setItem(ItemBodyLocation, InventoryItem)` local; `InventoryItem.getBodyLocation()`, `getVisual()` públicos; `instanceItem` CONFIRMED (Lua vanilla) | EXISTS | métodos públicos de `WornItems`, `InventoryItem` |
+| `IsoDeadBody.getOutfitName()` (`HumanVisual.getOutfit().name`), `setDoRender(Z)` (+ `setInvalidateNextRender`) | EXISTS | `IsoDeadBody.getOutfitName` 0–22, `setDoRender` 0–18 |
+| Cliente de MP: `dieNetwork` faz `Kill` e logo `becomeCorpse`: sem janela de animação | EXISTS | `IsoGameCharacter.dieNetwork` 0–10 (§14.4) |
+| **UNKNOWN:** `resetModelNextFrame` durante a animação de morte refaz o modelo sem piscar nem travar a pose; o corpo some com `setDoRender(false)`; a casca Hazmat cobre o corpo e a cabeça fica de fora (máscaras 1 e 2 não estão na lista) | UNKNOWN | roteiro, passos 4–6 |
+
+### 17.4 Bloom
+
+- O `screen.frag` vanilla tem um bloom desligado (`BloomVal`, mipmap que o FBO da tela não gera).
+  O do mod é uma passada própria no `screen.frag` do mod2 (spike-motor-visual §3).
+- A intensidade do jogador vai na fração do gradiente do `SearchMode` (`ParamInfo.z·2/ParamInfo.y
+  = 13 + bloom·0,25`, §15.4): não há outro float livre (`VarInfo.zw` nunca são escritos, mas o
+  Lua não os alcança).
 
 ## Abordagem recomendada por mecânica (resumo)
 
