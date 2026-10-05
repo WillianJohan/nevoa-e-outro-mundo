@@ -46,7 +46,11 @@ public final class RenderContext {
     // params que o Lua empurra (NOMRender_setParam); 4 x vec4
     static final float[] luaParams = new float[16];
     static final long t0 = System.nanoTime();
-    static { luaParams[Flow.PARAM_ON] = 1f; }   // névoa fluida ligada por padrão
+    static final int PARAM_LOOK = 5;            // NOMRender_setParam(5, 0) volta pro visual antigo da névoa
+    static {
+        luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
+        luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
+    }
 
     // ---------- Lua ----------
 

@@ -4,6 +4,7 @@
 //              5 = obstáculos do fluido, 6 = densidade do fluido, 7 = velocidade do fluido),
 //             z = altura da camada em andares (0 = 1.2)
 // uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
+// uParams[1].y: visual (1 = rolos com sombra própria, padrão; 0 = camada antiga)
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
@@ -63,6 +64,85 @@ float density(vec3 w, float ground, float top, out float wisp) {
     return d;
 }
 
+// ---------- visual novo: rolos com silhueta e sombra própria ----------
+const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
+const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
+
+float ruido2Fases(vec3 m, vec2 vel, float scale) {
+    float a = fract(uTime / FLOW_PERIOD);
+    float b = fract(uTime / FLOW_PERIOD + 0.5);
+    vec3 p1 = m - vec3(vel * (a * FLOW_PERIOD), 0.0);
+    vec3 p2 = m - vec3(vel * (b * FLOW_PERIOD), 0.0) + vec3(5.2, 1.3, 0.0);
+    return mix(noise(p1 * scale), noise(p2 * scale), abs(2.0 * a - 1.0));
+}
+
+// Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
+float rollTop(vec2 xy, float layer) {
+    vec2 vel = nomFlowVel(xy, CALM_WIND);
+    float fd = nomFlowDensity(xy);
+    float n = flowNoise(vec3(xy * 1.55, 0.0), vel * 1.55);       // ~3,5 tiles por rolo, andando com o fluido
+    float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
+    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff);
+}
+
+// Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
+float densityLook(vec3 w, float ground, float layer, out float shade) {
+    float hz = w.z - ground;
+    float top = rollTop(w.xy, layer);
+    vec2 vel = nomFlowVel(w.xy, CALM_WIND);
+    float fiapo = ruido2Fases(vec3(w.xy, w.z * LEVEL_TILES), vel, 0.9) - 0.5; // fiapos de ~1 tile
+    float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
+    d *= 1.15 - 0.45 * clamp(hz / layer, 0.0, 1.0);                         // mais densa embaixo
+    d += gTree * 0.9 * exp(-5.0 * hz / layer) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
+    vec3 s = w + SUN_STEP;
+    shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layer) - (s.z - ground));
+    for (int i = 0; i < uCharCount; i++) {
+        vec4 c = uChars[i];
+        float r = length(w.xy - c.xy);
+        float sameFloor = 1.0 - smoothstep(0.5, 1.0, abs(w.z - c.z));
+        d *= mix(1.0, smoothstep(c.w * 0.4, c.w, r), sameFloor);
+    }
+    return d;
+}
+
+vec4 fogLook(vec3 P, float amount) {
+    float ground = floor(uDepthRef.z);
+    float layer = uParams[0].z > 0.0 ? uParams[0].z : 1.2;
+    float top = ground + layer * 1.3;
+    if (P.z >= top) return vec4(0.0);
+    gP = P;
+    gTree = nomFlowTree(P.xy);
+
+    float span = top - max(P.z, ground - 0.25);
+    vec3 start = vec3(P.xy, max(P.z, ground - 0.25));
+    vec3 stepW = NOM_TO_CAMERA * (span / float(STEPS));
+    float stepLen = length(vec3(stepW.xy, stepW.z * LEVEL_TILES));
+    float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+
+    // topo claro na cor do clima; barriga escura, mais cinza e um pouco mais fria
+    vec3 base = uFog.yzw;
+    vec3 lit = base * 1.08;
+    vec3 dark = mix(base, vec3(dot(base, vec3(0.299, 0.587, 0.114))) * vec3(0.92, 0.96, 1.05), 0.5) * 0.38;
+    float sigma = 0.9 * amount;
+    float trans = 1.0;
+    vec3 light = vec3(0.0);
+    for (int i = 0; i < STEPS; i++) {
+        vec3 w = start + stepW * (float(i) + jitter);
+        float shade;
+        float dens = densityLook(w, ground, layer, shade);
+        if (dens <= 0.001) continue;
+        float absorb = 1.0 - exp(-sigma * dens * stepLen);
+        float sun = exp(-1.6 * shade * LEVEL_TILES * amount);
+        light += trans * absorb * mix(dark, lit, sun);
+        trans *= 1.0 - absorb;
+        if (trans < 0.02) break;
+    }
+    float a = 1.0 - trans;
+    const float MAX_A = 0.9;
+    if (a > MAX_A) { light *= MAX_A / a; a = MAX_A; }
+    return vec4(light, a);
+}
+
 void main() {
     float amount = uParams[0].x > 0.0 ? uParams[0].x : uFog.x;
     int dbg = int(uParams[0].y + 0.5);
@@ -104,6 +184,7 @@ void main() {
         return;
     }
     if (amount <= 0.001) { fragColor = vec4(0.0); return; }
+    if (uParams[1].y > 0.5) { fragColor = fogLook(P, amount); return; }
 
     float ground = floor(uDepthRef.z);
     float top = ground + (uParams[0].z > 0.0 ? uParams[0].z : 1.2);
