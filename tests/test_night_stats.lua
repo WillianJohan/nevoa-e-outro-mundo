@@ -651,4 +651,16 @@ return {
         G.converge()
         assert(z.speedType == 1, "não acordou à noite: " .. z.speedType)
     end,
+    -- variante forçada (NOM_Debug) num Eco: Eco nunca é variante
+    stats_forced_variant_skips_eco = function()
+        local G = setup()
+        local eco = G.spawn({ id = 77, outfit = "NOM_Eco" })
+        local z = G.spawn({ id = 78 })
+        NOM_VariantRules.forced[77], NOM_VariantRules.forced[78] = "corredor", "corredor"
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        NOM_VariantRules.forced[77], NOM_VariantRules.forced[78] = nil, nil
+        assert(eco.md.NOM_variant == nil and eco.speedType == 3, "Eco virou Corredor")
+        assert(z.md.NOM_variant == "corredor" and z.speedType == 1, "forçado ignorado")
+    end,
 }

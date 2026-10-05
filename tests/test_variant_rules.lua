@@ -153,4 +153,18 @@ return {
         local c = R.semRostoConfig(function(k) return vals[k] end)
         assert(c.semRostoOn == false and c.semRostoChance == 12)
     end,
+    -- forçado pelo NOM_Debug: vale contra chance e toggle, mas não sem noite/período
+    variant_rules_forced_wins = function()
+        local off = { estaladorOn = false, corredorOn = false, estaladorChance = 0, corredorChance = 0 }
+        local soff = { semRostoOn = false, semRostoChance = 0 }
+        R.forced[123] = "corredor"
+        assert(R.variant(123, 1, off) == "corredor")
+        assert(R.variant(123, nil, off) == nil, "noite desconhecida")
+        R.forced[123] = "semrosto"
+        assert(R.variant(123, 1, off) == nil)
+        assert(R.semRosto(123, 1, soff) == true)
+        assert(R.semRosto(123, nil, soff) == false, "período desconhecido")
+        R.forced[123] = nil
+        assert(R.semRosto(123, 1, soff) == false)
+    end,
 }

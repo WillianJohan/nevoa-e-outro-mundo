@@ -36,4 +36,20 @@ return {
         NOM_World.update(0)
         assert(table.concat(seen, ",") == "night=true")
     end,
+    -- NOM_Debug (só em -debug) força noite e névoa; nil devolve pro clima
+    world_forced_overrides_climate_and_clears = function()
+        local world = load(12)
+        NOM_World.forced.night = true
+        NOM_World.forced.fog = 0.8
+        NOM_World.update(0)
+        assert(NOM_World.night and NOM_World.fog and NOM_World.fogIntensity == 0.8, "forçado ignorado")
+        NOM_World.forced.night, NOM_World.forced.fog = nil, nil
+        NOM_World.update(0)
+        assert(not NOM_World.night and not NOM_World.fog, "não voltou pro clima")
+        world.tod = 23
+        NOM_World.forced.night = false
+        NOM_World.forced.fog = 0
+        NOM_World.update(0.9)
+        assert(not NOM_World.night and not NOM_World.fog, "false/0 forçado ignorado")
+    end,
 }
