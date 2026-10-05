@@ -65,7 +65,9 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   (toca no próprio jogador). Sem toggle: é o aviso do evento.
 - **Sirene vermelha** (névoa vermelha): a mesma sirene, ~30% mais grave, rasgada, com
   o rotor gemendo e um ronco uma oitava abaixo, ~28 s. Toca no lugar da normal, no
-  mesmo momento (30 s reais antes): quem ouve sabe o que vem.
+  mesmo momento (30 s reais antes): quem ouve sabe o que vem. Nos primeiros
+  `RedFogGraceDays` (7) dias do save ela não toca (sprint 0019): o jogador aprende a
+  sirene normal antes.
 - Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
   a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s).
 - Rádio chiando por proximidade do Sem-rosto (`SemRostoEnabled`): loop de estática

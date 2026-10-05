@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Substitui | o gatilho "névoa natural do clima" ([world-states.md](../gdd/world-states.md), sprint 0001) |
-| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa) |
+| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`) |
 | Emenda | [ADR-004](adr-004-clima-antes-de-shader.md) e [ADR-008](adr-008-noite-pela-luz-global.md) (o canal `FLOAT_FOG_INTENSITY` sai do look) |
 
 ## Contexto
@@ -84,3 +84,26 @@ O que o bytecode do B42.21 diz sobre o canal de névoa ([pz-api-notes §11](pz-a
   (chuva, vento, nuvem) fica intacto.
 - O período de névoa muda de ritmo (agora ~1 a cada 3 dias); o número continua a
   mesma chave e a [ADR-006](adr-006-variantes-deterministicas.md) não muda.
+
+## Emenda de 2026-10-05 — sprint 0019: curva de tensão
+
+Balanceamento do PO aprovado pelo Johan: a agenda deixa de ter média fixa.
+
+1. **Nascimento do save.** `data.fog.bornAt` (hora de mundo) é gravado uma vez, no
+   `state()` do `server/NOM_FogEvent.lua`, como a `seed`. Save anterior à sprint ganha o
+   bornAt no primeiro carregamento: **a curva dele começa ali**, não no dia 0 do mundo
+   (um save de 60 dias recomeça com a névoa rara). `d` = dias desde o bornAt
+   (`NOM_FogEventRules.days`, nunca negativo); o `worldAge` cru não entra.
+2. **Intervalo.** Com `FogEscalation` (padrão ligado), a média é
+   `FogEventEveryDays × clamp(1,5 − d/60, 0,75, 1,5)` (`NOM_FogEventRules.everyDays`). O
+   intervalo continua uniforme entre 0,5× e 1,5× da média, sorteado no `R.stop` (fim do
+   evento, com o `d` daquele momento) e salvo no `next`; a primeira agenda de um save novo
+   usa o `d` de agora. Mudar o sandbox no meio não mexe no `next` já salvo. Desligado, a média
+   é o `FogEventEveryDays`, como antes.
+3. **Por que no stop e não em todo minuto:** o `next` salvo é a promessa; recalcular a cada
+   minuto com o `d` andando faria a sirene "adiantar" sozinha e quebraria o
+   `fog_event_no_compounding_after_long_skip` (sono longo = um evento só).
+
+Sono ou fast-forward de meses satura a curva (0,75×), sem acumular evento. Default da base
+passou de 3 pra 2 dias e da duração mínima de 2 pra 3 horas: com a curva, o começo do save
+fica ~3 dias efetivos, como era.

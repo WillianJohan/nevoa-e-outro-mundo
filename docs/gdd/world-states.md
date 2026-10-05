@@ -23,11 +23,15 @@ São flags, não um enum: as duas podem estar ativas ao mesmo tempo.
   [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md).
   - **Quando:** numa hora qualquer, independente do dia e da noite. O intervalo até a
     próxima é sorteado, uniforme entre metade e uma vez e meia de `FogEventEveryDays`
-    (padrão 3 dias de jogo), contado do fim da anterior: em média uma a cada 3 dias.
+    (padrão 2 dias de jogo), contado do fim da anterior. Com `FogEscalation` (padrão
+    ligado, sprint 0019) a média segue a curva de tensão: `FogEventEveryDays × clamp(1,5 −
+    d/60, 0,75, 1,5)`, d = dias desde o nascimento do save (`data.fog.bornAt`): com o
+    padrão, 3 dias no começo, 2 no dia 30, 1,5 do dia 45 em diante. Sorteado no fim de
+    cada névoa e salvo; desligado, a média é o `FogEventEveryDays` o jogo todo.
   - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **30 segundos
     reais** antes da névoa. Com o jogo pausado a contagem para. No sono e no
     fast-forward continua 30 s reais (muitas horas de jogo, se for o caso).
-  - **Duração:** sorteada entre `FogMinHours` (2) e `FogMaxHours` (6) horas de jogo.
+  - **Duração:** sorteada entre `FogMinHours` (3) e `FogMaxHours` (6) horas de jogo.
     A névoa entra e sai em ~20 minutos de jogo.
   - **Névoa natural não existe.** Fora do evento a névoa do jogo é zero, com qualquer
     clima, chuva ou opção de névoa do sandbox. O painel de clima do admin ainda passa
