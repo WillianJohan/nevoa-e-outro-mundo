@@ -9,7 +9,7 @@ JAVAC="$JDK/bin/javac"; JAVA="$JDK/bin/java"
 [ -x "$JAVA" ] || JAVA="$(command -v java)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java mod3/java/nom/render/FogBanks.java \
+"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java mod3/java/nom/render/FogBanks.java mod3/java/nom/render/Wind.java \
     tests/java/FlowGridTest.java tests/java/FlowTravelTest.java
 "$JAVA" -ea -cp "$TMP" FlowGridTest
 "$JAVA" -ea -cp "$TMP" FlowTravelTest

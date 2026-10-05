@@ -55,6 +55,11 @@ final class Flow {
         grid.stillDecay = 0.08f;
         grid.doorPuff = 0.35f;
     }
+    private static final Wind gusts = new Wind((int) System.nanoTime() ^ 0x5bd1e995);
+    static final float CALM_X = 0.35f, CALM_Y = 0.15f;   // tiles/s, com a simulação desligada
+    // quanto o vento já levou a névoa, contínuo a cada quadro (bancos + a fração de passo que falta)
+    private static volatile double driftX, driftY;
+    private static volatile float driftWX = CALM_X, driftWY = CALM_Y;
     private static boolean dead, running;
     private static int z = Integer.MIN_VALUE, maskRow, frameStamp;
     private static long lastNanos;
@@ -90,10 +95,20 @@ final class Flow {
     static void update(IsoCell cell, IsoCamera.FrameState fs) {
         if (dead) return;
         try {
-            if (RenderContext.luaParams[PARAM_ON] < 0.5f) { running = false; pubOn = false; return; }
             long now = System.nanoTime();
             float dt = lastNanos == 0 ? 0f : Math.min(0.25f, (now - lastNanos) / 1e9f);
             lastNanos = now;
+            if (RenderContext.luaParams[PARAM_ON] < 0.5f) {
+                running = false;
+                pubOn = false;
+                if (!GameTime.isGamePaused()) {
+                    driftX += CALM_X * dt;
+                    driftY += CALM_Y * dt;
+                }
+                driftWX = CALM_X;
+                driftWY = CALM_Y;
+                return;
+            }
             frameStamp++;
 
             float cx = fs.camCharacterX, cy = fs.camCharacterY;
@@ -153,6 +168,10 @@ final class Flow {
                 if (++statSteps % 600 == 0) logStats();
             }
             if (acc > STEP) acc = 0f;   // quadro muito longo: não tenta alcançar
+            driftX = grid.banks.offsetX() + grid.windX * acc;
+            driftY = grid.banks.offsetY() + grid.windY * acc;
+            driftWX = grid.windX;
+            driftWY = grid.windY;
             if (steps > 0 || !pubOn) publish();
         } catch (Throwable t) {
             dead = true;
@@ -197,17 +216,14 @@ final class Flow {
     }
 
     /**
-     * Vento do clima, com rajadas e a direção oscilando devagar: forte o bastante pra ver a névoa
+     * Vento do clima, com rajadas e a direção vagando (Wind): forte o bastante pra ver a névoa
      * passar (um banco atravessa a tela em 20 a 40 s). A convenção do ângulo não importa pra névoa.
      */
     private static void wind() {
         ClimateManager cm = ClimateManager.getInstance();
-        float t = simTime;
-        float ang = cm.getWindAngleRadians() + 0.6f * (float) Math.sin(t / 40f) + 0.25f * (float) Math.sin(t / 13f);
-        float gust = 1f + 0.3f * (float) Math.sin(t / 6.3f) + 0.15f * (float) Math.sin(t / 2.1f + 1.3f);
-        float speed = (1f + 1.2f * cm.getWindIntensity()) * gust;
-        grid.windX = (float) Math.cos(ang) * speed;
-        grid.windY = (float) Math.sin(ang) * speed;
+        gusts.at(cm.getWindAngleRadians(), cm.getWindIntensity(), simTime);
+        grid.windX = gusts.x;
+        grid.windY = gusts.y;
     }
 
     /** Jogadores locais, zumbis e carros no mesmo andar, a até MOVER_RANGE: velocidade pela posição anterior. */
@@ -354,5 +370,7 @@ final class Flow {
         sentOn = on ? 1f : 0f;
         glUniform1i(glGetUniformLocation(prog, "uFlowTex"), UNIT);
         glUniform4f(glGetUniformLocation(prog, "uFlow"), sentX, sentY, N, sentOn);
+        glUniform4f(glGetUniformLocation(prog, "uDrift"), (float) (originX - driftX), (float) (originY - driftY),
+                driftWX, driftWY);
     }
 }

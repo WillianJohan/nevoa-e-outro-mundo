@@ -2,6 +2,7 @@ import java.util.Random;
 
 import nom.render.FlowGrid;
 import nom.render.FogBanks;
+import nom.render.Wind;
 
 /** Névoa viajante (sprint 0026): bancos, inércia, vácuo, porta, explosão. Sem o jogo. */
 public class FlowTravelTest {
@@ -19,6 +20,9 @@ public class FlowTravelTest {
         run("explosão abre buraco e conserva massa", FlowTravelTest::blastOpensHole);
         run("tudo ligado não explode", FlowTravelTest::stableTravel);
         run("custo do passo viajante em 128x128", FlowTravelTest::travelCost);
+        run("deslocamento dos bancos é o vento acumulado", FlowTravelTest::banksOffsetIsWindIntegral);
+        run("vento é contínuo e fica na faixa", FlowTravelTest::windSmoothAndBounded);
+        run("vento não se repete (sem ritmo fixo)", FlowTravelTest::windNotPeriodic);
         System.out.println("mod3 névoa viajante: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
     }
@@ -240,5 +244,69 @@ public class FlowTravelTest {
         double ms = (System.nanoTime() - t0) / 1e6 / steps;
         System.out.printf("  passo viajante 128x128: %.3f ms (meta < 1,5 ms)%n", ms);
         check(ms < 3.0, "passo caro demais: " + ms + " ms");
+    }
+
+    /** O shader anda o ruído por esse deslocamento: tem que ser o mesmo que leva os bancos. */
+    static void banksOffsetIsWindIntegral() {
+        FogBanks b = new FogBanks(5, 0.7f, 22f);
+        for (int s = 0; s < 100; s++) b.advance(1.5f, -0.5f, DT);
+        for (int s = 0; s < 100; s++) b.advance(-0.4f, 2f, DT);
+        check(Math.abs(b.offsetX() - (7.5 - 2.0)) < 1e-6, "offsetX " + b.offsetX());
+        check(Math.abs(b.offsetY() - (-2.5 + 10.0)) < 1e-6, "offsetY " + b.offsetY());
+    }
+
+    static void windSmoothAndBounded() {
+        Wind w = new Wind(11);
+        float intensity = 0.5f, base = 1f + 1.2f * intensity;
+        float lo = 99f, hi = 0f, prevS = -1f, prevA = 0f, maxDs = 0f, maxDa = 0f;
+        for (int s = 0; s <= 12000; s++) {
+            w.at(0.3f, intensity, s * DT);
+            float sp = (float) Math.hypot(w.x, w.y), ang = (float) Math.atan2(w.y, w.x);
+            lo = Math.min(lo, sp);
+            hi = Math.max(hi, sp);
+            if (prevS >= 0f) {
+                maxDs = Math.max(maxDs, Math.abs(sp - prevS));
+                maxDa = Math.max(maxDa, Math.abs(ang - prevA));
+            }
+            prevS = sp;
+            prevA = ang;
+        }
+        check(lo >= 0.5f * base && hi <= 1.5f * base, "fora da faixa: " + lo + ".." + hi);
+        check(lo < 0.85f * base && hi > 1.15f * base, "rajada fraca demais: " + lo + ".." + hi);
+        check(maxDs < 0.05f && maxDa < 0.03f, "aos trancos: dv=" + maxDs + " da=" + maxDa);
+    }
+
+    /** Seno tem ritmo: a velocidade num instante repete a de um período antes. Ruído não. */
+    static void windNotPeriodic() {
+        Wind w = new Wind(23);
+        int n = 1600;                       // 400 s, de 0,25 em 0,25 s
+        float[] sp = new float[n];
+        for (int k = 0; k < n; k++) {
+            w.at(0f, 0.5f, k * 0.25f);
+            sp[k] = (float) Math.hypot(w.x, w.y);
+        }
+        double worst = -1;
+        int worstLag = 0;
+        for (int lag = 8; lag <= 240; lag++) {     // 2 s a 60 s
+            double c = corr(sp, lag);
+            if (c > worst) { worst = c; worstLag = lag; }
+        }
+        check(worst < 0.8, "repete com " + worstLag * 0.25f + " s (correlação " + worst + ")");
+    }
+
+    static double corr(float[] a, int lag) {
+        int m = a.length - lag;
+        double sa = 0, sb = 0;
+        for (int k = 0; k < m; k++) { sa += a[k]; sb += a[k + lag]; }
+        sa /= m;
+        sb /= m;
+        double ab = 0, aa = 0, bb = 0;
+        for (int k = 0; k < m; k++) {
+            double x = a[k] - sa, y = a[k + lag] - sb;
+            ab += x * y;
+            aa += x * x;
+            bb += y * y;
+        }
+        return ab / Math.sqrt(aa * bb + 1e-12);
     }
 }
