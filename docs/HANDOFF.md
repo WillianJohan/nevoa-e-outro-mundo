@@ -4,8 +4,8 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3) e 0025 (luz e volume na névoa) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
-- 707 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 15 do núcleo da névoa fluida em Java (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa) e 0026 (névoa viajante, luz que abre a névoa) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 25 do núcleo da névoa fluida em Java (15 da 0024, 10 da viajante) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -53,6 +53,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 | `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
+| `NOMRender_setParam(6, q)` | qualidade: 0 baixa, 1 média, 2 alta (padrão; Opções > Mods manda sozinho, sprint 0026) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -67,6 +68,14 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 4. **O advice é inlinado dentro da classe do jogo.** Todo método do mod3 chamado do `@Patch` precisa ser `public`, senão dá `IllegalAccessError` e o jogo crasha. Há um teste pra isso em `tests/test_mod3_depth.py`.
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
+
+## Em teste: névoa viajante e luz na névoa (sprint 0026)
+
+O Johan quer a névoa "viva", que caminha pelo mapa, desvia de objeto e faz vácuos, e a luz abrindo a névoa como a fumaça do CS2. A 0026 faz a névoa viajar em bancos com o vento (vácuo atrás de prédio, rastro que viaja), põe carro, porta, tiro e explosão empurrando, acende o facho de lanterna e farol dentro da névoa e põe a qualidade em Opções > Mods. Roteiro em [sprints/sprint-0026-nevoa-viajante/README.md](sprints/sprint-0026-nevoa-viajante/README.md).
+
+- **Decidido:** sem partículas (a luz precisa do volume); simulação 2D por andar, altura no shader.
+- **Ideia futura do Johan:** névoa preta (anotada no roadmap).
+- **Se ainda faltar "vida":** volume por andares na GPU (subir escada, rolar por cima de muro), já discutido.
 
 ## Em teste: luz e volume na névoa (sprint 0025)
 
