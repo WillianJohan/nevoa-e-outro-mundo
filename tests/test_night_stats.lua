@@ -195,6 +195,8 @@ local function setup(opts)
     })
     NOM_NightStats = nil
     package.loaded["NOM_NightStats"] = nil
+    NOM_FogState = nil
+    package.loaded["NOM_FogState"] = nil
     dofile(FILE)
     NOM_NightStats.install()
     return G
@@ -509,45 +511,82 @@ return {
         G.kill(z)
         assert(z.md.NOM_night == nil and z.md.NOM_dayTier == nil)
     end,
-    stats_corredor_sprints_at_night_and_returns = function()
+    -- todo monstro menos o Eco só existe na névoa (Johan, 05/10): de dia na névoa o
+    -- Corredor corre, e volta a comum quando a névoa baixa
+    stats_corredor_sprints_in_fog_by_day_and_returns = function()
         local sb = { CorredorChance = 100, EstaladorChance = 0 }
         local G = setup({ lore = { Speed = 3 }, sandbox = sb })
         local z = G.spawn({ id = idFor("corredor", 3, sb) })
-        NOM_NightStats.setNight(true, 3)
+        NOM_FogState.set(true, 3)
         G.converge()
         assert(z.speedType == 1 and z.md.NOM_variant == "corredor", "corredor: " .. z.speedType)
-        NOM_NightStats.setNight(false, 3)
+        NOM_FogState.set(false, 3)
         G.converge()
         assert(z.speedType == 3 and z.md.NOM_variant == nil, "corredor não voltou a comum")
     end,
-    stats_estalador_blind_and_sharp_ears = function()
-        local sb = { EstaladorChance = 100, NightSharperSenses = false }
+    -- noite sem névoa: noite agressiva, nenhum monstro
+    stats_night_without_fog_has_no_variant = function()
+        local sb = { EstaladorChance = 100 }
         local G = setup({ sandbox = sb })
         local z = G.spawn({ id = idFor("estalador", 2, sb) })
         NOM_NightStats.setNight(true, 2)
         G.converge()
+        assert(z.md.NOM_variant == nil and z.speedType == 1 and z.sight == 1, "variante sem névoa")
+    end,
+    -- névoa de dia: Estalador cego e de ouvido apurado, sem bônus da noite
+    stats_estalador_in_fog_by_day = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("estalador", 2, sb) })
+        NOM_FogState.set(true, 2)
+        G.converge()
         assert(z.sight == 3 and z.hearing == 1 and z.md.NOM_variant == "estalador")
-        assert(z.speedType == 1, "estalador perdeu a velocidade da noite")
+        assert(z.speedType == 2, "estalador ganhou velocidade da noite de dia: " .. z.speedType)
         assert(G.lore.Sight == 2 and G.lore.Hearing == 2, "sandbox vazou")
-        NOM_NightStats.setNight(false, 2)
+        NOM_FogState.set(false, 2)
         G.converge()
         assert(z.sight == 2 and z.hearing == 2 and z.md.NOM_variant == nil)
+    end,
+    -- noite + névoa: a variante por cima dos stats da noite; a névoa baixa e a
+    -- noite continua
+    stats_estalador_on_top_of_night = function()
+        local sb = { EstaladorChance = 100, NightSharperSenses = false }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("estalador", 2, sb) })
+        NOM_NightStats.setNight(true, 9)
+        NOM_FogState.set(true, 2)
+        G.converge()
+        assert(z.sight == 3 and z.hearing == 1 and z.md.NOM_variant == "estalador")
+        assert(z.speedType == 1, "estalador perdeu a velocidade da noite")
+        NOM_FogState.set(false, 2)
+        G.converge()
+        assert(z.md.NOM_variant == nil and z.speedType == 1 and z.sight == 2, "névoa baixou e levou a noite junto")
+        assert(z.md.NOM_night ~= nil)
+    end,
+    -- o Sem-rosto não tem stats: no NOM_NightStats ele é zumbi comum
+    stats_semrosto_has_no_profile = function()
+        local sb = { EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 100 }
+        local G = setup({ sandbox = sb })
+        local z = G.spawn({ id = idFor("semrosto", 1, sb) })
+        NOM_FogState.set(true, 1)
+        G.converge()
+        assert(z.md.NOM_variant == nil and NOM_NightStats.variants[z] == nil and z.md.NOM_night == nil)
     end,
     -- addZombiesInOutfit veste depois do OnZombieCreate: a variante segue o ID atual
     stats_variant_follows_outfit_id = function()
         local sb = { CorredorChance = 50, EstaladorChance = 0 }
         local G = setup({ sandbox = sb })
         local z = G.spawn({ id = idFor(nil, 6, sb) })
-        NOM_NightStats.setNight(true, 6)
+        NOM_FogState.set(true, 6)
         G.converge()
         assert(z.md.NOM_variant == nil)
         z.outfitID = idFor("corredor", 6, sb)
         G.converge()
         assert(z.md.NOM_variant == "corredor" and z.speedType == 1, "não seguiu o ID novo")
-        -- outra noite, outro sorteio: o mesmo zumbi pode deixar de ser
+        -- outra névoa, outro sorteio: o mesmo zumbi pode deixar de ser
         local other = idFor(nil, 7, sb)
         z.outfitID = other
-        NOM_NightStats.setNight(true, 7)
+        NOM_FogState.set(true, 7)
         G.converge()
         assert(z.md.NOM_variant == nil)
     end,
@@ -559,20 +598,22 @@ return {
         eco.md.NOM_eco = true
         local ecoMP = G.spawn({ id = id, outfit = "NOM_Eco" })
         NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         for _, e in ipairs({ eco, ecoMP }) do
             assert(e.md.NOM_variant == nil and e.speedType == 3 and e.sight == 2, "Eco virou variante")
         end
     end,
-    -- cliente que ainda não sabe o número da noite: noite comum, sem variante
-    stats_variant_needs_night_number = function()
+    -- cliente que ainda não sabe o número da névoa: sem variante
+    stats_variant_needs_fog_period = function()
         local sb = { EstaladorChance = 100 }
         local G = setup({ sandbox = sb })
         local z = G.spawn({ id = idFor("estalador", 1, sb) })
-        NOM_NightStats.setNight(true, nil)
+        NOM_NightStats.setNight(true, 5)
+        NOM_FogState.set(true, nil)
         G.converge()
         assert(z.md.NOM_variant == nil and z.speedType == 1 and z.sight == 1)
-        NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         assert(z.md.NOM_variant == "estalador" and z.sight == 3)
     end,
@@ -580,23 +621,23 @@ return {
         local sb = { CorredorChance = 100, EstaladorChance = 0 }
         local G = setup({ sandbox = sb })
         local z = G.spawn({ id = idFor("corredor", 1, sb) })
-        NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         z.md.NOM_hunting = true
         G.kill(z)
         assert(z.md.NOM_variant == nil and z.md.NOM_hunting == nil, "chave de variante foi pro corpo")
     end,
-    -- amanhecer: alerta do Estalador e caça do Corredor não passam pra noite seguinte
-    stats_dawn_clears_variant_state = function()
+    -- fim da névoa: alerta do Estalador e caça do Corredor não passam pra próxima
+    stats_fog_end_clears_variant_state = function()
         local sb = { EstaladorChance = 100 }
         local G = setup({ sandbox = sb })
         local z = G.spawn({ id = idFor("estalador", 1, sb) })
-        NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         z.md.NOM_alert, z.md.NOM_hunting = true, true
-        NOM_NightStats.setNight(false, 1)
+        NOM_FogState.set(false, 1)
         G.converge()
-        assert(z.md.NOM_alert == nil and z.md.NOM_hunting == nil, "estado da variante sobrou de dia")
+        assert(z.md.NOM_alert == nil and z.md.NOM_hunting == nil, "estado da variante sobrou sem névoa")
     end,
     -- conjunto Lua das variantes locais (o OnZombieUpdate olha só ele, sem chamar Java)
     stats_variant_set_tracks_life = function()
@@ -604,13 +645,13 @@ return {
         local G = setup({ sandbox = sb })
         local id = idFor("estalador", 1, sb)
         local z, plain = G.spawn({ id = id }), G.spawn()
-        NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         assert(NOM_NightStats.variants[z] == "estalador" and NOM_NightStats.variants[plain] == nil)
-        NOM_NightStats.setNight(false, 1)
+        NOM_FogState.set(false, 1)
         G.converge()
-        assert(NOM_NightStats.variants[z] == nil, "ficou no conjunto de dia")
-        NOM_NightStats.setNight(true, 1)
+        assert(NOM_NightStats.variants[z] == nil, "ficou no conjunto sem névoa")
+        NOM_FogState.set(true, 1)
         G.converge()
         G.kill(z)
         assert(NOM_NightStats.variants[z] == nil, "morto ficou no conjunto")
@@ -618,6 +659,18 @@ return {
         G.converge()
         G.reuse(r)
         assert(NOM_NightStats.variants[r] == nil, "objeto reaproveitado herdou a variante")
+    end,
+    -- de dia, a névoa que sobe acorda o tick que dormia
+    stats_day_idle_wakes_with_fog = function()
+        local sb = { CorredorChance = 100, EstaladorChance = 0 }
+        local G = setup({ lore = { Speed = 3 }, sandbox = sb })
+        G.spawn()
+        G.converge()
+        G.converge()
+        local z = G.spawn({ id = idFor("corredor", 4, sb) })
+        NOM_FogState.set(true, 4)
+        G.converge()
+        assert(z.speedType == 1, "névoa de dia não acordou o tick")
     end,
 
     -- orçamento: de dia, depois de devolver tudo e de uma passada limpa, o tick não
@@ -659,6 +712,7 @@ return {
         local z = G.spawn({ id = 78 })
         NOM_VariantRules.forced[77], NOM_VariantRules.forced[78] = "corredor", "corredor"
         NOM_NightStats.setNight(true, 1)
+        NOM_FogState.set(true, 1)
         G.converge()
         NOM_VariantRules.forced[77], NOM_VariantRules.forced[78] = nil, nil
         assert(eco.md.NOM_variant == nil and eco.speedType == 3, "Eco virou Corredor")

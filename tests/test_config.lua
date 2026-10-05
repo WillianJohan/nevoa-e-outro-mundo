@@ -38,14 +38,14 @@ return {
         SandboxVars = nil
         assert(NOM_Config.get("EstaladorEnabled") == true)
         assert(NOM_Config.get("CorredorEnabled") == true)
-        assert(NOM_Config.get("EstaladorChance") == 15)
-        assert(NOM_Config.get("CorredorChance") == 15)
+        assert(NOM_Config.get("EstaladorChance") == 5)
+        assert(NOM_Config.get("CorredorChance") == 2)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
     config_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("SemRostoEnabled") == true)
-        assert(NOM_Config.get("SemRostoChance") == 15)
+        assert(NOM_Config.get("SemRostoChance") == 5)
         assert(NOM_Config.get("FogAmbience") == true)
         assert(NOM_Config.get("FogOverlays") == true)
         assert(NOM_Config.get("FogVignette") == true)

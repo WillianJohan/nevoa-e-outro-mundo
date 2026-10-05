@@ -59,7 +59,7 @@ return {
         assert(s.speed == 1 and s.sight == nil and s.hearing == nil)
         assert(w.key ~= s.key)
     end,
-    -- Corredor: sprinter à noite mesmo com NightFaster desligado; sentidos da noite
+    -- Corredor: sprinter mesmo com NightFaster desligado; sentidos da noite
     night_rules_wanted_corredor = function()
         local R = NOM_NightRules
         local w = R.wanted(true, "corredor", 3, cfg({ fasterOn = false, sensesOn = false }))
@@ -68,7 +68,6 @@ return {
         assert(n.speed == 1 and n.sight == 1 and n.hearing == 1)
         -- mesmos stats de um zumbi comum da noite, chave diferente: o mod sabe que é variante
         assert(n.key ~= R.wanted(true, nil, 2, cfg()).key)
-        assert(R.wanted(false, "corredor", 2, cfg()).key == "day")
     end,
     -- Estalador: cego (pior visão) e ouvido apurado, com ou sem os sentidos da noite
     night_rules_wanted_estalador = function()
@@ -78,7 +77,6 @@ return {
         local off = R.wanted(true, "estalador", 2, cfg({ fasterOn = false, sensesOn = false }))
         assert(off.speed == 2 and off.sight == 3 and off.hearing == 1 and off.key ~= "day")
         assert(off.key ~= R.wanted(true, "corredor", 2, cfg()).key)
-        assert(R.wanted(false, "estalador", 2, cfg()).key == "day")
     end,
     night_rules_countdown = function()
         local m, due = 0, false
@@ -105,5 +103,13 @@ return {
     night_rules_torch_radius = function()
         assert(NOM_NightRules.torchRadius(1.5) == 30)
         assert(NOM_NightRules.torchRadius(1.0) == 20)
+    end,
+    -- variante da névoa de dia: só o perfil dela, sem bônus da noite
+    night_rules_wanted_variant_by_day = function()
+        local c = NOM_NightRules.wanted(false, "corredor", 3, cfg())
+        assert(c.speed == 1 and c.sight == nil and c.key ~= "day")
+        local e = NOM_NightRules.wanted(false, "estalador", 2, cfg())
+        assert(e.speed == 2 and e.sight == 3 and e.hearing == 1 and e.key ~= "day")
+        assert(e.key ~= NOM_NightRules.wanted(true, "estalador", 2, cfg()).key, "dia e noite com a mesma chave")
     end,
 }

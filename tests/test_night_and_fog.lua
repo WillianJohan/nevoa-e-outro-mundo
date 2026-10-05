@@ -3,11 +3,28 @@
 -- juntos, mais o som, a vinheta e os overlays do cliente, no mundo falso de
 -- tests/fog_world.lua. O zumbi falso ganha o que o NOM_NightStats e o
 -- NOM_VariantAI usam (stats como em test_night_stats, alvo/useless como em
--- test_variant_ai): o sorteio da noite e o da névoa rodam de verdade.
+-- test_variant_ai): o sorteio da névoa e os stats da noite rodam de verdade.
+-- Todo monstro (menos o Eco) só existe na névoa, de dia ou de noite (Johan, 05/10).
 local W = dofile("tests/fog_world.lua")
 
+local SANDBOX = { EstaladorChance = 50, CorredorChance = 0, SemRostoChance = 50 }
+
+-- ID (formato do jogo) que dá a variante pedida no período de névoa
+local function idFor(want, period)
+    require "NOM_VariantRules"
+    local c = NOM_VariantRules.config(function(k)
+        if SANDBOX[k] ~= nil then return SANDBOX[k] end
+        return NOM_Config.DEFAULTS[k]
+    end)
+    for seed = 1, 500 do
+        local id = 7 * 65536 + seed
+        if NOM_VariantRules.variant(id, period, c) == want then return id end
+    end
+    error("nenhum ID")
+end
+
 local function setup()
-    local G = W.new({ tod = 12, sandbox = { EstaladorChance = 100, CorredorChance = 0 } })
+    local G = W.new({ tod = 12, sandbox = SANDBOX })
     G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_SemRosto", "NOM_NightStats", "NOM_Night", "NOM_Players",
         "NOM_NightCount", "NOM_VariantAI", "NOM_Variants", "NOM_FogSound", "NOM_FogVignette", "NOM_FogOverlays" })
     local lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 2, Memory = 2 }
@@ -107,33 +124,39 @@ return {
         function p:isSneaking() return true end
         function p:isRunning() return false end
         function p:isSprinting() return false end
-        local id = W.semRostoID(1, true)
-        local z = G.monster({ x = 112, y = 100, id = id })
-        z.spotted = p
+        local est = G.monster({ x = 101, y = 100, id = idFor("estalador", 1) })
+        est.spotted = p
+        local sem = G.monster({ x = 112, y = 100, id = idFor("semrosto", 1) })
         G.set(23, 0.9) -- noite e névoa na mesma leitura do clima
         assert(NOM_NightStats.night == true and NOM_NightStats.nightNumber == 1, "noite não ligou")
         assert(NOM_FogState.on == true and NOM_FogState.period == 1, "névoa não ligou")
         G.frame(3)
-        -- as duas variantes no mesmo zumbi: o sorteio da noite e o da névoa não brigam
-        assert(z.md.NOM_variant == "estalador", "não virou Estalador: " .. tostring(z.md.NOM_variant))
-        assert(z.useless == true, "Estalador não ficou cego pro jogador agachado")
+        -- Estalador por cima da noite: cego pro jogador agachado, com a velocidade da noite
+        assert(est.md.NOM_variant == "estalador", "não virou Estalador: " .. tostring(est.md.NOM_variant))
+        assert(est.useless == true, "Estalador não ficou cego pro jogador agachado")
+        assert(est.speedType == 1, "Estalador sem a velocidade da noite")
+        assert(sem.md.NOM_variant == nil, "Sem-rosto ganhou perfil de stats")
         G.frame(NOM_SemRosto.SCAN_TICKS)
-        assert(z.teleports == 1, "Sem-rosto não sumiu sendo Estalador")
-        assert(not z:getCurrentSquare():isCanSee(0), "reapareceu à vista")
+        assert(sem.teleports == 1, "Sem-rosto não sumiu à noite")
+        assert(not sem:getCurrentSquare():isCanSee(0), "reapareceu à vista")
         G.seconds(10)
         assert(#G.playing("NOM_FogDrone") == 1, "drone não tocou à noite")
         assert(#G.playing("NOM_RadioStatic") == 1, "rádio não chiou à noite")
         assert(G.enabled[0] == true, "vinheta não ligou à noite")
         assert(G.markers > 0, "sem overlays à noite")
-        -- amanhece com névoa: o Estalador volta a comum, o Sem-rosto continua
+        -- amanhece com névoa: a noite sai, o Estalador continua (é da névoa)
         G.set(8, 0.9)
         G.frame(30)
-        assert(z.md.NOM_variant == nil, "Estalador de dia")
+        assert(est.md.NOM_variant == "estalador", "Estalador sumiu de dia com névoa")
+        assert(est.speedType == 2, "ficou com a velocidade da noite de dia: " .. est.speedType)
         assert(NOM_FogState.on == true and #G.playing("NOM_FogDrone") == 1)
-        -- névoa baixa: tudo sai, a noite não é afetada
+        -- noite de novo, a névoa baixa: o Estalador vira comum, a noite fica
         G.set(23, 0)
+        G.frame(30)
         G.seconds(12)
         assert(NOM_NightStats.night == true and NOM_FogState.on == false)
+        assert(est.md.NOM_variant == nil and est.useless == false, "Estalador ficou sem névoa")
+        assert(est.speedType == 1, "perdeu a noite junto com a névoa")
         assert(#G.playing("NOM_FogDrone") == 0 and #G.playing("NOM_RadioStatic") == 0, "som da névoa ficou")
         assert(G.enabled[0] == false, "vinheta ficou")
         local fog = G.commands(G.sentServer, "fog")

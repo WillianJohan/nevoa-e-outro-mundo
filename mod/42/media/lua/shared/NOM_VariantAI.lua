@@ -1,9 +1,11 @@
 -- Comportamento das variantes onde o zumbi é simulado (ADR-005): no solo, o
 -- próprio processo (server/NOM_Variants.lua instala); no MP, o cliente
 -- (client/NOM_VariantsClient.lua instala). A variante vem do NOM_NightStats
--- (modData.NOM_variant, só em memória, ADR-006). O grito do Corredor é decisão
+-- (modData.NOM_variant, só em memória, ADR-006). Variante só age na névoa (decisão
+-- do Johan, 05/10), de dia ou de noite: tudo aqui olha o NOM_FogState. O grito do Corredor é decisão
 -- do servidor: aqui só se avisa, pelo report passado no install.
 require "NOM_NightStats"
+require "NOM_FogState"
 
 NOM_VariantAI = {}
 
@@ -49,7 +51,7 @@ local function estalador(z, md, blind)
     -- 86–89; parse 204–252): se a posse trocou no meio da janela, este dono herdou
     -- o useless sem a entrada em blinded. Desliga, salvo o useless do próprio jogo
     -- (outfit de debug com "Useless", updateInternal 47–58). O do menu de debug e
-    -- do tutorial não dá pra distinguir: num Estalador à noite, também cai.
+    -- do tutorial não dá pra distinguir: num Estalador na névoa, também cai.
     -- Custo: uma chamada Java por Estalador local por frame.
     if z:isUseless() then
         local outfit = z:getOutfitName()
@@ -83,18 +85,18 @@ local function onUpdate(z, report)
         NOM_NightStats.variants[z] = nil
         kind = nil
     end
-    local on = NOM_NightStats.night and not z:isRemoteZombie()
+    local on = NOM_FogState.on and not z:isRemoteZombie()
     if kind == "estalador" and on then
         estalador(z, md, blind)
     elseif blind then
-        release(z) -- amanheceu, deixou de ser Estalador ou virou remoto
+        release(z) -- névoa baixou, deixou de ser Estalador ou virou remoto
     elseif kind == "corredor" and on then
         corredor(z, md, report)
     end
 end
 
 -- Golpe é barulho: o Estalador acertado passa a seguir quem bateu.
--- ponytail: alerta até o zumbi ir pro virtual ou amanhecer; esfriar com o tempo se pedirem.
+-- ponytail: alerta até o zumbi ir pro virtual ou a névoa baixar; esfriar com o tempo se pedirem.
 local function onHit(z)
     if blinded[z] then release(z) end
     if NOM_NightStats.variants[z] ~= "estalador" then return end
@@ -112,7 +114,7 @@ end
 -- (nome, nil), sem pacote; emitter:playSound no cliente de MP manda PacketType.PlaySound
 -- (FMODSoundEmitter.playSound 0–104) e cada cliente faria os outros ouvirem de novo.
 local function clicks()
-    if not NOM_NightStats.night then return end
+    if not NOM_FogState.on then return end
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)

@@ -259,15 +259,18 @@ function W.new(opts)
     return G
 end
 
--- persistentOutfitID no formato do jogo; acha um ID que é (ou não) Sem-rosto no período.
+-- persistentOutfitID no formato do jogo; acha um ID que é Sem-rosto no período
+-- (want true) ou zumbi comum, sem variante nenhuma (want false), com o sandbox
+-- padrão (a chance do Sem-rosto pode ser trocada).
 function W.semRostoID(period, want, chance)
     require "NOM_VariantRules"
     require "NOM_Config"
-    -- sem chance explícita, a do padrão do sandbox (a que o mod usa no teste)
-    local c = { semRostoOn = true, semRostoChance = chance or NOM_Config.DEFAULTS.SemRostoChance }
+    local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+    c.semRostoChance = chance or c.semRostoChance
     for seed = 1, 500 do
         local id = 7 * 65536 + seed
-        if NOM_VariantRules.semRosto(id, period, c) == want then return id end
+        local v = NOM_VariantRules.variant(id, period, c)
+        if (want and v == "semrosto") or (not want and v == nil) then return id end
     end
     error("nenhum ID")
 end

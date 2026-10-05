@@ -4,8 +4,8 @@
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
 -- O forçado vive em memória até o servidor reiniciar, MAS a noite e a névoa
 -- forçadas avançam os contadores salvos de noites e de névoas (NOM_NightCount e
--- NOM_Fog, ModData global): o número da noite muda o sorteio das variantes e a
--- noite dos Ecos daquele save pra sempre. Use um save descartável.
+-- NOM_Fog, ModData global): o número da névoa muda o sorteio das variantes e o da
+-- noite, a noite dos Ecos daquele save pra sempre. Use um save descartável.
 if isClient() then return end
 
 require "NOM_World"
