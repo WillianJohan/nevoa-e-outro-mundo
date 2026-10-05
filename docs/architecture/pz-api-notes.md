@@ -1208,7 +1208,7 @@ sujeira em xadrez, arbusto por cima do jogador). Bytecode do B42.21 e packs, só
 | Desenho: quad do tamanho **recortado** da textura (`getWidth/getHeight` = região do pack, sem o quadro), `XToScreen − w/2`, `YToScreen − h`: base do recorte no centro do tile. `GenericSpriteRenderState.render` sem cutaway não soma `offsetX/Y` | CONFIRMED (bytecode) | `IsoSprite.renderTextureWithDepth` 151–211; `GenericSpriteRenderState.render(Texture,FFFFFFFF,Consumer)` 50–124 |
 | Erro por sprite (quadro 2×: 128×256, diamante do chão centrado em (64, 224)): `(64 − (ox + w/2), 224 − (oy + h))`. Losango cheio: 32 px pra cima = meio tile. Compensar exato é impossível (tile inteiro anda 64/32 px na tela; `z` anda um andar) | medido | `scripts/audit_floor_sprites.py` |
 | Ordem do quadro: `renderPlayers` (241) → itens, poças → `renderOpaqueObjectsEvent` (374) → `renderMovingObjects` (387) → por andar: piso translúcido, sombras, `WorldMarkers.renderGridSquareMarkers` (769), **`IsoMarkers.renderIsoMarkers` (784)**, objetos translúcidos (818) | CONFIRMED (bytecode) | `FBORenderCell.performRenderTiles` |
-| O marcador **não é tapado** por telhado, parede nem jogador (depth test ligado, mas sem efeito prático contra o mundo do FBO) | visto no jogo | prints 6, 7, 9, 10 de 05/10 |
+| O marcador **testa profundidade**, mas com **um valor só pro quad inteiro**, o do centro do tile: `IndieGL.enableDepthTest` (`renderIsoMarkers` 38) e `TextureDraw.nextZ = calculateDepth(x+0,5, y+0,5, z+0,01)·2 − 1` (`renderTextureWithDepth` 131–144). Tudo que fica atrás desse ponto em profundidade e sob o quad na tela leva o decalque por cima: personagem em tile de trás, base de parede; nos prints, também o telhado | CONFIRMED (bytecode) + visto no jogo | `IsoMarkers.renderIsoMarkers` 38; `IsoSprite.renderTextureWithDepth`; prints 6, 7, 9, 10 de 05/10 |
 | `renderIsoMarkers` pula marcador com `active = false` (`setActive(Z)`); `setAlpha(F)` = `setA` | EXISTS | `renderIsoMarkers` 166–174; `IsoMarker.setActive`, `setAlpha` |
 | `WorldMarkers.addGridSquareMarker`: textura esticada num quadrado do chão (`x ± size·0,69`), pra círculo; deforma decalque isométrico | CONFIRMED (bytecode) | `FBORenderWorldMarkers.render` 150–235 |
 | `d_plants_1_*`: todos com `MoveWithWind` e `BlocksPlacement` (planta em pé); `d_streetcracks_1_*`: `FloorOverlay` | CONFIRMED | `media/tiledefinitions_erosion.tiles.txt` |
@@ -1216,13 +1216,16 @@ sujeira em xadrez, arbusto por cima do jogador). Bytecode do B42.21 e packs, só
 | Prédio: `square:isOutside()`, `square:getBuilding()`, `player:getBuilding()`, comparados com `~=` | CONFIRMED | `server/Farming/SFarmingSystem.lua:295`; `server/ClientCommands.lua:676`; `client/ISUI/ISWorldObjectContextMenu.lua:1679` |
 | Profundidade de tela de um andar: `YToScreen` sobe a altura de 3 tiles na diagonal por andar (um prédio de 1 andar cobre na tela os squares até 3 atrás dele) | CONFIRMED (bytecode): `YToScreen = 16·escala·(x + y) − 96·escala·z`, um andar = 6 passos de `x+y` = 3 tiles na diagonal | `IsoUtils.YToScreen(FFFI)` 0–50 |
 
-- **Escolha:** em vez de compensar o deslocamento, o pool do chão só tem decalque chato que,
-  desenhado pelo marcador, não põe pixel onde um personagem em pé no tile N, W ou NW está
-  (±24 px do centro dele, do pé pra cima). O decalque do tile do jogador fica apagado (todo
-  tick). Visibilidade por prédio e sombra de prédio, não por `isCouldSee` (o cone de visão
-  apagaria o chão às costas e faria o chão acender e apagar ao virar).
-- **UNKNOWN (roteiro da 0021):** zumbi em cima de decalque tem o pé coberto? Prédio de 2+
-  andares deixa chão de fora em cima do telhado (a sombra conta 3 tiles)?
+- **Escolha:** o deslocamento não se compensa. O pool do chão só tem decalque chato que não
+  invade o centro dos tiles N, W e NW (heurística de vazamento: com o pé fora do centro, todo
+  sprite alcança, porque o losango deslocado fica centrado no canto N do tile — review 0021).
+  Quem garante o corpo limpo é o cliente: o decalque do tile do personagem e dos S, E e SE dele
+  fica apagado — do jogador todo tick, de zumbis e jogadores do MP a até 10 tiles em rodízio.
+  Visibilidade por prédio e sombra de prédio (inclusive o prédio do próprio jogador, cujas
+  paredes N/W não são cortadas), não por `isCouldSee` (o cone de visão apagaria o chão às
+  costas e faria o chão acender e apagar ao virar).
+- **UNKNOWN (roteiro da 0021):** a latência do rodízio de zumbis (até ~2 voltas de 8 por tick)
+  se vê? Prédio de 2+ andares deixa chão de fora em cima do telhado (a sombra conta 3 tiles)?
 
 ## 17. Dissolve e bloom (sprint 0018)
 

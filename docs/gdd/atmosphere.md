@@ -87,9 +87,10 @@ máximo". Substitui as manchas esparsas da sprint 0005
   jogador tem sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda não tá o outro
   mundo": grama verde e asfalto limpos no zoom de perto).
 - **Só decalque chato e só onde se vê** (sprint 0021, prints do Johan de 05/10): nada de planta
-  em pé (cobria o jogador); o chão debaixo do pé do jogador fica limpo; de fora, nada do chão de
-  dentro das casas nem do que a casa tapa na tela (saía em cima do telhado); de dentro, a casa
-  dele e a rua. Entrar e sair apaga e acende com fade.
+  em pé (cobria o jogador); o chão debaixo do pé do jogador, dos zumbis e dos outros jogadores
+  perto fica limpo; de fora, nada do chão de dentro das casas nem do que a casa tapa na tela
+  (saía em cima do telhado); de dentro, a casa dele e a rua da frente (atrás das paredes do
+  fundo, não). Entrar e sair apaga e acende com fade.
 - **Paredes: desligadas** (sprint 0021). O desenho de parede sai por cima do jogador e do que
   está na frente, e pintava de preto a parede que o jogo corta; sem jeito confiável de recortar
   ([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md#emenda-de-2026-10-05--sprint-0021-o-que-o-jogo-mostrou)).

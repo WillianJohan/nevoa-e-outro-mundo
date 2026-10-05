@@ -8,8 +8,10 @@
 --   com a tabela de texturas (getIsoMarkers():addIsoMarker(nomes, sq, r, g, b, a),
 --   ISBaseIcon.lua:579). Lista em memória do IsoMarkers, sem save/load nem pacote; o
 --   IngameState.exit faz reset(). Sem luz: a cor do marcador leva a luz do square.
---   O marcador sai depois dos personagens e por cima do mundo (§16.5): só square que o
---   jogador vê (prédio), e o do tile dele apagado.
+--   O marcador sai depois dos personagens e testa profundidade com um valor só, o do centro
+--   do tile (§16.5): pinta por cima do que está atrás desse ponto (personagem do tile de
+--   trás, parede, telhado). Daí: só square que o jogador vê (prédio e sombra de prédio), e
+--   os 4 tiles debaixo de cada personagem perto apagados.
 -- * Parede: desenho imediato a cada quadro, no Events.RenderOpaqueObjectsInWorld
 --   (FBORenderCell.renderOpaqueObjectsEvent, todo quadro; ISBuildingObject.lua:721-741),
 --   com sprite:RenderGhostTileColor(x, y, z, r, g, b, a) (ISFarmingCursorMouse.lua:21).
