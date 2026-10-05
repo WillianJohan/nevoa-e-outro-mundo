@@ -17,7 +17,7 @@
 - Toda chamada com evidência (Lua vanilla arquivo:linha ou bytecode); UNKNOWN vira fallback + linha no roteiro.
 - Nada copiado: sprites vanilla só pelo nome.
 - Texto do jogador por chave, PTBR e EN. `FogOverlays` (sandbox) continua o liga/desliga; densidade é opção do jogador `FogOverlayDensity` (0–2, padrão 1) na página do `PZAPI.ModOptions` da sprint 0013.
-- Teto: ≤ 450 marcadores de chão ativos, ≤ 120 paredes desenhadas por quadro.
+- Teto: ≤ 600 marcadores de chão ativos, ≤ 120 paredes desenhadas por quadro.
 
 ## Evidência (bytecode do B42.21 instalado; detalhe no pz-api-notes §16)
 
@@ -48,9 +48,9 @@
 **Interfaces:**
 - Produces: `NOM_DressingRules.SETS[nome] = { prefix = "...", idx = { ... } }`; `R.density(option, red) -> d` (0..3.2); `R.floor(x, y, z, period, d) -> { {set, i}, ... } | nil` (até 4 camadas, sangue primeiro); `R.wall(x, y, z, period, d, north) -> {set, i} | nil`; `R.OFFSETS` = `{ {dx, dy}, ... }` no raio, mais perto primeiro; constantes `RADIUS, MAX_FLOOR, MAX_WALL`.
 
-- [ ] Testes: determinismo (mesma entrada, mesma saída; período diferente muda), poças (alguma célula com 3 camadas de sangue em 60×60), densidade (vermelha > normal > 0; `d = 0` nada), paredes N só de sets N e W só de W, índices dentro do que o pack tem, `OFFSETS` ordenado e dentro do raio.
-- [ ] Implementar com o hash do `NOM_VariantRules` (quadrados módulo primo, exato em double).
-- [ ] `./run-tests.sh`, commit.
+- [x] Testes: determinismo (mesma entrada, mesma saída; período diferente muda), poças (alguma célula com 3 camadas de sangue em 60×60), densidade (vermelha > normal > 0; `d = 0` nada), paredes N só de sets N e W só de W, índices dentro do que o pack tem, `OFFSETS` ordenado e dentro do raio.
+- [x] Implementar com o hash do `NOM_VariantRules` (quadrados módulo primo, exato em double).
+- [x] `./run-tests.sh`, commit.
 
 ### Task 2: Cliente — chão por marcador, paredes por desenho
 
@@ -74,9 +74,9 @@ Comportamento:
 - Luz: `LIGHT_FLOOR + (1 - LIGHT_FLOOR)·getLightLevel(0)`, relida em rodízio (`LIGHT_BUDGET` 30 por atualização); `setColor(r, g, b, a)` só quando muda.
 - Quadro: `RenderOpaqueObjectsInWorld(pn, x, y, z)`: só `pn == 0`; fora da névoa e sem paredes, zero chamada; senão `sprite:RenderGhostTileColor(x, y, z, l, l, l, a)` por parede com `a > 0` no andar `z`, até `MAX_WALL`.
 
-- [ ] Testes contra o mundo falso (o square explode em escrita; `addBloodSplat`, `getSprite` sem textura e qualquer método de objeto do mapa explodem): inerte no dedicado; nasce na névoa e enche em poucos segundos; vermelha > normal; teto; paredes desenhadas por quadro só no evento, no andar, de frente e visíveis; fade de saída e remoção no fim da névoa; morte e menu limpam na hora; determinismo e estabilidade ao andar; período novo; andar; square ausente; densidade 0; orçamento por atualização e por quadro (contador de chamadas).
-- [ ] Implementar.
-- [ ] `./run-tests.sh`, commit.
+- [x] Testes contra o mundo falso (o square explode em escrita; `addBloodSplat`, `getSprite` sem textura e qualquer método de objeto do mapa explodem): inerte no dedicado; nasce na névoa e enche em poucos segundos; vermelha > normal; teto; paredes desenhadas por quadro só no evento, no andar, de frente e visíveis; fade de saída e remoção no fim da névoa; morte e menu limpam na hora; determinismo e estabilidade ao andar; período novo; andar; square ausente; densidade 0; orçamento por atualização e por quadro (contador de chamadas).
+- [x] Implementar.
+- [x] `./run-tests.sh`, commit.
 
 ### Task 3: Debug, docs e roteiro
 
@@ -84,4 +84,4 @@ Comportamento:
 - Modify: `mod/42/media/lua/client/NOM_Debug.lua` (`chao`, `paredes` no status)
 - Modify: `docs/architecture/pz-api-notes.md` (§16), `docs/architecture/README.md` (estrutura, orçamento, ADR-015), `docs/architecture/adr-015-outro-mundo-sangrento.md` (nova), `docs/gdd/atmosphere.md`, `docs/gdd/art-direction.md` (só um bloco no fim), `docs/gdd/Overview.md`, `docs/gdd/sandbox.md`, `docs/sprints/README.md` (uma linha), README da sprint (critérios com evidência, roteiro).
 
-- [ ] Docs, `./run-tests.sh`, commit.
+- [x] Docs, `./run-tests.sh`, commit.

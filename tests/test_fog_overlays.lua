@@ -396,7 +396,7 @@ return {
         end
         local names = 0
         for _, set in pairs(D().SETS) do names = names + #set.idx end
-        -- carga dos sprites (uma vez, ~550 getTexture) fica no 1º lote; o resto:
+        -- carga dos sprites (uma vez, 404 getTexture) fica no 1º lote; o resto:
         -- ≤ 8 por square varrido + 2 por entrada (fade/luz/visão)
         local steady = 0
         G.seconds(30)

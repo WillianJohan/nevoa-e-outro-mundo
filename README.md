@@ -37,6 +37,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça | 0012 |
 | Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
+| Outro Mundo sangrento | na névoa, poças e rastros de sangue, sujeira, rachaduras, musgo e trepadeiras no chão e nas paredes em volta (mais na vermelha); só na tela, nada no save; densidade de cada jogador | 0015 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 

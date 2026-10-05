@@ -13,7 +13,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
 - Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
 - Névoa vermelha (`RedFogEnabled`, padrão ligado): parte das névoas vem vermelha, com sirene própria, e todo zumbi nela é monstro ([monsters.md](monsters.md#regra-geral))
-- Névoa (evento com sirene, sem toggle: `FogEventEveryDays` alto deixa rara): som ambiente (`FogAmbience`) · sangue e ferrugem no chão (`FogOverlays`) · vinheta (`FogVignette`), todos padrão ligado
+- Névoa (evento com sirene, sem toggle: `FogEventEveryDays` alto deixa rara): som ambiente (`FogAmbience`) · sangue e erosão no chão e nas paredes (`FogOverlays`; a quantidade é opção de cada jogador, Opções > Mods, sprint 0015) · vinheta (`FogVignette`), todos padrão ligado
 
 ## Números
 

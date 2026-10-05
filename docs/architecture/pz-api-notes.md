@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1044,6 +1044,82 @@ Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
 - **UNKNOWN:** o vencedor quando dois mods trazem `screen.frag` (ordem do `activeFileMap`); o
   shader compilando no driver do Johan (roteiro).
 
+## 16. Outro Mundo sangrento (sprint 0015)
+
+Verificado no bytecode do B42.21 (o instalado), no Lua vanilla e nos packs de textura. Decisão na
+[ADR-015](adr-015-outro-mundo-sangrento.md).
+
+### 16.1 O que vai pro save ou pra rede (proibido)
+
+| Mecanismo | Salva? | Rede? | Evidência |
+|---|---|---|---|
+| `IsoObject.attachedAnimSprite` (`addAttachedAnimSprite*`) | **sim** | com o objeto | `IsoObject.save` 64–187 (lista inteira, por ID do sprite) |
+| `IsoObject` overlay (`setOverlaySprite`) | **sim** (flag 256, nome e cor) | `setOverlaySprite(..., true)` → `UpdateOverlaySprite` / `GameServer.updateOverlayForClients` | `IsoObject.save` 1041–1182; `setOverlaySprite` 203–305 |
+| Sangue de parede (`wallBloodSplats`) | **sim** (até 32) | — | `IsoObject.save` 741–825 |
+| Sangue de chão (`addBloodSplat`) | **sim** | — | §5 |
+| Objeto novo no square (`AddSpecialObject`, `AddTileObject`, `addTileObject`) | **sim**: `IsoGridSquare.save` grava todo objeto da lista `objects`, sem filtro; `IsoObject.Serialize()` é `true` na base | — | `IsoGridSquare.save` 116–342 |
+| Erosão de verdade (`ErosionMain`, categorias `WallCracks`, `WallVines`...) | **sim**: vira objeto/overlay do square | — | `zombie/erosion/categories/*.init` montam `ErosionObjOverlay` com os mesmos sprites |
+
+### 16.2 O que desenha sem tocar em nada
+
+| Mecanismo | Onde desenha | Prof.? | Luz? | Status | Evidência |
+|---|---|---|---|---|---|
+| `getIsoMarkers():addIsoMarker(tabelaDeNomes, sq, r, g, b, a)` | quad de cada textura **centrado no meio do tile, base no meio** (`renderTextureWithDepth`: `x − w/2`, `y − h`, tamanho recortado da textura) | sim (`enableDepthTest`, profundidade do ponto `x+0.5, y+0.5, z+0.01`) | não (só a cor do marcador) | CONFIRMED, **usado** | `ISBaseIcon.lua:579` (tabela de nomes); `IsoMarker.init(KahluaTable,...)` (uma `Texture.trygetTexture` por item); `IsoMarkers.renderIsoMarkers` 32–330 (FBO), só no andar do jogador; `IngameState.exit` 602 → `reset()` |
+| `Events.RenderOpaqueObjectsInWorld(pn, x, y, z, sq)` + `sprite:RenderGhostTileColor(x, y, z, r, g, b, a)` | posição de tile de verdade (`IsoSprite.render(inst, nil, x, y, z, N, 32·escala, 96·escala, branco, true)`) | **não** (com `setRenderingGhostTile(true)` o `renderCurrentAnim` faz `disableDepthTest`) | não (cor branca cheia × tinta) | evento CONFIRMED (`ISBuildingObject.lua:721-741`), desenho CONFIRMED (`ISFarmingCursorMouse.lua:21`, 7 argumentos); os dois juntos fora do cursor: EXISTS, **usado** | `FBORenderCell.performRenderTiles` 372–374 chama `renderOpaqueObjectsEvent(pn)` todo quadro, depois de itens e poças, antes dos personagens; o evento sai sempre (`UIManager.PickedTile` nasce no `<clinit>`, nunca nil; com controle, a posição da câmera). `IsoSprite.RenderGhostTileColor(IIIFFFFFF)` 0–313; o `IsoSpriteInstance` volta pro pool (`IsoSpriteInstance.add`) |
+| `getWorldMarkers():addGridSquareMarker` | círculo/ícone de chão | — | — | CONFIRMED | §5 |
+
+- **Escolha:** chão por `IsoMarker` (tem profundidade; o deslocamento de meio tile é igual pra
+  todos), parede por `RenderGhostTileColor` (só ele põe o sprite de parede no lugar; o `IsoMarker`
+  centraria o recorte da textura e a parede cairia fora). Sem profundidade, a parede passaria por
+  cima do que está na frente: só parede limpa (`getObjects():size()` = piso + paredes), de frente
+  e com `isCouldSee`.
+- `getSprite(nome)` → `IsoSpriteManager.getSprite(String)`: nome desconhecido **cria** um sprite
+  vazio (`AddSprite`). Conferir com `getTexture(nome)` antes (`ClientCommands.lua:195` usa).
+- `square:getWall(north)`: o objeto cujo sprite tem `cutN` (norte) ou `cutW` (oeste), pulando
+  `WallSE` (`IsoGridSquare.getWall(Z)` 0–85; `ISDestroyStuffAction.lua:141-142`). Batente de porta
+  e janela também têm `cut*`: entram.
+- `square:getLightLevel(pn)`: `max(r, g, b)` da luz do square pro jogador (`IsoGridSquare.getLightLevel(I)`
+  10–37; `forageSystem.lua:1889`).
+- `IsoMarker.setColor(FFFF)` existe (EXISTS): cor e alfa numa chamada.
+
+### 16.3 Sprites vanilla (pack `Tiles2x`, contagem)
+
+Lado da parede por dois caminhos que batem: o recorte da textura no quadro de 128×256 (metade
+esquerda = parede W, direita = N; tabela `x, y, w, h, ox, oy` de cada entrada do pack) e a
+profundidade em `media/tileDepthTextureAssignments.txt` (`preset_depthmaps_01_4` = W, `_5` = N,
+`_6` = canto, conferido com `walls_exterior_house_01_0/1`). Sangue de parede: o `splatBlood`
+vanilla usa `0..3`, `8..11`, `16..19` pra parede W (`IsoGridSquare.splatBlood` 506–639).
+`WallCracks.init`: 9 colunas por linha, `{2,2,2,1,1,1,0,0,0}` (W, N, canto). `WallVines.init`:
+`idx = 24·k + 6·estágio + tipo`, tipos 0–1 W, 2–3 N, 4–5 canto.
+
+| Set | No pack | Usados (lado) |
+|---|---|---|
+| `overlay_blood_floor_01_` | 43 (0–27, 32–46 com falhas) | 37 de chão |
+| `overlay_grime_floor_01_` | 84 | 82 de chão |
+| `d_streetcracks_1_` | 118 | 118 (rachadura de chão) |
+| `d_plants_1_` | 64 | 33 de chão (musgo, mato rasteiro) |
+| `overlay_blood_wall_01_` | 64 | 11 W, 9 N (6 largos, de dois tiles, fora) |
+| `overlay_grime_wall_01_` | 46 | 9 W, 9 N (cantos e pilares fora) |
+| `d_wallcracks_1_` | 72 | 24 W, 24 N |
+| `f_wallvines_1_` | 72 | 24 W, 24 N (4 estágios) |
+
+Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_floor_small/med/large`
+(1x), `overlay_graffiti_wall_01/02`, `overlay_messages_wall_01` (texto legível: não é Outro Mundo),
+`d_floorleaves_1_` (12), `floors_burnt_01_` (29).
+
+### 16.4 Custo
+
+- Marcador: zero Lua por quadro; o Java percorre a lista e manda um quad por textura (≤ 600
+  marcadores × ≤ 4). Parede: **uma chamada Lua→Java por parede desenhada por quadro** (≤ 120),
+  cada uma um sprite no mesmo caminho do fantasma de construção.
+- Atualização (a cada 10 ticks): a regra pura custa ~3,5 µs por square no luajit sem JIT
+  (`-joff`); no Kahlua, estimado 10–30× isso: o lote de 80 squares fica em poucos ms. Chamadas
+  Java: ≤ ~1030 enquanto enche (getGridSquare, isFree, getWall×2, getObjects, luz, marcador),
+  ~150 parado (luz em rodízio + visão das paredes); a 1ª vez, +404 `getTexture`. Contado em
+  `overlays_budget`.
+- **UNKNOWN (roteiro):** o tempo de quadro de verdade com 600 marcadores e 120 paredes; se pesar,
+  baixar `MAX_FLOOR`/`MAX_WALL` ou o `SCAN_BUDGET`.
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1062,7 +1138,8 @@ Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
-| Decal local | `getIsoMarkers():addIsoMarker(sprite, sq, r,g,b,a)` | `addGridSquareMarker` |
+| Decal local de chão | `getIsoMarkers():addIsoMarker({nomes}, sq, r,g,b,a)` (§16) | `addGridSquareMarker` |
+| Decal local de parede | `RenderOpaqueObjectsInWorld` + `sprite:RenderGhostTileColor` (§16) | — |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
@@ -1100,3 +1177,6 @@ Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
 14. Efeitos de tela (sprint 0013): texturas do mod por `getTexture("media/textures/NOM/ScreenFx/...")`,
     o elemento de 1 px por baixo do HUD de verdade, `PZAPI.ModOptions` em Opções > Mods, e o
     `screen.frag` do mod2 compilando e vencendo o vanilla (§15)
+15. Outro Mundo sangrento (sprint 0015): `RenderGhostTileColor` chamado do
+    `RenderOpaqueObjectsInWorld` desenha a parede no lugar e sem engasgo? O chão por marcador meio
+    tile pra cima incomoda? Quanto custa o quadro com 600 marcadores e 120 paredes? (§16)

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -73,19 +73,40 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 - Estalo do Estalador, grito do Corredor.
 - Sons originais, gerados por `scripts/gen_sounds.py` ([CREDITS.md](../../CREDITS.md)).
 
-## Overlays (só na névoa)
+## Outro Mundo sangrento (só na névoa)
 
-- `FogOverlays`: manchas de sangue e ferrugem surgem aos poucos (uma a cada
-  1,5 s, com fade de 6 s) em tiles livres a 3–12 tiles do jogador, até 40. As que
-  ficam a mais de 20 tiles somem. Quando a névoa baixa, todas somem em ~6 s.
-- **Locais e só visuais**, sem sincronizar. Cada jogador vê o próprio pesadelo.
-  São marcadores de tela (`IsoMarkers`), não objetos do mapa: nada fica no save.
-- Visual por nome de sprite vanilla (`overlay_blood_floor_01_*`, e
-  `overlay_grime_floor_01_*` tingido de ferrugem).
+Sprint 0015, pedido do Johan: "o Outro Mundo eu imaginei com bastante sangue e com a erosão no
+máximo". Substitui as manchas esparsas da sprint 0005
+([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md)).
+
+- **Chão, num raio de 25 tiles:** poças de sangue (até 3 camadas no miolo), rastros saindo delas
+  e respingos soltos, por cima de sujeira, rachaduras e musgo. Na densidade 1, ~85% dos squares
+  livres mudam (2 camadas em média); qualquer enquadramento de 7×7 tiles perto do jogador tem
+  sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda não tá o outro mundo": grama
+  verde e asfalto limpos no zoom de perto).
+- **Paredes:** sangue escorrido (quase metade), sujeira, rachaduras e trepadeiras, em ~75% das
+  paredes à vista. Só parede de frente pro jogador, à vista e sem móvel no square (o desenho de
+  parede não tem profundidade: assim ele não passa por cima do que está na frente).
+- **Névoa vermelha = o máximo:** 1,6× a densidade.
+- **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
+  outra névoa, outro desenho. Nada pisca enquanto se anda.
+- Enche em ~4 s quando a névoa chega (com fade), acompanha o jogador andando, e some com fade de
+  ~4 s quando ela baixa. Na morte e no menu some na hora.
+- A luz do square escurece o sangue (com piso: no breu ainda se lê); a lanterna clareia.
+- **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
+  (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.
+- **Locais e só visuais**, sem sincronizar: cada jogador vê o próprio pesadelo (em MP, cada um
+  num lugar diferente). Nada é objeto do mapa: nada fica no save.
+- Sprites vanilla por nome: `overlay_blood_floor_01_*`, `overlay_grime_floor_01_*`,
+  `d_streetcracks_1_*`, `d_plants_1_*`; nas paredes `overlay_blood_wall_01_*`,
+  `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`
+  ([pz-api-notes §16](../architecture/pz-api-notes.md#16-outro-mundo-sangrento-sprint-0015)).
+- Limites: o chão fica meio tile deslocado pra cima (jeito do marcador do jogo); só o andar do
+  jogador; só o jogador 0 na tela dividida tem as paredes.
 
 ## Vinheta (só na névoa)
 
-> Vinheta, sangue/ferrugem no chão, drone e rádio **só aparecem no evento de névoa**,
+> Vinheta, sangue e erosão, drone e rádio **só aparecem no evento de névoa**,
 > nunca só de noite. Pra ver sem esperar: `NOM_Debug.fog(true, true)` no console
 > (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 30 s depois).
 > Vermelha: `NOM_Debug.redFog(true)`.

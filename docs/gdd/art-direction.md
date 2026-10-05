@@ -70,3 +70,17 @@ Pedido do Johan depois do primeiro teste: a névoa ficou "LINDA", falta a tela. 
   perde o foco nas bordas. Mesma ideia, mais forte.
 - Nada disso tem cor fora da paleta do mod: preto, cinza, sépia da névoa e o vermelho da
   vermelha. Texturas: `scripts/gen_textures.py` (branco com alfa, pintado no desenho).
+
+## O Outro Mundo sangrento (sprint 0015)
+
+Pedido do Johan (05/10): "o Outro Mundo eu imaginei com bastante sangue e com a erosão no máximo".
+Na névoa, o lugar em volta é o mesmo lugar, abandonado há décadas e onde alguma coisa sangrou muito.
+
+- **Sangue que conta história:** poças (o miolo escuro, de camadas sobrepostas) com um rastro
+  saindo, como algo arrastado; respingo solto entre elas. Nas paredes, escorrido. Não é carpete
+  uniforme: é onde aconteceu alguma coisa.
+- **Erosão no máximo:** sujeira, rachadura e musgo no chão; rachadura, sujeira e trepadeira nas
+  paredes. O que a natureza levaria anos pra fazer, a névoa faz em segundos.
+- **Vermelha é pior:** mais poças, mais rastro, mais parede suja.
+- Só sprites vanilla pelo nome (nada copiado nem gerado); escurecidos pela luz do lugar, com um
+  piso pra ainda se lerem no breu. Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md).
