@@ -134,8 +134,8 @@ Passos 1–8 **sem** o mod do shader ativo (o ShadowZ pode continuar).
 - Tudo do roteiro acima; em especial os UNKNOWNs do [pz-api-notes §15](../../architecture/pz-api-notes.md#15-efeitos-de-tela-sprint-0013):
   texturas pelo `getTexture`, a página de opções, o shader no driver.
 - Tela dividida: só o jogador 0 tem o efeito.
-- O ID do ShadowZ não foi lido (mod de terceiro): sem `incompatible=` no `mod.info` do mod2, só o
-  aviso no nome e na descrição. Se o Johan quiser o bloqueio, preencher com o ID dele.
+- `incompatible=\ShadowZ` no `mod.info` do mod2 (id `ShadowZ`, passado pelo coordenador no review):
+  falta ver no jogo que a lista de mods recusa os dois juntos (roteiro, passo 9).
 - Antes de subir pro Workshop: decidir se o mod2 vai no mesmo item (como está no build) ou num
   item separado; o build manda os dois.
 

@@ -1,6 +1,7 @@
 name=Névoa e Outro Mundo — Shader (incompatível com ShadowZ)
 id=NevoaEOutroMundo_Shader
 require=NevoaEOutroMundo
+incompatible=\ShadowZ
 author=Johan
 modversion=1.0.0
 versionMin=42.20

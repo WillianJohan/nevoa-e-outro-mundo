@@ -41,7 +41,8 @@ principal brigaria com ele. O que o B42 dá ([pz-api-notes §15](pz-api-notes.md
 3. **Opção do jogador, não do servidor:** `PZAPI.ModOptions` com liga/desliga e
    intensidade 0–2 (`client/NOM_ScreenFxOptions.lua`); sem a API, padrão ligado e 1.
 4. **(B) Shader num segundo mod** do mesmo item do Workshop (`mod2/` →
-   `Contents/mods/NevoaEOutroMundo_Shader/`, `require=NevoaEOutroMundo`):
+   `Contents/mods/NevoaEOutroMundo_Shader/`, `require=NevoaEOutroMundo`,
+   `incompatible=\ShadowZ`):
    `screen.frag` **original**, com a interface do vanilla (uniforms do
    `WeatherShader.onCompileSuccess`, `in vec2 vUV`, `gl_FragColor`) e o comportamento que
    importa refeito (dessaturação do clima, círculo do modo de busca, visão noturna,

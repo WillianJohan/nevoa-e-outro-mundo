@@ -117,6 +117,9 @@ return {
         local info = assert(read("mod2/42/mod.info"), "falta mod2/42/mod.info")
         assert(info:find("\nid=NevoaEOutroMundo_Shader\n", 1, true))
         assert(info:find("\nrequire=NevoaEOutroMundo\n", 1, true), "sem require do mod principal")
+        -- ShadowZ também troca o screen.frag; id "ShadowZ". B42: "\\<id>", e o
+        -- readModInfoAux tira a barra e separa por vírgula (bytecode 384–412)
+        assert(info:find("\nincompatible=\\ShadowZ\n", 1, true), "sem incompatible=\\ShadowZ")
         assert(info:find("\nversionMin=42.20\n", 1, true))
         assert(info:find("^name=[^\n]*ShadowZ"), "o nome não avisa do ShadowZ")
         assert(io.open("mod2/common/.gitkeep", "r"), "falta mod2/common/")
