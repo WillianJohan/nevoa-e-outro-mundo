@@ -3,22 +3,40 @@ NOM_Rules = {}
 
 NOM_Rules.FOG_HYSTERESIS = 0.05
 NOM_Rules.FOG_EXIT_FLOOR = 0.01
-NOM_Rules.CHANNELS = { "desaturation", "light", "fog", "tint" }
+NOM_Rules.CHANNELS = { "desaturation", "ambient", "fog", "tint" }
 
 -- value = alvo da camada modded do clima; weight = quanto puxar até ele (0..1).
+-- Canais escolhidos pelo que o render lê de verdade (sprint 0008, pz-api-notes §10):
+-- * tint = cor E alfa da luz global (r, g, b, a). O alfa é a força da cor: a luz do
+--   céu é 2 × mod × ambient, mod = 1 − alfa × (1 − cor). É o único canal com folga
+--   de madrugada; puxar pra um azul escuro com alfa alto escurece e esfria.
+-- * ambient: de madrugada o jogo já põe 0 (quem clareia é o piso do sandbox
+--   NightDarkness, somado depois do clima); vale no anoitecer e na névoa de dia.
+-- * desaturation: o render multiplica por (1 − darkness), zero à noite: só na névoa de dia.
+-- * a "intensidade da luz global" saiu: o render nunca lê (só o relâmpago).
 NOM_Rules.LOOKS = {
     night = {
-        desaturation = { value = 1, weight = 0.25 },
-        light        = { value = 0, weight = 0.25 },
-        tint         = { value = { 0.55, 0.65, 0.95 }, weight = 0.3 },
+        ambient = { value = 0, weight = 0.5 },
+        tint    = { value = { 0.10, 0.14, 0.30, 0.85 }, weight = 0.6 },
     },
     fog = {
         desaturation = { value = 1, weight = 0.6 },
-        light        = { value = 0, weight = 0.15 },
+        ambient      = { value = 0, weight = 0.3 },
         fog          = { value = 1, weight = 0.3 },
-        tint         = { value = { 0.75, 0.68, 0.55 }, weight = 0.4 },
+        tint         = { value = { 0.45, 0.40, 0.32, 0.75 }, weight = 0.5 },
     },
 }
+
+-- Luz global vanilla de madrugada (colNight, ClimateManager.<init> 250–269).
+NOM_Rules.VANILLA_NIGHT = { 0.33, 0.33, 0.33, 0.4 }
+
+-- Multiplicador da luz por canal que a cor (r, g, b, alfa) da luz global dá no
+-- render: rmod = lerp(1, cor, alfa) (RenderSettings$PlayerRenderSettings 662–725;
+-- à noite a dessaturação da cor é ~0). A luz do céu é clamp(2 × mod × ambient)
+-- (GameTime.getSkyLightLevel 10–77). Usado no log de debug e nos testes.
+function NOM_Rules.skyMod(r, g, b, a)
+    return 1 - a * (1 - r), 1 - a * (1 - g), 1 - a * (1 - b)
+end
 
 function NOM_Rules.isNight(tod, dawn, dusk)
     return tod >= dusk or tod < dawn
@@ -51,11 +69,9 @@ local function blendColor(a, aw, b, bw)
         return a or b
     end
     a, b = a or b, b or a
-    return {
-        (a[1] * aw + b[1] * bw) / total,
-        (a[2] * aw + b[2] * bw) / total,
-        (a[3] * aw + b[3] * bw) / total,
-    }
+    local out = {}
+    for i = 1, 4 do out[i] = (a[i] * aw + b[i] * bw) / total end
+    return out
 end
 
 function NOM_Rules.mix(nightRamp, fogRamp, intensity)

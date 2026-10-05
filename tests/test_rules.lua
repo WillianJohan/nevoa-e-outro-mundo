@@ -55,16 +55,44 @@ return {
             assert(look[ch].weight == 0, ch)
         end
     end,
+    -- à noite só os canais que o render usa no escuro: a dessaturação vai a zero
+    -- com a noite (PlayerRenderSettings 594–606: × (1 − darkness))
     mix_night_only_has_no_fog_channel = function()
         local look = NOM_Rules.mix(1, 0, 1)
         assert(look.fog.weight == 0)
-        assert(look.desaturation.weight > 0)
+        assert(look.desaturation.weight == 0)
+        assert(look.ambient.weight > 0)
         assert(look.tint.weight > 0)
     end,
     mix_intensity_scales_weight = function()
         local half = NOM_Rules.mix(1, 0, 0.5)
         local full = NOM_Rules.mix(1, 0, 1)
-        assert(near(half.desaturation.weight * 2, full.desaturation.weight))
+        assert(near(half.tint.weight * 2, full.tint.weight))
+    end,
+    -- luz do céu = 2 × mod × ambient (GameTime.getSkyLightLevel 10–77), mod = 1 − alfa ×
+    -- (1 − cor) (PlayerRenderSettings 662–725); noite vanilla = cinza 0.33 com alfa 0.4
+    rules_sky_mod_matches_render = function()
+        local r, g, b = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHT))
+        assert(near(r, 1 - 0.4 * 0.67) and near(g, r) and near(b, r))
+        local w = NOM_Rules.skyMod(1, 1, 1, 0.9)
+        assert(near(w, 1), "cor branca não escurece")
+    end,
+    -- "a noite parece clara igual dia": a noite do mod tem que ser bem mais escura e
+    -- mais fria que a vanilla com DarkIntensity 1, e muito escura com 2
+    rules_night_darker_and_colder_than_vanilla = function()
+        local van = NOM_Rules.skyMod(unpack(NOM_Rules.VANILLA_NIGHT))
+        local function night(intensity)
+            local t = NOM_Rules.mix(1, 0, intensity).tint
+            local c = {}
+            for i = 1, 4 do c[i] = NOM_Rules.blend(NOM_Rules.VANILLA_NIGHT[i], t.value[i], t.weight) end
+            return NOM_Rules.skyMod(unpack(c))
+        end
+        local r, g, b = night(1)
+        assert(r / van <= 0.7 and g / van <= 0.7, string.format("DarkIntensity 1 pouco escuro: %.2f %.2f", r / van, g / van))
+        assert(r / van >= 0.45, "DarkIntensity 1 escuro demais pra jogar: " .. r / van)
+        assert(b > r, "não ficou mais fria (azul)")
+        local r2 = night(2)
+        assert(r2 / van <= 0.4, "DarkIntensity 2 não ficou muito escuro: " .. r2 / van)
     end,
     mix_overlap_takes_strongest_not_sum = function()
         local both = NOM_Rules.mix(1, 1, 1)
@@ -72,7 +100,7 @@ return {
         assert(near(both.desaturation.weight, fog.desaturation.weight))
         -- cor da sobreposição fica entre azul (noite) e sépia (névoa)
         local n, f = NOM_Rules.LOOKS.night.tint.value, NOM_Rules.LOOKS.fog.tint.value
-        for i = 1, 3 do
+        for i = 1, 4 do
             local lo, hi = math.min(n[i], f[i]), math.max(n[i], f[i])
             assert(both.tint.value[i] >= lo and both.tint.value[i] <= hi)
         end

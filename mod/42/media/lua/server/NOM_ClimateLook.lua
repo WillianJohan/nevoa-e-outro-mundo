@@ -8,9 +8,11 @@ require "NOM_World"
 -- Em minutos de jogo: cobre pelo menos 2 pacotes de clima do MP (1 a cada 10).
 local TRANSITION_MINUTES = 20
 
+-- FLOAT_AMBIENT: client/DebugUIs/DebugMenu/Climate/PopupColorEdit.lua:64. Por que
+-- estes canais e não a "intensidade da luz global": NOM_Rules.LOOKS.
 local FLOATS = {
     desaturation = ClimateManager.FLOAT_DESATURATION,
-    light = ClimateManager.FLOAT_GLOBAL_LIGHT_INTENSITY,
+    ambient = ClimateManager.FLOAT_AMBIENT,
     fog = ClimateManager.FLOAT_FOG_INTENSITY,
 }
 
@@ -66,11 +68,12 @@ local function vanillaFog(f)
     return NOM_Rules.blend(internal, f:getOverride(), t)
 end
 
-local function blendColor(c, rgb, w)
-    return NOM_Rules.blend(c:getRedFloat(), rgb[1], w),
-        NOM_Rules.blend(c:getGreenFloat(), rgb[2], w),
-        NOM_Rules.blend(c:getBlueFloat(), rgb[3], w),
-        c:getAlphaFloat()
+-- rgba[4] = alfa: a força da cor no render (blendIntensity), é o que escurece.
+local function blendColor(c, rgba, w)
+    return NOM_Rules.blend(c:getRedFloat(), rgba[1], w),
+        NOM_Rules.blend(c:getGreenFloat(), rgba[2], w),
+        NOM_Rules.blend(c:getBlueFloat(), rgba[3], w),
+        NOM_Rules.blend(c:getAlphaFloat(), rgba[4], w)
 end
 
 local lastNight, lastFog

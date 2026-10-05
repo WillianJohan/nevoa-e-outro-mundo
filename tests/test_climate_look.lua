@@ -62,10 +62,11 @@ local function setup(opts)
 
     local floats = {
         [0] = float("f0", 0.2),  -- dessaturação
-        [1] = float("f1", 0.8),  -- luz global
         [5] = float("f5", 0),    -- névoa
+        [9] = float("f9", 0.5),  -- ambient (0 de madrugada no jogo; 0.5 pra ver a mistura)
     }
-    local VANILLA_EXT, VANILLA_INT = { 0.9, 0.85, 0.8, 1 }, { 0.6, 0.6, 0.6, 1 }
+    -- colNight do jogo (ClimateManager.<init> 250–269): cinza 0.33, alfa 0.4
+    local VANILLA_EXT, VANILLA_INT = { 0.33, 0.33, 0.33, 0.4 }, { 0.33, 0.33, 0.33, 0.4 }
     local color = { internal = newColorInfo(VANILLA_EXT, VANILLA_INT), modded = newColorInfo(VANILLA_EXT, VANILLA_INT),
         interp = 0, isModded = false }
     color.final = newColorInfo(VANILLA_EXT, VANILLA_INT)
@@ -87,7 +88,8 @@ local function setup(opts)
         self.final = newColorInfo(self.internal.ext, self.internal.int)
     end
 
-    ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_FOG_INTENSITY = 5, COLOR_GLOBAL_LIGHT = 0 }
+    ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_FOG_INTENSITY = 5,
+        FLOAT_AMBIENT = 9, COLOR_GLOBAL_LIGHT = 0 }
     ClimateColorInfo = {
         new = function(r, g, b, a, r2, g2, b2, a2) return newColorInfo({ r, g, b, a }, { r2, g2, b2, a2 }) end,
     }
@@ -154,14 +156,15 @@ return {
         for _, K in ipairs({ 1, 10, 150 }) do
             local env = setup({ tod = 23, K = K })
             env.run(40)
-            local d = env.floats[0]
-            local want = 0.2 + (1 - 0.2) * nightWeight("desaturation")
-            assert(near(d.final, want), string.format("K=%s dessaturação %.4f, esperado %.4f", K, d.final, want))
-            local l = env.floats[1]
-            assert(near(l.final, 0.8 * (1 - nightWeight("light"))), "K=" .. K .. " luz composta")
+            local a = env.floats[9]
+            local want = 0.5 * (1 - nightWeight("ambient"))
+            assert(near(a.final, want), string.format("K=%s ambient %.4f, esperado %.4f", K, a.final, want))
+            assert(near(env.floats[0].final, 0.2), "K=" .. K .. " mexeu na dessaturação à noite (o render zera)")
             local tint, w = NOM_Rules.LOOKS.night.tint.value, nightWeight("tint")
-            assert(near(env.color.final.ext[1], 0.9 + (tint[1] - 0.9) * w), "K=" .. K .. " tint exterior composto")
-            assert(near(env.color.final.int[3], 0.6 + (tint[3] - 0.6) * w), "K=" .. K .. " tint interior composto")
+            assert(near(env.color.final.ext[1], 0.33 + (tint[1] - 0.33) * w), "K=" .. K .. " tint exterior composto")
+            assert(near(env.color.final.int[3], 0.33 + (tint[3] - 0.33) * w), "K=" .. K .. " tint interior composto")
+            -- o alfa é a força da cor (blendIntensity): é ele que escurece
+            assert(near(env.color.final.ext[4], 0.4 + (tint[4] - 0.4) * w), "K=" .. K .. " alfa não escrito")
         end
     end,
 
@@ -171,7 +174,7 @@ return {
         for _, I in ipairs({ 0.5, 1, 2 }) do
             local env = setup({ tod = 23, K = 150, sandbox = { DarkIntensity = I } })
             env.run(40)
-            finals[#finals + 1] = env.floats[0].final
+            finals[#finals + 1] = -env.floats[9].final
         end
         assert(finals[1] < finals[2] - 0.01 and finals[2] < finals[3] - 0.01,
             string.format("finais iguais: %.3f %.3f %.3f", finals[1], finals[2], finals[3]))
@@ -207,11 +210,11 @@ return {
     -- transição em minutos de jogo: 20 ticks de clima, seja qual for o tempo real
     look_transition_takes_twenty_game_minutes = function()
         local env = setup({ tod = 23, K = 10 })
-        local full = 0.2 + (1 - 0.2) * nightWeight("desaturation")
+        local full = 0.5 * (1 - nightWeight("ambient"))
         env.run(19)
-        assert(env.floats[0].final < full - 1e-4, "cheio antes de 20 minutos de jogo")
+        assert(env.floats[9].final > full + 1e-4, "cheio antes de 20 minutos de jogo")
         env.run(1)
-        assert(near(env.floats[0].final, full), "não chegou cheio em 20 minutos de jogo")
+        assert(near(env.floats[9].final, full), "não chegou cheio em 20 minutos de jogo")
     end,
 
     -- (d) dia sem névoa: nenhuma chamada no clima
@@ -225,19 +228,25 @@ return {
     look_toggle_off_ramps_down_then_disables_once = function()
         local env = setup({ tod = 23, K = 10 })
         env.run(40)
-        local full = env.floats[0].final
+        local full = env.floats[9].final
         SandboxVars.NevoaEOutroMundo.DarkEnabled = false
         env.run(1)
-        local mid = env.floats[0].final
-        assert(mid < full - 1e-4 and mid > 0.2 + 1e-4, string.format("sem rampa: %.4f (cheio %.4f)", mid, full))
+        local mid = env.floats[9].final
+        assert(mid > full + 1e-4 and mid < 0.5 - 1e-4, string.format("sem rampa: %.4f (cheio %.4f)", mid, full))
         env.run(40)
-        assert(near(env.floats[0].final, 0.2), "não voltou ao vanilla")
-        assert(count(env.calls, "f0:on") == 1, "liga uma vez só")
-        assert(count(env.calls, "f0:off") == 1, "desliga uma vez só")
+        assert(near(env.floats[9].final, 0.5), "não voltou ao vanilla")
+        assert(count(env.calls, "f9:on") == 1, "liga uma vez só")
+        assert(count(env.calls, "f9:off") == 1, "desliga uma vez só")
         assert(count(env.calls, "tint:off") == 1)
         assert(count(env.calls, "f5:on") == 0, "sem névoa, canal de névoa nunca liga")
     end,
 
+    -- DarkIntensity 0 à noite: peso zero em todo canal, nenhuma escrita
+    look_intensity_zero_touches_nothing = function()
+        local env = setup({ tod = 23, K = 10, sandbox = { DarkIntensity = 0 } })
+        env.run(40)
+        assert(#env.calls == 0, "escreveu com intensidade 0: " .. table.concat(env.calls, ","))
+    end,
     -- (f) cliente de MP nunca escreve no clima: o visual vem do servidor
     look_mp_client_writes_nothing = function()
         local env = setup({ tod = 23, K = 10, client = true })
