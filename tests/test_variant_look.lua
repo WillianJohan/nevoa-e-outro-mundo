@@ -208,7 +208,9 @@ local function setup(opts)
         function z:isReanimatedPlayer() vc(); return self.reanimated end
         z.alpha, z.seen = 1, true
         function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
-        function z:getAlpha(pn) vc(); assert(pn == 0); return self.alpha end
+        function z:getAlpha(pn) vc(); assert(pn == 0); if self.alphaThrows then error("getAlpha falhou") end; return self.alpha end
+        -- IsoObject.getTargetAlpha(I) 0–14: o alvo da visão do jogador (1 à vista, 0 não)
+        function z:getTargetAlpha(pn) vc(); assert(pn == 0); return self.seen and 1 or 0 end
         function z:getCurrentSquare() vc(); return self.dead and nil or {} end
         z.x, z.y, z.z = o.x or 10.5, o.y or 20.5, 0
         function z:getX() vc(); return self.x end
@@ -1281,7 +1283,7 @@ return {
 
     -- orçamento (docs/architecture/README.md), com N peças vanilla escondidas e 1 jogador
     -- local (o driver do alfa custa 3 por tick com efeito: getCurrentSquare, getAlpha,
-    -- setAlpha): pôr com casca ≤ 20 + 3·N; a casca sair no fim ≤ 6; passada sem troca 0;
+    -- setAlpha): pôr com casca ≤ 22 + 3·N; a casca sair no fim ≤ 6; passada sem troca 0;
     -- cobrir ≤ 12; trocar embaixo e revelar ≤ 14 + 2·N
     ember_budget = function()
         local G = setup({ dissolve = true, body = true })
@@ -1292,7 +1294,7 @@ return {
         G.vcalls = 0
         G.converge()
         local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
-        assert(G.vcalls <= 20 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        assert(G.vcalls <= 22 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
         G.vcalls = 0
         local ms = NOM_DissolveRules.MS + 50
         G.ms(ms)
@@ -1309,4 +1311,42 @@ return {
         assert(G.vcalls <= per * math.ceil(ms / 16) + 14 + 2 * n, "trocar embaixo custou " .. G.vcalls)
         assert(z.hv.name == nil)
     end,
+
+    -- review da 0022: zumbi fora da vista (alvo de alfa 0) não ganha brasa (o overlay desenha
+    -- na tela sem ver parede nem visão: revelaria o zumbi) nem casca (não prende vaga); vai
+    -- pelo caminho da 0018, na mutação e na volta
+    ember_unseen_zombie_no_shell_no_burst = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 74) })
+        z.seen = false
+        fogOn(74)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.estalador
+        assert(not hasItem(z, SHELL) and hasItem(z, look.fx), "fora da vista: " .. types(z))
+        assert(#G.bursts == 0 and NOM_EmberShell.count() == 0, "brasa ou casca fora da vista")
+        -- visto na mutação (casca, peça sem shader), fora da vista na volta: na hora, sem brasa
+        local y = G.spawn({ id = idFor("corredor", 74) })
+        G.converge()
+        G.ms(1200)
+        assert(hasItem(y, NOM_VariantLook.LOOKS.corredor.item) and #G.bursts == 1)
+        y.seen = false
+        fogOff()
+        G.converge()
+        assert(not hasItem(y, SHELL) and #G.bursts == 1, "volta fora da vista: " .. types(y))
+        assert(types(y) == table.concat(OUTFIT, ","), types(y))
+    end,
+
+    -- review da 0022: erro da API no driver do alfa no meio da casca: a casca sai
+    ember_shell_removed_on_dissolve_error = function()
+        local G = setup({ dissolve = true, body = true })
+        local z = G.spawn({ id = idFor("estalador", 75) })
+        fogOn(75)
+        G.converge()
+        assert(hasItem(z, SHELL))
+        z.alphaThrows = true
+        G.tick(1)
+        z.alphaThrows = false
+        assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0, "a casca ficou: " .. types(z))
+    end,
 }
+

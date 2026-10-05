@@ -119,6 +119,6 @@ a técnica é a **casca da morte do Eco aplicada ao zumbi vivo** ([sprint 0022](
 
 Consequências: a casca muda a silhueta por ~1 s (a Hazmat é mais larga); sem máscara, pele ou
 roupa podem atravessar a malha (roteiro); a primeira mutação de uma sessão compila o mesmo
-`NOM_Dissolve` de antes (nenhum shader novo). Custo: pôr com casca ≤ 20 + 3·N chamadas uma vez,
+`NOM_Dissolve` de antes (nenhum shader novo). Custo: pôr com casca ≤ 22 + 3·N chamadas uma vez,
 cobrir ≤ 12, trocar embaixo e revelar ≤ 14 + 2·N, mais o driver do alfa de sempre.
 

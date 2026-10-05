@@ -41,11 +41,20 @@ function S.count()
     return count
 end
 
--- Pode usar a casca agora: opção ligada e (já tem uma, ou há vaga nas cascas e no dissolve).
+-- À vista do jogador 0: o alvo do alfa que a visão dá (IsoObject.getTargetAlpha(I) 0–14; o
+-- mundo anda o alfa até ele). Fora da vista, nem casca (não prende vaga) nem brasa: o overlay
+-- desenha na tela sem saber de parede nem de visão e revelaria o zumbi. O overlay das brasas
+-- é só do jogador 0, como o resto da 0013.
+local function seen(z)
+    return z:getTargetAlpha(0) > 0
+end
+
+-- Pode usar a casca agora: opção ligada e (já tem uma, ou está à vista e há vaga nas cascas
+-- e no dissolve).
 function S.can(z)
     if not NOM_ScreenFxOptions.bodyEmbers() then return false end
     if shells[z] then return true end
-    return count < R.SHELL_CAP and (NOM_Dissolve.busy(z) or NOM_Dissolve.count() < R.CAP)
+    return count < R.SHELL_CAP and (NOM_Dissolve.busy(z) or NOM_Dissolve.count() < R.CAP) and seen(z)
 end
 
 local function wear(z)
@@ -84,9 +93,9 @@ function S.cover(z, done)
     return false
 end
 
--- Brasas no pé do zumbi, no começo de uma transição (o NOM_Embers tem o teto dele).
+-- Brasas no pé do zumbi à vista, no começo de uma transição (o NOM_Embers tem o teto dele).
 function S.burst(z)
-    NOM_Embers.burst(z:getX(), z:getY(), z:getZ())
+    if seen(z) then NOM_Embers.burst(z:getX(), z:getY(), z:getZ()) end
 end
 
 -- Morte com a casca (no meio da mutação ou depois da troca da volta). No solo o

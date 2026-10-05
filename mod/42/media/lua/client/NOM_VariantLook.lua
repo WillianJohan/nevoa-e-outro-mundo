@@ -127,8 +127,7 @@ local function put(z, kind, id)
     hide(list, w)
     z:resetModelNextFrame()
     if shell then
-        NOM_EmberShell.reveal(z)
-        NOM_EmberShell.burst(z)
+        if NOM_EmberShell.reveal(z) then NOM_EmberShell.burst(z) end
     elseif fx then
         NOM_Dissolve.run(z, "in") -- no teto, a peça já vem inteira
     end
