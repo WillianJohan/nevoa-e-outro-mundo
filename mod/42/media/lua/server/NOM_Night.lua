@@ -8,6 +8,7 @@ require "NOM_Config"
 require "NOM_NightRules"
 require "NOM_NightStats"
 require "NOM_Players"
+require "NOM_NightCount"
 
 local MODULE = "NevoaEOutroMundo"
 -- Farol da lanterna a cada N minutos de jogo: chamado todo minuto vira enxame.
@@ -23,10 +24,12 @@ if not isServer() then NOM_NightStats.install() end
 
 NOM_World.onChange(function(flag, on)
     if flag ~= "night" then return end
+    -- O número da noite vai junto: o cliente sorteia as variantes igual (ADR-006).
+    local night = NOM_NightCount.current()
     if isServer() then
-        sendServerCommand(MODULE, "night", { on = on })
+        sendServerCommand(MODULE, "night", { on = on, night = night })
     else
-        NOM_NightStats.setNight(on)
+        NOM_NightStats.setNight(on, night)
     end
     debugLog("night=" .. tostring(on))
 end)
@@ -34,7 +37,7 @@ end)
 -- Cliente que entra no meio da noite não viu a borda: pergunta.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "nightState" then return end
-    sendServerCommand(player, MODULE, "night", { on = NOM_World.night })
+    sendServerCommand(player, MODULE, "night", { on = NOM_World.night, night = NOM_NightCount.current() })
 end)
 
 local function alive()

@@ -46,6 +46,12 @@ return {
         C.fire("OnServerCommand", "NevoaEOutroMundo", "night", { on = false })
         assert(NOM_NightStats.night == false)
     end,
+    night_client_takes_night_number = function()
+        local C = setup(true)
+        assert(NOM_NightStats.nightNumber == nil)
+        C.fire("OnServerCommand", "NevoaEOutroMundo", "night", { on = true, night = 4 })
+        assert(NOM_NightStats.night == true and NOM_NightStats.nightNumber == 4)
+    end,
     night_client_asks_state_on_join = function()
         local C = setup(true)
         local p = {}

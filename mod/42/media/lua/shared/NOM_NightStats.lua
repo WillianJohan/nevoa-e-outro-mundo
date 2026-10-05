@@ -159,8 +159,11 @@ function NOM_NightStats.tick()
     logPass(size, n, applied)
 end
 
-function NOM_NightStats.setNight(on)
+-- nightNumber: número da noite do servidor (NOM_NightCount), base do sorteio
+-- das variantes. nil enquanto o cliente não souber.
+function NOM_NightStats.setNight(on, nightNumber)
     NOM_NightStats.night = on
+    NOM_NightStats.nightNumber = nightNumber
 end
 
 -- OnZombieCreate: inclusive zumbi que volta do virtual com stats re-sorteados.

@@ -260,6 +260,8 @@ local function setup(opts)
 
     NOM_World = nil
     package.loaded["NOM_World"] = nil
+    NOM_NightCount = nil
+    package.loaded["NOM_NightCount"] = nil
     require "NOM_World"
     dofile(ECO_FILE)
     if not opts.noClock then NOM_World.update(0) end

@@ -6,6 +6,7 @@ require "NOM_World"
 require "NOM_Config"
 require "NOM_EcoRules"
 require "NOM_Players"
+require "NOM_NightCount"
 
 local OUTFIT = "NOM_Eco" -- media/clothing/clothing.xml
 local HEALTH = 0.3       -- vanilla "normal" nasce com 1.5 ± 0.3 (createZombieOutsideWorld)
@@ -18,7 +19,8 @@ local function debugLog(msg)
     if getDebug() then print("[NOM] eco " .. msg) end
 end
 
--- Estado salvo no ModData global: { night, inNight, ids }. ids guarda o
+-- Estado salvo no ModData global: { night, inNight, ids } (night/inNight são do
+-- NOM_NightCount). ids guarda o
 -- persistentOutfitID exato (com a semente) de cada Eco e as noites em que um Eco
 -- com esse ID nasceu (NOM_EcoRules.prune explica os gêmeos):
 -- o modData do zumbi não é salvo, e é por esse ID que um Eco que volta de chunk
@@ -30,14 +32,15 @@ local function store()
     return data.eco
 end
 
--- Número da noite atual (nil antes do primeiro OnClimateTick). Abre noite nova
--- e poda IDs velhos quando a noite começa.
+-- Número da noite atual (nil antes do primeiro OnClimateTick), do contador
+-- compartilhado. Poda os IDs velhos uma vez por noite nova (e uma vez por boot).
+local prunedFor
 local function currentNight()
-    if NOM_World.tod == nil then return nil end
-    local s = store()
-    local before = s.night
-    local night = NOM_EcoRules.syncNight(s, NOM_World.night)
-    if night ~= before then NOM_EcoRules.prune(s.ids, night) end
+    local night = NOM_NightCount.current()
+    if night and night ~= prunedFor then
+        NOM_EcoRules.prune(store().ids, night)
+        prunedFor = night
+    end
     return night
 end
 

@@ -11,7 +11,7 @@ NOM_NightStats.install()
 
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE or command ~= "night" then return end
-    NOM_NightStats.setNight(args.on == true)
+    NOM_NightStats.setNight(args.on == true, args.night)
 end)
 
 -- Entrou no meio da noite: a borda já passou, pergunta o estado.
