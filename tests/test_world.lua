@@ -63,4 +63,21 @@ return {
         NOM_World.update()
         assert(NOM_World.fog == false)
     end,
+    -- névoa vermelha (sprint 0010): red só com névoa; borda "red" só quando a névoa
+    -- não mudou junto (a borda "fog" já leva o red novo)
+    world_red_flag_edges = function()
+        load(12)
+        local seen = {}
+        NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
+        NOM_World.setFog(false, true)
+        assert(NOM_World.red == false, "vermelho sem névoa")
+        NOM_World.setFog(true, true)
+        assert(NOM_World.red == true)
+        NOM_World.setFog(true, true)
+        NOM_World.setFog(true, false)
+        NOM_World.setFog(true, true)
+        NOM_World.setFog(false)
+        assert(NOM_World.red == false)
+        assert(table.concat(seen, ",") == "fog=true,red=false,red=true,fog=false", table.concat(seen, ","))
+    end,
 }

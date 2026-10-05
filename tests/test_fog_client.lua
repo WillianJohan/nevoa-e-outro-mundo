@@ -98,4 +98,16 @@ return {
         G.server("semRostoMove", { id = 5, x = 80, y = 100, z = 0 }) -- atrás dele
         assert(z.teleports == 1 and z.x == 80.5)
     end,
+    -- névoa vermelha: a sirene própria, uma vez por comando; o red chega no FogState
+    fog_client_plays_red_siren_once = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("siren", { red = true })
+        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0)
+        assert(G.playing("NOM_SirenRed")[1].volume == 1)
+        G.server("fog", { on = true, period = 4, red = true })
+        assert(NOM_FogState.on and NOM_FogState.red == true and G.played("NOM_SirenRed") == 1)
+        G.server("fog", { on = false, period = 4, red = true })
+        assert(NOM_FogState.red == false, "vermelho sem névoa")
+    end,
 }

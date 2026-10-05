@@ -23,23 +23,25 @@ function NOM_Fog.period()
     return NOM_FogEvent.period()
 end
 
-NOM_World.onChange(function(flag, on)
-    if flag ~= "fog" then return end
-    local period = NOM_Fog.period()
+-- Borda da névoa ou do vermelho (sprint 0010; o red só muda sozinho pelo debug).
+NOM_World.onChange(function(flag)
+    if flag ~= "fog" and flag ~= "red" then return end
+    local on, red, period = NOM_World.fog, NOM_World.red, NOM_Fog.period()
     if isServer() then
-        sendServerCommand(MODULE, "fog", { on = on, period = period })
+        sendServerCommand(MODULE, "fog", { on = on, period = period, red = red })
     else
-        NOM_FogState.set(on, period)
+        NOM_FogState.set(on, period, red)
     end
-    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period))
+    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period) .. " vermelha=" .. tostring(red))
 end)
 
 -- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
 -- durante a contagem, ouve a sirene também (atrasada, mas avisa).
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
-    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period() })
-    if NOM_FogEvent.status().sirenMs then sendServerCommand(player, MODULE, "siren", {}) end
+    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red })
+    local ev = NOM_FogEvent.status()
+    if ev.sirenMs then sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed }) end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------

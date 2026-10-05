@@ -196,4 +196,80 @@ return {
         G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
         assert(#G.commands(G.sentServer, "siren") == 0, "sirene depois da névoa aberta")
     end,
+    -- névoa vermelha (sprint 0010): decidida na sirene (período que vem), sirene
+    -- própria, flag no mundo e no FogState, salva no ModData
+    fog_event_red_decided_at_siren = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0, "sirene errada")
+        assert(NOM_FogEvent.status().sirenRed == true)
+        assert(NOM_World.red == false, "vermelha antes da névoa")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.red == true)
+        assert(fogMD(G).red == true)
+    end,
+    fog_event_red_chance_zero_or_disabled_is_normal = function()
+        for _, sb in ipairs({ { RedFogChance = 0 }, { RedFogEnabled = false, RedFogChance = 100 } }) do
+            local G = setup({ sandbox = sb })
+            G.advance(36)
+            G.seconds(31)
+            assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0)
+            assert(NOM_World.fog and NOM_World.red == false and fogMD(G).red == false)
+        end
+    end,
+    -- recarregar no meio da vermelha: continua vermelha, mesmo com o sandbox mudado
+    fog_event_red_reload_mid_fog_stays_red = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        G.seconds(31)
+        local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours + 0.5, sandbox = { RedFogChance = 0 } })
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.red == true, "recarga perdeu o vermelho")
+        assert(NOM_FogState.period == 1)
+        assert(G2.played("NOM_SirenRed") == 0 and G2.played("NOM_Siren") == 0, "recarga tocou sirene")
+    end,
+    -- o sorteio é do período: o mesmo período dá a mesma resposta pelo sorteio puro
+    fog_event_red_matches_pure_roll = function()
+        require "NOM_VariantRules"
+        local c = NOM_VariantRules.config(function(k) return ({ RedFogEnabled = true, RedFogChance = 50 })[k] end)
+        local G = setup({ sandbox = { RedFogChance = 50 } })
+        for p = 1, 6 do
+            G.advance(200)
+            G.seconds(31)
+            assert(NOM_FogEvent.period() == p)
+            assert(NOM_World.red == NOM_VariantRules.redFog(p, c), "período " .. p)
+            G.advance(10)
+        end
+    end,
+    -- fim da vermelha: flag limpa; o próximo evento sorteia de novo
+    fog_event_red_ends_clean = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        G.seconds(31)
+        G.advance(3)
+        assert(NOM_World.fog == false and NOM_World.red == false and NOM_FogState.red == false)
+        assert(fogMD(G).red == nil)
+        SandboxVars.NevoaEOutroMundo.RedFogChance = 0
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == false)
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 1)
+    end,
+    -- dedicado: siren e fog levam o red; quem entra recebe
+    fog_event_red_mp_broadcast = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 100 } })
+        G.advance(36)
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].args.red == true)
+        local who = {}
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].player == who and siren[1].args.red == true, "entrou na contagem sem a sirene vermelha")
+        G.seconds(31)
+        local fog = G.commands(G.sentServer, "fog")
+        assert(fog[#fog].args.on == true and fog[#fog].args.red == true)
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        assert(G.sentServer[1].args.red == true and G.sentServer[1].args.on == true)
+    end,
 }
