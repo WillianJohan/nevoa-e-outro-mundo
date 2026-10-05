@@ -81,16 +81,27 @@ float density(vec3 w, float ground, float top, out float wisp) {
 const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
 const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
 const float HAZE = 0.18;                      // véu de fundo: ~40% de cobertura no chão com a névoa cheia
+const float PILE = 0.5;                       // quanto o rolo sobe onde o ar para contra a parede
+
+// Ar mais lento que o vento livre (freando contra a parede) empurra a névoa pra cima; o que acelera
+// na quina, pra baixo (pressão pela velocidade, Bernoulli). Fração de altura a somar no rolo.
+float pileUp(vec2 vel) {
+    float w2 = dot(uDrift.zw, uDrift.zw);
+    if (w2 < 0.04) return 0.0;
+    float s = clamp(1.0 - dot(vel, vel) / w2, -1.0, 1.0);
+    return s > 0.0 ? PILE * s : 0.5 * PILE * s;
+}
 
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
 // `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
 float rollTop(vec2 xy, float layer, out vec2 q) {
     float fd = nomFlowDensity(xy);
-    q = driftXY(xy, nomFlowVel(xy, uDrift.zw));
+    vec2 vel = nomFlowVel(xy, uDrift.zw);
+    q = driftXY(xy, vel);
     vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
     float n = fbm2(vec3(r, morphZ(r, 0.0)));
     float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
-    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff);
+    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(vel));
 }
 
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
@@ -138,7 +149,7 @@ vec3 torchLight(vec3 w, out float open) {
 vec4 fogLook(vec3 P, float amount) {
     float ground = floor(uDepthRef.z);
     float layer = uParams[0].z > 0.0 ? uParams[0].z : 1.2;
-    float top = ground + layer * 1.3;
+    float top = ground + layer * 1.6;
     if (P.z >= top) return vec4(0.0);
     gP = P;
     gTree = nomFlowTree(P.xy);

@@ -164,4 +164,10 @@ hi = int(jh.group(1))
 assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
 assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 torchLight")[0], \
     "mod3: o véu não pode entrar dentro de casa"
+# Ondas nos obstáculos (sprint 0029): o rolo sobe onde o ar freia contra a parede e o volume tem
+# altura pra isso; a simulação liga o reforço de redemoinho.
+roll = volfog.split("float rollTop")[1].split("float densityLook")[0]
+assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileUp)"
+assert re.search(r"float top = ground \+ layer \* 1\.6;", volfog), "mod3: o volume não tem altura pro empilhamento"
+assert re.search(r"grid\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 print("mod3 contrato Java/GLSL ok")
