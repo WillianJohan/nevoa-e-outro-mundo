@@ -61,7 +61,8 @@ local W = { list = {}, max = D.MAX_WALL, reach = D.RADIUS }
 local function used(pool)
     return pool.n or #pool.list
 end
-local taken = {}   -- [k] = true: já tem entrada (k = square; na parede, + o lado)
+local taken = {}   -- [k] = entrada do chão, ou true na parede (k = square; na parede, + o lado)
+local under       -- entrada do chão no tile do jogador: apagada (prints 9 e 10)
 -- Decidido nesta varredura, por reserva: [x,y,z] no chão, [x,y,z .. "N"|"W"] na parede.
 -- Fora do raio efetivo, recusado pelo teto, sem chunk ou parede de costas: não entra.
 local seenF, seenW = {}, {}
@@ -125,8 +126,15 @@ local function cleanWall(sq, north)
     return other ~= nil and other ~= w
 end
 
+local function paint(e)
+    local a = e == under and 0 or e.a
+    if e.m then e.m:setColor(e.l, e.l, e.l, a) end
+    if e.g then e.g:setColor(e.l, e.l, e.l, a * D.GRIME_ALPHA) end
+end
+
 local function drop(pool, i)
     local e = pool.list[i]
+    if e == under then under = nil end
     if e.m then e.m:remove() end
     if e.g then e.g:remove() end
     if pool.n and e.want then pool.n = pool.n - 1 end
@@ -144,7 +152,7 @@ end
 function O.clear()
     dropAll(F)
     dropAll(W)
-    taken, seenF, seenW, roofs, ctx = {}, {}, {}, {}, NONE
+    taken, seenF, seenW, roofs, ctx, under = {}, {}, {}, {}, NONE, nil
     cursor, gen, anchorX, anchorY = 1, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
 end
@@ -204,10 +212,10 @@ local function addFloor(sq, x, y, z, sk, layers, vis)
     local m = #names > 0 and markers:addIsoMarker(names, sq, l, l, l, 0) or nil
     local g = grime and markers:addIsoMarker({ grime }, sq, l, l, l, 0) or nil
     if not m and not g then return end
-    taken[sk] = true
     F.n = F.n + 1
     F.list[#F.list + 1] = { m = m, g = g, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l,
         roof = vis.roof, occ = vis.occ, want = true }
+    taken[sk] = F.list[#F.list]
 end
 
 local function addWall(sq, x, y, z, sk, layer, north)
@@ -392,10 +400,7 @@ local function update()
     end, on)
     if on then refresh() end
     for _, e in ipairs(F.list) do
-        if e.changed then
-            if e.m then e.m:setColor(e.l, e.l, e.l, e.a) end
-            if e.g then e.g:setColor(e.l, e.l, e.l, e.a * D.GRIME_ALPHA) end
-        end
+        if e.changed then paint(e) end
         e.changed = nil
     end
     if on then scan(px, py, pz, per, d) end
@@ -419,8 +424,23 @@ end)
 Events.OnGameStart.Add(O.clear)
 Events.OnMainMenuEnter.Add(O.clear)
 
+-- Todo tick (o marcador sai depois do jogador e por cima dele, sem esperar a atualização):
+-- o chão do tile dele apaga na hora; o que ele deixou volta ao alfa da entrada.
+local function underfoot()
+    if #F.list == 0 then return end
+    local p = getSpecificPlayer(0)
+    local e = p and taken[math.floor(p:getX()) .. "," .. math.floor(p:getY()) .. "," .. math.floor(p:getZ())]
+    if e == true then e = nil end
+    if e == under then return end
+    local old = under
+    under = e
+    if old then paint(old) end
+    if e then paint(e) end
+end
+
 local ticks = 0
 Events.OnTick.Add(function()
+    underfoot()
     ticks = ticks + 1
     if ticks < O.UPDATE_TICKS then return end
     ticks = 0

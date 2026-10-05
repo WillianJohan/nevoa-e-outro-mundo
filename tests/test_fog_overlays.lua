@@ -113,6 +113,13 @@ local function squares(G)
     return n
 end
 
+-- um marcador vivo fora do tile do jogador (o do tile dele fica apagado)
+local function awayFromPlayer(G, list)
+    for _, m in ipairs(list or alive(G)) do
+        if m.sq.x ~= math.floor(G.p.x) or m.sq.y ~= math.floor(G.p.y) then return m end
+    end
+end
+
 local function textures(G)
     local n = 0
     for _, m in ipairs(alive(G)) do n = n + #m.names end
@@ -186,6 +193,34 @@ local function shownOutside(G, r, skip)
 end
 
 return {
+    -- prints 9 e 10 (05/10): o marcador sai depois dos personagens, com a base no centro do
+    -- tile: o do tile do jogador cobre o pé e a perna. Esse fica apagado, a cada tick
+    overlays_player_tile_clear_every_tick = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 1, true)
+        G.seconds(20)
+        local function at(x, y)
+            local out = {}
+            for _, m in ipairs(alive(G)) do
+                if m.sq.x == x and m.sq.y == y and m.sq.z == 0 then out[#out + 1] = m end
+            end
+            return out
+        end
+        local hidden = 0
+        for step = 1, 12 do
+            local ox, oy = math.floor(G.p.x), math.floor(G.p.y)
+            G.p.x = G.p.x + 1
+            G.tick(1)
+            for _, m in ipairs(at(math.floor(G.p.x), math.floor(G.p.y))) do
+                assert(m.a == 0, "marcador visível no tile do jogador, passo " .. step)
+                hidden = hidden + 1
+            end
+            G.tick(1)
+            for _, m in ipairs(at(ox, oy)) do assert(m.a > 0, "o tile deixado ficou apagado, passo " .. step) end
+        end
+        assert(hidden >= 6, "o caminho não tinha marcador (teste não mede): " .. hidden)
+    end,
+
     -- print 7 (05/10): com o jogador fora, o chão de dentro da casa saía por cima do telhado
     overlays_outside_player_skips_interior = function()
         local G = setup()
@@ -345,7 +380,7 @@ return {
         assert(#G.markers == 0, "mancha sem névoa")
         NOM_FogState.set(true, 1)
         G.seconds(1)
-        local first = G.markers[1]
+        local first = awayFromPlayer(G, G.markers)
         assert(first and first.a < 0.5, "nasceu sem fade")
         G.seconds(10)
         local n = #alive(G)
@@ -626,7 +661,7 @@ return {
         G.lightAll = 0
         NOM_FogState.set(true, 1)
         G.seconds(12)
-        local m = alive(G)[1]
+        local m = awayFromPlayer(G)
         assert(m.color[1] < 0.75 and m.color[1] >= O().LIGHT_FLOOR - 1e-6, "luz no escuro: " .. m.color[1])
         G.lightAll = 1
         G.seconds(20)
@@ -643,7 +678,7 @@ return {
         assert(#alive(G) > 0 and #G.frame() > 0)
         NOM_FogState.set(false, 1)
         G.seconds(O().FADE_MS / 2000)
-        local m = alive(G)[1]
+        local m = awayFromPlayer(G)
         assert(m and m.a < 1 and m.a > 0, "sumiu sem fade")
         G.seconds(O().FADE_MS / 1000)
         assert(#alive(G) == 0, "sobrou mancha: " .. #alive(G))
