@@ -36,15 +36,23 @@ lixeira estavam limpos, só a cor mudava.
 - [x] Paredes com sangue, sujeira, rachadura e trepadeira sem objeto no mapa: desenho no quadro do
       mundo, só jogador 0, no andar dele, parede limpa, de frente e à vista — `dressing_rules_walls_by_side`,
       `overlays_walls_drawn_in_frame`, `overlays_walls_skip_cluttered` (fake do sprite explode em
-      qualquer método que não o desenho, e fora do evento).
+      qualquer método que não o desenho, e fora do evento); sem batente de porta ou janela
+      (`overlays_walls_skip_door_and_window_frames`); parede fora da vista volta ao abrir a porta ou
+      virar (`overlays_walls_door_closed_then_opened`, `overlays_walls_survive_turning_around`);
+      parede que sumiu sai (`overlays_stale_wall_dropped`) (review).
 - [x] Determinístico por square e período, estável andando, período novo dá desenho novo, square
       sem chunk tentado de novo — `dressing_rules_deterministic_per_square_and_period`,
       `overlays_deterministic_and_stable_while_walking`, `overlays_new_period_new_layout`,
       `overlays_missing_square_retried`, `overlays_far_and_other_floor_removed`.
-- [x] Teto: ≤ 600 marcadores e ≤ 120 paredes por quadro — `overlays_capped`.
+- [x] Teto: ≤ 600 marcadores e ≤ 120 paredes, a serviço do que está mais perto: andando 25 tiles
+      com o teto cheio, o 7×7 em volta fica com ≥ 85% do que a regra pede e, parado, ≥ 60% coberto
+      (≥ 80% na vermelha); teleporte, troca de andar e período conhecido depois de nil enchem em 3 s —
+      `overlays_capped`, `overlays_walk_keeps_nearby_covered`, `overlays_teleport_and_floor_change`,
+      `overlays_period_known_after_nil` (review).
 - [x] Vermelha mais densa (×1,6); densidade do jogador 0–2 em Opções > Mods (`FogOverlayDensity`),
       `FogOverlays` do sandbox continua o liga/desliga — `dressing_rules_red_denser_and_zero_empty`,
-      `overlays_red_denser`, `overlay_density_option`, `overlays_density_zero_and_toggle`;
+      `overlays_red_denser`, `overlay_density_option`, `overlays_density_zero_and_toggle`; trocar a
+      densidade (ou forçar a vermelha) redesenha — `overlays_density_change_redresses`;
       traduções EN/PTBR (`translations_lua_keys_defined`).
 - [x] Fade de 4 s ao surgir e ao sumir; fim da névoa remove tudo; morte e menu na hora —
       `overlays_fill_dense_floor`, `overlays_fade_out_and_removed_on_fog_end`,
@@ -59,7 +67,7 @@ lixeira estavam limpos, só a cor mudava.
 - [ ] Sem engasgo com o teto cheio — **falta o jogo:** passo 5.
 - [ ] Some no fim, na morte e no menu — **falta o jogo:** passo 6.
 
-`./run-tests.sh`: `total=521 passou=521 falhou=0` (Lua) e `build total=25 passou=25 falhou=0`.
+`./run-tests.sh`: `total=532 passou=532 falhou=0` (Lua), `contraste total=4 passou=4 falhou=0` e `build total=25 passou=25 falhou=0`.
 
 ## Roteiro in-game
 
@@ -82,6 +90,9 @@ Console em `~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt`.
    sangue escorrido, sujeira, rachaduras e trepadeira grudados na parede, no lugar certo; nada nas
    paredes que o jogo corta (as da frente). Girar: as que saem da visão somem com fade. **Se** o
    desenho flutuar fora da parede, ficar por cima de móvel ou de árvore, ou piscar: registrar com print.
+   **Batentes:** olhar uma porta aberta (ou sem porta) e uma janela quebrada numa parede suja.
+   **Esperado:** nada desenhado sobre o batente nem tapando o buraco; a parede do lado, sim. **Se**
+   tapar: anotar o sprite do batente (clique direito > debug) — falta um nome de propriedade.
 5. **Custo.** Com F3/FPS do debug, densidade 2 (Opções > Mods > "Sangue e erosão na névoa") e névoa
    vermelha, andar 30 s. **Esperado:** sem queda de FPS perceptível contra a densidade 0. **Se**
    pesar: anotar FPS nas duas; os botões são `MAX_FLOOR`, `MAX_WALL` e `SCAN_BUDGET`.
@@ -96,6 +107,9 @@ Console em `~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt`.
 - **04/10/2026** — Regras puras, cliente reescrito (chão por marcador com camadas, paredes no
   quadro), opção de densidade, status do debug. Calibrado pelo print do Johan na vermelha (chão
   ~85% coberto). Docs: ADR-015, pz-api-notes §16, GDD, orçamento. Em teste.
+- **04/10/2026** — Review: o teto cheio deixava quem anda no limpo (agora serve o mais perto),
+  paredes fora da vista perdidas (agora só apagam), batentes de porta e janela, parede conferida em
+  rodízio, redesenho ao trocar período ou densidade. Merge da main (sprint 0014).
 
 ## Aprendizados
 
@@ -108,6 +122,9 @@ Console em `~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt`.
 - **Lado da parede dá pra ler sem o jogo:** a tabela do `.pack` tem o recorte (`ox`, `w`) de cada
   textura no quadro de 128×256 (metade esquerda = W), e o `tileDepthTextureAssignments.txt` diz a
   profundidade (`preset_depthmaps_01_4` = W, `_5` = N). Os dois bateram em todos os sets.
+- **Teto que recusa o novo prende o velho:** com 600 marcadores cheios a ~15 tiles, quem andava
+  ficava no limpo (o que ficou pra trás ainda estava "no raio"). O teto tem que servir o mais perto:
+  raio efetivo que encolhe quando enche, e o resto sai na hora.
 - **Módulo que sai cedo com `isServer()` deixa `package.loaded` = `true` e o global nil:** um teste
   de dedicado envenenou outro que não recarregava o módulo. Recarregar tudo o que o arquivo testado
   exige.
@@ -121,8 +138,9 @@ Console em `~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt`.
 - O chão meio tile deslocado (jeito do `IsoMarker`); se incomodar, desenhar o chão também pelo
   fantasma, mas aí sem profundidade (passaria por cima de paredes na frente).
 - Tela dividida: as paredes só pro jogador 0 (o chão é do andar de quem estiver no `IsoMarkers`).
-- Densidade trocada no meio da névoa só vale pros squares ainda não olhados (os já postos ficam até
-  sair do raio).
+- Com o teto cheio, o raio efetivo fica em ~13–15 tiles; com zoom bem afastado, a borda da tela
+  fica limpa. Se incomodar, subir `MAX_FLOOR` depois de medir o FPS (roteiro, passo 5).
+- Mouse fora do mapa: o jogo não dispara o evento do quadro, as paredes somem nesse quadro.
 
 ## Sessões
 

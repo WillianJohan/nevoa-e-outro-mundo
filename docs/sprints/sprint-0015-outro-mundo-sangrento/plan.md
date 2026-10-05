@@ -25,7 +25,7 @@
 - `FBORenderCell.performRenderTiles` chama `renderOpaqueObjectsEvent(pn)` todo quadro, depois dos itens e antes dos personagens → `LuaEventManager.triggerEvent("RenderOpaqueObjectsInWorld", pn, x, y, z, sq)` (o `PickedTile` nunca é nil: criado no `<clinit>` do `UIManager`). Uso vanilla do evento: `ISBuildingObject.lua:721-741`.
 - `IsoSprite.RenderGhostTileColor(x, y, z, r, g, b, a)` → `IsoSprite.render(inst, nil, x, y, z, N, 32·escala, 96·escala, branco, true)`: posição de tile de verdade (parede no lugar certo). Com `setRenderingGhostTile(true)` o `renderCurrentAnim` **desliga o teste de profundidade**. Cor branca cheia: sem luz do square. Uso vanilla: `ISFarmingCursorMouse.lua:21`.
 - `IsoObject.save` grava `attachedAnimSprite`, `wallBloodSplats` e `overlaySprite` (flag 256); `setOverlaySprite(..., true)` manda `UpdateOverlaySprite`; `IsoGridSquare.save` grava todo objeto da lista. → proibidos.
-- `square:getWall(true|false)` (N/W pelo `cutN`/`cutW` do sprite; `ISDestroyStuffAction.lua:141-142`), `square:getLightLevel(pn)` (máx. de r,g,b da luz do square; `forageSystem.lua:1889`), `square:isCouldSee(pn)` (já usado), `square:isFree(false)` (`ISWorldObjectContextMenu.lua:2199`), `getSprite(nome)` (`ClientCommands.lua:195`; nome desconhecido cria sprite vazio → validar com `getTexture` antes).
+- `square:getWall(true|false)` (N/W pelo `cutN`/`cutW` do sprite; `ISDestroyStuffAction.lua:141-142`), `square:getLightLevel(pn)` (máx. de r,g,b da luz do square; `forageSystem.lua:1889`), `square:isCouldSee(pn)` (já usado), `square:isFree(false)` (`ISWorldObjectContextMenu.lua:2199`), `getSprite(nome)` (`server/ClientCommands.lua:195`, nome que existe; nome desconhecido cria sprite vazio, `IsoSpriteManager.getSprite` → validar com `getTexture` antes), `square:getProperties():has(IsoFlagType.DoorWallN …)` (`ISBuildIsoEntity.lua:195-198`).
 - Sprites (pack `Tiles2x`, lado pelo recorte da textura e pelas profundidades de `tileDepthTextureAssignments.txt`): `overlay_blood_floor_01` 37 de chão, `overlay_grime_floor_01` 82, `d_streetcracks_1` 118, `d_plants_1` 33 de chão; parede W/N: `overlay_blood_wall_01` 11/9, `overlay_grime_wall_01` 9/9, `d_wallcracks_1` 24/24, `f_wallvines_1` 24/24.
 
 ## Review Focus
@@ -63,16 +63,18 @@
 
 **Interfaces:**
 - Consumes: Task 1.
-- Produces: `NOM_FogOverlays.count() -> floor, walls` (pro `NOM_Debug.status`), `NOM_FogOverlays.clear()`.
+- Produces: `NOM_FogOverlays.count() -> floor, walls` (pro `NOM_Debug.status`), `NOM_FogOverlays.reach() -> floorReach, wallReach`, `NOM_FogOverlays.clear()`; `NOM_DressingRules.WITHIN[r]`.
 
-Comportamento:
+Comportamento (depois do review):
 - A cada 10 ticks: `on = névoa e FogOverlays e jogador vivo e densidade > 0`. Morte → `clear()` na hora; menu (`OnMainMenuEnter`) e `OnGameStart` → `clear()`.
-- Varredura: cursor em `OFFSETS`, `SCAN_BUDGET` (150) squares por atualização; `seen` evita reolhar (zerado quando o jogador anda 8 tiles da âncora ou o período muda). Square nil não entra em `seen`.
-- Chão: regra → `getGridSquare` → `isFree(false)` → `addIsoMarker(nomes, sq, cor·luz, 0)`. Teto `MAX_FLOOR`.
-- Parede: regra → `getWall(north)` e `getObjects():size() <= 2` (só piso e parede: nada na frente do desenho sem profundidade) e de frente pro jogador (N com `y <= py`, W com `x <= px`). Visível só com `isCouldSee(pn)` (relido a cada atualização; fade).
-- Fade por entrada (`FADE_MS` 4000): alvo 1 perto/visível e na névoa, 0 senão; em 0 o marcador sai (`remove`).
-- Luz: `LIGHT_FLOOR + (1 - LIGHT_FLOOR)·getLightLevel(0)`, relida em rodízio (`LIGHT_BUDGET` 30 por atualização); `setColor(r, g, b, a)` só quando muda.
-- Quadro: `RenderOpaqueObjectsInWorld(pn, x, y, z)`: só `pn == 0`; fora da névoa e sem paredes, zero chamada; senão `sprite:RenderGhostTileColor(x, y, z, l, l, l, a)` por parede com `a > 0` no andar `z`, até `MAX_WALL`.
+- `gen = período:densidade`; mudou (período novo, nil → conhecido, opção, vermelha forçada) → tudo sai na hora e redesenha.
+- Duas reservas com teto (`MAX_FLOOR` 600, `MAX_WALL` 120), cada uma com um **raio efetivo**: cheia, encolhe pra antes do anel que não coube; o que fica fora dele ou em outro andar sai na hora (`prune`); numa volta inteira com menos de 80% do teto, cresce um tile. O teto serve o mais perto.
+- Varredura: cursor em `OFFSETS` até `WITHIN[maior raio efetivo]`, `SCAN_BUDGET` (80) squares por atualização; `taken` antes da regra, a regra antes do Java; `seen` evita reolhar (zerado ao andar 8 tiles da âncora, com o cursor de volta ao mais perto; entrada que sai limpa o seu). Square nil, fora de um raio efetivo ou recusado pelo teto não entra em `seen`.
+- Chão: regra → `getGridSquare` → `isFree(false)` → `addIsoMarker(nomes, sq, luz, 0)`.
+- Parede: regra (por lado) → `cleanWall(sq, north)`: `getWall` do lado, sem batente (`DoorWall*`, `Window*`, `door*`, `window*` nas propriedades), e `getObjects():size()` = piso + paredes (o outro lado só é lido com 3 objetos). O lado (de frente) e a vista (`isCouldSee(0)`) só mudam o alvo do fade: a parede fica na reserva, apagada, e volta ao virar.
+- Fade por entrada (`FADE_MS` 4000): chão alvo 1 na névoa; fim da névoa → tudo a 0 e sai.
+- Rodízio: luz de 30 marcadores (`setColor` só quando muda) e 12 paredes (`cleanWall` de novo; falhou, sai) por atualização.
+- Quadro: `RenderOpaqueObjectsInWorld(pn, x, y, z)`: só `pn == 0`; sem paredes, zero chamada; senão `sprite:RenderGhostTileColor(x, y, z, l, l, l, a)` por parede com `a > 0` no andar `z`, até `MAX_WALL`. O jogo pula o evento com o mouse fora do mundo.
 
 - [x] Testes contra o mundo falso (o square explode em escrita; `addBloodSplat`, `getSprite` sem textura e qualquer método de objeto do mapa explodem): inerte no dedicado; nasce na névoa e enche em poucos segundos; vermelha > normal; teto; paredes desenhadas por quadro só no evento, no andar, de frente e visíveis; fade de saída e remoção no fim da névoa; morte e menu limpam na hora; determinismo e estabilidade ao andar; período novo; andar; square ausente; densidade 0; orçamento por atualização e por quadro (contador de chamadas).
 - [x] Implementar.
@@ -85,3 +87,8 @@ Comportamento:
 - Modify: `docs/architecture/pz-api-notes.md` (§16), `docs/architecture/README.md` (estrutura, orçamento, ADR-015), `docs/architecture/adr-015-outro-mundo-sangrento.md` (nova), `docs/gdd/atmosphere.md`, `docs/gdd/art-direction.md` (só um bloco no fim), `docs/gdd/Overview.md`, `docs/gdd/sandbox.md`, `docs/sprints/README.md` (uma linha), README da sprint (critérios com evidência, roteiro).
 
 - [x] Docs, `./run-tests.sh`, commit.
+
+### Task 4: Review
+
+- [x] Teto a serviço do perto (raio efetivo, `prune`), redesenho por `gen`, paredes apagadas em vez de removidas, batentes, parede conferida em rodízio, `sqId` com andar de -32 a 31, chave numérica nas poças, evento do quadro só com o mouse no mundo (fake). Testes: `overlays_walk_keeps_nearby_covered`, `overlays_teleport_and_floor_change`, `overlays_period_known_after_nil`, `overlays_density_change_redresses`, `overlays_walls_door_closed_then_opened`, `overlays_walls_survive_turning_around`, `overlays_walls_skip_door_and_window_frames`, `overlays_stale_wall_dropped`, `dressing_rules_z_independent`, `dressing_rules_offsets_within`.
+- [x] Merge da main (sprint 0014), `./run-tests.sh`.

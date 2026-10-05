@@ -86,11 +86,13 @@ máximo". Substitui as manchas esparsas da sprint 0005
   verde e asfalto limpos no zoom de perto).
 - **Paredes:** sangue escorrido (quase metade), sujeira, rachaduras e trepadeiras, em ~75% das
   paredes à vista. Só parede de frente pro jogador, à vista e sem móvel no square (o desenho de
-  parede não tem profundidade: assim ele não passa por cima do que está na frente).
+  parede não tem profundidade: assim ele não passa por cima do que está na frente). Batente de
+  porta e de janela fica limpo. Parede que sai da vista apaga e volta quando se vira.
 - **Névoa vermelha = o máximo:** 1,6× a densidade.
 - **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
   outra névoa, outro desenho. Nada pisca enquanto se anda.
-- Enche em ~4 s quando a névoa chega (com fade), acompanha o jogador andando, e some com fade de
+- Enche em ~4 s quando a névoa chega (com fade), acompanha o jogador andando (o teto serve o que
+  está mais perto: cheio, a borda recua pra ~13–15 tiles e nunca falta perto), e some com fade de
   ~4 s quando ela baixa. Na morte e no menu some na hora.
 - A luz do square escurece o sangue (com piso: no breu ainda se lê); a lanterna clareia.
 - **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"

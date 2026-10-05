@@ -1071,13 +1071,16 @@ Verificado no bytecode do B42.21 (o instalado), no Lua vanilla e nos packs de te
 - **Escolha:** chão por `IsoMarker` (tem profundidade; o deslocamento de meio tile é igual pra
   todos), parede por `RenderGhostTileColor` (só ele põe o sprite de parede no lugar; o `IsoMarker`
   centraria o recorte da textura e a parede cairia fora). Sem profundidade, a parede passaria por
-  cima do que está na frente: só parede limpa (`getObjects():size()` = piso + paredes), de frente
-  e com `isCouldSee`.
+  cima do que está na frente: só parede limpa (`getObjects():size()` = piso + paredes, sem
+  batente), de frente e com `isCouldSee`.
 - `getSprite(nome)` → `IsoSpriteManager.getSprite(String)`: nome desconhecido **cria** um sprite
-  vazio (`AddSprite`). Conferir com `getTexture(nome)` antes (`ClientCommands.lua:195` usa).
+  vazio (`AddSprite`). Conferir com `getTexture(nome)` antes. Uso vanilla de `getSprite` por nome:
+  `server/ClientCommands.lua:195` (`o:setSprite(getSprite("blends_natural_01_64"))`, nome que existe).
 - `square:getWall(north)`: o objeto cujo sprite tem `cutN` (norte) ou `cutW` (oeste), pulando
   `WallSE` (`IsoGridSquare.getWall(Z)` 0–85; `ISDestroyStuffAction.lua:141-142`). Batente de porta
-  e janela também têm `cut*`: entram.
+  e janela também têm `cut*`: o mod pula o square com `DoorWallN/W`, `WindowN/W`, `doorN/W` ou
+  `windowN/W` nas propriedades (`square:getProperties():has(IsoFlagType.X)`,
+  `ISBuildIsoEntity.lua:195-198`; os oito nomes estão no enum `IsoFlagType` do bytecode).
 - `square:getLightLevel(pn)`: `max(r, g, b)` da luz do square pro jogador (`IsoGridSquare.getLightLevel(I)`
   10–37; `forageSystem.lua:1889`).
 - `IsoMarker.setColor(FFFF)` existe (EXISTS): cor e alfa numa chamada.
@@ -1114,9 +1117,15 @@ Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_flo
   cada uma um sprite no mesmo caminho do fantasma de construção.
 - Atualização (a cada 10 ticks): a regra pura custa ~3,5 µs por square no luajit sem JIT
   (`-joff`); no Kahlua, estimado 10–30× isso: o lote de 80 squares fica em poucos ms. Chamadas
-  Java: ≤ ~1030 enquanto enche (getGridSquare, isFree, getWall×2, getObjects, luz, marcador),
-  ~150 parado (luz em rodízio + visão das paredes); a 1ª vez, +404 `getTexture`. Contado em
+  Java: ≤ ~1040 enquanto enche (getGridSquare, isFree, getWall×2, getObjects, luz, marcador),
+  ~160 parado (luz em rodízio, paredes conferidas, visão das paredes); a 1ª vez, +404 `getTexture`. Contado em
   `overlays_budget`.
+- **Teto que serve o perto:** com a reserva cheia, o raio efetivo encolhe pra antes do anel que
+  não coube, e tudo fora dele (ou de outro andar) sai na hora; numa volta inteira com folga de 20%
+  ele cresce um tile. Com 600 marcadores e ~85% do chão coberto, fica em ~13–15 tiles.
+- `RenderOpaqueObjectsInWorld` só sai com o tile do mouse dentro do mundo
+  (`IsoWorld.isValidSquare`, `renderOpaqueObjectsEvent` 82–92): mouse fora do mapa, sem parede
+  naquele quadro.
 - **UNKNOWN (roteiro):** o tempo de quadro de verdade com 600 marcadores e 120 paredes; se pesar,
   baixar `MAX_FLOOR`/`MAX_WALL` ou o `SCAN_BUDGET`.
 

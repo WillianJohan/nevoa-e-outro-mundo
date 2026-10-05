@@ -16,7 +16,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
   é monstro.
 
-> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0014
+> Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0015
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
 > dela, o envio pro Workshop ([publicar](docs/publicar.md)). Ver o [roadmap](docs/sprints/README.md).
 
