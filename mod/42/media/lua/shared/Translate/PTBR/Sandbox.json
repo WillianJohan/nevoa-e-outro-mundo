@@ -35,5 +35,17 @@
     "Sandbox_NevoaEOutroMundo.CorredorChance": "Chance de Corredor (%)",
     "Sandbox_NevoaEOutroMundo.CorredorChance_tooltip": "Porcentagem dos zumbis que viram Corredor a cada noite.",
     "Sandbox_NevoaEOutroMundo.CorredorScreamRadius": "Raio do grito do Corredor (tiles)",
-    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius_tooltip": "Distância até onde os zumbis ouvem o grito do Corredor e vão até ele."
+    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius_tooltip": "Distância até onde os zumbis ouvem o grito do Corredor e vão até ele.",
+    "Sandbox_NevoaEOutroMundo.SemRostoEnabled": "Sem-rosto",
+    "Sandbox_NevoaEOutroMundo.SemRostoEnabled_tooltip": "Na névoa, parte dos zumbis vira Sem-rosto: olhe pra ele (ou ilumine) e ele some, pra reaparecer mais perto, fora da sua vista. O rádio chia na sua cabeça quando ele está perto.",
+    "Sandbox_NevoaEOutroMundo.SemRostoChance": "Chance de Sem-rosto (%)",
+    "Sandbox_NevoaEOutroMundo.SemRostoChance_tooltip": "Porcentagem dos zumbis que viram Sem-rosto a cada névoa.",
+    "Sandbox_NevoaEOutroMundo.FogAmbience": "Névoa: som ambiente",
+    "Sandbox_NevoaEOutroMundo.FogAmbience_tooltip": "Na névoa, um drone grave e ruídos metálicos distantes tomam o lugar do ambiente. Só no seu jogo.",
+    "Sandbox_NevoaEOutroMundo.FogOverlays": "Névoa: sangue e ferrugem no chão",
+    "Sandbox_NevoaEOutroMundo.FogOverlays_tooltip": "Na névoa, manchas de sangue e ferrugem surgem aos poucos no chão perto de você e somem quando ela baixa. Só você vê; nada fica no mapa nem no save.",
+    "Sandbox_NevoaEOutroMundo.FogVignette": "Névoa: vinheta na tela",
+    "Sandbox_NevoaEOutroMundo.FogVignette_tooltip": "Na névoa, as bordas da tela escurecem e desfocam. Sai da frente enquanto você forrageia.",
+    "Sandbox_NevoaEOutroMundo.FogVignetteIntensity": "Intensidade da vinheta da névoa",
+    "Sandbox_NevoaEOutroMundo.FogVignetteIntensity_tooltip": "0 desliga o efeito, 1 é o padrão, 2 é o dobro."
 }

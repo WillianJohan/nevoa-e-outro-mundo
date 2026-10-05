@@ -89,3 +89,33 @@ option NevoaEOutroMundo.CorredorScreamRadius = {
     type = integer, min = 5, max = 100, default = 40,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorScreamRadius,
 }
+
+option NevoaEOutroMundo.SemRostoEnabled = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.SemRostoEnabled,
+}
+
+option NevoaEOutroMundo.SemRostoChance = {
+    type = integer, min = 0, max = 100, default = 5,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.SemRostoChance,
+}
+
+option NevoaEOutroMundo.FogAmbience = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogAmbience,
+}
+
+option NevoaEOutroMundo.FogOverlays = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogOverlays,
+}
+
+option NevoaEOutroMundo.FogVignette = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogVignette,
+}
+
+option NevoaEOutroMundo.FogVignetteIntensity = {
+    type = double, min = 0.0, max = 2.0, default = 1.0,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogVignetteIntensity,
+}
