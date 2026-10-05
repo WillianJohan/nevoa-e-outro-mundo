@@ -34,6 +34,74 @@ for _ in range(1000):
     assert all(abs(a - b) < 1e-6 for a, b in zip(p, q)), (p, q)
 print("mod3 depth inverse ok")
 
+# Caso real em float32 (o 1º teste no jogo, 05/10): janela 1696x1346 dentro do FBO 2048x2048,
+# zoom != 1, jogador em x=10994 y=9699. Ida em double (o jogo), volta transcrita do GLSL em
+# float32. O z do chão sai 0 ± ruído (1 ulp de 2e4 em coordenada absoluta, profundidade
+# quantizada); com sinal trocando de linha pra linha, o fract(z) do modo 1 dava 0 ou ~1:
+# listras de 1–3 px só no chão (paredes, com z entre andares, saíram lisas no print 17).
+# Correção: coordenadas relativas a uma origem perto da câmera e debug com z + 0,5 / modo 4.
+import numpy as np
+f32 = np.float32
+
+def div(a, b):  # GPU: a / b = a * (1 / b), não arredondado certo (GLSL aceita 2,5 ulp)
+    return f32(a) * (f32(1) / f32(b))
+
+def glsl_world(frag, vp, cam_u, ref):  # = nomIsoScreen + nomWorldPos, tudo em float32
+    offX, offY, zoom, Tt = map(f32, cam_u)
+    d0, s0, z0, kk = map(f32, ref)
+    px, py = f32(frag[0]) - f32(vp[0]), f32(frag[1]) - f32(vp[1])
+    iso = (px * zoom + offX, (f32(vp[3]) - py) * zoom + offY)
+    u = div(iso[0], f32(32) * Tt)
+    a = div(iso[1], f32(16) * Tt)
+    b = s0 + f32(2) * z0 - div(f32(frag[2]) - d0, kk)
+    z = (b - a) / f32(8)
+    s = a + f32(6) * z
+    return (s + u) * f32(0.5), (s - u) * f32(0.5), z
+
+def frame(cx, cy, cz, zoom, relative):
+    # o que o Java manda (RenderContext.onWorldEnd), em double, depois cortado pra float
+    ox = oy = 0.0
+    if relative:
+        ox, oy = (cx // 256) * 256, (cy // 256) * 256
+    offX = float(int(32 * T * (cx - cy) - 848 * zoom))   # câmera centrada no jogador; PlayerCamera.getOffX faz f2i
+    offY = float(int(16 * T * (cx + cy) - 96 * T * cz - 673 * zoom))
+    cam_u = (offX - 32 * T * (ox - oy), offY - 16 * T * (ox + oy), zoom, T)
+    ref = (0.5, (cx - ox) + (cy - oy), cz, k)
+    return cam_u, ref, (offX, offY), (ox, oy)
+
+def worst_ground_z(relative, zoom):
+    cx, cy, cz = 10994.37, 9699.81, 0.0
+    vp = (0, 0, 1696, 1346)                     # viewport menor que a textura 2048
+    cam_u, ref, (offX, offY), (ox, oy) = frame(cx, cy, cz, zoom, relative)
+    worst = 0.0
+    for row in range(0, 1346, 3):
+        for col in range(0, 1696, 97):
+            # pixel -> ponto do chão (z = 0) em double, e a profundidade que o jogo escreveria
+            fx, fy = col + 0.5, row + 0.5                 # gl_FragCoord é o centro do pixel
+            isx, isy = fx * zoom + offX, fy * zoom + offY  # row 0 = topo da tela
+            u, s = isx / (32 * T), isy / (16 * T)
+            x, y = (s + u) / 2, (s - u) / 2
+            d = 0.5 - k * ((x + y) - (cx + cy)) - SQ * (0 - cz)
+            d = round(d * (2**24 - 1)) / (2**24 - 1)          # DEPTH24
+            X, Y, Z = glsl_world((fx, 1346 - fy, d), vp, cam_u, ref)
+            if relative:
+                assert abs(float(X) + ox - x) < 0.01 and abs(float(Y) + oy - y) < 0.01, (x, y, X, Y)
+            worst = max(worst, abs(float(Z)))
+    return worst
+
+for zoom in (0.5, 1.0, 1.75, 2.5):
+    new = worst_ground_z(True, zoom)
+    assert new < 2e-5, ("chão fora do andar 0 com origem relativa", zoom, new)
+    # x, y absolutos: ulp(2e4) = 0,002 tile; relativo a origem: 1e-5
+    assert np.spacing(f32(20694.18)) > 30 * np.spacing(f32(470.18))
+
+# Debug: z do chão = 0 ± ruído. fract(z) vira 0 ou ~1 (a listra); fract(z + 0,5) e o modo 4 não.
+for eps in (-1e-3, -1e-5, 0.0, 1e-5, 1e-3):
+    assert abs(((eps + 0.5) % 1.0) - 0.5) < 2e-3
+    assert abs(eps - round(eps)) * 10 < 0.02
+assert (-1e-5) % 1.0 > 0.99  # o modo 1 antigo: fract(-0,00001) = 0,99999
+print("mod3 float32 ground z ok (relativo)")
+
 # Advice do ZombieBuddy é inlinado na classe do jogo: todo método do mod3 chamado
 # de dentro de um @Patch precisa ser public, senão IllegalAccessError derruba o jogo.
 import re, pathlib

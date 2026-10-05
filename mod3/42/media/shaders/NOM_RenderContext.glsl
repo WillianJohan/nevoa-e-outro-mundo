@@ -6,12 +6,15 @@
 uniform sampler2D uDepth;      // profundidade da cena (cópia do FBO do jogador), em .r
 uniform vec4 uViewport;        // retângulo do jogador no FBO (x, y, w, h), em pixels
 uniform vec2 uDepthSize;       // tamanho de uDepth (potência de 2)
-uniform vec4 uCam;             // offX, offY, zoom, tileScale (IsoCamera.frameState)
-uniform vec4 uDepthRef;        // d0, s0 = x+y, z0 do personagem da câmera; k = profundidade por tile de x+y
+// Posições de mundo são RELATIVAS a uOrigin (inteiro, perto da câmera): float32 não aguenta
+// coordenada absoluta (x+y ~ 2e4) na conta da reconstrução. Absoluto = P.xy + uOrigin.
+uniform vec2 uOrigin;
+uniform vec4 uCam;             // offX, offY (menos a tela de uOrigin), zoom, tileScale
+uniform vec4 uDepthRef;        // d0, s0 = x+y (relativo), z0 do personagem da câmera; k = profundidade por tile de x+y
 uniform float uTime;           // segundos
 uniform vec4 uFog;             // intensidade da névoa do clima (0..1), cor final da névoa rgb (COLOR_NEW_FOG)
 uniform int uCharCount;
-uniform vec4 uChars[8];        // x, y, z, raio: jogadores locais e zumbis mais perto
+uniform vec4 uChars[8];        // x, y (relativos), z, raio: jogadores locais e zumbis mais perto
 uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i, v)
 
 out vec4 fragColor;

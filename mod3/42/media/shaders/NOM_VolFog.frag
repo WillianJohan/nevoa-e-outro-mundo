@@ -1,6 +1,6 @@
 // Névoa volumétrica (spike). Cabeçalho: NOM_RenderContext.glsl.
 // uParams[0]: x = densidade forçada (0 = usa a névoa do clima), y = modo debug
-//             (1 = grade do mundo, 2 = profundidade, 3 = andar), z = altura da camada em andares (0 = 1.0)
+//             (1 = grade do mundo, 2 = profundidade, 3 = andar, 4 = erro de andar: chão preto liso), z = altura da camada em andares (0 = 1.0)
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
@@ -51,11 +51,15 @@ void main() {
     if (dbg == 1) { // grade: as linhas têm que grudar nas bordas dos tiles ao andar
         vec2 g = abs(fract(P.xy) - 0.5);
         float line = step(0.46, max(g.x, g.y));
-        fragColor = vec4(vec3(line, fract(P.z), 0.0) * 0.6, 0.6);
+        fragColor = vec4(vec3(line, fract(P.z + 0.5), 0.0) * 0.6, 0.6); // chão = verde 0,5 liso
         return;
     }
     if (dbg == 2) { fragColor = vec4(vec3(fract(d * 200.0)), 1.0); return; }
-    if (dbg == 3) { fragColor = vec4(fract(P.z), 0.0, 1.0 - fract(P.z), 1.0) * 0.5; return; }
+    if (dbg == 4) { // distância ao andar inteiro mais perto, x10: chão e telhado retos pretos; parede rampa
+        fragColor = vec4(vec3(clamp(abs(P.z - floor(P.z + 0.5)) * 10.0, 0.0, 1.0)), 1.0);
+        return;
+    }
+    if (dbg == 3) { fragColor = vec4(fract(P.z + 0.5), 0.0, 1.0 - fract(P.z + 0.5), 1.0) * 0.5; return; }
     if (amount <= 0.001) { fragColor = vec4(0.0); return; }
 
     float ground = floor(uDepthRef.z);

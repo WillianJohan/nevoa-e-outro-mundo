@@ -112,9 +112,14 @@ aprova o jar na janela do ZB na primeira carga (e a cada versão nova). Assinar 
    ativar `NevoaEOutroMundo_Volumetrica` no save; aprovar o jar.
 2. `console.txt`: `[ZB] patching zombie.core.Core.EndFrame`, `[NOM-Render] depth target WxH`,
    `[NOM-Render] pass NOM_VolFog ok`. Nenhum `[NOM-Render] ERRO`.
-3. Console Lua: `NOMRender_setParam(1, 1)` (grade). As linhas verdes têm que **grudar nas
-   bordas dos tiles** andando, com zoom diferente e subindo escada. Se escorregam: a
-   reconstrução está errada (anotar pra onde).
+3. Console Lua: `NOMRender_setParam(1, 1)` (grade). As linhas **vermelhas** têm que **ficar
+   nas bordas dos tiles enquanto anda** (chão e telhado), com zoom diferente e subindo escada.
+   O chão fica verde médio liso; parede vai de escuro (pé) a claro (topo do andar). Se
+   escorregam: a reconstrução está errada (anotar pra onde). *Visto 05/10: grade presa no
+   mundo e no telhado; o verde do chão listrava (corrigido, ver "Achados").*
+3b. `NOMRender_setParam(1, 4)` (erro de andar): **chão e telhado reto pretos e lisos**, sem
+   listra; parede e árvore em rampa de cinza (normal, z entre andares). Chão cinza = z do chão
+   errado: anotar o zoom e mandar print.
 4. `NOMRender_setParam(1, 2)` (profundidade em faixas): faixas em diagonal, contínuas no
    chão e cortando parede/personagem. Tela lisa = a cópia da profundidade não pegou.
 5. `NOMRender_setParam(1, 0)` e `NOMRender_setParam(0, 1)` (névoa forçada, sem evento): névoa
@@ -125,3 +130,16 @@ aprova o jar na janela do ZB na primeira carga (e a cada versão nova). Assinar 
 7. UI, menus, mapa e o shader do mod2: iguais a antes (estado de GL restaurado).
 8. FPS com e sem o mod3 (F3 ou overlay): anotar a diferença a 1080p.
 9. Desativar o mod3 (ou abrir sem `-javaagent`): jogo igual ao de antes, sem erro.
+
+## Achados do 1º teste (05/10)
+
+- Grade vermelha presa no mundo e alinhada no telhado: x, y e câmera certos.
+- Listras de 1–3 px só no chão (amostra de pixel do print 17: parede lisa, chão alternando
+  G ≈ 0 / G alto linha a linha). Causa: o z do chão sai 0 ± ruído (ulp de float32 em
+  coordenada absoluta, x+y ~ 2e4 → 0,002 tile; mais a profundidade quantizada) e o modo 1
+  mostrava `fract(z)`: −0,0002 vira 0,9998. Correção: o contexto passa tudo relativo a uma
+  origem inteira perto da câmera (`uOrigin`, múltiplo de 256 tiles; conta em double no
+  Java), o que derruba o ruído ~100x, e o debug mostra `fract(z + 0,5)` e o modo 4.
+- Árvore em blocos de ~100–150 px: o sprite da árvore escreve **profundidade constante**
+  (billboard); com d fixo, o z reconstruído sobe 1 andar a cada `256/zoom` px de tela. É do
+  jogo, não do contexto. Pra névoa: a árvore vira um plano inclinado; aceitável.

@@ -40,6 +40,8 @@ public final class RenderContext {
     static final String[] PASSES = { "NOM_VolFog" };
     static final int MAX_CHARS = 8;
     static final float CHAR_RANGE = 20f;
+    // ponytail: a origem pula a cada 256 tiles (o ruído da névoa dá um salto lá); suave se incomodar
+    static final double ORIGIN_SNAP = 256;
 
     // params que o Lua empurra (NOMRender_setParam); 4 x vec4
     static final float[] luaParams = new float[16];
@@ -63,8 +65,12 @@ public final class RenderContext {
     /** Retrato de um quadro de um jogador. Novo a cada quadro: o render thread lê depois. */
     static final class Frame extends TextureDraw.GenericDrawer {
         int depthW, depthH;
-        float offX, offY, zoom, tileScale;
-        float d0, s0, z0;             // âncora de profundidade no personagem da câmera
+        // Tudo relativo a uma origem inteira perto da câmera (ORIGIN_SNAP): offX/offY e x+y
+        // absolutos (~6e5 px, ~2e4 tiles) em float32 têm ulp de 0,06 px / 0,002 tile, e o
+        // b − a da reconstrução cancela e vira ruído que muda de sinal a cada linha.
+        float offX, offY, zoom, tileScale;  // offX/offY já menos a tela da origem
+        float d0, s0, z0;             // âncora de profundidade no personagem da câmera (s0 relativo)
+        float originX, originY;
         float time;
         float fogIntensity;
         float fogR, fogG, fogB;
@@ -91,14 +97,18 @@ public final class RenderContext {
             Frame f = new Frame();
             f.depthW = fbo.getTexture().getWidthHW();
             f.depthH = fbo.getTexture().getHeightHW();
-            f.offX = fs.offX;
-            f.offY = fs.offY;
             f.zoom = fs.zoom;
             f.tileScale = Core.tileScale;
             float cx = fs.camCharacterX, cy = fs.camCharacterY, cz = fs.camCharacterZ;
+            double ox = Math.floor(cx / ORIGIN_SNAP) * ORIGIN_SNAP, oy = Math.floor(cy / ORIGIN_SNAP) * ORIGIN_SNAP;
+            double T = Core.tileScale;
+            f.originX = (float) ox;
+            f.originY = (float) oy;
+            f.offX = (float) (fs.offX - 32 * T * (ox - oy));   // IsoUtils.XToScreen(ox, oy, 0)
+            f.offY = (float) (fs.offY - 16 * T * (ox + oy));   // IsoUtils.YToScreen(ox, oy, 0)
             // mesma chamada do IsoSprite.renderTextureWithDepth: profundidade de um ponto do mundo
             f.d0 = IsoDepthHelper.getSquareDepthData((int) Math.floor(cx), (int) Math.floor(cy), cx, cy, cz).depthStart;
-            f.s0 = cx + cy;
+            f.s0 = (float) ((cx - ox) + (cy - oy));
             f.z0 = cz;
             f.time = ((System.nanoTime() - t0) / 1e9f) % 3600f;
 
@@ -136,8 +146,8 @@ public final class RenderContext {
             if (best[slot] <= d2) return;
         }
         best[slot] = d2;
-        f.chars[slot * 4] = ch.getX();
-        f.chars[slot * 4 + 1] = ch.getY();
+        f.chars[slot * 4] = ch.getX() - f.originX;
+        f.chars[slot * 4 + 1] = ch.getY() - f.originY;
         f.chars[slot * 4 + 2] = ch.getZ();
         f.chars[slot * 4 + 3] = 1.2f;
     }
@@ -222,6 +232,7 @@ public final class RenderContext {
         glUniform4f(glGetUniformLocation(prog, "uCam"), f.offX, f.offY, f.zoom, f.tileScale);
         glUniform4f(glGetUniformLocation(prog, "uDepthRef"), f.d0, f.s0, f.z0, IsoDepthHelper.SQUARE_DEPTH * 0.5f);
         glUniform1f(glGetUniformLocation(prog, "uTime"), f.time);
+        glUniform2f(glGetUniformLocation(prog, "uOrigin"), f.originX, f.originY);
         glUniform4f(glGetUniformLocation(prog, "uFog"), f.fogIntensity, f.fogR, f.fogG, f.fogB);
         glUniform1i(glGetUniformLocation(prog, "uCharCount"), f.charCount);
         glUniform4fv(glGetUniformLocation(prog, "uChars"), f.chars);
