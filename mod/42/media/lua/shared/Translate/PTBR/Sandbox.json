@@ -25,5 +25,15 @@
     "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes": "Intervalo da caça (minutos de jogo)",
     "Sandbox_NevoaEOutroMundo.HuntIntervalMinutes_tooltip": "De quanto em quanto tempo, à noite, os zumbis são chamados até cada jogador.",
     "Sandbox_NevoaEOutroMundo.HuntRadius": "Raio da caça (tiles)",
-    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distância do jogador até onde os zumbis ouvem o chamado da caça."
+    "Sandbox_NevoaEOutroMundo.HuntRadius_tooltip": "Distância do jogador até onde os zumbis ouvem o chamado da caça.",
+    "Sandbox_NevoaEOutroMundo.EstaladorEnabled": "Estaladores",
+    "Sandbox_NevoaEOutroMundo.EstaladorEnabled_tooltip": "À noite, parte dos zumbis vira Estalador: cego, guiado só por som, estala de tempos em tempos. Agachado e em silêncio, dá pra passar do lado.",
+    "Sandbox_NevoaEOutroMundo.CorredorEnabled": "Corredores",
+    "Sandbox_NevoaEOutroMundo.CorredorEnabled_tooltip": "À noite, parte dos zumbis vira Corredor: corre e, ao ver um jogador, grita e chama os zumbis em volta.",
+    "Sandbox_NevoaEOutroMundo.EstaladorChance": "Chance de Estalador (%)",
+    "Sandbox_NevoaEOutroMundo.EstaladorChance_tooltip": "Porcentagem dos zumbis que viram Estalador a cada noite.",
+    "Sandbox_NevoaEOutroMundo.CorredorChance": "Chance de Corredor (%)",
+    "Sandbox_NevoaEOutroMundo.CorredorChance_tooltip": "Porcentagem dos zumbis que viram Corredor a cada noite.",
+    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius": "Raio do grito do Corredor (tiles)",
+    "Sandbox_NevoaEOutroMundo.CorredorScreamRadius_tooltip": "Distância até onde os zumbis ouvem o grito do Corredor e vão até ele."
 }

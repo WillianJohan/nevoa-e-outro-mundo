@@ -1,0 +1,22 @@
+module Base
+{
+    sound NOM_EstaladorClick
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_EstaladorClick.ogg,
+            distanceMax = 25,
+        }
+    }
+
+    sound NOM_CorredorScream
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 80,
+        }
+    }
+}

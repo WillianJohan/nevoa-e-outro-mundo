@@ -2,8 +2,14 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `accepted` |
+| Status | `superseded` (mecanismo) — intenção mantida, como agora é na [ADR-006](adr-006-variantes-deterministicas.md) |
 | Data | 2026-10-04 |
+
+> **Mecanismo substituído pela [ADR-006](adr-006-variantes-deterministicas.md) (sprint 0004).**
+> Continua valendo: variantes são zumbis existentes, não spawnados. Não vale
+> mais: `NOM_variant`/`NOM_orig`/`NOM_rolledAt` guardados no `modData` — o
+> `modData` do zumbi não é salvo nem sincronizado. A variante agora é derivada
+> do `persistentOutfitID` e do número da noite.
 
 ## Contexto
 

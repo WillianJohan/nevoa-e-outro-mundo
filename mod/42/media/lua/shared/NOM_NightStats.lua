@@ -8,9 +8,13 @@
 -- durante a chamada e devolvido em seguida. setValue não sincroniza nem salva
 -- (IntegerConfigOption.setValue só grava o campo).
 require "NOM_NightRules"
+require "NOM_VariantRules"
 require "NOM_Config"
 
-NOM_NightStats = { night = false, BATCH = 20 }
+-- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
+-- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
+-- antes de qualquer chamada Java.
+NOM_NightStats = { night = false, BATCH = 20, variants = {} }
 
 local LORE = {
     speed = "ZombieLore.Speed",
@@ -46,6 +50,7 @@ local function config()
         -- ActiveOnly vanilla: na fase inativa o jogo deixa o zumbi arrastado
         -- (IsoZombie.updateActiveState → makeInactive) e nunca reafirma.
         inactive = getGameTime():isZombieInactivityPhase(),
+        variants = NOM_VariantRules.config(NOM_Config.get),
     }
 end
 
@@ -76,7 +81,7 @@ end
 -- o zumbi. O doZombieSpeed() de dentro do DoZombieStats usa o speedType atual (3).
 -- dayTier nil: degrau do dia desconhecido (sandbox aleatório visto só inativo);
 -- no dia o jogo sorteia com doZombieSpeed(-1), sem trocar o Speed.
-local function apply(z, md, w, dayTier, key, inactive)
+local function apply(z, md, w, dayTier, key, inactive, kind)
     local values = { [LORE.cognition] = COGNITION_KEEP, [LORE.memory] = MEMORY_KEEP }
     local speed = w.speed
     if key == "day" and dayTier == nil then speed = -1 end
@@ -94,9 +99,16 @@ local function apply(z, md, w, dayTier, key, inactive)
     if key == "day" then
         md.NOM_night = nil
         md.NOM_dayTier = nil
+        md.NOM_variant = nil
+        md.NOM_alert = nil
+        md.NOM_hunting = nil
+        NOM_NightStats.variants[z] = nil
     else
         md.NOM_night = key
         md.NOM_dayTier = dayTier
+        -- Lido pelo NOM_VariantAI (cego, estalo, grito). Só em memória, como o resto.
+        md.NOM_variant = kind ~= "eco" and kind or nil
+        NOM_NightStats.variants[z] = md.NOM_variant
     end
 end
 
@@ -106,13 +118,21 @@ local function process(z, c)
     local md = z:getModData()
     local cur = md.NOM_night
     if cur == nil and not NOM_NightStats.night then return false end -- dia, intocado
+    -- Eco primeiro: nunca é variante. A variante é derivada a cada passada do ID
+    -- atual (ADR-006): o spawn por outfit troca o ID depois do OnZombieCreate.
+    local kind = nil
+    if isEco(z, md) then
+        kind = "eco"
+    elseif NOM_NightStats.night then
+        kind = NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_NightStats.nightNumber, c.variants)
+    end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
     -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.
     local dayTier = md.NOM_dayTier
     if dayTier == nil and not (c.inactive and c.speed == 4) then
         dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
     end
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, isEco(z, md), dayTier or z:getSpeedType(), c)
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key
@@ -123,7 +143,7 @@ local function process(z, c)
     if not need and key ~= "day" and not c.inactive and not z:isRemoteZombie() and not z:isCrawling() then
         need = z:getSpeedType() ~= w.speed
     end
-    if need then apply(z, md, w, dayTier, key, c.inactive) end
+    if need then apply(z, md, w, dayTier, key, c.inactive, kind) end
     return need
 end
 
@@ -159,21 +179,30 @@ function NOM_NightStats.tick()
     logPass(size, n, applied)
 end
 
-function NOM_NightStats.setNight(on)
+-- nightNumber: número da noite do servidor (NOM_NightCount), base do sorteio
+-- das variantes. nil enquanto o cliente não souber.
+function NOM_NightStats.setNight(on, nightNumber)
     NOM_NightStats.night = on
+    NOM_NightStats.nightNumber = nightNumber
 end
 
 -- OnZombieCreate: inclusive zumbi que volta do virtual com stats re-sorteados.
+-- Objeto reaproveitado (resetForReuse) passa por aqui: sai do conjunto.
 function NOM_NightStats.enqueue(z)
+    NOM_NightStats.variants[z] = nil
     queue[#queue + 1] = z
 end
 
 -- O corpo copia o modData do zumbi (IsoDeadBody.<init>): a chave não vai pro save.
 function NOM_NightStats.forget(z)
+    NOM_NightStats.variants[z] = nil
     if not z:hasModData() then return end
     local md = z:getModData()
     md.NOM_night = nil
     md.NOM_dayTier = nil
+    md.NOM_variant = nil
+    md.NOM_hunting = nil
+    md.NOM_alert = nil
 end
 
 function NOM_NightStats.install()

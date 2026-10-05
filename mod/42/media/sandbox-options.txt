@@ -64,3 +64,28 @@ option NevoaEOutroMundo.HuntRadius = {
     type = integer, min = 5, max = 100, default = 30,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.HuntRadius,
 }
+
+option NevoaEOutroMundo.EstaladorEnabled = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EstaladorEnabled,
+}
+
+option NevoaEOutroMundo.CorredorEnabled = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorEnabled,
+}
+
+option NevoaEOutroMundo.EstaladorChance = {
+    type = integer, min = 0, max = 100, default = 5,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EstaladorChance,
+}
+
+option NevoaEOutroMundo.CorredorChance = {
+    type = integer, min = 0, max = 100, default = 10,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorChance,
+}
+
+option NevoaEOutroMundo.CorredorScreamRadius = {
+    type = integer, min = 5, max = 100, default = 40,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorScreamRadius,
+}

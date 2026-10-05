@@ -4,6 +4,11 @@
 NOM_NightRules = {}
 
 NOM_NightRules.ECO_SPEED = 3 -- arrastado
+NOM_NightRules.CORREDOR_SPEED = 1 -- corredor (sprinter)
+-- Estalador: pior visão e melhor audição do jogo. Visão "ruim" ainda vê a 10
+-- tiles (piso do updateVisionRadius): a cegueira de verdade é NOM_VariantAI.
+NOM_NightRules.ESTALADOR_SIGHT = 3
+NOM_NightRules.ESTALADOR_HEARING = 1
 -- Teto do raio de visão do zumbi (bytecode IsoZombie.updateVisionRadius: PZMath.clamp(r, 10, 20)).
 NOM_NightRules.VISION_MAX = 20
 
@@ -29,13 +34,14 @@ function NOM_NightRules.dayTier(sandboxSpeed, current)
     return current
 end
 
--- Perfil que o zumbi deve ter. cfg = { fasterOn, sensesOn, speedMult, senseMult,
--- sight, hearing } (sight/hearing = valores do sandbox). sight/hearing nil = os
--- do sandbox. key == "day" quando nada muda em relação ao jogo.
-function NOM_NightRules.wanted(night, eco, dayTier, cfg)
+-- Perfil que o zumbi deve ter. kind = nil (comum), "eco", "estalador" ou
+-- "corredor". cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }
+-- (sight/hearing = valores do sandbox). sight/hearing nil = os do sandbox.
+-- key == "day" quando nada muda em relação ao jogo.
+function NOM_NightRules.wanted(night, kind, dayTier, cfg)
     local R = NOM_NightRules
     if not night then return { key = "day", speed = dayTier } end
-    if eco then return { key = "eco", speed = R.ECO_SPEED } end
+    if kind == "eco" then return { key = "eco", speed = R.ECO_SPEED } end
     local w = { speed = dayTier }
     if cfg.fasterOn then w.speed = R.sharpen(dayTier, R.steps(cfg.speedMult)) end
     local s = cfg.sensesOn and R.steps(cfg.senseMult) or 0
@@ -43,10 +49,18 @@ function NOM_NightRules.wanted(night, eco, dayTier, cfg)
         w.sight = R.sharpen(R.baseSense(cfg.sight), s)
         w.hearing = R.sharpen(R.baseSense(cfg.hearing), s)
     end
-    if w.speed == dayTier and not w.sight then
+    -- Variantes valem pelo próprio toggle, não pelos da noite.
+    if kind == "corredor" then w.speed = R.CORREDOR_SPEED end
+    if kind == "estalador" then
+        w.sight, w.hearing = R.ESTALADOR_SIGHT, R.ESTALADOR_HEARING
+    end
+    local stats = w.speed .. "," .. (w.sight or 0) .. "," .. (w.hearing or 0)
+    if kind then
+        w.key = kind .. ":" .. stats
+    elseif w.speed == dayTier and not w.sight then
         w.key = "day"
     else
-        w.key = "n" .. w.speed .. "," .. (w.sight or 0) .. "," .. (w.hearing or 0)
+        w.key = "n" .. stats
     end
     return w
 end

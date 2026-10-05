@@ -39,6 +39,13 @@ local function setup(opts)
     isServer = function() return opts.server == true end
     getDebug = function() return false end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
+    G.globalMD = opts.globalMD or {}
+    ModData = {
+        getOrCreate = function(name)
+            G.globalMD[name] = G.globalMD[name] or {}
+            return G.globalMD[name]
+        end,
+    }
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return player(G.players[i + 1]) end
     getOnlinePlayers = function()
@@ -77,7 +84,7 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players" }) do
+    for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players", "NOM_NightCount" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -125,6 +132,33 @@ return {
         assert(G.sent[1].module == "NevoaEOutroMundo" and G.sent[1].command == "night" and G.sent[1].args.on == true)
         assert(G.sent[2].args.on == false)
         assert(NOM_NightStats.night == false)
+    end,
+    -- o número da noite viaja com a flag: o cliente sorteia as variantes igual ao servidor
+    night_mp_sends_night_number = function()
+        local G = setup({ server = true })
+        G.setTime(22)
+        G.setTime(7)
+        G.setTime(23)
+        assert(G.sent[1].args.night == 1 and G.sent[3].args.night == 2, "noite: " .. tostring(G.sent[3].args.night))
+        G.sent = {}
+        G.clientCommand("NevoaEOutroMundo", "nightState", {}, {})
+        assert(G.sent[1].args.on == true and G.sent[1].args.night == 2)
+    end,
+    -- o contador é o mesmo do Eco (ModData salvo): reiniciar no meio da noite não abre noite nova
+    night_number_survives_restart = function()
+        local G = setup({ tod = 23 })
+        assert(NOM_NightStats.nightNumber == 1)
+        local G2 = setup({ tod = 23, globalMD = G.globalMD })
+        assert(NOM_NightStats.nightNumber == 1, "reinício abriu noite nova")
+        assert(G2.globalMD.NevoaEOutroMundo.eco.night == 1)
+    end,
+    night_sp_passes_night_number = function()
+        local G = setup()
+        G.setTime(22)
+        assert(NOM_NightStats.nightNumber == 1)
+        G.setTime(7)
+        G.setTime(22)
+        assert(NOM_NightStats.nightNumber == 2)
     end,
     -- cliente que entra no meio da noite pergunta e recebe só pra ele
     night_mp_replies_state_to_client = function()

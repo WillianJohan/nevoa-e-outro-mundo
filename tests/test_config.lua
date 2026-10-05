@@ -34,6 +34,14 @@ return {
         assert(NOM_Config.get("HuntIntervalMinutes") == 60)
         assert(NOM_Config.get("HuntRadius") == 30)
     end,
+    config_variant_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("EstaladorEnabled") == true)
+        assert(NOM_Config.get("CorredorEnabled") == true)
+        assert(NOM_Config.get("EstaladorChance") == 5)
+        assert(NOM_Config.get("CorredorChance") == 10)
+        assert(NOM_Config.get("CorredorScreamRadius") == 40)
+    end,
     -- toda opção do sandbox tem default no Lua e rótulo + tooltip nas duas línguas
     config_every_option_has_default_and_translations = function()
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
@@ -55,7 +63,7 @@ return {
                 assert(json:find(key .. '_tooltip"', 1, true), lang .. " sem tooltip: " .. name)
             end
         end
-        assert(n >= 13, "esperava as opções da noite, achou " .. n)
+        assert(n >= 18, "esperava as opções das variantes, achou " .. n)
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()
@@ -64,5 +72,26 @@ return {
         f:close()
         local block = txt:match("option NevoaEOutroMundo%.EcoRadius = {(.-)}")
         assert(block and block:match("max = (%d+)") == "60", "max do EcoRadius")
+    end,
+    -- todo som tocado pelo Lua está declarado e aponta pra arquivo que existe no mod
+    config_sound_scripts_point_to_files = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local declared, n = {}, 0
+        for name, body in txt:gmatch("sound%s+([%w_]+)%s*(%b{})") do
+            declared[name] = true
+            local file = body:match("file%s*=%s*([^,%s]+)")
+            assert(file, "som sem arquivo: " .. name)
+            local h = io.open("mod/42/" .. file, "rb")
+            assert(h, "arquivo do som não existe: " .. file)
+            assert(#h:read("*a") > 1000, "arquivo vazio: " .. file)
+            h:close()
+            n = n + 1
+        end
+        assert(n >= 2, "sons declarados: " .. n)
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream" }) do
+            assert(declared[name], "som usado no Lua sem declaração: " .. name)
+        end
     end,
 }

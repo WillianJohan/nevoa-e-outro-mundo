@@ -32,32 +32,53 @@ return {
         assert(NOM_NightRules.dayTier(4, 3) == 3)
     end,
     night_rules_wanted_day = function()
-        local w = NOM_NightRules.wanted(false, false, 2, cfg())
+        local w = NOM_NightRules.wanted(false, nil, 2, cfg())
         assert(w.key == "day" and w.speed == 2 and w.sight == nil and w.hearing == nil)
     end,
     night_rules_wanted_night_default = function()
-        local w = NOM_NightRules.wanted(true, false, 2, cfg())
+        local w = NOM_NightRules.wanted(true, nil, 2, cfg())
         assert(w.speed == 1 and w.sight == 1 and w.hearing == 1 and w.key ~= "day")
     end,
     night_rules_wanted_eco_slow_and_unboosted = function()
-        local w = NOM_NightRules.wanted(true, true, 1, cfg({ speedMult = 3 }))
+        local w = NOM_NightRules.wanted(true, "eco", 1, cfg({ speedMult = 3 }))
         assert(w.speed == NOM_NightRules.ECO_SPEED and w.speed == 3)
         assert(w.sight == nil and w.hearing == nil and w.key ~= "day")
         -- Eco de dia (antes de sumir) não é tocado
-        assert(NOM_NightRules.wanted(false, true, 2, cfg()).key == "day")
+        assert(NOM_NightRules.wanted(false, "eco", 2, cfg()).key == "day")
     end,
     night_rules_wanted_toggles_off_is_day = function()
-        local w = NOM_NightRules.wanted(true, false, 2, cfg({ fasterOn = false, sensesOn = false, speedMult = 3, senseMult = 3 }))
+        local w = NOM_NightRules.wanted(true, nil, 2, cfg({ fasterOn = false, sensesOn = false, speedMult = 3, senseMult = 3 }))
         assert(w.key == "day" and w.speed == 2 and w.sight == nil)
         -- multiplicador 1.0 também não muda nada
-        assert(NOM_NightRules.wanted(true, false, 2, cfg({ speedMult = 1, senseMult = 1 })).key == "day")
+        assert(NOM_NightRules.wanted(true, nil, 2, cfg({ speedMult = 1, senseMult = 1 })).key == "day")
     end,
     night_rules_wanted_only_senses = function()
-        local w = NOM_NightRules.wanted(true, false, 2, cfg({ fasterOn = false, hearing = 3 }))
+        local w = NOM_NightRules.wanted(true, nil, 2, cfg({ fasterOn = false, hearing = 3 }))
         assert(w.speed == 2 and w.sight == 1 and w.hearing == 2)
-        local s = NOM_NightRules.wanted(true, false, 2, cfg({ sensesOn = false }))
+        local s = NOM_NightRules.wanted(true, nil, 2, cfg({ sensesOn = false }))
         assert(s.speed == 1 and s.sight == nil and s.hearing == nil)
         assert(w.key ~= s.key)
+    end,
+    -- Corredor: sprinter à noite mesmo com NightFaster desligado; sentidos da noite
+    night_rules_wanted_corredor = function()
+        local R = NOM_NightRules
+        local w = R.wanted(true, "corredor", 3, cfg({ fasterOn = false, sensesOn = false }))
+        assert(w.speed == 1 and w.sight == nil and w.hearing == nil and w.key ~= "day")
+        local n = R.wanted(true, "corredor", 2, cfg())
+        assert(n.speed == 1 and n.sight == 1 and n.hearing == 1)
+        -- mesmos stats de um zumbi comum da noite, chave diferente: o mod sabe que é variante
+        assert(n.key ~= R.wanted(true, nil, 2, cfg()).key)
+        assert(R.wanted(false, "corredor", 2, cfg()).key == "day")
+    end,
+    -- Estalador: cego (pior visão) e ouvido apurado, com ou sem os sentidos da noite
+    night_rules_wanted_estalador = function()
+        local R = NOM_NightRules
+        local w = R.wanted(true, "estalador", 2, cfg())
+        assert(w.speed == 1 and w.sight == 3 and w.hearing == 1, "estalador: " .. tostring(w.sight))
+        local off = R.wanted(true, "estalador", 2, cfg({ fasterOn = false, sensesOn = false }))
+        assert(off.speed == 2 and off.sight == 3 and off.hearing == 1 and off.key ~= "day")
+        assert(off.key ~= R.wanted(true, "corredor", 2, cfg()).key)
+        assert(R.wanted(false, "estalador", 2, cfg()).key == "day")
     end,
     night_rules_countdown = function()
         local m, due = 0, false

@@ -24,6 +24,9 @@ próprio no sandbox e tudo volta ao normal ao amanhecer.
 4. **Variantes só noturnas** — Estalador, Corredor e Eco ([monsters.md](monsters.md)).
    O Eco **não** recebe o bônus: fica lento e com a audição do dia, então ouve a
    caça e a lanterna a 1/3 do alcance (de propósito: alma fraca, não caçadora).
+   O Estalador tem sempre o ouvido apurado: com `NightSharperSenses` desligado ele
+   ouve a caça, a lanterna e o grito do Corredor a 3× o alcance (de propósito:
+   ele vive de som).
 
 O alcance da caça e da lanterna é o configurado: o jogo multiplica o raio de todo
 som pela audição do zumbi (×3 na apurada da noite), e o mod compensa.
