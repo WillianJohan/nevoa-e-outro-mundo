@@ -84,5 +84,9 @@ Events.OnServerCommand.Add(function(module, command, args)
         print(args.msg)
     elseif command == "debugVariant" and type(args.id) == "number" then
         NOM_VariantRules.forced[args.id] = args.kind
+    elseif command == "debugForced" and type(args.list) == "table" then -- entrou depois
+        for _, f in pairs(args.list) do
+            if type(f.id) == "number" then NOM_VariantRules.forced[f.id] = f.kind end
+        end
     end
 end)

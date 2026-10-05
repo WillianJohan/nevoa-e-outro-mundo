@@ -84,8 +84,15 @@ local function setup(opts)
         _G[m] = nil
         package.loaded[m] = nil
     end
-    -- registradores no lugar dos sistemas do servidor e do cliente
-    NOM_NightCount = { current = function() return G.nightNumber end }
+    -- NOM_NightCount de verdade: o contador de noites salvo no ModData global
+    G.globalMD = {}
+    ModData = { getOrCreate = function(name)
+        G.globalMD[name] = G.globalMD[name] or {}
+        return G.globalMD[name]
+    end }
+    NOM_NightCount = nil
+    package.loaded["NOM_NightCount"] = nil
+    -- registradores no lugar dos outros sistemas do servidor e do cliente
     NOM_Fog = { period = function() return G.fogPeriod end }
     NOM_Eco = {
         spawnAt = function(x, y, z)
@@ -98,7 +105,7 @@ local function setup(opts)
     NOM_NightStats = { night = false, variants = {} }
     NOM_FogState = { on = false }
     NOM_SemRosto = { nearest = function() return nil end }
-    for _, m in ipairs({ "NOM_NightCount", "NOM_Fog", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
+    for _, m in ipairs({ "NOM_Fog", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
         package.loaded[m] = _G[m]
     end
     require "NOM_World"
@@ -221,12 +228,62 @@ return {
     debug_status_prints_local_and_server = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        G.nightNumber, G.fogPeriod = 3, 2
+        G.fogPeriod = 2
+        G.globalMD.NevoaEOutroMundo = { eco = { night = 2, inNight = false } }
+        G.world.tod = 23
+        NOM_World.update(0.7) -- noite 3 abre
         NOM_NightStats.night, NOM_NightStats.nightNumber = true, 3
         NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador" }
-        NOM_World.update(0.7)
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*estaladores=2"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*nevoaN=2.*noiteN=3"), table.concat(G.printed, "\n"))
     end) end,
+    -- a noite forçada não é só memória: ela avança o contador de noites salvo
+    -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
+    -- noite dos Ecos. Por isso o roteiro manda usar um save descartável.
+    debug_forced_night_advances_saved_counter = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_World.update(0)
+        assert(NOM_NightCount.current() == 0)
+        NOM_Debug.night(true)
+        NOM_World.update(0)
+        assert(NOM_NightCount.current() == 1 and G.globalMD.NevoaEOutroMundo.eco.night == 1, "contador não andou")
+        NOM_Debug.night()
+        NOM_World.update(0)
+        NOM_NightCount.current() -- no jogo o Eco e a Noite leem na borda
+        NOM_Debug.night(true)
+        NOM_World.update(0)
+        assert(NOM_NightCount.current() == 2, "segunda noite forçada não contou")
+        NOM_Debug.night()
+        NOM_World.update(0)
+        assert(G.globalMD.NevoaEOutroMundo.eco.night == 2, "devolver pro relógio desfez o contador")
+    end) end,
+    -- cliente que entra depois (pergunta nightState) recebe o que já foi forçado
+    debug_late_join_gets_forced_variants = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local admin = G.player({ x = 0, y = 0 })
+        local late = G.player({ x = 5, y = 5, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "nightState", late, {})
+        assert(#G.sentServer == 0, "mandou forçado vazio")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", admin, { op = "variant", id = 42, kind = "corredor" })
+        G.sentServer = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "nightState", late, {})
+        local c = G.sentServer[1]
+        assert(c and c.player == late and c.command == "debugForced", "não mandou o forçado pro novo")
+        assert(#c.args.list == 1 and c.args.list[1].id == 42 and c.args.list[1].kind == "corredor")
+        -- o cliente novo grava
+        G.server, G.client = false, true
+        dofile("mod/42/media/lua/client/NOM_Debug.lua")
+        NOM_VariantRules.forced[42] = nil
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugForced", c.args)
+        assert(NOM_VariantRules.forced[42] == "corredor", "cliente não gravou")
+    end) end,
+    debug_denied_prints_under_debug = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 0, y = 0, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "night", value = true })
+        assert(has(G.printed, "^%[NOM%] debug negado"), table.concat(G.printed, "\n"))
+    end) end,
 }
+

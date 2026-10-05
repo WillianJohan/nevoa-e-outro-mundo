@@ -2,7 +2,10 @@
 -- em -debug: força noite e névoa (NOM_World.forced), força a variante de um zumbi
 -- (NOM_VariantRules.forced), spawna um Eco e imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
--- Nada daqui é salvo: o forçado vive em memória até o servidor reiniciar.
+-- O forçado vive em memória até o servidor reiniciar, MAS a noite e a névoa
+-- forçadas avançam os contadores salvos de noites e de névoas (NOM_NightCount e
+-- NOM_Fog, ModData global): o número da noite muda o sorteio das variantes e a
+-- noite dos Ecos daquele save pra sempre. Use um save descartável.
 if isClient() then return end
 
 require "NOM_World"
@@ -20,7 +23,9 @@ local MODULE = "NevoaEOutroMundo"
 local function allowed(player)
     if not getDebug() or player == nil then return false end
     if not isServer() then return true end
-    return player:getRole():hasCapability(Capability.UseDebugContextMenu)
+    if player:getRole():hasCapability(Capability.UseDebugContextMenu) then return true end
+    print("[NOM] debug negado: sem permissão de debug")
+    return false
 end
 
 local function count(t)
@@ -86,4 +91,15 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     if a.op ~= "status" then msg = "[NOM] debug " .. msg end
     print(msg)
     if isServer() then sendServerCommand(player, MODULE, "debugReply", { msg = msg }) end
+end)
+
+-- Cliente que entra depois (pergunta nightState ao entrar, client/NOM_NightClient.lua)
+-- não viu os debugVariant: recebe a tabela inteira. Só se houver algo forçado (e
+-- portanto só em -debug, que é quando ela enche).
+Events.OnClientCommand.Add(function(module, command, player, args)
+    if module ~= MODULE or command ~= "nightState" or not isServer() then return end
+    if next(NOM_VariantRules.forced) == nil then return end
+    local list = {}
+    for id, kind in pairs(NOM_VariantRules.forced) do list[#list + 1] = { id = id, kind = kind } end
+    sendServerCommand(player, MODULE, "debugForced", { list = list })
 end)

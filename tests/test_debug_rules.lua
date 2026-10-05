@@ -31,4 +31,12 @@ return {
         assert(D.line("[NOM] x", { b = 2, a = true, c = "z" }) == "[NOM] x a=true b=2 c=z")
         assert(D.line("[NOM] x", {}) == "[NOM] x")
     end,
+    -- NaN não é igual a si mesmo: viraria uma chave que ninguém acha (variante) ou
+    -- passaria pelo math.max/min sem ser preso (névoa)
+    debug_rules_parse_rejects_nan = function()
+        local nan = 0 / 0
+        assert(D.parse({ op = "variant", id = nan, kind = "corredor" }) == nil)
+        assert(D.parse({ op = "fog", value = nan }) == nil)
+    end,
 }
+

@@ -14,11 +14,11 @@ function NOM_DebugRules.parse(args)
         if v ~= nil and type(v) ~= "boolean" then return nil end
         return { op = op, value = v }
     elseif op == "fog" then
-        if v ~= nil and type(v) ~= "number" then return nil end
+        if v ~= nil and (type(v) ~= "number" or v ~= v) then return nil end -- v ~= v: NaN
         if v then v = math.max(0, math.min(1, v)) end
         return { op = op, value = v }
     elseif op == "variant" then
-        if type(args.id) ~= "number" or args.id == 0 then return nil end
+        if type(args.id) ~= "number" or args.id ~= args.id or args.id == 0 then return nil end
         if args.kind ~= nil and not NOM_DebugRules.KINDS[args.kind] then return nil end
         return { op = op, id = args.id, kind = args.kind }
     elseif op == "spawnEco" or op == "status" then
