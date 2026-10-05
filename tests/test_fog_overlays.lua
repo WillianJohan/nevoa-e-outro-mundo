@@ -91,10 +91,26 @@ local function alive(G)
     return out
 end
 
+-- desenho por square (sangue e sujeira são dois marcadores do mesmo square)
 local function layout(G)
     local out = {}
-    for _, m in ipairs(alive(G)) do out[m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z] = table.concat(m.names, "|") end
+    for _, m in ipairs(alive(G)) do
+        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
+        local v = table.concat(m.names, "|")
+        if out[k] then
+            out[k] = out[k] < v and out[k] .. "+" .. v or v .. "+" .. out[k]
+        else
+            out[k] = v
+        end
+    end
     return out
+end
+
+-- squares com marcador vivo (o teto é por square)
+local function squares(G)
+    local n = 0
+    for _ in pairs(layout(G)) do n = n + 1 end
+    return n
 end
 
 local function textures(G)
@@ -132,7 +148,55 @@ local function coverage(G, r)
     return have / tot, want > 0 and have / want or 1
 end
 
+-- marcadores vivos por square: { main = marcador sem sujeira, grime = marcador da sujeira }
+local function bySquare(G)
+    local out = {}
+    for _, m in ipairs(alive(G)) do
+        local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
+        out[k] = out[k] or {}
+        if #m.names == 1 and m.names[1]:find("^overlay_grime") then out[k].grime = m else out[k].main = m end
+    end
+    return out
+end
+
 return {
+    -- print 7 (05/10): sujeira cheia, uma por tile, lia como xadrez. Ela vai num marcador
+    -- próprio, mais leve que o sangue do mesmo square (o marcador tem uma cor só)
+    overlays_grime_own_marker_lighter = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        local both = 0
+        for k, s in pairs(bySquare(G)) do
+            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
+            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 1, D().density(1, false))
+            assert((s.grime ~= nil) == (f.grime ~= nil), "sujeira não bate com a regra em " .. k)
+            for _, n in ipairs(s.main and s.main.names or {}) do assert(not n:find("grime"), "sujeira no marcador do sangue") end
+            if s.grime and s.main then
+                both = both + 1
+                assert(math.abs(s.grime.a - s.main.a * D().GRIME_ALPHA) < 1e-6, "alfa da sujeira: " .. s.grime.a)
+            end
+        end
+        assert(both > 20, "poucos squares com sujeira e sangue: " .. both)
+    end,
+
+    -- os dois marcadores de um square saem juntos (fim da névoa, densidade nova)
+    overlays_grime_marker_follows_entry = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(15)
+        local grimes = 0
+        for _, s in pairs(bySquare(G)) do if s.grime then grimes = grimes + 1 end end
+        assert(grimes > 20, "sem sujeira: " .. grimes)
+        local old = alive(G)
+        NOM_FogState.set(true, 1, true) -- densidade nova (vermelha forçada): redesenha depois de 1 s
+        G.seconds(1.5)
+        for _, m in ipairs(old) do assert(m.removed, "marcador velho ficou") end
+        NOM_FogState.set(false, 1)
+        G.seconds(O().FADE_MS / 1000 + 2)
+        assert(#alive(G) == 0, "sobrou marcador: " .. #alive(G))
+    end,
+
     overlays_walls_off_by_default = function()
         -- visto no jogo (print do Johan): desenho de fantasma sem profundidade cobre o
         -- jogador e pinta de preto paredes cortadas; o padrão é não desenhar paredes
@@ -193,7 +257,7 @@ return {
                     local _, rel = coverage(G, 3)
                     assert(rel >= 0.85, (red and "vermelha" or "normal") .. ": andando, 7×7 com " .. rel .. " do que a regra pede, passo " .. step)
                 end
-                assert(#alive(G) <= D().MAX_FLOOR, "passou do teto andando")
+                assert(squares(G) <= D().MAX_FLOOR, "passou do teto andando")
             end
             G.seconds(2)
             local abs = coverage(G, 3)
@@ -235,10 +299,17 @@ return {
         local G = setup()
         NOM_FogState.set(true, 2, false)
         G.seconds(20)
-        local before = textures(G)
+        local old = alive(G)
         NOM_FogState.set(true, 2, true)
-        G.seconds(15) -- o raio efetivo recomeça em 25 e acomoda no teto
-        assert(textures(G) > before * 1.1, "vermelha forçada não redesenhou: " .. textures(G) .. " vs " .. before)
+        G.seconds(5)
+        for _, m in ipairs(old) do assert(m.removed, "vermelha forçada não redesenhou") end
+        local d = D().density(1, true)
+        for k, v in pairs(layout(G)) do
+            local x, y, z = k:match("(-?%d+),(-?%d+),(-?%d+)")
+            local f = D().floor(tonumber(x), tonumber(y), tonumber(z), 2, d)
+            assert(f, "square sem nada na regra vermelha: " .. k)
+            assert(v:find(D().SETS[(f[#f] or f.grime)[1]].prefix .. (f[#f] or f.grime)[2], 1, true), "desenho não é o da vermelha: " .. k)
+        end
         assert(select(2, coverage(G, 3)) >= 0.9)
     end,
 
@@ -369,8 +440,8 @@ return {
         addWalls(G, 70, 70, 60)
         NOM_FogState.set(true, 1, true)
         G.seconds(60)
-        assert(#alive(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. #alive(G))
-        assert(#alive(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. #alive(G))
+        assert(squares(G) <= D().MAX_FLOOR, "passou do teto do chão: " .. squares(G))
+        assert(squares(G) >= D().MAX_FLOOR * 0.8, "não encheu até perto do teto: " .. squares(G))
         local draws = G.frame()
         assert(select(2, O().count()) <= D().MAX_WALL, "passou do teto das paredes")
         -- as de costas e fora do cone ficam na reserva, apagadas (voltam ao virar)
@@ -522,9 +593,8 @@ return {
         end
         assert(removedNear == 0, "mancha perto sumiu andando: " .. removedNear)
         assert(O().reach() >= 10, "raio efetivo pequeno demais: " .. O().reach())
-        for _, m in ipairs(alive(B)) do
-            local k = m.sq.x .. "," .. m.sq.y .. "," .. m.sq.z
-            if la[k] then assert(la[k] == table.concat(m.names, "|"), "desenho mudou andando") end
+        for k, v in pairs(layout(B)) do
+            if la[k] then assert(la[k] == v, "desenho mudou andando") end
         end
     end,
 

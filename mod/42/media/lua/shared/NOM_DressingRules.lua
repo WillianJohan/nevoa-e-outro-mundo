@@ -20,7 +20,12 @@ NOM_DressingRules = {
     -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
     POOL = 0.85,       -- chance de poça por célula, na densidade 1
     BACKGROUND = 0.15, -- respingo solto por square
-    GRIME = 0.5, CRACKS = 0.45,
+    CRACKS = 0.45,
+    -- Sujeira (print 7: losango cheio por tile lia como xadrez): em manchas (ruído numa rede
+    -- de GRIME_CELL tiles), sprite parcial e num marcador próprio, com alfa × GRIME_ALPHA.
+    GRIME = 0.4,       -- o ruído passa de 1 − GRIME·d: ~20% do chão na densidade 1
+    GRIME_CELL = 4,
+    GRIME_ALPHA = 0.5,
     WALL = 0.75,       -- chance de cada parede ter algo
 }
 
@@ -52,7 +57,8 @@ R.SETS = {
     bloodFloor = { prefix = "overlay_blood_floor_01_",
         idx = { 0, 1, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27,
             34, 35, 37, 38, 39, 40, 43, 44, 45, 46 } },
-    grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 30, 38, 80, 88 } },
+    -- sujeira: além disso, parcial (cobertura < 50%) e sem as faixas de borda de tile (30, 80)
+    grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 38, 88 } },
     cracksFloor = { prefix = "d_streetcracks_1_",
         idx = { 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 18, 20, 21, 22 } },
     bloodWallW = { wall = "W", prefix = "overlay_blood_wall_01_", idx = { 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19 } },
@@ -104,12 +110,17 @@ local function makePool(cx, cy, z, period, d)
         dx = math.cos(a), dy = math.sin(a), len = 3 + 6 * u(id, period, 16) }
 end
 
--- Cada square olha 9 células: guardadas por período e densidade (o hash é o caro no
--- Kahlua). Zera quando um dos dois muda; cresce com o caminho andado numa névoa.
-local pools, poolsPeriod, poolsD = {}, nil, nil
+-- Cada square olha 9 células (e 4 cantos da rede da sujeira): guardados por período e
+-- densidade (o hash é o caro no Kahlua). Zera quando um dos dois muda; cresce com o
+-- caminho andado numa névoa.
+local pools, corners, poolsPeriod, poolsD = {}, {}, nil, nil
+
+local function fresh(period, d)
+    if period ~= poolsPeriod or d ~= poolsD then pools, corners, poolsPeriod, poolsD = {}, {}, period, d end
+end
 
 local function pool(cx, cy, z, period, d)
-    if period ~= poolsPeriod or d ~= poolsD then pools, poolsPeriod, poolsD = {}, period, d end
+    fresh(period, d)
     local k = sqId(cx, cy, z) -- chave numérica: nada de string por chamada
     local p = pools[k]
     if p == nil then
@@ -117,6 +128,31 @@ local function pool(cx, cy, z, period, d)
         pools[k] = p
     end
     return p or nil
+end
+
+local function corner(i, j, z, period)
+    local k = sqId(i, j, z)
+    local v = corners[k]
+    if v == nil then
+        v = u(k + 3, period, 54)
+        corners[k] = v
+    end
+    return v
+end
+
+local function smooth(t)
+    return t * t * (3 - 2 * t)
+end
+
+-- Ruído de valor da sujeira em (x, y): 0..1, contínuo de tile pra tile (manchas).
+function R.grimeNoise(x, y, z, period)
+    local c = R.GRIME_CELL
+    local gx, gy = (x + 0.5) / c, (y + 0.5) / c
+    local i, j = math.floor(gx), math.floor(gy)
+    local sx, sy = smooth(gx - i), smooth(gy - j)
+    local a = corner(i, j, z, period) + (corner(i + 1, j, z, period) - corner(i, j, z, period)) * sx
+    local b = corner(i, j + 1, z, period) + (corner(i + 1, j + 1, z, period) - corner(i, j + 1, z, period)) * sx
+    return a + (b - a) * sy
 end
 
 -- Camadas de sangue do square pelas poças das 9 células em volta: 3 no miolo, 2 na
@@ -148,17 +184,21 @@ local function bloodLevel(x, y, z, id, period, d)
     return level
 end
 
--- Camadas do chão do square, de baixo pra cima (erosão, depois sangue), ou nil.
+-- Camadas do chão do square, de baixo pra cima (rachadura, depois sangue), e a sujeira à
+-- parte em out.grime (marcador próprio, mais leve), ou nil.
 function R.floor(x, y, z, period, d)
     if not d or d <= 0 then return nil end
+    fresh(period, d)
     local id = sqId(x, y, z)
     local out = {}
-    if u(id, period, 51) < chance(R.GRIME, d) then out[#out + 1] = pick("grimeFloor", id, period, 61) end
+    -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
+    local grime = R.grimeNoise(x, y, z, period) >= 1 - chance(R.GRIME, d) and u(id, period, 51) >= 1 / 7
     if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
     local blood = bloodLevel(x, y, z, id, period, d)
     while #out + blood > R.MAX_LAYERS do table.remove(out) end
     for k = 1, blood do out[#out + 1] = pick("bloodFloor", id, period, 40 + k) end
-    if #out == 0 then return nil end
+    if grime then out.grime = pick("grimeFloor", id, period, 61) end
+    if #out == 0 and not grime then return nil end
     return out
 end
 

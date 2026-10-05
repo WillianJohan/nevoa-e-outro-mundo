@@ -113,9 +113,10 @@ end
 local function drop(pool, i)
     local e = pool.list[i]
     if e.m then e.m:remove() end
+    if e.g then e.g:remove() end
     taken[e.k] = nil
     -- voltando pra cá, entra de novo (mesmo desenho)
-    if e.m then seenF[e.k] = nil else seenW[e.k] = nil end
+    if pool == F then seenF[e.k] = nil else seenW[e.k] = nil end
     table.remove(pool.list, i)
 end
 
@@ -141,15 +142,20 @@ function O.reach()
     return F.reach, W.reach
 end
 
+-- Um square, até dois marcadores: rachadura + sangue num, a sujeira no outro (alfa ×
+-- GRIME_ALPHA; o marcador tem uma cor só pra todas as texturas).
 local function addFloor(sq, x, y, z, sk, layers)
     local names = {}
     for _, l in ipairs(layers) do names[#names + 1] = name(l) end
-    if #names == 0 or not sq:isFree(false) then return end -- isFree: ISWorldObjectContextMenu.lua:2199
+    local grime = layers.grime and name(layers.grime)
+    if (#names == 0 and not grime) or not sq:isFree(false) then return end -- isFree: ISWorldObjectContextMenu.lua:2199
     local l = lightOf(sq)
-    local m = getIsoMarkers():addIsoMarker(names, sq, l, l, l, 0)
-    if not m then return end
+    local markers = getIsoMarkers()
+    local m = #names > 0 and markers:addIsoMarker(names, sq, l, l, l, 0) or nil
+    local g = grime and markers:addIsoMarker({ grime }, sq, l, l, l, 0) or nil
+    if not m and not g then return end
     taken[sk] = true
-    F.list[#F.list + 1] = { m = m, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l }
+    F.list[#F.list + 1] = { m = m, g = g, sq = sq, x = x, y = y, z = z, k = sk, sk = sk, a = 0, l = l }
 end
 
 local function addWall(sq, x, y, z, sk, layer, north)
@@ -318,7 +324,10 @@ local function update()
     end, on)
     if on then refresh() end
     for _, e in ipairs(F.list) do
-        if e.changed then e.m:setColor(e.l, e.l, e.l, e.a) end
+        if e.changed then
+            if e.m then e.m:setColor(e.l, e.l, e.l, e.a) end
+            if e.g then e.g:setColor(e.l, e.l, e.l, e.a * D.GRIME_ALPHA) end
+        end
         e.changed = nil
     end
     if on then scan(px, py, pz, per, d) end
