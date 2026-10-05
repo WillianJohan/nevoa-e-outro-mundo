@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1244,6 +1244,24 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
   = 13 + bloom·0,25`, §15.4): não há outro float livre (`VarInfo.zw` nunca são escritos, mas o
   Lua não os alcança).
 
+## 18. Debug amigável (sprint 0020)
+
+Verificado no B42.21 instalado (bytecode e Lua vanilla).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Autocomplete do console do debug só sugere Java | EXISTS | `UIDebugConsole.InitSuggestionEngine` 0–15: `LuaManager$GlobalObject.getDeclaredMethods()` vai pra `globalLuaMethods` (reflexão, `java.lang.reflect.Method`); função Lua nunca entra e mod não estende. Saída do mod: `NOM.help()` |
+| Tecla de mod nas opções | CONFIRMED (consumidor) | `client/PZAPI/ModOptions.lua:182-204` (`addKeyBind(id, nome, tecla, dica)`, `getValue()` devolve o código), save `:276-280`, load `:326-327`; tela `MainOptions.lua:2987-3010` (botão de tecla, `getText(option.name)`) |
+| F7 é do vanilla em `-debug` | CONFIRMED (review) | `IngameState.updateInternal`, bloco só de debug, `bipush 65` → `GameKeyboard.isKeyPressed`, 547–606 → `EditVehicleState` (editor de veículos). F2, F8, F9 também são do debug (chunk debugger, `WorldMapEditor`, `SeamEditor`); F1–F6, F10, F11 têm bind em `shared/keyBinding.lua` |
+| `Keyboard.KEY_INSERT` (210) livre | EXISTS | constante em `org/lwjglx/input/Keyboard.class`; a review varreu as 46 classes que leem o teclado e nenhuma usa. Padrão da tecla do painel |
+| Janela com botões | CONFIRMED | `ISCollapsableWindow:derive` + `ISButton:new(x, y, w, h, título, alvo, onclick)` (`client/DebugUIs/ISFilmingToolsUI.lua`); `onclick(alvo, botão)` (`ISButton.lua:47`); `close()` só esconde (`ISCollapsableWindow.lua:134-136`); `createChildren` põe as alças de redimensionar pela altura do momento (`:26-50`) |
+| Fora do UIManager não pega nada | CONFIRMED | `ISUIElement.lua:1365-1380` (`addToUIManager` instancia na primeira vez; `removeFromUIManager` → `UIManager.RemoveElement`); `UIManager.AddUI` tira antes de pôr (bytecode 0–28), repetir não duplica |
+| Posição lembrada | CONFIRMED | `ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela)` (`client/TimedActions/ISBBQInfoAction.lua:29`; `ISLayoutManager.lua:6-60`: x, y e `visible` salvos e restaurados) |
+| God / noclip / invisível | CONFIRMED | `client/ISUI/AdminPanel/ISAdminPowerUI.lua:31-53` (`is/setInvisible`, `is/setGodMod`, `is/setNoClip` no jogador local) e `:403` (`sendPlayerExtraInfo(player)` depois); no MP o servidor aplica as regras dele (UNKNOWN pra quem tem só `-debug` sem ser admin) |
+| Hora | CONFIRMED (solo) / EXISTS (MP) | `getGameTime():setTimeOfDay(h)` (`client/LastStand/LastStandSetup.lua:63`) só grava o campo (bytecode 0–5). **Nunca pra trás:** no dedicado a data dos clientes dessincroniza (`SyncClockPacket.processClient` → `serverNewDays++` → `advanceOneDay`) e o `getWorldAgeHours` volta (timers da névoa). Hora menor que a de agora vai como `h + 24`: o `GameTime.update` (938–972) tira 24, chama `advanceOneDay` e, no servidor, marca o sync |
+| Spawn espalhado | CONFIRMED | `addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance)` → `ArrayList` (`Steps.lua:2123`): n vezes `addZombiesInOutfit` em `Rand.Next(x1, x2)` (fim exclusivo, bytecode 0–54); outfit `nil` sorteia (`ISSpawnHordeUI.lua:73, 276`); nomes válidos por `getAllOutfits(false/true)` (`ISSpawnHordeUI.lua:71-72`). No servidor dedicado: UNKNOWN, o mesmo do Eco (item 2 abaixo) |
+| Frente do jogador | CONFIRMED | `player:getForwardDirection():getDirection()` em radianos (`shared/Fishing/FishingRod.lua:286`) |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1304,3 +1322,5 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
 15. Outro Mundo sangrento (sprint 0015): `RenderGhostTileColor` chamado do
     `RenderOpaqueObjectsInWorld` desenha a parede no lugar e sem engasgo? O chão por marcador meio
     tile pra cima incomoda? Quanto custa o quadro com 600 marcadores e 120 paredes? (§16)
+16. Debug amigável (sprint 0020): Insert livre em `-debug` (as 46 classes dizem que sim)? `NOM.time` no dedicado chega nos
+    clientes, com a data certa? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)

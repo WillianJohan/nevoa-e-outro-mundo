@@ -20,6 +20,13 @@ local function fakeModOptions()
         function o:addSlider(oid, n, min, max, step, value, tip)
             return add({ type = "slider", id = oid, name = n, min = min, max = max, step = step, value = value, tooltip = tip })
         end
+        -- addKeyBind(id, nome, tecla, dica) (ModOptions.lua:182-204): getValue devolve
+        -- option.key; o load() e a tela de opções trocam option.key (:326-327, :276-280)
+        function o:addKeyBind(oid, n, key, tip)
+            local opt = add({ type = "keybind", id = oid, name = n, key = key, defaultkey = key, tooltip = tip })
+            opt.getValue = function(self) return self.key end
+            return opt
+        end
         function o:getOption(oid) return self.dict[oid] end
         self.Dict[id] = o
         self.Data[#self.Data + 1] = o
@@ -29,11 +36,15 @@ local function fakeModOptions()
     return M
 end
 
-local function load(withApi)
+local function load(withApi, debug)
     _G.NOM_ScreenFxOptions = nil
     package.loaded.NOM_ScreenFxOptions = nil
     PZAPI = withApi and { ModOptions = fakeModOptions() } or nil
     isServer = function() return false end
+    getDebug = function() return debug == true end
+    -- org/lwjglx/input/Keyboard. F7 (65) abre o editor de veículos do vanilla em -debug
+    -- (IngameState.updateInternal 547–606): o mod usa Insert (210)
+    Keyboard = { KEY_F7 = 65, KEY_INSERT = 210 }
     dofile(FILE)
     return NOM_ScreenFxOptions
 end
@@ -99,5 +110,23 @@ return {
         assert(O.bloom() == 2)
         local O2 = load(false)
         assert(O2.dissolve() == true and O2.bloom() == 1, "sem a API: padrão")
+    end,
+
+    -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
+    screenfx_options_debug_key_only_in_debug = function()
+        local O = load(true, true)
+        local k = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel")
+        assert(k and k.type == "keybind" and k.key == 210 and k.name:find("^UI_NOM_") and k.tooltip:find("^UI_NOM_"))
+        assert(O.debugPanelKey() == 210)
+        O = load(true, false)
+        assert(PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel") == nil, "tecla sem -debug")
+        assert(O.debugPanelKey() == nil)
+    end,
+    screenfx_options_debug_key_follows_rebind = function()
+        local O = load(true, true)
+        PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("DebugPanel").key = 88
+        assert(O.debugPanelKey() == 88, "não seguiu a tecla trocada")
+        O = load(false, true)
+        assert(O.debugPanelKey() == 210, "sem a API: Insert")
     end,
 }

@@ -64,7 +64,7 @@ mod/
     lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão, sprite de parede N/W, poças e rastros (puro, sprint 0015)
     lua/client/NOM_FogOverlays.lua  Outro Mundo sangrento: chão por IsoMarker, paredes desenhadas no quadro (só local, sem save; ADR-015)
     lua/shared/NOM_ScreenFxRules.lua   alfas das camadas da tela, fade, pulso do grito, canal do shader (puro)
-    lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela e da densidade do Outro Mundo (PZAPI.ModOptions)
+    lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela e da densidade do Outro Mundo (PZAPI.ModOptions), e a tecla do painel de debug
     lua/client/NOM_ScreenFx.lua     overlay de tela na névoa: elemento de 1 px atrás da UI (só local)
     lua/client/NOM_VariantLook.lua  pele e peça da variante na cópia local, enquanto a névoa dura (gancho do NightStats; não no dedicado); com o dissolve, a peça gêmea se forma e se desfaz
     lua/shared/NOM_DissolveRules.lua   tempo, faixa do limiar (0,85) e teto do dissolve (puro, sprint 0018)
@@ -74,6 +74,8 @@ mod/
     lua/client/NOM_EcoFx.lua        morte do Eco: véu gêmeo e casca pelo WornItems, dissolve, brasas, corpo escondido
     lua/shared/NOM_DebugRules.lua   confere os comandos de debug e formata a linha de status (puro)
     lua/client/NOM_Debug.lua        comandos de console pro teste in-game (só com -debug)
+    lua/client/NOM_Console.lua      atalhos curtos NOM.* e NOM.help() (só com -debug; sprint 0020)
+    lua/client/NOM_DebugPanel.lua   painel de botões do debug, pela tecla das opções do mod (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens do mod por GUID: cinza e véu de fumaça)
     clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod; *Fx e NOM_EcoCasca com <m_Shader>NOM_Dissolve</m_Shader> (sprint 0018)
@@ -121,7 +123,7 @@ da morte do Eco também (`Dissolve`, `EcoFx`, `Embers`, [ADR-016](adr-016-dissol
   pro save. Detalhe e bytecode em [pz-api-notes §8](pz-api-notes.md#8-remover-o-mod-de-um-save-sprint-0006).
 - Loop de comportamento processa zumbis em lotes por tick, não todos de uma vez.
 - Teto de Ecos por jogador evita travar servidor em vala comum.
-- Comandos de debug (`NOM_Debug`) não existem nem agem fora do `-debug`; no dedicado
+- Comandos de debug (`NOM_Debug`, `NOM`, painel) não existem nem agem fora do `-debug`; no dedicado
   exigem a permissão de debug do jogo. O forçado em si fica em memória, **mas a noite
   e a névoa forçadas avançam os contadores salvos de noites e de névoas** (ModData
   global), o que muda o sorteio das variantes e a noite dos Ecos daquele save: usar
