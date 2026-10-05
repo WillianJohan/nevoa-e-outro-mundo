@@ -134,7 +134,7 @@ final class Flow {
         g.inertia = true;
         g.windRelax = 0.15f;
         g.outdoorRefill = 0f;
-        g.stillDecay = 0f;              // a esteira enche; o vácuo é opção (PARAM_VACUUM)
+        g.stillDecay = 0f;              // a thread principal manda o do PARAM_VACUUM a cada passo
         g.doorPuff = 0.35f;
         g.vorticity = 0.6f;             // por tile; o dobro fecha o vácuo atrás do prédio
         return g;

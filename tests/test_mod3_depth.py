@@ -182,10 +182,10 @@ assert 'new Thread(Flow::workLoop, "NOM-fluido")' in flow, "mod3: a simulação 
 main_part = flow.split("// ---------- main thread ----------")[1].split("// ---------- thread da simulação ----------")[0]
 assert "grid." not in main_part, "mod3: a thread principal não pode mexer na grade (é da thread da simulação)"
 # Névoa que contorna (sprint 0031): NOMRender_setParam(10, v) liga o vácuo atrás dos prédios (padrão
-# 0, enche); a textura vai até D_MAX e o shader desfaz; árvore é porosa e carro é obstáculo baixo;
+# 1, escolhido pelo Johan no A/B; 0 enche); a textura vai até D_MAX e o shader desfaz; árvore é porosa e carro é obstáculo baixo;
 # o rolo só sobe onde há obstáculo logo à frente no vento, não na esteira.
-assert re.search(r"PARAM_VACUUM = 10;", java) and re.search(r"luaParams\[PARAM_VACUUM\] = 0f", java), \
-    "mod3: PARAM_VACUUM (10) ausente ou sem padrão 0"
+assert re.search(r"PARAM_VACUUM = 10;", java) and re.search(r"luaParams\[PARAM_VACUUM\] = 1f", java), \
+    "mod3: PARAM_VACUUM (10) ausente ou sem padrão 1"
 assert "PARAM_VACUUM" in main_part and "stillDecay" in flow.split("private static void apply")[1], \
     "mod3: o vácuo tem que ir da thread principal pra simulação pelo Input"
 gv = re.search(r"const float NOM_FLOW_DMAX = ([\d.]+);", header)

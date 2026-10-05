@@ -57,7 +57,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão 1; 0 = só rolos, sprint 0028) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
-| `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 0 a névoa enche o outro lado (padrão), 1 o vácuo da 0026 (sprint 0031, A/B pro Johan escolher) |
+| `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -76,7 +76,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 ## Em teste: névoa que contorna (sprint 0031)
 
 O Johan viu a névoa como fumaça passando entre os objetos, sem desviar nem encher o outro lado. A [pesquisa](architecture/pesquisa-nevoa-volumetrica.md) achou seis causas no nosso código. Esta sprint é a etapa 1 dela:
-- o vácuo atrás do prédio virou opção (`NOMRender_setParam(10, v)`, padrão 0 = enche);
+- o vácuo atrás do prédio virou opção (`NOMRender_setParam(10, v)`); no A/B o Johan preferiu com vácuo, que ficou o padrão (1);
 - árvore é porosa (arrasto) e carro é obstáculo baixo (`F_LOW`, arrasto forte);
 - a pressão começa da do passo anterior;
 - a textura leva o acúmulo até 1,5;
