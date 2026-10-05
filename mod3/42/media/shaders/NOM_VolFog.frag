@@ -1,9 +1,17 @@
-// Névoa volumétrica (spike). Cabeçalho: NOM_RenderContext.glsl.
+// Névoa volumétrica. Cabeçalho: NOM_RenderContext.glsl.
 // uParams[0]: x = densidade forçada (0 = usa a névoa do clima), y = modo debug
-//             (1 = grade do mundo, 2 = profundidade, 3 = andar, 4 = erro de andar: chão preto liso), z = altura da camada em andares (0 = 1.0)
+//             (1 = grade do mundo, 2 = profundidade, 3 = andar, 4 = erro de andar: chão preto liso,
+//              5 = obstáculos do fluido, 6 = densidade do fluido, 7 = velocidade do fluido),
+//             z = altura da camada em andares (0 = 1.2)
+// uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
+const float FLOW_PERIOD = 2.0;   // s: ciclo do flow map (o ruído é levado pela velocidade e recomeça)
+const vec2 CALM_WIND = vec2(0.35, 0.15); // tiles/s, sem a simulação
+
+vec3 gP;        // ponto visível do pixel (mundo relativo)
+float gTree;    // árvore em volta de gP (0..1)
 
 float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
@@ -20,18 +28,33 @@ float noise(vec3 x) {
                    mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
-float fbm(vec3 p) {
-    return 0.55 * noise(p) + 0.3 * noise(p * 2.03 + 7.1) + 0.15 * noise(p * 4.1 + 3.7);
+float fbm2(vec3 p) {
+    return 0.62 * noise(p) + 0.38 * noise(p * 2.07 + 7.1);
 }
 
-float density(vec3 w, float ground, float top) {
+// Ruído levado pela velocidade do fluido: duas fases defasadas, cada uma recomeça quando o peso dela é 0.
+float flowNoise(vec3 m, vec2 vel) {
+    float a = fract(uTime / FLOW_PERIOD);
+    float b = fract(uTime / FLOW_PERIOD + 0.5);
+    vec3 rise = vec3(0.0, 0.0, 0.04 * uTime);
+    vec3 p1 = m - vec3(vel * (a * FLOW_PERIOD), 0.0);
+    vec3 p2 = m - vec3(vel * (b * FLOW_PERIOD), 0.0) + vec3(5.2, 1.3, 0.0);
+    return mix(fbm2(p1 * 0.18 + rise), fbm2(p2 * 0.18 + rise), abs(2.0 * a - 1.0));
+}
+
+// Densidade em w e, em `wisp`, o quanto ela é tufo de ruído (0) ou camada lisa do chão (1).
+float density(vec3 w, float ground, float top, out float wisp) {
+    vec2 vel = nomFlowVel(w.xy, CALM_WIND);
+    float fd = nomFlowDensity(w.xy);
     vec3 m = vec3(w.xy, w.z * LEVEL_TILES);
-    vec3 wind = vec3(0.35, 0.15, 0.04) * uTime;
-    float d = fbm(m * 0.18 + wind) ;
-    d = smoothstep(0.25, 0.8, d);
+    float n = smoothstep(0.22, 0.78, flowNoise(m, vel));
     float h = clamp((w.z - ground) / max(top - ground, 0.01), 0.0, 1.0);
-    d *= exp(-2.5 * h);                                    // mais densa rente ao chão
-    for (int i = 0; i < uCharCount; i++) {                  // abre em volta de quem anda nela
+    float tufts = n * exp(-2.8 * h);                 // tufos, mais finos subindo
+    float floorLayer = 0.45 * exp(-10.0 * h);        // camada lisa e densa rente ao chão
+    float hug = gTree * 0.9 * exp(-5.0 * h) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5); // envolve a base da árvore
+    float d = fd * (tufts + floorLayer) + hug;
+    wisp = n;
+    for (int i = 0; i < uCharCount; i++) {          // abre em volta de quem anda nela
         vec4 c = uChars[i];
         float r = length(w.xy - c.xy);
         float sameFloor = 1.0 - smoothstep(0.5, 1.0, abs(w.z - c.z));
@@ -60,11 +83,28 @@ void main() {
         return;
     }
     if (dbg == 3) { fragColor = vec4(fract(P.z + 0.5), 0.0, 1.0 - fract(P.z + 0.5), 1.0) * 0.5; return; }
+    if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, parede/porta fechada branca
+        int f = nomFlowFlags(P.xy);
+        vec2 e = fract(P.xy);
+        vec3 c = vec3((f & NOM_FLOW_SOLID) != 0 ? 0.8 : 0.0, (f & NOM_FLOW_TREE) != 0 ? 0.8 : 0.0,
+                      (f & NOM_FLOW_INDOOR) != 0 ? 0.6 : 0.0);
+        if (((f & NOM_FLOW_WALL_W) != 0 && e.x < 0.12) || ((f & NOM_FLOW_WALL_N) != 0 && e.y < 0.12)) c = vec3(1.0);
+        fragColor = vec4(c * 0.7, 0.7);
+        return;
+    }
+    if (dbg == 6) { fragColor = vec4(vec3(nomFlowDensity(P.xy)) * 0.8, 0.8); return; }
+    if (dbg == 7) { // velocidade: vermelho = +x, verde = +y, cinza = parado
+        vec2 v = nomFlowVel(P.xy, vec2(0.0)) / NOM_FLOW_VMAX;
+        fragColor = vec4(vec3(0.5 + 0.5 * v.x, 0.5 + 0.5 * v.y, 0.5) * 0.8, 0.8);
+        return;
+    }
     if (amount <= 0.001) { fragColor = vec4(0.0); return; }
 
     float ground = floor(uDepthRef.z);
-    float top = ground + (uParams[0].z > 0.0 ? uParams[0].z : 1.0);
+    float top = ground + (uParams[0].z > 0.0 ? uParams[0].z : 1.2);
     if (P.z >= top) { fragColor = vec4(0.0); return; }
+    gP = P;
+    gTree = nomFlowTree(P.xy);
 
     // do ponto visível até sair pelo topo da camada, rumo à câmera
     float span = top - max(P.z, ground - 0.25);
@@ -73,14 +113,26 @@ void main() {
     float stepLen = length(vec3(stepW.xy, stepW.z * LEVEL_TILES));
     float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
 
+    // a cor vem do clima (vermelha na névoa vermelha); embaixo mais clara, em cima mais cinza e escura,
+    // e os tufos mais grossos um pouco mais escuros, pra não ficar chapada
+    vec3 base = uFog.yzw;
+    vec3 grey = vec3(dot(base, vec3(0.299, 0.587, 0.114)));
     float sigma = 0.9 * amount;   // extinção por tile
     float trans = 1.0;
+    vec3 light = vec3(0.0);
     for (int i = 0; i < STEPS; i++) {
         vec3 w = start + stepW * (float(i) + jitter);
-        trans *= exp(-sigma * density(w, ground, top) * stepLen);
+        float wisp;
+        float dens = density(w, ground, top, wisp);
+        float absorb = 1.0 - exp(-sigma * dens * stepLen);
+        float h = clamp((w.z - ground) / max(top - ground, 0.01), 0.0, 1.0);
+        vec3 col = mix(base, grey, 0.3 * h) * mix(0.82, 0.62, h) * mix(1.0, 0.85, wisp);
+        light += trans * absorb * col;
+        trans *= 1.0 - absorb;
         if (trans < 0.02) break;
     }
     float a = 1.0 - trans;
-    vec3 col = uFog.yzw;           // a cor do clima já vem vermelha na névoa vermelha
-    fragColor = vec4(col * a, a);
+    const float MAX_A = 0.9;      // nunca tampa tudo
+    if (a > MAX_A) { light *= MAX_A / a; a = MAX_A; }
+    fragColor = vec4(light, a);
 }

@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-05 (fim do dia, passagem pro Cursor). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`. O roadmap está em [sprints/README.md](sprints/README.md).
-- 707 testes Lua, 4 de contraste, os testes python do mod3 e 25 de build, todos verdes (`./run-tests.sh`).
-- Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- 707 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 12 do núcleo da névoa fluida em Java (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
 - noite, Eco, Carpideira, Sem-rosto;
@@ -47,6 +47,11 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 2)` | profundidade |
 | `NOMRender_setParam(1, 3)` | andar |
 | `NOMRender_setParam(1, 4)` | `abs(z)`: chão preto liso = certo |
+| `NOMRender_setParam(1, 5)` | fluido: obstáculos (sólido vermelho, árvore verde, interior azul, parede fechada branca) |
+| `NOMRender_setParam(1, 6)` | fluido: densidade |
+| `NOMRender_setParam(1, 7)` | fluido: velocidade |
+| `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
+| `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -62,40 +67,29 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Próximo: névoa fluida no mod3 (pedido do Johan, NÃO iniciado)
+## Em teste: névoa fluida no mod3 (sprint 0024)
 
-O Johan quer a névoa interagindo com os objetos **como um líquido**:
-- contorna prédios, paredes, árvores e carros em vez de atravessar;
-- acumula nos abertos e escorre por frestas e portas abertas;
-- é empurrada por quem anda, deixando rastro.
+Tudo em [sprints/sprint-0024-nevoa-fluida/README.md](sprints/sprint-0024-nevoa-fluida/README.md): como funciona, critérios, decisões e o **roteiro in-game**. O plano e a evidência de bytecode estão no `plan.md` da mesma pasta.
 
-**Desenho proposto** (ajustar com evidência):
-1. **Grade.** Simulação de fluido 2D (stable fluids: advect, diffuse, project; ou só advecção, se justificar) numa grade de ~96–128 tiles em volta do personagem da câmera, com 1–2 células por tile.
-   - Ancorada em tile inteiro do mundo e rolada quando o jogador anda, pra ficar presa no mundo.
-2. **Máscara de obstáculos**, montada na thread principal a cada N frames a partir dos squares do `IsoCell`.
-   - Bloqueiam: square sólido, paredes N/W, árvores e carros, se for barato.
-   - Porta e janela fechadas bloqueiam; abertas não.
-   - Square não carregado conta como aberto.
-   - Achar as APIs no bytecode. O disassembler da sessão anterior pode não existir mais; use `javap -c` do openjdk do brew.
-3. **Forças:**
-   - vento ambiente lento, com a direção mudando com o tempo;
-   - impulso de cada personagem que se move (as posições já são coletadas no `RenderContext`);
-   - densidade entrando pelas bordas;
-   - dentro de prédio a densidade decai, a não ser que entre por abertura.
-4. **Upload** da densidade (e da velocidade, se precisar) como textura pequena a cada passo, na thread de render.
-   - O `NOM_VolFog` multiplica o ruído 3D pela densidade amostrada no xy do mundo (`uOrigin` + origem da grade).
-   - O ruído 3D continua, advectado pela velocidade.
-5. **Custo:** 15–30 Hz desacoplado do FPS, com meta de menos de 1 ms na CPU em 128x128. GPU com FBO ping-pong é aceitável se a CPU não der conta.
-6. **Controles:** um índice no `NOMRender_setParam` liga e desliga a simulação, e um modo de debug mostra obstáculos, densidade e velocidade.
-7. **Testes** (Java puro ou python) do núcleo da simulação:
-   - não entra em caixa fechada;
-   - passa por fresta de 1 tile;
-   - a rolagem preserva a densidade no mundo;
-   - o impulso desloca densidade.
+**Resumo do que foi feito:**
+- `FlowGrid.java` é o núcleo puro: grade escalonada de 128×128 tiles, com advecção por fluxo nas faces (parede é face fechada, nada atravessa) e projeção SOR red-black. O passo custa ~0,9 ms.
+- `Flow.java` liga o núcleo ao jogo:
+  - a máscara sai do `isBlockedTo`, `isSolid`, `HasTree`, `isOutside` e `getVehicleContainer`;
+  - o vento vem do clima, e quem anda dá impulso;
+  - roda a 20 Hz, e a textura vai pra unidade 6.
+- `NOM_VolFog`:
+  - densidade multiplicada pela do fluido, com o ruído levado pela velocidade;
+  - mais denso no chão e mais cinza e fino em cima;
+  - envolve a base das árvores;
+  - modos de debug 5–7.
 
-**Ajustes visuais vistos no print do Johan:**
-- A névoa está branca e chapada demais. Deixar mais densa no chão, mais cinza e suave em cima, com a cor ainda vinda do clima.
-- As árvores ficam acima da névoa, porque o sprite tem profundidade única e o z reconstruído sobe. Aceitar, ou usar a máscara de obstáculos pra envolver a base.
+**O que o Johan precisa conferir no jogo:**
+- o log `fluido: passo X ms, máscara Y ms/quadro`;
+- o debug de obstáculos (porta abrindo e fechando);
+- o rastro e a língua de névoa entrando pela porta;
+- o FPS com e sem a simulação (`NOMRender_setParam(4, 0/1)`).
+
+Tudo isso é visual: os parâmetros (`outdoorRefill`, `indoorDecay`, força do impulso, cores) devem precisar de ajuste depois do primeiro print.
 
 **Regra de ouro:** nada no mod3 pode derrubar o jogo. Todo caminho chamado do patch ou da thread de render captura `Throwable`, loga `[NOM-Render] ERRO` e se desliga.
 

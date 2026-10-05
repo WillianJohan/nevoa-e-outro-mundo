@@ -111,3 +111,21 @@ ctx = (src / "RenderContext.java").read_text()
 for m in called:
     assert re.search(r"public static \S+ " + m + r"\(", ctx), "mod3: RenderContext." + m + " precisa ser public"
 print("mod3 patch calls public ok")
+
+# Contrato Java <-> GLSL: todo uniform que o Java procura existe no cabeçalho, e as flags e a
+# escala da velocidade da textura do fluido (FlowGrid.writeRGBA) batem com as constantes NOM_FLOW_*.
+header = (src.parent.parent.parent / "42/media/shaders/NOM_RenderContext.glsl").read_text()
+java = "".join(p.read_text() for p in src.glob("*.java"))
+declared = set(re.findall(r"^uniform \w+ (\w+)", header, re.M))
+for name in set(re.findall(r'glGetUniformLocation\(\w+, "(\w+)"\)', java)):
+    assert name in declared, "mod3: uniform " + name + " usado no Java e ausente do cabeçalho GLSL"
+flow = (src / "FlowGrid.java").read_text()
+for jname, gname in [("F_SOLID", "SOLID"), ("F_TREE", "TREE"), ("F_INDOOR", "INDOOR"),
+                     ("T_WALL_W", "WALL_W"), ("T_WALL_N", "WALL_N")]:
+    jv = re.search(jname + r" = (\d+)", flow)
+    gv = re.search(r"const int NOM_FLOW_" + gname + r" = (\d+);", header)
+    assert jv and gv and jv.group(1) == gv.group(1), ("mod3: flag do fluido diverge", jname, gname)
+jv = re.search(r"VEL_MAX = ([\d.]+)f", flow)
+gv = re.search(r"const float NOM_FLOW_VMAX = ([\d.]+);", header)
+assert jv and gv and float(jv.group(1)) == float(gv.group(1)), "mod3: VEL_MAX diverge de NOM_FLOW_VMAX"
+print("mod3 contrato Java/GLSL ok")

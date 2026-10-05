@@ -1,0 +1,391 @@
+package nom.render;
+
+import java.util.Arrays;
+
+/**
+ * Névoa fluida: o núcleo da simulação, puro (sem API do jogo), testado em tests/java/FlowGridTest.java.
+ *
+ * Grade n x n de tiles, num andar só: a célula (i, j) é o tile do mundo (x0 + i, y0 + j). É escalonada:
+ * a densidade mora no centro da célula e a velocidade nas faces, então a parede fina do jogo (borda
+ * N/W de um square) é só uma face fechada. A densidade anda por fluxo nas faces (upwind conservativo):
+ * face fechada não passa nada, por construção. Fora da grade é ar aberto, com a densidade ambiente e
+ * pressão 0: a névoa entra e sai pelas bordas.
+ */
+public final class FlowGrid {
+    public static final int F_SOLID = 1, F_TREE = 2, F_INDOOR = 4;
+    /** Só na textura (canal a): a face oeste / norte da célula está fechada na máscara. */
+    public static final int T_WALL_W = 8, T_WALL_N = 16;
+    static final int F_FRESH = 32;
+    /** Escala da velocidade na textura (tiles/s): o NOM_FLOW_VMAX do cabeçalho GLSL. */
+    public static final float VEL_MAX = 4f;
+    // por passo, cada face leva no máximo esta fração da célula: 4 faces < 1, densidade nunca negativa
+    static final float MAX_FACE_FLUX = 0.24f;
+    static final float MAX_DIFFUSE = 0.06f;
+    static final float D_MAX = 1.5f;
+    static final float V_CLAMP = 10f;
+    static final float SOR = 1.8f;
+
+    public final int n;
+    public int x0, y0;
+    public float ambient = 1f;
+    public float windX, windY;
+    public float windRelax = 0.6f;      // 1/s: a velocidade volta pro vento
+    public float outdoorRefill = 0.12f; // 1/s: fora, a névoa volta pro ambiente (o rastro some em ~8 s)
+    public float indoorDecay = 0.08f;   // 1/s: dentro, a névoa que entrou se desfaz
+    public float edgeRefill = 2f;       // 1/s: nas bordas da grade, a névoa entra
+    public float diffusion = 0.15f;     // tiles²/s
+    public int iterations = 16;         // 128x128: ~0,9 ms por passo (Ryzen 7600X); 24 passa de 1 ms
+
+    private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
+    private final float[] d, dn, div, invSum, p;
+    private final float[] cW, cE, cN, cS;  // peso de cada vizinho na pressão (face aberta / nº de faces abertas)
+    private final float[] u, v;          // u: face oeste da célula (i, j) em j*nu + i; v: face norte em j*n + i
+    private final byte[] openU, openV;   // máscara do jogo (parede, porta, janela)
+    private final float[] wu, wv;        // 1 = face aberta de verdade (máscara e nenhum lado sólido)
+    private final byte[] flags;
+    private final float[] tmpF;
+    private final byte[] tmpB;
+    private boolean facesDirty = true;
+
+    public FlowGrid(int n) {
+        this.n = n;
+        nu = n + 1;
+        m = n + 2;
+        d = new float[n * n];
+        dn = new float[n * n];
+        div = new float[n * n];
+        invSum = new float[n * n];
+        cW = new float[n * n];
+        cE = new float[n * n];
+        cN = new float[n * n];
+        cS = new float[n * n];
+        p = new float[m * m];
+        u = new float[nu * n];
+        v = new float[n * nu];
+        openU = new byte[nu * n];
+        openV = new byte[n * nu];
+        wu = new float[nu * n];
+        wv = new float[n * nu];
+        flags = new byte[n * n];
+        tmpF = new float[nu * n];
+        tmpB = new byte[nu * n];
+        reset(0, 0);
+    }
+
+    // ---------- estado ----------
+
+    public void reset(int x0, int y0) {
+        this.x0 = x0;
+        this.y0 = y0;
+        Arrays.fill(d, ambient);
+        Arrays.fill(u, 0f);
+        Arrays.fill(v, 0f);
+        Arrays.fill(openU, (byte) 1);
+        Arrays.fill(openV, (byte) 1);
+        Arrays.fill(flags, (byte) F_FRESH);
+        facesDirty = true;
+    }
+
+    /** Flags do square (F_SOLID, F_TREE, F_INDOOR). Célula que acabou de entrar na grade e é interior começa vazia. */
+    public void setCell(int i, int j, int f) {
+        int c = j * n + i;
+        int old = flags[c];
+        if ((old & F_FRESH) != 0 && (f & F_INDOOR) != 0) d[c] = 0f;
+        if (((old ^ f) & F_SOLID) != 0) facesDirty = true;
+        flags[c] = (byte) (f & (F_SOLID | F_TREE | F_INDOOR));
+    }
+
+    public int cellFlags(int i, int j) { return flags[j * n + i] & (F_SOLID | F_TREE | F_INDOOR); }
+
+    /** Face oeste da célula (i, j); i vai até n (a face leste da última coluna). */
+    public void setOpenW(int i, int j, boolean open) {
+        int f = j * nu + i;
+        byte b = (byte) (open ? 1 : 0);
+        if (openU[f] != b) { openU[f] = b; facesDirty = true; }
+    }
+
+    /** Face norte da célula (i, j); j vai até n (a face sul da última linha). */
+    public void setOpenN(int i, int j, boolean open) {
+        int f = j * n + i;
+        byte b = (byte) (open ? 1 : 0);
+        if (openV[f] != b) { openV[f] = b; facesDirty = true; }
+    }
+
+    public boolean isOpenW(int i, int j) { return openU[j * nu + i] != 0; }
+    public boolean isOpenN(int i, int j) { return openV[j * n + i] != 0; }
+    public float density(int i, int j) { return d[j * n + i]; }
+    public void setDensity(int i, int j, float value) { d[j * n + i] = value; }
+    public float faceU(int i, int j) { return u[j * nu + i]; }
+    public float faceV(int i, int j) { return v[j * n + i]; }
+
+    public float totalMass() {
+        double s = 0;
+        for (float x : d) s += x;
+        return (float) s;
+    }
+
+    // ---------- rolagem ----------
+
+    /** Leva a grade pra nova origem; o que já estava no mundo fica onde estava. */
+    public void scroll(int newX0, int newY0) {
+        int dx = newX0 - x0, dy = newY0 - y0;
+        if (dx == 0 && dy == 0) return;
+        if (Math.abs(dx) >= n || Math.abs(dy) >= n) { reset(newX0, newY0); return; }
+        shift(d, n, n, dx, dy, ambient);
+        shift(u, nu, n, dx, dy, 0f);
+        shift(v, n, nu, dx, dy, 0f);
+        shift(flags, n, n, dx, dy, (byte) F_FRESH);
+        shift(openU, nu, n, dx, dy, (byte) 1);
+        shift(openV, n, nu, dx, dy, (byte) 1);
+        x0 = newX0;
+        y0 = newY0;
+        facesDirty = true;
+    }
+
+    private void shift(float[] a, int w, int h, int dx, int dy, float fill) {
+        for (int j = 0; j < h; j++) {
+            int oj = j + dy;
+            for (int i = 0; i < w; i++) {
+                int oi = i + dx;
+                tmpF[j * w + i] = (oi >= 0 && oi < w && oj >= 0 && oj < h) ? a[oj * w + oi] : fill;
+            }
+        }
+        System.arraycopy(tmpF, 0, a, 0, w * h);
+    }
+
+    private void shift(byte[] a, int w, int h, int dx, int dy, byte fill) {
+        for (int j = 0; j < h; j++) {
+            int oj = j + dy;
+            for (int i = 0; i < w; i++) {
+                int oi = i + dx;
+                tmpB[j * w + i] = (oi >= 0 && oi < w && oj >= 0 && oj < h) ? a[oj * w + oi] : fill;
+            }
+        }
+        System.arraycopy(tmpB, 0, a, 0, w * h);
+    }
+
+    // ---------- forças ----------
+
+    /**
+     * Quem anda em (wx, wy) a (vx, vy) tiles/s arrasta a névoa junto e abre um vazio onde passa:
+     * o rastro. Coordenadas de mundo.
+     */
+    public void impulse(float wx, float wy, float vx, float vy, float radius) {
+        float speed = (float) Math.sqrt(vx * vx + vy * vy);
+        if (speed > 2 * VEL_MAX) { vx *= 2 * VEL_MAX / speed; vy *= 2 * VEL_MAX / speed; speed = 2 * VEL_MAX; }
+        float lx = wx - x0, ly = wy - y0;
+        int i0 = Math.max(0, (int) Math.floor(lx - radius)), i1 = Math.min(n, (int) Math.ceil(lx + radius));
+        int j0 = Math.max(0, (int) Math.floor(ly - radius)), j1 = Math.min(n, (int) Math.ceil(ly + radius));
+        float carve = Math.min(1f, speed / VEL_MAX) * 0.3f;
+        for (int j = j0; j <= j1; j++) {
+            for (int i = i0; i <= i1; i++) {
+                if (j < n) {     // face oeste de (i, j), em (i, j + 0,5)
+                    float w = falloff(i - lx, j + 0.5f - ly, radius);
+                    if (w > 0) { int f = j * nu + i; u[f] += (vx - u[f]) * w * 0.8f; }
+                }
+                if (i < n) {     // face norte de (i, j), em (i + 0,5, j)
+                    float w = falloff(i + 0.5f - lx, j - ly, radius);
+                    if (w > 0) { int f = j * n + i; v[f] += (vy - v[f]) * w * 0.8f; }
+                }
+                if (i < n && j < n && carve > 0) {
+                    float w = falloff(i + 0.5f - lx, j + 0.5f - ly, radius);
+                    if (w > 0) d[j * n + i] *= 1f - carve * w;
+                }
+            }
+        }
+    }
+
+    private static float falloff(float dx, float dy, float r) {
+        float t = 1f - (float) Math.sqrt(dx * dx + dy * dy) / r;
+        return t > 0 ? t * t : 0f;
+    }
+
+    // ---------- passo ----------
+
+    public void step(float dt) {
+        if (facesDirty) rebuildFaces();
+        float k = 1f - (float) Math.exp(-windRelax * dt);
+        for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * wu[f];
+        for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * wv[f];
+        project();
+        advect(dt);
+        diffuse(dt);
+        sources(dt);
+    }
+
+    private static float clampV(float x) { return x > V_CLAMP ? V_CLAMP : (x < -V_CLAMP ? -V_CLAMP : x); }
+
+    private boolean solid(int i, int j) {
+        return i >= 0 && i < n && j >= 0 && j < n && (flags[j * n + i] & F_SOLID) != 0;
+    }
+
+    private void rebuildFaces() {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i <= n; i++) {
+                int f = j * nu + i;
+                wu[f] = (openU[f] != 0 && !solid(i - 1, j) && !solid(i, j)) ? 1f : 0f;
+            }
+        for (int j = 0; j <= n; j++)
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                wv[f] = (openV[f] != 0 && !solid(i, j - 1) && !solid(i, j)) ? 1f : 0f;
+            }
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i, fw = j * nu + i;
+                float s = wu[fw] + wu[fw + 1] + wv[c] + wv[c + n];
+                float inv = ((flags[c] & F_SOLID) != 0 || s == 0) ? 0f : 1f / s;
+                invSum[c] = inv;
+                cW[c] = wu[fw] * inv;
+                cE[c] = wu[fw + 1] * inv;
+                cN[c] = wv[c] * inv;
+                cS[c] = wv[c + n] * inv;
+            }
+        facesDirty = false;
+    }
+
+    /**
+     * Tira a divergência (SOR red-black: a célula de uma cor só lê vizinhos da outra, sem cadeia de
+     * dependência no laço). Começa do zero a cada passo: a velocidade que fica já é quase sem
+     * divergência, e o que sobrar volta no passo seguinte.
+     */
+    private void project() {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i, fw = j * nu + i;
+                div[c] = (u[fw + 1] - u[fw] + v[c + n] - v[c]) * invSum[c];
+            }
+        Arrays.fill(p, 0f);
+        for (int it = 0; it < iterations; it++) {
+            for (int color = 0; color < 2; color++) {
+                for (int j = 0; j < n; j++) {
+                    int row = (j + 1) * m + 1;
+                    for (int i = (j + color) & 1; i < n; i += 2) {
+                        int c = j * n + i, q = row + i;
+                        float t = cW[c] * p[q - 1] + cE[c] * p[q + 1] + cN[c] * p[q - m] + cS[c] * p[q + m] - div[c];
+                        p[q] += SOR * (t - p[q]);
+                    }
+                }
+            }
+        }
+        for (int j = 0; j < n; j++) {
+            int row = (j + 1) * m + 1;
+            for (int i = 0; i <= n; i++) {
+                int f = j * nu + i;
+                if (wu[f] != 0f) u[f] -= p[row + i] - p[row + i - 1];
+            }
+        }
+        for (int j = 0; j <= n; j++) {
+            int row = (j + 1) * m + 1;
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                if (wv[f] != 0f) v[f] -= p[row + i] - p[row + i - m];
+            }
+        }
+    }
+
+    private void advect(float dt) {
+        System.arraycopy(d, 0, dn, 0, d.length);
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i <= n; i++) {
+                int f = j * nu + i;
+                if (wu[f] == 0f) continue;
+                float c = limit(u[f] * dt);
+                float src = c > 0 ? (i > 0 ? d[j * n + i - 1] : ambient) : (i < n ? d[j * n + i] : ambient);
+                move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, c * src);
+            }
+        for (int j = 0; j <= n; j++)
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                if (wv[f] == 0f) continue;
+                float c = limit(v[f] * dt);
+                float src = c > 0 ? (j > 0 ? d[f - n] : ambient) : (j < n ? d[f] : ambient);
+                move(j > 0 ? f - n : -1, j < n ? f : -1, c * src);
+            }
+        System.arraycopy(dn, 0, d, 0, d.length);
+    }
+
+    private static float limit(float c) {
+        return c > MAX_FACE_FLUX ? MAX_FACE_FLUX : (c < -MAX_FACE_FLUX ? -MAX_FACE_FLUX : c);
+    }
+
+    /** Fluxo da célula a (oeste/norte) pra b (leste/sul); -1 = fora da grade. */
+    private void move(int a, int b, float flux) {
+        if (a >= 0) dn[a] -= flux;
+        if (b >= 0) dn[b] += flux;
+    }
+
+    private void diffuse(float dt) {
+        float a = Math.min(diffusion * dt, MAX_DIFFUSE);
+        if (a <= 0f) return;
+        System.arraycopy(d, 0, dn, 0, d.length);
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i <= n; i++) {
+                if (wu[j * nu + i] == 0f) continue;
+                float l = i > 0 ? d[j * n + i - 1] : ambient, r = i < n ? d[j * n + i] : ambient;
+                move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, a * (l - r));
+            }
+        for (int j = 0; j <= n; j++)
+            for (int i = 0; i < n; i++) {
+                int f = j * n + i;
+                if (wv[f] == 0f) continue;
+                float t = j > 0 ? d[f - n] : ambient, b = j < n ? d[f] : ambient;
+                move(j > 0 ? f - n : -1, j < n ? f : -1, a * (t - b));
+            }
+        System.arraycopy(dn, 0, d, 0, d.length);
+    }
+
+    private void sources(float dt) {
+        float kOut = 1f - (float) Math.exp(-outdoorRefill * dt);
+        float kIn = (float) Math.exp(-indoorDecay * dt);
+        float kEdge = 1f - (float) Math.exp(-edgeRefill * dt);
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i;
+                int f = flags[c];
+                if ((f & F_SOLID) != 0) continue;
+                float x = d[c];
+                if ((f & F_INDOOR) != 0) x *= kIn;
+                else x += (ambient - x) * kOut;
+                if (i == 0 || j == 0 || i == n - 1 || j == n - 1) x += (ambient - x) * kEdge;
+                d[c] = x < 0f ? 0f : (x > D_MAX ? D_MAX : x);
+            }
+    }
+
+    // ---------- textura ----------
+
+    /** RGBA8, linha j a partir de out[j*n*4]: r densidade, gb velocidade (128 ± 127·v/VEL_MAX), a flags. */
+    public void writeRGBA(byte[] out) {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++) {
+                int c = j * n + i, fw = j * nu + i, o = c * 4;
+                int f = flags[c] & (F_SOLID | F_TREE | F_INDOOR);
+                float dens = (f & F_SOLID) != 0 ? neighborDensity(i, j) : d[c];
+                out[o] = (byte) Math.round(Math.max(0f, Math.min(1f, dens)) * 255f);
+                out[o + 1] = encodeVel((u[fw] + u[fw + 1]) * 0.5f);
+                out[o + 2] = encodeVel((v[c] + v[c + n]) * 0.5f);
+                if (openU[fw] == 0) f |= T_WALL_W;
+                if (openV[c] == 0) f |= T_WALL_N;
+                out[o + 3] = (byte) f;
+            }
+    }
+
+    /** Célula sólida não tem densidade própria: a média dos vizinhos abertos, pra o filtro linear não abrir buraco. */
+    private float neighborDensity(int i, int j) {
+        float s = 0;
+        int k = 0;
+        int[] di = { -1, 1, 0, 0 }, dj = { 0, 0, -1, 1 };
+        for (int t = 0; t < 4; t++) {
+            int a = i + di[t], b = j + dj[t];
+            if (a < 0 || a >= n || b < 0 || b >= n || solid(a, b)) continue;
+            s += d[b * n + a];
+            k++;
+        }
+        return k == 0 ? ambient : s / k;
+    }
+
+    private static byte encodeVel(float x) {
+        float t = Math.max(-1f, Math.min(1f, x / VEL_MAX));
+        return (byte) Math.round(128f + t * 127f);
+    }
+}

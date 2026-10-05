@@ -16,6 +16,17 @@ uniform vec4 uFog;             // intensidade da névoa do clima (0..1), cor fin
 uniform int uCharCount;
 uniform vec4 uChars[8];        // x, y (relativos), z, raio: jogadores locais e zumbis mais perto
 uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i, v)
+// Névoa fluida (Flow.java / FlowGrid.java): grade n x n de tiles, 1 texel por tile, linear.
+// r = densidade (0..1), gb = velocidade (128 ± 127·v/NOM_FLOW_VMAX, tiles/s), a = flags (texelFetch).
+uniform sampler2D uFlowTex;
+uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), n, 1 = simulação ligada
+
+const float NOM_FLOW_VMAX = 4.0;
+const int NOM_FLOW_SOLID = 1;
+const int NOM_FLOW_TREE = 2;
+const int NOM_FLOW_INDOOR = 4;
+const int NOM_FLOW_WALL_W = 8;
+const int NOM_FLOW_WALL_N = 16;
 
 out vec4 fragColor;
 
@@ -52,3 +63,45 @@ vec3 nomWorldPosAtZ(vec2 iso, float z) {
 
 // Direção do raio da câmera iso no mundo, rumo à câmera: com a tela fixa, ds = 6 dz e x - y fixo.
 const vec3 NOM_TO_CAMERA = vec3(3.0, 3.0, 1.0);
+
+bool nomFlowOn() { return uFlow.w > 0.5; }
+
+vec2 nomFlowUV(vec2 xy) { return (xy - uFlow.xy) / uFlow.z; }
+
+// Densidade do fluido em xy (mundo relativo); 1 com a simulação desligada. Perto da borda da
+// grade volta pro ambiente, pra não aparecer o quadrado.
+float nomFlowDensity(vec2 xy) {
+    if (!nomFlowOn()) return 1.0;
+    vec2 uv = nomFlowUV(xy);
+    vec2 e = smoothstep(vec2(0.0), vec2(0.06), uv) * smoothstep(vec2(0.0), vec2(0.06), 1.0 - uv);
+    return mix(1.0, texture(uFlowTex, uv).r, e.x * e.y);
+}
+
+// Velocidade do fluido em tiles/s; `fallback` com a simulação desligada ou fora da grade.
+vec2 nomFlowVel(vec2 xy, vec2 fallback) {
+    if (!nomFlowOn()) return fallback;
+    vec2 uv = nomFlowUV(xy);
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return fallback;
+    return (texture(uFlowTex, uv).gb * 255.0 - 128.0) / 127.0 * NOM_FLOW_VMAX;
+}
+
+// Flags do tile que contém xy (NOM_FLOW_*); 0 fora da grade ou desligada.
+int nomFlowFlags(vec2 xy) {
+    if (!nomFlowOn()) return 0;
+    ivec2 c = ivec2(floor(xy - uFlow.xy));
+    int n = int(uFlow.z);
+    if (c.x < 0 || c.y < 0 || c.x >= n || c.y >= n) return 0;
+    return int(texelFetch(uFlowTex, c, 0).a * 255.0 + 0.5);
+}
+
+// Quanto de árvore há em volta de xy (0..1, interpolado entre os 4 tiles mais perto).
+float nomFlowTree(vec2 xy) {
+    vec2 g = xy - 0.5;
+    vec2 f = fract(g);
+    vec2 b = floor(g) + 0.5;
+    float t00 = (nomFlowFlags(b) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
+    float t10 = (nomFlowFlags(b + vec2(1, 0)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
+    float t01 = (nomFlowFlags(b + vec2(0, 1)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
+    float t11 = (nomFlowFlags(b + vec2(1, 1)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
+    return mix(mix(t00, t10, f.x), mix(t01, t11, f.x), f.y);
+}
