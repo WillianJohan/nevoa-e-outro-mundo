@@ -5,12 +5,12 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 
 **A noite traz infectados de carne. A névoa traz o Outro Mundo.**
 
-- À noite, os zumbis caçam, enxergam e ouvem mais longe. Surgem Estaladores
-  (cegos, guiados por som) e Corredores (gritam e chamam a horda).
-- Corpos deixados no chão soltam **Ecos**: almas fracas que somem com o sol.
-  Queime ou enterre os mortos.
-- Com névoa forte, o mundo escurece, o rádio chia e o **Sem-rosto** aparece.
-  Olhe pra ele e ele some. Pra reaparecer mais perto.
+- À noite, bem mais escura que a vanilla, os zumbis caçam, enxergam e ouvem mais longe.
+- Corpos de quem morreu antes do anoitecer soltam **Ecos**: almas fracas que somem
+  com o sol. Queime ou enterre os mortos.
+- Com névoa forte, de dia ou de noite, o mundo escurece, o rádio chia e o Outro Mundo
+  aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda)
+  e o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto.
 
 > Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0007
 > implementadas; falta a sessão no jogo ([roteiro](docs/teste-in-game.md)) e, depois
@@ -27,6 +27,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Sem-rosto e atmosfera | some quando visto e volta mais perto; rádio chiando, drone, sangue e ferrugem no chão, vinheta | 0005 |
 | Balanceamento, MP e performance | orçamento por sistema travado por teste, comandos de debug, presets documentados | 0006 |
 | Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
+| Ajustes do 1º teste | noite escura pela luz global, monstros só na névoa (5/2/5), Eco só de quem morreu antes do anoitecer | 0008 |
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 

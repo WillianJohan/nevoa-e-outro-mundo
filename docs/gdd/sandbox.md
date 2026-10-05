@@ -24,9 +24,8 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
 | `HuntIntervalMinutes` (60, faixa 10–720 minutos de jogo), `HuntRadius` (30 tiles, faixa 5–100) | [night.md](night.md) |
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
-| `EstaladorChance` (5 %, faixa 0–100), `CorredorChance` (10 %, faixa 0–100; somadas acima de 100, o Corredor fica com o resto) | [monsters.md](monsters.md#estalador) |
-| `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor-noturno) |
-| `SemRostoChance` (5 %, faixa 0–100) | [monsters.md](monsters.md#sem-rosto) |
+| `EstaladorChance` (5 %), `CorredorChance` (2 %), `SemRostoChance` (5 %), faixa 0–100 cada, **por névoa**: um sorteio só, faixas seguidas nessa ordem (somadas acima de 100, quem vem depois fica com o resto) | [monsters.md](monsters.md#regra-geral) |
+| `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor) |
 | `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |
 | `EcoMaxPerPlayer` (30, faixa 0–200), `EcoRadius` (40 tiles, faixa 5–60) | [monsters.md](monsters.md#eco) |
 
@@ -53,21 +52,21 @@ todas as opções da página "Névoa e Outro Mundo":
 | `EstaladorEnabled` | ligado | ligado | ligado |
 | `CorredorEnabled` | ligado | ligado | ligado |
 | `EstaladorChance` | 5 | 3 | 10 |
-| `CorredorChance` | 10 | 5 | 20 |
+| `CorredorChance` | 2 | 1 | 5 |
 | `CorredorScreamRadius` | 40 | 30 | 60 |
 | `SemRostoEnabled` | ligado | ligado | ligado |
-| `SemRostoChance` | 5 | 2 | 15 |
+| `SemRostoChance` | 5 | 2 | 10 |
 | `FogAmbience` | ligado | ligado | ligado |
 | `FogOverlays` | ligado | ligado | ligado |
 | `FogVignette` | ligado | ligado | ligado |
 | `FogVignetteIntensity` | 1.0 | 0.6 | 1.5 |
 
 - **Leve:** a noite muda o jeito de jogar sem virar uma corrida — os zumbis não ganham
-  velocidade (só os Corredores correm), a caça vem a cada 2 horas de perto, e a névoa
-  forte é rara e com um Sem-rosto de vez em quando.
+  velocidade, a caça vem a cada 2 horas de perto, e a névoa forte é rara e com poucos
+  monstros (6% somados).
 - **Pesadelo:** a pior noite possível, de propósito — dois degraus de velocidade e
-  sentidos (arrastado vira corredor), caça a cada meia hora de longe, o dobro de
-  variantes, névoa mais frequente e vala comum cheia de Ecos.
+  sentidos (arrastado vira corredor), caça a cada meia hora de longe, névoa mais
+  frequente com 25% de monstros, e vala comum cheia de Ecos.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -86,20 +85,21 @@ jogar, trocar número é chute; o que precisa ser sentido está no
 
 - **Velocidade à noite é o ponto mais quente.** Com velocidade aleatória, de dia ~20%
   são corredores, ~40% rápidos e ~40% arrastados (`doZombieSpeed(-1)` com sandbox 4).
-  `NightSpeedMult` 1.5 sobe um degrau: à noite **~60% correm**. O Corredor (10%) quase
-  só se distingue pelo grito. Se a noite ficar injusta ou o Corredor sumir no meio dos
-  outros, o ajuste é `NightFaster` desligado como padrão (o Corredor vira o único que
-  corre), não um multiplicador menor: 1.0–1.49 não sobe degrau nenhum.
+  `NightSpeedMult` 1.5 sobe um degrau: à noite **~60% correm**. Numa noite com névoa o
+  Corredor quase só se distingue pelo grito. Se a noite ficar injusta, o ajuste é
+  `NightFaster` desligado como padrão, não um multiplicador menor: 1.0–1.49 não sobe
+  degrau nenhum.
 - **Sentidos:** sandbox aleatório usa "normal" de base; um degrau dá águia/apurada a
   todos à noite. Audição apurada triplica o alcance de som, mas a caça e a lanterna já
   compensam (alcance efetivo = o configurado). Coerente.
 - **Alcances:** caça 30, lanterna 30 (20 × 1.5), grito do Corredor 40, Eco 40. O
   Corredor é quem chama de mais longe (é ele que começa a horda); a caça e a lanterna
   empatam de propósito. Coerente.
-- **Chances:** 15% de variantes por noite (5 + 10) e 5% de Sem-rosto por névoa. Numa
-  cidade com 200 zumbis carregados são ~10 Sem-rosto ao mesmo tempo: muito rádio e
-  muito sumiço. No campo, com 20 carregados, ~1. Se a névoa na cidade virar ruído,
-  baixar `SemRostoChance` pra 2–3.
+- **Chances (revistas em 05/10/2026, depois do primeiro teste):** todo monstro, menos o
+  Eco, só existe na névoa (decisão do Johan), num sorteio só por névoa: Estalador 5,
+  Corredor 2, Sem-rosto 5, 12% somados (a Carpideira, 3, entra na sprint 0010). Numa
+  cidade com 200 zumbis carregados são ~10 Estaladores, ~4 Corredores e ~10 Sem-rosto
+  na névoa. A noite sem névoa fica só com a agressividade e os Ecos.
 - **Eco:** 30 por jogador num raio de 40 é o teto contra vala comum (sprint 0002); Eco
   é fraco (vida 0.3) e lento. Coerente; ver o custo da varredura no
   [orçamento](../architecture/README.md#orçamento-por-sistema).

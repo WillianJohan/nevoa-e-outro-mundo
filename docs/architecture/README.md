@@ -9,6 +9,7 @@
 | [adr-005-quem-simula-aplica.md](adr-005-quem-simula-aplica.md) | O servidor decide, quem simula o zumbi aplica (emenda a ADR-002) |
 | [adr-006-variantes-deterministicas.md](adr-006-variantes-deterministicas.md) | Variante = função do ID do outfit e da noite (substitui o mecanismo da ADR-001) |
 | [adr-007-sem-rosto-e-atmosfera-local.md](adr-007-sem-rosto-e-atmosfera-local.md) | Sem-rosto: quem vê avisa, o servidor confere, o dono move; som, chão e tela da névoa só locais |
+| [adr-008-noite-pela-luz-global.md](adr-008-noite-pela-luz-global.md) | A noite escurece pela cor e força da luz global, os canais que o render usa (emenda a ADR-004) |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -26,17 +27,17 @@ mod/
     lua/shared/NOM_World.lua        flags night/fog derivadas do clima vanilla
     lua/shared/Translate/<LANG>/    traduções em JSON (B42.20): Sandbox.json e Mod.json (nome/descrição do mod)
     lua/shared/NOM_EcoRules.lua     elegibilidade do corpo e chave de outfit (puro)
-    lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor
+    lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor; log canal a canal em -debug (ADR-008)
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
     lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
     lua/shared/NOM_NightRules.lua   degraus de velocidade/sentidos, perfil, caça (puro)
-    lua/shared/NOM_NightStats.lua   aplica stats noturnos em lotes (onde o zumbi é simulado)
+    lua/shared/NOM_NightStats.lua   aplica stats noturnos e perfis das variantes da névoa em lotes (onde o zumbi é simulado)
     lua/server/NOM_Players.lua      jogadores do lado do servidor (solo e dedicado)
     lua/server/NOM_Night.lua        decide a noite, caça e lanterna; avisa os clientes
     lua/client/NOM_NightClient.lua  cliente de MP segue a flag e aplica os stats
-    lua/shared/NOM_VariantRules.lua sorteio determinístico da variante, cooldown do grito (puro)
+    lua/shared/NOM_VariantRules.lua sorteio único das variantes por período de névoa, cooldown do grito (puro)
     lua/shared/NOM_VariantAI.lua    Estalador cego e estalando, Corredor visto (onde o zumbi é simulado)
-    lua/server/NOM_NightCount.lua   número da noite (ModData global), do Eco e das variantes
+    lua/server/NOM_NightCount.lua   número e hora de início da noite (ModData global), do Eco
     lua/server/NOM_Variants.lua     decide o grito do Corredor (som + chamado da horda)
     lua/client/NOM_VariantsClient.lua  cliente de MP roda o NOM_VariantAI e avisa o servidor
     lua/shared/NOM_SemRostoRules.lua   destino, cooldown, validação e volume do rádio (puro)
@@ -61,13 +62,14 @@ docs/workshop/                      descrições do Workshop (BBCode), preview.p
 ```
 
 Fluxo: `World` deriva o estado do clima vanilla → `ClimateLook` escurece o
-clima, que o jogo sincroniza → `NightCount` conta a noite, `Eco` spawna, `Night`
-chama os zumbis e avisa os clientes (flag + número da noite) → quem simula o
-zumbi (o próprio processo no solo, o cliente dono no MP) aplica os stats e o
-perfil da variante em lotes por tick ([ADR-005](adr-005-quem-simula-aplica.md),
+clima, que o jogo sincroniza → `NightCount` conta a noite (e guarda quando ela
+abriu), `Eco` spawna dos corpos de antes dela, `Night` chama os zumbis e avisa os
+clientes → na névoa, `Fog` conta o período e avisa (`FogState`) → quem simula o
+zumbi (o próprio processo no solo, o cliente dono no MP) aplica os stats da noite
+e, na névoa, o perfil da variante sorteada pelo período, em lotes por tick
+([ADR-005](adr-005-quem-simula-aplica.md),
 [ADR-006](adr-006-variantes-deterministicas.md)) e roda o `VariantAI`; o
-servidor decide o grito do Corredor (`Variants`). Na névoa, `Fog` conta o
-período e avisa quem vê (`FogState`); o cliente vê o Sem-rosto (`SemRosto`), o
+servidor decide o grito do Corredor (`Variants`). O cliente vê o Sem-rosto (`SemRosto`), o
 servidor confere e o dono do zumbi move ([ADR-007](adr-007-sem-rosto-e-atmosfera-local.md));
 som, vinheta e overlays são locais (`FogSound`, `FogVignette`, `FogOverlays`).
 
@@ -97,7 +99,7 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 | `NightStats.tick` | todo tick à noite e na passada do amanhecer | ≤ `BATCH` (20) zumbis + 5 leituras de sandbox por tick | `stats_batch_bounded_with_200` |
 | `NightStats.tick` de dia | depois de uma passada sem nada a devolver | **zero** (dorme até a próxima flag ou a próxima hora de jogo, quando faz uma passada de conferência) | `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `stats_day_idle_wakes_every_hour` |
 | `VariantAI` (`OnZombieUpdate`) | todo frame, todo zumbi | zumbi comum: 2 consultas de tabela Lua, zero chamada | `ai_common_zombie_no_java_calls` |
-| Estalo do Estalador | 1/min de jogo à noite | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
+| Estalo do Estalador | 1/min de jogo na névoa | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
 | Varredura do Eco | começa a cada 10 min de jogo, à noite; **um jogador por tick** | por tick: até `(2·EcoRadius+1)²` squares (os já lidos pra outro jogador da mesma varredura, 0) e 1 chamada por zumbi | `eco_scan_one_player_per_tick`, `eco_scan_budget_independent_of_horde`, `eco_overlapping_players_scan_each_square_once` |
 | Som, vinheta, overlays | a cada 10 ticks, no cliente | por jogador local; overlays ≤ 40 marcadores | — |

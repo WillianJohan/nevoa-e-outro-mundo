@@ -10,6 +10,15 @@
 
 **Spec:** [README da sprint](README.md) + brief da sprint 0008 (pedido do Johan) + [pz-api-notes §10](../../architecture/pz-api-notes.md) (escrito nesta sprint).
 
+> **Emenda (05/10/2026, no meio da sprint):** o Johan trocou o pedido 1. No lugar
+> da Task 1 (15/15/15), **todo monstro, menos o Eco, só na névoa**, padrão 5/2/5, um
+> sorteio só por período de névoa com faixas contíguas na ordem de
+> `NOM_VariantRules.KINDS` (pronto pra Carpideira no fim). Feito com TDD em
+> `NOM_VariantRules` (`variant(id, period, cfg)`, `semRosto` vira a faixa dele,
+> `semRostoConfig` sai), `NOM_NightRules.wanted` (variante também de dia),
+> `NOM_NightStats` (lê `NOM_FogState`), `NOM_VariantAI`, `NOM_Variants` (período de
+> névoa, grito de dia sem compensar a audição da noite) e testes. ADR-006 emendada.
+
 ## Global Constraints
 
 - Kahlua: sem `//`, `goto`, operador de bit, `next()`; `unpack`, não `table.unpack`; nada de `%d` com float.
@@ -47,7 +56,7 @@
 
 ---
 
-### Task 1: Chances 15/15/15
+### Task 1: Chances 15/15/15 (substituída pela emenda acima)
 
 **Files:**
 - Modify: `mod/42/media/lua/shared/NOM_Config.lua`, `mod/42/media/sandbox-options.txt`

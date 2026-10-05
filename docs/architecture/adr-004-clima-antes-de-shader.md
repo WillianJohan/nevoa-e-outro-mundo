@@ -34,3 +34,6 @@ bloqueia nenhuma sprint. Se funcionar, vira camada extra.
   absoluto e `setModdedInterpolate(1)` (motivo no Aprendizado 3 da
   [sprint 0001](../sprints/sprint-0001-estado-e-clima/README.md#aprendizados)).
 - O spike precisa do jogo instalado na máquina de desenvolvimento.
+- **Emendada pela [ADR-008](adr-008-noite-pela-luz-global.md) (sprint 0008):** quais
+  canais do clima escurecem de verdade. "Luz global" é a cor e a força (alfa) da luz
+  global, não o float de intensidade, que o render não lê.
