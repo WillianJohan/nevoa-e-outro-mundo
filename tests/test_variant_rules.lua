@@ -303,4 +303,41 @@ return {
         assert(firstDistinct >= 10, "primeira vermelha quase sempre no mesmo período: " .. firstDistinct)
         assert(math.abs(n / total - 0.1) < 0.015, "taxa: " .. n / total)
     end,
+
+    -- sprint 0017: setFallenHat liga o bit 0x8000 do ID (PersistentOutfits.setFallenHat
+    -- 0–36). baseId tira só esse bit, exato também no ID feminino (negativo)
+    variant_rules_base_id_exact = function()
+        local H = R.HAT_FALLEN
+        assert(H == 32768)
+        assert(R.baseId(nil) == nil and R.baseId(0) == 0)
+        assert(R.baseId(outfitID(3, 77, false)) == outfitID(3, 77, false))
+        assert(R.baseId(outfitID(3, 77, false) + H) == outfitID(3, 77, false))
+        assert(R.baseId(outfitID(3, 77, true)) == outfitID(3, 77, true))
+        assert(R.baseId(outfitID(3, 77, true) + H) == outfitID(3, 77, true), "feminino com o bit")
+        assert(R.baseId(-2147483648) == -2147483648, "limite negativo")
+        assert(R.baseId(-2147483648 + H) == -2147483648)
+        assert(R.baseId(2147483647) == 2147483647 - H, "limite positivo (todos os bits)")
+        assert(R.baseId(-1) == -1 - H, "-1: todos os bits ligados")
+        for _, id in ipairs(realIDs()) do
+            local b = R.baseId(id + H)
+            assert(b == id and R.baseId(b) == b, "id " .. id)
+        end
+    end,
+    -- o chapéu caído não muda o tipo (nem o forçado do debug), na névoa normal e na vermelha
+    variant_rules_fallen_hat_same_kind = function()
+        local c = cfg({ carpideiraChance = 5 })
+        local changed = 0
+        for _, id in ipairs(realIDs()) do
+            for period = 1, 5 do
+                local a, b = R.variant(id, period, c), R.variant(id + R.HAT_FALLEN, period, c)
+                assert(a == b, "id " .. id .. " período " .. period .. ": " .. tostring(a) .. " ≠ " .. tostring(b))
+                assert(R.variant(id, period, c, true) == R.variant(id + R.HAT_FALLEN, period, c, true), "vermelha")
+            end
+        end
+        local id = outfitID(5, 9, true)
+        R.forced[id] = "carpideira"
+        local ok = R.variant(id + R.HAT_FALLEN, 1, cfg({ estaladorChance = 0, corredorChance = 0, semRostoChance = 0 })) == "carpideira"
+        R.forced[id] = nil
+        assert(ok, "forçado perdeu o chapéu e deixou de ser forçado")
+    end,
 }
