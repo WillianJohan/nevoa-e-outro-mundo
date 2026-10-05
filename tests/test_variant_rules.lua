@@ -176,4 +176,78 @@ return {
         R.forced[123] = nil
         assert(R.semRosto(123, 1, off) == false)
     end,
+    -- Névoa vermelha (sprint 0010): sorteio por período, determinístico (recarregar
+    -- não re-sorteia, servidor e cliente concordam), RedFogChance% dos períodos
+    variant_rules_red_fog_deterministic_per_period = function()
+        local c = cfg({ redFogOn = true, redFogChance = 10 })
+        local n = 0
+        for p = 1, 2000 do
+            local a = R.redFog(p, c)
+            assert(a == R.redFog(p, c), "mudou no mesmo período " .. p)
+            if a then n = n + 1 end
+        end
+        assert(n > 150 and n < 250, "vermelhas em 2000 períodos: " .. n)
+        assert(R.redFog(5, cfg({ redFogOn = false, redFogChance = 100 })) == false, "desligada")
+        for p = 1, 50 do
+            assert(R.redFog(p, cfg({ redFogOn = true, redFogChance = 100 })) == true, "100%")
+            assert(R.redFog(p, cfg({ redFogOn = true, redFogChance = 0 })) == false, "0%")
+        end
+        assert(R.redFog(nil, c) == false, "sem período")
+    end,
+    -- na vermelha todo zumbi é variante, dividido por igual entre KINDS
+    variant_rules_red_fog_splits_evenly = function()
+        local count = {}
+        for _, k in ipairs(R.KINDS) do count[k] = 0 end
+        local ids = realIDs()
+        for _, id in ipairs(ids) do
+            local k = R.variant(id, 7, cfg(), true)
+            assert(k, "zumbi comum na névoa vermelha: " .. id)
+            count[k] = count[k] + 1
+        end
+        for k, v in pairs(count) do
+            assert(math.abs(v / #ids - 1 / #R.KINDS) < 0.02, string.format("%s %.3f", k, v / #ids))
+        end
+        -- mesmo zumbi, mesmo período: mesma resposta (recarga); período novo re-divide
+        local same, diff = 0, 0
+        for i = 1, 3000 do
+            local id = ids[i]
+            assert(R.variant(id, 7, cfg(), true) == R.variant(id, 7, cfg(), true))
+            if R.variant(id, 7, cfg(), true) == R.variant(id, 8, cfg(), true) then same = same + 1 else diff = diff + 1 end
+        end
+        assert(same / 3000 < 0.45, "períodos seguidos correlacionados: " .. same / 3000)
+    end,
+    -- tipo desligado: a fatia dele fica comum, as outras não mudam
+    variant_rules_red_fog_disabled_kind_stays_normal = function()
+        local off = cfg({ estaladorOn = false })
+        local none = 0
+        for _, id in ipairs(realIDs()) do
+            local on, k = R.variant(id, 3, cfg(), true), R.variant(id, 3, off, true)
+            if on == "estalador" then assert(k == nil) else assert(k == on) end
+            if k == nil then none = none + 1 end
+        end
+        assert(none > 0)
+    end,
+    -- forçado pelo debug vence; ID 0 (sem outfit) e período desconhecido nunca
+    variant_rules_red_fog_keeps_forced_and_id0 = function()
+        R.forced[4242] = "semrosto"
+        assert(R.variant(4242, 1, cfg(), true) == "semrosto")
+        R.forced[4242] = nil
+        assert(R.variant(0, 1, cfg(), true) == nil)
+        assert(R.variant(4242, nil, cfg(), true) == nil)
+        assert(R.semRosto(4242, 1, cfg(), true) == (R.variant(4242, 1, cfg(), true) == "semrosto"))
+    end,
+    -- red falso/ausente: o sorteio normal não muda (as faixas de antes valem)
+    variant_rules_red_flag_off_is_normal_roll = function()
+        local n = 0
+        for _, id in ipairs(realIDs()) do
+            local k = R.variant(id, 9, cfg())
+            assert(R.variant(id, 9, cfg(), false) == k)
+            if k then n = n + 1 end
+        end
+        assert(n > 0 and n < #realIDs() / 4, "normal: " .. n)
+    end,
+    variant_rules_config_reads_red_fog = function()
+        local c = R.config(function(k) return ({ RedFogEnabled = false, RedFogChance = 33 })[k] end)
+        assert(c.redFogOn == false and c.redFogChance == 33)
+    end,
 }

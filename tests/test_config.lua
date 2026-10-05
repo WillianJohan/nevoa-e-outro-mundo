@@ -43,6 +43,11 @@ return {
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
     -- névoa é evento (sprint 0009): ~1 a cada 3 dias, 2 a 6 horas; FogThreshold saiu
+    config_red_fog_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("RedFogEnabled") == true)
+        assert(NOM_Config.get("RedFogChance") == 10)
+    end,
     config_fog_event_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("FogEventEveryDays") == 3)
