@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira), 0012 (visual) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira), 0012 (visual), 0017 (Sem-rosto espalhado, chapéu caído não muda a variante) |
 
 ## Regra geral
 
@@ -28,7 +28,7 @@ salvar e recarregar; na névoa seguinte é outro sorteio. Zumbis de chunks
 carregados depois também entram. Ecos nunca são variantes.
 
 **Um sorteio só pra todas:** cada zumbi tira um número de 0 a 99, e as chances
-viram faixas seguidas — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`,
+viram faixas seguidas (o chapéu que cai não muda o sorteio: sprint 0017) — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`,
 Carpideira `[12, 15)` com o padrão. Ninguém é duas coisas, e o total é a soma (15% com
 o padrão). Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante
 nova entra no fim da lista (a Carpideira entrou assim na sprint 0011: quem era
@@ -102,6 +102,8 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
   de 3), atrás do jogador, em chão (não na água) e fora da linha de visão de todos
   os jogadores daquela tela. Depois de sumir, só some de novo 4 segundos depois
   (não pisca). Sem lugar livre e escondido atrás do jogador, fica onde está até haver.
+  Um grupo visto junto se **espalha**: cada um reaparece num tile diferente (o tile de
+  um sumiço fica reservado por 5 s, sprint 0017).
 - **Colado, ataca:** a 2 tiles ou menos de quem o vê, ele para de sumir e ataca
   como zumbi comum (`ATTACK_DIST`, decisão de 04/10/2026). Senão ficaria piscando
   atrás de quem o encara e nunca seria ameaça. Quem foge de costas é alcançado.

@@ -58,7 +58,7 @@ function NOM_Debug.variant(kind)
         print("[NOM] debug nenhum zumbi perto")
         return
     end
-    local id = z:getPersistentOutfitID()
+    local id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- o forçado é pelo ID sem o chapéu caído
     print("[NOM] debug variante x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " id=" .. id)
     send({ op = "variant", id = id, kind = kind })
 end

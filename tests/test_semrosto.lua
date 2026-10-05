@@ -252,4 +252,37 @@ return {
         assert(co.n <= #other * 3, "não Sem-rosto: " .. co.n)
         assert(cs.n <= #sem * 3 * 7, string.format("Sem-rosto: %d chamadas em 3 varreduras de %d", cs.n, #sem))
     end,
+
+    -- sprint 0017: o tile de um sumiço fica reservado RESERVE_MS e depois volta a valer;
+    -- névoa nova começa sem reserva
+    semrosto_reservation_expires = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = G.SEM }) -- relato sem mover: continua à vista
+        local R = NOM_SemRostoRules
+        assert(R.RESERVE_MS > R.COOLDOWN_MS and R.RESERVE_MS < 2 * R.COOLDOWN_MS, "teste supõe 1 cooldown < reserva < 2")
+        local function tile(r) return r.x .. "," .. r.y end
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1)
+        G.seconds(R.COOLDOWN_MS / 1000 + 0.2)
+        assert(#G.reports == 2 and tile(G.reports[2]) ~= tile(G.reports[1]), "tile reservado escolhido de novo")
+        G.seconds(R.COOLDOWN_MS / 1000 + 0.2)
+        assert(#G.reports == 3 and tile(G.reports[3]) == tile(G.reports[1]), "reserva não expirou")
+        NOM_FogState.set(false, nil)
+        NOM_FogState.set(true, PERIOD)
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 4 and tile(G.reports[4]) == tile(G.reports[1]), "reserva passou pra névoa nova")
+    end,
+    -- review da 0017: reserva vencida sai na reserva seguinte (a tabela não cresce a névoa toda)
+    semrosto_reservation_pruned = function()
+        local G = setup()
+        for i = 1, 10 do NOM_SemRosto.reserve(i, 0, 0) end
+        assert(NOM_SemRosto.reservedCount() == 10)
+        G.now = G.now + NOM_SemRostoRules.RESERVE_MS - 1
+        NOM_SemRosto.reserve(50, 0, 0)
+        assert(NOM_SemRosto.reservedCount() == 11, "podou antes de vencer")
+        G.now = G.now + 1
+        NOM_SemRosto.reserve(51, 0, 0)
+        assert(NOM_SemRosto.reservedCount() == 2, "vencidas ficaram: " .. NOM_SemRosto.reservedCount())
+    end,
 }

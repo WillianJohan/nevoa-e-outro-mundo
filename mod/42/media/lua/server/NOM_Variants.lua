@@ -67,7 +67,7 @@ end
 -- todos; sendPlaySound só alcança os perto), e o dono solta e caça p.
 local function carpideira(z, p, why)
     if not NOM_World.fog or not isKind(z, "carpideira") then return false end
-    local pids, pid = screamedNow(), z:getPersistentOutfitID()
+    local pids, pid = screamedNow(), NOM_VariantRules.baseId(z:getPersistentOutfitID())
     if pids[pid] then return false end
     pids[pid] = true
     local radius = NOM_Config.get("CarpideiraScreamRadius")

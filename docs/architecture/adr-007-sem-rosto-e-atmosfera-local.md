@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Data | 2026-10-04 |
-| Emenda | [ADR-002](adr-002-autoridade-servidor.md) e [ADR-005](adr-005-quem-simula-aplica.md) (Sem-rosto e efeitos da névoa) |
+| Emenda | [ADR-002](adr-002-autoridade-servidor.md) e [ADR-005](adr-005-quem-simula-aplica.md) (Sem-rosto e efeitos da névoa). Emendada em 2026-10-05, sprint 0017 (destino reservado, [abaixo](#emenda-de-2026-10-05--sprint-0017-a-horda-se-espalha)) |
 
 ## Contexto
 
@@ -99,3 +99,24 @@ sem save: um overlay que vaza pro save é pior que nenhum.
   do jogador 1 aparecem pros dois.
 - `moved` (servidor) e `lastReport` (cliente) são chaveados pelo objeto do zumbi
   e esvaziam no fim da névoa.
+
+## Emenda de 2026-10-05 — sprint 0017: a horda se espalha
+
+No console do Johan, na névoa vermelha, um grupo de Sem-rostos andando junto era visto
+e teleportado **pro mesmo tile**, um a cada ~0,5 s: mesma distância, mesmo raio
+(`nextRadius`), mesmo anel, mesmo primeiro tile livre.
+
+**Decisão:** quem escolhe o destino (`NOM_SemRosto`, solo e cliente) guarda o tile de
+cada sumiço por `NOM_SemRostoRules.RESERVE_MS` (5 s reais, mais que o cooldown de 4 s)
+e pula os reservados no anel; o cliente de MP reserva também o destino de todo
+`semRostoMove` que o servidor espalha (sumiço visto por outro cliente). A reserva
+esvazia no fim da névoa. O servidor confere como antes.
+
+**Recusado:** desvio de ângulo por zumbi (pelo ID). A reserva sozinha já dá tiles
+distintos, e o ID repete entre zumbis do mesmo outfit e semente.
+
+**Consequências:** a horda reaparece em volta do jogador, tiles diferentes no anel
+(30° entre si) ou em anéis de raio diferente. Dois clientes que veem a mesma horda no
+mesmo instante, antes do `semRostoMove` do outro chegar, ainda podem escolher o mesmo
+tile (janela de ida e volta ao servidor). Num corredor com poucos tiles escondidos, o
+último do grupo pode ficar sem destino e esperar a reserva vencer.

@@ -10,6 +10,7 @@
 --   efeitos dele (NOM_Carpideira.scream).
 require "NOM_Config"
 require "NOM_CarpideiraRules"
+require "NOM_VariantRules"
 require "NOM_NightStats"
 require "NOM_FogState"
 
@@ -41,7 +42,7 @@ local lastReport = {} -- [zumbi] = ms reais do último aviso
 function C.furious(z, md)
     local period = NOM_FogState.period
     if md.NOM_furia ~= nil and md.NOM_furia == period then return true end
-    if C.screamed[z:getPersistentOutfitID()] then
+    if C.screamed[NOM_VariantRules.baseId(z:getPersistentOutfitID())] then
         md.NOM_furia = period
         return true
     end

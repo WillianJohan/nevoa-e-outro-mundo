@@ -283,10 +283,11 @@ local function setup(opts)
 end
 
 -- ID no formato do jogo que dá a variante pedida no período (nil = zumbi comum)
-local function idFor(want, period, red)
+local function idFor(want, period, red, female)
     local c = NOM_VariantRules.config(NOM_Config.get)
     for seed = 1, 500 do
         local id = 9 * 65536 + seed
+        if female then id = id - 2147483648 end -- bit 31 (PersistentOutfits.pickOutfitFemale)
         if NOM_VariantRules.variant(id, period, c, red) == want then return id end
     end
     error("nenhum ID dá " .. tostring(want))
@@ -749,6 +750,19 @@ return {
         fogOff()
         G.converge()
         assert(types(z) == table.concat(OUTFIT, ","), "chapéu caído voltou: " .. types(z))
+        -- feminino (ID negativo, bit 31): o % do Kahlua daria -1 na paridade (review da 0017)
+        local G2 = setup({ client = true })
+        local fid = idFor("estalador", 30, nil, true)
+        assert(fid < 0)
+        local f = G2.spawn({ id = fid, remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(30)
+        G2.converge()
+        f.outfitID = f.outfitID + HAT_FALLEN
+        f.ivs.items = { unpack(f.ivs.items) }
+        G2.converge()
+        fogOff()
+        G2.converge()
+        assert(types(f) == table.concat(OUTFIT, ","), "chapéu caído voltou (feminino): " .. types(f))
     end,
 
     -- só "NOM_" depois do módulo é item do mod; vanilla com NOM_ no nome some
@@ -785,5 +799,25 @@ return {
         fogOff()
         G.converge()
         assert(cantBite(z), "a máscara não voltou a valer")
+    end,
+
+    -- sprint 0017: o bit do chapéu caído não é identidade. O zumbi continua a mesma
+    -- variante, e o visual não é refeito (a peça do mod é o mesmo objeto: o
+    -- processClient refaz a lista com os objetos que estavam nela)
+    look_fallen_hat_keeps_variant = function()
+        local G = setup({ client = true })
+        local z = G.spawn({ id = idFor("estalador", 34), remote = true, extra = { "Base.Hat_Army" } })
+        fogOn(34)
+        G.converge()
+        local function piece()
+            for _, iv in ipairs(z.ivs.items) do if iv.type == NOM_VariantLook.LOOKS.estalador.item then return iv end end
+        end
+        local before = piece()
+        assert(before)
+        z.outfitID = z.outfitID + HAT_FALLEN
+        z.ivs.items = { unpack(z.ivs.items) }
+        G.converge()
+        assert(NOM_NightStats.variants[z] == "estalador", "perdeu a variante com o chapéu")
+        assert(piece() == before, "repintou por causa do bit do chapéu")
     end,
 }

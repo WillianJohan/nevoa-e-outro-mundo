@@ -162,7 +162,7 @@ local function process(z, c)
     if isEco(z, md) then
         kind = "eco"
     elseif fog then
-        id = z:getPersistentOutfitID()
+        id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- sem o chapéu caído (sprint 0017)
         kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red)
     end
     -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit

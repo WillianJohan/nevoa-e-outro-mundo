@@ -226,4 +226,14 @@ return {
         G.scan()
         assert(#G.playing(NOM_Carpideira.SOB) == 1, "fúria passou pra névoa seguinte")
     end,
+
+    -- sprint 0017: o servidor marca o ID sem o bit do chapéu; ela com o bit continua furiosa
+    carpideira_furious_with_fallen_hat = function()
+        local G = setup()
+        NOM_Carpideira.screamed[ID] = true
+        G.carpideira({ x = 0, y = 0, id = ID + 32768 })
+        G.player({ x = 2, y = 0 })
+        G.scan()
+        assert(#G.playing(NOM_Carpideira.SOB) == 0 and #G.reports == 0, "chapéu caído acalmou a Carpideira")
+    end,
 }

@@ -95,4 +95,12 @@ return {
         C.server("carpideiraList", { pids = { 11, 12 } })
         assert(NOM_Carpideira.screamed[11] and NOM_Carpideira.screamed[12])
     end,
+
+    -- sprint 0017: o pid do servidor vem sem o bit do chapéu; a cópia daqui com o bit grita
+    variants_client_scream_with_fallen_hat = function()
+        local C = setup(true)
+        local z = C.zombie(7 + 32768, 4)
+        C.server("carpideiraScream", { pid = 7, id = 4 })
+        assert(#C.screams == 1 and C.screams[1].z == z, "não achou a Carpideira de chapéu caído")
+    end,
 }

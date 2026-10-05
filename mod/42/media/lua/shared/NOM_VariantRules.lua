@@ -3,6 +3,8 @@
 -- função do persistentOutfitID do zumbi e do número do período de névoa (ADR-006). Servidor
 -- e clientes chegam à mesma resposta sem sincronizar nada, e ela sobrevive a
 -- recarregar o chunk ou o save.
+require "NOM_Math"
+
 NOM_VariantRules = {}
 
 -- Forçado pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
@@ -43,10 +45,13 @@ local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "sem
 
 -- Hash do zumbi no período n, em [0, Q). salt separa sorteios independentes do
 -- mesmo zumbi no mesmo período; sal 0 é o sorteio de sempre (mix(x + 0) = mix(x)).
--- id = persistentOutfitID (int com sinal; o % do Lua devolve positivo).
+-- id = persistentOutfitID (int com sinal, bit 31 = feminino). No jogo o % do Kahlua
+-- trunca: com id negativo, id % Q e floor(id / Q) % Q saem negativos (no luajit dos
+-- testes, positivos). Não normalizar: re-sortearia todo zumbi feminino. Todo processo do
+-- jogo (solo, servidor, clientes) roda Kahlua, então concordam; todo quociente fica longe
+-- de 2^31 e todo produto abaixo de 2^53 (ADR-006, emenda da 0017).
 local function hash(id, n, salt)
-    -- id negativo (bit 31 = feminino): o % do Lua com Q positivo dá ≥ 0.
-    return mix(mix(mix(id % Q + math.floor(id / Q) % Q * 7) + n * 1000003 % Q) + salt)
+    return mix(mix(mix(id % Q + math.floor(id / Q) % Q * 7) + n * 1000003 % Q) + salt) -- kahlua-%-ok: trunca de propósito, |id/Q| < 64
 end
 
 -- O mesmo hash serve o sangue do Outro Mundo (shared/NOM_DressingRules.lua, sprint 0015).
@@ -75,6 +80,21 @@ function NOM_VariantRules.redFog(period, cfg, seed)
     return math.floor(hash(seed or 0, period, RED_SALT) / Q * 100) < (cfg.redFogChance or 0)
 end
 
+-- Chapéu caído (sprint 0017): PersistentOutfits.setFallenHat liga o bit 0x8000 do
+-- persistentOutfitID (bytecode 0–36). O bit não é identidade: sem tirá-lo, o zumbi que
+-- perde o chapéu na névoa sortearia outra variante. Todo sorteio e toda tabela
+-- chaveada pelo ID (Eco, Carpideira que gritou, visual, debug) passa por aqui; vestir
+-- continua com o ID cru. Sem operador de bit no Kahlua: floor(id / 2^15) é o
+-- deslocamento aritmético (exato em double também no ID negativo, bit 31 = feminino),
+-- a paridade vai pelo NOM_Math.mod (o % do Kahlua daria -1 no negativo) e subtrair 2^15
+-- desliga o bit sem tocar nos outros.
+NOM_VariantRules.HAT_FALLEN = 32768
+
+function NOM_VariantRules.baseId(id)
+    if id == nil or NOM_Math.mod(math.floor(id / 32768), 2) == 0 then return id end
+    return id - 32768
+end
+
 -- Variante do zumbi no período de névoa (decisão do Johan, 05/10: todo monstro,
 -- menos o Eco, só existe na névoa). Um sorteio só, faixas contíguas na ordem de
 -- KINDS: os tipos não se sobrepõem e o total é a soma das chances. A faixa de um
@@ -85,6 +105,7 @@ end
 -- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
 -- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | nil.
 function NOM_VariantRules.variant(id, period, cfg, red)
+    id = NOM_VariantRules.baseId(id)
     if not id or id == 0 or not period then return nil end
     local f = NOM_VariantRules.forced[id]
     if f then return f end

@@ -44,6 +44,7 @@ mod/
     lua/server/NOM_Players.lua      jogadores do lado do servidor (solo e dedicado)
     lua/server/NOM_Night.lua        decide a noite, caça e lanterna; avisa os clientes
     lua/client/NOM_NightClient.lua  cliente de MP segue a flag e aplica os stats
+    lua/shared/NOM_Math.lua         resto (mod) igual no Kahlua e no luajit (o % do Kahlua trunca e satura)
     lua/shared/NOM_VariantRules.lua sorteio único das variantes por período de névoa, névoa vermelha e a divisão dela, cooldown do grito (puro)
     lua/shared/NOM_VariantAI.lua    Estalador cego e estalando, Corredor visto, Carpideira parada (onde o zumbi é simulado)
     lua/shared/NOM_CarpideiraRules.lua  o que acorda a Carpideira e quem já gritou no período (puro)

@@ -25,7 +25,7 @@
 - Caminhos Lua são relativos a `media/lua/`. Bytecode no formato `Classe.metodo(descritor)`.
 - Nenhum código de mod do Workshop foi copiado ou usado como evidência.
 
-### Três fatos transversais (leia antes de tudo)
+### Fatos transversais (leia antes de tudo)
 
 1. **Detecção de "lado do servidor".** Em solo, `isServer()` e `isClient()` são **ambos
    `false`**; em dedicado, `isServer()` é `true` no servidor. Guarda correta para lógica
@@ -49,6 +49,12 @@
    e flags (`ZombieStateFlag`: Initialized, Crawling, CanWalk, FakeDead, CanCrawlUnderVehicle,
    ReanimatedForGrappleOnly). Ao voltar, `ZombiePopulationManager` chama `IsoZombie.DoZombieStats()`,
    que re-sorteia os stats a partir do sandbox. Ver seção 3.
+4. **O `%` do Kahlua trunca e satura** (review da sprint 0017). `KahluaThread.primitiveMath`
+   faz `a - (double)(int)(a/b)*b`: com operando negativo o resto sai negativo (`-1 % 2 = -1`;
+   o luajit dos testes dá `1`), e o `(int)` do Java satura em `2^31-1` quando `a/b` passa disso
+   (`getTimestampMs()` é ~1.76e12). `math.floor` é `Math.floor` em double (`MathLib.floor`
+   23–32), sem `(int)`. Use `NOM_Math.mod`; o lint `kahlua_percent_safe` pega paridade e `%`
+   em ID de outfit ou tempo real.
 
 ---
 
@@ -1010,6 +1016,14 @@ Bytecode do B42.21. Decisão na [emenda da ADR-012](adr-012-visual-das-variantes
   e `Item.getChanceToFall` EXISTS (`Item` no `Exposer`). No cliente de MP,
   `ZombieHelmetFallingPacket.processClient` 0–241: procura o chapéu na lista pelo nome, tira se
   achar, `clear` + `addAll`, `resetModelNextFrame` e `setFallenHat(true)` mesmo sem achar.
+- **Quem liga o bit do chapéu** (sprint 0017, bytecode): `setFallenHat` mantém o
+  `isPersistentOutfitInit` (0–36) e com `false` desliga o bit. No zumbi: servidor dedicado
+  em `hit/Zombie.react` 20–57 (só `GameServer.server`, flag 64 do golpe; `removeFallenHat` só
+  com `ServerGUI`) e cliente em `ZombieHelmetFallingPacket.processClient` 238.
+  `IsoGameCharacter.helmetFall` 81–97 só liga pra quem não é zumbi: no solo o jogo não muda
+  o ID do zumbi. Ninguém re-veste um zumbi vivo porque o bit mudou: o `outfitId` do
+  `ZombiePacket` só é usado na criação (`NetworkZombieSimulator.parseZombie` 144–152). O mod
+  tira o bit antes do sorteio (`NOM_VariantRules.baseId`, ADR-006).
 - **Sair pro menu reinicia o Lua:** `IngameState.exit` 986 `LuaManager.init`, 1314
   `LoadDirBase`. Estado em tabela Lua não sobrevive.
 - **UNKNOWN:** `ArrayList.remove(Object)` devolve o booleano pro Lua (o Kahlua converte

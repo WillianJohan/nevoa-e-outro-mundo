@@ -202,4 +202,25 @@ return {
         local fog = G.commands(G.sentServer, "fog")
         assert(fog[#fog].args.red == true)
     end,
+
+    -- sprint 0017 (console do Johan na névoa vermelha: um grupo visto junto ia todo pro
+    -- mesmo tile, um a cada ~0,5 s). Solo: 5 Sem-rostos no mesmo lugar, vistos juntos,
+    -- reaparecem em 5 tiles diferentes, todos fora da vista e aceitos pelo servidor
+    fog_sp_horde_spreads = function()
+        local G = setup({ fog = 0.9 })
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        local zs = {}
+        for i = 1, 5 do zs[i] = G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true) }) end
+        G.seconds(3)
+        local tiles = {}
+        for i, z in ipairs(zs) do
+            assert(z.teleports == 1, "zumbi " .. i .. " teleportes: " .. tostring(z.teleports))
+            local x, y = math.floor(z.x), math.floor(z.y)
+            local k = x .. "," .. y
+            assert(not tiles[k], "dois no mesmo tile " .. k)
+            tiles[k] = true
+            assert(not G.square(x, y, 0):isCouldSee(0), "reapareceu à vista: " .. k)
+            assert(NOM_SemRostoRules.validMove(p.x, p.y, 112.5, 100.5, z.x, z.y), "destino inválido: " .. k)
+        end
+    end,
 }

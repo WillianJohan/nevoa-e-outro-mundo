@@ -110,4 +110,21 @@ return {
         G.server("fog", { on = false, period = 4, red = true })
         assert(NOM_FogState.red == false, "vermelho sem névoa")
     end,
+
+    -- sprint 0017: o destino que o servidor espalha (semRostoMove, de qualquer cliente)
+    -- fica reservado aqui também: dois clientes vendo a mesma horda não a juntam
+    fog_client_move_reserves_tile = function()
+        local function scanOnce(move)
+            local G = setup()
+            G.server("fog", { on = true, period = 1 })
+            G.player({ x = 100, y = 100, face = 0 })
+            G.zombie({ x = 112, y = 100, id = W.semRostoID(1, true), onlineID = 42, remote = true })
+            if move then G.server("semRostoMove", move) end
+            G.tick(NOM_SemRosto.SCAN_TICKS)
+            return G.commands(G.sentClient, "semRostoSeen")[1].args
+        end
+        local free = scanOnce()
+        local got = scanOnce({ id = 77, x = free.x, y = free.y, z = 0 }) -- outro zumbi, de outro cliente
+        assert(got.x ~= free.x or got.y ~= free.y, "escolheu o tile que o servidor acabou de usar")
+    end,
 }

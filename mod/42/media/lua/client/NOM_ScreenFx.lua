@@ -23,6 +23,7 @@ if isServer() then return end
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_ScreenFxRules"
+require "NOM_Math"
 require "NOM_ScreenFxOptions"
 require "NOM_SemRostoRules"
 require "NOM_SemRosto"
@@ -88,7 +89,9 @@ local function draw(el)
     if l.grain > 0 and not NOM_ShaderMod then
         local g = tex(T.grain[R.grainFrame(now)])
         if g then
-            local ox, oy = (now * 7) % S.GRAIN_JITTER, (now * 13) % S.GRAIN_JITTER
+            -- getTimestampMs ~1.76e12: reduz antes de multiplicar (o % do Kahlua satura em 2^31)
+            local t = NOM_Math.mod(now, 100000)
+            local ox, oy = NOM_Math.mod(t * 7, S.GRAIN_JITTER), NOM_Math.mod(t * 13, S.GRAIN_JITTER)
             el:drawTextureTiled(g, x - ox, y - oy, w + ox, h + oy, 1, 1, 1, l.grain)
         end
     end
@@ -96,7 +99,7 @@ local function draw(el)
     if v and l.vignette > 0 then el:drawTextureScaled(v, x, y, w, h, l.vignette, l.vr, l.vg, l.vb) end
     local ln = tex(T.lines)
     if ln and l.lines > 0 then
-        local jump = (now * 31) % (h * 0.25) -- as linhas pulam de lugar a cada quadro
+        local jump = NOM_Math.mod(NOM_Math.mod(now, 100000) * 31, h * 0.25) -- as linhas pulam de lugar a cada quadro
         el:drawTextureScaled(ln, x, y - jump, w, h * 1.25, l.lines, 0.85, 0.85, 0.85)
     end
     local f = tex(T.white)

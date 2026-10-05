@@ -8,6 +8,9 @@ NOM_SemRostoRules.MIN_DIST = 3      -- nunca reaparece colado no jogador
 NOM_SemRostoRules.ATTACK_DIST = 2
 NOM_SemRostoRules.STEP = 3          -- quanto chega mais perto a cada sumiço
 NOM_SemRostoRules.COOLDOWN_MS = 4000 -- tempo real entre sumiços do mesmo zumbi (sem piscar)
+-- Sprint 0017: o tile de um sumiço fica reservado RESERVE_MS reais. Uma horda vista junta
+-- tem o mesmo raio e o mesmo anel; sem a reserva, todos iam pro primeiro tile livre.
+NOM_SemRostoRules.RESERVE_MS = 5000
 -- O servidor aceita um semRostoSeen por jogador a cada RATE_MS reais
 -- (server/NOM_Fog.lua); o cliente manda no máximo um a cada REPORT_GAP_MS (com
 -- margem pro atraso da rede), senão o servidor descarta o segundo e aquele
@@ -45,7 +48,7 @@ function NOM_SemRostoRules.spots(px, py, faceAngle, r)
     local back = faceAngle + math.pi
     for k = 0, 8 do
         local step = math.floor((k + 1) / 2) * math.rad(30)
-        local a = back + ((k % 2 == 1) and step or -step)
+        local a = back + ((k % 2 == 1) and step or -step) -- kahlua-%-ok: k de 0 a 8
         local x = math.floor(px + r * math.cos(a))
         local y = math.floor(py + r * math.sin(a))
         local key = x .. "," .. y
