@@ -3,6 +3,9 @@
 NOM_SemRostoRules = {}
 
 NOM_SemRostoRules.MIN_DIST = 3      -- nunca reaparece colado no jogador
+-- A até ATTACK_DIST de quem vê, para de sumir e ataca (decisão do coordenador,
+-- sprint 0005): senão ele pisca pra sempre atrás de quem o encara e nunca ameaça.
+NOM_SemRostoRules.ATTACK_DIST = 2
 NOM_SemRostoRules.STEP = 3          -- quanto chega mais perto a cada sumiço
 NOM_SemRostoRules.COOLDOWN_MS = 4000 -- tempo real entre sumiços do mesmo zumbi (sem piscar)
 NOM_SemRostoRules.REPORT_RANGE = 30 -- até onde o jogador "vê" o Sem-rosto
@@ -15,6 +18,11 @@ local SLACK = 0.75
 
 local function dist(ax, ay, bx, by)
     return math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by))
+end
+
+-- Visto a d tiles: some (true) ou ataca (false).
+function NOM_SemRostoRules.vanishes(d)
+    return d > NOM_SemRostoRules.ATTACK_DIST
 end
 
 function NOM_SemRostoRules.nextRadius(d)
@@ -49,11 +57,12 @@ end
 
 -- (sx, sy) jogador que viu, (zx, zy) zumbi, (tx, ty) destino. O servidor confere
 -- o que o cliente mandou: destino mais perto do jogador que o zumbi (ou no
--- mínimo), nem colado, e o zumbi ao alcance de quem diz que viu.
+-- mínimo), nem colado, e o zumbi ao alcance de quem diz que viu (e não tão
+-- perto que já devia atacar).
 function NOM_SemRostoRules.validMove(sx, sy, zx, zy, tx, ty)
     local R = NOM_SemRostoRules
     local dz, dt = dist(sx, sy, zx, zy), dist(sx, sy, tx, ty)
-    if dz > R.REPORT_RANGE then return false end
+    if dz > R.REPORT_RANGE or not R.vanishes(dz) then return false end
     if dt < R.MIN_DIST - SLACK then return false end
     return dt <= math.max(dz, R.MIN_DIST) + SLACK
 end

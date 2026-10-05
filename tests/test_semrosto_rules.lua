@@ -47,6 +47,8 @@ return {
         assert(not R.validMove(0, 0, R.REPORT_RANGE + 5, 0, -10, 0), "zumbi longe demais do jogador")
         -- já no raio mínimo: pode reaparecer no mínimo de novo
         assert(R.validMove(0, 0, R.MIN_DIST, 0, -R.MIN_DIST, 0))
+        -- colado (≤ ATTACK_DIST): não some mais, ataca
+        assert(not R.validMove(0, 0, R.ATTACK_DIST, 0, -R.MIN_DIST, 0), "sumiu colado no jogador")
     end,
     -- rádio: no máximo colado, mudo de longe, sobe sempre que chega perto
     semrosto_rules_static_volume = function()
@@ -60,5 +62,12 @@ return {
             last = v
         end
         assert(R.staticVolume(15) > 0 and R.staticVolume(15) < 1)
+    end,
+    -- decisão do coordenador: a 2 tiles ou menos de quem vê, para de sumir e ataca
+    semrosto_rules_attacks_when_close = function()
+        assert(R.ATTACK_DIST == 2)
+        assert(R.vanishes(R.ATTACK_DIST + 0.1))
+        assert(not R.vanishes(R.ATTACK_DIST))
+        assert(not R.vanishes(0.5))
     end,
 }

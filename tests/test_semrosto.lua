@@ -38,6 +38,8 @@ return {
         assert(after >= NOM_SemRostoRules.MIN_DIST - 0.75, "colado no jogador")
         assert(not G.square(r.x, r.y, 0):isCouldSee(0), "reapareceu à vista")
         NOM_SemRosto.move(z, r.x, r.y, r.zz)
+        assert(z.x == r.x + 0.5 and z.y == r.y + 0.5, "não ficou no centro do tile: " .. z.x .. "," .. z.y)
+        assert(z.lastX == z.x and z.lastY == z.y, "lastX/lastY no canto: o jogo interpola de lá")
         assert(not z:getCurrentSquare():isCanSee(0), "continua à vista depois de mover")
         -- e um zumbi comum no mesmo lugar não some
         local G2 = setup()
@@ -130,5 +132,58 @@ return {
         G.tick(NOM_SemRosto.SCAN_TICKS)
         assert(math.abs(NOM_SemRosto.nearest(p) - 8) < 0.01, "mais perto: " .. tostring(NOM_SemRosto.nearest(p)))
         assert(#G.reports == 0)
+    end,
+    -- a 2 tiles ou menos de quem vê, para de sumir: ataca
+    semrosto_attacks_when_close = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        local z = G.zombie({ x = 102, y = 100, id = G.SEM })
+        G.tick(NOM_SemRosto.SCAN_TICKS * 3)
+        assert(#G.reports == 0, "sumiu colado no jogador")
+        z.x = 103.5
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1, "a 3 tiles devia sumir")
+    end,
+    -- tela dividida: o destino fica fora da vista de todos os jogadores locais
+    semrosto_destination_hidden_from_all_local_players = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        G.player({ x = 101, y = 100, face = math.pi }) -- do lado, olhando pra trás do primeiro
+        G.zombie({ x = 112, y = 100, id = G.SEM })
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        for _, r in ipairs(G.reports) do
+            for pn = 0, 1 do
+                assert(not G.square(r.x, r.y, 0):isCouldSee(pn), "destino à vista do jogador " .. pn)
+            end
+        end
+    end,
+    -- água não é chão: o destino pula, e sem chão nenhum não some
+    semrosto_destination_avoids_water = function()
+        local G = setup()
+        G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = G.SEM })
+        for x = 85, 115 do for y = 85, 115 do
+            if x < 98 then G.water[x .. "," .. y .. ",0"] = true end
+        end end
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        for _, r in ipairs(G.reports) do
+            assert(not G.water[r.x .. "," .. r.y .. ",0"], "destino na água")
+        end
+        local G2 = setup()
+        G2.player({ x = 100, y = 100, face = 0 })
+        G2.zombie({ x = 112, y = 100, id = G2.SEM })
+        for x = 80, 120 do for y = 80, 120 do G2.water[x .. "," .. y .. ",0"] = true end end
+        G2.tick(NOM_SemRosto.SCAN_TICKS * 3)
+        assert(#G2.reports == 0, "sumiu pra dentro da água")
+    end,
+    -- jogador na escada (z quebrado): compara andar, não float
+    semrosto_compares_floors = function()
+        local G = setup()
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        p.z = 0.4
+        G.zombie({ x = 112, y = 100, id = G.SEM })
+        G.tick(NOM_SemRosto.SCAN_TICKS)
+        assert(#G.reports == 1 and G.reports[1].zz == 0, "z quebrado travou o Sem-rosto")
+        assert(NOM_SemRosto.nearest(p) ~= nil, "rádio comparou z float")
     end,
 }
