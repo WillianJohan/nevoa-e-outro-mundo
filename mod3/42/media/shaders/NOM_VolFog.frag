@@ -6,6 +6,7 @@
 // uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
 // uParams[1].y: visual (1 = rolos com sombra própria, padrão; 0 = camada antiga)
 // uParams[1].z: qualidade (0 baixa, 1 média, 2 alta): passos do raio no visual novo
+// uParams[1].w: escala do véu de fundo (1 padrão, 0 = só rolos); a vanilla sai (param 8 = 1 devolve)
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
@@ -79,6 +80,7 @@ float density(vec3 w, float ground, float top, out float wisp) {
 // ---------- visual novo: rolos com silhueta e sombra própria ----------
 const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
 const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
+const float HAZE = 0.18;                      // véu de fundo: ~40% de cobertura no chão com a névoa cheia
 
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
 // `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
@@ -101,6 +103,8 @@ float densityLook(vec3 w, float ground, float layer, out float shade) {
     float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
     d *= 1.15 - 0.45 * clamp(hz / layer, 0.0, 1.0);                         // mais densa embaixo
     d += gTree * 0.9 * exp(-5.0 * hz / layer) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
+    bool indoor = (nomFlowFlags(w.xy) & NOM_FLOW_INDOOR) != 0;
+    d += indoor ? 0.0 : HAZE * uParams[1].w * exp(-1.5 * hz / layer);  // véu de fundo, no lugar da vanilla
     vec3 s = w + SUN_STEP;
     shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layer, qs) - (s.z - ground));
     for (int i = 0; i < uCharCount; i++) {

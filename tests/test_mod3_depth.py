@@ -148,4 +148,20 @@ for name in ("uTorchCount", "uTorchPos", "uTorchDir", "uTorchColor"):
 assert '"uDrift"' in java and "uDrift" in volfog, "mod3: o ruído da névoa tem que andar por uDrift"
 assert not re.search(r"fract\(\s*uTime", volfog), "mod3: NOM_VolFog recomeça o ruído por fase do relógio (pulsa)"
 assert "FLOW_PERIOD" not in volfog, "mod3: sobrou o flow map de duas fases no NOM_VolFog"
+# Névoa só nossa (sprint 0028): a vanilla (ImprovedFog) para antes da borda de baixo da tela e com
+# zoom afastado vira uma faixa limpa. Com o mod3 ligado ela é zerada logo depois do update dela, e o
+# shader desenha o véu de fundo (NOMRender_setParam(7, v) escala; (8, 1) devolve a vanilla).
+patches = (src / "Patches.java").read_text()
+assert re.search(r'className = "zombie\.iso\.weather\.fog\.ImprovedFog", methodName = "update"', patches), \
+    "mod3: falta o patch no ImprovedFog.update"
+assert re.search(r"@Patch\.OnExit[\s\S]*RenderContext\.afterVanillaFogUpdate\(", patches), \
+    "mod3: o patch do ImprovedFog tem que rodar na saída do update"
+assert re.search(r"PARAM_VANILLA_FOG = 8;", java) and not re.search(r"luaParams\[PARAM_VANILLA_FOG\] = 1f", java), \
+    "mod3: PARAM_VANILLA_FOG (8) ausente ou com a vanilla ligada por padrão"
+jh = re.search(r"PARAM_HAZE = (\d+);", java)
+assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 1f", java), "mod3: PARAM_HAZE ausente ou sem padrão 1"
+hi = int(jh.group(1))
+assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
+assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 torchLight")[0], \
+    "mod3: o véu não pode entrar dentro de casa"
 print("mod3 contrato Java/GLSL ok")
