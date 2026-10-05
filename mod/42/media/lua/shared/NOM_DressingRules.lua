@@ -9,15 +9,17 @@ require "NOM_VariantRules"
 
 NOM_DressingRules = {
     RADIUS = 25,       -- tiles do jogador
-    MAX_FLOOR = 450,   -- marcadores de chão ativos (um por square)
+    MAX_FLOOR = 600,   -- marcadores de chão ativos (um por square)
     MAX_WALL = 120,    -- paredes desenhadas por quadro
     MAX_LAYERS = 4,    -- texturas num marcador de chão
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
     CELL = 7,          -- uma poça possível por célula de 7×7
-    POOL = 0.5,        -- chance de poça por célula, na densidade 1
-    BACKGROUND = 0.07, -- respingo solto por square
-    GRIME = 0.24, CRACKS = 0.14, MOSS = 0.09,
-    WALL = 0.6,        -- chance de cada parede ter algo
+    -- Calibrado pro zoom do Johan (print de 05/10, névoa vermelha: ~6×6 tiles na tela e
+    -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
+    POOL = 0.85,       -- chance de poça por célula, na densidade 1
+    BACKGROUND = 0.15, -- respingo solto por square
+    GRIME = 0.45, CRACKS = 0.3, MOSS = 0.15,
+    WALL = 0.75,       -- chance de cada parede ter algo
 }
 
 local R = NOM_DressingRules
@@ -98,7 +100,7 @@ local function makePool(cx, cy, z, period, d)
     if u(id, period, 11) >= chance(R.POOL, d) then return false end
     local c = R.CELL
     local a = u(id, period, 14) * 2 * math.pi
-    return { x = (cx + u(id, period, 12)) * c, y = (cy + u(id, period, 13)) * c, r = 1.3 + 1.7 * u(id, period, 15),
+    return { x = (cx + u(id, period, 12)) * c, y = (cy + u(id, period, 13)) * c, r = 1.6 + 1.8 * u(id, period, 15),
         dx = math.cos(a), dy = math.sin(a), len = 3 + 6 * u(id, period, 16) }
 end
 
@@ -130,12 +132,12 @@ local function bloodLevel(x, y, z, id, period, d)
             if p then
                 local ox, oy = px - p.x, py - p.y
                 local dist = math.sqrt(ox * ox + oy * oy)
-                if dist <= p.r * 0.55 then return 3 end
+                if dist <= p.r * 0.65 then return 3 end
                 if dist <= p.r then
                     level = 2
                 elseif level == 0 then
                     local t = ox * p.dx + oy * p.dy
-                    if t > 0 and t < p.len and math.abs(ox * p.dy - oy * p.dx) <= 0.75
+                    if t > 0 and t < p.len and math.abs(ox * p.dy - oy * p.dx) <= 1
                         and u(id, period, 31) < 0.8 then
                         level = 1
                     end

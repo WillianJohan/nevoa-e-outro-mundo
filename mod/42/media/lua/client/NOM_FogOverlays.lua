@@ -29,7 +29,7 @@ NOM_FogOverlays = {
     LIGHT_BUDGET = 30,   -- entradas com a luz relida por atualização
     FADE_MS = 4000,      -- surgir e sumir
     RESEEN_TILES = 8,    -- andou isso desde a última varredura limpa: olha tudo de novo
-    LIGHT_FLOOR = 0.35,  -- no escuro total o sangue ainda se lê
+    LIGHT_FLOOR = 0.5,   -- no escuro total (e sob a névoa vermelha) o sangue ainda se lê
 }
 
 local O = NOM_FogOverlays

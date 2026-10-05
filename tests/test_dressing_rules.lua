@@ -72,6 +72,33 @@ return {
         assert(layers / n >= 1.3, "camadas por square: " .. layers / n)
     end,
 
+    -- calibração pelo print do Johan (05/10, névoa vermelha, ~7×7 tiles na tela, "ainda não
+    -- tá o outro mundo"): em qualquer enquadramento assim, quase todo chão muda e tem sangue
+    dressing_rules_visible_at_close_zoom = function()
+        local R = load()
+        for _, red in ipairs({ false, true }) do
+            local d = R.density(1, red)
+            local worst, noBlood = 1, 0
+            for k = 0, 39 do
+                local cx, cy = 10700 + k * 37, 10200 + k * 53
+                local n, blood = 0, 0
+                for x = cx - 3, cx + 3 do
+                    for y = cy - 3, cy + 3 do
+                        local f = R.floor(x, y, 0, 9, d)
+                        if f then
+                            n = n + 1
+                            for _, l in ipairs(f) do if l[1] == "bloodFloor" then blood = blood + 1 break end end
+                        end
+                    end
+                end
+                worst = math.min(worst, n / 49)
+                if blood < 3 then noBlood = noBlood + 1 end
+            end
+            assert(worst >= (red and 0.8 or 0.6), "enquadramento limpo demais: " .. worst)
+            assert(noBlood <= (red and 2 or 8), "enquadramentos quase sem sangue: " .. noBlood)
+        end
+    end,
+
     dressing_rules_layers_valid_and_capped = function()
         local R = load()
         for x = 0, 49 do

@@ -208,7 +208,7 @@ return {
         NOM_FogState.set(true, 1)
         G.seconds(12)
         local m = alive(G)[1]
-        assert(m.color[1] < 0.5 and m.color[1] >= O().LIGHT_FLOOR - 1e-6, "luz no escuro: " .. m.color[1])
+        assert(m.color[1] < 0.75 and m.color[1] >= O().LIGHT_FLOOR - 1e-6, "luz no escuro: " .. m.color[1])
         G.lightAll = 1
         G.seconds(20)
         assert(math.abs(m.color[1] - 1) < 1e-6, "luz não foi relida: " .. m.color[1])

@@ -26,7 +26,8 @@ end
 local function setup()
     local G = W.new({ tod = 12, sandbox = SANDBOX })
     G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto", "NOM_NightStats", "NOM_Night", "NOM_Players",
-        "NOM_NightCount", "NOM_VariantAI", "NOM_Variants", "NOM_FogSound", "NOM_FogVignette", "NOM_FogOverlays" })
+        "NOM_NightCount", "NOM_VariantAI", "NOM_Variants", "NOM_FogSound", "NOM_FogVignette", "NOM_FogOverlays",
+        "NOM_ScreenFxOptions", "NOM_DressingRules" })
     local lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 2, Memory = 2 }
     getSandboxOptions = function()
         return { getOptionByName = function(_, name)
