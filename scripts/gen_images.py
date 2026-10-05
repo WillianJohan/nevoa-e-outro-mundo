@@ -3,7 +3,7 @@
 
 Saída:
   mod/42/poster.png          512x512  painel de info do mod (mod.info poster=)
-  mod/42/icon.png             64x64   lista de mods, desenhado a 28 px (mod.info icon=)
+  mod/42/icon.png             64x64   lista de mods, desenhado a 28 px (mod.info icon=): o "N" na névoa
   docs/workshop/preview.png  256x256  imagem do item no Workshop (o jogo exige
                                       PNG quadrado de 256 ou 512, < 1 024 000 bytes)
 
@@ -108,8 +108,23 @@ def poster(rng, size, subtitle=True):
 
 
 def icon(rng):
-    # desenha grande e reduz: a figura no meio da névoa, sem texto (lido a 28 px)
-    return to_image(fog_scene(256, rng)).crop((96, 64, 224, 192)).resize((64, 64), Image.LANCZOS)
+    """O "N" no meio da névoa, desenhado grande e reduzido (lido a 28-64 px)."""
+    size = 256
+    scene = fog_scene(size, rng, figure=False)
+    font = ImageFont.load_default(int(size * 0.8))
+    mask = Image.new("L", (size, size), 0)
+    left, top, right, bottom = font.getbbox("N")
+    ImageDraw.Draw(mask).text(((size - (right - left)) / 2 - left, (size - (bottom - top)) / 2 - top),
+                              "N", font=font, fill=255)
+    letter = np.asarray(mask.filter(ImageFilter.GaussianBlur(1.5)), np.float32)[..., None] / 255
+    glow = np.asarray(mask.filter(ImageFilter.GaussianBlur(14)), np.float32)[..., None] / 255
+    # a névoa come o pé da letra: some de cima pra baixo
+    y = np.linspace(0, 1, size, dtype=np.float32)[:, None, None]
+    fade = np.clip(1.25 - 0.9 * y, 0.35, 1) * (0.75 + 0.25 * noise(rng, size, 7)[..., None])
+    text = np.array(TEXT, np.float32) / 255
+    out = scene + glow * 0.18 * fade
+    out = out * (1 - letter * fade) + text * letter * fade
+    return to_image(np.clip(out, 0, 1)).resize((64, 64), Image.LANCZOS)
 
 
 def save(img, *path):

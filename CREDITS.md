@@ -37,7 +37,7 @@ desenhado à mão porque a fonte embutida não tem o caractere.
 | Arquivo | Tamanho | Uso |
 |---|---|---|
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
-| `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`) |
+| `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`): o "N" na névoa |
 | `docs/workshop/preview.png` | 256×256 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
 
 Pra regerar: `python3 scripts/gen_images.py`.
