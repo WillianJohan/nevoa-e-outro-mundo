@@ -46,6 +46,12 @@ na mutação e na volta e que o Eco queima na morte: "o personagem inteiro em br
 - [x] A casca de uma volta que ainda queima não entra na lista guardada da 0016 se a variante
       voltar — `ember_shell_not_kept_as_hidden_clothes`.
 - [x] Nunca em jogador reanimado — `ember_skips_reanimated_player`.
+- [x] Zumbi fora da vista (`getTargetAlpha(0) = 0`, bytecode `IsoObject.getTargetAlpha(I)` 0–14):
+      sem brasa (o overlay desenha na tela sem visão nem parede e o revelaria) e sem casca (não
+      prende vaga); vai pelo caminho da 0018, na mutação e na volta —
+      `ember_unseen_zombie_no_shell_no_burst`.
+- [x] Erro da API no driver do alfa no meio: o fim roda mesmo assim e a casca sai —
+      `dissolve_api_error_still_calls_done`, `ember_shell_removed_on_dissolve_error`.
 - [x] Brasas no pé do zumbi, uma no começo da mutação e uma no começo da volta, pelo
       `NOM_Embers` (teto dele) — `ember_bursts_at_each_transition`.
 - [x] Opção "Brasa no corpo inteiro" (ligada, EN/PTBR, falsa com o "Dissolve" desligado);
@@ -67,7 +73,7 @@ na mutação e na volta e que o Eco queima na morte: "o personagem inteiro em br
 - [ ] Horda na vermelha sem engasgo — **falta o jogo:** passo 4.
 - [ ] Opção em Opções > Mods — **falta o jogo:** passo 5.
 
-`./run-tests.sh`: `total=666 passou=666 falhou=0`, `contraste total=4 passou=4`,
+`./run-tests.sh` (com a `main` da 0020): `total=700 passou=700 falhou=0`, `contraste total=4 passou=4`,
 `build total=25 passou=25`.
 
 ## Roteiro in-game
@@ -94,7 +100,7 @@ e sumir" e "Brasa no corpo inteiro" ligados.
    `NOM_Debug.variant("estalador")` de novo: a casca se desfaz e o Estalador fica. Matar um zumbi
    no meio da queima: o corpo e o loot são os de um zumbi comum, sem "Casca de brasa".
 4. **Horda.** `NOM_Debug.redFog(true)` com ~30 zumbis à vista. **Esperado:** no máximo 6 queimam
-   inteiros, ~6 queimam só a peça, o resto troca na hora (`cascas≤6 dissolve≤12` no status);
+   inteiros (só os que estão à vista; atrás de parede, sem casca nem brasa), ~6 queimam só a peça, o resto troca na hora (`cascas≤6 dissolve≤12` no status);
    anotar engasgo no começo e no fim (`NOM_Debug.fog(false)`).
 5. **Opções.** Esc > Opções > Mods: "Brasa no corpo inteiro" (ligada). Desligada: a próxima
    mutação é a da sprint 0018 (só a peça queima). "Monstros queimam…" desligado: troca na hora,
@@ -102,14 +108,17 @@ e sumir" e "Brasa no corpo inteiro" ligados.
 
 ## Checkpoints
 
-- **04/10/2026** — Sprint aberta pelo pedido do Johan (05/10). Bytecode: leitores de
+- **05/10/2026** — Sprint aberta pelo pedido do Johan (05/10). Bytecode: leitores de
   `IsoZombie.itemVisuals`, `getBodyPartClothingDefense` e o som de armadura (item sem
   `BloodLocation` é pulado). Decisão: casca no zumbi vivo pela lista de `ItemVisual`, peça sem
   shader embaixo (o Alpha é um só). Plano escrito.
-- **04/10/2026** — Item, textura, opção e traduções; `client/NOM_EmberShell.lua` e o
+- **05/10/2026** — Item, textura, opção e traduções; `client/NOM_EmberShell.lua` e o
   `NOM_VariantLook` (mutação, volta, cancelamento, morte, reaproveitamento, teto, brasas).
   Testes verdes.
-- **04/10/2026** — Docs: emenda da ADR-016, pz-api-notes §17.5, arte, orçamento, roteiro. Em teste.
+- **05/10/2026** — Docs: emenda da ADR-016, pz-api-notes §17.5, arte, orçamento, roteiro. Em teste.
+- **05/10/2026** — Review: brasa e casca só em zumbi à vista (o overlay revelaria quem está
+  atrás da parede); o fim do dissolve roda também no erro da API (a casca sai); merge da `main`
+  (sprint 0020).
 
 ## Aprendizados
 
@@ -129,8 +138,8 @@ e sumir" e "Brasa no corpo inteiro" ligados.
   silhueta.
 - Brasas: o teto de 4 do overlay é dividido com a morte do Eco; numa horda as brasas da mutação
   podem ocupar as vagas e um Eco morto no mesmo segundo sai sem brasa.
-- Mutação de zumbi fora da vista também ocupa vaga de casca (o efeito nunca o revela, mas a vaga
-  fica presa ~1 s), como na 0018.
+- Só o jogador 0 conta como "à vista" (como o overlay da 0013): na tela dividida, o zumbi que
+  só o jogador 1 vê muda pelo caminho da 0018.
 - Se a casca Hazmat ficar ruim, a próxima opção é um modelo próprio (fora do escopo: sem modelo 3D
   novo até agora, art-direction).
 

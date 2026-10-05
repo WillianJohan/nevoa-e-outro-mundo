@@ -111,7 +111,9 @@ a técnica é a **casca da morte do Eco aplicada ao zumbi vivo** ([sprint 0022](
    passada queimam inteiros, os 6 seguintes só a peça (0018), o resto na hora; os lotes do
    `NightStats` continuam espaçando o começo e o fim.
 5. **Brasas** (`NOM_Embers.burst`, teto de 4 do overlay) no pé do zumbi no começo de cada
-   transição com casca.
+   transição com casca. **Só à vista** (review): casca e brasa exigem `getTargetAlpha(0) > 0`;
+   o overlay desenha na tela sem visão nem parede e revelaria o zumbi, e quem está fora da vista
+   não prende vaga (vai pelo caminho da 0018).
 6. **Morte e reaproveitamento:** a casca sai da lista, do `WornItems` e do inventário (o
    `DoZombieInventory` do solo já a teria feito item); o loot fica o do zumbi vanilla. Inclusive
    depois da troca da volta, quando o `VariantLook` já não guarda o zumbi.
@@ -121,4 +123,3 @@ Consequências: a casca muda a silhueta por ~1 s (a Hazmat é mais larga); sem m
 roupa podem atravessar a malha (roteiro); a primeira mutação de uma sessão compila o mesmo
 `NOM_Dissolve` de antes (nenhum shader novo). Custo: pôr com casca ≤ 22 + 3·N chamadas uma vez,
 cobrir ≤ 12, trocar embaixo e revelar ≤ 14 + 2·N, mais o driver do alfa de sempre.
-

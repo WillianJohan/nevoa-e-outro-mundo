@@ -1349,4 +1349,3 @@ return {
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0, "a casca ficou: " .. types(z))
     end,
 }
-

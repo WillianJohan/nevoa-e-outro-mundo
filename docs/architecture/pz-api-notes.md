@@ -1256,6 +1256,7 @@ Bytecode do B42.21, varredura de todos os métodos de `IsoZombie` e dos leitores
 | Na morte no solo, `DoZombieInventory` faz item vestido e loot de toda a lista antes do `OnZombieDead` (a casca viraria loot: o mod tira da lista, do `WornItems` e do inventário) | EXISTS | §14.4; `ember_dead_mid_mutation_loot_exact`, `ember_dead_after_swap_no_loot` |
 | `getBodyPartClothingDefense` (40–80) e `playWeaponHitArmourSound` (34–91) pulam item cujo script não tem `BloodLocation` (`getBloodClothingType` nulo → `goto`); `cantBite` olha só lugares de máscara/capacete; `helmetFallFromVisuals` só `ChanceToFall > 0`. A casca (`base:zeddmg`, sem `BloodLocation`, defesa ou `ChanceToFall`) não muda combate | EXISTS | `IsoGameCharacter.getBodyPartClothingDefense`, `playWeaponHitArmourSound`, `IsoZombie.cantBite` |
 | `base:zeddmg` multi-item: a casca não expulsa a peça nem a roupa no `WornItems.setItem` | EXISTS | §14.2 |
+| `IsoObject.getTargetAlpha(I)`: o alvo do alfa por jogador que a visão dá (1 no servidor); o mod só usa casca e brasa com alvo > 0 no jogador 0 | EXISTS | `IsoObject.getTargetAlpha(I)` 0–14 (campo `targetAlpha[]`) |
 | **UNKNOWN:** a malha Hazmat sem máscara sobre o corpo vivo: pele, cabelo ou roupa atravessando; a casca aparece em todo zumbi que vira variante à vista | UNKNOWN | roteiro da sprint 0022 |
 
 ## 18. Debug amigável (sprint 0020)

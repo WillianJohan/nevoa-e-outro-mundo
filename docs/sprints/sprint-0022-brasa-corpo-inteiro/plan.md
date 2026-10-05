@@ -60,7 +60,7 @@
 - Create: `mod/42/media/lua/client/NOM_EmberShell.lua`
 - Modify: `mod/42/media/lua/shared/NOM_DissolveRules.lua` (`SHELL_CAP = 6`)
 - Modify: `mod/42/media/lua/client/NOM_VariantLook.lua` (`put`, `leave`, `sync`, `strip`)
-- Modify: `mod/42/media/lua/client/NOM_Debug.lua` (`brasa=N` no status)
+- Modify: `mod/42/media/lua/client/NOM_Debug.lua` (`cascas=N` no status)
 - Test: `tests/test_variant_look.lua` (jogo falso já imita lista, `DoZombieInventory`, `WornItems` multi-item, reaproveitamento e alfa; ganha `opts.body` e um `NOM_Embers` falso com teto), `tests/test_debug.lua`
 
 **Interfaces:**

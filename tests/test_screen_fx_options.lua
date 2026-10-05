@@ -144,4 +144,3 @@ return {
         assert(O.debugPanelKey() == 210, "sem a API: Insert")
     end,
 }
-

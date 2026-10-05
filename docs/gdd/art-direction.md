@@ -107,6 +107,8 @@ Johan (05/10/2026), depois de ver a peça queimar no jogo: "o personagem inteiro
   escondida embaixo dela, e ela se desfaz revelando o zumbi de antes, com a roupa dele.
 - Com a casca, a peça do monstro não se forma sozinha (todo item com o efeito no zumbi queima
   junto, e a casca vai no sentido contrário): ela já está inteira embaixo.
+- **Só o que está à vista queima inteiro:** atrás de parede ou fora da visão, nada de casca nem
+  de brasa (as brasas são desenhadas por cima da tela e entregariam o zumbi).
 - **Na horda (névoa vermelha), só os 6 primeiros queimam inteiros**; os seguintes queimam só a
   peça, como na 0018, e o resto troca na hora.
 - A casca é mais larga que o corpo (é a roupa de proteção): no segundo da queima a silhueta
