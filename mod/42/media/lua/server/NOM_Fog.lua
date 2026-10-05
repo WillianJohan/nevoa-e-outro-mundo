@@ -42,6 +42,18 @@ NOM_World.onChange(function(flag, on)
     debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period))
 end)
 
+-- Save com a névoa aberta (inNight salvo true) carregado sem névoa: não há borda
+-- e o período ficaria aberto, e a névoa seguinte herdaria o número (e o sorteio)
+-- da velha. Na primeira leitura do clima, o estado salvo é acertado. Roda depois
+-- do OnClimateTick do NOM_ClimateLook (que atualiza o NOM_World): carga em ordem
+-- alfabética; se vier antes, tenta de novo no próximo.
+local synced = false
+Events.OnClimateTick.Add(function()
+    if synced or NOM_World.tod == nil then return end
+    NOM_Fog.period()
+    synced = true
+end)
+
 -- Cliente que entra no meio da névoa não viu a borda: pergunta.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
@@ -51,13 +63,16 @@ end)
 -- Sem-rosto ------------------------------------------------------------------
 
 local R = NOM_SemRostoRules
--- Fallback (ADR-007): visto de novo a até STUCK_TILES do ponto de onde saiu, até
--- STUCK_WINDOW_MS depois, quer dizer que o dono não aplicou o movimento.
+-- Fallback (ADR-007): visto de novo, até STUCK_WINDOW_MS depois do movimento, a
+-- até STUCK_TILES de onde saiu e a mais de ARRIVED_TILES do destino, quer dizer
+-- que o dono não aplicou. A janela é curta (o cooldown é 4 s): um zumbi que corre
+-- de volta pela origem depois disso não é confundido com travado.
 local STUCK_TILES = 1.5
-local STUCK_WINDOW_MS = 20000
+local ARRIVED_TILES = 2
+local STUCK_WINDOW_MS = 5000
 local REPLACE_OUTFIT = "Naked" -- só pro spawn: o substituto é vestido pelo ID em seguida
 
--- [zumbi] = { at = ms do último movimento, x, y = de onde saiu }.
+-- [zumbi] = { at = ms do último movimento, ox, oy = de onde saiu, dx, dy = destino }.
 -- ponytail: chave é o objeto; zumbi que vai pro virtual fica até a névoa acabar.
 local moved = {}
 
@@ -66,8 +81,9 @@ local function dist(ax, ay, bx, by)
 end
 
 local function stuck(z, last, now)
-    return isServer() and last ~= nil and now - last.at <= STUCK_WINDOW_MS
-        and dist(z:getX(), z:getY(), last.x, last.y) <= STUCK_TILES
+    if not isServer() or last == nil or now - last.at > STUCK_WINDOW_MS then return false end
+    local zx, zy = z:getX(), z:getY()
+    return dist(zx, zy, last.ox, last.oy) <= STUCK_TILES and dist(zx, zy, last.dx, last.dy) > ARRIVED_TILES
 end
 
 -- Troca o zumbi por outro igual no destino: mesmo persistentOutfitID (mesma
@@ -79,6 +95,7 @@ local function replace(z, x, y, zz)
     if not list or list:size() == 0 then return nil end
     local nz = list:get(0)
     nz:dressInPersistentOutfitID(z:getPersistentOutfitID())
+    NOM_SemRosto.move(nz, x, y, zz) -- centro do tile
     local id = z:getOnlineID()
     z:removeFromWorld()
     z:removeFromSquare()
@@ -86,23 +103,32 @@ local function replace(z, x, y, zz)
     return nz
 end
 
+-- O destino tem que ser chão de verdade no andar de quem viu: square carregado,
+-- livre e sem água (NOM_SemRosto.floorOk). Vale pro movimento e pro fallback.
+local function destinationOk(player, x, y, zz)
+    if zz ~= math.floor(player:getZ()) then return false end
+    return NOM_SemRosto.floorOk(getCell():getGridSquare(x, y, zz))
+end
+
 -- player viu o Sem-rosto z; (x, y, zz) é o destino que o cliente achou fora da
 -- vista dele. O servidor confere o que dá pra conferir sem a luz do cliente:
--- névoa, variante, destino mais perto e não colado, cooldown.
+-- névoa, variante, destino mais perto e não colado (nem o zumbi colado: aí ele
+-- ataca), chão, cooldown.
 function NOM_Fog.seen(player, z, x, y, zz)
     if not NOM_World.fog or not NOM_Config.get("SemRostoEnabled") then return false end
     if not NOM_SemRosto.isSemRosto(z, NOM_Fog.period()) then return false end
     if not R.validMove(player:getX(), player:getY(), z:getX(), z:getY(), x + 0.5, y + 0.5) then return false end
+    if not destinationOk(player, x, y, zz) then return false end
     local now, last = getTimestampMs(), moved[z]
     if last and not R.ready(last.at, now) then return false end
     if stuck(z, last, now) then
         local nz = replace(z, x, y, zz)
         moved[z] = nil
-        if nz then moved[nz] = { at = now, x = x, y = y } end
+        if nz then moved[nz] = { at = now, ox = x + 0.5, oy = y + 0.5, dx = x + 0.5, dy = y + 0.5 } end
         debugLog("semrosto substituido x=" .. x .. " y=" .. y)
         return nz ~= nil
     end
-    moved[z] = { at = now, x = z:getX(), y = z:getY() }
+    moved[z] = { at = now, ox = z:getX(), oy = z:getY(), dx = x + 0.5, dy = y + 0.5 }
     -- Dedicado: a cópia do servidor só vale se ninguém for dono; o dono recebe
     -- semRostoMove e move a dele (o servidor aceita a posição do dono).
     NOM_SemRosto.move(z, x, y, zz)

@@ -23,4 +23,15 @@ function NOM_NightCount.current()
     return NOM_EcoRules.syncNight(state(), NOM_World.night)
 end
 
+-- Save com a noite aberta carregado de dia: a primeira leitura do clima fecha a
+-- noite salva, senão a noite seguinte herdaria o número (e o sorteio) da velha.
+-- Roda depois do OnClimateTick do NOM_ClimateLook (ordem alfabética de carga); se
+-- vier antes, tenta de novo no próximo.
+local synced = false
+Events.OnClimateTick.Add(function()
+    if synced or NOM_World.tod == nil then return end
+    NOM_NightCount.current()
+    synced = true
+end)
+
 return NOM_NightCount

@@ -92,9 +92,12 @@ local function setup(opts)
     NOM_NightStats.install = function() G.installed = G.installed + 1 end
     package.loaded["NOM_NightStats"] = NOM_NightStats
     dofile(FILE)
+    -- o ClimateLook atualiza o NOM_World no OnClimateTick; os outros arquivos do
+    -- servidor rodam depois dele na mesma volta
     function G.setTime(tod)
         G.world.tod = tod
         NOM_World.update(0)
+        fire("OnClimateTick")
     end
     function G.minutes(n)
         for _ = 1, n do fire("EveryOneMinute") end
@@ -249,5 +252,14 @@ return {
             G.minutes(20)
             assert(#G.sounds == 0, "caso " .. i .. " atraiu")
         end
+    end,
+    -- save com a noite aberta carregado de dia: a primeira leitura fecha a noite,
+    -- e a seguinte é outra (senão as variantes repetiriam o sorteio da velha)
+    night_number_closes_stale_after_reload = function()
+        local md = { NevoaEOutroMundo = { eco = { night = 3, inNight = true } } }
+        local G = setup({ tod = 12, globalMD = md })
+        assert(md.NevoaEOutroMundo.eco.inNight == false, "noite velha ficou aberta")
+        G.setTime(22)
+        assert(NOM_NightStats.nightNumber == 4, "noite nova com o número da velha: " .. tostring(NOM_NightStats.nightNumber))
     end,
 }
