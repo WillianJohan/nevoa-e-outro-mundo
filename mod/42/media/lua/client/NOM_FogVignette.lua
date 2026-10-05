@@ -16,6 +16,10 @@
 -- dele pelo marcador do gradiente) e os floats reescritos todo tick com o estado do
 -- NOM_ScreenFx. A vinheta de busca some; o shader faz a dele. Um dono só do
 -- SearchMode: os dois modos não brigam.
+--
+-- Bloom (sprint 0018, ADR-016): a opção do jogador vai na fração do marcador do gradiente
+-- (NOM_ScreenFxRules.channel). Com bloom > 0 o canal fica tomado também fora da névoa
+-- (sem nada da névoa nele), e solta pro forrageamento do mesmo jeito.
 if isServer() then return end
 
 require "NOM_Config"
@@ -79,7 +83,7 @@ local function channelIntensity()
 end
 
 local function channelValues(now)
-    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sample(now), now, channelIntensity())
+    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sample(now), now, channelIntensity(), NOM_ScreenFxOptions.bloom())
 end
 
 local function write(pn, c)
@@ -111,6 +115,7 @@ local function releaseChannel(pn)
 end
 
 local function channelWanted(now)
+    if NOM_ScreenFxOptions.bloom() > 0 then return true end
     if channelIntensity() <= 0 then return false end
     local c = channelValues(now)
     return c.blur > 0 or c.darkness > 0

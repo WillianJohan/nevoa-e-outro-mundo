@@ -4,5 +4,11 @@
     "Base.NOM_SemRostoEstatica": "Rosto de chiado",
     "Base.NOM_CarpideiraCabelo": "Cabelo embolado",
     "Base.NOM_EcoCinza": "Cinzas",
-    "Base.NOM_EcoVeu": "Véu de fumaça"
+    "Base.NOM_EcoVeu": "Véu de fumaça",
+    "Base.NOM_EstaladorVendaFx": "Venda de arame enferrujado",
+    "Base.NOM_CorredorBocaFx": "Boca rasgada",
+    "Base.NOM_SemRostoEstaticaFx": "Rosto de chiado",
+    "Base.NOM_CarpideiraCabeloFx": "Cabelo embolado",
+    "Base.NOM_EcoVeuFx": "Véu de fumaça",
+    "Base.NOM_EcoCasca": "Casca de cinza"
 }

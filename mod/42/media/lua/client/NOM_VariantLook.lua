@@ -12,19 +12,26 @@
 -- * ZombiePacket leva só outfitId e skinTextureIndex: nada disto viaja.
 -- Quem decide a variante é o NOM_NightStats, na passada em lotes: ele chama o
 -- gancho NOM_NightStats.look(z, kind) instalado aqui.
+--
+-- Dissolve (sprint 0018, ADR-016), com a opção do jogador ligada: a peça é o gêmeo *Fx
+-- (o mesmo item com <m_Shader>NOM_Dissolve</m_Shader>), que se forma na mutação e se
+-- desfaz no fim antes de sair da lista (client/NOM_Dissolve.lua dirige o Alpha). A pele
+-- e a roupa trocam de uma vez, no começo da mutação e no fim do desfazer. Desligada:
+-- peça sem shader e troca instantânea, como nas sprints 0012–0017.
 if isServer() then return end
 
 require "NOM_NightStats"
 require "NOM_VariantRules"
+require "NOM_Dissolve"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
 -- Direção de arte: docs/gdd/art-direction.md.
 NOM_VariantLook = {
     LOOKS = {
-        estalador = { skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda" },
-        corredor = { skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca" },
-        semrosto = { item = "Base.NOM_SemRostoEstatica" },
-        carpideira = { skin = "NOM_Carpideira", item = "Base.NOM_CarpideiraCabelo" },
+        estalador = { skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
+        corredor = { skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
+        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        carpideira = { skin = "NOM_Carpideira", item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx" },
     },
     -- Sprint 0016 (Johan, 05/10): na variante, a roupa vanilla some; fica só o que é do
     -- monstro. Padrões (Lua) de tipo de item que continuam à mostra: as camadas de
@@ -34,8 +41,9 @@ NOM_VariantLook = {
 
 local LOOKS = NOM_VariantLook.LOOKS
 local KEEP = NOM_VariantLook.KEEP
--- [zumbi] = { kind, id, item, iv, all }: só o que este processo pôs (all = a lista de
--- ItemVisual original, na ordem, quando alguma roupa foi escondida). A tabela evita
+-- [zumbi] = { kind, id, item, iv, all, leaving }: só o que este processo pôs (all = a
+-- lista de ItemVisual original, na ordem, quando alguma roupa foi escondida; leaving = a
+-- peça está se desfazendo e o strip vem no fim do efeito). A tabela evita
 -- qualquer chamada Java quando nada muda. Só em memória: nada disto vai pro save.
 local worn = {}
 
@@ -96,26 +104,45 @@ end
 local function put(z, kind, id)
     if not z:isPersistentOutfitInit() or z:isReanimatedPlayer() then return end
     local look = LOOKS[kind]
-    local w = { kind = kind, id = id, item = look.item }
+    local fx = NOM_Dissolve.enabled()
+    local w = { kind = kind, id = id, item = fx and look.fx or look.item }
     worn[z] = w
     if look.skin then z:getHumanVisual():setSkinTextureName(look.skin) end
     local iv = ItemVisual.new()
-    iv:setItemType(look.item)
+    iv:setItemType(w.item)
     local list = z:getItemVisuals()
     list:add(iv)
     w.iv = iv
     hide(list, w)
     z:resetModelNextFrame()
+    if fx then NOM_Dissolve.run(z, "in") end -- no teto, a peça já vem inteira
 end
 
 local function strip(z)
     local w = worn[z]
     if not w then return end
     worn[z] = nil
+    NOM_Dissolve.stop(z)
     if w.iv then unhide(z, z:getItemVisuals(), w) end -- remove(Object): os objetos que este processo tirou e pôs
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
+end
+
+-- Fim da variante: com o gêmeo, desfaz a peça e só tira no fim do efeito. Os efeitos
+-- nascem nos lotes da passada (BATCH por tick) e duram o mesmo tempo: os strips do fim
+-- continuam espalhados. Sem efeito (desligado, peça sem shader, teto): na hora.
+local function leave(z)
+    local w = worn[z]
+    if w.leaving then return end
+    local function done(x)
+        if worn[x] == w and w.leaving then strip(x) end
+    end
+    if w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
+        w.leaving = true
+        return
+    end
+    strip(z)
 end
 
 -- kind: variante na névoa ou nil (comum, Eco, fora da névoa). id: o
@@ -123,8 +150,15 @@ end
 -- com outro ID apaga a pele e a lista, e aí pinta de novo.
 function NOM_VariantLook.sync(z, kind, id)
     local w = worn[z]
-    if w and w.kind == kind and w.id == id then return end
+    if w and w.kind == kind and w.id == id then
+        if w.leaving then -- voltou antes de sumir: forma de novo do limiar em que estava
+            w.leaving = nil
+            if not NOM_Dissolve.run(z, "in") then NOM_Dissolve.stop(z) end
+        end
+        return
+    end
     if not w and kind == nil then return end
+    if w and kind == nil then return leave(z) end
     strip(z)
     if kind and LOOKS[kind] then put(z, kind, id) end
 end

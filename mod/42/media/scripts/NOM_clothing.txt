@@ -71,4 +71,72 @@ module Base
         CanHaveHoles = false,
         ClothingItem = NOM_EcoVeu,
     }
+
+    /* Sprint 0018: gêmeos *Fx com o shader do dissolve (clothingItems/*Fx.xml) e a casca de
+       cinza do Eco. Mesmo lugar das originais; a casca em base:zeddmg (multi-item) pra não
+       expulsar a cinza do base:boilersuit. */
+    item NOM_EstaladorVendaFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = SkiGogglesWhite,
+        BodyLocation = base:zeddmg,
+        ClothingItem = NOM_EstaladorVendaFx,
+    }
+
+    item NOM_CorredorBocaFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = SurgicalMaskBlue,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CorredorBocaFx,
+    }
+
+    item NOM_SemRostoEstaticaFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_SemRostoEstaticaFx,
+    }
+
+    item NOM_CarpideiraCabeloFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = VeilWedding,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraCabeloFx,
+    }
+
+    item NOM_EcoVeuFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = VeilWedding,
+        BodyLocation = base:hat,
+        CanHaveHoles = false,
+        ClothingItem = NOM_EcoVeuFx,
+    }
+
+    item NOM_EcoCasca
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Hazmatsuit,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_EcoCasca,
+    }
 }

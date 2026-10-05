@@ -36,6 +36,9 @@ NOM_ScreenFx = {
     -- fog/red (0..1, com fade), static (volume do rádio), flashAt/flashStrength (grito)
     state = NOM_ScreenFxRules.new(),
     ui = nil,
+    -- desenhos de outros sistemas no mesmo overlay, com ou sem névoa: função(el, agora).
+    -- Sem nada a desenhar, cada uma sai sem tocar no Java (as brasas do Eco, sprint 0018).
+    extra = {},
 }
 
 local S = NOM_ScreenFx
@@ -72,8 +75,7 @@ local function frame(now)
     return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity())
 end
 
-local function draw(el)
-    local now = getTimestampMs()
+local function layers(el, now)
     local l = frame(now)
     if not R.visible(l) then return end -- fora da névoa: só a hora acima
     if MainScreen and MainScreen.instance and MainScreen.instance:isReallyVisible() then return end
@@ -104,6 +106,13 @@ local function draw(el)
     end
     local f = tex(T.white)
     if f and l.flash > 0 then el:drawTextureScaled(f, x, y, w, h, l.flash, 0.6, 0.02, 0.02) end
+end
+
+-- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco).
+local function draw(el)
+    local now = getTimestampMs()
+    layers(el, now)
+    for i = 1, #S.extra do S.extra[i](el, now) end
 end
 
 local function updateStatic()

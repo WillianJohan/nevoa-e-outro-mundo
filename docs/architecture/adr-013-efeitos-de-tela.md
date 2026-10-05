@@ -90,3 +90,11 @@ principal brigaria com ele. O que o B42 dá ([pz-api-notes §15](pz-api-notes.md
 - UNKNOWNs do jogo (roteiro da sprint): texturas do mod por `getTexture`, o 1×1 px por baixo
   do HUD de verdade, `PZAPI.ModOptions` aparecendo em Opções > Mods, o shader compilando
   no driver do Johan (passa no `glslangValidator`, 330 e 120).
+
+## Emenda de 2026-10-05 — sprint 0018: bloom e o canal fora da névoa
+
+O `screen.frag` do mod2 ganha bloom de uma passada. A intensidade do jogador (Opções > Mods,
+"Bloom") vai na fração do marcador do gradiente (`13 + bloom·0,25`); com bloom > 0 o canal fica
+tomado também fora da névoa, sem nada da névoa nele, e solta pro forrageamento como antes. O
+overlay ganha uma lista `NOM_ScreenFx.extra` de desenhos por quadro com ou sem névoa (as brasas do
+Eco). Detalhe em [ADR-016](adr-016-dissolve-e-bloom.md).

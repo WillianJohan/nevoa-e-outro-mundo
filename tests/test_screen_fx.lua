@@ -168,6 +168,16 @@ local function setup(opts)
         x = 0, y = 0, w = 300, h = 300, visible = true, consume = true }
     G.ui[1] = G.hud
     dofile(FILE)
+    if opts.embers then -- sprint 0018: brasas do Eco pelo mesmo overlay
+        _G.NOM_Embers = nil
+        package.loaded.NOM_Embers = nil
+        package.loaded.NOM_ScreenFx = NOM_ScreenFx -- o dofile não registra: o require carregaria de novo
+        G.zoom = 1
+        isoToScreenX = function(pn, x, y, z) G.java = G.java + 1; assert(pn == 0); return (x - y) * 32 + 960 end
+        isoToScreenY = function(pn, x, y, z) G.java = G.java + 1; assert(pn == 0); return (x + y) * 16 - z * 96 + 100 end
+        getCore = function() return { getZoom = function(_, pn) G.java = G.java + 1; return G.zoom end } end
+        dofile("mod/42/media/lua/client/NOM_Embers.lua")
+    end
     G.p = G.player({ x = 100, y = 100, face = 0 })
     if not opts.noStart then G.fire("OnGameStart") end
     return G
@@ -402,5 +412,72 @@ return {
         getTexture = function() return nil end
         fogOn(G)
         assert(#mine(G.frameDraws()) == 0)
+    end,
+
+    -- Sprint 0018: brasas da morte do Eco, pelo overlay, com ou sem névoa ---------------
+
+    embers_drawn_outside_fog_near_the_eco = function()
+        local G = setup({ embers = true })
+        G.frame(5)
+        assert(NOM_Embers.burst(10.5, 20.5, 0))
+        G.frame(3)
+        local d = mine(G.frameDraws())
+        assert(#d > 0 and #d <= NOM_EmberRules.COUNT, "brasas: " .. #d)
+        local sx, sy = isoToScreenX(0, 10.5, 20.5, 0), isoToScreenY(0, 10.5, 20.5, 0)
+        for _, e in ipairs(d) do
+            assert(e.tex == NOM_Embers.TEXTURE, "textura " .. tostring(e.tex))
+            assert(math.abs(e.x - sx) < 60 and e.y < sy + 10 and e.y > sy - 120, "brasa longe do Eco")
+            assert(e.w >= 1 and e.w <= 5)
+        end
+        -- zoom afastado (2): o rastro encolhe pela metade
+        G.zoom = 2
+        local far = mine(G.frameDraws())
+        assert(far[1].w <= d[1].w and math.abs(far[1].x - sx) <= math.abs(d[1].x - sx) + 1)
+    end,
+
+    embers_end_and_menu = function()
+        local G = setup({ embers = true })
+        NOM_Embers.burst(10.5, 20.5, 0)
+        G.menu = true
+        assert(#mine(G.frameDraws()) == 0, "brasa com o menu aberto")
+        G.menu = false
+        G.frame(math.ceil(NOM_EmberRules.LIFE_MS / 16) + 2)
+        assert(NOM_Embers.count() == 0 and #mine(G.frameDraws()) == 0, "brasa depois da vida")
+    end,
+
+    embers_cap_and_budget = function()
+        local G = setup({ embers = true })
+        for _ = 1, NOM_EmberRules.CAP do assert(NOM_Embers.burst(1, 1, 0)) end
+        assert(not NOM_Embers.burst(1, 1, 0), "passou do teto")
+        G.frame(8) -- fora do tick da distância do Sem-rosto (a cada 10)
+        G.java = 0
+        local d = mine(G.frameDraws())
+        local B = NOM_EmberRules.CAP
+        assert(G.java <= 4 + 2 * B + #d, "custou " .. G.java .. " com " .. #d .. " desenhos")
+        G.fire("OnMainMenuEnter")
+        assert(NOM_Embers.count() == 0)
+    end,
+
+    -- sem brasa, o quadro fora da névoa continua 1 chamada
+    embers_idle_cheap = function()
+        local G = setup({ embers = true })
+        G.frame(60) -- fora do tick da distância do Sem-rosto (a cada 10)
+        G.java = 0
+        assert(#mine(G.frameDraws()) == 0 and G.java <= 1, "custou " .. G.java)
+    end,
+
+    -- review da 0018: as brasas por cima do grão e da vinheta
+    embers_over_fog_layers = function()
+        local G = setup({ embers = true })
+        fogOn(G)
+        NOM_Embers.burst(10.5, 20.5, 0)
+        G.frame(3)
+        local d = mine(G.frameDraws())
+        local vig, firstEmber
+        for i, e in ipairs(d) do
+            if e.tex == NOM_ScreenFxRules.TEXTURES.vignette then vig = i end
+            if e.tex == NOM_Embers.TEXTURE and not firstEmber then firstEmber = i end
+        end
+        assert(vig and firstEmber and firstEmber > vig, "brasa por baixo da vinheta")
     end,
 }

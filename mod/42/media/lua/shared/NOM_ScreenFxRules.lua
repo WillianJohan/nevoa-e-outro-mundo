@@ -17,6 +17,9 @@ NOM_ScreenFxRules = {
     -- manda gradient·tile/2 em ParamInfo.z e tile em ParamInfo.y; o vanilla usa
     -- raios de poucos tiles). Igual ao NOM_MARKER do screen.frag do mod2.
     MARKER = 13,
+    -- Sprint 0018: o bloom do jogador (0..2) vai na fração do marcador, 13 + bloom·escala
+    -- (até 13,5: nunca chega no próximo inteiro). Igual ao NOM_BLOOM_SCALE do screen.frag.
+    BLOOM_SCALE = 0.25,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
     TEXTURES = {
         grain = {
@@ -94,14 +97,15 @@ end
 -- desligado, o jogo manda os valores todo quadro e não mexe neles, spike do shader):
 -- blur → SearchMode.x = névoa, radius → SearchMode.y = chiado do Sem-rosto,
 -- desat → ParamInfo.w = vermelha, darkness → VarInfo.y = pulso; 0..2 pela intensidade.
-function R.channel(s, now, i)
+-- bloom (sprint 0018): a opção do jogador, 0..2, na fração do gradiente; não depende de i.
+function R.channel(s, now, i, bloom)
     i = clamp(i or 1, 0, 2)
     return {
         blur = s.fog * i,
         radius = s.static * s.fog * i,
         desat = s.red * i,
         darkness = R.flash(now, s.flashAt, s.flashStrength) * i,
-        gradient = R.MARKER,
+        gradient = R.MARKER + clamp(bloom or 0, 0, 2) * R.BLOOM_SCALE,
     }
 end
 

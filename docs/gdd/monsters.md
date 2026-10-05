@@ -16,6 +16,10 @@ noite, e somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias no começ
 ([world-states.md](world-states.md)). A noite fica com a agressividade dos zumbis comuns
 ([night.md](night.md)) e o Eco.
 
+**Mutação queima (sprint 0018):** a peça do monstro se forma queimando quando o zumbi vira
+variante e se desfaz queimando quando ele volta a ser comum
+([art-direction.md](art-direction.md#queimar-ao-surgir-e-ao-sumir-sprint-0018)).
+
 Estalador, Corredor, Sem-rosto e Carpideira são **zumbis existentes**
 ([ADR-001](../architecture/adr-001-variantes-por-moddata.md)). O Eco é a única
 exceção: ele é **spawnado** ([ADR-003](../architecture/adr-003-eco-spawnado.md)).
@@ -177,7 +181,10 @@ Sem cadáver: o corpo do Eco é removido pelo servidor logo depois que nasce
 no roteiro da [sprint 0002](../sprints/sprint-0002-eco/README.md#roteiro-in-game).
 
 Visual (sprint 0012): cinza e fumaça no corpo todo e um véu de fumaça, itens do mod no
-outfit `NOM_Eco` ([art-direction.md](art-direction.md)). Vida baixa e lento (arrastado, sem o bônus da noite) desde a sprint
+outfit `NOM_Eco` ([art-direction.md](art-direction.md)). **Morte (sprint 0018):** o Eco queima
+até a cinza durante a queda, com brasas subindo, e o corpo não aparece
+([art-direction.md](art-direction.md#queimar-ao-surgir-e-ao-sumir-sprint-0018)); no MP o cliente
+não tem a queda (o corpo chega pronto), então só as brasas. Vida baixa e lento (arrastado, sem o bônus da noite) desde a sprint
 0003. Dano baixo não existe por zumbi no jogo e não será feito ([night.md](night.md#sem-força-e-sem-dano-à-noite)).
 
 ## Sobreposição

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum) |
+| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum), 0018 (dissolve) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -72,6 +72,28 @@
   O visual é o mesmo quando ela grita (sem animação): a imobilidade e o cabelo bastam.
 - **Eco** — alma fraca de um morto, some no amanhecer: cinza e fumaça com forma de gente, sem
   rosto, claro no escuro.
+
+## Queimar ao surgir e ao sumir (sprint 0018)
+
+Pedido do Johan (05/10/2026): o efeito de *dissolve* (o limiar sobre ruído com a borda acesa, do
+tutorial clássico de Unity) quando o Eco morre e quando o zumbi vira monstro e volta.
+
+- **A peça do monstro queima pra existir e queima pra sumir.** Na mutação, a venda, a boca, o
+  rosto de chiado e o cabelo se formam em ~1 s, em manchas grandes com a borda em brasa laranja;
+  no fim da variante, se desfazem do mesmo jeito, e só então a roupa comum volta. A pele troca de
+  uma vez: o corpo do zumbi não queima (limite do jogo, o corpo usa o shader vanilla) e fica a no
+  mínimo 85% de opacidade durante o efeito.
+- **O Eco queima até a cinza.** Ao morrer, o corpo vira uma casca de cinza (a roupa de proteção
+  vanilla, pintada com a cinza do Eco), que queima com o véu em ~1 s; o que sobra some em meio
+  segundo, brasas e cinza sobem, e nada fica no chão. **Casca: decisão de arte do Johan
+  pendente** (ela muda a silhueta no segundo da morte; sem ela, só o véu queima e o corpo some em
+  fade).
+- **Só o laranja da brasa** é cor nova: é o fogo do Outro Mundo, não magia. A borda é estreita
+  (lê como papel queimando, não como contorno de videogame).
+- Efeito colateral aceito: um monstro que sai da vista (o fade vanilla) também queima a peça no
+  começo do fade. Combina com a névoa.
+- Opção do jogador ("Monstros queimam ao surgir e sumir", Opções > Mods): desligada, a troca é
+  instantânea, como antes. Técnica: [ADR-016](../architecture/adr-016-dissolve-e-bloom.md).
 
 ## Limites conhecidos
 

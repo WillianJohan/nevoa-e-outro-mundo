@@ -84,6 +84,8 @@ return {
         local src = assert(read(SHADER))
         local m = src:match("const float NOM_MARKER = ([%d%.]+);")
         assert(m and tonumber(m) == NOM_ScreenFxRules.MARKER, "marcador do shader ~= NOM_ScreenFxRules.MARKER")
+        local b = src:match("const float NOM_BLOOM_SCALE = ([%d%.]+);")
+        assert(b and tonumber(b) == NOM_ScreenFxRules.BLOOM_SCALE, "escala do bloom do shader ~= NOM_ScreenFxRules.BLOOM_SCALE")
     end,
 
     -- licença: nenhuma linha do screen.frag da The Indie Stone (pula sem o jogo)
@@ -111,6 +113,21 @@ return {
             os.execute("command -v glslangValidator >/dev/null 2>&1") ~= true then return end
         local ok = os.execute("glslangValidator -S frag " .. SHADER .. " >/tmp/nom_glsl.txt 2>&1")
         assert(ok == 0 or ok == true, "não compila: " .. (read("/tmp/nom_glsl.txt") or ""))
+        -- e depois da reescrita GL 2.1 que o jogo faz (review da 0018)
+        local f = assert(io.open("/tmp/nom_screen_120.frag", "w"))
+        f:write(dofile("tests/gl21.lua")(assert(read(SHADER)), false))
+        f:close()
+        ok = os.execute("glslangValidator -S frag /tmp/nom_screen_120.frag >/tmp/nom_glsl.txt 2>&1")
+        assert(ok == 0 or ok == true, "não compila em 120: " .. (read("/tmp/nom_glsl.txt") or ""))
+    end,
+
+    -- sprint 0018: o bloom só lê a cena do DIFFUSE, sai do marcador e cresce com a névoa
+    shader_bloom = function()
+        local src = assert(read(SHADER))
+        local body = assert(src:match("vec3 nomBloom%([^)]*%)%s*(%b{})"), "falta nomBloom")
+        assert(body:find("DIFFUSE", 1, true), "o bloom não lê a cena")
+        local main = assert(src:match("void main%(%)%s*(%b{})"))
+        assert(main:find("nomBloom(", 1, true) and main:find("NOM_BLOOM_SCALE", 1, true), "main sem o bloom do marcador")
     end,
 
     shader_modinfo = function()

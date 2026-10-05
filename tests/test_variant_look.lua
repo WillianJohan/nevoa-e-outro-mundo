@@ -24,6 +24,10 @@
 --   corpo direto (BurntToDeath). Cliente de MP (DeadZombiePacket → dieNetwork): os
 --   vestidos e o inventário chegam do servidor, onKilled sem DoZombieInventory, e o
 --   corpo copia pele e WornItems depois do OnZombieDead.
+-- * Sprint 0018 (dissolve): alfa por jogador como o IsoObject (setAlpha(pn, a) com clamp,
+--   getAlpha(pn)); o mundo anda o alfa 0,28 por tick pro alvo da visão (updateAlpha) antes
+--   do OnTick; um tick = 16 ms de getTimestampMs. A opção do jogador (dissolve) vem de
+--   opts.dissolve: desligada por padrão, que é o comportamento das sprints 0012–0017.
 -- * Rede: nada do visual viaja (ZombiePacket.set leva só outfitId e skinTextureIndex);
 --   sendClientCommand/sendServerCommand aqui explodem.
 local FILE_STATS = "mod/42/media/lua/shared/NOM_NightStats.lua"
@@ -199,6 +203,10 @@ local function setup(opts)
         function z:doZombieSpeed(t) if t and t > 0 then self.speedType = t end end
         function z:DoZombieStats() end
         function z:isReanimatedPlayer() vc(); return self.reanimated end
+        z.alpha, z.seen = 1, true
+        function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
+        function z:getAlpha(pn) vc(); assert(pn == 0); return self.alpha end
+        function z:getCurrentSquare() vc(); return self.dead and nil or {} end
         return z
     end
     function G.spawn(o)
@@ -240,7 +248,22 @@ local function setup(opts)
         for i, v in ipairs(G.zombies) do if v == z then table.remove(G.zombies, i) break end end
         return corpse
     end
-    function G.tick(n) for _ = 1, n or 1 do fire("OnTick", 0) end end
+    G.now = 1759999999000
+    G.minAlpha = {} -- [z] = menor alfa desenhado desde a última limpeza
+    function G.tick(n)
+        for _ = 1, n or 1 do
+            for _, z in ipairs(G.zombies) do -- IsoObject.updateAlpha, no update do mundo
+                local t = z.seen and 1 or 0
+                z.alpha = z.alpha < t and math.min(t, z.alpha + 0.28) or math.max(t, z.alpha - 0.28)
+            end
+            fire("OnTick", 0)
+            for _, z in ipairs(G.zombies) do
+                G.minAlpha[z] = math.min(G.minAlpha[z] or 1, z.alpha)
+            end
+            G.now = G.now + 16
+        end
+    end
+    function G.ms(ms) G.tick(math.ceil(ms / 16)) end
     function G.converge() G.tick(math.ceil(#G.zombies / NOM_NightStats.BATCH) + 2) end
 
     local lore = { Speed = 2, Sight = 2, Hearing = 2, Cognition = 2, Memory = 2 }
@@ -260,6 +283,11 @@ local function setup(opts)
         end }
     end
     getGameTime = function() return { isZombieInactivityPhase = function() return false end } end
+    getTimestampMs = function() return G.now end
+    getNumActivePlayers = function() return 1 end
+    G.dissolve = opts.dissolve == true
+    NOM_ScreenFxOptions = { dissolve = function() return G.dissolve end }
+    package.loaded.NOM_ScreenFxOptions = NOM_ScreenFxOptions
     sendClientCommand = function() error("visual não vai pela rede", 2) end
     sendServerCommand = function() error("visual não vai pela rede", 2) end
     Events = setmetatable({}, {
@@ -269,7 +297,7 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook" }) do
+    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook", "NOM_Dissolve" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -819,5 +847,157 @@ return {
         G.converge()
         assert(NOM_NightStats.variants[z] == "estalador", "perdeu a variante com o chapéu")
         assert(piece() == before, "repintou por causa do bit do chapéu")
+    end,
+
+    -- Sprint 0018 (dissolve ligado) ------------------------------------------------
+
+    look_fx_items_exist_in_script = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
+        local src = f:read("*a")
+        f:close()
+        setup()
+        for _, k in ipairs(KINDS) do
+            local look = NOM_VariantLook.LOOKS[k]
+            assert(look.fx == look.item .. "Fx", k .. ": gêmeo " .. tostring(look.fx))
+            assert(src:find("item " .. look.fx:match("^Base%.(.+)$") .. "\n", 1, true), k .. ": gêmeo fora do script")
+        end
+    end,
+
+    -- mutação: o gêmeo com shader entra e se forma (o alfa na faixa do shader), roupa já some
+    dissolve_look_in_on_mutation = function()
+        local G = setup({ dissolve = true })
+        local z = G.spawn({ id = idFor("estalador", 40) })
+        fogOn(40)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.estalador
+        assert(hasItem(z, look.fx) and not hasItem(z, look.item), "sem o gêmeo: " .. types(z))
+        assert(not hasItem(z, OUTFIT[1]) and z.hv.name == look.skin)
+        assert(NOM_Dissolve.busy(z), "sem efeito na mutação")
+        G.minAlpha = {}
+        G.ms(NOM_DissolveRules.MS + 100)
+        assert(G.minAlpha[z] >= NOM_DissolveRules.BAND - 1e-9, "corpo abaixo da faixa: " .. G.minAlpha[z])
+        assert(not NOM_Dissolve.busy(z) and z.alpha == 1)
+    end,
+
+    -- fim da variante: a peça se desfaz e só então a roupa volta, igualzinha
+    dissolve_look_out_before_strip = function()
+        local G = setup({ dissolve = true })
+        local z = G.spawn({ id = idFor("corredor", 41), extra = { "Base.Hat_Army" } })
+        fogOn(41)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.corredor
+        assert(hasItem(z, look.fx) and NOM_Dissolve.busy(z), "tirou antes de desfazer")
+        assert(NOM_VariantLook.count() == 1)
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(types(z) == table.concat(OUTFIT, ",") .. ",Base.Hat_Army", "roupa: " .. types(z))
+        assert(z.hv.name == nil and NOM_VariantLook.count() == 0 and not NOM_Dissolve.busy(z))
+    end,
+
+    -- a névoa volta (ou a passada pede a mesma variante) no meio: a peça se forma de novo
+    dissolve_look_leave_cancelled_by_same_look = function()
+        local G = setup({ dissolve = true })
+        local z = G.spawn({ id = idFor("carpideira", 42) })
+        fogOn(42)
+        G.converge()
+        G.ms(1200)
+        fogOff()
+        G.converge()
+        G.ms(200)
+        fogOn(42)
+        G.converge()
+        G.ms(NOM_DissolveRules.MS * 2)
+        local look = NOM_VariantLook.LOOKS.carpideira
+        assert(hasItem(z, look.fx) and z.hv.name == look.skin, "a peça sumiu: " .. types(z))
+        assert(not hasItem(z, OUTFIT[1]), "a roupa voltou com a variante")
+        assert(z.alpha == 1 and not NOM_Dissolve.busy(z))
+        fogOff()
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(types(z) == table.concat(OUTFIT, ","), "depois do cancelamento não sai mais: " .. types(z))
+    end,
+
+    -- troca de tipo (debug, período novo) no meio do efeito: na hora, sem resto
+    dissolve_look_kind_change_immediate = function()
+        local G = setup({ dissolve = true })
+        local id = idFor("estalador", 43)
+        local z = G.spawn({ id = id })
+        fogOn(43)
+        G.converge()
+        NOM_VariantRules.forced[NOM_VariantRules.baseId(id)] = "corredor"
+        G.converge()
+        local L = NOM_VariantLook.LOOKS
+        assert(hasItem(z, L.corredor.fx) and not hasItem(z, L.estalador.fx), types(z))
+        NOM_VariantRules.forced = {}
+    end,
+
+    -- morte no meio do "desfazer": loot exato, sem gêmeo, e o efeito sai
+    dissolve_look_dead_mid_leave_loot_exact = function()
+        local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash" }
+        local G = setup({ dissolve = true })
+        local id = idFor("semrosto", 44)
+        local want = G.kill(G.spawn({ id = id, extra = extra }))
+        local z = G.spawn({ id = id, extra = extra })
+        fogOn(44)
+        G.converge()
+        fogOff()
+        G.converge()
+        assert(NOM_Dissolve.busy(z))
+        local c = G.kill(z)
+        assert(table.concat(c.inv, ",") == table.concat(want.inv, ","), "loot " .. table.concat(c.inv, ","))
+        assert(table.concat(c.worn, ",") == table.concat(want.worn, ","))
+        assert(not NOM_Dissolve.busy(z) and NOM_VariantLook.count() == 0)
+        G.ms(NOM_DissolveRules.MS + 50) -- o fim do efeito que saiu não roda nada
+    end,
+
+    -- objeto reaproveitado no meio: outro zumbi, limpo
+    dissolve_look_reuse_mid_effect = function()
+        local G = setup({ dissolve = true })
+        local z = G.spawn({ id = idFor("estalador", 45) })
+        fogOn(45)
+        G.converge()
+        assert(NOM_Dissolve.busy(z))
+        G.reuse(z, idFor(nil, 45))
+        assert(not NOM_Dissolve.busy(z))
+        G.render(z)
+        G.converge()
+        G.ms(NOM_DissolveRules.MS + 50)
+        assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil)
+    end,
+
+    -- vermelha com horda: o teto vale (o resto troca na hora) e o fim continua espalhado
+    dissolve_look_red_fog_cap = function()
+        local G = setup({ dissolve = true })
+        for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
+        fogOn(46, true)
+        G.converge()
+        assert(NOM_VariantLook.count() == 40 and NOM_Dissolve.count() <= NOM_DissolveRules.CAP)
+        G.ms(NOM_DissolveRules.MS + 50)
+        fogOff()
+        local restoredPerTick, before = 0, 40
+        for _ = 1, 200 do
+            G.tick(1)
+            local left = NOM_VariantLook.count()
+            restoredPerTick = math.max(restoredPerTick, before - left)
+            before = left
+            assert(NOM_Dissolve.count() <= NOM_DissolveRules.CAP)
+        end
+        assert(before == 0, "sobraram " .. before)
+        assert(restoredPerTick <= NOM_NightStats.BATCH, "um tick devolveu " .. restoredPerTick)
+        for _, z in ipairs(G.zombies) do assert(types(z) == table.concat(OUTFIT, ",")) end
+    end,
+
+    -- desligado: a peça sem shader e nada de alfa (as sprints 0012–0017)
+    dissolve_look_off_plain = function()
+        local G = setup({ dissolve = false })
+        local z = G.spawn({ id = idFor("estalador", 47) })
+        fogOn(47)
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.item) and not hasItem(z, NOM_VariantLook.LOOKS.estalador.fx))
+        G.minAlpha = {}
+        G.ms(500)
+        assert(G.minAlpha[z] == 1 and NOM_Dissolve.count() == 0)
     end,
 }

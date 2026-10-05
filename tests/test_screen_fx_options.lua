@@ -83,4 +83,21 @@ return {
         opt.value = 5
         assert(O.overlayDensity() == 2)
     end,
+
+    -- sprint 0018: dissolve (liga/desliga) e bloom do shader (0..2), do jogador
+    dissolve_and_bloom_options = function()
+        local O = load(true)
+        local opts = PZAPI.ModOptions:getOptions("NevoaEOutroMundo")
+        local d, b = opts:getOption("Dissolve"), opts:getOption("Bloom")
+        assert(d and d.type == "tickbox" and d.value == true and d.name:find("^UI_NOM_") and d.tooltip:find("^UI_NOM_"))
+        assert(b and b.type == "slider" and b.min == 0 and b.max == 2 and b.value == 1 and b.tooltip:find("^UI_NOM_"))
+        assert(O.dissolve() == true and O.bloom() == 1)
+        d.value = false
+        b.value = 1.4
+        assert(O.dissolve() == false and O.bloom() == 1.4)
+        b.value = 9
+        assert(O.bloom() == 2)
+        local O2 = load(false)
+        assert(O2.dissolve() == true and O2.bloom() == 1, "sem a API: padrão")
+    end,
 }

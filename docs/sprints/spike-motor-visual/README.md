@@ -13,9 +13,13 @@ realistas, **bloom** e um efeito de dissolver nos modelos? Existe API pra modifi
 
 ## Em português claro (pro Johan)
 
-**Sim, existe um jeito, mas não é pelo Lua: é pelo ZombieBuddy, que injeta Java no jogo.** O
-Lua do PZ só troca arquivos de shader que já existem; não cria shader novo, não escolhe shader por
-personagem e não mexe no pipeline. Com o ZombieBuddy, um `.jar` nosso pode mudar qualquer método
+**Sim, e em parte sem Java** (ver a [correção da sprint 0018](#correção-sprint-0018)). Sem Java
+há dois caminhos: **trocar um arquivo de shader que já existe** (o mod2 faz isso com o
+`screen.frag`) e **criar um shader novo, com nome nosso, numa peça de roupa** pelo `<m_Shader>` do
+XML do item. Os limites: o corpo é sempre `basicEffect`, não há uniform de tempo, e o único canal
+Lua → shader de peça por quadro é o `Alpha` do personagem (`setAlpha(pn, a)` no `OnTick`). O resto
+(o corpo, escolher shader por personagem, mais canais) **é pelo ZombieBuddy, que injeta Java no
+jogo.** O Lua do PZ sozinho não cria shader nem mexe no pipeline. Com o ZombieBuddy, um `.jar` nosso pode mudar qualquer método
 Java do jogo enquanto ele roda. É assim que o ShadowZ faz as sombras dele.
 
 "Herdar o `basicEffect`" não existe do jeito que soa. GLSL não tem herança. Na prática é **copiar a
@@ -28,9 +32,9 @@ Por desejo, em resumo:
 - **Bloom:** dá. Uma versão barata sai só trocando o `screen.frag` (o mod2 já troca). A versão
   bonita (brilho que "vaza" de verdade em volta das luzes) precisa de Java. **É o melhor primeiro
   alvo.**
-- **Dissolver por modelo:** dá com Java. O jogo já tem um "saco de parâmetros" por modelo
-  desenhado; falta um shader nosso e um patch que o escolha só pros nossos monstros. A outra spike
-  (`spike/dissolve`) vê o caminho sem Java.
+- **Dissolver por modelo:** nas peças dos monstros, **dá sem Java** (`<m_Shader>` + `Alpha`, feito na
+  sprint 0018). O corpo inteiro só com Java: o jogo já tem um "saco de parâmetros" por modelo
+  desenhado; falta um shader nosso e um patch que o escolha só pros nossos monstros.
 - **Fogo e fumaça melhores:** o fogo de hoje é sprite animado (desenho 2D). Dá pra trocar os
   desenhos sem Java. Tem também um sistema de partículas de fogo na GPU, pronto e **desligado**, no
   jogo. Ligar isso é Java e é aposta.
@@ -109,10 +113,13 @@ dissolver completo seriam ~4–6 arquivos.
 - **Shader novo a partir do Java — EXISTS, com sinal forte.** O carregador lê por
   `ShaderProgram` → `ZomboidFileSystem.getString`, que resolve arquivos de mod (spike-shader). O
   ShadowZ traz arquivos de shader com nomes que o vanilla não tem (`solar_model_shadow.vert`,
-  `solar_shadow_union.frag` etc.), então um mod com Java usa shader novo na prática. Pelo Lua,
-  continua impossível (spike-shader).
-- Per-item sem Java (o `ClothingItem.shader` e afins): **é o assunto da `spike/dissolve`**, não
-  repetido aqui.
+  `solar_shadow_union.frag` etc.), então um mod com Java usa shader novo na prática.
+- **Shader novo sem Java, numa peça — EXISTS** (correção da sprint 0018): a cadeia
+  `ClothingItemXML` (`m_Shader`) → `ClothingItemAssetManager.onFileTaskFinished` 170–173 →
+  `PopTemplateManager.addClothingItem` 100–157 → `ShaderManager.getOrCreateShader` 86–110, com os
+  arquivos do mod achados pelo `activeFileMap` (`ZomboidFileSystem.loadMod` 216). Não sobrescreve
+  nada do vanilla: não briga com o ShadowZ nem com o mod2. O que sobra pro Java: o corpo
+  (`basicEffect` fixo), escolher shader por personagem e canais extras pelo `ShaderPropertyBlock`.
 
 ### 2. ZombieBuddy
 
@@ -233,9 +240,10 @@ nativa. Fora disso, o render é Java + GLSL.
 | **Bloom** | não | sim, fraco (1 passada no `screen.frag`) | **sim, bom** (FBOs + blur) | ~1 sprint (3–5 dias, mais o setup de build Java) | médio: uma classe-alvo (`MultiTextureFBO2`) | conflita se os dois mexem no `screen.frag`; o bloom por Java compondo por cima pode **coexistir** (UNKNOWN) |
 | Fogo melhor | não | talvez: trocar a textura dos sprites de fogo (override de texturepack por mod: UNKNOWN, não verificado) | sim: ligar `ParticlesFire` dormente ou partículas próprias | 1–2 sprints | alto: código morto do vanilla, sem garantia de funcionar | sem conflito conhecido |
 | Fumaça melhor | parcial (já temos névoa por clima) | talvez: textura (idem fogo) | sim: idem fogo | 1–2 sprints | alto | sem conflito conhecido |
-| Luz melhor | parcial: cor e força da luz global (ADR-008), luzes extras via `IsoLightSource` | sim: curva de cor nos shaders de tile e modelo | só a aparência (bloom, glow); propagação **não** (nativo) | via bloom | médio | ShadowZ faz luz do sol e ambiente: **sobrepõe** |
+| Luz melhor | parcial: cor e força da luz global (ADR-008), luzes extras via `IsoLightSource` | sim: curva de cor nos shaders de tile e modelo; brilho emissivo nas peças dos monstros (`<m_Shader>`) | só a aparência (bloom, glow); propagação **não** (nativo) | via bloom | médio | ShadowZ faz luz do sol e ambiente: **sobrepõe** |
 | Sombras melhores | não | não (é mancha de textura) | sim, mas é refazer o ShadowZ | 2+ sprints | alto | **usar o ShadowZ**, não competir |
-| **Dissolver por modelo** | não (spike-shader) | ver `spike/dissolve` (per-item) | **sim**: shader novo + patch em `Model.DrawSolid` + `ShaderPropertyBlock` | ~1 sprint | médio-alto: caminho instanciado (`RenderList`) | provável conflito se o ShadowZ também patcheia o desenho de modelo pra "mesh shadows" (UNKNOWN) |
+| **Dissolver por modelo** | não | **sim nas peças** (`<m_Shader>`, limiar no `Alpha`; ~1 sprint, risco baixo-médio, sem conflito) | só pro **corpo inteiro**: shader novo + patch em `Model.DrawSolid` + `ShaderPropertyBlock` | ~1 sprint | médio-alto: caminho instanciado (`RenderList`) | (b) sem conflito; (c) provável conflito se o ShadowZ também patcheia o desenho de modelo pra "mesh shadows" (UNKNOWN) |
+| **Visual próprio das variantes** | não | **sim** (shader próprio nas peças do mod, `<m_Shader>`) | não precisa | — | baixo-médio | sem conflito |
 | Grão / aberração cromática | overlay (sprint 0013) | mod2 (`screen.frag`) | nada a ganhar | — | — | mod2 já é `incompatible=\ShadowZ` |
 
 ### 5. Recomendação
@@ -243,15 +251,15 @@ nativa. Fora disso, o render é Java + GLSL.
 1. **Não começar o mod Java agora.** Primeiro, dois probes baratos que decidem se vale:
    - Bloom de uma passada no `screen.frag` do mod2 (b). Se ficar bom o bastante, não precisa de Java
      pra bloom.
-   - Resultado da `spike/dissolve`. Se o dissolver sai sem Java (per-item), o Java perde o segundo
-     motivo de existir.
+   - ~~Resultado da `spike/dissolve`.~~ O dissolve nas peças já funciona sem Java (sprint 0018): o
+     Java perdeu o segundo motivo de existir.
 2. **Se um dos dois falhar**, abrir um **terceiro mod** `NevoaEOutroMundo_Visual`: opcional, `require=\ZombieBuddy`,
    jar em `media/java/client/` (só cliente, nada de gameplay), item próprio no Workshop. Assim, quem
    não tem ZombieBuddy, ou joga em servidor sem ele, não perde nada.
    - **Sprint 1: bloom por Java** (patch em `MultiTextureFBO2.render` + 3 FBOs + shaders próprios),
      liga/desliga e intensidade nas Opções > Mods, mais forte na névoa.
-   - **Sprint 2: dissolver** nos nossos monstros (shader `nom_dissolve*` com a interface do
-     `basicEffect` + patch no desenho do modelo + `NomVisual.setDissolve` exposto ao Lua).
+   - **Sprint 2: dissolver o corpo inteiro, só se precisar** (o das peças já existe sem Java:
+     patch no desenho do modelo + `NomVisual.setDissolve` exposto ao Lua).
    - Fogo e fumaça: só textura (b), se um dia virar prioridade. `ParticlesFire` fica arquivado.
 3. **Sombra e luz do sol: ShadowZ.** Usar ele em vez de refazer. Mas o
    conflito do `screen.frag` (mod2 × ShadowZ) continua. Se o bloom for Java e compor **por cima**,
@@ -274,6 +282,17 @@ nada mudou, mais se mudou. Suporte extra: jogador que não instalou o agente vai
 3. **Cliente sem agente em servidor com o mod visual:** entra e joga sem erro (esperado).
 
 Nenhum arquivo de probe foi adicionado ao repo.
+
+## Correção (sprint 0018)
+
+Esta spike dizia que **sem Java nenhum shader novo pode existir**. Está errado: vale só pro Lua.
+A [spike-dissolve](../spike-dissolve/README.md) achou o `<m_Shader>` do item de roupa, que cria um
+shader novo com nome nosso a partir dos arquivos do mod, sem sobrescrever nada do vanilla. A sprint
+0018 usa isso no dissolve das peças ([ADR-016](../../architecture/adr-016-dissolve-e-bloom.md)).
+Corrigidos acima: o resumo em português claro, a seção 1 (item EXISTS com a cadeia do bytecode), a
+tabela de viabilidade (dissolver nas peças, luz emissiva nas peças, linha nova "Visual próprio das
+variantes") e a recomendação (o 2º motivo do Java caiu; a sprint Java 2 vira "corpo inteiro, só se
+precisar"). Bloom, fogo, fumaça e sombra não mudam.
 
 ## Sessões
 
