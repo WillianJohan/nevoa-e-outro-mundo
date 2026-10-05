@@ -186,7 +186,12 @@ local function setup(opts)
             fire("OnTick", 0)
         end
     end
-    function G.tenMinutes() fire("EveryTenMinutes") end
+    -- EveryTenMinutes começa a varredura; ela anda um jogador por tick (OnTick)
+    function G.fireTenMinutes() fire("EveryTenMinutes") end
+    function G.tenMinutes()
+        fire("EveryTenMinutes")
+        for _ = 1, #G.players do fire("OnTick", 0) end
+    end
     function G.setTime(tod)
         G.world.tod = tod
         NOM_World.update(0)
@@ -654,5 +659,27 @@ return {
         assert(ids[e.outfitID] and ids[e.outfitID][G.globalMD.NevoaEOutroMundo.eco.night], "ID não guardado na noite")
         G.setTime(7)
         assert(#G.ecos() == 0 and NOM_Eco.loaded() == 0, "Eco do debug não sumiu no amanhecer")
+    end,
+    -- a varredura é espalhada: um jogador por tick, com os squares já lidos
+    -- compartilhados entre os ticks; o pico é o raio de um jogador, não N×
+    eco_scan_one_player_per_tick = function()
+        local G = setup({ sandbox = { EcoRadius = 10 },
+            players = { { x = 100, y = 100, z = 0 }, { x = 300, y = 100, z = 0 }, { x = 500, y = 100, z = 0 } } })
+        bodies(G, 3, 101, 101)
+        bodies(G, 3, 301, 101)
+        bodies(G, 3, 501, 101)
+        G.fireTenMinutes()
+        local perTick = {}
+        for i = 1, 4 do
+            G.squareCalls = {}
+            G.tick()
+            local n = 0
+            for _ in pairs(G.squareCalls) do n = n + 1 end
+            perTick[i] = n
+            assert(n <= 21 * 21, "tick " .. i .. " leu " .. n .. " squares")
+        end
+        assert(perTick[1] > 0 and perTick[2] > 0 and perTick[3] > 0 and perTick[4] == 0,
+            "não andou um jogador por tick: " .. table.concat(perTick, ","))
+        assert(#G.ecos() == 9, "Ecos: " .. #G.ecos())
     end,
 }
