@@ -63,7 +63,9 @@ end
 -- (grito do Corredor, sumiço do Sem-rosto) e os clientes (quem simula e quem vê)
 -- recebem o mesmo forçado.
 -- Névoa vermelha (sprint 0010): aberta vira na hora; senão, sirene vermelha e evento.
+-- toggle: vermelha aberta ou sirene vermelha contando desfaz; senão força.
 function ops.redFog(_, a)
+    if a.toggle then a.value = not (NOM_World.red == true or NOM_FogEvent.status().sirenRed == true) end
     return "nevoa vermelha=" .. tostring(NOM_FogEvent.setRed(a.value))
 end
 
@@ -79,20 +81,34 @@ function ops.spawnEco(player)
     return "eco spawn=" .. tostring(ok)
 end
 
--- Hora do relógio (sprint 0020): no solo é o relógio local; no MP o do servidor, que
--- os clientes seguem (GameTime.syncClock). O mod lê no próximo OnClimateTick.
+-- Hora do relógio (sprint 0020), sempre pra frente: hora menor que a de agora vira a
+-- mesma hora do dia seguinte (h + 24). O GameTime.update seguinte (938–972) tira 24, chama
+-- advanceOneDay e, no servidor, marca o sync do relógio. Voltar no tempo dessincroniza a
+-- data dos clientes do dedicado (SyncClockPacket) e volta o getWorldAgeHours, que os
+-- timers da névoa usam. No solo é o relógio local; no MP o do servidor.
 function ops.time(_, a)
-    getGameTime():setTimeOfDay(a.hour)
+    local gt = getGameTime()
+    local h = a.hour
+    if h < gt:getTimeOfDay() then h = h + 24 end
+    gt:setTimeOfDay(h)
     return "hora=" .. fmt(a.hour)
 end
 
--- Zumbis no tile pedido (o cliente mira na frente do jogador), no máximo a
--- SPAWN_REACH tiles de quem pede. outfit nil: o jogo sorteia (ISSpawnHordeUI.lua:73, 276).
+local function knownOutfit(name)
+    return getAllOutfits(false):contains(name) or getAllOutfits(true):contains(name)
+end
+
+-- Zumbis em 3×3 em volta do tile pedido (o cliente mira na frente do jogador), no máximo
+-- a SPAWN_REACH tiles e um andar de quem pede. addZombiesInOutfitArea sorteia cada um com
+-- Rand.Next(x1, x2), fim exclusivo (bytecode 0–54): x-1..x+1. outfit nil: o jogo sorteia
+-- (ISSpawnHordeUI.lua:73, 276); nome que não existe é recusado (getAllOutfits, :71-72).
 function ops.spawn(player, a)
     local dx, dy = a.x - player:getX(), a.y - player:getY()
     local reach = NOM_DebugRules.SPAWN_REACH
-    if not (dx * dx + dy * dy <= reach * reach) then return "spawn longe" end
-    local list = addZombiesInOutfit(math.floor(a.x), math.floor(a.y), math.floor(a.z), a.n, a.outfit, 50)
+    if not (dx * dx + dy * dy <= reach * reach and math.abs(a.z - player:getZ()) <= 1) then return "spawn longe" end
+    if a.outfit and not knownOutfit(a.outfit) then return "spawn outfit desconhecido=" .. a.outfit end
+    local fx, fy, fz = math.floor(a.x), math.floor(a.y), math.floor(a.z)
+    local list = addZombiesInOutfitArea(fx - 1, fy - 1, fx + 2, fy + 2, fz, a.n, a.outfit, nil)
     return "spawn n=" .. a.n .. " criados=" .. (list and list:size() or 0) .. " outfit=" .. (a.outfit or "-")
 end
 

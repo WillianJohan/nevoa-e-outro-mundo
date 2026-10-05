@@ -80,18 +80,46 @@ local function setup(opts)
             G.sentServer[#G.sentServer + 1] = { player = a, module = b, command = c, args = d }
         end
     end
-    G.world = { tod = opts.tod or 12 }
+    -- Relógio do GameTime: setTimeOfDay só grava o campo (bytecode 0–5); o update seguinte
+    -- (GameTime.update 938–972) vê hora ≥ 24, tira 24, chama advanceOneDay e, no servidor,
+    -- marca o sync do relógio. Hora pra trás não passa por ali: os clientes do dedicado
+    -- dessincronizam a data (SyncClockPacket) e o getWorldAgeHours volta (timers do mod).
+    G.world = { tod = opts.tod or 12, day = 0 }
+    function G.tick()
+        if G.world.tod >= 24 then
+            G.world.tod = G.world.tod - 24
+            G.world.day = G.world.day + 1
+            G.world.synced = true
+        end
+    end
     getGameTime = function()
-        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end,
-            -- LastStandSetup.lua:63; no MP o relógio do servidor vai pros clientes (GameTime.syncClock)
+        return { getTimeOfDay = function() return G.world.tod end,
+            getWorldAgeHours = function() return G.world.day * 24 + G.world.tod end,
             setTimeOfDay = function(_, h) G.world.tod = h end }
     end
-    -- addZombiesInOutfit(x, y, z, n, outfit, femaleChance) → ArrayList (pz-api-notes §1.3);
-    -- zumbis desligados no mundo: lista vazia ("Cannot spawn.")
-    G.spawnCalls = {}
-    addZombiesInOutfit = function(x, y, z, n, outfit, female)
-        G.spawnCalls[#G.spawnCalls + 1] = { x = x, y = y, z = z, n = n, outfit = outfit, female = female }
-        local made = G.zombiesDisabled and 0 or n
+    -- getAllOutfits(feminino) → ArrayList<String> (ISSpawnHordeUI.lua:71-72)
+    local function jlist(t)
+        return { contains = function(_, v) for _, x in ipairs(t) do if x == v then return true end end return false end }
+    end
+    getAllOutfits = function(female) return jlist(female and { "Nurse", "Doctor" } or { "Police", "Doctor" }) end
+    -- addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance) → ArrayList: n vezes
+    -- addZombiesInOutfit num tile sorteado com Rand.Next(x1, x2) (fim exclusivo) (bytecode
+    -- 0–54). Cada um volta vazio com square nil, outfit desconhecido ou zumbis desligados.
+    G.spawnCalls, G.made = {}, {}
+    local KNOWN = { Police = true, Doctor = true, Nurse = true }
+    addZombiesInOutfitArea = function(x1, y1, x2, y2, z, n, outfit, female)
+        G.spawnCalls[#G.spawnCalls + 1] = { x1 = x1, y1 = y1, x2 = x2, y2 = y2, z = z, n = n, outfit = outfit, female = female }
+        local made = 0
+        for i = 1, n do
+            local x = x1 + (i - 1) % (x2 - x1)
+            local y = y1 + math.floor((i - 1) / (x2 - x1)) % (y2 - y1)
+            local ok = not G.zombiesDisabled and (outfit == nil or KNOWN[outfit])
+                and not (G.noSquare and G.noSquare(x, y, z))
+            if ok then
+                made = made + 1
+                G.made[#G.made + 1] = { x = x, y = y, z = z }
+            end
+        end
         return { size = function() return made end }
     end
     getClimateManager = function()
@@ -132,7 +160,7 @@ local function setup(opts)
             return true
         end,
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
-        status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs } end,
+        status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
     }
     NOM_Eco = {
@@ -410,7 +438,8 @@ return {
         local G = setup()
         local p = G.player({ x = 0, y = 0 })
         NOM_Debug.send({ op = "time", hour = 13.5 })
-        assert(G.world.tod == 13.5, "hora não mudou")
+        G.tick()
+        assert(G.world.tod == 13.5 and G.world.day == 0, "hora não mudou")
         assert(has(G.printed, "^%[NOM%] debug hora=13.50"), table.concat(G.printed, "\n"))
         local G2 = setup({ server = true, loadClient = false })
         local q = G2.player({ x = 0, y = 0, cap = false })
@@ -420,17 +449,49 @@ return {
         G3.fire("OnClientCommand", "NevoaEOutroMundo", "debug", G3.player({ x = 0, y = 0 }), { op = "time", hour = 3 })
         assert(G3.world.tod == 12, "sem -debug mudou a hora")
     end) end,
+    -- hora pra trás vira a mesma hora do dia seguinte: o relógio só anda pra frente
+    debug_time_never_goes_back = function() run(function()
+        local G = setup({ loadClient = false, tod = 20 })
+        local p = G.player({ x = 0, y = 0 })
+        local age = G.world.day * 24 + G.world.tod
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 6 })
+        G.tick()
+        assert(G.world.tod == 6 and G.world.day == 1 and G.world.synced, "não foi pro dia seguinte")
+        assert(G.world.day * 24 + G.world.tod > age, "idade do mundo voltou")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 6 })
+        G.tick()
+        assert(G.world.tod == 6 and G.world.day == 1, "mesma hora pulou um dia")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 22 })
+        G.tick()
+        assert(G.world.tod == 22 and G.world.day == 1, "pra frente no mesmo dia")
+        assert(has(G.printed, "^%[NOM%] debug hora=6.00"), table.concat(G.printed, "\n"))
+    end) end,
+    -- 3×3 em volta do tile pedido (Rand.Next com fim exclusivo: x-1..x+1)
     debug_server_spawn_in_front = function() run(function()
         local G = setup({ loadClient = false })
         local p = G.player({ x = 100, y = 100 })
-        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 103.7, y = 100.2, z = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 9, x = 103.7, y = 100.2, z = 0 })
         local c = G.spawnCalls[1]
-        assert(c and c.x == 103 and c.y == 100 and c.z == 0 and c.n == 5 and c.outfit == nil and c.female == 50,
-            "spawn errado")
-        assert(has(G.printed, "^%[NOM%] debug spawn n=5 criados=5 outfit=%-"), table.concat(G.printed, "\n"))
-        G.zombiesDisabled = true
-        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 2, outfit = "Police", x = 101, y = 101, z = 0 })
-        assert(has(G.printed, "spawn n=2 criados=0 outfit=Police"), table.concat(G.printed, "\n"))
+        assert(c and c.x1 == 102 and c.y1 == 99 and c.x2 == 105 and c.y2 == 102 and c.z == 0 and c.n == 9
+            and c.outfit == nil and c.female == nil, "área errada")
+        local tiles = {}
+        for _, z in ipairs(G.made) do tiles[z.x .. "," .. z.y] = true end
+        local n = 0
+        for _ in pairs(tiles) do n = n + 1 end
+        assert(n == 9, "não espalhou: " .. n .. " tiles")
+        assert(has(G.printed, "^%[NOM%] debug spawn n=9 criados=9 outfit=%-"), table.concat(G.printed, "\n"))
+        G.noSquare = function(x) return x == 102 end -- parede/fora do mapa
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 3, outfit = "Police", x = 103, y = 100, z = 0 })
+        assert(has(G.printed, "spawn n=3 criados=2 outfit=Police"), table.concat(G.printed, "\n"))
+    end) end,
+    debug_server_spawn_rejects_unknown_outfit = function() run(function()
+        local G = setup({ loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 2, outfit = "Polcie", x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 0, "spawnou outfit desconhecido")
+        assert(has(G.printed, "^%[NOM%] debug spawn outfit desconhecido=Polcie"), table.concat(G.printed, "\n"))
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 1, outfit = "Nurse", x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 1, "outfit só feminino recusado")
     end) end,
     -- quem pede não spawna longe de si (nem com o pedido montado à mão)
     debug_server_spawn_rejects_far = function() run(function()
@@ -438,6 +499,7 @@ return {
         local p = G.player({ x = 100, y = 100 })
         G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 120, y = 100, z = 0 })
         G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = math.huge, y = 100, z = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 101, y = 100, z = 3 })
         assert(#G.spawnCalls == 0, "spawnou longe")
         assert(has(G.printed, "^%[NOM%] debug spawn longe"), table.concat(G.printed, "\n"))
         local weak = G.player({ x = 100, y = 100, cap = false })
@@ -485,10 +547,14 @@ return {
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.redFog()
-        NOM_FogState.red = true
+        NOM_World.red = true -- névoa vermelha aberta
+        NOM.redFog()
+        NOM_World.red = false
+        G.sirenMs, G.sirenRed = 30000, true -- sirene vermelha contando
         NOM.redFog()
         NOM.redFog(true)
-        assert(table.concat(G.fogCalls, ",") == "red:true,red:false,red:true", table.concat(G.fogCalls, ","))
+        assert(G.sentClient[1].args.toggle == true, "toggle não foi pro servidor")
+        assert(table.concat(G.fogCalls, ",") == "red:true,red:false,red:false,red:true", table.concat(G.fogCalls, ","))
         NOM.night()
         assert(NOM_World.forced.night == true)
         NOM_NightStats.night = true
@@ -501,14 +567,20 @@ return {
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.time(22)
+        G.tick()
         assert(G.world.tod == 22)
         NOM.time(25)
+        G.tick()
         assert(G.world.tod == 1, "25 não virou 1")
         NOM.time(-1)
+        G.tick()
         assert(G.world.tod == 23, "-1 não virou 23")
         local n = #G.sentClient
         NOM.time("meia-noite")
         NOM.time()
+        NOM.time(math.huge)
+        NOM.time(-math.huge)
+        NOM.time(0 / 0)
         assert(#G.sentClient == n, "mandou hora inválida")
         assert(has(G.printed, "^%[NOM%] debug uso: NOM.time"), table.concat(G.printed, "\n"))
     end) end,
@@ -519,7 +591,7 @@ return {
         NOM.spawn(1000, "Police")
         NOM.spawn(-3)
         local a, b, c = G.spawnCalls[1], G.spawnCalls[2], G.spawnCalls[3]
-        assert(a.n == 1 and a.x == 100 and a.y == 103 and a.outfit == nil, "não spawnou 3 tiles na frente")
+        assert(a.n == 1 and a.x1 == 99 and a.y1 == 102 and a.outfit == nil, "não spawnou 3 tiles na frente")
         assert(b.n == 50 and b.outfit == "Police", "não limitou a 50")
         assert(c.n == 1, "negativo não virou 1")
         local n = #G.sentClient

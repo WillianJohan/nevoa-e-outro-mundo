@@ -50,6 +50,10 @@ return {
         assert(D.parse({ op = "redFog" }).value == false)
         assert(D.parse({ op = "redFog", value = "sim" }) == nil)
         assert(D.parse({ op = "redFog", value = 1 }) == nil)
+        -- sprint 0020: toggle decidido no servidor
+        assert(D.parse({ op = "redFog", toggle = true }).toggle == true)
+        assert(D.parse({ op = "redFog", value = true }).toggle == false)
+        assert(D.parse({ op = "redFog", toggle = 1 }) == nil)
     end,
     -- sprint 0020: hora do relógio (NOM.time), 0 ≤ h < 24
     debug_rules_parse_time = function()

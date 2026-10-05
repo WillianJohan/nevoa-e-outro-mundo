@@ -11,7 +11,6 @@ require "NOM_Debug"
 require "NOM_DebugRules"
 require "NOM_Math"
 require "NOM_NightStats"
-require "NOM_FogState"
 
 NOM = {}
 
@@ -26,8 +25,9 @@ function NOM.fog(on, skip)
     NOM_Debug.fog(on, skip)
 end
 
+-- Sem argumento quem decide é o servidor (sabe da sirene vermelha contando).
 function NOM.redFog(on)
-    if on == nil then on = not NOM_FogState.red end
+    if on == nil then return NOM_Debug.send({ op = "redFog", toggle = true }) end
     NOM_Debug.redFog(on)
 end
 
@@ -37,16 +37,17 @@ function NOM.night(on)
     NOM_Debug.night(on)
 end
 
--- Hora do relógio do jogo; 25 vira 1, -1 vira 23.
+-- Hora do relógio do jogo; 25 vira 1, -1 vira 23. Sempre pra frente: hora que já
+-- passou hoje é a de amanhã (server/NOM_DebugServer.lua).
 function NOM.time(hour)
-    if type(hour) ~= "number" or hour ~= hour then
+    if type(hour) ~= "number" or hour ~= hour or hour == math.huge or hour == -math.huge then
         print("[NOM] debug uso: NOM.time(hora), ex.: NOM.time(22)")
         return
     end
     NOM_Debug.send({ op = "time", hour = NOM_Math.mod(hour, 24) })
 end
 
--- n zumbis (1 a 50) com o outfit (nil: sorteado) a 3 tiles na frente do jogador.
+-- n zumbis (1 a 50) com o outfit (nil: sorteado) espalhados em 3×3 a 3 tiles na frente do jogador.
 function NOM.spawn(n, outfit)
     local p = player()
     if not p then return end
@@ -89,8 +90,8 @@ NOM.HELP = {
     { "NOM.fog(on, skip)", "névoa: true sirene e névoa em 30 s, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
     { "NOM.redFog(on)", "névoa vermelha: true força (com névoa aberta vira na hora), false desfaz; sem argumento inverte" },
     { "NOM.night(on)", "noite forçada (true) ou dia forçado (false); sem argumento inverte; NOM_Debug.night() volta pro relógio" },
-    { "NOM.time(hora)", "muda a hora do relógio do jogo, ex.: NOM.time(22)" },
-    { "NOM.spawn(n, outfit)", "n zumbis (até 50) 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
+    { "NOM.time(hora)", "muda a hora do relógio do jogo, sempre pra frente (hora que já passou é a de amanhã), ex.: NOM.time(22)" },
+    { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
