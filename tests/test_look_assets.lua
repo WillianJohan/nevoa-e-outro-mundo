@@ -99,6 +99,20 @@ return {
         end
     end,
 
+    -- rodar o gerador de novo não muda um byte das texturas do visual (semente fixa)
+    look_assets_deterministic = function()
+        local paths = {}
+        for _, n in ipairs({ "Estalador", "Corredor", "Carpideira" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu" }) do
+            paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
+        end
+        local before = {}
+        for _, p in ipairs(paths) do before[p] = read(MEDIA .. p) end
+        local ok = os.execute("python3 scripts/gen_textures.py >/dev/null 2>&1")
+        assert(ok == 0 or ok == true, "gen_textures.py falhou")
+        for _, p in ipairs(paths) do assert(read(MEDIA .. p) == before[p], p .. " mudou ao regerar") end
+    end,
+
     -- o Eco é spawnado com o outfit do mod: o visual dele é só dado (nada de Lua)
     look_assets_eco_outfit_uses_mod_items = function()
         local guids = guidTable()

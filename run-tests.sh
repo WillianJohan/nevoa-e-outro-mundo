@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Testa a lógica pura do mod (sem o jogo) e o build do Workshop. Exit code 0 = tudo passou.
+# Testa a lógica pura do mod (sem o jogo), o contraste das texturas e o build do Workshop. Exit code 0 = tudo passou.
 cd "$(dirname "$0")" || exit 1
-luajit tests/run.lua && bash tests/test_build_workshop.sh
+luajit tests/run.lua && python3 tests/test_look_contrast.py && bash tests/test_build_workshop.sh
