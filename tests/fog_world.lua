@@ -262,7 +262,9 @@ end
 -- persistentOutfitID no formato do jogo; acha um ID que é (ou não) Sem-rosto no período.
 function W.semRostoID(period, want, chance)
     require "NOM_VariantRules"
-    local c = { semRostoOn = true, semRostoChance = chance or 5 }
+    require "NOM_Config"
+    -- sem chance explícita, a do padrão do sandbox (a que o mod usa no teste)
+    local c = { semRostoOn = true, semRostoChance = chance or NOM_Config.DEFAULTS.SemRostoChance }
     for seed = 1, 500 do
         local id = 7 * 65536 + seed
         if NOM_VariantRules.semRosto(id, period, c) == want then return id end

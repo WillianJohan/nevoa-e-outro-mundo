@@ -38,14 +38,14 @@ return {
         SandboxVars = nil
         assert(NOM_Config.get("EstaladorEnabled") == true)
         assert(NOM_Config.get("CorredorEnabled") == true)
-        assert(NOM_Config.get("EstaladorChance") == 5)
-        assert(NOM_Config.get("CorredorChance") == 10)
+        assert(NOM_Config.get("EstaladorChance") == 15)
+        assert(NOM_Config.get("CorredorChance") == 15)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
     config_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("SemRostoEnabled") == true)
-        assert(NOM_Config.get("SemRostoChance") == 5)
+        assert(NOM_Config.get("SemRostoChance") == 15)
         assert(NOM_Config.get("FogAmbience") == true)
         assert(NOM_Config.get("FogOverlays") == true)
         assert(NOM_Config.get("FogVignette") == true)
@@ -62,6 +62,22 @@ return {
             assert(NOM_Config.DEFAULTS[name] ~= nil, "sem default: " .. name)
         end
         assert(n >= 24, "esperava as opções da névoa, achou " .. n)
+    end,
+    -- o default do Lua (sem sandbox) e o do menu (sandbox-options.txt) são o mesmo número
+    config_sandbox_defaults_match_lua = function()
+        local f = assert(io.open("mod/42/media/sandbox-options.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local n = 0
+        for name, body in txt:gmatch("option NevoaEOutroMundo%.(%w+)%s*=%s*(%b{})") do
+            local v = body:match("default%s*=%s*([%d%.]+)")
+            if v then
+                n = n + 1
+                assert(NOM_Config.DEFAULTS[name] == tonumber(v),
+                    name .. ": Lua " .. tostring(NOM_Config.DEFAULTS[name]) .. ", menu " .. v)
+            end
+        end
+        assert(n >= 10, "achou só " .. n .. " opções numéricas")
     end,
     -- drone e rádio tocam em loop; o metal é um golpe só
     config_fog_sounds_loop = function()

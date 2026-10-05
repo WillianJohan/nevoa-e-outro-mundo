@@ -74,6 +74,24 @@ return {
             assert(math.abs(c - 10) < 1.5, "Corredor " .. c .. "%")
         end
     end,
+    -- padrão do pedido do Johan (05/10): ~15% de cada, ~30% da noite (Estalador e
+    -- Corredor no mesmo sorteio, faixas contíguas), Sem-rosto ~15% da névoa
+    variant_rules_default_chances = function()
+        require "NOM_Config"
+        SandboxVars = nil
+        local ids = realIDs()
+        local c = R.config(NOM_Config.get)
+        local s = R.semRostoConfig(NOM_Config.get)
+        for night = 1, 3 do
+            local n = count(ids, night, c)
+            local e, k = n.estalador / #ids * 100, n.corredor / #ids * 100
+            assert(math.abs(e - 15) < 1.5 and math.abs(k - 15) < 1.5, string.format("E %.1f%% C %.1f%%", e, k))
+            assert(math.abs(e + k - 30) < 2, "total " .. (e + k))
+            local sr = 0
+            for _, id in ipairs(ids) do if R.semRosto(id, night, s) then sr = sr + 1 end end
+            assert(math.abs(sr / #ids * 100 - 15) < 1.5, "Sem-rosto " .. sr / #ids * 100)
+        end
+    end,
     -- "uma vez por noite": a noite seguinte é outro sorteio
     variant_rules_rerolls_each_night = function()
         local ids, kept, total = realIDs(), 0, 0
