@@ -35,10 +35,13 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
    (`letGo`) quando a névoa baixa, ela deixa de ser Carpideira, vira remota ou grita.
    Objeto que volta do virtual: confere o ID na lista de quem já gritou antes de parar.
 3. **Quem vê avisa** (`NOM_Carpideira`, a cada 10 ticks, solo e cada cliente): toca o
-   soluço local das calmas carregadas e para o de quem sumiu da lista; jogador local a
+   soluço local das calmas a até 15 tiles de um jogador local (`SOB_RANGE`; as outras e
+   quem sumiu da lista ficam mudas); jogador local a
    até `CarpideiraTriggerRadius` (mesmo andar) → `near`; lanterna acesa e o square dela
-   com `isCanSee(pn)` a até 10 → `light`. Um aviso por Carpideira a cada 2 s
-   (`carpideiraWoke {id, why}`, com o jogador na frente: tela dividida).
+   com `isCanSee(pn)` a até 10 → `light`. Um aviso por varredura e por Carpideira a cada
+   2 s (`carpideiraWoke {id, why}`, com o jogador na frente: tela dividida).
+   A marca de fúria no zumbi (`modData.NOM_furia`) é o número do período: vale só
+   nesta névoa e sai na morte (`NOM_NightStats.forget`).
 4. **O servidor confere e ouve.** Aviso: variante pelo próprio sorteio, névoa, mesmo
    andar, distância com folga de 2 tiles (`near` até o raio, `light` até 10 e lanterna
    acesa no servidor), Eco e morto fora, um aviso por jogador por segundo. Barulho:
@@ -51,6 +54,8 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
    `carpideiraScream {pid, id, pl}` a todos; cada cliente marca o ID, toca o grito local
    no zumbi com esse `onlineID` e, se for o dono, solta e `spotted(getPlayerByOnlineID(pl), true)`.
    Quem entra no meio da névoa recebe `carpideiraList {pids}` junto da resposta do `fogState`.
+   No solo a lista do processo é refeita do `ModData` ao carregar (`OnInitGlobalModData`)
+   e na borda da névoa.
 
 ## Alternativas recusadas
 
@@ -66,12 +71,22 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
 ## Consequências
 
 - **Orçamento:** por frame, a calma custa 2 chamadas (as do `VariantAI`: `getModData`,
-  `isRemoteZombie`) e 3 a mais no primeiro; a varredura, ~8 por Carpideira calma a cada
+  `isRemoteZombie`) e 3 a mais no primeiro, a furiosa 3 (mais `isUseless`); a varredura, ~8 por Carpideira calma a cada
   10 ticks com um jogador local (+3 por jogador a mais), zero no resto; cada barulho alto
   no servidor, 1 chamada por zumbi carregado. Na vermelha (1/4 de cada), ~2,25·N por
   frame no `VariantAI` (era ~2,3·N com 1/3 de cada).
-- No dedicado, a cópia que o servidor simula sozinho (sem dono, ninguém perto) não é
-  parada: pode andar até alguém chegar e virar dono.
+- No dedicado, a cópia que o servidor simula sozinha (sem dono, ninguém perto) fica no
+  último useless que recebeu do dono: parada se o dono saiu com ela calma (inclusive
+  depois da névoa, até alguém virar dono e a passada soltar), andando se ela nunca teve
+  dono. O servidor não roda o `VariantAI`.
+- **Useless herdado** (review): o useless viaja no pacote e o `resetForReuse` não o
+  limpa. Quem recebe a posse de um zumbi useless que não parou solta: a furiosa no
+  `hold` (como o Estalador herdado), e qualquer zumbi local (não remoto, fora de
+  `still` e da cegueira do Estalador, sem outfit "Useless") na passada do `NightStats`
+  (`NOM_NightStats.unstick`, 2 chamadas por zumbi da passada, nos lotes de 20 por tick)
+  e no `OnZombieCreate`. De dia a passada roda na borda da névoa e de hora em hora: um
+  zumbi herdado parado pode esperar até uma hora de jogo. O `letGo` e o `unstick`
+  derrubam também o useless do tutorial e do menu de debug (não dá pra distinguir).
 - Uma caminhada em andamento quando ela vira Carpideira segue até a última posição vista
   (`WalkTowardState`, como no Estalador): ela pode dar alguns passos antes de parar.
 - Zumbis com o mesmo `persistentOutfitID` são a mesma Carpideira: o grito de uma deixa as

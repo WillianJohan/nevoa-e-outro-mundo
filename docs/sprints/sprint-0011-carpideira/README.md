@@ -41,25 +41,31 @@ quando vem horda no Back 4 Blood". Inspirado, não copiado. Decisões:
 - [ ] Calma, fica parada — **por código:** `ai_carpideira_still_while_calm` (jogador em pé
       à vista a 6 tiles e um som a 20: ela não sai do lugar; controle: o Corredor vem e
       morde, no fake que modela o spot, o spot forçado e o `RespondToSound` do jogo),
-      `ai_carpideira_remote_untouched` (só o dono; o novo dono a para),
+      `ai_carpideira_remote_untouched` (a cópia remota nasce useless, como no jogo; o novo dono a assume),
+      `ai_carpideira_inherited_after_fog_is_released`, `ai_carpideira_inherited_after_scream_is_released`,
+      `stats_pass_offers_every_zombie_to_unstick` (useless herdado pela rede é solto: fim da
+      névoa, depois do grito, reaproveitamento; o do jogo, o remoto e o deste processo ficam),
       `ai_carpideira_released_when_fog_ends`; alavanca `setUseless` por bytecode
       (pz-api-notes §3.2, §13.2). **Falta o jogo:** roteiro passo 2.
 - [ ] Soluço audível perto, local, em quem a tem carregada — **por código:**
       `carpideira_sobs_locally_while_calm` (`playSoundLocal` no zumbi, um loop só, volta se
-      cortado), `carpideira_sob_stops_on_scream_fog_end_and_unload` (inclusive quem foi pro
+      cortado), `carpideira_sob_only_near_a_local_player` (só a até 15 tiles de um jogador
+      local), `carpideira_sob_stops_on_scream_fog_end_and_unload` (inclusive quem foi pro
       virtual: `removeFromWorld` não para o emitter, §13.3), `config_fog_sounds_loop`
       (`loop = true`, `distanceMax` 12, volume 0.5). **Falta o jogo:** passo 2.
 - [ ] Acorda por proximidade, lanterna e barulho — **por código:**
       `carpideira_reports_proximity` (até 4, mesmo de costas; outro andar não),
       `carpideira_reports_light_only_when_lit_and_seen` (acesa e vista a 8: sim; apagada,
       de costas ou a 12: não), `carpideira_noise_wakes` (tiro a 5 tiles sim; tiro a 15,
-      tarefa de raio 20, fonte zumbi, chamado da caça do mod e andar de baixo: não),
+      tarefa de raio 20, fonte zumbi, chamado do mod de raio 30 de dia e andar de baixo: não),
       `carpideira_rules_*`; `OnWorldSound` por bytecode (§13.1). **Falta o jogo:**
       passos 3–5.
 - [ ] Um grito, que chama a horda — **por código:** `carpideira_sp_scream_once_per_period`
       (grito local, `addSound` com alcance efetivo 60 à noite, segundo aviso nada, névoa
       seguinte pode), `carpideira_scream_survives_reload` (`ModData`), `carpideira_report_gap`,
-      `carpideira_furious_is_silent`. **Falta o jogo:** passos 3 e 6.
+      `carpideira_furious_is_silent`, `carpideira_furia_is_per_fog`, `carpideira_sp_reload_keeps_furious`
+      (solo: lista refeita do `ModData` ao carregar e na borda da névoa),
+      `carpideira_one_report_per_scan`. **Falta o jogo:** passos 3 e 6.
 - [ ] Depois do grito, corredora atrás de quem a acordou — **por código:**
       `ai_carpideira_scream_hunts_trigger_player` (solta, `spotted(p, true)`, morde),
       `ai_carpideira_reloaded_after_scream_stays_furious`, `night_rules_wanted_carpideira_sprints`;
@@ -85,7 +91,7 @@ quando vem horda no Back 4 Blood". Inspirado, não copiado. Decisões:
 - [x] Sons originais procedurais — `scripts/gen_sounds.py` (`sob`, `wail`; os sons antigos
       saem byte a byte iguais), `CREDITS.md`, `credits_*`, `config_sound_scripts_point_to_files`.
 
-`./run-tests.sh`: `total=419 passou=419 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
+`./run-tests.sh`: `total=426 passou=426 falhou=0` (Lua) e `build total=22 passou=22 falhou=0`.
 
 ## Roteiro in-game
 
@@ -134,6 +140,11 @@ só carrega ao recarregar o save. Pra achar Carpideiras rápido: sandbox `Carpid
   cliente; grito decidido pelo servidor (aviso, barulho, `ModData`); cliente de MP; sons
   procedurais; debug.
 - **04/10/2026** — Docs: GDD, ADR-011, pz-api-notes §13, orçamento, roteiro. Em teste.
+- **04/10/2026** — Review: useless herdado pela rede ficava preso (fim da névoa, troca de
+  posse, reaproveitamento, furiosa herdada): `unstick` na passada do `NightStats` e no
+  `OnZombieCreate`, e a furiosa se solta. Solo: lista de quem gritou refeita do `ModData`
+  ao recarregar. Teste da marca `NOM_Night.calling` de dia (raio 30). Soluço só a até 15
+  tiles de um jogador; um aviso por varredura; fúria pelo período.
 
 ## Aprendizados
 
@@ -144,7 +155,12 @@ só carrega ao recarregar o save. Pra achar Carpideiras rápido: sandbox `Carpid
 2. **`removeFromWorld` não cala o zumbi.** Ele só para um som pelo nome; um loop tocado
    pelo mod no emitter continua quando o zumbi vai pro virtual. Loop em zumbi precisa de
    alguém que confira a lista e pare o de quem sumiu.
-3. **Variante nova num sandbox de teste com 100%: todo ID é dela.** Teste que procura um
+3. **Useless é estado de rede, não do processo.** Ele viaja no pacote do zumbi e o
+   `resetForReuse` não limpa: quem liga useless precisa de um caminho que solte o
+   herdado em todo dono futuro, independente de variante (passada periódica + criação).
+   Fake que cria a cópia remota com useless falso esconde o bug: a cópia nasce com o
+   useless do dono.
+4. **Variante nova num sandbox de teste com 100%: todo ID é dela.** Teste que procura um
    "zumbi comum" com `idFor(nil, ...)` num sandbox diferente do do servidor falso acha um
    ID que, pro servidor, é variante. Use o mesmo sandbox (ou um de 50%) pra achar o comum.
 
@@ -154,8 +170,12 @@ só carrega ao recarregar o save. Pra achar Carpideiras rápido: sandbox `Carpid
 - **Visual:** nenhum. Vestir outro outfit troca o `persistentOutfitID` e, com ele, a
   variante (ADR-006); o aviso é o soluço. Precisa de outra alavanca visual (a mesma
   pendência das outras variantes).
-- No dedicado, a cópia que o servidor simula sozinho (ninguém perto, sem dono) não é
-  parada; para quando alguém chega e vira dono.
+- No dedicado, a cópia que o servidor simula sozinha (sem dono) fica no último useless
+  que recebeu: parada se o dono saiu com ela calma, até alguém virar dono (e a passada do
+  `NightStats` soltar, se a névoa já acabou); andando se nunca teve dono.
+- Zumbi herdado useless de dia espera a passada de conferência (borda da névoa ou de hora
+  em hora) pra ser solto: até uma hora de jogo parado. O `letGo`/`unstick` derrubam também
+  o useless do tutorial e do menu de debug.
 - Ao virar Carpideira com uma caminhada em andamento, ela segue até a última posição vista
   antes de parar (`WalkTowardState`).
 - Lanterna aproximada: com a lanterna acesa na mão, ela vista por outra luz também acorda.

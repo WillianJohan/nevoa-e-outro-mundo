@@ -111,10 +111,10 @@ falha se o caminho quente passar a tocar zumbi irrelevante ou a crescer com o ma
 
 | Sistema | Quando roda | Trabalho | Teste |
 |---|---|---|---|
-| `NightStats.tick` | todo tick à noite e na passada do amanhecer | ≤ `BATCH` (20) zumbis + 5 leituras de sandbox por tick | `stats_batch_bounded_with_200` |
+| `NightStats.tick` | todo tick à noite e na passada do amanhecer | ≤ `BATCH` (20) zumbis + 5 leituras de sandbox por tick; +2 chamadas por zumbi da passada (`unstick` do useless herdado, sprint 0011) | `stats_batch_bounded_with_200` |
 | `NightStats.tick` de dia | depois de uma passada sem nada a devolver | **zero** (dorme até a próxima flag ou a próxima hora de jogo, quando faz uma passada de conferência) | `stats_day_idle_only_after_clean_pass`, `stats_day_idle_wakes_at_night`, `stats_day_idle_wakes_every_hour` |
 | `VariantAI` (`OnZombieUpdate`) | todo frame, todo zumbi | zumbi comum: 3 consultas de tabela Lua, zero chamada | `ai_common_zombie_no_java_calls` |
-| Varredura da Carpideira (sprint 0011) | a cada 10 ticks, na névoa, no solo e em cada cliente | zero chamada no zumbi que não é Carpideira; ~8 por Carpideira calma com um jogador local (+3 por jogador a mais, +1 com lanterna perto) | `carpideira_scan_budget` |
+| Varredura da Carpideira (sprint 0011) | a cada 10 ticks, na névoa, no solo e em cada cliente | zero chamada no zumbi que não é Carpideira; ~8 por Carpideira calma com um jogador local (+3 por jogador a mais, +1 com lanterna perto); soluço só a até 15 tiles de um jogador local; um aviso por varredura | `carpideira_scan_budget` |
 | Barulho que acorda a Carpideira | por `addSound` com raio ≥ 30 de jogador, na névoa, servidor | uma volta na lista, 1 chamada por zumbi (o ID); barulho baixo ou fora da névoa, zero | `carpideira_noise_scan_one_call_per_common_zombie` |
 | Estalo do Estalador | 1/min de jogo na névoa | zero chamada em zumbi que não é Estalador | `ai_click_touches_only_estaladores` |
 | Varredura do Sem-rosto | a cada 10 ticks, só na névoa | 1 chamada (o ID) por zumbi comum | `semrosto_scan_one_call_per_common_zombie` |
