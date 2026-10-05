@@ -58,11 +58,17 @@ function S.reset()
     lastMs = nil
 end
 
-local function frame(now)
-    local dt = lastMs and math.min(now - lastMs, S.MAX_STEP_MS) or 0
+-- Avança o fade até agora e devolve o estado. Quem chama: o desenho (todo quadro) e
+-- o canal do shader (NOM_FogVignette, todo tick); a segunda chamada no mesmo quadro
+-- anda ~0.
+function S.sample(now)
+    local dt = lastMs and math.max(0, math.min(now - lastMs, S.MAX_STEP_MS)) or 0
     lastMs = now
-    R.step(S.state, { fog = NOM_FogState.on, red = NOM_FogState.red }, dt)
-    return R.layers(S.state, now, NOM_ScreenFxOptions.intensity())
+    return R.step(S.state, { fog = NOM_FogState.on, red = NOM_FogState.red }, dt)
+end
+
+local function frame(now)
+    return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity())
 end
 
 local function draw(el)
