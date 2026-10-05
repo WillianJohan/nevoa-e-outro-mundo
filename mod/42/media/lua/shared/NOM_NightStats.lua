@@ -157,6 +157,12 @@ local function process(z, c)
     -- a velocidade vem do pacote do dono (NetworkZombieAI.parse), não briga.
     if not need and key ~= "day" and not c.inactive and not z:isRemoteZombie() and not z:isCrawling() then
         need = z:getSpeedType() ~= w.speed
+        -- Diagnóstico (só -debug): visto no jogo um zumbi reaplicado a cada passada.
+        if need and getDebug() then
+            print("[NOM] noite re-rolou id=" .. tostring(z:getPersistentOutfitID()) .. " speedType=" .. tostring(z:getSpeedType())
+                .. " quer=" .. tostring(w.speed) .. " kind=" .. tostring(kind) .. " fakeDead=" .. tostring(z:isFakeDead())
+                .. " sitting=" .. tostring(z:isSitOnGround()) .. " outfit=" .. tostring(z:getOutfitName()))
+        end
     end
     if need then apply(z, md, w, dayTier, key, c.inactive, kind) end
     return need
