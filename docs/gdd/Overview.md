@@ -39,9 +39,9 @@ Corredores, Sem-rosto, Carpideiras → amanhecer → repetir.
 | [world-states.md](world-states.md) | Noite e evento de névoa (sirene) | `accepted` |
 | [night.md](night.md) | Noite agressiva (todos os zumbis) | `accepted` |
 | [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Carpideira, Eco | `accepted` |
-| [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `accepted` |
+| [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, vinheta, efeitos de tela, shader opcional | `accepted` |
 | [sandbox.md](sandbox.md) | Opções de sandbox | `accepted` |
-| [art-direction.md](art-direction.md) | Visual dos monstros: o que cada um veste e por quê | `accepted` |
+| [art-direction.md](art-direction.md) | Visual dos monstros e da tela na névoa | `accepted` |
 
 ## Fora do MVP (`later`)
 
@@ -93,3 +93,13 @@ Só viram escopo por promoção explícita.
   o que o monstro faz. A roupa do zumbi fica e o outfit não muda (o sorteio depende dele)
   ([art-direction.md](art-direction.md),
   [ADR-012](../architecture/adr-012-visual-das-variantes.md)).
+- **2026-10-05** — **Efeitos de tela** (sprint 0013), depois do teste da névoa no jogo ("LINDA",
+  mas falta efeito de tela): opção 3 do Johan. (A) **overlay Lua no mod principal**, só na
+  névoa: grão de filme, vinheta que respira (vermelha e mais forte na vermelha), linhas de
+  chiado pela distância do Sem-rosto e pulso vermelho no grito da Carpideira; opção de cada
+  jogador (Opções > Mods), não do servidor. (B) **shader opcional num segundo mod** do mesmo item
+  ("Névoa e Outro Mundo — Shader"): aberração cromática, grão e distorção; incompatível com
+  ShadowZ, vale a partir do primeiro mundo da sessão. Sem grão à noite
+  ([atmosphere.md](atmosphere.md#efeitos-de-tela-só-na-névoa),
+  [art-direction.md](art-direction.md#a-tela-na-névoa-sprint-0013),
+  [ADR-013](../architecture/adr-013-efeitos-de-tela.md)).

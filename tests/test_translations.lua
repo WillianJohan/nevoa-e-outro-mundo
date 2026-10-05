@@ -58,6 +58,8 @@ local function luaKeys()
     local keys = {}
     for _, file in ipairs(lines("find " .. MEDIA .. "lua -name '*.lua'")) do
         for k in read(file):gmatch('getText%w*%(%s*"([^"]+)"') do keys[k] = file end
+        -- chaves passadas a quem chama getText por nós (PZAPI.ModOptions: nomes e dicas)
+        for k in read(file):gmatch('"(UI_NOM_[%w_]+)"') do keys[k] = file end
     end
     return keys
 end

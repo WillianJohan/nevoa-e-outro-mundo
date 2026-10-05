@@ -43,6 +43,8 @@ desenhado à mão porque a fonte embutida não tem o caractere.
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
 | `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`): o "N" na névoa |
 | `docs/workshop/preview.png` | 256×256 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
+| `mod2/42/poster.png` | 512×512 | painel do mod opcional do shader: o pôster com as cores separadas e "SHADER" |
+| `mod2/42/icon.png` | 64×64 | ícone do mod opcional do shader: o "N" com as cores separadas |
 
 Pra regerar: `python3 scripts/gen_images.py`.
 
@@ -65,8 +67,18 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo embolado da Carpideira caindo no rosto |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | cinza e fumaça no corpo todo do Eco |
 | `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu de fumaça do Eco |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_White.png` | 8×8 | branco opaco, tingido de vermelho no pulso do grito da Carpideira |
 
 Pra regerar: `python3 scripts/gen_textures.py`.
+
+## Shader
+
+| Arquivo | O que é |
+|---|---|
+| `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
 
 ## Conteúdo vanilla referenciado (nada copiado)
 
@@ -83,4 +95,5 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | `NOM_FogOverlays.lua` | manchas de sangue no chão | sprites `overlay_blood_floor_01_0` a `_27`, por nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |
 | `NOM_FogVignette.lua` | vinheta da névoa | efeito de tela do modo de busca do jogo (`getSearchMode()`), sem textura própria |
+| `NOM_ScreenFx.lua` | efeitos de tela | desenho pela UI do jogo (`ISUIElement`), com as texturas originais acima |
 | Variantes, Eco, Sem-rosto, Carpideira | corpo e animação | zumbis vanilla; o mod muda comportamento, pele e peças por cima (texturas acima) |

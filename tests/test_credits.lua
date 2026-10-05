@@ -24,12 +24,12 @@ return {
     -- invertido: todo arquivo do mod que não é código/texto/script precisa de origem
     credits_every_asset_listed = function()
         local TEXT = { lua = true, txt = true, xml = true, json = true, info = true }
-        local files = find("find mod docs/workshop -type f")
+        local files = find("find mod mod2 docs/workshop -type f")
         local n = 0
         for _, path in ipairs(files) do
             local ext = path:match("%.(%w+)$")
             local name = path:match("[^/]+$")
-            local isText = path:find("^mod/") and (TEXT[ext] or name == ".gitkeep")
+            local isText = (path:find("^mod/") or path:find("^mod2/")) and (TEXT[ext] or name == ".gitkeep")
             if not isText and not path:find("%.txt$") then
                 n = n + 1
                 assert(listed(path), "CREDITS.md não cita " .. path)

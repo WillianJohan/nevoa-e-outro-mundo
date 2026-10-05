@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -969,6 +969,81 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
 - Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
   (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
 
+## 15. Efeitos de tela (sprint 0013)
+
+Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
+[ADR-013](adr-013-efeitos-de-tela.md).
+
+### 15.1 Desenhar por cima do mundo e por baixo da UI
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Ordem: mundo, `OnPreUIDraw`, lista de UI na ordem, `OnPostUIDraw` | EXISTS | `UIManager.render` 170 (`OnPreUIDraw`), 240–426 (laço da lista `UI`, índice 0 primeiro; pula invisível e `isFollowGameWorld`), 668 (`OnPostUIDraw`) |
+| `backMost()` põe o elemento no fundo da UI | CONFIRMED / EXISTS | `client/Fishing/FishingManager.lua:41`; `UIElement.backMost` só liga `alwaysBack`; `UIManager.update` 389–454 tira todo `isBackMost()` do lugar e põe no índice 0, todo update |
+| Elemento de 1×1 px que desenha a tela inteira | CONFIRMED | `client/ISUI/ISSleepingUI.lua:70-82` (1×1, `setConsumeMouseEvents(false)`, desenha o relógio no meio da tela) |
+| Desenho com cor e alfa | CONFIRMED | `ISUIElement.lua:1032-1041` (`drawTextureScaled(tex, x, y, w, h, a, r, g, b)` → `DrawTextureScaledColor`) |
+| Ladrilhos numa chamada | CONFIRMED / EXISTS | `ISUIElement.lua:1109-1117` (`drawTextureTiled`); `UIElement.DrawTextureTiled` laça `DrawSubTextureRGBA` no Java, cortando o último ladrilho |
+| `UIElement.render` sem pai não corta por posição | EXISTS | `UIElement.render` 0–124: só sai por `enabled`/`isVisible` e por corte do pai |
+| Retângulo de tela por jogador (tela dividida) | CONFIRMED | `getPlayerScreenLeft/Top/Width/Height(i)`, `ISSleepingUI.lua:16-17, 60-61` |
+| Menu aberto | CONFIRMED | `MainScreen.instance:isReallyVisible()`, `ISSleepingUI.lua:49` |
+| Criar / tirar | CONFIRMED | `Events.OnGameStart` (`MainScreen.lua:2180`), `Events.OnMainMenuEnter` (`MainScreen.lua:2178`) |
+| `getRenderer():render(...)` num `OnPreUIDraw` | **não usado** | os dois usos vanilla estão desligados (`server/NewSelectionSystem/GridSquareSelector.lua:56-59`, registro comentado); `SpriteRenderer.render(Texture, 8×F, Consumer)` tem 10 argumentos e o vanilla passa 9 |
+| `UIManager.DrawTexture(tex, x, y, w, h, a)` | EXISTS, não usado | estático, sem cor (`renderi` com branco), sem uso vanilla |
+
+### 15.2 Não pegar clique
+
+- `UIManager.updateMouseButtons` 54–206: percorre a lista do topo pro fundo; só quem passa no
+  `isOverElement` (o retângulo do elemento, 0–204) recebe `onConsumeMouseButtonDown`, que chama
+  `UIElement.onMouseDown`: com `onMouseDown` no Lua, vale o retorno (nil → `consumeMouseEvents`,
+  644–667); sem, `false`. `true` para o clique ali.
+- Roda: `UIManager.update` 867–979, `isPointOver` + `onConsumeMouseWheel`; `true` corta o zoom.
+- `UIManager.isForceCursorVisible`: `true` se algum elemento visível está com o mouse em cima:
+  um elemento do tamanho da tela manteria o cursor sempre visível. 1×1 px evita.
+
+### 15.3 Opção de cliente
+
+- `PZAPI.ModOptions` existe no B42 (`client/PZAPI/ModOptions.lua`): `create(id, nome)`,
+  `addTickBox(id, nome, valor, dica)`, `addSlider(id, nome, min, max, passo, valor, dica)`,
+  `getOptions(id):getOption(id):getValue()`; grava em `ModOptions.ini` (`save`, linhas
+  `tipo|mod|opção|valor`). Sem uso vanilla da criação: CONFIRMED pela leitura do consumidor,
+  `MainOptions:addModOptionsPanel` (`MainOptions.lua:2795+`), que faz `load()` e monta a página
+  "Mods" se `#PZAPI.ModOptions.Data ~= 0` (`:409`). Nomes e dicas passam por `getText`.
+- O `MainScreen` do jogo nasce no `OnGameStart` (`LoadMainScreenPanelIngame`,
+  `MainScreen.lua:1784-1790, 2180`) e cria o `MainOptions` (`:177, :694`): as opções têm de ser
+  criadas na carga do arquivo.
+- Categoria de tradução `UI` existe (`Translator$1`, `BY_NAME`): `Translate/<LANG>/UI.json` do
+  mod é lido como o `Sandbox.json` (`tryFillMapFromMods`).
+
+### 15.4 Shader de tela e canal
+
+- `WeatherShader.onCompileSuccess` busca (`glGetUniformLocation`): `TimeOfDay`, `BloomVal`,
+  `PixelOffset`, `PixelSize`, `BlurStrength`, `bgl_RenderedTextureWidth/Height`, `timer`,
+  `TextureSize`, `Zoom`, `Light`, `LightIntensity`, `NightValue`, `Exterior`,
+  `NightVisionGoggles`, `DesaturationVal`, `FogMod`, `SearchMode`, `ScreenInfo`, `ParamInfo`,
+  `VarInfo`, `DrunkFactor`, `BlurFactor`, `timerWrap`. Tipos pelo `glUniform*` do
+  `startRenderThread`. `FogMod` é buscado e **nunca enviado**.
+- `startMainThread` monta `vars`: 0–2 cor da luz, 3 força, 4 dessaturação, 5 visão noturna,
+  6 `getShaderBlur`, 7 `getShaderRadius`, 8–9 canto do offscreen, 10–11 tamanho, 12–13 clique
+  direito, 14 zoom, 15 tile (64/32), 16 `gradient·tile/2`, 17 `getShaderDesat`,
+  18 `isShaderEnabled ? 1 : 0`, 19 `getShaderDarkness`, 22 bêbado, 23 desfoque. Uniforms:
+  `SearchMode = (6, 7, 8, 9)`, `ScreenInfo = (10..13)`, `ParamInfo = (14..17)`,
+  `VarInfo = (18, 19, 20, 21)` (20–21 nunca escritos).
+- `PlayerSearchMode.getShader*` = exterior ou interior do `SearchModeFloat` (pelo
+  `isPlayerExterior`). `SearchModeFloat.setAll(v)` grava atual e alvo dos dois.
+- `SearchMode.setOverride(pn, b)` só grava o flag; `PlayerSearchMode.update` sai na 1ª linha com
+  override (nem fade, nem `reset`); sem override e sem `enabled`, `reset()` nos quatro e o
+  gradiente só `equalise`. `setEnabled` igual ao atual não faz nada; `true→false` começa o
+  `FadeOut`, e `isShaderEnabled = enabled || doFadeIn || doFadeOut`: override no meio de um fade
+  o congela.
+- `ShaderUnit.preProcessShaderFile`: `#include`, troca de `#version`/sintaxe com
+  `getUseOpenGL21` (`#version 120`, `texture2D`, `out vec4 colour`). O `screen.frag` do mod2
+  passa no `glslangValidator` em 330 e em 120.
+- Multi-mod no Workshop: `SteamWorkshopItem.validateModsFolder` valida cada pasta de
+  `Contents/mods/` (arquivo solto: `FileNotAllowedInMods`). `readModInfoAux`: `require=` tira
+  `\` e separa por vírgula.
+- **UNKNOWN:** o vencedor quando dois mods trazem `screen.frag` (ordem do `activeFileMap`); o
+  shader compilando no driver do Johan (roteiro).
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -994,6 +1069,8 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
 | Barulho do jogador no servidor | `Events.OnWorldSound` (todo `addSound`, inclusive o de cliente refeito no servidor) (§13) | — |
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
+| Efeito de tela | `ISUIElement` de 1×1 px, `backMost`, sem consumir mouse, desenhando no retângulo do jogador 0 (§15) | — |
+| Canal Lua → shader | floats do `SearchMode` com override e sem `enabled`, marcador no gradiente (§15.4) | `DesaturationVal` (ambíguo) |
 | Visual da variante | pele `setSkinTextureName` + `ItemVisual` na lista + `resetModelNextFrame`, na cópia local de quem renderiza (§14) | — (outfit troca o ID) |
 
 ## Testes in-game prioritários (UNKNOWNs)
@@ -1020,3 +1097,6 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
 13. Visual das variantes (sprint 0012): textura do mod em `media/textures/Body/` e
     `media/textures/NOM/` é achada? `ItemVisual.new()` responde no Lua? O Kahlua escolhe
     `ItemVisuals.remove(Object)` com o `ItemVisual` (e não `remove(int)`)? (§14)
+14. Efeitos de tela (sprint 0013): texturas do mod por `getTexture("media/textures/NOM/ScreenFx/...")`,
+    o elemento de 1 px por baixo do HUD de verdade, `PZAPI.ModOptions` em Opções > Mods, e o
+    `screen.frag` do mod2 compilando e vencendo o vanilla (§15)

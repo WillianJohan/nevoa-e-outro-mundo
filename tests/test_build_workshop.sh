@@ -16,7 +16,7 @@ fake_repo() {
     local r
     r="$(mktemp -d "$TMP/repo.XXXX")"
     mkdir -p "$r/docs"
-    cp -R "$REPO/mod" "$REPO/scripts" "$r/"
+    cp -R "$REPO/mod" "$REPO/mod2" "$REPO/scripts" "$r/"
     cp -R "$REPO/docs/workshop" "$r/docs/"
     rm -f "$r/docs/workshop/workshop-id.txt"
     git -C "$r" init -q
@@ -87,7 +87,9 @@ build_excludes_repo_only() {
     d="$h/$DEST_REL"
     test "$(ls "$d" | tr '\n' ' ')" = "Contents preview.png workshop.txt "
     test "$(ls "$d/Contents")" = "mods"
+    test "$(ls "$d/Contents/mods" | tr '\n' ' ')" = "NevoaEOutroMundo NevoaEOutroMundo_Shader "
     test "$(ls "$d/Contents/mods/NevoaEOutroMundo" | tr '\n' ' ')" = "42 common "
+    test "$(ls "$d/Contents/mods/NevoaEOutroMundo_Shader" | tr '\n' ' ')" = "42 common "
     # SteamWorkshopItem.validateFileTypes recusa estes
     test -z "$(find "$d" -type f \( -name '*.sh' -o -name '*.zip' -o -name '*.exe' -o -name '*.dll' \
         -o -name '*.bat' -o -name '*.app' -o -name '*.dylib' -o -name '*.so' \))"
@@ -296,7 +298,42 @@ build_zomboid_dir_env_wins() {
     test -f "$home/outro/Workshop/NevoaEOutroMundo/workshop.txt"
 }
 
-for t in build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
+
+# segundo mod no mesmo item (sprint 0013): SteamWorkshopItem.validateModsFolder valida
+# cada pasta de Contents/mods
+build_ships_shader_mod() {
+    local h d
+    h="$(build)"
+    d="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Shader"
+    grep -qx "id=NevoaEOutroMundo_Shader" "$d/42/mod.info"
+    cmp -s "$d/42/media/shaders/screen.frag" "$REPO/mod2/42/media/shaders/screen.frag"
+    test -f "$d/42/media/lua/shared/NOM_ShaderFlag.lua"
+    grep -q "NevoaEOutroMundo_Shader" "$h/out.txt"
+}
+
+build_refuses_uncommitted_change_in_mod2() {
+    local r h
+    r="$(fake_repo)"
+    echo "// mudança" >>"$r/mod2/42/media/shaders/screen.frag"
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "screen.frag" "$h/out.txt"
+}
+
+# dev-sync: cópia (não symlink) dos dois mods pra pasta de mods do jogo
+dev_sync_copies_both_mods() {
+    local z
+    z="$(mktemp -d "$TMP/zomboid.XXXX")"
+    mkdir -p "$z/mods"
+    ln -s /tmp "$z/mods/NevoaEOutroMundo"
+    ZOMBOID_DIR="$z" bash "$REPO/scripts/dev-sync.sh" >/dev/null
+    test ! -L "$z/mods/NevoaEOutroMundo"
+    test -f "$z/mods/NevoaEOutroMundo/42/mod.info"
+    test -f "$z/mods/NevoaEOutroMundo_Shader/42/media/shaders/screen.frag"
+    test ! -L "$z/mods/NevoaEOutroMundo_Shader"
+}
+
+for t in build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 dev_sync_copies_both_mods build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
     build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
     build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \

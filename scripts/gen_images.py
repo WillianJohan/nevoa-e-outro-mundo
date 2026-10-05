@@ -6,6 +6,9 @@ Saída:
   mod/42/icon.png             64x64   lista de mods, desenhado a 28 px (mod.info icon=): o "N" na névoa
   docs/workshop/preview.png  256x256  imagem do item no Workshop (o jogo exige
                                       PNG quadrado de 256 ou 512, até 1 024 000 bytes)
+  mod2/42/poster.png         512x512  mod opcional do shader: o pôster com as cores
+                                      separadas (aberração cromática) e "SHADER"
+  mod2/42/icon.png            64x64   o "N" com as cores separadas
 
 Névoa em camadas de ruído suavizado, um poste com luz fraca e uma figura sem
 rosto ao longe. Texto na fonte embutida do Pillow (Aileron); ela não tem "É",
@@ -127,6 +130,24 @@ def icon(rng):
     return to_image(np.clip(out, 0, 1)).resize((64, 64), Image.LANCZOS)
 
 
+def split_colors(img, shift):
+    """Aberração cromática: vermelho pra um lado, azul pro outro (o que o shader faz)."""
+    r, g, b = img.split()
+    w, h = img.size
+    r = r.transform((w, h), Image.AFFINE, (1, 0, -shift, 0, 1, 0), Image.BILINEAR)
+    b = b.transform((w, h), Image.AFFINE, (1, 0, shift, 0, 1, 0), Image.BILINEAR)
+    return Image.merge("RGB", (r, g, b))
+
+
+def shader_poster(rng, size):
+    img = split_colors(poster(rng, size), size * 0.008)
+    font = ImageFont.load_default(int(size * 0.06))
+    d = ImageDraw.Draw(img)
+    line = "SHADER"
+    d.text(((size - font.getlength(line)) / 2, size * 0.33), line, font=font, fill=(196, 70, 64))
+    return img
+
+
 def save(img, *path):
     out = os.path.join(ROOT, *path)
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -138,6 +159,8 @@ def main():
     save(poster(np.random.default_rng(SEED), 512), "mod", "42", "poster.png")
     save(icon(np.random.default_rng(SEED + 1)), "mod", "42", "icon.png")
     save(poster(np.random.default_rng(SEED + 2), 256, subtitle=False), "docs", "workshop", "preview.png")
+    save(shader_poster(np.random.default_rng(SEED + 3), 512), "mod2", "42", "poster.png")
+    save(split_colors(icon(np.random.default_rng(SEED + 4)), 2), "mod2", "42", "icon.png")
 
 
 if __name__ == "__main__":

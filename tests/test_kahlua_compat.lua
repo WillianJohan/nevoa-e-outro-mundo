@@ -11,7 +11,7 @@ local FORBIDDEN = {
 
 local function luaFiles()
     local out = {}
-    local p = io.popen("find mod -name '*.lua'")
+    local p = io.popen("find mod mod2 -name '*.lua'")
     for line in p:lines() do out[#out + 1] = line end
     p:close()
     return out

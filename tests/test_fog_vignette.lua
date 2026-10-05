@@ -8,27 +8,46 @@
 --   os alvos com os do forrageamento e faz setEnabled(pn, isSearchMode or
 --   isEffectOverlay) — é o que desligaria a vinheta. O fake roda a cada tick.
 -- * manager.isSearchMode é o forrageamento (:1416-1428).
+-- * Canal do shader (sprint 0013, bytecode SearchMode/PlayerSearchMode):
+--   setOverride(pn, b) só grava o flag; com override, PlayerSearchMode.update sai na
+--   1ª linha (nem o fade anda); setEnabled(pn, false) com enabled ligado começa o
+--   fade de saída (FadeOut), e isShaderEnabled() = enabled ou fade em andamento;
+--   SearchModeFloat.setAll(v) grava atual e alvo. O fake roda o update todo tick.
 local W = dofile("tests/fog_world.lua")
 local FILE = "mod/42/media/lua/client/NOM_FogVignette.lua"
 
 local function setup(opts)
     opts = opts or {}
     local G = W.new(opts)
-    G.reload({ "NOM_FogState", "NOM_FogVignette" })
+    G.reload({ "NOM_FogState", "NOM_FogVignette", "NOM_ScreenFx", "NOM_ScreenFxOptions", "NOM_ScreenFxRules",
+        "NOM_SemRosto", "NOM_Carpideira", "NOM_NightStats" })
+    PZAPI = nil
+    NOM_ShaderMod = opts.shader
     require "NOM_FogState"
-    G.enabled, G.targets, G.managers = {}, {}, {}
+    G.enabled, G.targets, G.managers, G.override, G.fading, G.all = {}, {}, {}, {}, {}, {}
+    G.FADE_TICKS = 30
     local function float(pn, name)
-        return { setTargets = function(_, ext, int)
+        return { setAll = function(_, v)
+            G.all[pn] = G.all[pn] or {}
+            G.all[pn][name] = v
+        end, setTargets = function(_, ext, int)
             G.targets[pn] = G.targets[pn] or {}
             G.targets[pn][name] = { ext, int }
         end }
     end
     getSearchMode = function()
         return {
-            setEnabled = function(_, pn, b) G.enabled[pn] = b end,
+            setEnabled = function(_, pn, b)
+                -- FadeOut: o fade anda por SearchMode.fadeTime, aqui ~FADE_TICKS ticks
+                if not b and G.enabled[pn] then G.fading[pn] = G.FADE_TICKS end
+                G.enabled[pn] = b
+            end,
+            setOverride = function(_, pn, b) G.override[pn] = b end,
+            isOverride = function(_, pn) return G.override[pn] == true end,
             isEnabled = function(_, pn) return G.enabled[pn] == true end,
             getSearchModeForPlayer = function(_, pn)
                 return {
+                    isShaderEnabled = function() return G.enabled[pn] == true or G.fading[pn] ~= nil end,
                     getBlur = function() return float(pn, "blur") end,
                     getDesat = function() return float(pn, "desat") end,
                     getRadius = function() return float(pn, "radius") end,
@@ -57,6 +76,13 @@ local function setup(opts)
     -- o jogo roda o updateOverlay do vanilla depois do nosso tick
     Events.OnTick.Add(function()
         for _, m in pairs(G.managers) do m:updateOverlay() end
+        -- SearchMode.update (IngameState.UpdateStuff): com override não anda
+        for pn in pairs(G.fading) do
+            if not G.override[pn] then
+                G.fading[pn] = G.fading[pn] - 1
+                if G.fading[pn] <= 0 then G.fading[pn] = nil end
+            end
+        end
     end)
     G.p = G.player({ x = 100, y = 100 })
     return G
@@ -158,5 +184,87 @@ return {
         SandboxVars.NevoaEOutroMundo.FogVignetteIntensity = 2
         G.seconds(2)
         assert(G.targets[0].darkness[1] == NOM_AtmosphereRules.vignette(2).darkness, "intensidade nova não aplicou")
+    end,
+    -- sem o mod do shader, nada de override do SearchMode (só a vinheta)
+    vignette_no_channel_without_shader_mod = function()
+        local G = setup()
+        NOM_FogState.set(true, 1)
+        G.seconds(6)
+        assert(G.override[0] ~= true and G.all[0] == nil)
+    end,
+    -- com o shader: enabled nunca liga (o ramo vanilla do círculo ficaria por cima),
+    -- override ligado, o canal carrega a névoa e o marcador, todo tick
+    vignette_channel_writes_floats = function()
+        local G = setup({ shader = true })
+        NOM_FogState.set(true, 1)
+        G.seconds(1)
+        assert(G.override[0] == true and G.managers[G.p].isOverride == true, "não tomou o SearchMode")
+        local a = G.all[0].blur
+        G.tick(1)
+        assert(G.all[0].blur > a, "canal não anda todo tick")
+        G.seconds(5)
+        local c = G.all[0]
+        assert(G.enabled[0] ~= true, "ligou o SearchMode com o shader")
+        assert(c.blur == 1 and c.desat == 0 and c.radius == 0 and c.gradient == NOM_ScreenFxRules.MARKER, "canal errado")
+        NOM_FogState.set(true, 1, true)
+        G.seconds(5)
+        assert(G.all[0].desat == 1, "vermelha não chegou ao canal")
+    end,
+    -- override com fade do forrageamento em andamento congelaria o fade (isShaderEnabled
+    -- preso em true): espera acabar
+    vignette_channel_waits_for_search_fade = function()
+        local G = setup({ shader = true })
+        G.override[0] = true -- outro segurou o SearchMode no meio de um fade
+        G.enabled[0] = true
+        getSearchMode():setEnabled(0, false)
+        NOM_FogState.set(true, 1)
+        G.seconds(1)
+        assert(G.all[0] == nil, "tomou no meio do fade")
+        G.override[0] = false
+        G.tick(G.FADE_TICKS - 12)
+        assert(G.all[0] == nil, "tomou antes do fade acabar")
+        G.seconds(1)
+        assert(G.override[0] == true and G.all[0] and G.all[0].blur > 0, "não tomou depois do fade")
+    end,
+    -- Review Focus 4: forragear com o shader: o canal sai, zerado, e o jogo volta normal
+    vignette_channel_releases_for_foraging = function()
+        local G = setup({ shader = true })
+        NOM_FogState.set(true, 1)
+        G.seconds(5)
+        local m = G.managers[G.p]
+        m.isSearchMode = true
+        G.seconds(1)
+        assert(G.override[0] == false and m.isOverride == false, "segurou com o jogador forrageando")
+        assert(G.all[0].blur == 0 and G.all[0].darkness == 0, "deixou o canal no círculo do forrageamento")
+        assert(G.enabled[0] == true and G.targets[0].darkness[1] == 0.1, "o forrageamento não voltou")
+        m.isSearchMode = false
+        G.seconds(2)
+        assert(G.override[0] == true and G.all[0].blur > 0, "não voltou depois do forrageamento")
+    end,
+    vignette_channel_restores_on_fog_end = function()
+        local G = setup({ shader = true })
+        NOM_FogState.set(true, 1)
+        G.seconds(5)
+        NOM_FogState.set(false, 1)
+        G.seconds(1)
+        assert(G.override[0] == true and G.all[0].blur > 0, "cortou sem o fade de saída")
+        G.seconds(NOM_ScreenFxRules.FADE_MS / 1000 + 1)
+        assert(G.override[0] == false and G.managers[G.p].isOverride == false, "segurou depois da névoa")
+        assert(G.all[0].blur == 0)
+    end,
+    -- o sandbox do servidor ainda manda: FogVignette desligada = sem canal;
+    -- FogVignetteIntensity escala o canal junto com a opção do jogador
+    vignette_channel_follows_sandbox = function()
+        local G = setup({ shader = true, sandbox = { FogVignette = false } })
+        NOM_FogState.set(true, 1)
+        G.seconds(6)
+        assert(G.override[0] ~= true and G.all[0] == nil, "canal com a vinheta desligada no sandbox")
+        local G2 = setup({ shader = true, sandbox = { FogVignetteIntensity = 0.5 } })
+        NOM_FogState.set(true, 1)
+        G2.seconds(6)
+        assert(math.abs(G2.all[0].blur - 0.5) < 1e-9, "não escalou: " .. tostring(G2.all[0].blur))
+        SandboxVars.NevoaEOutroMundo.FogVignetteIntensity = 0
+        G2.seconds(1)
+        assert(G2.override[0] == false, "segurou com intensidade 0 no sandbox")
     end,
 }

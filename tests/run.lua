@@ -1,4 +1,4 @@
-package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;" .. package.path
+package.path = "mod/42/media/lua/shared/?.lua;mod/42/media/lua/server/?.lua;mod/42/media/lua/client/?.lua;" .. package.path
 
 local FILES = {
     "tests/test_smoke.lua",
@@ -22,6 +22,11 @@ local FILES = {
     "tests/test_variants.lua",
     "tests/test_semrosto_rules.lua",
     "tests/test_atmosphere_rules.lua",
+    "tests/test_screen_fx_rules.lua",
+    "tests/test_screen_fx_assets.lua",
+    "tests/test_screen_fx_options.lua",
+    "tests/test_screen_fx.lua",
+    "tests/test_shader.lua",
     "tests/test_semrosto.lua",
     "tests/test_fog.lua",
     "tests/test_fog_event.lua",
@@ -43,6 +48,7 @@ local pass, fail = 0, 0
 for _, file in ipairs(FILES) do
     local tests = dofile(file)
     for name, fn in pairs(tests) do
+        NOM_ShaderMod = nil -- flag do mod do shader (mod2): só quem testa liga
         local ok, err = pcall(fn)
         if ok then
             pass = pass + 1

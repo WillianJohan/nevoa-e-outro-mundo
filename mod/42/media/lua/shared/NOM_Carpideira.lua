@@ -104,10 +104,21 @@ end
 -- o servidor manda o comando a todos), soluço para; no dono, solta e força o spot no
 -- jogador: spotted(p, true) → spottedNew com chance 1 000 000 (1114–1120), alvo e
 -- última posição vista (1909–1950). Só vale sem useless (191–208): solta antes.
+-- fn(z) a cada grito que este processo toca (efeitos de tela, sprint 0013). Em pcall:
+-- um erro de quem ouve não pode parar o grito (no solo quem chama é o servidor).
+local screamListeners = {}
+function C.onScream(fn)
+    screamListeners[#screamListeners + 1] = fn
+end
+
 function C.scream(z, p)
     z:getModData().NOM_furia = NOM_FogState.period
     stopSob(z)
     z:playSoundLocal(C.SCREAM)
+    for _, fn in ipairs(screamListeners) do
+        local ok, err = pcall(fn, z)
+        if not ok and getDebug() then print("[NOM] grito: erro de quem ouve: " .. tostring(err)) end
+    end
     if z:isRemoteZombie() then return end
     C.letGo(z)
     if p then z:spotted(p, true) end
