@@ -30,6 +30,13 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 
 Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 
+> **Steam Flatpak (o caso deste PC):** o jogo roda em sandbox e a pasta de dados é
+> `~/.var/app/com.valvesoftware.Steam/Zomboid`, não `~/Zomboid` — vale pra `mods/`,
+> `Workshop/` e `console.txt` em todo este documento. O mod de dev precisa de
+> `flatpak override --user --filesystem=$PWD/mod:ro com.valvesoftware.Steam` (rodado na raiz
+> do repo, e reiniciar a Steam) e do link em `~/.var/app/com.valvesoftware.Steam/Zomboid/mods/`.
+> O `build-workshop.sh` detecta essa pasta sozinho (ou use `ZOMBOID_DIR=...`).
+
 ## Instalar
 
 **Jogador:** inscrever-se no item do Steam Workshop (link em breve, depois da
