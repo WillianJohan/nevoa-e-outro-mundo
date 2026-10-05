@@ -264,4 +264,18 @@ return {
         G.ms(R2.MS + R2.FADE_MS + R2.HOLD_MS + 100)
         assert(not NOM_Dissolve.busy(w), "o teto não soltou o vivo")
     end,
+
+    -- morto que nunca vira corpo não segura uma vaga pra sempre: depois de BACKSTOP_MS solta
+    dissolve_death_backstop = function()
+        local G = setup()
+        local R2 = NOM_DissolveRules
+        assert(R2.BACKSTOP_MS == 30000)
+        local z = G.zombie()
+        z.dead = true
+        NOM_Dissolve.run(z, "death")
+        G.ms(R2.BACKSTOP_MS - 1000)
+        assert(NOM_Dissolve.busy(z) and z.drawn[0] == 0)
+        G.ms(2000)
+        assert(not NOM_Dissolve.busy(z) and NOM_Dissolve.count() == 0, "segurou a vaga depois do teto longo")
+    end,
 }

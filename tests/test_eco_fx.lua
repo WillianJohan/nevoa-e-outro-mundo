@@ -173,6 +173,7 @@ local function setup(opts)
         G.fire("OnDeadBodySpawn", b)
         return b
     end
+    G.corpse = corpse
     -- how: "solo" (animação de animMs antes do corpo) ou "client" (corpo no mesmo tick)
     function G.kill(z, how, animMs)
         -- solo: DoZombieInventory (vestidos e inventário da lista); cliente de MP: o que o
@@ -363,5 +364,21 @@ return {
         local ms
         for _, p in ipairs(G.prints) do ms = ms or tonumber(p:match("janela ms=(%d+)")) end
         assert(ms and ms >= 1100 and ms <= 1300, "janela do Eco errado: " .. tostring(ms))
+    end,
+
+    -- a opção desligada entre a morte e o corpo: o corpo de um Eco que a fila vestiu sai
+    -- sem nada vestido mesmo assim (a casca não vai pro save se a remoção falhar)
+    ecofx_option_off_before_corpse_still_clears = function()
+        local G = setup({ server = true })
+        local z = G.zombie()
+        z.dead = true
+        G.fire("OnZombieDead", z)
+        z.killDone = true
+        G.frame(5)
+        assert(#z.worn > 0, "a fila não vestiu")
+        G.on = false
+        local b = G.corpse(z)
+        G.restore()
+        assert(#b.worn == 0, "corpo com a casca: " .. table.concat(b.worn, ","))
     end,
 }

@@ -71,6 +71,7 @@ local function dead(z)
     deaths[#deaths + 1] = { x = x, y = y, z = zz, at = now }
     NOM_Embers.burst(x, y, zz)
     if NOM_Dissolve.run(z, "death") then
+        deaths[#deaths].ours = true -- a fila veste: o corpo sai limpo mesmo com a opção desligada depois
         pending[#pending + 1] = z
         debugLog("morte com dissolve")
     end
@@ -91,11 +92,17 @@ local function takeDeath(b)
     return table.remove(deaths, best)
 end
 
+-- Corpo de Eco: escondido e sem nada vestido se o dissolve está ligado ou se a morte veio da
+-- nossa fila (a opção desligada no meio não deixa a casca no corpo, nem no save se a remoção
+-- do servidor falhar).
 local function body(b)
-    if b:isAnimal() or b:getOutfitName() ~= F.OUTFIT or not NOM_Dissolve.enabled() then return end
+    if b:isAnimal() or b:getOutfitName() ~= F.OUTFIT then return end
+    local on = NOM_Dissolve.enabled()
+    if not on and #deaths == 0 then return end
+    local d = takeDeath(b)
+    if not (d and d.ours) and not on then return end
     b:setDoRender(false)
     b:getWornItems():clear()
-    local d = takeDeath(b)
     debugLog("corpo escondido, janela ms=" .. tostring(d and math.floor(getTimestampMs() - d.at) or -1))
 end
 

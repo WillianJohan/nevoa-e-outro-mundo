@@ -16,6 +16,9 @@ NOM_DissolveRules = {
     -- animação. Teto pra quem nunca vira corpo e não está morto (o driver não solta um
     -- morto que ainda tem square, client/NOM_Dissolve.lua).
     HOLD_MS = 5000,
+    -- teto longo do morto que ainda tem square e nunca vira corpo: solta a vaga
+    -- (o alfa volta como antes); a animação de morte nunca chega perto disso.
+    BACKSTOP_MS = 30000,
     CAP = 12,      -- efeitos ao mesmo tempo; o resto é instantâneo (névoa vermelha)
 }
 
