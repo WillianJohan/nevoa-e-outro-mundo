@@ -42,6 +42,14 @@ return {
         assert(NOM_Config.get("CorredorChance") == 2)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
+    -- Carpideira (sprint 0011): chance 3 (decisão do Johan, 05/10), raios 4 e 60
+    config_carpideira_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("CarpideiraEnabled") == true)
+        assert(NOM_Config.get("CarpideiraChance") == 3)
+        assert(NOM_Config.get("CarpideiraTriggerRadius") == 4)
+        assert(NOM_Config.get("CarpideiraScreamRadius") == 60)
+    end,
     -- névoa é evento (sprint 0009): ~1 a cada 3 dias, 2 a 6 horas; FogThreshold saiu
     config_red_fog_defaults = function()
         SandboxVars = nil

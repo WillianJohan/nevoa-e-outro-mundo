@@ -751,7 +751,7 @@ return {
         local eco = G.spawn({ id = 3 * 65536 + 1, outfit = "NOM_Eco" })
         NOM_FogState.set(true, 4, true)
         G.converge()
-        local n = { estalador = 0, corredor = 0, semrosto = 0 }
+        local n = { estalador = 0, corredor = 0, semrosto = 0, carpideira = 0 }
         for _, z in ipairs(zs) do
             local k = z.md.NOM_variant
             if k == nil then
@@ -760,7 +760,8 @@ return {
             end
             n[k] = n[k] + 1
         end
-        for k, v in pairs(n) do assert(v >= 18 and v <= 42, k .. " " .. v) end
+        -- 1/4 de cada (sprint 0011): ~22 de 90
+        for k, v in pairs(n) do assert(v >= 10 and v <= 35, k .. " " .. v) end
         assert(eco.md.NOM_variant == nil, "Eco virou variante")
         -- a vermelha acaba (névoa normal no mesmo período): volta ao sorteio normal
         NOM_FogState.set(true, 4, false)

@@ -5,8 +5,8 @@ local R = NOM_VariantRules
 -- Todas as variantes saem do MESMO sorteio por período de névoa (decisão do Johan,
 -- 05/10): faixas contíguas na ordem de NOM_VariantRules.KINDS.
 local function cfg(o)
-    local c = { estaladorOn = true, corredorOn = true, semRostoOn = true,
-        estaladorChance = 5, corredorChance = 10, semRostoChance = 5 }
+    local c = { estaladorOn = true, corredorOn = true, semRostoOn = true, carpideiraOn = true,
+        estaladorChance = 5, corredorChance = 10, semRostoChance = 5, carpideiraChance = 0 }
     for k, v in pairs(o or {}) do c[k] = v end
     return c
 end
@@ -31,7 +31,7 @@ local function realIDs()
 end
 
 local function count(ids, period, c)
-    local n = { estalador = 0, corredor = 0, semrosto = 0 }
+    local n = { estalador = 0, corredor = 0, semrosto = 0, carpideira = 0 }
     for _, id in ipairs(ids) do
         local v = R.variant(id, period, c)
         if v then n[v] = n[v] + 1 end
@@ -142,16 +142,38 @@ return {
         local c = R.config(NOM_Config.get)
         for period = 1, 3 do
             local n = count(ids, period, c)
-            for kind, want in pairs({ estalador = 5, corredor = 2, semrosto = 5 }) do
+            for kind, want in pairs({ estalador = 5, corredor = 2, semrosto = 5, carpideira = 3 }) do
                 local got = n[kind] / #ids * 100
                 assert(math.abs(got - want) < 1.5, kind .. " " .. got .. "%")
             end
         end
     end,
+    -- sprint 0011: 5 + 2 + 5 + 3 = 15%, a Carpideira na faixa [12, 15) depois das três
+    -- de antes (quem era Estalador, Corredor ou Sem-rosto continua sendo)
+    variant_rules_default_total_15 = function()
+        require "NOM_Config"
+        local c = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        local old = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        old.carpideiraChance = 0
+        local ids, any = realIDs(), 0
+        for period = 1, 3 do
+            local n = count(ids, period, c)
+            local total = (n.estalador + n.corredor + n.semrosto + n.carpideira) / #ids * 100
+            assert(math.abs(total - 15) < 1.5, "total " .. total)
+        end
+        for _, id in ipairs(ids) do
+            local k, before = R.variant(id, 2, c), R.variant(id, 2, old)
+            if before then assert(k == before, "a Carpideira mexeu na faixa de " .. before) end
+            if k == "carpideira" then any = any + 1; assert(before == nil) end
+        end
+        assert(any > 0)
+        assert(R.KINDS[4] == "carpideira" and #R.KINDS == 4, "Carpideira fora do fim da lista")
+    end,
     variant_rules_config_reads_sandbox = function()
         local vals = { EstaladorEnabled = false, CorredorEnabled = true, SemRostoEnabled = false,
-            EstaladorChance = 7, CorredorChance = 9, SemRostoChance = 12 }
+            EstaladorChance = 7, CorredorChance = 9, SemRostoChance = 12, CarpideiraEnabled = true, CarpideiraChance = 4 }
         local c = R.config(function(k) return vals[k] end)
+        assert(c.carpideiraOn == true and c.carpideiraChance == 4)
         assert(c.estaladorOn == false and c.corredorOn == true and c.semRostoOn == false)
         assert(c.estaladorChance == 7 and c.corredorChance == 9 and c.semRostoChance == 12)
     end,
@@ -207,6 +229,8 @@ return {
         for k, v in pairs(count) do
             assert(math.abs(v / #ids - 1 / #R.KINDS) < 0.02, string.format("%s %.3f", k, v / #ids))
         end
+        -- sprint 0011: os quatro tipos, 1/4 cada
+        assert(#R.KINDS == 4 and count.carpideira and count.carpideira > 0, "Carpideira fora da vermelha")
         -- mesmo zumbi, mesmo período: mesma resposta (recarga); período novo re-divide
         local same, diff = 0, 0
         for i = 1, 3000 do

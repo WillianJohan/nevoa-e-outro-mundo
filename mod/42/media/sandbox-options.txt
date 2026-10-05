@@ -120,6 +120,26 @@ option NevoaEOutroMundo.SemRostoChance = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.SemRostoChance,
 }
 
+option NevoaEOutroMundo.CarpideiraEnabled = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraEnabled,
+}
+
+option NevoaEOutroMundo.CarpideiraChance = {
+    type = integer, min = 0, max = 100, default = 3,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraChance,
+}
+
+option NevoaEOutroMundo.CarpideiraTriggerRadius = {
+    type = integer, min = 1, max = 20, default = 4,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraTriggerRadius,
+}
+
+option NevoaEOutroMundo.CarpideiraScreamRadius = {
+    type = integer, min = 5, max = 100, default = 60,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraScreamRadius,
+}
+
 option NevoaEOutroMundo.FogAmbience = {
     type = boolean, default = true,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogAmbience,
