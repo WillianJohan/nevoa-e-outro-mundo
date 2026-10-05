@@ -76,10 +76,13 @@ local function blendColor(c, rgba, w)
         NOM_Rules.blend(c:getAlphaFloat(), rgba[4], w)
 end
 
-local lastNight, lastFog
-local lastEdge = {}
+local lastNight, lastFog, lastHour
+-- As rampas nascem em 0: save carregado de noite também loga a borda do 1.
+local lastEdge = { nightRamp = 0, fogRamp = 0 }
+-- Devolve true quando é hora do bloco canal a canal (logChannels): borda da rampa,
+-- ou hora de jogo nova à noite.
 local function logDebug(w)
-    if not getDebug() then return end
+    if not getDebug() then return false end
     if w.night ~= lastNight or w.fog ~= lastFog then
         print(string.format("[NOM] night=%s fog=%s fogI=%.2f", tostring(w.night), tostring(w.fog), w.fogIntensity))
         lastNight, lastFog = w.night, w.fog
@@ -89,13 +92,42 @@ local function logDebug(w)
         local v = state[k]
         local edge = (v == 0 or v == 1) and v or nil
         if edge and edge ~= lastEdge[k] then
-            edged = edged or lastEdge[k] ~= nil
+            edged = true
             lastEdge[k] = edge
         end
     end
     if edged then
         print(string.format("[NOM] nightRamp=%.2f fogRamp=%.2f", state.nightRamp, state.fogRamp))
     end
+    local hour = math.floor(w.tod)
+    local hourly = w.night and lastHour ~= nil and hour ~= lastHour
+    lastHour = hour
+    return edged or hourly
+end
+
+local function rgba(c)
+    return string.format("%.2f,%.2f,%.2f,%.2f", c:getRedFloat(), c:getGreenFloat(), c:getBlueFloat(), c:getAlphaFloat())
+end
+
+-- Diagnóstico (só -debug): por canal, o vanilla (interno limpo, logo depois do
+-- updateValues), o valor escrito na camada modded e o getFinalValue(). O final é
+-- o do frame anterior, ou seja o do minuto passado: com a rampa parada, tem que
+-- bater com o escrito. Se não bate, outra camada (admin, override de clima, outro
+-- mod) está por cima. luz = multiplicador da luz do céu por canal (NOM_Rules.skyMod).
+local function logChannels(clim, look)
+    for _, ch in ipairs({ "desaturation", "ambient", "fog" }) do
+        local f, l = clim:getClimateFloat(FLOATS[ch]), look[ch]
+        local vanilla = f:getInternalValue()
+        local written = l.weight > 0 and string.format("%.2f", NOM_Rules.blend(vanilla, l.value, l.weight)) or "-"
+        print(string.format("[NOM] clima %s vanilla=%.2f escrito=%s final=%.2f peso=%.2f",
+            ch, vanilla, written, f:getFinalValue(), l.weight))
+    end
+    local c, t = clim:getClimateColor(ClimateManager.COLOR_GLOBAL_LIGHT), look.tint
+    local final = c:getFinalValue():getExterior()
+    local mr, mg, mb = NOM_Rules.skyMod(final:getRedFloat(), final:getGreenFloat(), final:getBlueFloat(), final:getAlphaFloat())
+    print(string.format("[NOM] clima tint vanilla=%s escrito=%s final=%s luz=%.2f,%.2f,%.2f peso=%.2f",
+        rgba(c:getInternalValue():getExterior()), t.weight > 0 and tintInfo and rgba(tintInfo:getExterior()) or "-",
+        rgba(final), mr, mg, mb, t.weight))
 end
 
 -- Roda logo depois de updateValues(): os valores internos são o vanilla limpo.
@@ -105,7 +137,7 @@ local function onClimateTick(clim)
     local w = NOM_World.update(vanillaFog(fogFloat))
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
     state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, TRANSITION_MINUTES)
-    logDebug(w)
+    local dump = logDebug(w)
 
     local look = NOM_Rules.mix(state.nightRamp, state.fogRamp, NOM_Config.get("DarkIntensity"))
     for ch, id in pairs(FLOATS) do
@@ -125,6 +157,7 @@ local function onClimateTick(clim)
         tintInfo:setInterior(blendColor(vanilla:getInterior(), tint.value, tint.weight))
         c:setModdedValue(tintInfo)
     end)
+    if dump then logChannels(clim, look) end
 end
 
 Events.OnClimateTick.Add(onClimateTick)

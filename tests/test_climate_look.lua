@@ -71,6 +71,7 @@ local function setup(opts)
         interp = 0, isModded = false }
     color.final = newColorInfo(VANILLA_EXT, VANILLA_INT)
     function color:getInternalValue() return self.internal end
+    function color:getFinalValue() return self.final end
     function color:setEnableModded(on) self.isModded = on; calls[#calls + 1] = "tint" .. (on and ":on" or ":off") end
     function color:setModdedValue(info) -- o jogo copia (setTo), não guarda a referência
         self.modded = newColorInfo(info.ext, info.int)
@@ -95,7 +96,7 @@ local function setup(opts)
     }
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {}, FogCycle = opts.fogCycle or 1, ClimateCycle = opts.climateCycle or 1 }
     isClient = function() return opts.client == true end
-    getDebug = function() return false end
+    getDebug = function() return opts.debug == true end
     local handlers = { climate = {}, tick = {} }
     Events = {
         OnClimateTick = { Add = function(f) handlers.climate[#handlers.climate + 1] = f end },
@@ -279,5 +280,49 @@ return {
         f.override, f.overrideInterp, f.overrideValue, f.overrideInternal = 0.7, 0.5, true, 0.5
         env.run(5)
         assert(NOM_World.fog == true, "nevasca eterna ignorada: leu o interno")
+    end,
+    -- log de -debug pra conferir no console.txt se o valor chega no jogo: na borda
+    -- da rampa e uma vez por hora de jogo à noite, um bloco com vanilla, escrito e
+    -- final de cada canal
+    look_debug_log_on_edges_and_hourly = function()
+        local lines, orig = {}, print
+        print = function(msg) lines[#lines + 1] = msg end
+        local ok, err = pcall(function()
+            local env = setup({ tod = 23.5, K = 3, debug = true })
+            local function blocks()
+                local n = 0
+                for _, l in ipairs(lines) do if l:find("[NOM] clima tint", 1, true) then n = n + 1 end end
+                return n
+            end
+            local function advance() env.world.tod = (env.world.tod + 1 / 60) % 24 end
+            env.run(19, advance)
+            assert(blocks() == 0, "logou antes da borda")
+            env.run(1, advance)
+            assert(blocks() == 1, "borda da rampa sem bloco: " .. blocks())
+            env.run(9, advance) -- 23:59, mesma hora
+            assert(blocks() == 1, "logou todo minuto")
+            env.run(3, advance) -- passou da meia-noite
+            assert(blocks() == 2, "hora nova sem bloco: " .. blocks())
+            local amb
+            for _, l in ipairs(lines) do if l:find("[NOM] clima ambient", 1, true) then amb = l end end
+            assert(amb and amb:find("vanilla=0.50", 1, true) and amb:find("escrito=", 1, true) and amb:find("final=", 1, true),
+                "linha do ambient: " .. tostring(amb))
+            local tint
+            for _, l in ipairs(lines) do if l:find("[NOM] clima tint", 1, true) then tint = l end end
+            assert(tint:find("vanilla=0.33,0.33,0.33,0.40", 1, true) and tint:find("luz=", 1, true), "linha do tint: " .. tint)
+        end)
+        print = orig
+        assert(ok, err)
+    end,
+    look_debug_log_silent_without_debug = function()
+        local n, orig = 0, print
+        print = function() n = n + 1 end
+        local ok, err = pcall(function()
+            local env = setup({ tod = 23.5, K = 3 })
+            env.run(90, function() env.world.tod = (env.world.tod + 1 / 60) % 24 end)
+        end)
+        print = orig
+        assert(ok, err)
+        assert(n == 0, "imprimiu sem -debug: " .. n)
     end,
 }
