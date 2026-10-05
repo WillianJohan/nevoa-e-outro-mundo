@@ -35,17 +35,29 @@ sem save: um overlay que vaza pro save é pior que nenhum.
   servidor conta os períodos de névoa no `ModData` global (`data.fog`, pelo
   estado, como as noites) e manda `fog { on, period }`.
 - Quem vê (solo: o processo; MP: cada cliente) varre os Sem-rosto a cada 10 ticks:
-  visto = `square do zumbi:isCanSee(pn)` a até 30 tiles; destino = primeiro tile
-  atrás do jogador, `nextRadius` mais perto, livre e `not isCouldSee(pn)`.
-- O servidor confere névoa, variante, destino (mais perto, não colado, zumbi a até
-  30 tiles de quem viu) e o cooldown de 4 s por zumbi. No solo move ali mesmo. No
-  dedicado move a própria cópia (vale quando ninguém é dono) e manda
-  `semRostoMove { id, x, y, z }` a todos; só a cópia local (`not isRemoteZombie()`)
-  faz `teleportTo`.
-- **Fallback:** se o mesmo zumbi é visto de novo a ≤ 1,5 tile de onde saiu, até
-  20 s depois, o dono não aplicou: o servidor spawna outro no destino, veste com
+  visto = `square do zumbi:isCanSee(pn)` a até 30 tiles, no mesmo andar
+  (`math.floor(z)`). A até 2 tiles (`ATTACK_DIST`) não some: ataca. Destino =
+  primeiro tile atrás do jogador, `nextRadius` mais perto, chão (`isFree(false)`,
+  sem `IsoFlagType.water`) e `not isCouldSee(pn)` pra **todos** os jogadores
+  locais (tela dividida).
+- O servidor confere névoa, variante, destino (mais perto, não colado, zumbi entre
+  2 e 30 tiles de quem viu, no andar de quem viu, square carregado, livre e sem
+  água) e o cooldown de 4 s por zumbi. No solo move ali mesmo. No dedicado move a
+  própria cópia (vale quando ninguém é dono) e manda `semRostoMove { id, x, y, z }`
+  a todos.
+- No MP, o cliente que viu move **a própria cópia remota** pro destino na hora
+  (quem viu não vê deslize; os pacotes do dono trazem a mesma posição). O dono,
+  ao receber `semRostoMove`, só move se nenhum jogador local dele tem linha de
+  visão pro destino (o servidor não sabe a vista de ninguém). A cópia do dono
+  nunca move sem o servidor: a posição do dono é a verdade da rede.
+- O movimento põe o zumbi no centro do tile: `teleportTo` (canto) + `setX/setY` e
+  `setLastX/setLastY` em `x + 0.5`.
+- **Fallback:** se o mesmo zumbi é visto de novo até 5 s depois a ≤ 1,5 tile de
+  onde saiu **e** a mais de 2 tiles do destino, o dono não aplicou: o servidor
+  spawna outro no destino (conferido do mesmo jeito), veste com
   `dressInPersistentOutfitID(id)` (mesma variante), remove o original e manda
-  `semRostoGone` (o cliente apaga como o Eco).
+  `semRostoGone` (o cliente apaga como o Eco). A janela é curta pra não trocar um
+  zumbi que correu de volta pela origem.
 - Fim da névoa: nada a desfazer. O Sem-rosto não tem stats próprios.
 
 **Atmosfera: local e sem save.**
@@ -71,9 +83,12 @@ sem save: um overlay que vaza pro save é pior que nenhum.
 
 ## Consequências
 
-- No MP, outros jogadores podem ver o Sem-rosto **deslizar** até o novo ponto
-  (cópias remotas andam até a posição do dono). Só quem o viu tem a garantia de que
-  o destino está fora da vista. A confirmar no jogo.
+- No MP, um terceiro jogador pode ver o Sem-rosto **deslizar** até o novo ponto
+  (cópias remotas andam até a posição do dono). Quem viu teleporta a própria cópia;
+  que os pacotes do dono convirjam sem puxão é a confirmar no jogo.
+- Se o dono vê o destino, ele não move; a cópia de quem viu já está lá e volta
+  andando até a posição do dono (deslize visível pra quem viu, raro). O fallback
+  não cobre esse caso (o zumbi não ficou na origem pro dono).
 - Quem viu e quem é dono podem ser clientes diferentes: o sumiço tem a latência de
   ida e volta ao servidor.
 - O destino é conferido pelo servidor só por distância; "fora da vista" é palavra

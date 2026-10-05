@@ -371,7 +371,8 @@ Mover o zumbi:
 
 | API | Status | Evidência |
 |---|---|---|
-| `z:teleportTo(x, y, z)` | EXISTS, **usado no dono** | `IsoGameCharacter.teleportTo(III)`: `setX/Y/Z`, `setLastX/Y`, `ensureOnTile`; sem rede. Sem uso vanilla em Lua |
+| `z:teleportTo(x, y, z)` | EXISTS, **usado no dono** | `IsoGameCharacter.teleportTo(III)`: `setX/Y/Z` com o int (canto do tile), `setLastX/Y`, `ensureOnTile`; sem rede. Sem uso vanilla em Lua. O mod centra depois com `setX/setY/setLastX/setLastY(x + 0.5)` (públicos em `IsoMovingObject`) |
+| `square:getProperties():has(IsoFlagType.water)` | CONFIRMED | `server/Fishing/BuildingObjects/FishingNet.lua:31`, `server/BuildingObjects/ISNaturalFloor.lua:59` (água não é chão pro destino) |
 | `z:setX/setY/setZ` | EXISTS | `server/ClientCommands.lua:845` usa `animal:setX` |
 | `z:setInvisible(true)` | EXISTS | efeito em zumbi UNKNOWN; não usado |
 | `z:dressInPersistentOutfitID(id)` | EXISTS, **fallback** | grava `persistentOutfitId` e veste (`PersistentOutfits.dressInOutfit`) |
@@ -448,22 +449,24 @@ Recomendado: helper `if isServer() then sendPlaySound(n, false, z) elseif not is
 sendo `IsoMovingObject`, manda `PacketType.PlaySound` (ou `GameClient.PlayWorldSound`) antes
 de tocar; `stopSound(id)` chama `sendStopSound`. Isso vale pro emitter de zumbi também: o
 estalo do Estalador (`z:getEmitter():playSound`, tocado em toda cópia local, sprint 0004) sai
-de cada cliente pra rede. Pendência registrada na sprint 0005.
+de cada cliente pra rede. **Corrigido na sprint 0005:** o estalo usa `z:playSoundLocal`
+(= `getEmitter().playSoundImpl(nome, null)`, sem pacote).
 
 ### 4.3 Som 2D/ambiente só para o jogador local
 
 | API | Status | Evidência |
 |---|---|---|
 | `player:playSoundLocal(name)` → id | CONFIRMED, **usado** | `client/ISUI/Maps/ISMap.lua:210`; bytecode `IsoGameCharacter.playSoundLocal` = `getEmitter().playSoundImpl(name, null)`, sem pacote |
-| `player:getEmitter():setVolume(id, v)` | EXISTS, **usado** | `CharacterSoundEmitter.setVolume(JF)` → `FMODSoundEmitter.setVolume` (volume da instância) |
+| `player:getEmitter():setVolume(id, v)` | CONFIRMED (bytecode), **usado** | `CharacterSoundEmitter.setVolume(JF)` → `FMODSoundEmitter.setVolume` guarda o volume da instância; `FMODSoundEmitter$FileSound.tick` aplica todo tick com `FMOD_Channel_SetVolume(channel, getVolume())` (168–175) |
 | `player:getEmitter():stopSoundLocal(id)` | EXISTS, **usado** | `FMODSoundEmitter.stopSoundLocal(J)`: para e solta, sem `sendStopSound` |
 | `player:getEmitter():isPlaying(id)` | EXISTS, **usado** | `FMODSoundEmitter.isPlaying(J)` |
 | `getSoundManager():playUISound(name)` → id | CONFIRMED | `server/BuildingObjects/ISMoveableCursor.lua:179`; local (`uiEmitter.playClip`), mas sem controle de volume pelo Lua |
 | `getSoundManager():stopUISound(id)`, `isPlayingUISound(id)` | EXISTS | bytecode `SoundManager` |
 
 Loop: `loop = true` no nível do `sound` (como `media/scripts/generated/sounds/sounds_ambience.txt:3-11`).
-UNKNOWN: se `loop` vale pra clip de `file` (vanilla só usa com `event`); o mod toca de novo se
-`isPlaying(id)` cair.
+CONFIRMED (bytecode) pra clip de `file`: `FMODSoundEmitter$FileSound.tick` (5–24) chama
+`FMOD_Channel_SetMode(channel, 2)` (FMOD_LOOP_NORMAL) quando `GameSound.isLooped()`. O mod
+ainda toca de novo se `isPlaying(id)` cair (som cortado pelo jogo).
 
 ## 5. Overlays de chão locais (sprint 0005)
 
@@ -602,5 +605,5 @@ Jogadores no servidor: `getOnlinePlayers()` no dedicado; `getNumActivePlayers()`
 10. `require` de arquivo do servidor por outro arquivo do servidor roda uma vez só: sim, por
     bytecode (`LuaManager.RunLuaInternal` 11–30 devolve `loadedReturn` se o caminho já está em `loaded`).
 8. ~~`setValue` em opção de sandbox dispara sync?~~ Não, nem salva (§2.1).
-11. Sprite de tile por nome em `addIsoMarker` aparece (`Texture.trygetTexture`)? `loop = true` vale
-    pra som de `file`? `emitter:setVolume` muda o volume do som do mod? (sprint 0005)
+11. Sprite de tile por nome em `addIsoMarker` aparece (`Texture.trygetTexture`)? (sprint 0005;
+    `loop = true` em `file` e `emitter:setVolume` resolvidos por bytecode, §4.3)

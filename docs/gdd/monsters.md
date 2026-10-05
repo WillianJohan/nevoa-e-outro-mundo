@@ -63,11 +63,15 @@ sorteio): quem avisa é o som.
   mesmo zumbi pode ser Estalador (ou Corredor) e Sem-rosto ao mesmo tempo.
 - Quando entra no campo de visão do jogador ou é iluminado (o jogo só "vê" no
   escuro o que está iluminado), some e reaparece 3 tiles mais perto (nunca a menos
-  de 3), atrás do jogador e fora da linha de visão dele. Depois de sumir, só some de
-  novo 4 segundos depois (não pisca). Sem lugar livre e escondido atrás do jogador,
-  fica onde está até haver.
-- No MP, quem o viu não vê o sumiço acontecer; outro jogador olhando pode vê-lo
-  deslizar até o ponto novo ([ADR-007](../architecture/adr-007-sem-rosto-e-atmosfera-local.md)).
+  de 3), atrás do jogador, em chão (não na água) e fora da linha de visão de todos
+  os jogadores daquela tela. Depois de sumir, só some de novo 4 segundos depois
+  (não pisca). Sem lugar livre e escondido atrás do jogador, fica onde está até haver.
+- **Colado, ataca:** a 2 tiles ou menos de quem o vê, ele para de sumir e ataca
+  como zumbi comum (`ATTACK_DIST`, decisão de 04/10/2026). Senão ficaria piscando
+  atrás de quem o encara e nunca seria ameaça. Quem foge de costas é alcançado.
+- No MP, quem o viu também não o vê deslizar: a cópia dele vai direto pro ponto
+  novo. Um terceiro jogador olhando pode vê-lo deslizar até lá
+  ([ADR-007](../architecture/adr-007-sem-rosto-e-atmosfera-local.md)).
 - O rádio chia "na cabeça" do jogador, mais forte quanto mais perto (no máximo a 3
   tiles, mudo a partir de 30). Não exige rádio no inventário.
 - Quando a névoa baixa, volta a ser zumbi comum: aquele zumbi qualquer *era* a coisa.
