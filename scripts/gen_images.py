@@ -5,7 +5,7 @@ Saída:
   mod/42/poster.png          512x512  painel de info do mod (mod.info poster=)
   mod/42/icon.png             64x64   lista de mods, desenhado a 28 px (mod.info icon=): o "N" na névoa
   docs/workshop/preview.png  256x256  imagem do item no Workshop (o jogo exige
-                                      PNG quadrado de 256 ou 512, < 1 024 000 bytes)
+                                      PNG quadrado de 256 ou 512, até 1 024 000 bytes)
 
 Névoa em camadas de ruído suavizado, um poste com luz fraca e uma figura sem
 rosto ao longe. Texto na fonte embutida do Pillow (Aileron); ela não tem "É",

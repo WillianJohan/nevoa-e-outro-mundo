@@ -604,7 +604,7 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
 
 ## 9. Publicação: mod.info, traduções e Workshop (sprint 0007)
 
-**Verificado na sprint 0007** (bytecode B42.20.4 e Lua vanilla).
+**Verificado na sprint 0007** (bytecode B42.20.4 e Lua vanilla; conferido de novo contra o 42.21 no review).
 
 **`mod.info`** — `ChooseGameInfo.readModInfoAux` (CONFIRMED pelo bytecode):
 
@@ -620,7 +620,7 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
   de informações (`ModInfoPanelDesc.lua:37`).
 - `versionMin=42.20`: `GameVersion.parse` usa `([0-9]+)\.([0-9]+)(.*)` e
   `getInt() = major*1000 + minor`; `Mod.isAvailableSelf` só recusa se
-  `versionMin.isGreaterThan(atual)`, que compara `getInt`. 42.20.4 = 42020: aceito.
+  `versionMin.isGreaterThan(atual)`, que compara `getInt`. 42.20.4 = 42020 e 42.21 = 42021: aceitos.
 
 **Traduções** — `Translator`:
 
@@ -644,9 +644,14 @@ noite (Aprendizado 6 da sprint 0005). IDs de Eco velhos saem na poda (7 noites).
 - O jogo **reescreve** o `workshop.txt` (`writeWorkshopTxt`) ao sair da página 2
   (`WorkshopSubmitScreen.lua:351`) e ao criar o item, gravando o `id=` (1157–1158).
   Sem o `id=`, o próximo envio cria outro item.
+- **Visibilidade vai em todo envio:** `SteamWorkshop.SubmitWorkshopItem` chama
+  `n_SetItemVisibility(item.getVisibilityInteger())`, e a página 2 já vem marcada com o
+  `visibility=` do `workshop.txt` (`WorkshopSubmitScreen.lua:300-309`). Tornar público só
+  na página do Steam e reenviar com `unlisted` no arquivo **esconde o item de novo**: a
+  troca é pela página 2 ([publicar.md §5](../publicar.md#5-abrir-pra-todo-mundo-e-taggear-2-min)).
 - `getSubmitDescription` anexa "Workshop ID" e "Mod ID" à descrição. O Steam corta em
   8000 caracteres: o build recusa acima de 7900 bytes.
-- `validatePreviewImage`: existe, < 1 024 000 bytes (constante `long` 1024000), PNG
+- `validatePreviewImage`: existe, **até** 1 024 000 bytes (`Files.size`, `lcmp` com a constante `long` 1024000, `ifle` passa: offsets 34–41), PNG
   quadrado de **256 ou 512** px.
 - `validateContents`: em `Contents/` só pastas (`mods`, `buildings`, `creative`);
   `validateModFolder`: no mod, pastas `common` ou de versão (`42`, entre a mínima e a

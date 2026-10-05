@@ -61,7 +61,7 @@ começando de dia, numa cidade (Muldraugh serve).
 ### 1.1 Menu e carga (5 min)
 
 - [ ] **Lista de mods (Mods no menu principal):** "Névoa e Outro Mundo" aparece
-      disponível, com o ícone (figura na névoa) na linha e o poster no painel de
+      disponível, com o ícone (o "N" na névoa) na linha e o poster no painel de
       informações; descrição em PT-BR, e em inglês depois de trocar o idioma (vem do
       `Mod.json`). → [0007: textos, poster e ícone](sprints/sprint-0007-workshop/README.md#roteiro-in-game)
 - [ ] **Sandbox:** a página "Névoa e Outro Mundo" mostra as 24 opções com rótulo e

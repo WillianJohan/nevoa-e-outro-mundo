@@ -56,8 +56,8 @@ mod/
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
 tests/                              asserts de lua puro (./run-tests.sh, luajit) e teste do build
-scripts/                            gen_sounds.py, gen_images.py, build-workshop.sh (pasta de upload)
-docs/workshop/                      descrições do Workshop (BBCode) e preview.png
+scripts/                            gen_sounds.py, gen_images.py, build-workshop.sh (pasta de upload, só o mod/ commitado)
+docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
 ```
 
 Fluxo: `World` deriva o estado do clima vanilla → `ClimateLook` escurece o

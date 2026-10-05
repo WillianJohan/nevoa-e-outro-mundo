@@ -34,7 +34,8 @@ Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e pre
 
 **Jogador:** inscrever-se no item do Steam Workshop (link em breve, depois da
 publicação) e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
-Em servidor: `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` no `.ini`.
+Em servidor: `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
+`Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
 
 **Dev:** symlink do repositório na pasta de mods:
 
@@ -111,7 +112,7 @@ git push origin --delete sprint/0001-estado-e-clima
 
 ## Desenvolvimento
 
-- Project Zomboid **Build 42** (desenvolvido contra 42.20.4).
+- Project Zomboid **Build 42**: desenvolvido contra 42.20.4; publicação verificada contra 42.21.
 - Lua do mod em `mod/42/media/` + `mod/common/` (estrutura de mod do B42.20).
 - Testes: `brew install luajit`, depois `./run-tests.sh` (lógica pura, traduções,
   créditos e o build do Workshop, com `HOME` temporário).

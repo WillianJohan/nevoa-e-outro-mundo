@@ -17,6 +17,8 @@ envia.
       pelo symlink.
 - [ ] A sprint em teste foi mergeada na `main` e a `main` está limpa:
 
+Comandos na raiz do repositório (`cd ~/Documents/projects/nevoa-e-outro-mundo`).
+
 ```bash
 git checkout main && git pull
 git status            # nada pendente: o commit publicado é o que vai ganhar a tag
@@ -34,16 +36,22 @@ Esperado (o número de arquivos muda com o mod):
 
 ```
 destino: /home/<você>/Zomboid/Workshop/NevoaEOutroMundo
-Contents/mods/NevoaEOutroMundo/ <- mod/ (45 arquivos, cópia limpa)
+Contents/mods/NevoaEOutroMundo/ <- mod/ do commit <hash> (45 arquivos, cópia limpa)
 preview.png <- docs/workshop/preview.png (82862 bytes)
 workshop.txt <- docs/workshop/description-en.txt + description-ptbr.txt (5980 bytes); sem id (primeiro upload), visibility=unlisted
 pronto. Abra o jogo: menu principal > Workshop > Névoa e Outro Mundo.
 ```
 
 O script recusa (e não escreve nada) se a preview não for PNG de 256 ou 512 px
-quadrado com menos de 1 024 000 bytes, ou se as duas descrições juntas passarem de
-7900 bytes: são as regras do jogo e do Steam. Rodar de novo é seguro: o mod é
-recopiado do zero e o `id=`/`visibility=` que o jogo gravou são mantidos.
+quadrado com até 1 024 000 bytes, se as duas descrições juntas passarem de 7900
+bytes (regras do jogo e do Steam), ou se houver mudança não commitada em `mod/`:
+**vai pro upload só o que está no último commit** (`git archive HEAD mod`), que é o
+commit que leva a tag. Arquivo fora do git em `mod/` fica de fora, com `AVISO:`.
+Rodar de novo é seguro: o mod é recopiado do zero e o `id=`/`visibility=` que o jogo
+gravou são mantidos. Depois do primeiro envio o ID também fica no repo
+(`docs/workshop/workshop-id.txt`, passo 2.7): se o `workshop.txt` local perder o
+`id=`, o build usa o do repo, e se os dois forem diferentes avisa (`AVISO: …`) antes de
+você criar um item duplicado.
 
 ## 2. Enviar pelo jogo (5 min)
 
@@ -67,6 +75,16 @@ Abrir o Project Zomboid **sem** `-debug`, logado na Steam.
    **Enviar para a Oficina Steam agora!**
 6. Ao criar o item, o jogo grava o `id=` no `~/Zomboid/Workshop/NevoaEOutroMundo/workshop.txt`.
    **Copiar esse número** (o ID da Oficina) pra usar abaixo.
+7. **Registrar o ID no repo, na hora** (é a única cópia fora desta máquina):
+
+```bash
+grep '^id=' ~/Zomboid/Workshop/NevoaEOutroMundo/workshop.txt | cut -d= -f2 > docs/workshop/workshop-id.txt
+```
+
+   No `README.md`, trocar o "em breve" do Workshop pelo link
+   `https://steamcommunity.com/sharedfiles/filedetails/?id=<ID>`. Commit
+   (`docs: ID do item no Workshop`) na `main` e push. Não mexe em `mod/`: o commit
+   enviado continua sendo o que leva a tag no passo 5.
 
 Se o Steam pedir pra aceitar o acordo legal da Oficina, o item fica oculto até
 aceitar na página do item no navegador.
@@ -97,13 +115,14 @@ igual (bytecode `ZomboidFileSystem.getAllModFolders`, ordem `workshop,steam,mods
 baixada:
 
 ```bash
-mv ~/Zomboid/Workshop/NevoaEOutroMundo /tmp/NevoaEOutroMundo-upload   # tira o build da frente
-rm ~/Zomboid/mods/NevoaEOutroMundo                                     # tira o symlink
+mkdir -p ~/Zomboid/Workshop-parked
+mv ~/Zomboid/Workshop/NevoaEOutroMundo ~/Zomboid/Workshop-parked/   # tira o build da frente (guarda o id=)
+rm ~/Zomboid/mods/NevoaEOutroMundo                                  # tira o symlink
 ```
 
-E pra voltar a desenvolver depois: devolver o symlink
-(`ln -sfn "$PWD/mod" ~/Zomboid/mods/NevoaEOutroMundo`) e cancelar a inscrição, ou
-deixar a inscrição e lembrar que ela ganha do symlink.
+`~/Zomboid/Workshop-parked/` fica fora da busca de mods do jogo e sobrevive a reboot
+(não use `/tmp`): é ali que está o `workshop.txt` com o `id=`. O passo "Devolver a
+pasta", no fim desta seção, desfaz isso.
 
 ### Solo
 
@@ -119,6 +138,10 @@ deixar a inscrição e lembrar que ela ganha do symlink.
 1. No `.ini` do servidor (`~/Zomboid/Server/servertest.ini` no teste local):
    `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` (o `id=` do `mod.info`; com outros
    mods, separar por `;`). Ou pelo menu Host → configurações do servidor → Mods.
+   **A confirmar nesta sessão:** no B42 a linha `Mods=` aparece com o ID puro e também
+   com barra invertida (`Mods=\NevoaEOutroMundo`). Começar pelo ID puro; se o console
+   do servidor não carregar o mod, tentar com `\`, e anotar qual valeu no README da
+   sprint 0007 (e no `README.md`, seção Instalar).
 2. Subir o servidor: o console mostra o download do item e o mod carregando, sem
    `ERROR` com `NOM_`.
 3. Entrar com um cliente: o cliente baixa o item sozinho, entra, e de noite o console
@@ -126,10 +149,31 @@ deixar a inscrição e lembrar que ela ganha do symlink.
 
 Se tudo passou: marcar o critério no README da sprint 0007 com o ID e o console.
 
+### Devolver a pasta (obrigatório)
+
+```bash
+mv ~/Zomboid/Workshop-parked/NevoaEOutroMundo ~/Zomboid/Workshop/
+ln -sfn ~/Documents/projects/nevoa-e-outro-mundo/mod ~/Zomboid/mods/NevoaEOutroMundo
+```
+
+Sem a pasta de volta, o próximo build cai no ID do repo (e avisa); com ela, nada muda.
+Pra voltar a desenvolver pelo symlink: cancelar a inscrição e, antes de abrir o jogo,
+`mv ~/Zomboid/Workshop/NevoaEOutroMundo ~/Zomboid/Workshop-parked/` de novo (a pasta de
+upload e a inscrição ganham do symlink). Na hora de atualizar, devolver de novo.
+
 ## 5. Abrir pra todo mundo e taggear (2 min)
 
-1. Página do item na Steam → **Visibilidade: Público**. (Ou: rodar o build, que
-   preserva a visibilidade, e escolher **Público** na página 2 de um novo envio.)
+1. **Pelo jogo** (o caminho principal): `scripts/build-workshop.sh`, jogo → Workshop →
+   Criar e atualizar itens → `NevoaEOutroMundo` → página 2: **Visibilidade = Público**
+   → página 5, nota "visibilidade pública" → enviar. A página 2 grava `visibility=public`
+   no `workshop.txt` (`WorkshopSubmitScreen.lua:350-351`) e o build mantém daí em diante.
+
+   **Por que não pela página do Steam:** todo envio manda a visibilidade do
+   `workshop.txt` (`SteamWorkshop.SubmitWorkshopItem` chama `n_SetItemVisibility` com
+   `getVisibilityInteger()`) e a página 2 já vem marcada com ela. Mudar só no Steam deixa
+   `visibility=unlisted` no arquivo local, e a próxima atualização **esconde o item de
+   novo** sem avisar. Se mudar no Steam mesmo assim, trocar também à mão:
+   `sed -i 's/^visibility=.*/visibility=public/' ~/Zomboid/Workshop/NevoaEOutroMundo/workshop.txt`.
 2. Taggear **o commit que foi enviado** (o `HEAD` da `main` no passo "Antes de
    publicar"):
 
@@ -140,17 +184,22 @@ gh release create v1.0.0 --title "v1.0.0" \
   --notes "Primeira versão pública. Steam Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=<ID>"
 ```
 
-3. No `README.md`, trocar o "em breve" do Workshop pelo link com o ID; commit na `main`.
-4. Marcar o critério da release no README da sprint 0007 e fechar a sprint.
+3. Marcar o critério da release no README da sprint 0007 e fechar a sprint.
 
 ## Atualizar depois
 
-1. Subir o `modversion=` em `mod/42/mod.info` e mergear na `main`.
-2. `scripts/build-workshop.sh` (mantém o `id=` e a visibilidade).
-3. Jogo → Workshop → Criar e atualizar itens → `NevoaEOutroMundo` → páginas 2 e 5
-   (notas de alteração) → enviar. A página 3 não aparece: o `id=` já está lá.
+1. Subir o `modversion=` em `mod/42/mod.info` e mergear na `main` (commitado: o build
+   recusa `mod/` sujo).
+2. A pasta `~/Zomboid/Workshop/NevoaEOutroMundo` no lugar (não em `Workshop-parked`) e
+   `scripts/build-workshop.sh` (mantém o `id=` e a visibilidade; `AVISO:` de ID = parar e
+   conferir).
+3. Jogo → Workshop → Criar e atualizar itens → `NevoaEOutroMundo` → página 2:
+   **confirmar Visibilidade = Público** → página 5 (notas de alteração) → enviar. A
+   página 3 não aparece: o `id=` já está lá.
 4. `git tag -a vX.Y.Z` + `gh release create` no commit enviado.
 
-Se a pasta `~/Zomboid/Workshop/NevoaEOutroMundo` sumiu (outro PC, HD novo), o
-`id=` sumiu junto: na página 3 escolher **"Este é um item existente…"** e digitar o
-ID da Oficina. Nunca criar um item novo pra uma atualização.
+Se a pasta `~/Zomboid/Workshop/NevoaEOutroMundo` sumiu (outro PC, HD novo), o build
+recria o `workshop.txt` com o ID de `docs/workshop/workshop-id.txt` (com `AVISO:`), mas
+com `visibility=unlisted`: na página 2, **Público**. Se nem o arquivo do repo existir,
+na página 3 escolher **"Este é um item existente…"** e digitar o ID da Oficina. Nunca
+criar um item novo pra uma atualização.

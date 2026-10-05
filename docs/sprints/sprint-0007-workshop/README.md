@@ -19,39 +19,45 @@ Johan.
 
 - [x] Textos do mod (sandbox, tooltips) em **EN e PT-BR** — `tests/test_translations.lua`:
       as 24 opções + página com rótulo e tooltip nos dois idiomas, nenhuma chave sobrando
-      (`translations_sandbox_keys_exact`), toda chave de `getText` do Lua definida
-      (`translations_lua_keys_defined`), EN só ASCII (o jogo lança exceção com caractere
-      parecido: `Translator.cryAboutUnicodeConfusables`), vírgulas válidas pro JSON estrito.
+      (`translations_sandbox_keys_exact`), EN só ASCII (o jogo lança exceção com caractere
+      parecido: `Translator.cryAboutUnicodeConfusables`), cada arquivo aceito por um parser
+      JSON estrito (`translations_strict_json`, `json.load` do python3) e vírgulas no
+      formato do jogo. O Lua hoje não chama `getText`: `translations_lua_keys_defined` só
+      guarda o futuro, não conta como evidência.
       Nome/descrição do mod também traduzidos (`Translate/<LANG>/Mod.json`, lido por
       `Translator.readModTranslation`; `translations_mod_json`). Ver no jogo: roteiro passo 1.
 - [x] `CREDITS.md` lista a origem e a licença de toda textura e som; **nenhum asset de
       terceiros** — sons por `scripts/gen_sounds.py`, imagens por `scripts/gen_images.py`
       (fonte embutida do Pillow, CC0), vanilla só por nome/GUID. `tests/test_credits.lua`
-      falha com `.png/.ogg/.wav` fora do `CREDITS.md` (`credits_every_binary_asset_listed`)
-      ou GUID vanilla não listado (`credits_vanilla_guids_listed`).
+      falha com qualquer arquivo do mod que não seja código ou texto e não esteja no
+      `CREDITS.md` (`credits_every_asset_listed`) ou GUID vanilla não listado
+      (`credits_vanilla_guids_listed`).
 - [x] Thumbnail (256×256) e `poster.png` do mod — `docs/workshop/preview.png` 256×256
       (82 862 bytes; o build confere as regras de `SteamWorkshopItem.validatePreviewImage`,
-      `build_refuses_bad_preview`), `mod/42/poster.png` 512×512 e `mod/42/icon.png` 64×64
+      `build_refuses_bad_preview`, `build_preview_size_limit_inclusive`), `mod/42/poster.png` 512×512 e `mod/42/icon.png` 64×64 (o "N" na névoa)
       ligados no `mod.info` (`credits_modinfo_assets_exist`, `modinfo_lines_match_own_key`).
       Ver no jogo: roteiro passo 1.
 - [ ] Página do Workshop em EN e PT-BR: o que faz, sandbox, compatibilidade, link do
       GitHub — **texto pronto** em `docs/workshop/description-{en,ptbr}.txt` (BBCode,
-      5 980 bytes juntos), montado no `workshop.txt` pelo build (`build_creates_layout`);
+      5 980 bytes juntos), montado no `workshop.txt` pelo build (`build_creates_layout`), que
+      só manda o `mod/` commitado e guarda o ID publicado (`build_ships_only_tracked_files`,
+      `build_fills_missing_id_from_repo`, `build_warns_on_id_mismatch`);
       falta enviar e ver no Steam: [publicar.md §2–3](../../publicar.md#2-enviar-pelo-jogo-5-min)
 - [ ] Mod baixado do Workshop numa instalação limpa funciona em solo e num servidor
       dedicado — falta o Steam: [publicar.md §4](../../publicar.md#4-testar-a-cópia-do-workshop-numa-instalação-limpa-20-min)
 - [ ] Release `v1.0.0` taggeada no GitHub apontando pro mesmo commit publicado — espera o
       teste in-game e o envio: [publicar.md §5](../../publicar.md#5-abrir-pra-todo-mundo-e-taggear-2-min)
 
-`./run-tests.sh`: `total=299 passou=299 falhou=0` (Lua) e `build total=10 passou=10
-falhou=0` (`tests/test_build_workshop.sh`, `HOME` temporário).
+`./run-tests.sh`: `total=300 passou=300 falhou=0` (Lua) e `build total=16 passou=16
+falhou=0` (`tests/test_build_workshop.sh`, `HOME` temporário, cópia git do repo).
+Verificado contra o jogo **42.21** (o instalado no review; versão de desenvolvimento 42.20.4).
 
 ## Roteiro in-game
 
 Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. Desta sprint:
 
 1. **Lista de mods** ([teste-in-game 1.1](../../teste-in-game.md#11-menu-e-carga-5-min)):
-   "Névoa e Outro Mundo" disponível (o `versionMin=42.20` não esconde no 42.20.4), ícone
+   "Névoa e Outro Mundo" disponível (o `versionMin=42.20` não esconde no 42.21), ícone
    na linha, poster no painel de informações, descrição em PT-BR; trocando o idioma pra
    inglês, descrição em inglês. Nenhum `JSON Error in:` nem `Found look-a-like unicode
    char` no `console.txt`.
@@ -61,6 +67,8 @@ Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. D
 3. **Envio, página do Steam, instalação limpa (solo e dedicado), release:**
    [publicar.md §2–5](../../publicar.md#2-enviar-pelo-jogo-5-min). No dedicado, esperado
    no console do servidor o download do item e, de noite com `-debug`, `[NOM] noite`.
+   **Confirmar a sintaxe do `Mods=`** no `.ini` do dedicado (ID puro ou com `\` no B42) e
+   anotar aqui qual valeu.
 
 ## Checkpoints
 
@@ -74,6 +82,15 @@ Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. D
   `url=` e `versionMin=42.20`; `CREDITS.md` reescrito e auditado por teste.
 - **04/10/2026** — Página do Workshop em EN e PT-BR e `scripts/build-workshop.sh` com
   teste; `docs/publicar.md`, README e roteiro in-game atualizados. 299 + 10 testes.
+
+- **04/10/2026** — Review (sem Critical): a visibilidade vai em todo envio
+  (`SubmitWorkshopItem` → `n_SetItemVisibility`), então tornar público é pela página 2 do
+  jogo, não pelo Steam; teste da instalação limpa guarda a pasta em
+  `~/Zomboid/Workshop-parked/` e devolve no fim; ID publicado vai pro repo
+  (`docs/workshop/workshop-id.txt` + README) e o build usa/confere; build só manda o
+  `mod/` commitado (`git archive HEAD`); preview até 1 024 000 bytes inclusive; JSON
+  validado por parser estrito; créditos invertidos (todo arquivo que não é código
+  precisa de origem); ícone com o "N" na névoa. 300 + 16 testes.
 
 ## Aprendizados
 
@@ -89,7 +106,10 @@ Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. D
 4. **Tradução EN com aspas curvas derruba o carregamento:** todo JSON EN (menos o
    `Mod.json`) passa por uma checagem de caractere "parecido com ASCII" que lança
    `IllegalStateException`; e o JSON é lido em modo estrito (vírgula sobrando é erro).
-5. **A fonte embutida do Pillow não tem `É`** (renderiza um `.notdef` igual pra qualquer
+5. **Visibilidade do item vai em todo envio.** O jogo manda a visibilidade do
+   `workshop.txt` a cada atualização: tornar público só na página do Steam faz a
+   próxima atualização esconder o item de novo, sem aviso.
+6. **A fonte embutida do Pillow não tem `É`** (renderiza um `.notdef` igual pra qualquer
    acento): o acento do título é desenhado à mão.
 
 ## Pendências que a próxima sprint herda
@@ -101,6 +121,9 @@ Pré-requisito: o [teste in-game consolidado](../../teste-in-game.md) inteiro. D
   da release.
 - Caixa de descrição da página 2 do envio corta texto longo? Não dá pra saber pelo
   bytecode (pz-api-notes, UNKNOWN 12): conferir no Steam ([publicar.md §3](../../publicar.md#3-conferir-a-página-2-min)).
+- Registrar o ID do item em `docs/workshop/workshop-id.txt` e no `README.md` logo depois
+  do primeiro envio ([publicar.md §2, passo 7](../../publicar.md#2-enviar-pelo-jogo-5-min)).
+- Sintaxe do `Mods=` no dedicado do B42 (ID puro ou com `\`): confirmar no teste.
 - Visual próprio das variantes e do Eco segue `later` (ver sprint 0006): a página do
   Workshop diz isso em "Known limits".
 
