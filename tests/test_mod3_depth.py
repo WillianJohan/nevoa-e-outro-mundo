@@ -143,4 +143,9 @@ qi = int(jq.group(1))
 assert "uParams[%d].%s" % (qi // 4, "xyzw"[qi % 4]) in volfog, "mod3: NOM_VolFog não lê a qualidade"
 for name in ("uTorchCount", "uTorchPos", "uTorchDir", "uTorchColor"):
     assert name in volfog, "mod3: NOM_VolFog não usa " + name
+# Sem vai e vem (sprint 0027): o ruído anda pelo vento acumulado (uDrift, o mesmo dos bancos) e
+# nunca recomeça por fase do relógio, que fazia a altura dos rolos subir e descer junto na tela toda.
+assert '"uDrift"' in java and "uDrift" in volfog, "mod3: o ruído da névoa tem que andar por uDrift"
+assert not re.search(r"fract\(\s*uTime", volfog), "mod3: NOM_VolFog recomeça o ruído por fase do relógio (pulsa)"
+assert "FLOW_PERIOD" not in volfog, "mod3: sobrou o flow map de duas fases no NOM_VolFog"
 print("mod3 contrato Java/GLSL ok")
