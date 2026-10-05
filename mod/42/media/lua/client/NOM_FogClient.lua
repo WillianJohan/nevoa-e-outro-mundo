@@ -49,6 +49,9 @@ Events.OnServerCommand.Add(function(module, command, args)
     elseif command == "siren" then -- evento de névoa: 30 s reais antes (NOM_FogEvent)
         NOM_Siren.play(type(args) == "table" and args.red == true)
     elseif command == "semRostoMove" and args.id ~= -1 then
+        -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este
+        -- cliente vir vai pra outro, mesmo que o sumiço tenha sido visto por outro cliente
+        NOM_SemRosto.reserve(args.x, args.y, args.z)
         moveIfOwner(args)
     end
 end)

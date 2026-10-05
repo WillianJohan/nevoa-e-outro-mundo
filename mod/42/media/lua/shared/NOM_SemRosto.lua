@@ -19,6 +19,17 @@ local lastReport = {}
 local lastSent
 -- Sem-rosto locais achados na última varredura (pro rádio).
 local known = {}
+-- ["x,y,z"] = ms reais do último sumiço pra lá (R.RESERVE_MS, sprint 0017).
+-- ponytail: só esvazia no fim da névoa; um relato a cada 300 ms no máximo.
+local reserved = {}
+
+local function key(x, y, zz) return x .. "," .. y .. "," .. zz end
+
+-- Tile destino de um sumiço (este processo escolheu, ou o servidor espalhou o de outro
+-- cliente): os próximos Sem-rostos procuram outro.
+function NOM_SemRosto.reserve(x, y, zz)
+    reserved[key(x, y, zz)] = getTimestampMs()
+end
 
 local function dist(ax, ay, bx, by)
     return math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by))
@@ -88,17 +99,24 @@ local function seenBy(p, z)
     return sq ~= nil and sq:isCanSee(p:getPlayerNum())
 end
 
--- Primeiro tile atrás do jogador, mais perto que o zumbi, chão livre e fora da
--- linha de visão de todos os jogadores locais. nil se não houver.
-local function destination(p, z, players)
+-- Primeiro tile atrás do jogador, mais perto que o zumbi, chão livre, fora da
+-- linha de visão de todos os jogadores locais e sem sumiço recente pra lá (reserva:
+-- a horda vista junta se espalha). nil se não houver. O escolhido fica reservado.
+local function destination(p, z, players, now)
     local px, py = p:getX(), p:getY()
     local pz = math.floor(p:getZ())
     local r = R.nextRadius(dist(px, py, z:getX(), z:getY()))
     local cell = getCell()
     -- getDirection em radianos: shared/Fishing/FishingRod.lua:286
     for _, s in ipairs(R.spots(px, py, p:getForwardDirection():getDirection(), r)) do
-        local sq = cell:getGridSquare(s.x, s.y, pz)
-        if NOM_SemRosto.floorOk(sq) and NOM_SemRosto.hidden(sq, players) then return s.x, s.y, pz end
+        local at = reserved[key(s.x, s.y, pz)]
+        if at == nil or now - at >= R.RESERVE_MS then
+            local sq = cell:getGridSquare(s.x, s.y, pz)
+            if NOM_SemRosto.floorOk(sq) and NOM_SemRosto.hidden(sq, players) then
+                NOM_SemRosto.reserve(s.x, s.y, pz)
+                return s.x, s.y, pz
+            end
+        end
     end
     return nil
 end
@@ -120,7 +138,7 @@ local function scan(report)
                     if seenBy(p, z) then
                         -- colado: não some, ataca (R.ATTACK_DIST)
                         if R.vanishes(dist(p:getX(), p:getY(), z:getX(), z:getY())) then
-                            local x, y, zz = destination(p, z, players)
+                            local x, y, zz = destination(p, z, players, now)
                             if x then
                                 lastReport[z] = now
                                 lastSent = now
@@ -166,7 +184,7 @@ function NOM_SemRosto.install(report)
     end)
     NOM_FogState.onChange(function(on)
         if not on then
-            known, lastReport = {}, {}
+            known, lastReport, reserved = {}, {}, {}
         end
     end)
 end
