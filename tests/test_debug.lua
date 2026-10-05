@@ -250,9 +250,10 @@ return {
         G.world.tod = 23
         NOM_World.update() -- noite 3 abre
         NOM_NightStats.night, NOM_NightStats.nightNumber = true, 3
-        NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador" }
+        NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador", d = "carpideira" }
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*estaladores=2"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "^%[NOM%] debug local carpideiras=1 "), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*nevoaN=2.*noiteN=3"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug servidor .*fim=%- .*proxima=136.00 sirene=12000"), table.concat(G.printed, "\n"))
     end) end,

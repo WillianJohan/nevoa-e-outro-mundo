@@ -69,4 +69,26 @@ module Base
             file = media/sound/NOM_SirenRed.ogg,
         }
     }
+
+    sound NOM_CarpideiraSob
+    {
+        category = Zombie,
+        loop = true,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraSob.ogg,
+            distanceMax = 12,
+            volume = 0.5,
+        }
+    }
+
+    sound NOM_CarpideiraScream
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMax = 150,
+        }
+    }
 }

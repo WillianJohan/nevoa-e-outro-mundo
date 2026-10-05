@@ -7,7 +7,8 @@
 --   NOM_Debug.redFog(true|false)      névoa vermelha: aberta vira na hora; senão, sirene
 --                                     vermelha e evento 30 s depois; false desfaz
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
---   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto"; nil desfaz; só vale na névoa)
+--   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto",
+--                                     "carpideira"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
 -- Tudo vai pro servidor (server/NOM_DebugServer.lua), que confere e decide. No solo
 -- o sendClientCommand vira OnClientCommand no mesmo processo (SinglePlayerClient).
@@ -64,7 +65,7 @@ end
 
 -- Linha local (quem simula e quem vê) e pedido da linha do servidor.
 function NOM_Debug.status()
-    local kinds = { estalador = 0, corredor = 0 }
+    local kinds = { estalador = 0, corredor = 0, carpideira = 0 }
     for _, k in pairs(NOM_NightStats.variants) do
         if kinds[k] then kinds[k] = kinds[k] + 1 end
     end
@@ -78,6 +79,7 @@ function NOM_Debug.status()
         vermelha = NOM_FogState.red == true,
         estaladores = kinds.estalador,
         corredores = kinds.corredor,
+        carpideiras = kinds.carpideira,
         semRostoPerto = near and math.floor(near) or "nenhum",
     }))
     send({ op = "status" })
