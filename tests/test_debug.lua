@@ -102,6 +102,7 @@ local function setup(opts)
         siren = function(skip) G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip); return true end,
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; return true end,
         status = function() return { next = 136, endAt = nil, sirenMs = 12000 } end,
+        setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
     }
     NOM_Eco = {
         spawnAt = function(x, y, z)
@@ -302,5 +303,27 @@ return {
         G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "night", value = true })
         assert(has(G.printed, "^%[NOM%] debug negado"), table.concat(G.printed, "\n"))
     end) end,
+    -- névoa vermelha: o pedido vai pro evento, com a mesma porta dos outros comandos
+    debug_red_fog_forwards_to_event = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.redFog(true)
+        NOM_Debug.redFog(false)
+        NOM_Debug.redFog()
+        assert(table.concat(G.fogCalls, ",") == "red:true,red:false,red:false", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa vermelha=true"), table.concat(G.printed, "\n"))
+        local G2 = setup({ server = true, loadClient = false })
+        local p = G2.player({ x = 0, y = 0, cap = false })
+        G2.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "redFog", value = true })
+        assert(#G2.fogCalls == 0, "sem permissão forçou a vermelha")
+    end) end,
+    debug_status_shows_red = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_FogState.red = true
+        NOM_World.red = true
+        NOM_Debug.status()
+        assert(has(G.printed, "^%[NOM%] debug local .*vermelha=true"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "^%[NOM%] debug servidor .*vermelha=true"), table.concat(G.printed, "\n"))
+    end) end,
 }
-

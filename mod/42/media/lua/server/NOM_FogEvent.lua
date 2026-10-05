@@ -80,6 +80,7 @@ end
 function NOM_FogEvent.stop()
     local was = countdown ~= nil
     countdown = nil
+    forcedRed = nil
     if not state().inNight then
         if was then R.stop(state(), now(), cfg(), rand) end
         return was
@@ -87,6 +88,27 @@ function NOM_FogEvent.stop()
     R.stop(state(), now(), cfg(), rand)
     NOM_World.setFog(false)
     debugLog("evento fim proxima=" .. hours(state().next))
+    return true
+end
+
+-- Debug (NOM_Debug.redFog). Evento aberto: vira (ou deixa de ser) vermelho na hora
+-- e os clientes recebem pelo NOM_Fog (borda "red"). Contagem correndo: a névoa
+-- que vem segue o pedido (a sirene que já tocou fica). Nada aberto: true toca a
+-- sirene vermelha e começa um evento; false só desfaz o pedido.
+function NOM_FogEvent.setRed(on)
+    local s = state()
+    if s.inNight then
+        s.red = on == true
+        NOM_World.setFog(true, s.red)
+        debugLog("vermelha=" .. tostring(s.red) .. " periodo=" .. tostring(s.night))
+        return true
+    end
+    forcedRed = on and true or nil
+    if countdown then
+        pendingRed = on == true
+        return true
+    end
+    if on then return NOM_FogEvent.siren(false) end
     return true
 end
 

@@ -272,4 +272,43 @@ return {
         G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
         assert(G.sentServer[1].args.red == true and G.sentServer[1].args.on == true)
     end,
+    -- NOM_Debug.redFog: sem evento, toca a sirene vermelha e abre vermelha; com o
+    -- evento aberto, troca na hora (e avisa); false desfaz
+    fog_event_set_red_starts_red_event = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        assert(NOM_FogEvent.setRed(true))
+        assert(G.played("NOM_SirenRed") == 1, "sem sirene vermelha")
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red and fogMD(G).red == true)
+        -- o forçado vale só pra esse evento
+        NOM_FogEvent.stop()
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.red == false, "forçado vazou pro evento seguinte")
+    end,
+    fog_event_set_red_flips_open_event = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 0 } })
+        G.advance(36)
+        G.seconds(31)
+        assert(NOM_World.red == false)
+        G.sentServer = {}
+        assert(NOM_FogEvent.setRed(true))
+        assert(NOM_World.red and fogMD(G).red == true)
+        local fog = G.commands(G.sentServer, "fog")
+        assert(#fog == 1 and fog[1].args.on == true and fog[1].args.red == true, "não avisou os clientes")
+        G.climate(3)
+        assert(NOM_World.red, "o minuto seguinte desfez")
+        assert(NOM_FogEvent.setRed(false))
+        assert(NOM_World.red == false and fogMD(G).red == false)
+        assert(#G.commands(G.sentServer, "fog") == 2)
+    end,
+    -- durante a contagem: a névoa que vem segue o pedido
+    fog_event_set_red_during_siren = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        G.advance(36)
+        assert(NOM_FogEvent.setRed(true))
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "tocou duas sirenes")
+        G.seconds(31)
+        assert(NOM_World.red == true)
+    end,
 }

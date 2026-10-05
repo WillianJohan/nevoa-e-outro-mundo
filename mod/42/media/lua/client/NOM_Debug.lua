@@ -4,6 +4,8 @@
 --   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene e névoa 30 s
 --                                     reais depois; com o 2º true, a névoa vem já
 --   NOM_Debug.fog(false)              termina o evento (ou cancela a sirene)
+--   NOM_Debug.redFog(true|false)      névoa vermelha: aberta vira na hora; senão, sirene
+--                                     vermelha e evento 30 s depois; false desfaz
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
@@ -30,6 +32,7 @@ end
 
 function NOM_Debug.night(on) send({ op = "night", value = on }) end
 function NOM_Debug.fog(on, skip) send({ op = "fog", value = on, skip = skip }) end
+function NOM_Debug.redFog(on) send({ op = "redFog", value = on }) end
 function NOM_Debug.spawnEco() send({ op = "spawnEco" }) end
 
 -- Zumbi vivo mais perto do jogador 0, no mesmo andar.
@@ -72,6 +75,7 @@ function NOM_Debug.status()
         noiteN = tostring(NOM_NightStats.nightNumber),
         nevoa = NOM_FogState.on,
         nevoaN = tostring(NOM_FogState.period),
+        vermelha = NOM_FogState.red == true,
         estaladores = kinds.estalador,
         corredores = kinds.corredor,
         semRostoPerto = near and math.floor(near) or "nenhum",
