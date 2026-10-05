@@ -10,6 +10,8 @@
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto",
 --                                     "carpideira"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
+-- Atalhos curtos (NOM.fog, NOM.spawn, NOM.help...) em client/NOM_Console.lua e painel em
+-- client/NOM_DebugPanel.lua (sprint 0020); estes continuam valendo.
 -- Tudo vai pro servidor (server/NOM_DebugServer.lua), que confere e decide. No solo
 -- o sendClientCommand vira OnClientCommand no mesmo processo (SinglePlayerClient).
 -- A forma com jogador: a de 3 argumentos chega no solo sem jogador (playerIndex -1).

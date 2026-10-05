@@ -138,6 +138,8 @@ git push origin --delete sprint/0001-estado-e-clima
 - Testes: `brew install luajit`, depois `./run-tests.sh` (lógica pura, traduções,
   créditos, contraste das texturas com Python + numpy + Pillow, e o build do Workshop, com `HOME` temporário).
 - Teste in-game com o jogo em modo `-debug`: [roteiro consolidado](docs/teste-in-game.md).
+  Em `-debug`, `NOM.help()` no console lista os atalhos (`NOM.fog()`, `NOM.spawn(5)`,
+  `NOM.time(22)`, `NOM.god()`…) e **F7** (trocável em Opções > Mods) abre o painel de botões.
 - Sons, imagens e texturas são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_images.py`,
   `scripts/gen_textures.py`; prévia das texturas no tamanho do jogo: `scripts/preview_textures.py`);
   nada de terceiros ([CREDITS.md](CREDITS.md)).

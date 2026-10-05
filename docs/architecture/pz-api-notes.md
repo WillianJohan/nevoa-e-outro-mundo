@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17: 2026-10-05) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1244,6 +1244,23 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
   = 13 + bloom·0,25`, §15.4): não há outro float livre (`VarInfo.zw` nunca são escritos, mas o
   Lua não os alcança).
 
+## 18. Debug amigável (sprint 0020)
+
+Verificado no B42.21 instalado (bytecode e Lua vanilla).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Autocomplete do console do debug só sugere Java | EXISTS | `UIDebugConsole.InitSuggestionEngine` 0–15: `LuaManager$GlobalObject.getDeclaredMethods()` vai pra `globalLuaMethods` (reflexão, `java.lang.reflect.Method`); função Lua nunca entra e mod não estende. Saída do mod: `NOM.help()` |
+| Tecla de mod nas opções | CONFIRMED (consumidor) | `client/PZAPI/ModOptions.lua:182-204` (`addKeyBind(id, nome, tecla, dica)`, `getValue()` devolve o código), save `:276-280`, load `:326-327`; tela `MainOptions.lua:2987-3010` (botão de tecla, `getText(option.name)`) |
+| `Keyboard.KEY_F7` | EXISTS | constante em `org/lwjglx/input/Keyboard.class`; nenhum Lua vanilla usa F7 (F1–F6, F10, F11 em `shared/keyBinding.lua`; F8 em `WorldMapEditor.lua:209`). Java usar F7 em `-debug`: UNKNOWN |
+| Janela com botões | CONFIRMED | `ISCollapsableWindow:derive` + `ISButton:new(x, y, w, h, título, alvo, onclick)` (`client/DebugUIs/ISFilmingToolsUI.lua`); `onclick(alvo, botão)` (`ISButton.lua:47`); `close()` só esconde (`ISCollapsableWindow.lua:134-136`); `createChildren` põe as alças de redimensionar pela altura do momento (`:26-50`) |
+| Fora do UIManager não pega nada | CONFIRMED | `ISUIElement.lua:1365-1380` (`addToUIManager` instancia na primeira vez; `removeFromUIManager` → `UIManager.RemoveElement`); `UIManager.AddUI` tira antes de pôr (bytecode 0–28), repetir não duplica |
+| Posição lembrada | CONFIRMED | `ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela)` (`client/TimedActions/ISBBQInfoAction.lua:29`; `ISLayoutManager.lua:6-60`: x, y e `visible` salvos e restaurados) |
+| God / noclip / invisível | CONFIRMED | `client/ISUI/AdminPanel/ISAdminPowerUI.lua:31-53` (`is/setInvisible`, `is/setGodMod`, `is/setNoClip` no jogador local) e `:403` (`sendPlayerExtraInfo(player)` depois); no MP o servidor aplica as regras dele (UNKNOWN pra quem tem só `-debug` sem ser admin) |
+| Hora | CONFIRMED (solo) / EXISTS (MP) | `getGameTime():setTimeOfDay(h)` (`client/LastStand/LastStandSetup.lua:63`); no MP o mod chama no servidor, e o `GameTime` do servidor manda o relógio (`syncClock`, pacote `TimeSync`) |
+| Spawn com outfit sorteado | CONFIRMED | `addZombiesInOutfit(..., nil, ...)` (`ISSpawnHordeUI.lua:73, 276`); no servidor dedicado: UNKNOWN, o mesmo do Eco (item 2 abaixo) |
+| Frente do jogador | CONFIRMED | `player:getForwardDirection():getDirection()` em radianos (`shared/Fishing/FishingRod.lua:286`) |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1304,3 +1321,5 @@ e o `Alpha` por personagem estão na [spike-dissolve](../sprints/spike-dissolve/
 15. Outro Mundo sangrento (sprint 0015): `RenderGhostTileColor` chamado do
     `RenderOpaqueObjectsInWorld` desenha a parede no lugar e sem engasgo? O chão por marcador meio
     tile pra cima incomoda? Quanto custa o quadro com 600 marcadores e 120 paredes? (§16)
+16. Debug amigável (sprint 0020): F7 livre em `-debug`? `NOM.time` no dedicado chega nos
+    clientes? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)
