@@ -31,6 +31,9 @@ LIMITS = {
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
     "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
+    # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
+    # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
+    "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
 }
 
 # O Eco fica fora da regra das formas grandes: ele lê por ser muito mais claro que

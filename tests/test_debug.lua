@@ -21,7 +21,20 @@ local function setup(opts)
         for _, h in ipairs(handlers[name] or {}) do h(...) end
     end
     function G.player(o)
-        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, cap = o.cap ~= false }
+        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, cap = o.cap ~= false, dir = o.dir or 0,
+            god = false, noclip = false, invisible = false }
+        -- Vector2.getDirection(): ângulo em radianos (FishingRod.lua:286)
+        function p:getForwardDirection()
+            local me = self
+            return { getDirection = function() return me.dir end }
+        end
+        -- ISAdminPowerUI.lua:31-53
+        function p:isGodMod() return self.god end
+        function p:setGodMod(v) self.god = v end
+        function p:isNoClip() return self.noclip end
+        function p:setNoClip(v) self.noclip = v end
+        function p:isInvisible() return self.invisible end
+        function p:setInvisible(v) self.invisible = v end
         function p:getX() return self.x end
         function p:getY() return self.y end
         function p:getZ() return self.z end
@@ -67,9 +80,47 @@ local function setup(opts)
             G.sentServer[#G.sentServer + 1] = { player = a, module = b, command = c, args = d }
         end
     end
-    G.world = { tod = opts.tod or 12 }
+    -- Relógio do GameTime: setTimeOfDay só grava o campo (bytecode 0–5); o update seguinte
+    -- (GameTime.update 938–972) vê hora ≥ 24, tira 24, chama advanceOneDay e, no servidor,
+    -- marca o sync do relógio. Hora pra trás não passa por ali: os clientes do dedicado
+    -- dessincronizam a data (SyncClockPacket) e o getWorldAgeHours volta (timers do mod).
+    G.world = { tod = opts.tod or 12, day = 0 }
+    function G.tick()
+        if G.world.tod >= 24 then
+            G.world.tod = G.world.tod - 24
+            G.world.day = G.world.day + 1
+            G.world.synced = true
+        end
+    end
     getGameTime = function()
-        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end }
+        return { getTimeOfDay = function() return G.world.tod end,
+            getWorldAgeHours = function() return G.world.day * 24 + G.world.tod end,
+            setTimeOfDay = function(_, h) G.world.tod = h end }
+    end
+    -- getAllOutfits(feminino) → ArrayList<String> (ISSpawnHordeUI.lua:71-72)
+    local function jlist(t)
+        return { contains = function(_, v) for _, x in ipairs(t) do if x == v then return true end end return false end }
+    end
+    getAllOutfits = function(female) return jlist(female and { "Nurse", "Doctor" } or { "Police", "Doctor" }) end
+    -- addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance) → ArrayList: n vezes
+    -- addZombiesInOutfit num tile sorteado com Rand.Next(x1, x2) (fim exclusivo) (bytecode
+    -- 0–54). Cada um volta vazio com square nil, outfit desconhecido ou zumbis desligados.
+    G.spawnCalls, G.made = {}, {}
+    local KNOWN = { Police = true, Doctor = true, Nurse = true }
+    addZombiesInOutfitArea = function(x1, y1, x2, y2, z, n, outfit, female)
+        G.spawnCalls[#G.spawnCalls + 1] = { x1 = x1, y1 = y1, x2 = x2, y2 = y2, z = z, n = n, outfit = outfit, female = female }
+        local made = 0
+        for i = 1, n do
+            local x = x1 + (i - 1) % (x2 - x1)
+            local y = y1 + math.floor((i - 1) / (x2 - x1)) % (y2 - y1)
+            local ok = not G.zombiesDisabled and (outfit == nil or KNOWN[outfit])
+                and not (G.noSquare and G.noSquare(x, y, z))
+            if ok then
+                made = made + 1
+                G.made[#G.made + 1] = { x = x, y = y, z = z }
+            end
+        end
+        return { size = function() return made end }
     end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
@@ -82,7 +133,10 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_World", "NOM_VariantRules", "NOM_DebugRules", "NOM_Debug", "NOM_DebugServer" }) do
+    -- sendPlayerExtraInfo(player): o vanilla chama depois de mudar god/noclip/invisível (ISAdminPowerUI.lua:403)
+    G.extraInfo = {}
+    sendPlayerExtraInfo = function(p) G.extraInfo[#G.extraInfo + 1] = p end
+    for _, m in ipairs({ "NOM_World", "NOM_VariantRules", "NOM_DebugRules", "NOM_Debug", "NOM_DebugServer", "NOM_Console", "NOM" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -98,10 +152,15 @@ local function setup(opts)
     NOM_Fog = { period = function() return G.fogPeriod end }
     -- evento de névoa: o de verdade mora em test_fog_event; aqui registra o pedido
     G.fogCalls = {}
+    -- a sirene conta (sirenMs) até a névoa abrir; stop cancela a contagem
     NOM_FogEvent = {
-        siren = function(skip) G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip); return true end,
-        stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; return true end,
-        status = function() return { next = 136, endAt = nil, sirenMs = 12000 } end,
+        siren = function(skip)
+            G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip)
+            G.sirenMs = skip and 0 or 30000
+            return true
+        end,
+        stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
+        status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
     }
     NOM_Eco = {
@@ -120,7 +179,11 @@ local function setup(opts)
     end
     require "NOM_World"
     if opts.loadServer ~= false then dofile("mod/42/media/lua/server/NOM_DebugServer.lua") end
-    if opts.loadClient ~= false then dofile("mod/42/media/lua/client/NOM_Debug.lua") end
+    if opts.loadClient ~= false then
+        dofile("mod/42/media/lua/client/NOM_Debug.lua")
+        package.loaded["NOM_Debug"] = true -- o jogo carrega cada arquivo uma vez
+        dofile("mod/42/media/lua/client/NOM_Console.lua")
+    end
     return G
 end
 
@@ -251,6 +314,7 @@ return {
         NOM_World.update() -- noite 3 abre
         NOM_NightStats.night, NOM_NightStats.nightNumber = true, 3
         NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador", d = "carpideira" }
+        G.sirenMs = 12000
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*estaladores=2"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug local carpideiras=1 "), table.concat(G.printed, "\n"))
@@ -288,6 +352,17 @@ return {
         NOM_Debug.status()
         NOM_Dissolve = saved
         assert(has(G.printed, "^%[NOM%] debug local .*dissolve=5"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0022: cascas de brasa queimando nesta tela
+    debug_status_counts_shells = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.status()
+        assert(has(G.printed, "^%[NOM%] debug local .*cascas=0"), table.concat(G.printed, "\n"))
+        NOM_EmberShell = { count = function() return 4 end }
+        NOM_Debug.status()
+        NOM_EmberShell = nil
+        assert(has(G.printed, "^%[NOM%] debug local .*cascas=4"), table.concat(G.printed, "\n"))
     end) end,
     -- a noite forçada não é só memória: ela avança o contador de noites salvo
     -- (NOM_NightCount → ModData global), e com ele o sorteio das variantes e a
@@ -367,5 +442,220 @@ return {
         G.zombie({ x = 101, y = 100, id = 2 + 32768 })
         NOM_Debug.variant("corredor")
         assert(G.sentClient[1].args.id == 2, "mandou " .. tostring(G.sentClient[1].args.id))
+    end) end,
+
+    -- sprint 0020: NOM.time → hora do relógio, no servidor (no MP o relógio é dele)
+    debug_time_sets_clock = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        NOM_Debug.send({ op = "time", hour = 13.5 })
+        G.tick()
+        assert(G.world.tod == 13.5 and G.world.day == 0, "hora não mudou")
+        assert(has(G.printed, "^%[NOM%] debug hora=13.50"), table.concat(G.printed, "\n"))
+        local G2 = setup({ server = true, loadClient = false })
+        local q = G2.player({ x = 0, y = 0, cap = false })
+        G2.fire("OnClientCommand", "NevoaEOutroMundo", "debug", q, { op = "time", hour = 3 })
+        assert(G2.world.tod == 12, "sem permissão mudou a hora")
+        local G3 = setup({ debug = false, loadClient = false })
+        G3.fire("OnClientCommand", "NevoaEOutroMundo", "debug", G3.player({ x = 0, y = 0 }), { op = "time", hour = 3 })
+        assert(G3.world.tod == 12, "sem -debug mudou a hora")
+    end) end,
+    -- hora pra trás vira a mesma hora do dia seguinte: o relógio só anda pra frente
+    debug_time_never_goes_back = function() run(function()
+        local G = setup({ loadClient = false, tod = 20 })
+        local p = G.player({ x = 0, y = 0 })
+        local age = G.world.day * 24 + G.world.tod
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 6 })
+        G.tick()
+        assert(G.world.tod == 6 and G.world.day == 1 and G.world.synced, "não foi pro dia seguinte")
+        assert(G.world.day * 24 + G.world.tod > age, "idade do mundo voltou")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 6 })
+        G.tick()
+        assert(G.world.tod == 6 and G.world.day == 1, "mesma hora pulou um dia")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "time", hour = 22 })
+        G.tick()
+        assert(G.world.tod == 22 and G.world.day == 1, "pra frente no mesmo dia")
+        assert(has(G.printed, "^%[NOM%] debug hora=6.00"), table.concat(G.printed, "\n"))
+    end) end,
+    -- 3×3 em volta do tile pedido (Rand.Next com fim exclusivo: x-1..x+1)
+    debug_server_spawn_in_front = function() run(function()
+        local G = setup({ loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 9, x = 103.7, y = 100.2, z = 0 })
+        local c = G.spawnCalls[1]
+        assert(c and c.x1 == 102 and c.y1 == 99 and c.x2 == 105 and c.y2 == 102 and c.z == 0 and c.n == 9
+            and c.outfit == nil and c.female == nil, "área errada")
+        local tiles = {}
+        for _, z in ipairs(G.made) do tiles[z.x .. "," .. z.y] = true end
+        local n = 0
+        for _ in pairs(tiles) do n = n + 1 end
+        assert(n == 9, "não espalhou: " .. n .. " tiles")
+        assert(has(G.printed, "^%[NOM%] debug spawn n=9 criados=9 outfit=%-"), table.concat(G.printed, "\n"))
+        G.noSquare = function(x) return x == 102 end -- parede/fora do mapa
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 3, outfit = "Police", x = 103, y = 100, z = 0 })
+        assert(has(G.printed, "spawn n=3 criados=2 outfit=Police"), table.concat(G.printed, "\n"))
+    end) end,
+    debug_server_spawn_rejects_unknown_outfit = function() run(function()
+        local G = setup({ loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 2, outfit = "Polcie", x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 0, "spawnou outfit desconhecido")
+        assert(has(G.printed, "^%[NOM%] debug spawn outfit desconhecido=Polcie"), table.concat(G.printed, "\n"))
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 1, outfit = "Nurse", x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 1, "outfit só feminino recusado")
+    end) end,
+    -- quem pede não spawna longe de si (nem com o pedido montado à mão)
+    debug_server_spawn_rejects_far = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 120, y = 100, z = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = math.huge, y = 100, z = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 101, y = 100, z = 3 })
+        assert(#G.spawnCalls == 0, "spawnou longe")
+        assert(has(G.printed, "^%[NOM%] debug spawn longe"), table.concat(G.printed, "\n"))
+        local weak = G.player({ x = 100, y = 100, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", weak, { op = "spawn", n = 5, x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 0, "sem permissão spawnou")
+    end) end,
+    -- toggle: nada → sirene; sirene contando → cancela; névoa aberta → termina
+    debug_fog_toggle_cancels_siren = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.send({ op = "fog", toggle = true })
+        NOM_Debug.send({ op = "fog", toggle = true })
+        NOM_World.fog = true
+        NOM_Debug.send({ op = "fog", toggle = true })
+        assert(table.concat(G.fogCalls, ",") == "siren:false,stop,stop", table.concat(G.fogCalls, ","))
+    end) end,
+
+    -- sprint 0020: a tabela NOM tem a mesma porta do NOM_Debug
+    nom_absent_without_debug = function() run(function()
+        setup({ debug = false })
+        assert(NOM == nil, "NOM existe sem -debug")
+    end) end,
+    nom_absent_on_server = function() run(function()
+        local G = setup({ loadClient = false, server = true })
+        dofile("mod/42/media/lua/client/NOM_Console.lua")
+        assert(NOM == nil, "NOM existe no servidor dedicado")
+    end) end,
+    -- sem argumento, o servidor decide (cancela a sirene que está contando)
+    nom_fog_toggle_goes_to_server = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.fog()
+        NOM.fog()
+        assert(G.sentClient[1].args.toggle == true)
+        assert(table.concat(G.fogCalls, ",") == "siren:false,stop", table.concat(G.fogCalls, ","))
+    end) end,
+    nom_fog_explicit_is_old_fog = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.fog(true, true)
+        NOM.fog(false)
+        assert(table.concat(G.fogCalls, ",") == "siren:true,stop", table.concat(G.fogCalls, ","))
+    end) end,
+    nom_red_and_night_flip_local_state = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.redFog()
+        NOM_World.red = true -- névoa vermelha aberta
+        NOM.redFog()
+        NOM_World.red = false
+        G.sirenMs, G.sirenRed = 30000, true -- sirene vermelha contando
+        NOM.redFog()
+        NOM.redFog(true)
+        assert(G.sentClient[1].args.toggle == true, "toggle não foi pro servidor")
+        assert(table.concat(G.fogCalls, ",") == "red:true,red:false,red:false,red:true", table.concat(G.fogCalls, ","))
+        NOM.night()
+        assert(NOM_World.forced.night == true)
+        NOM_NightStats.night = true
+        NOM.night()
+        assert(NOM_World.forced.night == false, "não inverteu a noite")
+        NOM.night(true)
+        assert(NOM_World.forced.night == true)
+    end) end,
+    nom_time_wraps_hour = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.time(22)
+        G.tick()
+        assert(G.world.tod == 22)
+        NOM.time(25)
+        G.tick()
+        assert(G.world.tod == 1, "25 não virou 1")
+        NOM.time(-1)
+        G.tick()
+        assert(G.world.tod == 23, "-1 não virou 23")
+        local n = #G.sentClient
+        NOM.time("meia-noite")
+        NOM.time()
+        NOM.time(math.huge)
+        NOM.time(-math.huge)
+        NOM.time(0 / 0)
+        assert(#G.sentClient == n, "mandou hora inválida")
+        assert(has(G.printed, "^%[NOM%] debug uso: NOM.time"), table.concat(G.printed, "\n"))
+    end) end,
+    nom_spawn_clamps_and_aims_ahead = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100, dir = math.pi / 2 }) -- olhando pra +y
+        NOM.spawn()
+        NOM.spawn(1000, "Police")
+        NOM.spawn(-3)
+        local a, b, c = G.spawnCalls[1], G.spawnCalls[2], G.spawnCalls[3]
+        assert(a.n == 1 and a.x1 == 99 and a.y1 == 102 and a.outfit == nil, "não spawnou 3 tiles na frente")
+        assert(b.n == 50 and b.outfit == "Police", "não limitou a 50")
+        assert(c.n == 1, "negativo não virou 1")
+        local n = #G.sentClient
+        NOM.spawn("x")
+        assert(#G.sentClient == n, "mandou quantidade inválida")
+    end) end,
+    nom_variant_eco_status_alias = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 7 })
+        NOM.variant("corredor")
+        assert(NOM_VariantRules.forced[7] == "corredor")
+        G.world.tod = 23
+        NOM_World.update()
+        NOM.eco()
+        assert(#G.spawned == 1)
+        NOM.status()
+        assert(has(G.printed, "^%[NOM%] debug local") and has(G.printed, "^%[NOM%] debug servidor"))
+    end) end,
+    nom_cheats_toggle_and_sync = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        NOM.god()
+        assert(p.god == true and #G.extraInfo == 1 and G.extraInfo[1] == p)
+        NOM.god()
+        assert(p.god == false)
+        NOM.noclip(true)
+        NOM.noclip(true)
+        assert(p.noclip == true)
+        NOM.invisible()
+        assert(p.invisible == true and #G.extraInfo == 5)
+        assert(has(G.printed, "^%[NOM%] debug god=false") and has(G.printed, "^%[NOM%] debug invisible=true"))
+    end) end,
+    -- todo NOM.<f> está no help, e todo item do help existe
+    nom_help_lists_every_command = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.help()
+        local all = table.concat(G.printed, "\n")
+        for k, v in pairs(NOM) do
+            if type(v) == "function" then assert(all:find("NOM." .. k .. "(", 1, true), "help sem NOM." .. k) end
+        end
+        for _, h in ipairs(NOM.HELP) do
+            assert(type(NOM[h[1]:match("^NOM%.([%w_]+)")]) == "function", "help cita o que não existe: " .. h[1])
+        end
+    end) end,
+    nom_panel_calls_panel_toggle = function() run(function()
+        local G = setup()
+        local n = 0
+        NOM_DebugPanel = { toggle = function() n = n + 1 end }
+        NOM.panel()
+        NOM_DebugPanel = nil
+        NOM.panel()
+        assert(n == 1)
     end) end,
 }

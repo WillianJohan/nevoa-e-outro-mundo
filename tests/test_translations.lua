@@ -82,7 +82,7 @@ return {
         -- o jogo passa o texto pelo java.util.Formatter: "%" sozinho lança
         -- UnknownFormatConversionException (visto no console.txt); vanilla usa "%%"
         for _, lang in ipairs({ "EN", "PTBR" }) do
-            for _, f in ipairs({ "Sandbox.json" }) do
+            for _, f in ipairs({ "Sandbox.json", "UI.json" }) do
                 local path = "mod/42/media/lua/shared/Translate/" .. lang .. "/" .. f
                 local h = io.open(path)
                 if h then

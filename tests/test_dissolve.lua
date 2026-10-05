@@ -227,6 +227,18 @@ return {
         assert(w.drawn[0] < 1)
     end,
 
+    -- review da 0022: o erro também chama o fim, pra quem pôs alguma coisa no zumbi (a casca de
+    -- brasa) tirar; o alfa fica com o jogo
+    dissolve_api_error_still_calls_done = function()
+        local G = setup()
+        local z = G.zombie()
+        local got
+        NOM_Dissolve.run(z, "out", function(x) got = x end)
+        z.throw = true
+        G.frame(1)
+        assert(got == z and not NOM_Dissolve.busy(z), "o fim não rodou no erro")
+    end,
+
     -- orçamento: sem efeito, zero; com E efeitos e P jogadores, ≤ 1 + E·(1 + 2P) por tick
     dissolve_budget = function()
         local G = setup({ players = 2 })

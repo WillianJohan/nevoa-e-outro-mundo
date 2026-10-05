@@ -80,7 +80,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 12, "esperava 12 itens, achou " .. n)
+        assert(n == 13, "esperava 13 itens, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
@@ -112,7 +112,7 @@ return {
     look_assets_deterministic = function()
         local paths = {}
         for _, n in ipairs({ "Estalador", "Corredor", "Carpideira" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
-        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu" }) do
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu", "Brasa" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}
@@ -167,5 +167,24 @@ return {
         end
         assert(#masks == 14)
         assert(items().NOM_EcoCasca:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a cinza)")
+    end,
+
+    -- sprint 0022: a casca de brasa do corpo inteiro na mutação. A mesma malha Hazmat da casca do
+    -- Eco, mas SEM máscara (o buraco da queima tem de mostrar o monstro embaixo, não o fundo),
+    -- textura de carvão e brasa do mod, o shader do dissolve, no lugar multi-item (não expulsa
+    -- nada no DoZombieInventory) e sem BloodLocation (getBodyPartClothingDefense e o som de
+    -- armadura pulam o item: nenhum efeito de jogo enquanto queima).
+    look_assets_ember_shell = function()
+        local x = xmlOf("NOM_Brasa")
+        assert(tag(x, "m_MaleModel") == "media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X")
+        assert(tag(x, "m_FemaleModel") == "media\\models_X\\Skinned\\Clothes\\Kate_Hazmat.X")
+        assert(tag(x, "m_Shader") == "NOM_Dissolve", "casca sem o shader")
+        assert(tag(x, "textureChoices") == "NOM\\NOM_Brasa")
+        assert(not x:find("<m_Masks>", 1, true), "máscara esconderia o monstro embaixo da casca")
+        local body = items().NOM_Brasa
+        assert(body, "NOM_Brasa fora do script")
+        assert(body:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a peça)")
+        assert(not body:find("BloodLocation", 1, true), "casca com BloodLocation viraria armadura")
+        assert(not body:find("Defense", 1, true), "casca com defesa")
     end,
 }

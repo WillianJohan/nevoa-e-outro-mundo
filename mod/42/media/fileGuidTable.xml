@@ -49,4 +49,8 @@
 		<path>media/clothing/clothingItems/NOM_EcoCasca.xml</path>
 		<guid>82738c69-4609-4192-b7bf-9f6a8c24c4e6</guid>
 	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_Brasa.xml</path>
+		<guid>fe983ae1-0282-4519-8c3c-b49642d89d42</guid>
+	</files>
 </fileGuidTable>

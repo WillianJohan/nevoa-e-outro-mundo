@@ -72,7 +72,7 @@ tiles do jogo").
 - [ ] Print 7 sem chão em cima do telhado, e sem xadrez — **falta o jogo:** passos 3 e 4.
 - [ ] Print 6 sem laje preta (paredes desligadas) e entrar/sair de casa sem piscar — **falta o jogo:** passo 5.
 
-`./run-tests.sh`: `total=668 passou=668 falhou=0` (Lua), `contraste total=4 passou=4 falhou=0` e `build total=25 passou=25 falhou=0`.
+`./run-tests.sh`: `total=719 passou=719 falhou=0` (Lua, com a main mergeada), `contraste total=4 passou=4 falhou=0` e `build total=25 passou=25 falhou=0`.
 
 ## Roteiro in-game
 
