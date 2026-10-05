@@ -69,7 +69,17 @@ local function setup(opts)
     end
     G.world = { tod = opts.tod or 12 }
     getGameTime = function()
-        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end }
+        return { getTimeOfDay = function() return G.world.tod end, getWorldAgeHours = function() return G.world.tod end,
+            -- LastStandSetup.lua:63; no MP o relógio do servidor vai pros clientes (GameTime.syncClock)
+            setTimeOfDay = function(_, h) G.world.tod = h end }
+    end
+    -- addZombiesInOutfit(x, y, z, n, outfit, femaleChance) → ArrayList (pz-api-notes §1.3);
+    -- zumbis desligados no mundo: lista vazia ("Cannot spawn.")
+    G.spawnCalls = {}
+    addZombiesInOutfit = function(x, y, z, n, outfit, female)
+        G.spawnCalls[#G.spawnCalls + 1] = { x = x, y = y, z = z, n = n, outfit = outfit, female = female }
+        local made = G.zombiesDisabled and 0 or n
+        return { size = function() return made end }
     end
     getClimateManager = function()
         return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
@@ -98,10 +108,15 @@ local function setup(opts)
     NOM_Fog = { period = function() return G.fogPeriod end }
     -- evento de névoa: o de verdade mora em test_fog_event; aqui registra o pedido
     G.fogCalls = {}
+    -- a sirene conta (sirenMs) até a névoa abrir; stop cancela a contagem
     NOM_FogEvent = {
-        siren = function(skip) G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip); return true end,
-        stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; return true end,
-        status = function() return { next = 136, endAt = nil, sirenMs = 12000 } end,
+        siren = function(skip)
+            G.fogCalls[#G.fogCalls + 1] = "siren:" .. tostring(skip)
+            G.sirenMs = skip and 0 or 30000
+            return true
+        end,
+        stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
+        status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
     }
     NOM_Eco = {
@@ -251,6 +266,7 @@ return {
         NOM_World.update() -- noite 3 abre
         NOM_NightStats.night, NOM_NightStats.nightNumber = true, 3
         NOM_NightStats.variants = { a = "estalador", b = "corredor", c = "estalador", d = "carpideira" }
+        G.sirenMs = 12000
         NOM_Debug.status()
         assert(has(G.printed, "^%[NOM%] debug local .*estaladores=2"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "^%[NOM%] debug local carpideiras=1 "), table.concat(G.printed, "\n"))
@@ -367,5 +383,55 @@ return {
         G.zombie({ x = 101, y = 100, id = 2 + 32768 })
         NOM_Debug.variant("corredor")
         assert(G.sentClient[1].args.id == 2, "mandou " .. tostring(G.sentClient[1].args.id))
+    end) end,
+
+    -- sprint 0020: NOM.time → hora do relógio, no servidor (no MP o relógio é dele)
+    debug_time_sets_clock = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        NOM_Debug.send({ op = "time", hour = 13.5 })
+        assert(G.world.tod == 13.5, "hora não mudou")
+        assert(has(G.printed, "^%[NOM%] debug hora=13.50"), table.concat(G.printed, "\n"))
+        local G2 = setup({ server = true, loadClient = false })
+        local q = G2.player({ x = 0, y = 0, cap = false })
+        G2.fire("OnClientCommand", "NevoaEOutroMundo", "debug", q, { op = "time", hour = 3 })
+        assert(G2.world.tod == 12, "sem permissão mudou a hora")
+        local G3 = setup({ debug = false, loadClient = false })
+        G3.fire("OnClientCommand", "NevoaEOutroMundo", "debug", G3.player({ x = 0, y = 0 }), { op = "time", hour = 3 })
+        assert(G3.world.tod == 12, "sem -debug mudou a hora")
+    end) end,
+    debug_server_spawn_in_front = function() run(function()
+        local G = setup({ loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 103.7, y = 100.2, z = 0 })
+        local c = G.spawnCalls[1]
+        assert(c and c.x == 103 and c.y == 100 and c.z == 0 and c.n == 5 and c.outfit == nil and c.female == 50,
+            "spawn errado")
+        assert(has(G.printed, "^%[NOM%] debug spawn n=5 criados=5 outfit=%-"), table.concat(G.printed, "\n"))
+        G.zombiesDisabled = true
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 2, outfit = "Police", x = 101, y = 101, z = 0 })
+        assert(has(G.printed, "spawn n=2 criados=0 outfit=Police"), table.concat(G.printed, "\n"))
+    end) end,
+    -- quem pede não spawna longe de si (nem com o pedido montado à mão)
+    debug_server_spawn_rejects_far = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = 120, y = 100, z = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "spawn", n = 5, x = math.huge, y = 100, z = 0 })
+        assert(#G.spawnCalls == 0, "spawnou longe")
+        assert(has(G.printed, "^%[NOM%] debug spawn longe"), table.concat(G.printed, "\n"))
+        local weak = G.player({ x = 100, y = 100, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", weak, { op = "spawn", n = 5, x = 101, y = 100, z = 0 })
+        assert(#G.spawnCalls == 0, "sem permissão spawnou")
+    end) end,
+    -- toggle: nada → sirene; sirene contando → cancela; névoa aberta → termina
+    debug_fog_toggle_cancels_siren = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Debug.send({ op = "fog", toggle = true })
+        NOM_Debug.send({ op = "fog", toggle = true })
+        NOM_World.fog = true
+        NOM_Debug.send({ op = "fog", toggle = true })
+        assert(table.concat(G.fogCalls, ",") == "siren:false,stop,stop", table.concat(G.fogCalls, ","))
     end) end,
 }

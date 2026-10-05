@@ -1,7 +1,8 @@
 -- Comandos de debug, lado do servidor (no solo, o mesmo processo). Só com o jogo
 -- em -debug: força a noite (NOM_World.forced), começa e termina um evento de névoa
 -- (NOM_FogEvent), força a névoa vermelha, força a variante de um zumbi
--- (NOM_VariantRules.forced), spawna um Eco e imprime o estado do mod. Quem chama
+-- (NOM_VariantRules.forced), spawna um Eco, muda a hora, spawna zumbis comuns e
+-- imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
 -- A noite forçada vive em memória até o servidor reiniciar, MAS ela e o evento de
 -- névoa avançam os contadores salvos de noites e de névoas (NOM_NightCount e
@@ -50,7 +51,10 @@ function ops.night(_, a)
 end
 
 -- Evento de verdade: sirene (e a névoa 30 s reais depois, ou já com skip), ou fim.
+-- toggle (NOM.fog sem argumento): névoa aberta ou sirene contando termina; senão, sirene.
+-- Quem decide é o servidor: o cliente não sabe da contagem.
 function ops.fog(_, a)
+    if a.toggle then a.value = not (NOM_World.fog or NOM_FogEvent.status().sirenMs ~= nil) end
     if a.value then return "nevoa sirene=" .. tostring(NOM_FogEvent.siren(a.skip)) end
     return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
 end
@@ -73,6 +77,23 @@ end
 function ops.spawnEco(player)
     local ok = NOM_Eco.spawnAt(math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ()))
     return "eco spawn=" .. tostring(ok)
+end
+
+-- Hora do relógio (sprint 0020): no solo é o relógio local; no MP o do servidor, que
+-- os clientes seguem (GameTime.syncClock). O mod lê no próximo OnClimateTick.
+function ops.time(_, a)
+    getGameTime():setTimeOfDay(a.hour)
+    return "hora=" .. fmt(a.hour)
+end
+
+-- Zumbis no tile pedido (o cliente mira na frente do jogador), no máximo a
+-- SPAWN_REACH tiles de quem pede. outfit nil: o jogo sorteia (ISSpawnHordeUI.lua:73, 276).
+function ops.spawn(player, a)
+    local dx, dy = a.x - player:getX(), a.y - player:getY()
+    local reach = NOM_DebugRules.SPAWN_REACH
+    if not (dx * dx + dy * dy <= reach * reach) then return "spawn longe" end
+    local list = addZombiesInOutfit(math.floor(a.x), math.floor(a.y), math.floor(a.z), a.n, a.outfit, 50)
+    return "spawn n=" .. a.n .. " criados=" .. (list and list:size() or 0) .. " outfit=" .. (a.outfit or "-")
 end
 
 function ops.status()

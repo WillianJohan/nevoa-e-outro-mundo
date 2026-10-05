@@ -31,6 +31,9 @@ local function send(args)
     sendClientCommand(p, MODULE, "debug", args)
 end
 
+-- Pedido cru pro servidor (client/NOM_Console.lua: hora, spawn, toggle da névoa).
+NOM_Debug.send = send
+
 function NOM_Debug.night(on) send({ op = "night", value = on }) end
 function NOM_Debug.fog(on, skip) send({ op = "fog", value = on, skip = skip }) end
 function NOM_Debug.redFog(on) send({ op = "redFog", value = on }) end
