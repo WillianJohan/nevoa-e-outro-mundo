@@ -15,6 +15,11 @@
 --   G.ownerPacket(z) simula o pacote do dono que não aplicou o movimento.
 -- * addZombiesInOutfit dispara OnZombieCreate e volta uma lista Java (Steps.lua:830).
 -- * Square: qualquer método além dos de leitura listados explode (nada de mexer no mapa).
+-- * Zumbi (sprint 0011): playSoundLocal no emitter dele (IsoGameCharacter.playSoundLocal),
+--   getEmitter() com isPlaying/stopSoundLocal (BaseCharacterSoundEmitter); setUseless,
+--   setTarget, spotted(p, forçado) (IsoZombie, públicos). removeFromWorld não para o
+--   som do emitter (só stopOrTriggerSoundByName): o som fica tocando até alguém parar.
+-- * Jogador: getActiveLightItem() = item aceso ou nil (pz-api-notes §2.4).
 -- * Som: player:playSoundLocal(nome) = getEmitter():playSoundImpl(nome, nil), sem
 --   pacote (IsoGameCharacter.playSoundLocal; client/ISUI/Maps/ISMap.lua:210);
 --   emitter:setVolume(id, v), isPlaying(id), stopSoundLocal(id) são locais. Já
@@ -124,6 +129,7 @@ function W.new(opts)
         function p:getCurrentSquare() return G.square(math.floor(self.x), math.floor(self.y), self.z) end
         function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
         function p:getEmitter() return emitter end
+        function p:getActiveLightItem() if self.light then return { lit = true } end return nil end
         function p:playSoundLocal(name)
             local id = #G.sounds + 1
             G.sounds[id] = { name = name, volume = 1, playing = true }
@@ -167,6 +173,21 @@ function W.new(opts)
             end
         end
         function z:removeFromSquare() self.offSquare = true end
+        function z:getEmitter() return emitter end
+        function z:playSoundLocal(name)
+            local id = #G.sounds + 1
+            G.sounds[id] = { name = name, volume = 1, playing = true, src = self }
+            return id
+        end
+        function z:isUseless() return self.useless == true end
+        function z:setUseless(b) self.useless = b end
+        function z:setTarget(t) self.target = t end
+        function z:getTarget() return self.target end
+        function z:spotted(p, forced)
+            if self.useless then self.target = nil return end
+            self.target = p
+            self.forcedSpot = forced
+        end
         G.zombies[#G.zombies + 1] = z
         return z
     end

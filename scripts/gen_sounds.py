@@ -161,6 +161,60 @@ def siren_red(rng):
     return np.tanh(1.5 * wet / np.max(np.abs(wet)))
 
 
+def sob(rng):
+    """Carpideira calma: choro baixo de mulher, soluços entrecortados, ~7 s em loop.
+
+    Voz aguda (~330 Hz) que treme e cai no fim de cada soluço, com muito ar; entre
+    um e outro, uma inspiração curta e chiada (o "hic" do choro).
+    """
+    dur = 7.0
+    t = np.arange(int((dur + 0.5) * RATE)) / RATE
+    env = np.zeros_like(t)
+    f0 = np.full_like(t, 330.0)
+    start = 0.0
+    while start < dur + 0.5:
+        length = rng.uniform(0.45, 0.9)
+        k = (t >= start) & (t < start + length)
+        u = (t[k] - start) / length
+        env[k] = np.sin(np.pi * u) ** 1.5 * rng.uniform(0.6, 1.0)
+        f0[k] = rng.uniform(300, 380) * (1 - 0.18 * u)  # cada soluço cai
+        gasp = (t >= start + length) & (t < start + length + 0.12)  # inspiração
+        env[gasp] = 0.35 * np.sin(np.pi * (t[gasp] - start - length) / 0.12)
+        start += length + rng.uniform(0.25, 0.6)
+    f0 = f0 * (1 + 0.025 * np.sin(2 * np.pi * 6.5 * t))  # voz tremendo
+    phase = 2 * np.pi * np.cumsum(f0) / RATE
+    voice = sum(np.sin(k * phase) / (k * k) for k in range(1, 10))
+    breath = rng.standard_normal(len(t))
+    sig = 0.6 * voice + 0.5 * breath
+    formants = resonator(sig, 800, 5) + 0.7 * resonator(sig, 1200, 6) + 0.3 * resonator(sig, 2800, 8)
+    return loopable(formants * env, 0.5)
+
+
+def wail(rng):
+    """Carpideira acordada: grito agudo e longo que sobe e rasga, ~3,5 s.
+
+    Começa num lamento, sobe até um guincho (~1,4 kHz) e segura, com duas vozes
+    desafinadas (a garganta falhando), saturação forte e um rabo de eco.
+    """
+    dur = 3.5
+    t = np.arange(int(dur * RATE)) / RATE
+    f0 = np.interp(t, [0, 0.35, 0.9, 2.6, 3.5], [520, 760, 1350, 1250, 700])
+    f0 = f0 * (1 + 0.04 * np.sin(2 * np.pi * 9 * t))
+    out = np.zeros_like(t)
+    for detune, gain in ((1.0, 1.0), (1.035, 0.7)):
+        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
+        out += gain * sum(np.sin(k * phase) / k for k in range(1, 14))
+    out = out + 0.8 * rng.standard_normal(len(t))  # garganta rasgando
+    formants = resonator(out, 1100, 5) + resonator(out, 2900, 7) + 0.6 * resonator(out, 4200, 9)
+    env = np.interp(t, [0, 0.08, 0.4, 2.8, 3.5], [0, 0.6, 1, 0.9, 0])
+    dry = np.tanh(2.5 * formants / np.max(np.abs(formants)) * env)
+    wet = dry.copy()
+    for delay, gain in ((0.13, 0.3), (0.31, 0.2), (0.55, 0.12)):
+        k = int(delay * RATE)
+        wet[k:] += gain * dry[:-k]
+    return wet
+
+
 def write(name, signal):
     signal = signal / np.max(np.abs(signal)) * 0.9
     pcm = (signal * 32767).astype(np.int16)
@@ -190,6 +244,9 @@ def main():
     write("NOM_Siren", siren(np.random.default_rng(SEED + 4)))
     # sprint 0010: sirene da névoa vermelha
     write("NOM_SirenRed", siren_red(np.random.default_rng(SEED + 5)))
+    # sprint 0011: Carpideira
+    write("NOM_CarpideiraSob", sob(np.random.default_rng(SEED + 6)))
+    write("NOM_CarpideiraScream", wail(np.random.default_rng(SEED + 7)))
 
 
 if __name__ == "__main__":

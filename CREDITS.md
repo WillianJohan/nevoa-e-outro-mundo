@@ -24,6 +24,8 @@ Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/ge
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
 | `mod/42/media/sound/NOM_Siren.ogg` | sirene de ataque aéreo, sobe e cai duas vezes (~24 s; rotor de harmônicos ímpares, segundo rotor desafinado, ecos) | aviso do evento de névoa, 30 s reais antes |
 | `mod/42/media/sound/NOM_SirenRed.ogg` | a sirene mais grave (~30%), rasgada e longa (~28 s): rotor com desafinação que oscila, ronco uma oitava abaixo, saturação, chiado filtrado, ecos longos | aviso da névoa vermelha, 30 s reais antes |
+| `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
+| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
 
 Pra regerar: `python3 scripts/gen_sounds.py`. Os sons são declarados em
 `mod/42/media/scripts/NOM_sounds.txt`.
@@ -53,4 +55,4 @@ Pra regerar: `python3 scripts/gen_images.py`.
 | `NOM_FogOverlays.lua` | manchas de sangue no chão | sprites `overlay_blood_floor_01_0` a `_27`, por nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |
 | `NOM_FogVignette.lua` | vinheta da névoa | efeito de tela do modo de busca do jogo (`getSearchMode()`), sem textura própria |
-| Variantes, Eco, Sem-rosto | corpo e animação | zumbis vanilla; o mod só muda comportamento |
+| Variantes, Eco, Sem-rosto, Carpideira | corpo e animação | zumbis vanilla; o mod só muda comportamento |

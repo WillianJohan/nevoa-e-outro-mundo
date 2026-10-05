@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira) |
 
 ## Regra geral
 
@@ -11,12 +11,12 @@ Monstro = zumbi com outfit/textura própria e comportamento via Lua. Sem modelo
 3D novo, sem animação nova.
 
 **Todo monstro, menos o Eco, só existe na névoa** (decisão do Johan, 05/10/2026):
-Estalador, Corredor e Sem-rosto aparecem com a névoa, de dia ou de noite, e
-somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias, anunciado pela sirene
+Estalador, Corredor, Sem-rosto e Carpideira aparecem com a névoa, de dia ou de
+noite, e somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias, anunciado pela sirene
 ([world-states.md](world-states.md)). A noite fica com a agressividade dos zumbis comuns
 ([night.md](night.md)) e o Eco.
 
-Estalador, Corredor e Sem-rosto são **zumbis existentes**
+Estalador, Corredor, Sem-rosto e Carpideira são **zumbis existentes**
 ([ADR-001](../architecture/adr-001-variantes-por-moddata.md)). O Eco é a única
 exceção: ele é **spawnado** ([ADR-003](../architecture/adr-003-eco-spawnado.md)).
 
@@ -28,16 +28,17 @@ salvar e recarregar; na névoa seguinte é outro sorteio. Zumbis de chunks
 carregados depois também entram. Ecos nunca são variantes.
 
 **Um sorteio só pra todas:** cada zumbi tira um número de 0 a 99, e as chances
-viram faixas seguidas — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`
-com o padrão. Ninguém é duas coisas, e o total é a soma (12% com o padrão).
-Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante nova entra
-no fim da lista (a Carpideira, sprint 0011).
+viram faixas seguidas — Estalador `[0, 5)`, Corredor `[5, 7)`, Sem-rosto `[7, 12)`,
+Carpideira `[12, 15)` com o padrão. Ninguém é duas coisas, e o total é a soma (15% com
+o padrão). Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante
+nova entra no fim da lista (a Carpideira entrou assim na sprint 0011: quem era
+Estalador, Corredor ou Sem-rosto continua sendo).
 
 **Névoa vermelha** (sprint 0010, [ADR-010](../architecture/adr-010-nevoa-vermelha.md)):
 `RedFogChance`% das névoas (10 por padrão) vêm vermelhas, com sirene própria. Nelas
 **todo zumbi é monstro**: a chance de virar variante vai a 100% e o tipo sai de um
 segundo sorteio do mesmo ID e período, dividido por igual entre os tipos que existem
-(hoje 1/3 Estalador, 1/3 Corredor, 1/3 Sem-rosto; com a Carpideira, 1/4 cada). Cada
+(1/4 Estalador, 1/4 Corredor, 1/4 Sem-rosto, 1/4 Carpideira, desde a sprint 0011). Cada
 um com o comportamento de sempre. Um tipo desligado no sandbox deixa a fatia dele como
 zumbi comum (não redistribui). O Eco continua Eco. Se a névoa é vermelha é sorteado
 pelo número do período e por uma semente do mundo (cada save tem a sua agenda):
@@ -47,7 +48,7 @@ Numa noite com névoa a variante vai por cima dos stats da noite (o Estalador co
 como os outros da noite e continua cego); de dia, por cima dos stats do jogo.
 
 As variantes não têm roupa própria (trocar o outfit trocaria o ID e, com ele, o
-sorteio): quem avisa é o som.
+sorteio): quem avisa é o som (estalo, grito, rádio, soluço).
 
 ## Estalador
 
@@ -103,6 +104,36 @@ sorteio): quem avisa é o som.
 - Quando a névoa baixa, volta a ser zumbi comum: aquele zumbi qualquer *era* a coisa.
   Ele não tem stats próprios, então não há nada a desfazer.
 - Ecos nunca são Sem-rosto.
+
+## Carpideira
+
+| Quando | Origem | Sandbox |
+|---|---|---|
+| névoa | sorteado | `CarpideiraEnabled`, `CarpideiraChance` % (3), `CarpideiraTriggerRadius` (4 tiles), `CarpideiraScreamRadius` (60 tiles) |
+
+Pedido do Johan (05/10/2026): um monstro que grita muito alto, na linha da Witch do
+L4D ou do grito que chama a horda no Back 4 Blood. **Inspirado, não copiado:** o nome é
+o das mulheres pagas pra chorar em velório.
+
+- **Calma, fica parada** onde está: não perambula, não persegue, não vai atrás de som.
+  Soluça baixinho (ouvido a ~12 tiles), e é isso que a denuncia na névoa.
+- **Acorda** com qualquer um destes, do jogador:
+  - chegar a `CarpideiraTriggerRadius` tiles (4), **mesmo agachado** (é aí que ela
+    difere do Estalador: não adianta passar de fininho do lado);
+  - lanterna acesa apontada pra ela a até 10 tiles (ela na frente do jogador e
+    iluminada; aproximação: luz de outra fonte com a lanterna acesa na mão também conta);
+  - barulho alto perto: um som do jogador com alcance de 30 tiles ou mais (tiro), nascido
+    a até 10 tiles dela. Tarefas barulhentas comuns (raio até 20) não acordam.
+- **Grito:** ensurdecedor, ouvido de longe, e chama todo zumbi a `CarpideiraScreamRadius`
+  tiles (60) até ela. Depois ela vira corredora e caça **quem a acordou**.
+- **Um grito por névoa por Carpideira**, valendo no MP: o servidor decide e guarda (salvar
+  e carregar no meio da névoa não deixa gritar de novo). Na névoa seguinte, se o sorteio
+  a fizer Carpideira de novo, ela recomeça calma.
+- Zumbis com o mesmo ID de outfit são a mesma variante (ADR-006): quando uma grita, as
+  outras com o mesmo ID (raras) ficam furiosas também, sem gritar.
+- Quando a névoa baixa, volta a ser zumbi comum (e anda de novo).
+- Sem visual próprio (roupa trocaria o ID, ver acima); o soluço é o aviso.
+  Técnica: [ADR-011](../architecture/adr-011-carpideira.md).
 
 ## Eco
 

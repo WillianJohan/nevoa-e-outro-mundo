@@ -42,6 +42,14 @@ return {
         assert(NOM_Config.get("CorredorChance") == 2)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
+    -- Carpideira (sprint 0011): chance 3 (decisão do Johan, 05/10), raios 4 e 60
+    config_carpideira_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("CarpideiraEnabled") == true)
+        assert(NOM_Config.get("CarpideiraChance") == 3)
+        assert(NOM_Config.get("CarpideiraTriggerRadius") == 4)
+        assert(NOM_Config.get("CarpideiraScreamRadius") == 60)
+    end,
     -- névoa é evento (sprint 0009): ~1 a cada 3 dias, 2 a 6 horas; FogThreshold saiu
     config_red_fog_defaults = function()
         SandboxVars = nil
@@ -106,6 +114,12 @@ return {
         assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
         assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
         assert(not body("NOM_Siren"):find("loop", 1, true), "sirene em loop (toca uma vez por evento)")
+        -- Carpideira: soluço em loop e baixo (perto); grito uma vez e de longe
+        local sob, scream = body("NOM_CarpideiraSob"), body("NOM_CarpideiraScream")
+        assert(sob and sob:find("loop = true", 1, true), "soluço sem loop")
+        assert(tonumber(sob:match("distanceMax = (%d+)")) <= 15, "soluço alto demais")
+        assert(not scream:find("loop", 1, true), "grito em loop")
+        assert(tonumber(scream:match("distanceMax = (%d+)")) >= 100, "grito perto demais")
     end,
     -- varredura é (2r+1)² squares por jogador: 60 é o teto de custo aceito
     config_eco_radius_max_is_60 = function()
@@ -132,7 +146,8 @@ return {
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren", "NOM_SirenRed" }) do
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren", "NOM_SirenRed",
+        "NOM_CarpideiraSob", "NOM_CarpideiraScream" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,

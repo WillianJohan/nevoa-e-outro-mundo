@@ -31,6 +31,7 @@ return {
         assert(D.parse({ op = "variant", id = 0, kind = "corredor" }) == nil, "ID 0 é zumbi sem outfit")
         assert(D.parse({ op = "variant", kind = "corredor" }) == nil)
         assert(D.parse({ op = "variant", id = 5, kind = "carrasco" }) == nil)
+        assert(D.parse({ op = "variant", id = 5, kind = "carpideira" }).kind == "carpideira", "Carpideira (0011) recusada")
     end,
     debug_rules_line_is_sorted = function()
         assert(D.line("[NOM] x", { b = 2, a = true, c = "z" }) == "[NOM] x a=true b=2 c=z")

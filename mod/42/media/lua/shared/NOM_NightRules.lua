@@ -34,8 +34,8 @@ function NOM_NightRules.dayTier(sandboxSpeed, current)
     return current
 end
 
--- Perfil que o zumbi deve ter. kind = nil (comum), "eco", "estalador" ou
--- "corredor" (variante só existe na névoa, de dia ou de noite: à noite ela vai por
+-- Perfil que o zumbi deve ter. kind = nil (comum), "eco", "estalador",
+-- "corredor" ou "carpideira" (variante só existe na névoa, de dia ou de noite: à noite ela vai por
 -- cima dos stats da noite; de dia, por cima dos do jogo). cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }
 -- (sight/hearing = valores do sandbox). sight/hearing nil = os do sandbox.
 -- key == "day" quando nada muda em relação ao jogo.
@@ -53,7 +53,9 @@ function NOM_NightRules.wanted(night, kind, dayTier, cfg)
         end
     end
     -- Variantes valem pelo próprio toggle, não pelos da noite.
-    if kind == "corredor" then w.speed = R.CORREDOR_SPEED end
+    -- Carpideira (sprint 0011): corredora; calma está parada (useless), então só
+    -- corre depois do grito.
+    if kind == "corredor" or kind == "carpideira" then w.speed = R.CORREDOR_SPEED end
     if kind == "estalador" then
         w.sight, w.hearing = R.ESTALADOR_SIGHT, R.ESTALADOR_HEARING
     end

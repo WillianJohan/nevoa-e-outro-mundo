@@ -1,4 +1,5 @@
--- Comportamento das variantes onde o zumbi é simulado (ADR-005): no solo, o
+-- Comportamento das variantes onde o zumbi é simulado (ADR-005): Estalador cego,
+-- Corredor que avisa, Carpideira parada (NOM_Carpideira). No solo, o
 -- próprio processo (server/NOM_Variants.lua instala); no MP, o cliente
 -- (client/NOM_VariantsClient.lua instala). A variante vem do NOM_NightStats
 -- (modData.NOM_variant, só em memória, ADR-006). Variante só age na névoa (decisão
@@ -6,6 +7,9 @@
 -- do servidor: aqui só se avisa, pelo report passado no install.
 require "NOM_NightStats"
 require "NOM_FogState"
+require "NOM_Carpideira"
+require "NOM_VariantRules"
+require "NOM_Config"
 
 NOM_VariantAI = {}
 
@@ -54,9 +58,7 @@ local function estalador(z, md, blind)
     -- do tutorial não dá pra distinguir: num Estalador na névoa, também cai.
     -- Custo: uma chamada Java por Estalador local por frame.
     if z:isUseless() then
-        local outfit = z:getOutfitName()
-        -- string.find com plain: client/OptionScreens/LoadGameScreen.lua:601
-        if not (outfit and string.find(outfit, "Useless", 1, true)) then z:setUseless(false) end
+        if not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
         return
     end
     if md.NOM_alert then return end
@@ -76,10 +78,10 @@ local function corredor(z, md, report)
 end
 
 -- OnZombieUpdate roda por zumbi a cada frame: o zumbi comum sai na primeira
--- linha, com duas consultas de tabela Lua e nenhuma chamada Java.
+-- linha, com três consultas de tabela Lua e nenhuma chamada Java.
 local function onUpdate(z, report)
-    local kind, blind = NOM_NightStats.variants[z], blinded[z]
-    if kind == nil and blind == nil then return end
+    local kind, blind, still = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z]
+    if kind == nil and blind == nil and still == nil then return end
     local md = z:getModData()
     if kind ~= nil and md.NOM_variant ~= kind then -- objeto reaproveitado
         NOM_NightStats.variants[z] = nil
@@ -93,6 +95,13 @@ local function onUpdate(z, report)
     elseif kind == "corredor" and on then
         corredor(z, md, report)
     end
+    -- Carpideira (sprint 0011): parada enquanto calma; solta quando a névoa baixa,
+    -- deixa de ser Carpideira ou vira remota (aí o pacote do dono manda).
+    if kind == "carpideira" and on then
+        NOM_Carpideira.hold(z, md)
+    elseif still then
+        NOM_Carpideira.letGo(z)
+    end
 end
 
 -- Golpe é barulho: o Estalador acertado passa a seguir quem bateu.
@@ -103,10 +112,50 @@ local function onHit(z)
     z:getModData().NOM_alert = true
 end
 
+-- Useless herdado (review da 0011): o useless viaja no pacote do zumbi
+-- (NetworkZombieAI.set → getBooleanVariables 86–89; parse 204–252) e o
+-- resetForReuse não o limpa. Se o dono que parou a Carpideira (ou cegou o Estalador)
+-- perde a posse, a névoa acaba ou o objeto é reaproveitado, o novo dono fica com um
+-- zumbi useless que nada aqui marcou, e o onUpdate sai cedo (kind, blind e still nil).
+-- Solta o useless de zumbi local que este processo não ligou, mas só de quem o mod
+-- pode ter deixado useless: Carpideira ou Estalador no período de névoa atual ou no
+-- anterior (o sorteio é determinístico, ADR-006), normal ou vermelha (a cor de um
+-- período passado não é guardada: as duas contam). Fica: o do próprio jogo (outfit
+-- "Useless"), o do tutorial (client/Tutorial/Steps.lua:847, 1107; e nada no modo
+-- tutorial, getCore():getGameMode() == "Tutorial", shared/TimedActions/
+-- ISGrabCorpseAction.lua:140) e o de outro mod num zumbi que nunca foi variante. O
+-- useless do menu de debug numa ex-variante cai na passada seguinte.
+-- Chamado pela passada do NOM_NightStats e no OnZombieCreate.
+local HELD = { carpideira = true, estalador = true }
+
+local function heldByMod(id)
+    local period = NOM_FogState.period
+    if not period then return false end
+    local cfg = NOM_VariantRules.config(NOM_Config.get)
+    for n = period - 1, period do
+        if HELD[NOM_VariantRules.variant(id, n, cfg) or ""] or HELD[NOM_VariantRules.variant(id, n, cfg, true) or ""] then
+            return true
+        end
+    end
+    return false
+end
+
+local function unstick(z)
+    if blinded[z] or NOM_Carpideira.still[z] or z:isRemoteZombie() or not z:isUseless() then return end
+    if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
+    if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
+end
+
 -- Objeto reaproveitado pra outro zumbi (resetForReuse → OnZombieCreate) não
--- herda a cegueira. Morto também sai da tabela.
+-- herda a cegueira nem a parada. Morto também sai da tabela.
 local function forget(z)
     if blinded[z] then release(z) end
+    NOM_Carpideira.forget(z)
+end
+
+local function created(z)
+    forget(z)
+    unstick(z)
 end
 
 -- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador
@@ -130,7 +179,8 @@ end
 function NOM_VariantAI.install(report)
     Events.OnZombieUpdate.Add(function(z) onUpdate(z, report) end)
     Events.OnHitZombie.Add(onHit)
-    Events.OnZombieCreate.Add(forget)
+    Events.OnZombieCreate.Add(created)
+    NOM_NightStats.unstick = unstick
     Events.OnZombieDead.Add(forget)
     Events.EveryOneMinute.Add(clicks)
 end

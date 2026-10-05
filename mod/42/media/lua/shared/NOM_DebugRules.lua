@@ -3,7 +3,7 @@
 -- cliente manda: tudo passa por parse.
 NOM_DebugRules = {}
 
-NOM_DebugRules.KINDS = { estalador = true, corredor = true, semrosto = true }
+NOM_DebugRules.KINDS = { estalador = true, corredor = true, semrosto = true, carpideira = true }
 
 -- args = { op = ..., ... } vindo do cliente. Devolve a tabela limpa ou nil.
 -- value/kind ausentes (nil) devolvem o controle ao jogo.

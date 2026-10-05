@@ -23,6 +23,30 @@ require "NOM_VariantRules"
 
 local FILE = "mod/42/media/lua/shared/NOM_VariantAI.lua"
 
+-- persistentOutfitID (formato do jogo) que, com o sandbox padrão, é `want` no período
+-- (sorteio normal); want nil = nada que o mod deixa useless (nem Carpideira nem
+-- Estalador) nos períodos dados, normal ou vermelha
+local function idFor(want, period, avoid)
+    require "NOM_Config"
+    local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+    local still = { carpideira = true, estalador = true }
+    for seed = 1, 3000 do
+        local id = 11 * 65536 + seed
+        if want then
+            if NOM_VariantRules.variant(id, period, c) == want then return id end
+        else
+            local ok = true
+            for _, n in ipairs(avoid) do
+                for _, red in ipairs({ false, true }) do
+                    if still[NOM_VariantRules.variant(id, n, c, red) or ""] then ok = false end
+                end
+            end
+            if ok then return id end
+        end
+    end
+    error("nenhum ID")
+end
+
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = {}, players = {}, reports = {}, rand = opts.rand or 0 }
@@ -40,7 +64,7 @@ local function setup(opts)
         return p
     end
     function G.zombie(o)
-        local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false,
+        local z = { class = "IsoZombie", x = o.x, y = o.y, md = {}, remote = o.remote or false, id = o.id or 4242,
             onlineID = o.onlineID or -1, sounds = {}, netSounds = {}, dead = false, useless = o.useless or false,
             bonusSpotTime = 0, calls = 0, outfitName = o.outfit }
         local function def(name, fn)
@@ -60,6 +84,9 @@ local function setup(opts)
         def("setUseless", function(self, b) self.useless = b end)
         def("getOnlineID", function(self) return self.onlineID end)
         def("getOutfitName", function(self) return self.outfitName end)
+        def("getPersistentOutfitID", function(self) return self.id end)
+        -- IsoZombie.spotted(obj, forçado) público → spottedNew (sprint 0011)
+        def("spotted", function(self, p, forced) G.spot(self, p, forced) end)
         -- emitter:playSound manda PacketType.PlaySound no cliente de MP
         -- (FMODSoundEmitter.playSound 0–104); playSoundLocal = playSoundImpl(nome, nil), sem pacote
         def("getEmitter", function()
@@ -79,6 +106,7 @@ local function setup(opts)
         z.lastSeen = { x = p.x, y = p.y }
         if not forced then z.bonusSpotTime = 720 end
     end
+    G.spot = spotted
     local function dist(a, b) return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y)) end
     local function step(a, tx, ty)
         if a.x < tx then a.x = a.x + 1 elseif a.x > tx then a.x = a.x - 1 end
@@ -128,6 +156,8 @@ local function setup(opts)
     instanceof = function(o, cls) return o.class == cls end
     ZombRand = function(n) return G.rand % n end
     isClient = function() return opts.client == true end
+    -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
+    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
     isServer = function() return false end
     getDebug = function() return false end
     SandboxVars = {}
@@ -145,7 +175,7 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_FogState", "NOM_NightStats", "NOM_VariantAI" }) do
+    for _, m in ipairs({ "NOM_FogState", "NOM_NightStats", "NOM_VariantAI", "NOM_Carpideira" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -395,10 +425,10 @@ return {
     ai_red_fog_budget_per_frame = function()
         local G = setup()
         NOM_FogState.set(true, 1, true)
-        local kinds = { "estalador", "corredor", false }
-        local by = { estalador = {}, corredor = {}, none = {} }
-        for i = 1, 300 do
-            local k = kinds[i % 3 + 1]
+        local kinds = { "estalador", "corredor", false, "carpideira" }
+        local by = { estalador = {}, corredor = {}, none = {}, carpideira = {} }
+        for i = 1, 400 do
+            local k = kinds[i % 4 + 1]
             local z = G.zombie({ x = 100 + i, y = 100, variant = k or nil })
             table.insert(by[k or "none"], z)
         end
@@ -407,9 +437,165 @@ return {
         assert(sum(by.estalador) <= 100 * 10 * 4, "Estalador: " .. sum(by.estalador))
         assert(sum(by.corredor) <= 100 * 10 * 3, "Corredor: " .. sum(by.corredor))
         assert(sum(by.none) == 0, "Sem-rosto/comum: " .. sum(by.none))
+        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isRemoteZombie) e, no
+        -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
+        assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
         -- estalo: 1/min, só nos Estaladores, ≤ 3 chamadas cada (getModData, isDead, playSoundLocal)
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)
-        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0)
+        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0 and sum(by.carpideira) == 0)
+    end,
+
+    -- Carpideira (sprint 0011): calma, fica parada; jogador em pé à vista (fora do raio
+    -- que a acorda, que é da varredura) não é perseguido. Controle: o Corredor vem.
+    ai_carpideira_still_while_calm = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        local p = G.player({ x = 30, y = 0 })
+        G.frame(2)
+        assert(z.useless, "não ficou parada (useless)")
+        p.x = 6
+        G.frame(60)
+        assert(z.x == 0 and z.y == 0 and p.bitten == 0, "andou ou mordeu: " .. z.x .. "," .. z.y)
+        G.sound(0, 20)
+        G.frame(25)
+        assert(z.x == 0 and z.y == 0, "foi atrás de som calma")
+        local G2 = setup()
+        local c = G2.zombie({ x = 0, y = 0, variant = "corredor" })
+        local p2 = G2.player({ x = 6, y = 0 })
+        G2.frame(30)
+        assert(p2.bitten > 0 and c.x ~= 0, "o fake não persegue: teste não prova nada")
+    end,
+    -- o grito (decidido pelo servidor) solta e manda caçar quem a acordou
+    ai_carpideira_scream_hunts_trigger_player = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        local p = G.player({ x = 30, y = 0 })
+        G.frame(2)
+        NOM_Carpideira.scream(z, p)
+        assert(not z.useless and z.target == p, "não soltou ou não pegou o alvo")
+        assert(z.sounds[1] == NOM_Carpideira.SCREAM and #z.netSounds == 0, "grito não tocou local")
+        G.frame(40)
+        assert(p.bitten > 0, "não caçou quem a acordou")
+        assert(z.useless == false, "voltou a ficar parada depois do grito")
+    end,
+    -- fim da névoa: solta (não fica parada pro resto do jogo)
+    ai_carpideira_released_when_fog_ends = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira" })
+        G.frame(2)
+        assert(z.useless)
+        NOM_FogState.set(false, 1)
+        G.frame(1)
+        assert(not z.useless, "parada depois da névoa")
+        -- objeto reaproveitado também
+        local G2 = setup()
+        local z2 = G2.zombie({ x = 0, y = 0, variant = "carpideira" })
+        G2.frame(2)
+        G2.reuse(z2)
+        assert(not z2.useless, "reaproveitado nasceu parado")
+    end,
+    -- MP: só o dono mexe; a cópia remota segue o pacote (o useless viaja nele:
+    -- NetworkZombieAI.set/parse), então nasce parada como a do dono
+    ai_carpideira_remote_untouched = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", remote = true, useless = true })
+        G.frame(5)
+        assert(z.useless, "cópia remota mexeu no useless")
+        z.remote = false -- virou dono, com o useless herdado
+        G.frame(1)
+        assert(z.useless and NOM_Carpideira.still[z], "novo dono não a assumiu parada")
+    end,
+    -- review (Critical A): calma e parada pelo dono antigo; a névoa acaba e a posse vem
+    -- pra cá com o useless herdado. Nada aqui a parou (kind, blind, still: nil): o
+    -- onUpdate sai cedo. A passada do NightStats (unstick) solta.
+    ai_carpideira_inherited_after_fog_is_released = function()
+        local G = setup({ fog = false })
+        -- foi Carpideira na névoa que acabou (período 1); comum de novo, herdada parada
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(5)
+        assert(z.useless, "o fake não modela o useless herdado")
+        NOM_NightStats.unstick(z)
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "ficou parada pra sempre depois da névoa")
+        -- reaproveitado com o useless herdado (resetForReuse não limpa)
+        local G2 = setup({ fog = false })
+        local z2 = G2.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
+        G2.reuse(z2)
+        assert(not z2.useless, "reaproveitado nasceu parado")
+        -- remoto, Useless do jogo (outfit de debug) e parada pelo próprio mod: não mexe
+        local G3 = setup()
+        local r = G3.zombie({ x = 0, y = 0, useless = true, remote = true, id = idFor("carpideira", 1) })
+        local dbg = G3.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor("carpideira", 1) })
+        local mine = G3.zombie({ x = 0, y = 9, variant = "carpideira" })
+        G3.frame(2)
+        for _, z3 in ipairs({ r, dbg, mine }) do NOM_NightStats.unstick(z3) end
+        assert(r.useless and dbg.useless and mine.useless, "soltou o que não era herdado")
+        -- Estalador cego por este processo também fica
+        local G4 = setup()
+        local e = G4.zombie({ x = 0, y = 0, variant = "estalador" })
+        G4.player({ x = 1, y = 0, sneaking = true })
+        G4.frame(3)
+        assert(e.useless)
+        NOM_NightStats.unstick(e)
+        assert(e.useless, "soltou o Estalador no meio da janela")
+    end,
+    -- review (Critical B): ela já gritou e a posse muda; o novo dono herda o useless
+    -- do pacote antigo. Furiosa: solta.
+    ai_carpideira_inherited_after_scream_is_released = function()
+        local G = setup()
+        NOM_Carpideira.screamed[778] = true
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", id = 778, useless = true })
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "furiosa herdada ficou parada")
+    end,
+    -- quem já gritou nesta névoa (servidor avisou) volta do virtual como objeto novo:
+    -- não fica parada de novo
+    ai_carpideira_reloaded_after_scream_stays_furious = function()
+        local G = setup()
+        NOM_Carpideira.screamed[777] = true
+        local z = G.zombie({ x = 0, y = 0, variant = "carpideira", id = 777 })
+        local p = G.player({ x = 6, y = 0 })
+        G.frame(30)
+        assert(not z.useless and p.bitten > 0, "furiosa recarregada ficou parada")
+    end,
+    -- verificação da review: o unstick só solta quem o mod pode ter deixado useless
+    -- (Carpideira ou Estalador no período atual ou no anterior, normal ou vermelha).
+    -- Zumbi do tutorial (client/Tutorial/Steps.lua:847, 1107) e de outro mod fica.
+    ai_unstick_leaves_foreign_useless = function()
+        local G = setup({ fog = false })
+        NOM_FogState.set(false, 3)
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
+        NOM_NightStats.unstick(z)
+        G.reuse(z)
+        assert(z.useless, "soltou useless de quem nunca foi Carpideira nem Estalador")
+    end,
+    -- ex-Carpideira da névoa anterior (o período avançou com a nova névoa), herdada parada
+    ai_unstick_releases_previous_period_carpideira = function()
+        local id = idFor("carpideira", 2)
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        require "NOM_Config"
+        local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        assert(NOM_VariantRules.variant(id, 3, c) ~= "carpideira", "escolher outro ID: Carpideira de novo")
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = id })
+        NOM_NightStats.unstick(z)
+        assert(not z.useless, "não soltou a Carpideira da névoa anterior")
+        -- e uma de dois períodos atrás não
+        local G2 = setup()
+        NOM_FogState.set(true, 4)
+        local old = G2.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 3, 4 }) })
+        NOM_NightStats.unstick(old)
+        assert(old.useless)
+    end,
+    -- tutorial: o mod não mexe em useless nenhum
+    ai_unstick_does_nothing_in_tutorial = function()
+        local G = setup({ fog = false, gameMode = "Tutorial" })
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
+        NOM_NightStats.unstick(z)
+        G.reuse(z)
+        assert(z.useless, "mexeu no zumbi do tutorial")
     end,
 }

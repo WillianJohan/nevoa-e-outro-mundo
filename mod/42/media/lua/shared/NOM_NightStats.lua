@@ -134,6 +134,9 @@ end
 -- Leva o zumbi ao perfil certo. Devolve true se aplicou.
 local function process(z, c)
     if z:isDead() then return false end
+    -- useless herdado pela rede (NOM_VariantAI instala; review da 0011): toda passada,
+    -- inclusive a de conferência do fim da névoa e a de hora em hora de dia
+    if NOM_NightStats.unstick then NOM_NightStats.unstick(z) end
     local md = z:getModData()
     local cur = md.NOM_night
     local fog = NOM_FogState.on
@@ -244,6 +247,7 @@ function NOM_NightStats.forget(z)
     md.NOM_variant = nil
     md.NOM_hunting = nil
     md.NOM_alert = nil
+    md.NOM_furia = nil -- Carpideira que gritou (NOM_Carpideira)
 end
 
 function NOM_NightStats.install()

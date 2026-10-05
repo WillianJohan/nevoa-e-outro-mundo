@@ -30,7 +30,7 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 Dia: saquear, limpar corpos (queimar/enterrar), preparar abrigo →
 noite: sobreviver aos infectados agressivos e aos Ecos →
 sirene → névoa (de dia ou de noite, a cada ~3 dias): fugir ou se esconder do Outro Mundo — Estaladores,
-Corredores, Sem-rosto → amanhecer → repetir.
+Corredores, Sem-rosto, Carpideiras → amanhecer → repetir.
 
 ## Índice de sistemas
 
@@ -38,7 +38,7 @@ Corredores, Sem-rosto → amanhecer → repetir.
 |-----|---------|--------|
 | [world-states.md](world-states.md) | Noite e evento de névoa (sirene) | `accepted` |
 | [night.md](night.md) | Noite agressiva (todos os zumbis) | `accepted` |
-| [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Eco | `accepted` |
+| [monsters.md](monsters.md) | Estalador, Corredor, Sem-rosto, Carpideira, Eco | `accepted` |
 | [atmosphere.md](atmosphere.md) | Clima dark, som, overlays, shader | `accepted` |
 | [sandbox.md](sandbox.md) | Opções de sandbox | `accepted` |
 
@@ -78,3 +78,10 @@ Só viram escopo por promoção explícita.
   entre os tipos (o Eco continua Eco) ([monsters.md](monsters.md#regra-geral),
   [atmosphere.md](atmosphere.md#clima),
   [ADR-010](../architecture/adr-010-nevoa-vermelha.md)).
+- **2026-10-05** — **Carpideira** (sprint 0011), pedido do Johan: um 4º monstro da névoa
+  que grita muito alto (inspirado na Witch do L4D e no grito de horda do Back 4 Blood,
+  sem copiar). Parada e soluçando; acorda com jogador a 4 tiles, lanterna apontada ou
+  barulho alto a até 10; grita (horda a 60 tiles) e caça quem a acordou. Chance 3%
+  (decisão do Johan), na faixa depois das outras (15% somados); na névoa vermelha, 1/4
+  de cada tipo. Um grito por névoa ([monsters.md](monsters.md#carpideira),
+  [ADR-011](../architecture/adr-011-carpideira.md)).

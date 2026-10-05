@@ -624,8 +624,10 @@ return {
         NOM_FogState.set(true, 1)
         G.converge()
         z.md.NOM_hunting = true
+        z.md.NOM_furia = 1 -- Carpideira que gritou (sprint 0011)
         G.kill(z)
         assert(z.md.NOM_variant == nil and z.md.NOM_hunting == nil, "chave de variante foi pro corpo")
+        assert(z.md.NOM_furia == nil, "marca da Carpideira foi pro corpo")
     end,
     -- fim da névoa: alerta do Estalador e caça do Corredor não passam pra próxima
     stats_fog_end_clears_variant_state = function()
@@ -751,7 +753,7 @@ return {
         local eco = G.spawn({ id = 3 * 65536 + 1, outfit = "NOM_Eco" })
         NOM_FogState.set(true, 4, true)
         G.converge()
-        local n = { estalador = 0, corredor = 0, semrosto = 0 }
+        local n = { estalador = 0, corredor = 0, semrosto = 0, carpideira = 0 }
         for _, z in ipairs(zs) do
             local k = z.md.NOM_variant
             if k == nil then
@@ -760,7 +762,8 @@ return {
             end
             n[k] = n[k] + 1
         end
-        for k, v in pairs(n) do assert(v >= 18 and v <= 42, k .. " " .. v) end
+        -- 1/4 de cada (sprint 0011): ~22 de 90
+        for k, v in pairs(n) do assert(v >= 10 and v <= 35, k .. " " .. v) end
         assert(eco.md.NOM_variant == nil, "Eco virou variante")
         -- a vermelha acaba (névoa normal no mesmo período): volta ao sorteio normal
         NOM_FogState.set(true, 4, false)
@@ -768,5 +771,28 @@ return {
         local still = 0
         for _, z in ipairs(zs) do if z.md.NOM_variant then still = still + 1 end end
         assert(still < 20, "continuou vermelha: " .. still)
+    end,
+    -- review da 0011: o useless viaja no pacote e nada no jogo o desliga; a passada do
+    -- laço (inclusive no fim da névoa e de dia, na conferência de hora em hora) passa
+    -- todo zumbi vivo pelo NOM_NightStats.unstick (o NOM_VariantAI instala)
+    stats_pass_offers_every_zombie_to_unstick = function()
+        local G = setup()
+        local seen = {}
+        NOM_NightStats.unstick = function(z) seen[z] = (seen[z] or 0) + 1 end
+        local zs = {}
+        for i = 1, 30 do zs[i] = G.spawn() end
+        NOM_FogState.set(true, 1)
+        G.converge()
+        NOM_FogState.set(false, 1) -- névoa acaba: a passada de conferência
+        seen = {}
+        G.converge()
+        for i, z in ipairs(zs) do assert(seen[z], "zumbi " .. i .. " fora do unstick no fim da névoa") end
+        G.converge()
+        G.converge()
+        seen = {}
+        G.fire("EveryHours")
+        G.converge()
+        for i, z in ipairs(zs) do assert(seen[z], "zumbi " .. i .. " fora do unstick de dia") end
+        NOM_NightStats.unstick = nil
     end,
 }

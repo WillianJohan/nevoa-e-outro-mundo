@@ -1,4 +1,4 @@
--- Regras puras das variantes da névoa (Estalador, Corredor, Sem-rosto): sem API do jogo,
+-- Regras puras das variantes da névoa (Estalador, Corredor, Sem-rosto, Carpideira): sem API do jogo,
 -- testável com ./run-tests.sh. A variante não é guardada em lugar nenhum: é
 -- função do persistentOutfitID do zumbi e do número do período de névoa (ADR-006). Servidor
 -- e clientes chegam à mesma resposta sem sincronizar nada, e ela sobrevive a
@@ -6,7 +6,7 @@
 NOM_VariantRules = {}
 
 -- Forçado pelo NOM_Debug (só em -debug, server/NOM_DebugServer.lua):
--- [persistentOutfitID] = "estalador" | "corredor" | "semrosto". Vale contra
+-- [persistentOutfitID] = "estalador" | "corredor" | "semrosto" | "carpideira". Vale contra
 -- chance e toggle, mas não sem período conhecido. Só em memória; servidor e
 -- clientes recebem o mesmo, então concordam (ADR-006).
 NOM_VariantRules.forced = {}
@@ -32,13 +32,14 @@ local function mix(h)
     return sq(h + 31337)
 end
 
--- Ordem das faixas do sorteio. Uma variante nova entra NO FIM (a Carpideira, sprint
--- 0011): as faixas de hoje não andam e cada zumbi continua o que era.
--- Na névoa vermelha (sprint 0010) a divisão é por #KINDS: um tipo novo re-divide
--- (1/3 vira 1/4), o que é a regra ("todos os tipos, por igual").
-NOM_VariantRules.KINDS = { "estalador", "corredor", "semrosto" }
-local CHANCE = { estalador = "estaladorChance", corredor = "corredorChance", semrosto = "semRostoChance" }
-local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "semRostoOn" }
+-- Ordem das faixas do sorteio. Uma variante nova entra NO FIM (a Carpideira entrou
+-- na sprint 0011): as faixas de antes não andam e cada zumbi continua o que era.
+-- Na névoa vermelha (sprint 0010) a divisão é por #KINDS: a Carpideira re-dividiu
+-- (1/3 virou 1/4), o que é a regra ("todos os tipos, por igual").
+NOM_VariantRules.KINDS = { "estalador", "corredor", "semrosto", "carpideira" }
+local CHANCE = { estalador = "estaladorChance", corredor = "corredorChance", semrosto = "semRostoChance",
+    carpideira = "carpideiraChance" }
+local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "semRostoOn", carpideira = "carpideiraOn" }
 
 -- Hash do zumbi no período n, em [0, Q). salt separa sorteios independentes do
 -- mesmo zumbi no mesmo período; sal 0 é o sorteio de sempre (mix(x + 0) = mix(x)).
@@ -78,7 +79,7 @@ end
 -- zumbi sem outfit: todos iguais, nenhum vira variante.
 -- red: névoa vermelha (sprint 0010): todo zumbi é variante, dividido por igual
 -- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
--- Devolve "estalador" | "corredor" | "semrosto" | nil.
+-- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | nil.
 function NOM_VariantRules.variant(id, period, cfg, red)
     if not id or id == 0 or not period then return nil end
     local f = NOM_VariantRules.forced[id]
@@ -107,9 +108,11 @@ function NOM_VariantRules.config(get)
         estaladorOn = get("EstaladorEnabled"),
         corredorOn = get("CorredorEnabled"),
         semRostoOn = get("SemRostoEnabled"),
+        carpideiraOn = get("CarpideiraEnabled"),
         estaladorChance = get("EstaladorChance"),
         corredorChance = get("CorredorChance"),
         semRostoChance = get("SemRostoChance"),
+        carpideiraChance = get("CarpideiraChance"),
         redFogOn = get("RedFogEnabled"),
         redFogChance = get("RedFogChance"),
     }

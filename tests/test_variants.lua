@@ -7,6 +7,10 @@
 -- * getGameTime():getWorldAgeHours() (server/Vehicles/VehicleCommands.lua:240).
 -- * OnClientCommand(module, command, player, args) (server/ClientCommands.lua:1296).
 -- * modData do zumbi no servidor: o Eco tem NOM_eco (server/NOM_Eco.lua).
+-- * Events.OnWorldSound(x, y, z, raio, volume, fonte): todo addSound dispara
+--   (WorldSoundManager$WorldSound.init 129–155); som de cliente chega ao servidor como
+--   WorldSoundPacket e o processServer 90–139 chama addSound com o jogador de fonte.
+-- * IsoZombie.spotted(obj, forçado), setUseless, playSoundLocal (sprint 0011).
 -- * character:DistTo(x, y) (client/Vehicles/TimedActions/ISDetachTrailerFromVehicle.lua:34);
 --   getTimestampMs() relógio real em ms (server/ISObjectClickHandler.lua:352).
 require "NOM_VariantRules"
@@ -18,15 +22,15 @@ local HEARING_MULT = { 3.0, 1.0, 0.45 }
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = {}, sounds = {}, played = {}, hours = 100, world = { tod = opts.tod or 23 },
-        globalMD = {}, aiReport = nil, ms = 0 }
+        globalMD = opts.globalMD or {}, aiReport = nil, ms = 0, sent = {} }
     local handlers = {}
     local function fire(name, ...)
         for _, h in ipairs(handlers[name] or {}) do h(...) end
     end
     G.sandbox = opts.sandbox or { CorredorChance = 100, EstaladorChance = 0 }
     function G.zombie(o)
-        local z = { x = o.x or 10, y = o.y or 10, z = 0, md = o.md or {}, id = o.id, onlineID = o.onlineID or 7,
-            outfitName = o.outfit, dead = false }
+        local z = { x = o.x or 10, y = o.y or 10, z = o.z or 0, md = o.md or {}, id = o.id, onlineID = o.onlineID or 7,
+            outfitName = o.outfit, dead = false, class = "IsoZombie", local_ = {}, calls = 0 }
         function z:getX() return self.x + 0.5 end
         function z:getY() return self.y + 0.5 end
         function z:getZ() return self.z end
@@ -38,6 +42,12 @@ local function setup(opts)
         function z:getEmitter()
             return { playSound = function(_, name) G.played[#G.played + 1] = { name = name, src = z, local_ = true } end }
         end
+        function z:playSoundLocal(name) self.local_[#self.local_ + 1] = name; return 1 end
+        function z:isRemoteZombie() return false end
+        function z:setUseless(b) self.useless = b end
+        function z:isUseless() return self.useless == true end
+        function z:setTarget(t) self.target = t end
+        function z:spotted(p, forced) if not self.useless then self.target, self.forced = p, forced end end
         G.zombies[#G.zombies + 1] = z
         return z
     end
@@ -55,12 +65,18 @@ local function setup(opts)
     getOnlinePlayers = function() return { size = function() return 0 end } end
     addSound = function(src, x, y, z, radius, volume)
         G.sounds[#G.sounds + 1] = { src = src, x = x, y = y, z = z, radius = radius, volume = volume }
+        G.worldSound(x, y, z, radius, volume, src)
     end
+    function G.worldSound(x, y, z, radius, volume, src) fire("OnWorldSound", x, y, z, radius, volume, src) end
+    instanceof = function(o, cls) return type(o) == "table" and o.class == cls end
     sendPlaySound = function(name, loop, obj)
         if not isServer() then return end -- bytecode: só no GameServer
         G.played[#G.played + 1] = { name = name, src = obj, loop = loop }
     end
-    sendServerCommand = function() end
+    sendServerCommand = function(a, b, c, d)
+        if d == nil then G.sent[#G.sent + 1] = { module = a, command = b, args = c }
+        else G.sent[#G.sent + 1] = { player = a, module = b, command = c, args = d } end
+    end
     getGameTime = function()
         return {
             getTimeOfDay = function() return G.world.tod end,
@@ -89,7 +105,8 @@ local function setup(opts)
         end,
     })
     for _, m in ipairs({ "NOM_World", "NOM_NightStats", "NOM_Players", "NOM_NightCount", "NOM_Night", "NOM_VariantAI",
-        "NOM_FogState", "NOM_SemRosto", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren" }) do
+        "NOM_FogState", "NOM_SemRosto", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren",
+        "NOM_Carpideira", "NOM_CarpideiraRules" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -97,6 +114,8 @@ local function setup(opts)
     NOM_NightStats.install = function() end
     require "NOM_VariantAI"
     NOM_VariantAI.install = function(fn) G.aiReport = fn end
+    require "NOM_Carpideira"
+    NOM_Carpideira.install = function(fn) G.carpReport = fn end
     dofile(NIGHT_FILE)
     package.loaded["NOM_Night"] = NOM_Night
     dofile(FILE)
@@ -118,8 +137,14 @@ local function setup(opts)
     end
     -- jogador que manda o comando: perto do zumbi (10, 10) por padrão
     function G.player(x, y)
-        local p = { x = x or 12, y = y or 10 }
+        G.nextPlayer = (G.nextPlayer or 50) + 1
+        local p = { x = x or 12, y = y or 10, z = 0, class = "IsoPlayer", onlineID = G.nextPlayer }
         function p:DistTo(tx, ty) return math.sqrt((self.x - tx) ^ 2 + (self.y - ty) ^ 2) end
+        function p:getX() return self.x end
+        function p:getY() return self.y end
+        function p:getZ() return self.z end
+        function p:getOnlineID() return self.onlineID end
+        function p:getActiveLightItem() if self.light then return {} end return nil end
         return p
     end
     G.sender = G.player()
@@ -130,12 +155,21 @@ local function setup(opts)
     end
     -- alcance real do grito pros zumbis em volta (audição apurada da noite)
     function G.reach(s) return s.radius * HEARING_MULT[1] end
+    G.fire = fire
+    function G.commandsSent(command)
+        local out = {}
+        for _, c in ipairs(G.sent) do if c.command == command then out[#out + 1] = c end end
+        return out
+    end
     G.setTime(G.world.tod)
     return G
 end
 
--- ID (formato do jogo) que dá a variante pedida no período de névoa
-local function idFor(want, night, sandbox)
+-- sandbox em que todo zumbi sorteado é Carpideira (os outros tipos zerados)
+local CARP = { CarpideiraChance = 100, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
+
+-- ID (formato do jogo) que dá a variante pedida no período de névoa (except: pula esse)
+local function idFor(want, night, sandbox, except)
     local c = NOM_VariantRules.config(function(k)
         local v = sandbox[k]
         if v == nil then v = NOM_Config.DEFAULTS[k] end
@@ -143,7 +177,7 @@ local function idFor(want, night, sandbox)
     end)
     for seed = 1, 500 do
         local id = 9 * 65536 + seed
-        if NOM_VariantRules.variant(id, night, c) == want then return id end
+        if id ~= except and NOM_VariantRules.variant(id, night, c) == want then return id end
     end
     error("nenhum ID dá " .. tostring(want))
 end
@@ -267,5 +301,187 @@ return {
         NOM_World.setFog(true, true)
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 3 })
         assert(#G.played == 1, "Corredor da vermelha não gritou")
+    end,
+
+    -- Carpideira (sprint 0011) ---------------------------------------------------
+
+    -- solo: o processo vê, avisa e decide. Grito local, horda chamada com o alcance
+    -- compensado (CarpideiraScreamRadius), solta e caça quem acordou; um por névoa.
+    carpideira_sp_scream_once_per_period = function()
+        local G = setup({ sandbox = CARP })
+        assert(G.carpReport, "solo não instalou a varredura da Carpideira")
+        local z = G.zombie({ id = idFor("carpideira", 1, CARP) })
+        z.useless = true -- calma (NOM_Carpideira.hold)
+        NOM_Carpideira.still[z] = true
+        local p = G.player(12, 10)
+        G.carpReport(z, p, "near")
+        assert(z.local_[1] == "NOM_CarpideiraScream", "grito não tocou")
+        assert(#G.sounds == 1 and G.sounds[1].src == z and G.reach(G.sounds[1]) == 60, "horda não chamada a 60")
+        assert(z.useless == false and z.target == p and z.forced == true, "não caçou quem a acordou")
+        G.carpReport(z, p, "near")
+        assert(#z.local_ == 1 and #G.sounds == 1, "gritou duas vezes na mesma névoa")
+        -- névoa seguinte: outro período, ela pode gritar de novo (se ainda for Carpideira)
+        G.fog = 0
+        G.setTime(23)
+        G.fog = 0.9
+        G.setTime(23)
+        if NOM_VariantRules.variant(z.id, NOM_Fog.period(), NOM_VariantRules.config(function(k)
+            local v = CARP[k]; if v == nil then v = NOM_Config.DEFAULTS[k] end return v end)) == "carpideira" then
+            G.carpReport(z, p, "near")
+            assert(#z.local_ == 2, "não gritou na névoa seguinte")
+        end
+    end,
+    -- salvar e carregar no meio da névoa não deixa gritar de novo (ModData)
+    carpideira_scream_survives_reload = function()
+        local G = setup({ sandbox = CARP })
+        local z = G.zombie({ id = idFor("carpideira", 1, CARP) })
+        G.carpReport(z, G.player(12, 10), "near")
+        assert(#G.sounds == 1)
+        dofile(FILE) -- o Lua do servidor recomeça; o ModData global é o mesmo
+        G.carpReport(z, G.player(12, 10), "near")
+        assert(#G.sounds == 1, "gritou de novo depois de recarregar")
+    end,
+    -- dedicado: o aviso do cliente é conferido (variante, névoa, distância com folga,
+    -- andar, lanterna acesa, Eco, morto, motivo) e o grito vai pra todos os clientes
+    carpideira_mp_validates_report = function()
+        local G = setup({ server = true, sandbox = CARP })
+        local id = idFor("carpideira", 1, CARP)
+        G.zombie({ id = id, onlineID = 2, outfit = "NOM_Eco" })
+        local dead = G.zombie({ id = id, onlineID = 3 })
+        dead.dead = true
+        local far = G.zombie({ id = id, onlineID = 4, x = 10, y = 10 })
+        local function woke(onlineID, why, p) G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = onlineID, why = why }, p) end
+        local function screams() return G.commandsSent("carpideiraScream") end
+        woke(2, "near", G.player(11, 10))
+        woke(3, "near", G.player(11, 10))
+        woke(4, "noise", G.player(11, 10))
+        woke(4, "near", G.player(10, 17.5)) -- 7 tiles: além de 4 + folga 2
+        local up = G.player(11, 10); up.z = 1
+        woke(4, "near", up)
+        woke(4, "light", G.player(10, 19)) -- lanterna apagada
+        assert(#screams() == 0, "aviso inválido gritou: " .. (screams()[1] and tostring(screams()[1].args.id) or ""))
+        local p = G.player(10, 15.5) -- 5 tiles: dentro de 4 + folga
+        woke(4, "near", p)
+        local s = screams()
+        assert(#s == 1 and s[1].args.pid == id and s[1].args.id == 4 and s[1].args.pl == p.onlineID and s[1].player == nil)
+        assert(#G.sounds == 1 and G.sounds[1].src == far, "horda não chamada")
+        -- lanterna acesa a 9 tiles vale (outra Carpideira, outro ID)
+        local id2 = idFor("carpideira", 1, CARP, id)
+        G.zombie({ id = id2, onlineID = 5, x = 10, y = 10 })
+        local lit = G.player(10, 19); lit.light = true
+        woke(5, "light", lit)
+        assert(#screams() == 2, "lanterna acesa não valeu")
+        -- zumbi que não é Carpideira (metade é, com 50%)
+        local half = { CarpideiraChance = 50, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
+        local G1 = setup({ server = true, sandbox = half })
+        G1.zombie({ id = idFor(nil, 1, half), onlineID = 1 })
+        G1.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 1, why = "near" }, G1.player(11, 10))
+        assert(#G1.commandsSent("carpideiraScream") == 0, "zumbi comum gritou")
+        -- sem névoa, nada
+        local G2 = setup({ server = true, sandbox = CARP, fog = 0 })
+        G2.zombie({ id = id, onlineID = 4 })
+        G2.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, G2.player(11, 10))
+        assert(#G2.commandsSent("carpideiraScream") == 0, "gritou sem névoa")
+    end,
+    -- um aviso por jogador a cada RATE_MS reais (contando os inválidos); outro jogador livre
+    carpideira_rate_limit_per_player = function()
+        local G = setup({ server = true, sandbox = CARP })
+        local id = idFor("carpideira", 1, CARP)
+        G.zombie({ id = id, onlineID = 4 })
+        G.zombie({ id = idFor("carpideira", 1, CARP, id), onlineID = 5 })
+        local a, b = G.player(11, 10), G.player(11, 10)
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 99, why = "near" }, a)
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, a, 500)
+        assert(#G.commandsSent("carpideiraScream") == 0, "passou do limite")
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, b, 0)
+        assert(#G.commandsSent("carpideiraScream") == 1, "limite de um travou o outro")
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 5, why = "near" }, a, NOM_CarpideiraRules.RATE_MS)
+        assert(#G.commandsSent("carpideiraScream") == 2, "não liberou depois do intervalo")
+    end,
+    -- barulho: o servidor ouve sozinho (OnWorldSound). Tiro perto acorda e ela caça
+    -- quem atirou; longe, baixo, de zumbi ou chamado do próprio mod (caça) não
+    carpideira_noise_wakes = function()
+        local id = idFor("carpideira", 1, CARP)
+        local G = setup({ sandbox = CARP })
+        local z = G.zombie({ id = id })
+        local shooter = G.player(15, 10)
+        G.worldSound(15, 10, 0, 60, 60, shooter)
+        assert(#z.local_ == 1 and z.target == shooter, "tiro a 5 tiles não acordou")
+        for _, case in ipairs({
+            { x = 25, r = 150, why = "tiro a 15 tiles" },
+            { x = 13, r = 20, why = "tarefa barulhenta (raio 20)" },
+        }) do
+            local G2 = setup({ sandbox = CARP })
+            local z2 = G2.zombie({ id = id })
+            G2.worldSound(case.x, 10, 0, case.r, case.r, G2.player(case.x, 10))
+            assert(#z2.local_ == 0, case.why .. " acordou")
+        end
+        -- de dia na névoa o chamado do mod não é compensado: raio 30 = alto. Sem a
+        -- marca NOM_Night.calling, a caça a 1,5 tile a acordaria (review)
+        local G3 = setup({ sandbox = CARP, tod = 12 })
+        local z3 = G3.zombie({ id = id })
+        local other = G3.zombie({ id = id + 1, x = 30 })
+        G3.worldSound(12, 10, 0, 60, 60, other) -- fonte zumbi (ex.: grito do Corredor)
+        NOM_Night.call(G3.player(12, 10), 30) -- chamado do mod: addSound com o jogador de fonte
+        assert(G3.sounds[#G3.sounds].radius >= NOM_CarpideiraRules.LOUD_RADIUS, "teste não prova nada: chamado baixo")
+        assert(#z3.local_ == 0, "chamado do mod ou barulho de zumbi acordou")
+        local G4 = setup({ sandbox = CARP })
+        local z4 = G4.zombie({ id = id, z = 1 })
+        G4.worldSound(12, 10, 0, 60, 60, G4.player(12, 10))
+        assert(#z4.local_ == 0, "tiro do andar de baixo acordou")
+    end,
+    -- orçamento: cada barulho alto dá uma volta na lista com 1 chamada por zumbi comum
+    carpideira_noise_scan_one_call_per_common_zombie = function()
+        local G = setup({ sandbox = { CarpideiraChance = 0, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 } })
+        local commons = {}
+        for i = 1, 300 do
+            local z = G.zombie({ id = 9 * 65536 + i, x = i, y = 10 })
+            local real = z.getPersistentOutfitID
+            for k, v in pairs(z) do
+                if type(v) == "function" then z[k] = function(...) z.calls = z.calls + 1; return v(...) end end
+            end
+            commons[i] = z
+        end
+        G.worldSound(50, 10, 0, 100, 100, G.player(50, 10))
+        for _, z in ipairs(commons) do assert(z.calls <= 1, "chamadas: " .. z.calls) end
+        -- barulho baixo nem dá a volta
+        for _, z in ipairs(commons) do z.calls = 0 end
+        G.worldSound(50, 10, 0, 10, 10, G.player(50, 10))
+        for _, z in ipairs(commons) do assert(z.calls == 0) end
+    end,
+    -- quem entra no meio da névoa recebe quem já gritou
+    carpideira_joiner_gets_list = function()
+        local G = setup({ server = true, sandbox = CARP })
+        local id = idFor("carpideira", 1, CARP)
+        G.zombie({ id = id, onlineID = 4 })
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, G.player(11, 10))
+        local joiner = G.player(80, 80)
+        G.clientCommand("NevoaEOutroMundo", "fogState", {}, joiner)
+        local l = G.commandsSent("carpideiraList")
+        assert(#l == 1 and l[1].player == joiner and l[1].args.pids[1] == id, "lista não foi pra quem entrou")
+        -- ninguém gritou: nada a mandar
+        local G2 = setup({ server = true, sandbox = CARP })
+        G2.clientCommand("NevoaEOutroMundo", "fogState", {}, G2.player(80, 80))
+        assert(#G2.commandsSent("carpideiraList") == 0)
+    end,
+    -- review: no solo a lista de quem gritou do processo é só memória. Recarregar o
+    -- save no meio da névoa refaz ela do ModData (ao carregar e na borda da névoa):
+    -- a que gritou não fica parada nem soluça de novo
+    carpideira_sp_reload_keeps_furious = function()
+        local G = setup({ sandbox = CARP })
+        local id = idFor("carpideira", 1, CARP)
+        G.carpReport(G.zombie({ id = id }), G.player(12, 10), "near")
+        assert(NOM_Carpideira.screamed[id])
+        -- recarregar: o Lua recomeça (memória vazia), o ModData volta
+        NOM_Carpideira.screamed = {}
+        G.fire("OnInitGlobalModData", false)
+        assert(NOM_Carpideira.screamed[id], "não refez a lista ao carregar")
+        NOM_Carpideira.screamed = {}
+        NOM_World.setFog(false)
+        NOM_World.setFog(true) -- borda da névoa no primeiro minuto depois de carregar
+        assert(NOM_Carpideira.screamed[id], "não refez a lista na borda da névoa")
+        local z = G.zombie({ id = id }) -- voltou do virtual: objeto novo
+        NOM_Carpideira.hold(z, z:getModData())
+        assert(not z.useless, "a que gritou ficou parada de novo")
     end,
 }
