@@ -21,6 +21,12 @@ public final class FlowGrid {
     /** Só na textura (canal a): a face oeste / norte da célula está fechada na máscara. */
     public static final int T_WALL_W = 8, T_WALL_N = 16;
     static final int F_FRESH = 32;
+    /** Só na textura: cerca baixa na face oeste / norte (o F_FRESH não sai na textura). */
+    public static final int T_FENCE_W = 32, T_FENCE_N = 128;
+    /** Andares de névoa por unidade de densidade (sprint 0032): 1,0 ≈ o rolo que o shader desenha. */
+    public static final float FOG_DEPTH = 0.8f;
+    /** Alturas dos obstáculos baixos, em andares: carro (célula F_LOW) e cerca baixa (face). */
+    public static final float H_LOW = 0.55f, H_FENCE = 0.4f;
     /** Escala da velocidade na textura (tiles/s): o NOM_FLOW_VMAX do cabeçalho GLSL. */
     public static final float VEL_MAX = 4f;
     // por passo, cada face leva no máximo esta fração da célula: 4 faces < 1, densidade nunca negativa
@@ -54,7 +60,9 @@ public final class FlowGrid {
     public float vorticity;             // reforço de redemoinho (sprint 0029), por tile: a esteira enrola em ondas
     public float vorticityRadius = 2f;  // tiles: o reforço age no giro médio dessa vizinhança (sprint 0030)
     public float treeDrag = 1.2f;       // 1/s: árvore é porosa, o ar passa freado (sprint 0031)
-    public float lowDrag = 4f;          // 1/s: carro, o ar desvia pelos lados e pouco passa por cima
+    public float lowDrag = 1f;          // 1/s: carro, o ar de baixo desvia; a névoa de cima passa (sprint 0032)
+    public float fenceDrag = 1f;        // 1/s: na face da cerca baixa, o ar passa por cima freado
+    public float slump = 0.3f;          // tiles²/(andar·s): a névoa empilhada transborda o obstáculo baixo
     public boolean warmPressure = true; // a pressão começa da do passo anterior (sprint 0031)
 
     private final int nu, m;             // nu = n + 1 (faces u por linha); m = n + 2 (pressão com moldura de zeros)
@@ -62,7 +70,11 @@ public final class FlowGrid {
     private final float[] cW, cE, cN, cS;  // peso de cada vizinho na pressão (face aberta / nº de faces abertas)
     private final float[] u, v;          // u: face oeste da célula (i, j) em j*nu + i; v: face norte em j*n + i
     private final byte[] openU, openV;   // máscara do jogo (parede, porta, janela)
-    private final byte[] dragU, dragV;   // a face encosta em árvore ou carro: o ar ali é freado
+    private final byte[] dragU, dragV;   // a face encosta em árvore, carro ou cerca: o ar ali é freado
+    private final byte[] fenceU, fenceV; // cerca baixa na face (aberta, com altura H_FENCE)
+    private final float[] hU, hV, hc;    // altura do obstáculo: na face (o maior dos dois lados e da cerca) e na célula
+    private int[] tallFaces = new int[64]; // faces internas com altura: f = face u, ~f = face v
+    private int tallCount;
     private boolean pressureStale = true;
     private final float[] wu, wv;        // 1 = face aberta de verdade (máscara e nenhum lado sólido)
     private final byte[] flags;
@@ -100,6 +112,11 @@ public final class FlowGrid {
         openV = new byte[n * nu];
         dragU = new byte[nu * n];
         dragV = new byte[n * nu];
+        fenceU = new byte[nu * n];
+        fenceV = new byte[n * nu];
+        hU = new float[nu * n];
+        hV = new float[n * nu];
+        hc = new float[n * n];
         wu = new float[nu * n];
         wv = new float[n * nu];
         flags = new byte[n * n];
@@ -129,6 +146,8 @@ public final class FlowGrid {
         Arrays.fill(v, 0f);
         Arrays.fill(openU, (byte) 1);
         Arrays.fill(openV, (byte) 1);
+        Arrays.fill(fenceU, (byte) 0);
+        Arrays.fill(fenceV, (byte) 0);
         Arrays.fill(flags, (byte) F_FRESH);
         if (banks != null)
             for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) d[j * n + i] = freshDensity(i, j);
@@ -162,6 +181,23 @@ public final class FlowGrid {
     /** Borda norte do tile (ti, tj); tj vai até tiles. */
     public void setTileOpenN(int ti, int tj, boolean open) {
         for (int a = 0; a < scale; a++) setOpenN(ti * scale + a, tj * scale, open);
+    }
+
+    /** Cerca baixa na borda oeste do tile (a face fica aberta: o Flow manda as duas coisas). */
+    public void setTileFenceW(int ti, int tj, boolean fence) {
+        for (int b = 0; b < scale; b++) setFence(fenceU, (tj * scale + b) * nu + ti * scale, fence);
+    }
+
+    /** Cerca baixa na borda norte do tile. */
+    public void setTileFenceN(int ti, int tj, boolean fence) {
+        for (int a = 0; a < scale; a++) setFence(fenceV, tj * scale * n + ti * scale + a, fence);
+    }
+
+    private void setFence(byte[] a, int f, boolean fence) {
+        byte b = (byte) (fence ? 1 : 0);
+        if (a[f] == b) return;
+        a[f] = b;
+        facesDirty = true;
     }
 
     /** Densidade na primeira célula do tile (diagnóstico). */
@@ -253,6 +289,8 @@ public final class FlowGrid {
         shift(flags, n, n, dx, dy, (byte) F_FRESH);
         shift(openU, nu, n, dx, dy, (byte) 1);
         shift(openV, n, nu, dx, dy, (byte) 1);
+        shift(fenceU, nu, n, dx, dy, (byte) 0);
+        shift(fenceV, n, nu, dx, dy, (byte) 0);
         x0 = newX0;
         y0 = newY0;
         for (int j = 0; j < n; j++)
@@ -382,11 +420,12 @@ public final class FlowGrid {
         if (inertia) advectVelocity(dt);
         if (vorticity > 0f) confine(dt);
         float k = 1f - (float) Math.exp(-windRelax * dt);
-        float[] keep = { 1f, (float) Math.exp(-treeDrag * dt), (float) Math.exp(-lowDrag * dt) };
+        float[] keep = { 1f, (float) Math.exp(-treeDrag * dt), (float) Math.exp(-lowDrag * dt), (float) Math.exp(-fenceDrag * dt) };
         for (int f = 0; f < u.length; f++) u[f] = clampV(u[f] + (windX - u[f]) * k) * keep[dragU[f]] * wu[f];
         for (int f = 0; f < v.length; f++) v[f] = clampV(v[f] + (windY - v[f]) * k) * keep[dragV[f]] * wv[f];
         project();
         advect(dt);
+        slump(dt);
         diffuse(dt);
         sources(dt);
     }
@@ -556,25 +595,35 @@ public final class FlowGrid {
         return i >= 0 && i < n && j >= 0 && j < n && (flags[j * n + i] & F_SOLID) != 0;
     }
 
-    /** Arrasto da célula: 0 nenhum, 1 árvore, 2 obstáculo baixo (índice em keep[] do relax). */
+    /** Arrasto da célula: 0 nenhum, 1 árvore, 2 obstáculo baixo (índice em keep[] do relax; 3 = cerca, na face). */
     private int drag(int i, int j) {
         if (i < 0 || i >= n || j < 0 || j >= n) return 0;
         int f = flags[j * n + i];
         return (f & F_LOW) != 0 ? 2 : (f & F_TREE) != 0 ? 1 : 0;
     }
 
+    private float height(int i, int j) {
+        return i < 0 || i >= n || j < 0 || j >= n ? 0f : hc[j * n + i];
+    }
+
     private void rebuildFaces() {
+        for (int c = 0; c < n * n; c++) hc[c] = (flags[c] & F_LOW) != 0 ? H_LOW : 0f;
+        tallCount = 0;
         for (int j = 0; j < n; j++)
             for (int i = 0; i <= n; i++) {
                 int f = j * nu + i;
                 wu[f] = (openU[f] != 0 && !solid(i - 1, j) && !solid(i, j)) ? 1f : 0f;
-                dragU[f] = (byte) Math.max(drag(i - 1, j), drag(i, j));
+                dragU[f] = (byte) (fenceU[f] != 0 ? 3 : Math.max(drag(i - 1, j), drag(i, j)));
+                hU[f] = Math.max(fenceU[f] != 0 ? H_FENCE : 0f, Math.max(height(i - 1, j), height(i, j)));
+                if (hU[f] > 0f && wu[f] != 0f && i > 0 && i < n) addTall(f);
             }
         for (int j = 0; j <= n; j++)
             for (int i = 0; i < n; i++) {
                 int f = j * n + i;
                 wv[f] = (openV[f] != 0 && !solid(i, j - 1) && !solid(i, j)) ? 1f : 0f;
-                dragV[f] = (byte) Math.max(drag(i, j - 1), drag(i, j));
+                dragV[f] = (byte) (fenceV[f] != 0 ? 3 : Math.max(drag(i, j - 1), drag(i, j)));
+                hV[f] = Math.max(fenceV[f] != 0 ? H_FENCE : 0f, Math.max(height(i, j - 1), height(i, j)));
+                if (hV[f] > 0f && wv[f] != 0f && j > 0 && j < n) addTall(~f);
             }
         pressureStale = true;
         for (int j = 0; j < n; j++)
@@ -667,7 +716,9 @@ public final class FlowGrid {
                 if (wu[f] == 0f) continue;
                 float c = limit(u[f] * cdt);
                 float src = c > 0 ? (i > 0 ? d[j * n + i - 1] : edgeW[j]) : (i < n ? d[j * n + i] : edgeE[j]);
-                move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, c * src);
+                float flux = c * src;
+                if (hU[f] > 0f) flux *= pass(src, c > 0 ? height(i - 1, j) : height(i, j), hU[f]);
+                move(i > 0 ? j * n + i - 1 : -1, i < n ? j * n + i : -1, flux);
             }
         for (int j = 0; j <= n; j++)
             for (int i = 0; i < n; i++) {
@@ -675,9 +726,23 @@ public final class FlowGrid {
                 if (wv[f] == 0f) continue;
                 float c = limit(v[f] * cdt);
                 float src = c > 0 ? (j > 0 ? d[f - n] : edgeN[i]) : (j < n ? d[f] : edgeS[i]);
-                move(j > 0 ? f - n : -1, j < n ? f : -1, c * src);
+                float flux = c * src;
+                if (hV[f] > 0f) flux *= pass(src, c > 0 ? height(i, j - 1) : height(i, j), hV[f]);
+                move(j > 0 ? f - n : -1, j < n ? f : -1, flux);
             }
         System.arraycopy(dn, 0, d, 0, d.length);
+    }
+
+    /**
+     * Regra de face seca (Chentanez & Müller 2010, §2.1.4): da coluna `src` (densidade, numa célula de
+     * altura hSrc), só passa a parte acima do obstáculo da face, hFace = o maior dos dois lados e da cerca.
+     */
+    static float pass(float src, float hSrc, float hFace) {
+        if (hFace <= hSrc) return 1f;
+        float h = src * FOG_DEPTH;
+        if (h <= 0f) return 0f;
+        float e = hSrc + h - hFace;
+        return e <= 0f ? 0f : (e >= h ? 1f : e / h);
     }
 
     private static float limit(float c) {
@@ -707,7 +772,10 @@ public final class FlowGrid {
                 if (wu[j * nu + i] == 0f) continue;
                 int lc = i > 0 ? j * n + i - 1 : -1, rc = i < n ? j * n + i : -1;
                 float l = lc >= 0 ? d[lc] : edgeW[j], r = rc >= 0 ? d[rc] : edgeE[j];
-                move(lc, rc, (indoor(lc) || indoor(rc) ? aIn : aOut) * (l - r));
+                float flux = (indoor(lc) || indoor(rc) ? aIn : aOut) * (l - r);
+                float h = hU[j * nu + i];
+                if (h > 0f) flux *= l > r ? pass(l, height(i - 1, j), h) : pass(r, height(i, j), h);
+                move(lc, rc, flux);
             }
         for (int j = 0; j <= n; j++)
             for (int i = 0; i < n; i++) {
@@ -715,12 +783,62 @@ public final class FlowGrid {
                 if (wv[f] == 0f) continue;
                 int tc = j > 0 ? f - n : -1, bc = j < n ? f : -1;
                 float t = tc >= 0 ? d[tc] : edgeN[i], b = bc >= 0 ? d[bc] : edgeS[i];
-                move(tc, bc, (indoor(tc) || indoor(bc) ? aIn : aOut) * (t - b));
+                float flux = (indoor(tc) || indoor(bc) ? aIn : aOut) * (t - b);
+                if (hV[f] > 0f) flux *= t > b ? pass(t, height(i, j - 1), hV[f]) : pass(b, height(i, j), hV[f]);
+                move(tc, bc, flux);
             }
         System.arraycopy(dn, 0, d, 0, d.length);
     }
 
     private boolean indoor(int c) { return c >= 0 && (flags[c] & F_INDOOR) != 0; }
+
+    private void addTall(int code) {
+        if (tallCount == tallFaces.length) tallFaces = Arrays.copyOf(tallFaces, tallCount * 2);
+        tallFaces[tallCount++] = code;
+    }
+
+    /**
+     * Névoa pesada escorre de onde a superfície (η = H + h) está mais alta: fluxo G·h_efetivo·∇η na face
+     * (camada rasa sem inércia, TWODEE-2), só com a parte da coluna acima do obstáculo da face.
+     * Só nas faces com obstáculo baixo: a pilha transborda e escorre do outro lado. Em campo aberto
+     * alisaria os bancos e fecharia os buracos que viajam com o vento (0026), e o vácuo atrás do prédio.
+     * Conservativo; cada face leva no máximo MAX_FACE_FLUX da célula.
+     */
+    private void slump(float dt) {
+        if (slump <= 0f || tallCount == 0) return;
+        float dmax = 0f;
+        for (float x : d) dmax = Math.max(dmax, x);
+        float s2 = scale * scale;
+        float a = slump * (dmax * FOG_DEPTH + H_LOW) * dt * s2;   // número de difusão do pior caso
+        int k = Math.max(1, Math.min(MAX_SUBSTEPS, (int) Math.ceil(a / MAX_DIFFUSE - 1e-4f)));
+        float coef = slump * dt * s2 / (k * FOG_DEPTH);
+        for (int s = 0; s < k; s++) slumpOnce(coef);
+    }
+
+    private void slumpOnce(float coef) {
+        System.arraycopy(d, 0, dn, 0, d.length);
+        for (int t = 0; t < tallCount; t++) {
+            int code = tallFaces[t];
+            if (code >= 0) {
+                int j = code / nu, i = code - j * nu;
+                slumpFace(j * n + i - 1, j * n + i, hU[code], coef);
+            } else {
+                int f = ~code;
+                slumpFace(f - n, f, hV[f], coef);
+            }
+        }
+        System.arraycopy(dn, 0, d, 0, d.length);
+    }
+
+    private void slumpFace(int a, int b, float hFace, float coef) {
+        float ea = hc[a] + d[a] * FOG_DEPTH, eb = hc[b] + d[b] * FOG_DEPTH;
+        int up = ea > eb ? a : b;
+        float top = Math.max(ea, eb), drop = Math.abs(ea - eb);
+        float e = top - Math.max(hFace, hc[up]);
+        if (e <= 0f || drop <= 0f) return;
+        float q = Math.min(coef * e * drop, MAX_FACE_FLUX * d[up]);
+        move(a, b, up == a ? q : -q);
+    }
 
     private void sources(float dt) {
         float kOut = 1f - (float) Math.exp(-outdoorRefill * dt);
@@ -767,6 +885,8 @@ public final class FlowGrid {
                 out[o + 2] = encodeVel((v[c] + v[c + n]) * 0.5f);
                 if (openU[fw] == 0) f |= T_WALL_W;
                 if (openV[c] == 0) f |= T_WALL_N;
+                if (fenceU[fw] != 0) f |= T_FENCE_W;
+                if (fenceV[c] != 0) f |= T_FENCE_N;
                 out[o + 3] = (byte) f;
             }
     }
