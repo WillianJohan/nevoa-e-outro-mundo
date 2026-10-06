@@ -28,6 +28,22 @@ return {
         assert(facing(a, p), "não virou pro jogador")
         assert(not b.useless and not NOM_SirenFreeze.frozen[b] and b.faced == nil, "cópia remota é do dono")
     end,
+    -- quem já andava quando a sirene tocou (perambulando, indo pra um som) para também: o
+    -- useless sozinho não interrompe o PathFindState (teste no jogo, 2026-10-06)
+    siren_freeze_stops_walking_zombies = function()
+        local G = setup()
+        local p = G.player({ x = 30, y = 10 })
+        local a = G.zombie({ x = 10, y = 10, walking = true })
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(not a:isMoving(), "continuou andando")
+        assert(a.path == nil and a.pathCancelled, "o caminho ficou")
+        assert(facing(a, p))
+        -- voltou a andar no meio da sirene (o jogo refez o caminho): a passada seguinte para de novo
+        a.vars.bPathfind, a.path = true, {}
+        NOM_SirenFreeze.tick()
+        assert(not a:isMoving() and a.path == nil, "andou de novo e ninguém parou")
+    end,
     -- solo com tela dividida: cada zumbi olha pro jogador vivo mais perto dele
     siren_freeze_each_zombie_faces_nearest = function()
         local G = setup()

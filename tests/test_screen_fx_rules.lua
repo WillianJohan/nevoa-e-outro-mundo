@@ -123,34 +123,34 @@ return {
         assert(2 * R.BLOOM_SCALE < 1, "o bloom não pode chegar no próximo inteiro do marcador")
     end,
 
-    -- sprint 0034: estática da névoa. Presságio de 0,03 a 0,22 em 3 s (t², acelera), desce a
-    -- 0,05 em ~4 s depois da sirene, fica em 0,05 na subida e na névoa
+    -- sprint 0034: estática da névoa. Presságio de 0,1 a 0,6 em 3 s (t², acelera), desce a
+    -- 0,14 em ~4 s depois da sirene, fica em 0,14 na subida e na névoa
     screenfx_rules_static_curve = function()
         local P = NOM_FogEventRules.PRESAGE_MS
         local function near(a, b) return math.abs(a - b) < 1e-9 end
         assert(R.staticLevel({}, 5000) == 0, "estática sem nada")
         local omen = { omenAt = 1000 }
-        assert(near(R.staticLevel(omen, 1000), R.STATIC_START) and near(R.STATIC_START, 0.03))
+        assert(near(R.staticLevel(omen, 1000), R.STATIC_START) and near(R.STATIC_START, 0.1))
         local q = R.staticLevel(omen, 1000 + P / 4)
         local h = R.staticLevel(omen, 1000 + P / 2)
         local e = R.staticLevel(omen, 1000 + P * 3 / 4)
         assert(q > R.STATIC_START and h > q and e > h, "não cresce")
         assert(e - h > h - q, "não acelera (t²)")
         assert(near(h, R.STATIC_START + (R.STATIC_PEAK - R.STATIC_START) * 0.25), "não é t²: " .. h)
-        assert(near(R.staticLevel(omen, 1000 + P), 0.22) and near(R.STATIC_PEAK, 0.22))
-        assert(near(R.staticLevel(omen, 1000 + P * 9), 0.22), "passou do pico (pausa segura o servidor)")
+        assert(near(R.staticLevel(omen, 1000 + P), 0.6) and near(R.STATIC_PEAK, 0.6))
+        assert(near(R.staticLevel(omen, 1000 + P * 9), 0.6), "passou do pico (pausa segura o servidor)")
         assert(near(R.staticLevel(omen, 500), R.STATIC_START), "relógio que volta")
         -- a sirene: desce do pico ao sutil em STATIC_SETTLE_MS e fica
         local siren = { omenAt = 1000, sirenAt = 1000 + P, visible = true }
-        assert(near(R.staticLevel(siren, 1000 + P), 0.22))
+        assert(near(R.staticLevel(siren, 1000 + P), 0.6))
         local mid = R.staticLevel(siren, 1000 + P + R.STATIC_SETTLE_MS / 2)
-        assert(mid < 0.22 and mid > 0.05, "não desce aos poucos: " .. mid)
-        assert(near(R.staticLevel(siren, 1000 + P + R.STATIC_SETTLE_MS), 0.05) and near(R.STATIC_SUBTLE, 0.05))
+        assert(mid < 0.6 and mid > 0.14, "não desce aos poucos: " .. mid)
+        assert(near(R.staticLevel(siren, 1000 + P + R.STATIC_SETTLE_MS), 0.14) and near(R.STATIC_SUBTLE, 0.14))
         assert(R.STATIC_SETTLE_MS >= 3000 and R.STATIC_SETTLE_MS <= 5000, "~4 s")
-        assert(near(R.staticLevel(siren, 1000 + P + 60000), 0.05))
+        assert(near(R.staticLevel(siren, 1000 + P + 60000), 0.14))
         -- subida ou névoa sem presságio (quem entra no meio, debug com skip): só o sutil
-        assert(near(R.staticLevel({ visible = true }, 9), 0.05))
-        assert(near(R.staticLevel({ visible = true, sirenAt = 9 }, 9), 0.05), "pico sem presságio")
+        assert(near(R.staticLevel({ visible = true }, 9), 0.14))
+        assert(near(R.staticLevel({ visible = true, sirenAt = 9 }, 9), 0.14), "pico sem presságio")
     end,
 
     -- fim da névoa ou sirene cancelada: desce a 0 em ~3 s a partir de onde estava; a cor fica
@@ -159,11 +159,11 @@ return {
         local s = R.new()
         assert(s.fogStatic == 0)
         R.stepStatic(s, { visible = true, kind = "red" }, 1000)
-        assert(math.abs(s.fogStatic - 0.05) < 1e-9 and s.staticKind == "red")
+        assert(math.abs(s.fogStatic - 0.14) < 1e-9 and s.staticKind == "red")
         R.stepStatic(s, { kind = "white" }, 2000)
-        assert(math.abs(s.fogStatic - 0.05) < 1e-9, "sumiu de uma vez")
+        assert(math.abs(s.fogStatic - 0.14) < 1e-9, "sumiu de uma vez")
         R.stepStatic(s, { kind = "white" }, 2000 + R.STATIC_FADE_MS / 2)
-        assert(s.fogStatic > 0 and s.fogStatic < 0.05, "não desce: " .. s.fogStatic)
+        assert(s.fogStatic > 0 and s.fogStatic < 0.14, "não desce: " .. s.fogStatic)
         assert(s.staticKind == "red", "a cor trocou no fade")
         R.stepStatic(s, {}, 2000 + R.STATIC_FADE_MS)
         assert(s.fogStatic == 0)
@@ -171,13 +171,13 @@ return {
         -- cancelada no meio do presságio: desce do nível em que estava
         local c = R.new()
         R.stepStatic(c, { omenAt = 0 }, NOM_FogEventRules.PRESAGE_MS)
-        assert(math.abs(c.fogStatic - 0.22) < 1e-9)
+        assert(math.abs(c.fogStatic - 0.6) < 1e-9)
         R.stepStatic(c, {}, 10000)
         R.stepStatic(c, {}, 10000 + R.STATIC_FADE_MS / 2)
-        assert(math.abs(c.fogStatic - 0.11) < 1e-9, "fade não saiu do pico: " .. c.fogStatic)
+        assert(math.abs(c.fogStatic - 0.3) < 1e-9, "fade não saiu do pico: " .. c.fogStatic)
         -- volta no meio do fade (névoa nova): segue a curva de novo
         R.stepStatic(c, { visible = true }, 10000 + R.STATIC_FADE_MS * 3 / 4)
-        assert(math.abs(c.fogStatic - 0.05) < 1e-9)
+        assert(math.abs(c.fogStatic - 0.14) < 1e-9)
     end,
 
     -- cor da névoa: branca = FOG_COLOR, vermelha = o RGB de RED_FOG_COLOR (sem o alfa)
@@ -194,10 +194,10 @@ return {
         local s = R.new()
         R.stepStatic(s, { omenAt = 0, kind = "red" }, NOM_FogEventRules.PRESAGE_MS)
         local l = R.layers(s, 0, 1)
-        assert(math.abs(l.fogStatic - 0.22) < 1e-9 and R.visible(l), "presságio não aparece")
+        assert(math.abs(l.fogStatic - 0.6) < 1e-9 and R.visible(l), "presságio não aparece")
         assert(l.grain == 0 and l.vignette == 0 and l.lines == 0, "o presságio ligou o Outro Mundo")
         assert(l.sr == C[1] and l.sg == C[2] and l.sb == C[3])
-        assert(math.abs(R.layers(s, 0, 2).fogStatic - 0.44) < 1e-9)
+        assert(math.abs(R.layers(s, 0, 2).fogStatic - 1) < 1e-9, "o dobro do pico satura em 1")
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 }

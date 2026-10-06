@@ -269,6 +269,18 @@ function W.new(opts)
         function z:setUseless(b) self.useless = b end
         function z:setTarget(t) self.target = t end
         function z:faceLocationF(x, y) self.faced = { x = x, y = y }; return true end
+        -- Andando (PathFindState): o useless não para, o PathFindState.execute nem olha
+        -- (bytecode). Para quando bPathfind e bMoving caem e o caminho some (o fim do
+        -- execute 128–149). o.walking: o zumbi já nasce indo pra algum lugar.
+        z.vars = { bPathfind = o.walking == true, bMoving = o.walking == true }
+        z.path = o.walking and {} or nil
+        function z:setVariable(k, v) self.vars[k] = v end
+        function z:setPath2(p) self.path = p end
+        function z:getPathFindBehavior2()
+            local zz = self
+            return { cancel = function() zz.pathCancelled = true end }
+        end
+        function z:isMoving() return self.vars.bMoving == true or self.vars.bPathfind == true end
         function z:getTarget() return self.target end
         function z:spotted(p, forced)
             if self.useless then self.target = nil return end

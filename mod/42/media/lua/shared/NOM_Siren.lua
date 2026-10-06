@@ -21,7 +21,11 @@ local ticking = false
 
 local function start(x, y, z, sound)
     local e = getWorld():getFreeEmitter(x, y, z)
-    playing[#playing + 1] = { e = e, id = e:playSoundImpl(sound, false, nil) }
+    local id = e:playSoundImpl(sound, false, nil)
+    playing[#playing + 1] = { e = e, id = id }
+    if getDebug() then
+        print(string.format("[NOM] sirene tocando som=%s x=%d y=%d id=%s", sound, math.floor(x), math.floor(y), tostring(id)))
+    end
 end
 
 -- As longe entram no atraso delas (getTimestampMs, CONFIRMED server/ISObjectClickHandler.lua:352).

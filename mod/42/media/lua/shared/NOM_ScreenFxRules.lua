@@ -24,10 +24,11 @@ NOM_ScreenFxRules = {
     BLOOM_SCALE = 0.25,
     -- Estática da névoa (sprint 0034), alfa base antes da intensidade: o presságio sobe de
     -- START a PEAK em PRESAGE_MS (t²); da sirene, desce a SUBTLE em SETTLE_MS e fica na
-    -- subida e na névoa; no fim (ou cancelada), cai a 0 em FADE_MS. Ajustáveis no teste do Johan.
-    STATIC_START = 0.03,
-    STATIC_PEAK = 0.22,
-    STATIC_SUBTLE = 0.05,
+    -- subida e na névoa; no fim (ou cancelada), cai a 0 em FADE_MS. A textura tem alfa médio
+    -- ~0,43 e é clara sobre a névoa clara: 0,22/0,05 sumiram no jogo (teste do Johan, 2026-10-06).
+    STATIC_START = 0.1,
+    STATIC_PEAK = 0.6,
+    STATIC_SUBTLE = 0.14,
     STATIC_SETTLE_MS = 4000,
     STATIC_FADE_MS = 3000,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho

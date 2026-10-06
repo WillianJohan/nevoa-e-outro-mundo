@@ -48,6 +48,7 @@ local S = NOM_ScreenFx
 local R = NOM_ScreenFxRules
 local textures = {}
 local lastMs
+local loggedOmen -- omenAt do presságio cuja estática já foi pro log (debug)
 
 -- getTexture devolve nil se não achar (ISSleepingUI.lua:14-15): a camada some.
 -- Guarda só o que achou.
@@ -113,6 +114,10 @@ local function layers(el, now)
         local t = NOM_Math.mod(now, 100000)
         local ox, oy = NOM_Math.mod(t * 11, S.STATIC_JITTER), NOM_Math.mod(t * 17, S.STATIC_JITTER)
         el:drawTextureTiled(st, x - ox, y - oy, w + ox, h + oy, l.sr, l.sg, l.sb, l.fogStatic)
+        if getDebug() and NOM_FogState.omenAt and loggedOmen ~= NOM_FogState.omenAt then
+            loggedOmen = NOM_FogState.omenAt
+            print(string.format("[NOM] tela: estatica desenhada alfa=%.2f", l.fogStatic))
+        end
     end
     local v = tex(T.vignette)
     if v and l.vignette > 0 then el:drawTextureScaled(v, x, y, w, h, l.vignette, l.vr, l.vg, l.vb) end

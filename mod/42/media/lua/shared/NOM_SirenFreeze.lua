@@ -18,9 +18,10 @@ require "NOM_Math"
 require "NOM_Carpideira"
 
 -- RANGE: até onde o zumbi procura jogador pra olhar (tiles); mais longe, fica como está.
-NOM_SirenFreeze = { BATCH = 20, RANGE = 100, SAFETY_MS = 15000, frozen = {}, active = false }
+-- LOG_MS: no -debug, a cada quanto o log conta congelados e quem ainda anda.
+NOM_SirenFreeze = { BATCH = 20, RANGE = 100, SAFETY_MS = 15000, LOG_MS = 3000, frozen = {}, active = false }
 local F = NOM_SirenFreeze
-local cursor, untilMs = 0, nil
+local cursor, untilMs, nextLog = 0, nil, nil
 
 -- durationMs: o que falta da sirene; passou disso mais SAFETY_MS sem fim (comando
 -- perdido), solta sozinho.
@@ -89,6 +90,18 @@ local function nearest(z, ps)
     return best
 end
 
+-- O useless não interrompe quem já anda: o PathFindState.execute não olha o useless
+-- (bytecode). Parar como o próprio execute faz quando o zumbi chega (128–149): bPathfind e
+-- bMoving falsos e caminho nil (setVariable em zumbi: client/DebugUIs/DebugContextMenu.lua:642;
+-- cancel + setPath2(nil): client/TimedActions/WalkToTimedAction.lua:49-50). A cada passada,
+-- caso o jogo refaça o caminho.
+local function halt(z)
+    z:getPathFindBehavior2():cancel()
+    z:setPath2(nil)
+    z:setVariable("bPathfind", false)
+    z:setVariable("bMoving", false)
+end
+
 local function hold(z, ps)
     if z:isDead() or z:isRemoteZombie() or gameOwns(z) then return end
     if not F.frozen[z] then
@@ -96,6 +109,7 @@ local function hold(z, ps)
         z:setTarget(nil)
         F.frozen[z] = true
     end
+    halt(z)
     local p = nearest(z, ps)
     if p then z:faceLocationF(p.x, p.y) end
 end
@@ -114,6 +128,15 @@ function F.tick()
     local n = math.min(F.BATCH, size)
     for k = 0, n - 1 do hold(list:get(NOM_Math.mod(cursor + k, size)), ps) end
     cursor = NOM_Math.mod(cursor + n, size)
+    if getDebug() and getTimestampMs() >= (nextLog or 0) then
+        nextLog = getTimestampMs() + F.LOG_MS
+        local frozen, moving = 0, 0
+        for z in pairs(F.frozen) do
+            frozen = frozen + 1
+            if z:isMoving() then moving = moving + 1 end
+        end
+        print("[NOM] sirene congelados=" .. frozen .. " andando=" .. moving .. " jogadores=" .. #ps)
+    end
 end
 
 local function forget(z) F.frozen[z] = nil end

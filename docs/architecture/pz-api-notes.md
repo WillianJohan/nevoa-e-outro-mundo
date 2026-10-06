@@ -1409,7 +1409,9 @@ simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mai
 | `resetForReuse` não limpa o useless | EXISTS | §3.2; por isso o `OnZombieCreate` do módulo solta o objeto reaproveitado que estava congelado |
 | `Events.OnTick`, `OnZombieDead`, `OnZombieCreate` | CONFIRMED | já usados pelo mod (§3, §10, §11.2) |
 | Dedicado: sem `sirenStop` quando a névoa abre | decisão | o cliente solta ao receber `fog {on=true}` ou, sem comando, 15 s (`SAFETY_MS`) depois do fim da sirene |
-| UNKNOWN | — | se o zumbi useless, parado pelo idle, mantém o `faceLocationF` por frames ou volta a girar sozinho; o módulo vira de novo a cada passada (lote de 20 por tick). Conferir no jogo |
+| O useless **não para quem já anda** | EXISTS | `PathFindState.execute` não lê `isUseless` (bytecode, `javap`); só `WalkTowardState.enter` (106) e `ZombieIdleState` leem. No jogo (2026-10-06) os zumbis não pararam na sirene |
+| Parar o zumbi andando: `getPathFindBehavior2():cancel()`, `setPath2(nil)`, `setVariable("bPathfind", false)`, `setVariable("bMoving", false)` | EXISTS | é o que o `PathFindState.execute` faz ao chegar (128–149); `setVariable` em zumbi: `client/DebugUIs/DebugContextMenu.lua:642-643`; `cancel` + `setPath2(nil)`: `client/TimedActions/WalkToTimedAction.lua:49-50` (métodos de `IsoGameCharacter`). Refeito a cada passada do lote |
+| UNKNOWN | — | se a troca de estado sai do `PathFindState`/`WalkTowardState` no mesmo frame (o `WalkTowardState.execute` mexe em `bPathfind`/`bMoving`); se o zumbi useless parado mantém o `faceLocationF` ou volta a girar sozinho. Conferir no jogo pelo log `[NOM] sirene congelados=N andando=M` (`-debug`) |
 
 ## 22. Aparelhos do Outro Mundo (sprint 0034)
 

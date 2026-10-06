@@ -274,7 +274,7 @@ return {
         local tex = T()
         NOM_FogState.setOmen(false)
         local first = byTex(G.frameDraws(), tex.static)
-        assert(first and alpha(first) < 0.06, "o presságio não começou sutil")
+        assert(first and alpha(first) < R.STATIC_PEAK / 4, "o presságio não começou sutil")
         assert(#mine(G.draws) == 1, "o presságio ligou o Outro Mundo")
         local F = NOM_Rules.FOG_COLOR
         assert(first.args[1] == F[1] and first.args[2] == F[2] and first.args[3] == F[3], "não é a cor da branca")
