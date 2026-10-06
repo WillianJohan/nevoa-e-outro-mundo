@@ -360,6 +360,58 @@ Depende da Tarefa 6 (as duas mexem em `gen_sounds.py` e `NOM_sounds.txt`): só c
 
 ---
 
+### Correções do review final
+
+Code review do fim da entrega (2026-10-06). Todas com TDD: o teste novo ficou vermelho no código
+antigo pelo motivo certo antes da correção.
+
+1. **Margem do save dependia do FPS** (importante; `client/NOM_FogOverlays.lua`). O corte de 38
+   tiles rodava só no `prune`, a cada 10 ticks, e o tick é por quadro: a conta "38 + ~5 < 48" supunha
+   60 FPS. A 30 FPS e ~30 tiles/s o anexo visto a 38 chegava aos 48 com o chunk saindo do mapa e ia
+   pro save (ADR-017).
+   - **Desenho:** no `OnTick`, o deslocamento desde o último corte; passou de `MOVE_TILES` (2),
+     o corte de `MAX_RADIUS + SLACK` (38) roda na hora, sem lote. O lote de 80 continua só pra
+     quem sai do raio da tela.
+   - **Conta nova, sem FPS:** entre cortes nada passa de 38 + 2; no tick do corte o chunk pode sair
+     antes do `OnTick`, com o passo daquele tick a mais. Carro a 2 tiles por tick (~30 tiles/s a
+     15 FPS): 38 + 2 + 2 + 1 (square inteiro) = 43 < 48. Aguenta até ~6 tiles num tick.
+   - **Salto (item 7 do review) saiu:** `JUMP_TILES` 8 disparava com um engasgo de FPS no carro
+     (tirava tudo e revestia). O teleporte cai no mesmo corte.
+   - Testes: `overlays_fast_car_low_fps_never_past_hard` (1, 2 e 2,24 tiles por tick por 90 ticks:
+     anexo mais longe 38,6–39,5), `overlays_fps_hitch_not_jump`, `overlays_teleport_strips_now`;
+     `overlays_leaving_radius_strips` com o limite novo. Docs: pz-api-notes §16.6, ADR-017
+     (decisão 3), cabeçalho do arquivo, GDD `atmosphere`.
+2. **Vinheta com o mod2 não subia na fuga** (`client/NOM_FogVignette.lua`, `client/NOM_ScreenFx.lua`).
+   O canal do shader seguia o fade do `NOM_ScreenFx` (`on`). Agora há um segundo fade (`S.seen`) que
+   segue `visible()`/`visibleRed()`, lido só pelo canal (`S.sampleSeen`); as camadas do Outro Mundo
+   da tela seguem esperando a névoa. Teste `vignette_channel_rises_with_siren`.
+3. **`setRed` do debug no meio da fuga não avisava os clientes de MP** (`server/NOM_FogEvent.lua`).
+   Comando leve novo `sirenColor { red }`: o cliente troca a cor do presságio e da subida que já
+   correm (`NOM_FogState.recolor`), sem tocar a sirene de novo nem recomeçar nada. No solo, direto.
+   Vale também no presságio (antes a cor do presságio ficava velha, no solo e no MP). Testes
+   `fog_event_set_red_mid_siren_tells_clients`, `fog_event_set_red_mid_presage_solo_recolors`,
+   `fog_client_siren_color_recolors`.
+4. **`setRed(true)` sem nada aberto pulava o presságio**: passa pelo `presage()`, como o `force`.
+   Teste `fog_event_set_red_starts_red_event` (ajustado).
+5. **Zumbi useless preso no MP quando a posse chega logo depois do fim da fuga**
+   (`shared/NOM_SirenFreeze.lua`). Por `SWEEP_MS` (10 s reais) depois do stop, o tick segue em
+   rodízio (`BATCH` por tick) soltando zumbi local useless, menos a Carpideira parada, o Estalador
+   que este processo cegou (`NOM_VariantAI.blinded`, exposta só pra leitura) e o useless do jogo. A
+   passada do próprio stop ganhou o mesmo filtro. Testes `siren_freeze_sweeps_late_inherited_useless`,
+   `siren_freeze_sweep_in_batches`, `siren_freeze_stop_keeps_blinded_estalador`.
+6. **Sirenes atrasadas tocavam com o jogo pausado** (`shared/NOM_Siren.lua`). O atraso conta como a
+   fuga (`NOM_FogEventRules.countdown`): para com `isGamePaused()` e desconta no máximo 1 s por tick
+   (o `OnTick` some no dedicado vazio). Teste `siren_delayed_wait_while_paused`.
+7. Junto com o 1.
+8. **Evidências:** `z:isMoving()` na pz-api-notes §21 (`IsoGameCharacter.isMoving()Z`, `javap`); a
+   referência ao `ISCoordConversion.lua:19-24` diz a pasta `media/lua/server/` (§16.6 e cabeçalho
+   do `NOM_FogOverlays`).
+
+Commits: `8ced58b` (1 e 7), `8ffc5cb` (2), `ca01ca8` (3 e 4), `5433832` (5), `fcc3f55` (6),
+`43f309c` (8). `./run-tests.sh` verde: 906 testes Lua, 5 de contraste, 29 de build, mod3.
+
+---
+
 ### Tarefa 4: documentação da sprint (por último, depois das Tarefas 5, 6 e 7)
 
 - `README.md` da sprint, com o roteiro de teste;

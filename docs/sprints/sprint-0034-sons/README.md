@@ -111,8 +111,9 @@ tela toda, as casas por dentro ficam destruídas e pichadas, e o sangue sai do c
 - [ ] O Outro Mundo chega nas bordas da tela no zoom longe, sem derrubar o FPS — roteiro, passo 8
 - [ ] As casas por dentro aparecem destruídas e as pichações se leem — roteiro, passo 9
 - [ ] O chão sem sangue não ficou vazio demais — roteiro, passo 9
-- [x] Regras puras, servidor, cliente, sons e lints — testes verdes (`./run-tests.sh`: 897 testes Lua,
-  5 de contraste, 29 de build, os do mod3 em Python e Java); **não** confirma nada no jogo
+- [x] Regras puras, servidor, cliente, sons e lints — testes verdes (`./run-tests.sh`: 906 testes Lua,
+  5 de contraste, 29 de build, os do mod3 em Python e Java, depois das correções do review final);
+  **não** confirma nada no jogo
 
 Marcar cada item sem evidência não vale: ao marcar, escrever como foi confirmado.
 
@@ -168,7 +169,8 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep "\[NOM\]"
    - um Sem-rosto perto do aparelho faz o aparelho chiar junto.
 8. **Outro Mundo na tela toda.** Com névoa aberta, afaste o zoom ao máximo: rachadura, sujeira, mato e
    chão queimado chegam nas bordas da tela. Anote o FPS com zoom perto e longe. De carro rápido, veja se
-   a borda que entra enche a tempo. Dormir ou sair com o zoom longe e voltar: nada sobrando
+   a borda que entra enche a tempo e se o FPS não cai mais que a pé (o corte de 38 tiles agora roda a
+   cada 2 tiles andados). Dormir ou sair com o zoom longe e voltar: nada sobrando
    (`[NOM] outro mundo: N alvos limpos pro save`).
 9. **Casa destruída e chão sem sangue.** Entre numa casa na névoa: paredes com várias camadas
    (rachadura, sujeira, sangue) e pichações ou mensagens inteiras, como "KEEP OUT" e "ALIVE INSIDE",
@@ -192,6 +194,16 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep "\[NOM\]"
 - **Zumbi parado:** se o `useless` mantém o `faceLocationF` entre as passadas do lote (herdado da 0033).
 - **MP:** quem entra no meio da fuga recebe a sirene e a subida; o `getOnlinePlayers()` do cliente traz a
   posição dos jogadores longe dele.
+- **MP, posse trocada depois do fim da fuga:** o rodízio de 10 s (`NOM_SirenFreeze.SWEEP_MS`) solta o
+  useless herdado; se a posse chegar depois disso, um zumbi comum fica parado (as variantes têm o
+  `unstick` do `NOM_VariantAI`). Medir no dedicado com dois clientes se 10 s bastam.
+- **MP, `NOM.setRedFog` no meio da fuga:** o comando `sirenColor` troca a cor do presságio, da
+  vinheta e da estática nos clientes sem tocar a sirene de novo; conferir com dois clientes.
+- **Custo do corte por deslocamento no carro:** no mundo falso o pior tick de carro a 1–2 tiles por
+  tick fica em ~1960 chamadas Java (a ordem do enchimento); no jogo, com ~2800 squares no zoom
+  longe, ver se dá engasgo.
+- **Som da sirene na pausa:** as atrasadas agora esperam a pausa; se o som que já toca pausa junto
+  continua UNKNOWN (pz-api-notes §11.3).
 
 ## Ajustes fáceis
 
@@ -204,6 +216,19 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep "\[NOM\]"
 | `NOM_DeviceRules` | `OMEN_RANGE`, `CALL_NEAR`/`CALL_FAR`, `CALL_MIN_MS`/`CALL_MAX_MS`, `TV_CHANCE`, `OFF_VOLUME` | aparelhos |
 | `NOM_SirenFreeze` | `BATCH`, `RANGE`, `SAFETY_MS` | zumbis por tick, alcance do "olhar pro jogador" e rede de segurança |
 | `NOM_DressingRules` | `MIN_RADIUS`/`MAX_RADIUS`, `WALL_LAYERS`, `RUN` | raio do Outro Mundo, camadas da parede de dentro e chance de pichação e mensagem |
+
+## Correções do review final
+
+Detalhe em [plan.md](plan.md#correções-do-review-final). Resumo:
+
+- A margem do save do Outro Mundo não depende mais do FPS: o corte de 38 tiles roda no tick em que o
+  jogador passa de 2 tiles desde o último corte (pior caso 43 < 48 com carro a 2 tiles por tick); o
+  salto de 8 tiles, que um engasgo de FPS disparava, saiu.
+- Com o mod2, a vinheta do shader também sobe na fuga.
+- `NOM.setRedFog` sem névoa passa pelo presságio; no meio do presságio ou da fuga a cor nova chega a
+  quem vê (no MP pelo comando `sirenColor`).
+- Rodízio de 10 s depois do fim da fuga solta o useless herdado no MP, sem soltar o Estalador cego.
+- As sirenes atrasadas do coro esperam o jogo pausado.
 
 ## Decisões técnicas
 
@@ -248,3 +273,4 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep "\[NOM\]"
 
 - 2026-10-06 — Cursor, execução das tarefas 1 a 7, da correção do `isLocal`, do Outro Mundo (raio pela
   tela, casa destruída, sem sangue no chão) e desta documentação (subagentes).
+- 2026-10-06 — Cursor, correções do code review final (subagente).
