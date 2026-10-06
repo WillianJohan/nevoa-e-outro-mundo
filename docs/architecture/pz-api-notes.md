@@ -1487,6 +1487,7 @@ simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mai
 |---|---|---|
 | `z:setUseless(true)` / `z:setTarget(nil)` | CONFIRMED | §3.2 e §13 (uso vanilla em `client/DebugUIs/DebugContextMenu.lua:566,673`) |
 | `z:faceLocationF(x, y)` | EXISTS | `IsoGameCharacter.faceLocationF(FF)Z` (bytecode, `javap`); uso vanilla `client/BuildingObjects/TimedActions/ISBuildAction.lua:248` (`self.character:faceLocationF(self.x + 0.5, self.y)`) |
+| `z:isMoving()` (só no log do `-debug`, contagem `andando=`) | EXISTS | `IsoGameCharacter.isMoving()Z` (bytecode, `javap`, 0–23): devolve o campo `isMoving`; no `IsoPlayer` com `isAttackAnimThrowTimeOut()` dá `false`. Nenhum uso no Lua vanilla. Não decide nada: o congelamento para todo zumbi local pelo `halt` |
 | O useless viaja na rede no pacote do dono | EXISTS | §3.2 (`NetworkZombieAI.set` → `getBooleanVariables`): a cópia remota não precisa ser tocada |
 | Dono = `z:isLocal()`; cópia remota = `not z:isLocal()` | CONFIRMED (bytecode) | §24. Até a sprint 0034 o teste era `isRemoteZombie()`, que no solo dá `true` pra todo zumbi: no jogo (2026-10-06) a sirene não congelou ninguém (`congelados=0 ... pulados morto/remoto/jogo=0/20/0`) |
 | `resetForReuse` não limpa o useless | EXISTS | §3.2; por isso o `OnZombieCreate` do módulo solta o objeto reaproveitado que estava congelado |

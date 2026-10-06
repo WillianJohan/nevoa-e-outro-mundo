@@ -170,7 +170,7 @@ function F.tick()
         local frozen, moving = 0, 0
         for z in pairs(F.frozen) do
             frozen = frozen + 1
-            if z:isMoving() then moving = moving + 1 end
+            if z:isMoving() then moving = moving + 1 end -- IsoGameCharacter.isMoving()Z (javap, pz-api-notes §21)
         end
         print("[NOM] sirene congelados=" .. frozen .. " andando=" .. moving .. " jogadores=" .. #ps ..
             " lista=" .. size .. " pulados morto/remoto/jogo=" .. skipped.dead .. "/" .. skipped.remote ..
