@@ -102,8 +102,12 @@ local function halt(z)
     z:setVariable("bMoving", false)
 end
 
+local skipped = { dead = 0, remote = 0, game = 0 } -- só pro log do -debug
+
 local function hold(z, ps)
-    if z:isDead() or z:isRemoteZombie() or gameOwns(z) then return end
+    if z:isDead() then skipped.dead = skipped.dead + 1 return end
+    if z:isRemoteZombie() then skipped.remote = skipped.remote + 1 return end
+    if gameOwns(z) then skipped.game = skipped.game + 1 return end
     if not F.frozen[z] then
         z:setUseless(true)
         z:setTarget(nil)
@@ -135,7 +139,10 @@ function F.tick()
             frozen = frozen + 1
             if z:isMoving() then moving = moving + 1 end
         end
-        print("[NOM] sirene congelados=" .. frozen .. " andando=" .. moving .. " jogadores=" .. #ps)
+        print("[NOM] sirene congelados=" .. frozen .. " andando=" .. moving .. " jogadores=" .. #ps ..
+            " lista=" .. size .. " pulados morto/remoto/jogo=" .. skipped.dead .. "/" .. skipped.remote ..
+            "/" .. skipped.game .. " modo=" .. tostring(getCore():getGameMode()))
+        skipped.dead, skipped.remote, skipped.game = 0, 0, 0
     end
 end
 
