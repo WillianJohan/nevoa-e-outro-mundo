@@ -58,7 +58,7 @@ Saída: `spike-sprite-proprio.md` nesta pasta, com o caminho recomendado (tile p
   - névoa vermelha: lasca mais escura e borda avermelhada; preta fica pra 0038 (ponto único `R.palette(kind)`).
   - Determinismo não é preciso (é atmosfera local), mas a regra recebe o rand por parâmetro pra ser testável.
 - **Cliente** `client/NOM_Flakes.lua`: projeta com `isoToScreenX/Y` e zoom como o `NOM_Embers`, desenha com `drawTexture` com cor/alfa; registra em `NOM_ScreenFx.extra`. Liga com `NOM_FogState.on` (Outro Mundo), não na fuga. Respeita o toggle `FogOverlays` e a opção de efeitos.
-- **Textura:** `scripts/gen_textures.py` gera `NOM/NOM_Lascas.png` (sprite sheet: 8 quadros de lasca girando, 2 a 3 formatos) e `NOM/NOM_Cinza.png`. Commitar os PNG e atualizar a lista do script.
+- **Textura:** `scripts/gen_textures.py` gera `NOM/NOM_Lascas.png` (sprite sheet: 8 quadros de lasca girando, 4 formatos; refeita orgânica depois da prévia parecer adesivo: contorno serrilhado, tinta velha, fio claro falhado, ferrugem dessaturada) e `NOM/NOM_Cinza.png`. Commitar os PNG e atualizar a lista do script.
 - **Fontes de parede:** use o que o `NOM_FogOverlays` já sabe das paredes vestidas (registro dele) ou um teste barato por square; sem varrer o mapa todo por quadro.
 - **Custo:** teto de chamadas por quadro medido em teste, como o do `NOM_FogOverlays`.
 

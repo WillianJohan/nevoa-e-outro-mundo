@@ -30,9 +30,10 @@ Estática da névoa (sprint 0034), tons de cinza com alfa, tingida pela cor da n
   NOM/ScreenFx/NOM_NevoaEstatica.png 256  chiado fino de 1 px com riscos curtos, fecha em mosaico
 
 Lascas do Outro Mundo (sprint 0035), fundo transparente, tingidas pela cor da névoa no desenho:
-  NOM/NOM_Lascas.png             256×96  sprite sheet: 8 quadros de giro × 3 formatos de lasca
-                                         (tinta escura, borda clara ou ferrugem; verso ferrugem)
-  NOM/NOM_Cinza.png              16   ponto de cinza claro e macio, tons de cinza
+  NOM/NOM_Lascas.png             256×128 sprite sheet: 8 quadros de giro × 4 formatos de lasca
+                                         (tinta velha suja, craquelê, fio de borda clara falhado,
+                                         ferrugem marrom escamando; contorno serrilhado; verso ferrugem)
+  NOM/NOM_Cinza.png              16   floco de cinza torto e macio, tons de cinza
 
 Semente fixa: rodar de novo dá os mesmos bytes. Uso: python3 scripts/gen_textures.py
 """
@@ -278,70 +279,204 @@ def screen_static(rng, size=256):
     return color((255, 255, 255), 0.35 + 0.65 * v), a
 
 
-FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 3   # = shared/NOM_FlakeRules.lua
-PAINT, PAINT_EDGE = (52, 49, 46), (228, 220, 202)    # tinta velha escura, borda descascada clara
-RUST, RUST_DARK = (150, 70, 30), (82, 38, 18)        # o verso da lasca, ferrugem
+FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 4   # = shared/NOM_FlakeRules.lua
+FLAKE_SS = 4                  # sub-amostras por pixel em cada eixo (o alfa sai antisserrilhado)
+FLAKE_GRID, FLAKE_SPAN = 192, 1.2   # textura no plano da lasca: GRID px cobrindo ±SPAN (raio 1)
+FLAKE_THIN = 0.2              # de lado a lasca vira um risco de ~20% da largura
+PAINT, GRIME = (64, 62, 56), (30, 28, 25)       # tinta velha escura e a sujeira por cima
+PAINT_EDGE = (192, 188, 172)                   # a camada de tinta clara que aparece onde lascou
+# ferrugem marrom, dessaturada (saturação ~0,5): laranja vivo vira adesivo
+RUST, RUST_DARK, RUST_LIGHT = (110, 74, 56), (60, 42, 33), (140, 100, 74)
+# formatos (linhas do sheet): achatamento, dentes arrancados, serrilhado, fração de borda clara,
+# ferrugem comendo a tinta, frente de tinta ou de ferrugem
+FLAKE_KINDS = (
+    (0.85, 4, 0.14, 0.55, 0.30, "tinta"),      # tinta descascando, borda clara falhada
+    (0.72, 4, 0.16, 0.0, 0.65, "tinta"),       # tinta suja, sem borda, ferrugem nas beiradas
+    (0.92, 4, 0.16, 0.0, 0.0, "ferrugem"),     # escama de ferrugem dos dois lados
+    (0.46, 3, 0.12, 0.6, 0.40, "tinta"),       # lasca comprida, borda clara de um lado só
+)
 
 
-def flake_outline(rng):
-    """Polígono irregular de 6 a 8 pontas em volta da origem, raio ~1 (lasca de tinta)."""
-    n = int(rng.integers(6, 9))
-    ang = np.sort(rng.random(n) * 2 * np.pi)
-    rad = 0.55 + 0.45 * rng.random(n)
-    return np.stack([np.cos(ang) * rad, np.sin(ang) * rad], 1)
+def periodic(rng, th, cells):
+    """Ruído 1D periódico em th (0..2π), linear entre pontos sorteados: dá ponta, não onda."""
+    return np.interp(th, np.linspace(0, 2 * np.pi, cells, endpoint=False), rng.random(cells), period=2 * np.pi)
 
 
-def flake_cell(pts, frame, axis, edge, ss=4):
-    """Um quadro do giro: a lasca tomba em volta de axis (largura × cos) e roda no plano.
-    Frente: tinta escura com a borda edge; verso (cos < 0): ferrugem com a borda mais escura."""
-    from PIL import ImageDraw
-    phi = 2 * np.pi * frame / FLAKE_FRAMES                    # tombo: uma volta inteira
-    spin = np.pi * frame / FLAKE_FRAMES                       # e meia volta no plano
-    c, s = np.cos(axis), np.sin(axis)
-    local = pts @ np.array([[c, -s], [s, c]])                 # eixo do tombo no x
-    local[:, 1] *= max(abs(np.cos(phi)), 0.18)                # de lado vira um risco fino
-    rot = np.array([[np.cos(spin), np.sin(spin)], [-np.sin(spin), np.cos(spin)]])
-    p = (local @ rot) * (FLAKE_CELL / 2 - 3) + FLAKE_CELL / 2
-    big = FLAKE_CELL * ss
-    front = np.cos(phi) >= 0
-    body, rim = (PAINT, edge) if front else (RUST, RUST_DARK)
-    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    poly = [tuple(v) for v in p * ss]
-    d.polygon(poly, fill=rim + (255,))
-    # o corpo é o polígono encolhido pro centro: sobra a borda de ~2 px
-    mid = p.mean(axis=0)
-    inner = [tuple(v) for v in (mid + (p - mid) * 0.72) * ss]
-    d.polygon(inner, fill=body + (255,))
-    # média dos sub-pixels com alfa pré-multiplicado: a borda não escurece pelo fundo vazio
-    small = img.convert("RGBa").resize((FLAKE_CELL, FLAKE_CELL), Image.BOX).convert("RGBA")
-    a = np.asarray(small, np.float32)
-    a[[0, -1], :, 3] = 0
-    a[:, [0, -1], 3] = 0
-    return a
+def polygon_radius(rng, th, n):
+    """Raio por ângulo de um polígono torto de n pontas em volta da origem (fraturas retas)."""
+    a = np.sort((np.arange(n) + 0.15 + 0.7 * rng.random(n)) / n * 2 * np.pi)
+    rad = 0.42 + 0.58 * rng.random(n)
+    rad[rng.integers(n)] = 0.3 + 0.12 * rng.random()          # sempre uma fratura reentrante
+    p = np.stack([np.cos(a) * rad, np.sin(a) * rad], 1)
+    i = (np.searchsorted(a, th) - 1) % n
+    s, e = p[i], p[(i + 1) % n] - p[i]
+    return (s[:, 0] * e[:, 1] - s[:, 1] * e[:, 0]) / (np.cos(th) * e[:, 1] - np.sin(th) * e[:, 0])
+
+
+def flake_radius(rng, th, notches, jag):
+    """Raio do contorno por ângulo, no máximo 1: polígono torto (a tinta quebra em linha reta),
+    serrilhado (ruído linear) e dentes em V arrancados na borda, um deles fino e fundo (trinca)."""
+    r = polygon_radius(rng, th, int(rng.integers(5, 9)))
+    r = r * (1 + jag * (periodic(rng, th, 26) - 0.5) + 0.5 * jag * (periodic(rng, th, 64) - 0.5))
+    for i in range(notches + 1):
+        c = rng.random() * 2 * np.pi
+        w, d = (0.05, 0.5) if i == notches else (0.12 + 0.25 * rng.random(), 0.1 + 0.25 * rng.random())
+        dist = np.abs((th - c + np.pi) % (2 * np.pi) - np.pi)
+        r -= d * np.clip(1 - dist / w, 0, 1)
+    return np.maximum(r, 0.15) / r.max()
+
+
+def flake_shape(rng, aspect, notches, jag):
+    """Devolve inside(u, v) → (dentro, distância até a borda), no plano da lasca."""
+    th_tab = np.linspace(0, 2 * np.pi, 1024, endpoint=False)
+    r_tab = flake_radius(rng, th_tab, notches, jag)
+
+    def inside(u, v):
+        v = v / aspect
+        rho = np.hypot(u, v)
+        r = np.interp(np.arctan2(v, u) % (2 * np.pi), th_tab, r_tab, period=2 * np.pi)
+        return rho < r, r - rho
+    return inside, th_tab, r_tab
+
+
+def rust_face(rng, g, dark):
+    """Ferrugem escamando: tom variando em placas, grão fino, poros escuros e as camadas."""
+    t = fbm(rng, g, (5, 13, 31), (0.5, 0.3, 0.2))
+    k = np.clip(1.6 * (t - 0.5) + 0.5 + 0.35 * (noise(rng, g, 48) - 0.5), 0, 1)
+    rgb = color(RUST_DARK, 1 - k) + color(RUST_LIGHT, k)
+    rgb = mix(rgb, RUST, 0.35 * noise(rng, g, 9))
+    rgb = mix(rgb, (40, 28, 22), 0.8 * np.clip((noise(rng, g, 30) - 0.74) / 0.08, 0, 1))      # poros
+    rgb = mix(rgb, (48, 33, 26), 0.5 * (np.abs((t * 9) % 1 - 0.5) < 0.05))                    # escamas
+    return rgb * (0.78 if dark else 1.0)
+
+
+def paint_face(rng, g, edge, th_tab, rim, rust):
+    """Tinta velha: manchada, grão fino, craquelê leve, ferrugem entrando pela beirada e, nos
+    formatos com rim, um fio de tinta clara de ~1 px que falha ao longo do contorno."""
+    rgb = color(PAINT, 0.8 + 0.3 * noise(rng, g, 10) + 0.25 * (noise(rng, g, 34) - 0.5))
+    rgb = mix(rgb, GRIME, 0.75 * np.clip((fbm(rng, g, (3, 7), (0.7, 0.3)) - 0.52) / 0.16, 0, 1))
+    crack = np.clip((4.0 - cracks(rng, g, 24)) / 2.0, 0, 1) * (noise(rng, g, 6) > 0.42)
+    rgb = mix(rgb, GRIME, 0.6 * crack) * (0.85 + 0.3 * noise(rng, g, 48))[..., None]   # grão por cima de tudo
+    if rust > 0:
+        reach = rust * 0.6 * np.clip(2.2 * noise(rng, g, 7) - 0.8, 0, 1)   # entra só por alguns lados
+        k = np.maximum(np.clip((reach - edge) / 0.05, 0, 1),
+                       np.clip((noise(rng, g, 8) - (1 - 0.3 * rust)) / 0.06, 0, 1))
+        rgb = mix(rgb, rust_face(rng, g, False), k)
+    if rim > 0:
+        on = np.clip((periodic(rng, th_tab, 15) - (1 - rim)) / 0.06, 0, 1)
+        width = 0.06 + 0.07 * periodic(rng, th_tab, 9)
+        return rgb, on, width
+    return rgb, None, None
+
+
+def bilinear(tex, u, v):
+    """Amostra tex (GRID × GRID [× 3]) que cobre ±SPAN nos pontos (u, v) do plano da lasca."""
+    n = tex.shape[0] - 1
+    x = np.clip((u + FLAKE_SPAN) / (2 * FLAKE_SPAN) * n, 0, n - 1e-4)
+    y = np.clip((v + FLAKE_SPAN) / (2 * FLAKE_SPAN) * n, 0, n - 1e-4)
+    x0, y0 = x.astype(int), y.astype(int)
+    fx, fy = x - x0, y - y0
+    if tex.ndim == 3:
+        fx, fy = fx[..., None], fy[..., None]
+    top = tex[y0, x0] * (1 - fx) + tex[y0, x0 + 1] * fx
+    bot = tex[y0 + 1, x0] * (1 - fx) + tex[y0 + 1, x0 + 1] * fx
+    return top * (1 - fy) + bot * fy
+
+
+def bleed(rgb, a, passes=2):
+    """O RGB dos pixels vazios vira a média dos vizinhos com tinta: o filtro linear do jogo
+    não puxa preto nem branco pra borda (sem halo)."""
+    for _ in range(passes):
+        pm, w = rgb * a[..., None], a.copy()
+        pad_pm, pad_w = np.pad(pm, ((1, 1), (1, 1), (0, 0))), np.pad(w, 1)
+        s_pm = sum(pad_pm[1 + dy:pad_pm.shape[0] - 1 + dy, 1 + dx:pad_pm.shape[1] - 1 + dx]
+                   for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+        s_w = sum(pad_w[1 + dy:pad_w.shape[0] - 1 + dy, 1 + dx:pad_w.shape[1] - 1 + dx]
+                  for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+        fill = (a == 0) & (s_w > 0)
+        rgb[fill] = s_pm[fill] / s_w[fill][..., None]
+        a = np.where(fill, 1e-6, a)
+    return rgb
+
+
+def flake_cell(look, frame, axis):
+    """Um quadro do giro: a lasca tomba em volta de axis (uma volta em FRAMES quadros) e roda
+    meia volta no plano. Cada sub-amostra da célula volta pro plano da lasca: forma exata,
+    textura da frente ou do verso (espelhado) e luz pela inclinação (de perfil, mais escura)."""
+    inside, front, back, rim_on, rim_w, th_tab = look
+    phi = 2 * np.pi * frame / FLAKE_FRAMES
+    spin = np.pi * frame / FLAKE_FRAMES
+    c = np.cos(phi)
+    squash = np.copysign(max(abs(c), FLAKE_THIN), c)
+    n = FLAKE_CELL * FLAKE_SS
+    sy, sx = (np.mgrid[0:n, 0:n].astype(np.float64) + 0.5) / FLAKE_SS - FLAKE_CELL / 2
+    sx, sy = sx / (FLAKE_CELL / 2 - 3), sy / (FLAKE_CELL / 2 - 3)
+    qx = np.cos(spin) * sx + np.sin(spin) * sy
+    qy = (-np.sin(spin) * sx + np.cos(spin) * sy) / squash
+    u = np.cos(axis) * qx - np.sin(axis) * qy
+    v = np.sin(axis) * qx + np.cos(axis) * qy
+    hit, edge = inside(u, v)
+    rgb = bilinear(front if c >= 0 else back, u, v)
+    if c >= 0 and rim_on is not None:
+        th = np.arctan2(v, u) % (2 * np.pi)
+        on = np.interp(th, th_tab, rim_on, period=2 * np.pi)
+        w = np.interp(th, th_tab, rim_w, period=2 * np.pi)
+        k = on * np.clip((w - edge) / 0.025, 0, 1)
+        rgb = mix(rgb, PAINT_EDGE, 0.9 * k)
+    light = (0.6 + 0.4 * abs(c)) * (1 + 0.15 * np.sin(phi) * np.clip(qy * abs(squash), -1, 1))
+    rgb = rgb * light[..., None]
+    m = hit.astype(np.float64)
+    pm = (rgb * m[..., None]).reshape(FLAKE_CELL, FLAKE_SS, FLAKE_CELL, FLAKE_SS, 3).sum(axis=(1, 3))
+    a = m.reshape(FLAKE_CELL, FLAKE_SS, FLAKE_CELL, FLAKE_SS).mean(axis=(1, 3))
+    out = np.where(a[..., None] > 0, pm / np.maximum(a, 1e-9)[..., None] / FLAKE_SS ** 2, 0)
+    out = bleed(out, a)
+    a[[0, -1], :] = 0
+    a[:, [0, -1]] = 0
+    return out, a
 
 
 def flake_sheet(rng):
-    # lascas de tinta (sprint 0035, Silent Hill): FLAKE_SHAPES formatos × FLAKE_FRAMES quadros de
-    # giro. Borda clara de tinta descascada nos dois primeiros, ferrugem no terceiro; o verso de
-    # todas é ferrugem. A cor da névoa multiplica no desenho (NOM_FlakeRules.palette).
-    rows = []
-    for shape in range(FLAKE_SHAPES):
-        pts = flake_outline(rng)
-        axis = rng.random() * np.pi
-        edge = PAINT_EDGE if shape < 2 else (176, 92, 44)
-        rows.append(np.concatenate([flake_cell(pts, f, axis, edge) for f in range(FLAKE_FRAMES)], 1))
-    a = np.concatenate(rows, 0)
-    return a[..., :3], a[..., 3] / 255
+    # lascas de tinta velha e ferrugem (sprint 0035, Silent Hill): FLAKE_SHAPES formatos ×
+    # FLAKE_FRAMES quadros de giro, rasterizados no plano da lasca (FLAKE_KINDS). O verso das
+    # de tinta é ferrugem; a cor da névoa multiplica no desenho (NOM_FlakeRules.palette).
+    g = FLAKE_GRID
+    gy, gx = np.mgrid[0:g, 0:g].astype(np.float64) / (g - 1) * 2 * FLAKE_SPAN - FLAKE_SPAN
+    rows_rgb, rows_a = [], []
+    for aspect, notches, jag, rim, rust, kind in FLAKE_KINDS:
+        inside, th_tab, _ = flake_shape(rng, aspect, notches, jag)
+        _, edge = inside(gx, gy)
+        if kind == "tinta":
+            front, rim_on, rim_w = paint_face(rng, g, edge, th_tab, rim, rust)
+            back = mix(rust_face(rng, g, False), GRIME, np.full((g, g), 0.15))
+        else:
+            front, rim_on, rim_w = rust_face(rng, g, False), None, None
+            back = rust_face(rng, g, True)
+        # a comprida tomba pelo eixo maior: de lado ainda é um risco que se vê
+        axis = rng.random() * 0.4 if aspect < 0.6 else rng.random() * np.pi
+        look = (inside, front, back, rim_on, rim_w, th_tab)
+        cells = [flake_cell(look, f, axis) for f in range(FLAKE_FRAMES)]
+        rows_rgb.append(np.concatenate([c[0] for c in cells], 1))
+        rows_a.append(np.concatenate([c[1] for c in cells], 1))
+    return np.concatenate(rows_rgb, 0), np.concatenate(rows_a, 0)
 
 
-def ash_dot(size=16):
-    # cinza (sprint 0035): ponto claro e macio, tons de cinza (a cor sai do desenho)
-    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    d = np.hypot(x - (size - 1) / 2, y - (size - 1) / 2) / (size / 2 - 1)
-    a = np.clip(1.25 - d * 1.25, 0, 1) ** 1.2
-    a[d >= 1] = 0
-    return color((236, 236, 236), np.ones((size, size), np.float32)), a
+def ash_flake(rng, size=16, ss=8):
+    # cinza (sprint 0035): floco torto e macio, um pouco manchado, tons de cinza (a cor sai do
+    # desenho). Não é redondo: harmônicos e serrilhado no raio, como a lasca, com borda suave.
+    th_tab = np.linspace(0, 2 * np.pi, 512, endpoint=False)
+    r = np.ones_like(th_tab)
+    for k in range(2, 5):
+        r += rng.normal(0, 0.2 / k) * np.cos(k * th_tab + rng.random() * 2 * np.pi)
+    r += 0.25 * (periodic(rng, th_tab, 11) - 0.5)
+    r = r / r.max() * (size / 2 - 2.2)
+    n = size * ss
+    y, x = (np.mgrid[0:n, 0:n].astype(np.float64) + 0.5) / ss - size / 2 - (rng.random(2) - 0.5)[:, None, None] * 0.6
+    rho = np.hypot(x, y)
+    edge = np.interp(np.arctan2(y, x) % (2 * np.pi), th_tab, r, period=2 * np.pi) - rho
+    a = np.clip(edge / 1.8 + 0.25, 0, 1).reshape(size, ss, size, ss).mean(axis=(1, 3))
+    a *= 0.72 + 0.28 * noise(rng, size, 5)
+    shade = 0.84 + 0.12 * noise(rng, size, 6)
+    return color((236, 236, 236), shade), a
 
 
 def main():
@@ -376,7 +511,7 @@ def main():
     # lascas e cinza do Outro Mundo (sprint 0035): gerador próprio
     rgb, a = flake_sheet(np.random.default_rng((SEED, 15)))
     save(rgb, "NOM/NOM_Lascas.png", alpha=a)
-    rgb, a = ash_dot()
+    rgb, a = ash_flake(np.random.default_rng((SEED, 16)))
     save(rgb, "NOM/NOM_Cinza.png", alpha=a)
 
 

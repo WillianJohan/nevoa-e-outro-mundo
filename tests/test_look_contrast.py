@@ -106,9 +106,9 @@ def check(name, img):
 
 # Lascas do Outro Mundo (sprint 0035): partícula, não monstro. Sprite sheet de FRAMES quadros de
 # giro (colunas) × SHAPES formatos (linhas), célula de CELL px, recortada no jogo por
-# drawSubTexture (shared/NOM_FlakeRules.lua). A cinza é um ponto branco tingido no desenho.
+# drawSubTexture (shared/NOM_FlakeRules.lua). A cinza é um floco branco tingido no desenho.
 FLAKE_SHEET, FLAKE_ASH = "NOM/NOM_Lascas.png", "NOM/NOM_Cinza.png"
-FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 3
+FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 4
 PARTICLES = {FLAKE_SHEET, FLAKE_ASH}
 
 
@@ -186,42 +186,174 @@ def rgba(name):
     return np.asarray(Image.open(os.path.join(TEX, name)).convert("RGBA"), np.float32) / 255
 
 
+def flake_cells(a):
+    c = FLAKE_CELL
+    return [[a[r * c:(r + 1) * c, f * c:(f + 1) * c] for f in range(FLAKE_FRAMES)] for r in range(a.shape[0] // c)]
+
+
 def test_flake_sheet_cells():
     # cada célula: lasca no meio, borda de 1 px transparente (o filtro linear do recorte não
-    # puxa o quadro vizinho); o giro muda de um quadro pro outro e passa pelo verso
+    # puxa o quadro vizinho); o giro muda de um quadro pro outro, passa pelo verso e de perfil
+    # (quadros 2 e 6) vira um risco fino, mas ainda visível
     a = rgba(FLAKE_SHEET)
     assert a.shape[:2] == (FLAKE_CELL * FLAKE_SHAPES, FLAKE_CELL * FLAKE_FRAMES), "sheet %s" % (a.shape[:2],)
-    c = FLAKE_CELL
-    for r in range(FLAKE_SHAPES):
-        prev = None
-        for f in range(FLAKE_FRAMES):
-            cell = a[r * c:(r + 1) * c, f * c:(f + 1) * c]
+    for r, row in enumerate(flake_cells(a)):
+        prev, cover = None, []
+        for f, cell in enumerate(row):
             al = cell[..., 3]
             assert max(al[0].max(), al[-1].max(), al[:, 0].max(), al[:, -1].max()) == 0, \
                 "célula %d,%d encosta na borda" % (r, f)
-            cover = float((al > 0.5).mean())
-            assert 0.03 < cover < 0.6, "célula %d,%d cobre %.3f" % (r, f, cover)
+            cover.append(float((al > 0.5).mean()))
+            low = 0.012 if f in PROFILES else 0.03
+            assert low < cover[-1] < 0.6, "célula %d,%d cobre %.3f" % (r, f, cover[-1])
             if prev is not None:
                 assert np.abs(al - prev).mean() > 0.01, "quadro %d,%d igual ao anterior" % (r, f)
             prev = al
+        assert cover[2] < 0.45 * cover[0] and cover[6] < 0.45 * cover[4], "formato %d de perfil não afina" % r
 
 
-def test_flake_sheet_paint_and_rust():
-    # tinta velha: corpo escuro e borda clara (contraste dentro da lasca); o verso é ferrugem
+def hull_area(pts):
+    """Área do fecho convexo (cadeia monótona) dos pontos inteiros pts (N × 2)."""
+    pts = sorted(set(map(tuple, pts)))
+
+    def half(seq):
+        out = []
+        for p in seq:
+            while len(out) >= 2 and (out[-1][0] - out[-2][0]) * (p[1] - out[-2][1]) - \
+                    (out[-1][1] - out[-2][1]) * (p[0] - out[-2][0]) <= 0:
+                out.pop()
+            out.append(p)
+        return out[:-1]
+    h = np.asarray(half(pts) + half(pts[::-1]), np.float64)
+    x, y = h[:, 0], h[:, 1]
+    return 0.5 * abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
+def solidity(al):
+    """Área da lasca sobre a do fecho convexo dos cantos dos pixels: ~0,95 num polígono liso,
+    cai com dente arrancado, fratura reentrante e serrilhado."""
+    ys, xs = np.nonzero(al > 0.5)
+    corners = np.concatenate([np.stack([xs + dx, ys + dy], 1) for dx in (0, 1) for dy in (0, 1)])
+    return float(len(xs) / hull_area(corners))
+
+
+def neighbours4(m):
+    p = np.pad(m, 1)
+    return p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:]
+
+
+def flake_lum(cell):
+    return 0.299 * cell[..., 0] + 0.587 * cell[..., 1] + 0.114 * cell[..., 2]
+
+
+# Lasca orgânica (pedido do Johan depois da v1 parecer adesivo): limites medidos na v2 com folga;
+# a clip-art da v1 (test_flake_criteria_catch_clipart) reprova em cada um.
+SOLIDITY_MAX = 0.86      # média por formato, quadros de frente e de verso (a v1 dava 0,88–0,91)
+FINE_MIN = 0.4           # fração de vizinhos no miolo com |Δ luminância| > FINE_STEP: tem grão
+FINE_STEP = 0.008        # (a v1 chapada dava ≤ 0,15; a borda entre duas cores chapadas não conta)
+RIM_LIGHT = 0.55         # luminância da tinta clara lascada
+FACES, PROFILES = (0, 1, 3, 4, 5, 7), (2, 6)
+FOG_LIGHT, FOG_DARK = 0.62, 0.12   # névoa cinza de dia e de noite
+
+
+def flake_issues(a):
+    """Tudo que faz a lasca parecer adesivo ou sumir na névoa; [] = passou."""
+    issues = []
+    rows = flake_cells(a)
+    light_share = []
+    for r, row in enumerate(rows):
+        tag = "formato %d: " % r
+        if np.mean([solidity(row[f][..., 3]) for f in FACES]) > SOLIDITY_MAX:
+            issues.append(tag + "contorno liso (polígono de adesivo)")
+        fine = []
+        for f in (0, 4):
+            lum, al = flake_lum(row[f]), row[f][..., 3]
+            core = neighbours4(neighbours4(al >= 0.999)) & (lum < RIM_LIGHT)
+            pair = core[:, :-1] & core[:, 1:]
+            fine.append(float((np.abs(np.diff(lum, axis=1))[pair] > FINE_STEP).mean()) if pair.any() else 0.0)
+        if min(fine) < FINE_MIN:
+            issues.append(tag + "textura chapada (%.2f)" % min(fine))
+        # a tinta clara: um fio que falha, nunca o contorno inteiro nem uma faixa grossa
+        front = row[0]
+        lum, op = flake_lum(front), front[..., 3] > 0.5
+        light = (lum > RIM_LIGHT) & op
+        edge = op & ~neighbours4(op)
+        light_share.append(float(np.mean([((flake_lum(row[f]) > RIM_LIGHT) & (row[f][..., 3] > 0.5)).sum()
+                                          / max((row[f][..., 3] > 0.5).sum(), 1) for f in (0, 1, 7)])))
+        if edge.any() and (light & edge).sum() / edge.sum() > 0.6:
+            issues.append(tag + "borda clara contínua")
+        if light.sum() > 0 and (neighbours4(light) & light).sum() / light.sum() > 0.2:
+            issues.append(tag + "borda clara grossa")
+        # lê sobre névoa clara e escura (frente e verso, sem o perfil)
+        for bg, need, name in ((FOG_LIGHT, 0.2, "clara"), (FOG_DARK, 0.08, "escura")):
+            d = np.mean([np.abs(flake_lum(row[f]) - bg)[row[f][..., 3] > 0.5].mean() for f in FACES])
+            if d < need:
+                issues.append(tag + "some na névoa %s (%.3f)" % (name, d))
+        # de perfil a face não pega luz: mais escura que de frente e de costas
+        def mean_lum(cell):
+            w = cell[..., 3]
+            return float((flake_lum(cell) * w).sum() / max(w.sum(), 1e-6))
+        if not (mean_lum(row[2]) < mean_lum(row[0]) and mean_lum(row[6]) < mean_lum(row[4])):
+            issues.append(tag + "de perfil não escurece")
+    if not any(s > 0.02 for s in light_share):
+        issues.append("nenhum formato com lasca de tinta clara")
+    if not any(s < 0.005 for s in light_share):
+        issues.append("todos os formatos com borda clara")
+    # ferrugem marrom, dessaturada: laranja vivo é adesivo
+    rgb, op = a[..., :3], a[..., 3] > 0.5
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    sat = (mx - mn) / np.maximum(mx, 1e-6)
+    rust = op & (rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] > rgb[..., 2]) & (sat > 0.3)
+    if rust.sum() / op.sum() < 0.1:
+        issues.append("sem ferrugem")
+    elif sat[rust].mean() > 0.58 or ((sat > 0.72) & (mx > 0.45) & rust).sum() / rust.sum() > 0.03:
+        issues.append("ferrugem laranja saturada (saturação média %.2f)" % sat[rust].mean())
+    # halo: pixel quase transparente claro vira contorno branco no filtro linear
+    if ((a[..., 3] < 0.5) & (flake_lum(a) > 0.8)).any():
+        issues.append("halo branco na borda")
+    return issues
+
+
+def clipart_sheet(shapes=FLAKE_SHAPES):
+    """A v1 rejeitada: polígono liso, contorno claro grosso e contínuo, miolo chapado e
+    ferrugem laranja viva."""
+    from PIL import ImageDraw
+    ss, c = 4, FLAKE_CELL
+    img = Image.new("RGBA", (c * FLAKE_FRAMES * ss, c * shapes * ss), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for r in range(shapes):
+        ang = np.linspace(0, 2 * np.pi, 7)[:-1] + r
+        for f in range(FLAKE_FRAMES):
+            phi = 2 * np.pi * f / FLAKE_FRAMES
+            sq = max(abs(np.cos(phi)), 0.18)
+            ox, oy = (f + 0.5) * c * ss, (r + 0.5) * c * ss
+            pts = [(ox + np.cos(t) * 12 * ss, oy + np.sin(t) * 12 * ss * sq) for t in ang]
+            body, rim = ((52, 49, 46), (228, 220, 202)) if np.cos(phi) >= 0 else ((150, 70, 30), (82, 38, 18))
+            d.polygon(pts, fill=rim + (255,))
+            d.polygon([(ox + (x - ox) * 0.72, oy + (y - oy) * 0.72) for x, y in pts], fill=body + (255,))
+    small = img.convert("RGBa").resize((c * FLAKE_FRAMES, c * shapes), Image.BOX).convert("RGBA")
+    return np.asarray(small, np.float32) / 255
+
+
+def test_flake_criteria_catch_clipart():
+    found = " | ".join(flake_issues(clipart_sheet()))
+    for want in ("contorno liso", "textura chapada", "borda clara contínua", "borda clara grossa",
+                 "todos os formatos com borda clara", "ferrugem laranja", "halo branco"):
+        assert want in found, "a lasca de adesivo passou em '%s': %s" % (want, found)
+
+
+def test_flake_sheet_organic():
     a = rgba(FLAKE_SHEET)
-    opaque = a[..., 3] > 0.5
-    lum = 0.299 * a[..., 0] + 0.587 * a[..., 1] + 0.114 * a[..., 2]
-    vals = lum[opaque]
-    dark, light = float((vals < 0.3).mean()), float((vals > 0.65).mean())
-    assert dark > 0.3, "pouco corpo escuro: %.3f" % dark
-    assert light > 0.06, "pouca borda clara: %.3f" % light
-    rust = (a[..., 0] - a[..., 2] > 0.25) & opaque
-    assert float(rust.sum() / opaque.sum()) > 0.1, "sem ferrugem"
-    print("  %-30s escuro=%.3f claro=%.3f ferrugem=%.3f" % (FLAKE_SHEET, dark, light, rust.sum() / opaque.sum()))
+    issues = flake_issues(a)
+    rows = flake_cells(a)
+    print("  %-30s solidez=%s" % (FLAKE_SHEET, " ".join("%.3f" % np.mean([solidity(row[f][..., 3]) for f in FACES])
+                                                     for row in rows)))
+    assert not issues, "\n  ".join(issues)
 
 
-def test_flake_ash_dot():
-    # ponto claro em tons de cinza (a cor sai do desenho), macio, com os cantos vazios
+def test_flake_ash():
+    # floco claro em tons de cinza (a cor sai do desenho), macio, torto (não é um ponto
+    # redondo: girar 90° muda o desenho) e com os cantos vazios
     a = rgba(FLAKE_ASH)
     rgb, al = a[..., :3], a[..., 3]
     assert np.all(rgb[..., 0] == rgb[..., 1]) and np.all(rgb[..., 1] == rgb[..., 2]), "cinza com cor"
@@ -229,11 +361,17 @@ def test_flake_ash_dot():
     assert max(al[0, 0], al[0, -1], al[-1, 0], al[-1, -1]) == 0, "cantos cheios"
     assert 0 < float(((al > 0) & (al < 1)).mean()), "borda dura"
 
+    def round_dot(m):
+        return float(np.abs(m - np.rot90(m)).mean()) < 0.03
+    y, x = np.mgrid[0:16, 0:16]
+    assert round_dot(np.clip(6 - np.hypot(x - 7.5, y - 7.5), 0, 1)), "o critério não pega o ponto redondo"
+    assert not round_dot(al), "cinza redonda (%.3f)" % np.abs(al - np.rot90(al)).mean()
+
 
 def main():
     tests = [test_every_look_texture_has_limits, test_contrast_catches_wool, test_contrast_catches_cow_and_lattice,
              test_textures_contrast, test_screen_static_gray_fine_tiles, test_flake_sheet_cells,
-             test_flake_sheet_paint_and_rust, test_flake_ash_dot]
+             test_flake_criteria_catch_clipart, test_flake_sheet_organic, test_flake_ash]
     fail = 0
     for t in tests:
         try:
