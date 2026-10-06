@@ -6,6 +6,7 @@
 | Data | 2026-10-05 |
 | Substitui | o **como** da [ADR-015](adr-015-outro-mundo-sangrento.md) (decisões 3 e 4 e a emenda da 0021: `IsoMarker`, fantasma de parede, chão apagado debaixo de personagem, visibilidade por prédio). A regra pura (decisões 1, 2 e 5 sem o teto) continua |
 | Emenda | [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md): "nada no mapa" vira "nada no **save**" — o anexo é do objeto do mapa, mas só enquanto o jogo não grava |
+| Emendada por | [ADR-018](adr-018-sprite-proprio-em-runtime.md) (sprite próprio em runtime, sprint 0035; item 11) |
 
 ## Contexto
 
@@ -108,6 +109,20 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
     - O corte no tick (a cada 2 tiles) esquece o que passou do raio + 8. O "já visto" fica do
       tamanho da área do raio. O square que sai e volta é vestido de novo.
     - Raio, folga e margem do save não mudam (pz-api-notes §16.6).
+11. **Sprite próprio e teto de custo do carro (emenda da sprint 0035):**
+    - Além dos vanilla, o Outro Mundo anexa sprites **do mod**, criados em runtime a partir de PNG
+      nosso em `media/textures/NOM/OutroMundo/`. Formato, `setName` obrigatório, descarte no load e
+      prefixo de limpeza: [ADR-018](adr-018-sprite-proprio-em-runtime.md). O item 5 ganha esse
+      prefixo como segundo dono do nome.
+    - **Margem por tick:** o corte duro a 38 tiles roda no tick em que o jogador passa de
+      `MOVE_TILES` (2) tiles desde o último corte. A cobertura além da tela foi medida e não feita:
+      com o carro a 2 tiles por tick, raio + folga tem de ficar ≤ 42, e o teste
+      `overlays_save_margin_invariant` trava `MAX_RADIUS` + `SLACK` + `MOVE_TILES` + 3 < 48.
+    - **Teto de custo do carro** (`LIGHT_DIV` = 4): no tick em que o corte tirou alguma coisa, a
+      atualização vai pro tick seguinte; a 2 tiles por tick, ela veste 20 squares em vez de 80, e
+      quem andou `MOVE_TILES` desde a atualização anterior tira 20 alvos em lote em vez de 80. O
+      corte continua inteiro, sem orçamento. Pior tick no estresse (parede N e W em todo square):
+      de ~3900 pra ~2250 chamadas ao Java; o teste cobra 2500.
 
 ## Consequências
 
