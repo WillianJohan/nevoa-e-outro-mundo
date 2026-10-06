@@ -156,6 +156,19 @@ Pedido do Johan (2026-10-06): "não esquece de adicionar todos os comandos de de
 - Teste novo: todo comando do `NOM.HELP` (menos `panel` e `help`) tem botão no `P.ROWS`. Comando novo sem botão deixa o teste vermelho.
 - Textos dos botões por chave PTBR + EN.
 
+- [x] Teste que falha (`debug_panel_every_help_command_has_button`), implementar, `./run-tests.sh` verde, commit.
+
+**Feito (2026-10-06).** Oito linhas no painel:
+1. Névoa de verdade: Sirene branca (`setFog()`), Branca já (`setFog(true)`), Sirene vermelha (`setRedFog()`), Vermelha já (`setRedFog(true)`), Preta (`setBlackFog()`, só avisa até a 0038).
+2. Toggles antigos: Névoa (liga/desliga) (`fog()`), Névoa já (`fog(true, true)`), Fim da névoa (agora `setEndFog()`, o mesmo `NOM_Debug.fog(false)` de antes), Vermelha (liga/desliga) (`redFog()`).
+3. Noite, Dia, Relógio.
+4. 00h, 06h, 12h, 18h, 22h.
+5. 1, 5 e 10 zumbis, Eco aqui, Puxar zumbi (`getZombie()`).
+6. As 4 variantes e Desfaz variante (`turnZombie(0)`).
+7. Deus, Noclip, Invisível e Modo deus (`godMode()`), os quatro com sim/não (Modo deus pelo `isGodMod`).
+8. Vento (liga/desliga) (`wind()`; sem o mod3 o comando só avisa no console) e Status no console (`status()`).
+- **Teste:** carrega o `NOM_Console` de verdade pra ler o `NOM.HELP`, troca cada `NOM.*` por espião, aperta todos os botões e cobra que cada comando do HELP (menos `panel` e `help`) foi chamado: "comando sem botão no NOM.panel(): NOM.x (regra do AGENTS.md)".
+
 ---
 
 ### Tarefa 6: docs

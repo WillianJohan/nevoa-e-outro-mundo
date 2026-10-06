@@ -49,5 +49,15 @@
     "UI_NOM_Debug_StatusFog": "Névoa",
     "UI_NOM_Debug_StatusRed": "Vermelha",
     "UI_NOM_Debug_StatusHour": "Hora",
-    "UI_NOM_Debug_StatusMonsters": "Monstros aqui"
+    "UI_NOM_Debug_StatusMonsters": "Monstros aqui",
+    "UI_NOM_Debug_SetFog": "Sirene branca",
+    "UI_NOM_Debug_SetFogNow": "Branca já",
+    "UI_NOM_Debug_SetRedFog": "Sirene vermelha",
+    "UI_NOM_Debug_SetRedFogNow": "Vermelha já",
+    "UI_NOM_Debug_SetBlackFog": "Preta",
+    "UI_NOM_Debug_GetZombie": "Puxar zumbi",
+    "UI_NOM_Debug_UndoVariant": "Desfaz variante",
+    "UI_NOM_Debug_GodMode": "Modo deus",
+    "UI_NOM_Debug_Wind": "Vento (liga/desliga)",
+    "UI_NOM_Debug_Status": "Status no console"
 }

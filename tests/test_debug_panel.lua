@@ -95,7 +95,8 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "god", "noclip", "invisible" }) do
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "god", "noclip", "invisible",
+        "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind", "status" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
@@ -168,8 +169,13 @@ return {
         NOM_DebugPanel.toggle()
         local w = NOM_DebugPanel.instance
         local expect = {
-            UI_NOM_Debug_Fog = "fog()", UI_NOM_Debug_FogNow = "fog(true,true)", UI_NOM_Debug_FogEnd = "fog(false)",
+            UI_NOM_Debug_SetFog = "setFog()", UI_NOM_Debug_SetFogNow = "setFog(true)",
+            UI_NOM_Debug_SetRedFog = "setRedFog()", UI_NOM_Debug_SetRedFogNow = "setRedFog(true)",
+            UI_NOM_Debug_SetBlackFog = "setBlackFog()",
+            UI_NOM_Debug_Fog = "fog()", UI_NOM_Debug_FogNow = "fog(true,true)", UI_NOM_Debug_FogEnd = "setEndFog()",
             UI_NOM_Debug_RedFog = "redFog()",
+            UI_NOM_Debug_GetZombie = "getZombie()", UI_NOM_Debug_UndoVariant = "turnZombie(0)",
+            UI_NOM_Debug_GodMode = "godMode()", UI_NOM_Debug_Wind = "wind()", UI_NOM_Debug_Status = "status()",
             UI_NOM_Debug_Night = "night(true)", UI_NOM_Debug_Day = "night(false)", UI_NOM_Debug_Clock = "clock()",
             UI_NOM_Debug_Hour0 = "time(0)", UI_NOM_Debug_Hour6 = "time(6)", UI_NOM_Debug_Hour12 = "time(12)",
             UI_NOM_Debug_Hour18 = "time(18)", UI_NOM_Debug_Hour22 = "time(22)",
@@ -190,6 +196,34 @@ return {
         for _, c in ipairs(w.children) do if c.labelKey then buttons = buttons + 1 end end
         assert(buttons == n, "botão sem teste: " .. buttons .. " vs " .. n)
     end,
+    -- Regra do AGENTS.md: todo comando do NOM.HELP (menos panel e help) tem botão. O console
+    -- de verdade dá o HELP; cada NOM.* vira espião e o teste aperta todos os botões.
+    debug_panel_every_help_command_has_button = function()
+        setup()
+        local deps = { "NOM_Debug", "NOM_DebugRules", "NOM_VariantRules" }
+        local saved = {}
+        for _, m in ipairs(deps) do saved[m] = package.loaded[m]; package.loaded[m] = true end
+        dofile("mod/42/media/lua/client/NOM_Console.lua")
+        for _, m in ipairs(deps) do package.loaded[m] = saved[m] end
+        local called = {}
+        for name, f in pairs(NOM) do
+            if type(f) == "function" then NOM[name] = function() called[name] = true end end
+        end
+        NOM_DebugPanel.toggle()
+        for _, c in ipairs(NOM_DebugPanel.instance.children) do
+            if c.labelKey then c:click() end
+        end
+        local checked = 0
+        for _, h in ipairs(NOM.HELP) do
+            local name = h[1]:match("^NOM%.(%w+)%(")
+            assert(name, "linha do HELP sem NOM.x(: " .. h[1])
+            if name ~= "panel" and name ~= "help" then
+                assert(called[name], "comando sem botão no NOM.panel(): NOM." .. name .. " (regra do AGENTS.md)")
+                checked = checked + 1
+            end
+        end
+        assert(checked >= 19, "HELP encolheu? " .. checked)
+    end,
     -- toggles do jogador mostram o estado; o clique já atualiza
     debug_panel_toggle_titles_show_state = function()
         local G = setup()
@@ -201,6 +235,8 @@ return {
         G.player.god = true
         god:click()
         assert(god.title == "UI_NOM_Debug_God: UI_NOM_Debug_Yes", god.title)
+        local godMode = button(w, "UI_NOM_Debug_GodMode")
+        assert(godMode.title == "UI_NOM_Debug_GodMode: UI_NOM_Debug_Yes", "modo deus segue o isGodMod: " .. godMode.title)
     end,
     debug_panel_status_refreshes_each_second = function()
         local G = setup()

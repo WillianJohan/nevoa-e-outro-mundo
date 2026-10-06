@@ -49,5 +49,15 @@
     "UI_NOM_Debug_StatusFog": "Fog",
     "UI_NOM_Debug_StatusRed": "Red",
     "UI_NOM_Debug_StatusHour": "Hour",
-    "UI_NOM_Debug_StatusMonsters": "Monsters here"
+    "UI_NOM_Debug_StatusMonsters": "Monsters here",
+    "UI_NOM_Debug_SetFog": "White siren",
+    "UI_NOM_Debug_SetFogNow": "White now",
+    "UI_NOM_Debug_SetRedFog": "Red siren",
+    "UI_NOM_Debug_SetRedFogNow": "Red now",
+    "UI_NOM_Debug_SetBlackFog": "Black",
+    "UI_NOM_Debug_GetZombie": "Pull zombie",
+    "UI_NOM_Debug_UndoVariant": "Undo variant",
+    "UI_NOM_Debug_GodMode": "God mode",
+    "UI_NOM_Debug_Wind": "Wind (toggle)",
+    "UI_NOM_Debug_Status": "Status to console"
 }

@@ -37,10 +37,16 @@ local function hourButton(key, h)
 end
 
 -- Linhas de botões: { chave do texto, ação, estado (só nos toggles do jogador) }.
+-- Todo comando do NOM.HELP tem botão aqui (AGENTS.md; tests/test_debug_panel.lua cobra).
 P.ROWS = {
+    { { "UI_NOM_Debug_SetFog", function() NOM.setFog() end },
+        { "UI_NOM_Debug_SetFogNow", function() NOM.setFog(true) end },
+        { "UI_NOM_Debug_SetRedFog", function() NOM.setRedFog() end },
+        { "UI_NOM_Debug_SetRedFogNow", function() NOM.setRedFog(true) end },
+        { "UI_NOM_Debug_SetBlackFog", function() NOM.setBlackFog() end } },
     { { "UI_NOM_Debug_Fog", function() NOM.fog() end },
         { "UI_NOM_Debug_FogNow", function() NOM.fog(true, true) end },
-        { "UI_NOM_Debug_FogEnd", function() NOM.fog(false) end },
+        { "UI_NOM_Debug_FogEnd", function() NOM.setEndFog() end },
         { "UI_NOM_Debug_RedFog", function() NOM.redFog() end } },
     { { "UI_NOM_Debug_Night", function() NOM.night(true) end },
         { "UI_NOM_Debug_Day", function() NOM.night(false) end },
@@ -50,14 +56,19 @@ P.ROWS = {
     { { "UI_NOM_Debug_Spawn1", function() NOM.spawn(1) end },
         { "UI_NOM_Debug_Spawn5", function() NOM.spawn(5) end },
         { "UI_NOM_Debug_Spawn10", function() NOM.spawn(10) end },
-        { "UI_NOM_Debug_Eco", function() NOM.eco() end } },
+        { "UI_NOM_Debug_Eco", function() NOM.eco() end },
+        { "UI_NOM_Debug_GetZombie", function() NOM.getZombie() end } },
     { { "UI_NOM_Debug_Estalador", function() NOM.variant("estalador") end },
         { "UI_NOM_Debug_Corredor", function() NOM.variant("corredor") end },
         { "UI_NOM_Debug_SemRosto", function() NOM.variant("semrosto") end },
-        { "UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end } },
+        { "UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end },
+        { "UI_NOM_Debug_UndoVariant", function() NOM.turnZombie(0) end } },
     { { "UI_NOM_Debug_God", function() NOM.god() end, cheat("isGodMod") },
         { "UI_NOM_Debug_NoClip", function() NOM.noclip() end, cheat("isNoClip") },
-        { "UI_NOM_Debug_Invisible", function() NOM.invisible() end, cheat("isInvisible") } },
+        { "UI_NOM_Debug_Invisible", function() NOM.invisible() end, cheat("isInvisible") },
+        { "UI_NOM_Debug_GodMode", function() NOM.godMode() end, cheat("isGodMod") } },
+    { { "UI_NOM_Debug_Wind", function() NOM.wind() end },
+        { "UI_NOM_Debug_Status", function() NOM.status() end } },
 }
 
 local function yesNo(v) return getText(v and "UI_NOM_Debug_Yes" or "UI_NOM_Debug_No") end
