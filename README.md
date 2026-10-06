@@ -56,6 +56,11 @@ Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e pre
 e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
 Em servidor: `WorkshopItems=3814379207` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
 `Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
+Com a névoa volumétrica, o **ZombieBuddy vem primeiro** na linha:
+`Mods=ZombieBuddy;NevoaEOutroMundo;NevoaEOutroMundo_Shader;NevoaEOutroMundo_Volumetrica`.
+O cliente carrega o ZombieBuddy antes de tudo. Se o servidor o carregar em outra posição, as listas
+de Lua saem em ordem diferente e o checksum expulsa o jogador com
+"File doesn't exist on the client: media/lua/client/nom_console.lua".
 
 **Dev:** cópia do repositório na pasta de mods (`mod/` e o shader opcional `mod2/`):
 
