@@ -26,8 +26,10 @@ local CLICK_ODDS = 2
 NOM_VariantAI.BLIND_FRAMES = 60
 
 -- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates } }.
--- Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica.
-local blinded = {}
+-- Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica. Exposta só pra
+-- leitura: o rodízio do NOM_SirenFreeze não solta o Estalador cego.
+NOM_VariantAI.blinded = {}
+local blinded = NOM_VariantAI.blinded
 
 -- Agachado e sem correr: o Estalador não tem como saber que o jogador está ali.
 local function silent(p)

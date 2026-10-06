@@ -6,10 +6,27 @@ local GRACE_MS = NOM_FogEventRules.GRACE_MS
 
 local function setup(opts)
     local G = W.new(opts or {})
-    G.reload({ "NOM_SirenFreeze", "NOM_Carpideira" })
+    G.reload({ "NOM_SirenFreeze", "NOM_Carpideira", "NOM_VariantAI", "NOM_NightStats", "NOM_FogState" })
     require "NOM_Carpideira"
     require "NOM_SirenFreeze"
     return G
+end
+
+-- o fim da fuga no MP, com a posse do zumbi chegando depois: os de sempre e um Estalador que
+-- ESTE processo cegou (NOM_VariantAI.blinded, o módulo de verdade)
+local function lateOwners(G)
+    require "NOM_VariantAI"
+    local z = {
+        inherited = G.zombie({ x = 1, y = 1 }),
+        still = G.zombie({ x = 2, y = 2 }),
+        game = G.zombie({ x = 3, y = 3, outfit = "Useless" }),
+        remote = G.zombie({ x = 4, y = 4, remote = true }),
+        blind = G.zombie({ x = 5, y = 5 }),
+    }
+    for _, v in pairs(z) do v.useless = true end
+    NOM_Carpideira.still[z.still] = true
+    NOM_VariantAI.blinded[z.blind] = { p = G.players[1], n = 0 }
+    return z
 end
 
 local function facing(z, p)
@@ -219,6 +236,58 @@ return {
         assert(still.useless == true, "soltou a Carpideira parada")
         assert(game.useless == true, "soltou o useless do jogo")
         assert(remote.useless == true, "mexeu na cópia remota")
+    end,
+    -- review final da 0034: a posse chega com o useless do dono antigo logo DEPOIS do stop. Por
+    -- SWEEP_MS reais, em lotes, o stop segue soltando zumbi local useless; nunca o Estalador que
+    -- este processo cegou (a janela de cegueira dele ficaria sem o useless), a Carpideira parada,
+    -- o useless do jogo nem a cópia remota
+    siren_freeze_sweeps_late_inherited_useless = function()
+        local G = setup({ client = true })
+        G.player({ x = 0, y = 0 })
+        NOM_SirenFreeze.install()
+        NOM_SirenFreeze.start(GRACE_MS)
+        G.tick(1)
+        NOM_SirenFreeze.stop()
+        G.seconds(1)
+        local z = lateOwners(G)
+        G.seconds(1)
+        assert(z.inherited.useless == false, "zumbi herdado depois do stop ficou useless")
+        assert(z.blind.useless == true, "soltou o Estalador cego")
+        assert(z.still.useless == true, "soltou a Carpideira parada")
+        assert(z.game.useless == true, "soltou o useless do jogo")
+        assert(z.remote.useless == true, "mexeu na cópia remota")
+        -- passou a janela: acabou o rodízio (custo zero na névoa)
+        G.seconds(NOM_SirenFreeze.SWEEP_MS / 1000)
+        local after = G.zombie({ x = 6, y = 6 })
+        after.useless = true
+        G.seconds(1)
+        assert(after.useless == true, "o rodízio não acabou")
+    end,
+    siren_freeze_sweep_in_batches = function()
+        local G = setup({ client = true })
+        NOM_SirenFreeze.install()
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.stop()
+        local zs = {}
+        for i = 1, NOM_SirenFreeze.BATCH * 2 + 5 do
+            zs[i] = G.zombie({ x = i, y = 0 })
+            zs[i].useless = true
+        end
+        G.tick(1)
+        local n = 0
+        for _, z in ipairs(zs) do if not z.useless then n = n + 1 end end
+        assert(n == NOM_SirenFreeze.BATCH, "um tick do rodízio passou do lote: " .. n)
+        G.tick(2)
+        for _, z in ipairs(zs) do assert(z.useless == false, "o rodízio não cobriu a lista") end
+    end,
+    -- a passada do próprio stop também não solta o Estalador cego
+    siren_freeze_stop_keeps_blinded_estalador = function()
+        local G = setup({ client = true })
+        G.player({ x = 0, y = 0 })
+        NOM_SirenFreeze.start(GRACE_MS)
+        local z = lateOwners(G)
+        NOM_SirenFreeze.stop()
+        assert(z.inherited.useless == false and z.blind.useless == true, "a passada do stop soltou o cego")
     end,
     -- "fog" (on) também chega com a névoa já aberta (fogState de quem renasce, vermelha
     -- trocada no debug): sem sirene ativa o stop não varre, e o Estalador cego fica cego
