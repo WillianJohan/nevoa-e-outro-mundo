@@ -137,6 +137,29 @@ return {
         allIn(G)
         assert(#sirens(G) == 5, "sirenes juntas: " .. #sirens(G))
     end,
+    -- review final da 0034: as atrasadas esperam o jogo pausado (isGamePaused, pz-api-notes
+    -- §11.2) e entram no tempo que faltava depois; no dedicado vazio o OnTick para de todo e o
+    -- primeiro tick depois desconta no máximo MAX_STEP_MS
+    siren_delayed_wait_while_paused = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM_Siren.play(false)
+        assert(#sirens(G) == 1)
+        G.paused = true
+        G.seconds(10)
+        assert(#sirens(G) == 1, "sirene atrasada tocou com o jogo pausado: " .. #sirens(G))
+        G.paused = false
+        allIn(G)
+        assert(#sirens(G) == NOM_SirenSpotsRules.COUNT, "não voltaram depois da pausa: " .. #sirens(G))
+        local H = setup()
+        H.player({ x = 0, y = 0 })
+        NOM_Siren.play(false)
+        H.now = H.now + 60000 -- sem OnTick
+        H.tick(1)
+        assert(#sirens(H) <= 2, "o tick depois do vazio soltou o coro inteiro: " .. #sirens(H))
+        allIn(H)
+        assert(#sirens(H) == NOM_SirenSpotsRules.COUNT)
+    end,
     siren_without_player_plays_nothing = function()
         local G = setup()
         assert(NOM_Siren.play(false) == nil)

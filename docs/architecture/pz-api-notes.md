@@ -1552,6 +1552,7 @@ Bytecode do B42 instalado.
 
 | Fato | Status | Evidência |
 |---|---|---|
+| As 4 atrasadas contam o atraso como a fuga (`NOM_FogEventRules.countdown`, review final da 0034): param com `isGamePaused()` e cada tick desconta no máximo `MAX_STEP_MS`; antes seguiam `getTimestampMs` e entravam com o jogo pausado | CONFIRMED | §11.2 (`isGamePaused`, uso vanilla `client/ISUI/ISJoystickButtonRadialMenu.lua:68`, `client/Foraging/ISSearchManager.lua:1462`); se o som que já toca pausa junto segue UNKNOWN (§11.3) |
 | O jogo não corta som de arquivo 3D por distância: nada em `FMODSoundEmitter.addSound` (chamado pelo `playClip`) nem no `FileSound.tick` compara a distância do ouvinte com o `distanceMax`; o `tick` só posiciona (`Set3DAttributes`, z × 3), passa `Set3DMinMaxDistance(distanceMin, distanceMax)` e a oclusão | CONFIRMED (bytecode) | `FMODSoundEmitter.addSound` 259–487 (ramo `file`); `FMODSoundEmitter$FileSound.tick` 52–264 (`Set3DAttributes`), 353–386 (`Set3DLevel` só abaixo de 2 tiles do ouvinte), 893–908 (`Set3DMinMaxDistance`) |
 | O pool do `IsoWorld` faz `tick` em todo emitter em uso, sem filtro de distância, e só devolve o vazio | CONFIRMED (bytecode) | `IsoWorld` 8930–8990 (`currentEmitters` → `freeEmitters` quando `isEmpty`) |
 | Square do emitter fora da célula carregada (a 150–500 tiles, quase sempre) só pula a oclusão: o som toca | CONFIRMED (bytecode) | `FileSound.tick` 909–936 (`getGridSquare` nulo → salta pro fim, 1533) |

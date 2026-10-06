@@ -15,11 +15,13 @@
 --   depois que a sirene acaba, pode estar tocando o som de outro sistema).
 -- A sirene acaba sozinha (one-shot); o stop é pro cancelamento (sirenStop).
 require "NOM_SirenSpotsRules"
+require "NOM_FogEventRules"
 
 NOM_Siren = {}
 
 local playing = {} -- { e = emitter, id }
-local pending = {} -- { at = ms reais, x, y, z, sound, pitch }
+local pending = {} -- { left = ms reais até entrar, x, y, z, sound, pitch }
+local lastMs
 local ticking = false
 
 local function start(x, y, z, sound, pitch)
@@ -33,13 +35,18 @@ local function start(x, y, z, sound, pitch)
     end
 end
 
--- As atrasadas entram na hora delas (getTimestampMs, CONFIRMED server/ISObjectClickHandler.lua:352).
+-- As atrasadas entram na hora delas, contada como a fuga (NOM_FogEventRules.countdown): parada
+-- com o jogo pausado (isGamePaused, pz-api-notes §11.2) e no máximo MAX_STEP_MS por tick (o
+-- OnTick para de todo no dedicado vazio). getTimestampMs: CONFIRMED server/ISObjectClickHandler.lua:352.
 local function tick()
     if #pending == 0 then return end
     local now = getTimestampMs()
+    local dt, paused = now - lastMs, isGamePaused()
+    lastMs = now
     local left = {}
     for _, s in ipairs(pending) do
-        if now >= s.at then start(s.x, s.y, s.z, s.sound, s.pitch) else left[#left + 1] = s end
+        s.left = NOM_FogEventRules.countdown(s.left, dt, paused)
+        if s.left <= 0 then start(s.x, s.y, s.z, s.sound, s.pitch) else left[#left + 1] = s end
     end
     pending = left
 end
@@ -65,13 +72,13 @@ function NOM_Siren.play(red)
         ticking = true
     end
     local z = math.floor(p:getZ())
-    local now = getTimestampMs()
+    lastMs = getTimestampMs()
     local spots = NOM_SirenSpotsRules.spots(p:getX(), p:getY(), red and "red" or "white", rand)
     for _, s in ipairs(spots) do
         if s.delayMs <= 0 then
             start(s.x, s.y, z, s.sound, s.pitch)
         else
-            pending[#pending + 1] = { at = now + s.delayMs, x = s.x, y = s.y, z = z, sound = s.sound, pitch = s.pitch }
+            pending[#pending + 1] = { left = s.delayMs, x = s.x, y = s.y, z = z, sound = s.sound, pitch = s.pitch }
         end
     end
     return #spots
