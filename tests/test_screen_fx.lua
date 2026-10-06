@@ -594,6 +594,34 @@ return {
         assert(byTex(G.draws, R.TEXTURES.vignette), "a névoa sumiu junto")
     end,
 
+    -- review final da 0035: um desenho extra (brasas, lascas) com erro não derruba o overlay nem
+    -- os outros extras; sai da lista e vai pro log uma vez
+    extra_error_dropped_and_logged_once = function()
+        local G = setup()
+        fogOn(G)
+        local before, after, bad = 0, 0, 0
+        local function good1() before = before + 1 end
+        local function broken() bad = bad + 1; error("api surpresa") end
+        local function good2() after = after + 1 end
+        local n0 = #NOM_ScreenFx.extra
+        for _, fn in ipairs({ good1, broken, good2 }) do NOM_ScreenFx.extra[#NOM_ScreenFx.extra + 1] = fn end
+        local logs, real = {}, print
+        print = function(s) logs[#logs + 1] = tostring(s) end
+        local ok, err = pcall(function()
+            for _ = 1, 3 do assert(byTex(G.frameDraws(), R.TEXTURES.vignette), "a névoa sumiu com o erro") end
+        end)
+        print = real
+        assert(ok, err)
+        assert(before == 3 and after == 3, "os outros extras pararam: " .. before .. " " .. after)
+        assert(bad == 1, "o extra com erro foi chamado " .. bad .. " vezes")
+        assert(#NOM_ScreenFx.extra == n0 + 2, "o extra com erro ficou na lista")
+        local hits = 0
+        for _, l in ipairs(logs) do
+            if l:find("^%[NOM%]") and l:find("api surpresa", 1, true) then hits = hits + 1 end
+        end
+        assert(hits == 1, "log do erro " .. hits .. " vezes: " .. table.concat(logs, " | "))
+    end,
+
     -- review final da 0035: a névoa acaba no meio da tontura (debug, MP): a curva termina
     -- sozinha, sem corte seco, e acaba em DIZZY_MS
     dizzy_finishes_after_fog_end = function()

@@ -163,11 +163,22 @@ local function layers(el, now)
     if f and l.flash > 0 then el:drawTextureScaled(f, x, y, w, h, l.flash, 0.6, 0.02, 0.02) end
 end
 
--- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco).
+-- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco). Cada extra em
+-- pcall (o do Kahlua pega Throwable, pz-api-notes §2.1): o que dá erro sai da lista e vai pro
+-- log uma vez; o overlay e os outros seguem.
 local function draw(el)
     local now = getTimestampMs()
     layers(el, now)
-    for i = 1, #S.extra do S.extra[i](el, now) end
+    local i = 1
+    while i <= #S.extra do
+        local ok, err = pcall(S.extra[i], el, now)
+        if ok then
+            i = i + 1
+        else
+            table.remove(S.extra, i)
+            print("[NOM] tela: desenho extra com erro, desligado: " .. tostring(err))
+        end
+    end
 end
 
 local function updateStatic()
