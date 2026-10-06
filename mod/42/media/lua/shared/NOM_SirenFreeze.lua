@@ -31,10 +31,29 @@ function F.extend(durationMs)
     if F.active then untilMs = getTimestampMs() + durationMs + F.SAFETY_MS end
 end
 
+-- Useless que é do jogo: outfit "Useless" e modo Tutorial (o mesmo critério do unstick do
+-- NOM_VariantAI). A sirene não congela nem solta.
+local function gameOwns(z)
+    return getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z)
+end
+
 -- Solta quem este processo congelou. Carpideira parada pela regra dela fica parada.
+-- Depois, uma passada solta todo zumbi local useless: a posse chega com o useless do dono
+-- antigo (pz-api-notes §3.2) num zumbi que o lote daqui ainda não tinha pegado.
+-- Sem sirene ativa não faz nada: o "fog" (on) também chega com a névoa já aberta, e a
+-- passada soltaria o Estalador cego.
 function F.stop()
+    if not F.active then return end
     for z in pairs(F.frozen) do
         if not z:isDead() and not NOM_Carpideira.still[z] then z:setUseless(false) end
+    end
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z:isUseless() and not z:isDead() and not z:isRemoteZombie() and not NOM_Carpideira.still[z]
+            and not gameOwns(z) then
+            z:setUseless(false)
+        end
     end
     F.frozen = {}
     F.active = false
@@ -42,7 +61,7 @@ function F.stop()
 end
 
 local function hold(z)
-    if z:isDead() or z:isRemoteZombie() then return end
+    if z:isDead() or z:isRemoteZombie() or gameOwns(z) then return end
     if not F.frozen[z] then
         z:setUseless(true)
         z:setTarget(nil)

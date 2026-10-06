@@ -222,6 +222,8 @@ function W.new(opts)
     isClient = function() return opts.client == true end
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end -- -debug do processo
+    -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
+    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {
