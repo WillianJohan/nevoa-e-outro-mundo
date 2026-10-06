@@ -999,6 +999,31 @@ return {
         assert(O().revealStartedAt() == nil, "o sinal ficou depois do fim")
     end,
 
+    -- review final da 0035: a hora da tontura é a da última borda ao vivo e não some no fim da
+    -- névoa (a curva termina sozinha); a borda nova troca, carregar ou ir pro menu apaga.
+    -- revealStartedAt continua sendo o desta névoa
+    overlays_last_reveal_survives_fog_end = function()
+        local G = setup({ density = 1 })
+        assert(O().lastRevealAt() == nil)
+        NOM_FogState.set(true, 3)
+        assert(O().lastRevealAt() == nil, "borda pra quem entrou no meio")
+        NOM_FogState.set(false)
+        liveOpen()
+        local t0 = G.now
+        G.seconds(1)
+        NOM_FogState.set(false)
+        assert(O().lastRevealAt() == t0, "o fim da névoa apagou a hora da tontura")
+        assert(O().revealStartedAt() == nil and not O().revealing(), "o sinal da revelação ficou depois do fim")
+        NOM_FogState.set(true, 3)
+        assert(O().lastRevealAt() == t0, "a entrada no meio mexeu na hora")
+        NOM_FogState.set(false)
+        G.seconds(1)
+        liveOpen()
+        assert(O().lastRevealAt() == G.now and G.now > t0, "a borda nova não trocou")
+        G.fire("OnGameStart")
+        assert(O().lastRevealAt() == nil, "carregar não apagou")
+    end,
+
     -- teleporte no meio da revelação: o lugar novo sai sem atraso
     overlays_teleport_mid_reveal_no_delay = function()
         local G = setup({ density = 2 })

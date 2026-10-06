@@ -594,6 +594,22 @@ return {
         assert(byTex(G.draws, R.TEXTURES.vignette), "a névoa sumiu junto")
     end,
 
+    -- review final da 0035: a névoa acaba no meio da tontura (debug, MP): a curva termina
+    -- sozinha, sem corte seco, e acaba em DIZZY_MS
+    dizzy_finishes_after_fog_end = function()
+        local G = setup({ overlays = true })
+        liveOpen()
+        G.frame(math.ceil((R.DIZZY_RISE_MS + R.DIZZY_HOLD_MS) / 16))
+        local d = dark(G.frameDraws())
+        assert(d and alpha(d) > 0, "sem a tontura (teste não mede)")
+        local before = alpha(d)
+        NOM_FogState.set(false)
+        d = dark(G.frameDraws())
+        assert(d and math.abs(alpha(d) - before) < 0.05, "a tontura cortou seco no fim da névoa")
+        G.frame(math.ceil(R.DIZZY_MS / 16))
+        assert(dark(G.frameDraws()) == nil, "a tontura não acabou")
+    end,
+
     -- carregou o save com névoa ou entrou no MP no meio: o mundo já está virado, sem tontura
     dizzy_not_for_mid_fog_entry = function()
         local G = setup({ overlays = true })

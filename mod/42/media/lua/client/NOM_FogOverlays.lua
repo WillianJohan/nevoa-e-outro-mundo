@@ -114,7 +114,8 @@ local radius
 -- revealSince: a mesma hora até o fim da névoa (o sinal). pend[b] = { {x, y, z, sk, rv} }:
 -- squares esperando até b × BUCKET_MS; pendAt, a primeira fatia ainda não esvaziada.
 -- unrevealAt: o fim da névoa, durante a retirada. tickX/Y: a posição no tick anterior.
-local revealAt, revealSince, pend, pendAt, unrevealAt, tickX, tickY
+-- lastReveal: a última borda ao vivo, que o fim da névoa não apaga (a tontura).
+local revealAt, revealSince, pend, pendAt, unrevealAt, tickX, tickY, lastReveal
 local puff       -- a rajada vale nesta atualização (NOM_Flakes carregado, efeitos ligados)
 local revealFns = {}
 
@@ -128,6 +129,7 @@ local function forget()
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
     revealAt, revealSince, pend, pendAt, unrevealAt, tickX, tickY = nil, nil, {}, 0, nil, nil, nil
+    lastReveal = nil
     puff = false
 end
 forget()
@@ -186,9 +188,16 @@ local function endReveal()
 end
 
 -- getTimestampMs da borda ao vivo (a névoa abriu com a fuga correndo) desta névoa, ou nil
--- (entrou no meio, carregou o save com névoa, sem névoa). A tontura (Tarefa 3) liga aqui.
+-- (entrou no meio, carregou o save com névoa, sem névoa).
 function O.revealStartedAt()
     return revealSince
+end
+
+-- getTimestampMs da última borda ao vivo, mesmo depois do fim da névoa, ou nil desde o
+-- carregamento. A tontura (client/NOM_ScreenFx.lua) liga aqui: a névoa que acaba no meio dela
+-- não a corta seco, a curva termina sozinha.
+function O.lastRevealAt()
+    return lastReveal
 end
 
 -- fn(at) na borda ao vivo, com a hora (getTimestampMs).
@@ -684,7 +693,7 @@ NOM_FogState.onChange(function(on)
     if on then
         unrevealAt = nil
         if not NOM_FogState.rising then return end
-        revealAt, revealSince, tickX, tickY = now, now, nil, nil
+        revealAt, revealSince, lastReveal, tickX, tickY = now, now, now, nil, nil
         reseen()
         for _, fn in ipairs(revealFns) do fn(now) end
     else

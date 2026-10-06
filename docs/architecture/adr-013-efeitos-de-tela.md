@@ -101,9 +101,10 @@ Eco). Detalhe em [ADR-016](adr-016-dissolve-e-bloom.md).
 
 ## Emenda de 2026-10-06 — sprint 0035: canal da tontura
 
-Quando o Outro Mundo começa a se espalhar ao vivo (`NOM_FogOverlays.revealStartedAt()`), ~5 s de
+Quando o Outro Mundo começa a se espalhar ao vivo (`NOM_FogOverlays.lastRevealAt()`), ~5 s de
 tontura por jogador local, desligável em Opções > Mods ("Tontura na transição"; sem os efeitos
-de tela não há).
+de tela não há). A névoa que acaba no meio não corta a tontura: a curva termina sozinha (review
+final da 0035; até ali o sinal era o `revealStartedAt()`, que o fim da névoa apaga).
 
 - **Canal:** não sobra float livre. Os cinco que o Lua escreve (`blur`, `radius`, `desat`,
   `darkness`, `gradient`) estão em uso, e `VarInfo.z/w` o jogo nunca escreve

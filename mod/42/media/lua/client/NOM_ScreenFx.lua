@@ -54,7 +54,7 @@ local R = NOM_ScreenFxRules
 local textures = {}
 local lastMs
 local loggedOmen -- omenAt do presságio cuja estática já foi pro log (debug)
-local loggedDizzy -- revealStartedAt da tontura que já foi pro log (debug)
+local loggedDizzy -- lastRevealAt da tontura que já foi pro log (debug)
 
 -- getTexture devolve nil se não achar (ISSleepingUI.lua:14-15): a camada some.
 -- Guarda só o que achou.
@@ -98,12 +98,12 @@ function S.sampleSeen(now)
 end
 
 -- Tontura (sprint 0035, 0..1): ~5 s desde a borda ao vivo da revelação do Outro Mundo
--- (NOM_FogOverlays.revealStartedAt, nil pra quem entrou no meio). Segue a opção própria e a
--- intensidade dos efeitos, não o sandbox do Outro Mundo. Lido no quadro, só Lua: sem o
--- NOM_FogOverlays carregado, não há tontura. Quem desenha: as camadas abaixo, ou o shader pelo
--- canal (NOM_FogVignette).
+-- (NOM_FogOverlays.lastRevealAt, nil pra quem entrou no meio); a névoa que acaba antes não a
+-- corta. Segue a opção própria e a intensidade dos efeitos, não o sandbox do Outro Mundo. Lido
+-- no quadro, só Lua: sem o NOM_FogOverlays carregado, não há tontura. Quem desenha: as camadas
+-- abaixo, ou o shader pelo canal (NOM_FogVignette).
 function S.dizzy(now)
-    local at = NOM_FogOverlays and NOM_FogOverlays.revealStartedAt()
+    local at = NOM_FogOverlays and NOM_FogOverlays.lastRevealAt()
     if not at or not NOM_ScreenFxOptions.dizzy() then return 0 end
     local v = R.dizzyLevel(now - at, NOM_ScreenFxOptions.intensity())
     if v > 0 and getDebug() and loggedDizzy ~= at then
