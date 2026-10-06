@@ -7,6 +7,8 @@ NOM_DebugRules.KINDS = { estalador = true, corredor = true, semrosto = true, car
 -- spawn do debug (sprint 0020): no máximo 50 por pedido, a até 10 tiles de quem pede
 NOM_DebugRules.MAX_SPAWN = 50
 NOM_DebugRules.SPAWN_REACH = 10
+-- puxar zumbi (sprint 0033): o destino é o tile de quem pede (no máximo 2 tiles dele)
+NOM_DebugRules.PULL_REACH = 2
 local MAX_OUTFIT = 64
 
 -- Quantidade do spawn: inteiro entre 1 e MAX_SPAWN; não número (ou NaN) dá nil.
@@ -55,6 +57,15 @@ function NOM_DebugRules.parse(args)
             if type(args[k]) ~= "number" or args[k] ~= args[k] then return nil end
         end
         return { op = op, n = n, outfit = args.outfit, x = args.x, y = args.y, z = args.z }
+    elseif op == "pull" then
+        -- puxar o zumbi mais perto até o jogador (NOM.getZombie, sprint 0033). id é o ID de rede
+        -- (-1 no solo: o servidor acha o mais perto); x, y, z o tile de destino.
+        if type(args.id) ~= "number" or args.id ~= args.id then return nil end
+        for _, k in ipairs({ "x", "y", "z" }) do
+            local c = args[k]
+            if type(c) ~= "number" or c ~= c or c == math.huge or c == -math.huge then return nil end
+        end
+        return { op = op, id = args.id, x = math.floor(args.x), y = math.floor(args.y), z = math.floor(args.z) }
     elseif op == "spawnEco" or op == "status" then
         return { op = op }
     end

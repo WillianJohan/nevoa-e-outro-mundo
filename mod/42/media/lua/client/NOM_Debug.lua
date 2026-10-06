@@ -10,6 +10,7 @@
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto",
 --                                     "carpideira"; nil desfaz; só vale na névoa)
 --   NOM_Debug.status()                estado do mod, local e do servidor
+--   NOM_Debug.nearest(p)              zumbi vivo mais perto de p, no mesmo andar
 -- Atalhos curtos (NOM.fog, NOM.spawn, NOM.help...) em client/NOM_Console.lua e painel em
 -- client/NOM_DebugPanel.lua (sprint 0020); estes continuam valendo.
 -- Tudo vai pro servidor (server/NOM_DebugServer.lua), que confere e decide. No solo
@@ -56,6 +57,8 @@ local function nearest(p)
     return best
 end
 
+NOM_Debug.nearest = nearest -- NOM.getZombie (client/NOM_Console.lua)
+
 function NOM_Debug.variant(kind)
     local p = getSpecificPlayer(0)
     local z = p and nearest(p)
@@ -101,11 +104,29 @@ function NOM_Debug.status()
     send({ op = "status" })
 end
 
+-- Dedicado: o servidor avisa todos (op pull); só o dono do zumbi (não remoto) move a
+-- cópia, e o servidor aceita a posição do dono (mesmo caminho do semRostoMove,
+-- client/NOM_FogClient.lua, sem a conferência de vista: o destino é o jogador).
+local function moveIfOwner(args)
+    if args.id == -1 then return end
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z:getOnlineID() == args.id then
+            if not z:isRemoteZombie() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
+            return
+        end
+    end
+end
+
 -- MP: resposta do servidor no console do cliente e variante forçada pra todos.
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "debugReply" then
         print(args.msg)
+    elseif command == "debugMove" and type(args.id) == "number" and type(args.x) == "number"
+        and type(args.y) == "number" and type(args.z) == "number" then
+        moveIfOwner(args)
     elseif command == "debugVariant" and type(args.id) == "number" then
         NOM_VariantRules.forced[args.id] = args.kind
     elseif command == "debugForced" and type(args.list) == "table" then -- entrou depois
