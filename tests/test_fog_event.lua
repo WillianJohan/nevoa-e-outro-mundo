@@ -226,6 +226,19 @@ return {
         G.seconds(46)
         assert(NOM_World.fog and NOM_FogState.period == 5)
     end,
+    -- review final da 0033 (I3): o next do intervalo antigo pode estar dias à frente; ele só
+    -- vale se cair no dia, senão o dia sorteia e a garantia do 3º dia sem névoa vale
+    fog_event_old_save_far_next_keeps_guarantee = function()
+        local md = { NevoaEOutroMundo = { fog = { night = 4, next = 100 + 5 * 24, seed = 3 } } }
+        local G = setup({ globalMD = md, hours = 100, sandbox = { FogDailyChance = 0, FogMaxDailyChance = 0 } })
+        assert(md.NevoaEOutroMundo.fog.next ~= 100 + 5 * 24, "o next de 5 dias à frente segurou o dia")
+        for h = 101, 6 * 24 do G.at(h) end -- dias 4 e 5 sem névoa (chance 0)
+        assert(G.played("NOM_Siren") == 0)
+        local n = fogMD(G).next
+        assert(n ~= nil and NOM_FogEventRules.dayOf(n) == 6, "a garantia não agendou o 3º dia: " .. tostring(n))
+        G.at(n)
+        assert(G.played("NOM_Siren") == 1, "sem sirene no 3º dia")
+    end,
     -- cliente que entra no meio do evento pergunta e recebe o estado
     fog_event_mp_join_mid_event_gets_state = function()
         local G = setup({ server = true, player = false })
@@ -622,10 +635,10 @@ return {
         setup({ globalMD = G.globalMD, hours = 900 })
         assert(fogMD(G).bornAt == 100, "recarga trocou o bornAt")
         -- save veterano (já tem agenda, sem bornAt): nasce 30 dias atrás, longe da carência
-        local old = { NevoaEOutroMundo = { fog = { night = 4, next = 5000, seed = 3 } } }
+        local old = { NevoaEOutroMundo = { fog = { night = 4, next = 4810, seed = 3 } } }
         setup({ globalMD = old, hours = 4800 })
         assert(old.NevoaEOutroMundo.fog.bornAt == 4800 - 30 * 24, "veterano: " .. tostring(old.NevoaEOutroMundo.fog.bornAt))
-        assert(old.NevoaEOutroMundo.fog.next == 5000, "save antigo reagendado")
+        assert(old.NevoaEOutroMundo.fog.next == 4810, "save antigo reagendado")
         local only = { NevoaEOutroMundo = { fog = { night = 2, seed = 3 } } }
         setup({ globalMD = only, hours = 800 })
         assert(only.NevoaEOutroMundo.fog.bornAt == 800 - 30 * 24, "veterano só com night")

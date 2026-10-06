@@ -90,8 +90,9 @@ local function afterGap(state, t, cfg)
 end
 
 -- Planeja o dia D uma vez: conta os dias sem névoa, sorteia se tem névoa (a garantia
--- força) e se vai querer segunda. Sirene pendente (save antigo, ou empurrada da
--- véspera pela folga) vale pelo dia: sem sorteio novo.
+-- força) e se vai querer segunda. Sirene pendente que cai até o fim do dia (empurrada da
+-- véspera pela folga, vencida, ou de save antigo) vale pelo dia: sem sorteio novo. A de
+-- save antigo marcada pra depois do dia sai: o dia sorteia, e a garantia conta.
 function R.planDay(state, D, now, cfg)
     if state.day ~= nil then
         local missed = math.max(0, D - state.day - 1)
@@ -104,7 +105,8 @@ function R.planDay(state, D, now, cfg)
         state.daysWithout = state.daysWithout or 0
     end
     state.day, state.hadFog, state.wantSecond = D, false, false
-    if state.next ~= nil then return end
+    if state.next ~= nil and state.next < (D + 1) * 24 then return end
+    state.next = nil
     local forced = state.daysWithout >= (cfg.maxDaysWithout or 2)
     if not forced and R.frac(state.seed, D, R.DAY_SALT) * 100 >= R.dayChance(cfg, R.days(state, now)) then return end
     state.next = afterGap(state, R.firstStart(state.seed, D, now), cfg)

@@ -96,11 +96,20 @@ return {
         R.update(s, 264, cfg({ dailyChance = 0, maxDailyChance = 0 }), seq(0))
         assert(s.daysWithout == 0)
     end,
-    -- save antigo: a sirene já agendada vale pelo dia, sem sorteio novo
+    -- save antigo: a sirene já agendada que cai no dia vale pelo dia, sem sorteio novo
     fog_event_rules_pending_counts_for_day = function()
-        local s = { seed = SEED, bornAt = 0, next = 300 }
+        local s = { seed = SEED, bornAt = 0, next = 255 }
         R.update(s, 240, cfg(), seq(0))
-        assert(s.next == 300 and s.day == 10)
+        assert(s.next == 255 and s.day == 10)
+    end,
+    -- review final da 0033 (I3): a marcada pra depois do dia sai e o dia sorteia
+    fog_event_rules_pending_after_day_is_dropped = function()
+        local s = { seed = SEED, bornAt = 0, next = 300 }
+        R.update(s, 240, cfg({ dailyChance = 0, maxDailyChance = 0 }), seq(0))
+        assert(s.next == nil and s.day == 10, "next: " .. tostring(s.next))
+        local t = { seed = SEED, bornAt = 0, next = 300 }
+        R.update(t, 240, cfg({ dailyChance = 100, maxDailyChance = 100 }), seq(0))
+        assert(t.next ~= nil and R.dayOf(t.next) == 10, "o dia não sorteou: " .. tostring(t.next))
     end,
     -- duração pelo tipo: branca 3–5, vermelha 4–6
     fog_event_rules_duration_by_kind = function()
