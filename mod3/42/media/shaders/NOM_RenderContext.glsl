@@ -35,6 +35,9 @@ const int NOM_FLOW_INDOOR = 4;
 const int NOM_FLOW_WALL_W = 8;
 const int NOM_FLOW_WALL_N = 16;
 const int NOM_FLOW_LOW = 64;          // carro: obstáculo baixo, o ar passa freado
+const int NOM_FLOW_FENCE_W = 32;      // cerca baixa na borda oeste / norte da célula (sprint 0032)
+const int NOM_FLOW_FENCE_N = 128;
+const float NOM_FLOW_LOW_H = 0.55;    // altura do carro em andares (FlowGrid.H_LOW): a névoa passa por cima
 
 out vec4 fragColor;
 
@@ -112,5 +115,17 @@ float nomFlowTree(vec2 xy) {
     float t10 = (nomFlowFlags(b + vec2(1, 0)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
     float t01 = (nomFlowFlags(b + vec2(0, 1)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
     float t11 = (nomFlowFlags(b + vec2(1, 1)) & NOM_FLOW_TREE) != 0 ? 1.0 : 0.0;
+    return mix(mix(t00, t10, f.x), mix(t01, t11, f.x), f.y);
+}
+
+// Quanto de carro há em volta de xy (0..1, interpolado como nomFlowTree).
+float nomFlowLow(vec2 xy) {
+    vec2 g = xy - 0.5;
+    vec2 f = fract(g);
+    vec2 b = floor(g) + 0.5;
+    float t00 = (nomFlowFlags(b) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
+    float t10 = (nomFlowFlags(b + vec2(1, 0)) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
+    float t01 = (nomFlowFlags(b + vec2(0, 1)) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
+    float t11 = (nomFlowFlags(b + vec2(1, 1)) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
     return mix(mix(t00, t10, f.x), mix(t01, t11, f.x), f.y);
 }

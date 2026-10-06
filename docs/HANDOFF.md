@@ -4,7 +4,8 @@ Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra que
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução) e 0031 (névoa que contorna) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna) e 0032 (névoa com altura) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
 - 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 30 do núcleo da névoa fluida em Java (15 da 0024, 15 da viajante, do vento e do redemoinho) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
@@ -73,6 +74,18 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: névoa com altura (sprint 0032)
+
+Etapa 2 da [pesquisa](architecture/pesquisa-nevoa-volumetrica.md), enxuta:
+- a densidade virou profundidade (1,0 = 0,8 andar);
+- o carro tem 0,55 andar de altura e a cerca baixa (`HoppableW/N`, evidência no [pz-api-notes §20](architecture/pz-api-notes.md)) tem 0,4. Parede, prédio e cerca alta continuam fechados;
+- numa face com obstáculo, só passa a parte da névoa acima dele: a rasa para, a funda empilha na frente e transborda;
+- na face com obstáculo, a névoa empilhada escorre pro outro lado por gravidade. Em campo aberto não, pra não apagar os bancos nem o vácuo.
+
+Roteiro em [sprints/sprint-0032-nevoa-com-altura/README.md](sprints/sprint-0032-nevoa-com-altura/README.md).
+
+**Próxima (0033):** quadrado censurado com chiado de TV sobre a cara do Sem Rosto, passe do mod3 (ideia do Johan).
+
 ## Em teste: névoa que contorna (sprint 0031)
 
 O Johan viu a névoa como fumaça passando entre os objetos, sem desviar nem encher o outro lado. A [pesquisa](architecture/pesquisa-nevoa-volumetrica.md) achou seis causas no nosso código. Esta sprint é a etapa 1 dela:
@@ -84,7 +97,6 @@ O Johan viu a névoa como fumaça passando entre os objetos, sem desviar nem enc
 
 Roteiro em [sprints/sprint-0031-nevoa-que-contorna/README.md](sprints/sprint-0031-nevoa-que-contorna/README.md).
 
-**Próxima:** etapa 2 da pesquisa (camada rasa com altura de obstáculo, 2,5D) ou a 0032 (quadrado censurado com chiado de TV sobre a cara do Sem Rosto, passe do mod3), a decidir com o Johan depois do A/B do vácuo.
 
 ## Em teste: névoa em alta resolução (sprint 0030)
 

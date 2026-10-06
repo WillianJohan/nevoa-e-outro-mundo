@@ -1371,6 +1371,18 @@ Bytecode do B42.21 (`javap -c` no `projectzomboid.jar`). Tudo lido na thread pri
 | Por que a vanilla deixa faixa embaixo | EXISTS | linhas de `minY` a `maxY` pela tela (`IsoCamera.getOffscreenHeight`), com `maxYOffset = -5` no `<clinit>`; no jogo, `setMaxYOffset(12/25)` não tirou a faixa com zoom afastado; desligar a vanilla tirou (prints da 0028) |
 | UNKNOWN | — | o raio real dos sons de tiro e explosão (o mod usa raio ≥ 20 como "alto"); se o facho da lanterna na névoa bate com a luz do jogo (roteiro da 0026) |
 
+## 20. Cerca baixa vs parede (mod3, sprint 0032)
+
+Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para na parede e na cerca alta.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Flag do quadrado | EXISTS | `IsoGridSquare.has(IsoFlagType)` (público, bytecode) |
+| Cerca baixa na borda N/W do quadrado | EXISTS | `ISClimbOverFence.lua:48`: `square:has(IsoFlagType.HoppableN)` = cerca na borda norte (o personagem com `y < square.y` está ao norte); sem ela, a borda oeste (`HoppableW`) |
+| "Pulável" é só a baixa | EXISTS | `IsoObject.getHoppableDirection()` testa só `HoppableN`/`HoppableW`; a alta é `isTallHoppable()` (`TallHoppableN`/`TallHoppableW`) |
+| `isHoppableTo` não serve | EXISTS | `IsoGridSquare.isHoppableTo` → `isHoppable(edge)` → `getHoppableOrWindowFrame` → `IsoObject.isHoppableOrWindowFrame`: conta moldura de janela, que é buraco na parede |
+| Cerca baixa bloqueia o `isBlockedTo` | UNKNOWN | provável (o personagem tem que pular); o `Flow` não depende disso: cerca baixa vira face aberta com altura de qualquer jeito |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

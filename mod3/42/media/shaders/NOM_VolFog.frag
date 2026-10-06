@@ -15,6 +15,7 @@ const float MORPH = 0.06;        // forma mudando devagar (unidades de ruído po
 
 vec3 gP;        // ponto visível do pixel (mundo relativo)
 float gTree;    // árvore em volta de gP (0..1)
+float gLow;     // carro em volta de gP (0..1): o raio que passa por cima dele sai de perto de gP
 
 float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
@@ -100,6 +101,7 @@ float pileUp(vec2 xy, vec2 vel) {
 }
 
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
+// Em cima do carro, a névoa que passa por cima (a densidade de lá) começa no teto dele (sprint 0032).
 // `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
 float rollTop(vec2 xy, float layer, out vec2 q) {
     float fd = nomFlowDensity(xy);
@@ -108,7 +110,8 @@ float rollTop(vec2 xy, float layer, out vec2 q) {
     vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
     float n = fbm2(vec3(r, morphZ(r, 0.0)));
     float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
-    return layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
+    float onCar = NOM_FLOW_LOW_H * gLow * smoothstep(0.0, 0.2, fd);
+    return onCar + layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
 }
 
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
@@ -160,6 +163,7 @@ vec4 fogLook(vec3 P, float amount) {
     if (P.z >= top) return vec4(0.0);
     gP = P;
     gTree = nomFlowTree(P.xy);
+    gLow = nomFlowLow(P.xy);
 
     int steps = uParams[1].z < 0.5 ? 8 : (uParams[1].z < 1.5 ? 12 : 16);
     float span = top - max(P.z, ground - 0.25);
@@ -221,13 +225,14 @@ void main() {
         vec2 uv = nomFlowUV(P.xy);
         if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { fragColor = vec4(0.0, 0.0, 0.35, 1.0); return; } // fora da grade
     }
-    if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, carro laranja, parede/porta fechada branca
+    if (dbg == 5) { // obstáculos: sólido vermelho, árvore verde, interior azul, carro laranja, parede/porta fechada branca, cerca baixa amarela
         int f = nomFlowFlags(P.xy);
         vec2 e = fract(P.xy);
         vec3 c = vec3((f & NOM_FLOW_SOLID) != 0 ? 0.8 : 0.0, (f & NOM_FLOW_TREE) != 0 ? 0.8 : 0.0,
                       (f & NOM_FLOW_INDOOR) != 0 ? 0.6 : 0.0);
         if ((f & NOM_FLOW_LOW) != 0) c = vec3(0.9, 0.5, 0.0);   // carro, laranja
         if (((f & NOM_FLOW_WALL_W) != 0 && e.x < 0.12) || ((f & NOM_FLOW_WALL_N) != 0 && e.y < 0.12)) c = vec3(1.0);
+        if (((f & NOM_FLOW_FENCE_W) != 0 && e.x < 0.12) || ((f & NOM_FLOW_FENCE_N) != 0 && e.y < 0.12)) c = vec3(1.0, 0.9, 0.1);
         fragColor = vec4(c * 0.7, 0.7);
         return;
     }
@@ -245,6 +250,7 @@ void main() {
     if (P.z >= top) { fragColor = vec4(0.0); return; }
     gP = P;
     gTree = nomFlowTree(P.xy);
+    gLow = nomFlowLow(P.xy);
 
     // do ponto visível até sair pelo topo da camada, rumo à câmera
     float span = top - max(P.z, ground - 0.25);
