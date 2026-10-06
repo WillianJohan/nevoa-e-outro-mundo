@@ -102,6 +102,15 @@ local function farthest(G, x, y)
     return m
 end
 
+-- 0 squares errados: no raio, todo objeto tem exatamente o que a regra pede agora; fora dele,
+-- nada do mod. Devolve quantos a regra veste
+local function exact(G)
+    local n = laidOut(G, O().radius())
+    local f = farthest(G, math.floor(G.p.x), math.floor(G.p.y))
+    assert(f <= O().radius(), "anexo do mod a " .. f .. " tiles (raio " .. O().radius() .. ")")
+    return n
+end
+
 -- A névoa abre ao vivo (sprint 0035): a sirene sobe a névoa visual, a borda chega com a subida
 -- ainda ligada e ela desce depois (solo: NOM_FogEvent.begin chama setFog antes do rise(false);
 -- MP: o comando fog faz set antes do dropRising, client/NOM_FogClient.lua).
@@ -1419,5 +1428,74 @@ return {
         G.seconds(4)
         getSprite = gs
         assert(calls == #NOM_OwnSpriteList.SPRITES, "getSprite " .. calls .. " vezes")
+    end,
+
+    -- JANELA AO VIVO (review final da 0035) ----------------------------------------------------
+    -- O que muda no meio da revelação ao vivo (atraso e rajada valendo) termina igual ao jogo
+    -- sem a transição: 0 squares errados.
+
+    -- a cor muda aos 2 s da janela (debug setRedFog): só o desenho vermelho fica
+    overlays_live_color_change_mid_window = function()
+        local G = setup({ density = 1 })
+        D().density = function() return 1 end
+        walls(G, 90, 90, 20)
+        liveOpen(3, false)
+        G.seconds(2)
+        assert(O().revealing() and G.ours() > 0, "a janela não estava no meio (teste não mede)")
+        NOM_FogState.set(true, 3, true)
+        G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 4)
+        assert(not O().revealing(), "a janela não fechou")
+        assert(exact(G) > 300, "não redesenhou na vermelha")
+    end,
+
+    -- a névoa acaba aos 2,5 s da janela: a janela fecha, o sinal sai, o que esperava não é
+    -- vestido e tudo do mod sai
+    overlays_live_fog_end_mid_window = function()
+        local G = setup({ density = 2 })
+        walls(G, 90, 90, 20)
+        liveOpen()
+        G.seconds(2.5)
+        assert(O().revealing() and G.ours() > 0, "a janela não estava no meio (teste não mede)")
+        NOM_FogState.set(false)
+        assert(not O().revealing(), "a janela ficou aberta sem névoa")
+        assert(O().revealStartedAt() == nil, "o sinal ficou depois do fim")
+        G.seconds(O().UNREVEAL_MS / 1000 + 2)
+        local fl, wl = O().count()
+        assert(fl + wl == 0 and G.ours() == 0, "sobrou: " .. G.ours())
+        G.seconds(O().REVEAL_MS / 1000)
+        assert(G.ours() == 0, "o pendente foi vestido sem névoa: " .. G.ours())
+    end,
+
+    -- a névoa volta (ao vivo) no meio da retirada: o que ainda estava lá fica, o resto volta
+    overlays_live_fog_back_mid_unreveal = function()
+        local G = setup({ density = 2 })
+        walls(G, 90, 90, 20)
+        liveOpen()
+        G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 1)
+        local before = G.ours()
+        NOM_FogState.set(false)
+        G.seconds(O().UNREVEAL_MS / 2000)
+        assert(G.ours() > 0 and G.ours() < before, "não estava no meio da retirada (teste não mede)")
+        liveOpen()
+        assert(O().revealing(), "a volta não abriu a janela")
+        G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 4)
+        assert(not O().revealing(), "a janela não fechou")
+        assert(exact(G) > 500, "não voltou")
+    end,
+
+    -- a densidade vai a 0 no meio da janela e depois volta: tudo sai e volta como pede a regra
+    overlays_live_density_zero_and_back = function()
+        local G = setup({ density = 2 })
+        walls(G, 90, 90, 20)
+        liveOpen()
+        G.seconds(2)
+        assert(O().revealing() and G.ours() > 0, "a janela não estava no meio (teste não mede)")
+        NOM_ScreenFxOptions.overlayDensity = function() return 0 end
+        G.seconds(O().DENSITY_MS / 1000 + 3)
+        assert(G.ours() == 0, "densidade 0 e sobrou: " .. G.ours())
+        NOM_ScreenFxOptions.overlayDensity = function() return 2 end
+        G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 4)
+        assert(not O().revealing(), "a janela não fechou")
+        assert(exact(G) > 500, "não voltou")
     end,
 }
