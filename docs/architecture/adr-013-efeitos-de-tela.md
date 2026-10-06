@@ -98,3 +98,25 @@ O `screen.frag` do mod2 ganha bloom de uma passada. A intensidade do jogador (Op
 tomado também fora da névoa, sem nada da névoa nele, e solta pro forrageamento como antes. O
 overlay ganha uma lista `NOM_ScreenFx.extra` de desenhos por quadro com ou sem névoa (as brasas do
 Eco). Detalhe em [ADR-016](adr-016-dissolve-e-bloom.md).
+
+## Emenda de 2026-10-06 — sprint 0035: canal da tontura
+
+Quando o Outro Mundo começa a se espalhar ao vivo (`NOM_FogOverlays.revealStartedAt()`), ~5 s de
+tontura por jogador local, desligável em Opções > Mods ("Tontura na transição"; sem os efeitos
+de tela não há).
+
+- **Canal:** não sobra float livre. Os cinco que o Lua escreve (`blur`, `radius`, `desat`,
+  `darkness`, `gradient`) estão em uso, e `VarInfo.z/w` o jogo nunca escreve
+  ([pz-api-notes §15.4](pz-api-notes.md#154-shader-de-tela-e-canal)). A tontura vai na **parte
+  inteira do `darkness`** (`VarInfo.y`): `pulso + 4·round(tontura·256)`, com o pulso do grito
+  preso em 0..2 no resto. O shader decodifica com `floor(v/4)`; o pulso continua igual.
+  Constantes `DIZZY_BASE`/`DIZZY_STEPS` no Lua e `NOM_DIZZY_*` no `screen.frag`, conferidas em teste.
+- **Por que o `darkness`:** o jogo grava o valor sem prender (`SearchModeFloat.setAll`) e só o
+  `WeatherShader` o lê; o pulso é curto e cabe folgado abaixo de 4. Codificar no marcador do
+  gradiente mexeria na conferência de "o canal é nosso".
+- **Com o shader:** a cena ondula, desdobra numa imagem dupla leve e turva. Não usa o `DrunkFactor`
+  (a bebedeira é estado de jogo). O canal é tomado só pela tontura quando nada mais o pede
+  (sandbox `FogVignette` desligado, sem bloom), como o bloom, e solta zerado.
+- **Sem o shader:** o overlay soma um pulso na vinheta e uma camada preta leve (+1 desenho).
+- **Custo:** zero Java a mais pra decidir (o sinal e a opção são Lua); +1 desenho por quadro sem
+  o shader, durante a tontura.

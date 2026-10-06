@@ -112,8 +112,16 @@ Saída: `spike-sprite-proprio.md` nesta pasta, com o caminho recomendado (tile p
 - **Opção:** desligável em Opções > Mods (`NOM_ScreenFxOptions`), ligada por padrão. Texto PTBR + EN.
 - Curva pura (`NOM_ScreenFxRules.dizzy(t)`), testada.
 
-- [ ] Testes que falham (curva; liga na revelação; não liga pra quem entra no meio; opção desligada = nada).
-- [ ] Implementar, `./run-tests.sh` verde, commit.
+- [x] Testes que falham (curva; liga na revelação; não liga pra quem entra no meio; opção desligada = nada).
+- [x] Implementar, `./run-tests.sh` verde, commit.
+
+**Feito (2026-10-06).** O que foi decidido no caminho:
+- **Sinal:** `NOM_FogOverlays.revealStartedAt()`, lido no quadro pelo `NOM_ScreenFx.dizzy(now)` (só Lua, sem ida ao Java). Quem entra no meio não tem o sinal e não tem tontura. Não usa o `onReveal`: a hora basta e o `NOM_ScreenFx` não precisa carregar o `NOM_FogOverlays` (sem ele, sem tontura).
+- **Curva:** `NOM_ScreenFxRules.dizzy(t)`, sobe em 0,6 s (`DIZZY_RISE_MS`, smoothstep), segura 1,4 s (`DIZZY_HOLD_MS`) e desce até 5 s (`DIZZY_MS`). `R.dizzyLevel(t, i)` multiplica pela intensidade dos efeitos presa em 1: o slider reduz a tontura, mas o 2 não dobra (tontura incomoda).
+- **Opção:** "Tontura na transição" (`Dizzy`, ligada), sub-opção dos efeitos de tela: com `ScreenFx` desligado ou intensidade 0, nada. Não depende do sandbox `FogOverlays` nem do `FogVignette` (decisão: a tontura segue a própria opção).
+- **Sem shader:** a vinheta soma um pulso (`DIZZY_VIGNETTE` = 0,35, ciclo de 1,1 s) e uma camada preta (`NOM_White` tingida, `DIZZY_DARK` = 0,18) escurece a tela. +1 desenho por quadro; pior quadro 12 idas ao Java, o teto da névoa.
+- **Com shader:** não havia canal livre (os 5 floats que o Lua alcança estão em uso; `VarInfo.z/w` o jogo nunca escreve). A tontura vai na **parte inteira do `darkness` (`VarInfo.y`)**: `pulso (0..2) + 4·round(tontura·256)`; o shader tira com `floor(v/4)`. Ninguém além do `WeatherShader` lê esse float, e o jogo não o prende (pz-api-notes §15.4). A cena ondula (ondas largas e um balanço lentos), desdobra numa imagem dupla leve (35%, deslocada ~1% da tela) e turva (`nomSoft` 0,6). Não passa pelo `DrunkFactor`. O canal é tomado só pela tontura também com o sandbox `FogVignette` desligado, como o bloom, e solta zerado.
+- **Pra ver no jogo:** se 5 s é longo; se a ondulação "pula" (o `timer` do shader é inteiro, ~15 passos/s com o FPS travado em 60 ou mais: a fase é lenta, ~2 px por passo); se a imagem dupla e o escuro sem shader incomodam demais.
 
 ---
 
@@ -138,6 +146,15 @@ Segue o caminho do spike.
 Hoje (0034) o raio é o da tela, de 15 a 30 tiles. A spec pede todos os tiles carregados.
 - **Medir primeiro**, no mundo falso: chamadas por tick e anexos vivos com raio 30, 40 e o limite que a margem do save permite (o corte duro a 38 tiles e o chunk sai do mapa a ≥48: ver pz-api-notes §16.6).
 - A margem do save manda: se cobrir mais longe exigir passar do corte duro, NÃO fazer. Registrar a conta e a decisão.
+
+---
+
+### Tarefa 5b: todos os comandos de debug no `NOM.panel()`
+
+Pedido do Johan (2026-10-06): "não esquece de adicionar todos os comandos de debug no NOM.panel()".
+- Faltam no painel: `setFog`, `setFog(true)`, `setRedFog`, `setRedFog(true)`, `setEndFog`, `setBlackFog` (só avisa), `getZombie`, `turnZombie(0)` (desfaz), `godMode`, `wind`, `status`. Os comandos que a 0035 criar também entram.
+- Teste novo: todo comando do `NOM.HELP` (menos `panel` e `help`) tem botão no `P.ROWS`. Comando novo sem botão deixa o teste vermelho.
+- Textos dos botões por chave PTBR + EN.
 
 ---
 

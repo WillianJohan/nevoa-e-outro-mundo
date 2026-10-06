@@ -130,6 +130,24 @@ return {
         assert(main:find("nomBloom(", 1, true) and main:find("NOM_BLOOM_SCALE", 1, true), "main sem o bloom do marcador")
     end,
 
+    -- sprint 0035: a tontura vem na parte inteira do VarInfo.y (darkness do SearchMode) e o
+    -- pulso do grito no resto; mesmas constantes do Lua. A bebedeira do jogador (DrunkFactor) é
+    -- estado de jogo: a tontura não passa por ela
+    shader_dizzy_channel = function()
+        local src = assert(read(SHADER))
+        local b = src:match("const float NOM_DIZZY_BASE = ([%d%.]+);")
+        local s = src:match("const float NOM_DIZZY_STEPS = ([%d%.]+);")
+        assert(b and tonumber(b) == NOM_ScreenFxRules.DIZZY_BASE, "NOM_DIZZY_BASE ~= NOM_ScreenFxRules.DIZZY_BASE")
+        assert(s and tonumber(s) == NOM_ScreenFxRules.DIZZY_STEPS, "NOM_DIZZY_STEPS ~= NOM_ScreenFxRules.DIZZY_STEPS")
+        local main = assert(src:match("void main%(%)%s*(%b{})"))
+        assert(main:find("floor(dark / NOM_DIZZY_BASE)", 1, true), "não decodifica a parte inteira do darkness")
+        assert(not main:find("clamp(VarInfo.y", 1, true), "o pulso ainda lê o darkness inteiro")
+        assert(main:find("* dizzy", 1, true), "a tontura não mexe na imagem")
+        for line in main:gmatch("[^\n]+") do
+            if line:find("dizzy", 1, true) then assert(not line:find("DrunkFactor", 1, true), "tontura pela bebedeira: " .. line) end
+        end
+    end,
+
     shader_modinfo = function()
         local info = assert(read("mod2/42/mod.info"), "falta mod2/42/mod.info")
         assert(info:find("\nid=NevoaEOutroMundo_Shader\n", 1, true))

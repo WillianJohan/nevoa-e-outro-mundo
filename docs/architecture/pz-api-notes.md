@@ -1123,6 +1123,22 @@ Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
   `\` e separa por vírgula.
 - **UNKNOWN:** o vencedor quando dois mods trazem `screen.frag` (ordem do `activeFileMap`); o
   shader compilando no driver do Johan (roteiro).
+- **Tontura no `darkness` (sprint 0035, ADR-013 emenda).** Bytecode do B42.21 instalado:
+  - `SearchModeFloat.setAll(F)` só chama `setExterior`/`setTargetExterior`/`setInterior`/
+    `setTargetInterior`, sem prender em `min`/`max` (os campos existem e não são lidos ali);
+    `PlayerSearchMode.getShaderDarkness` 0–24 devolve `getExterior`/`getInterior` pelo
+    `isPlayerExterior`; `WeatherShader.startMainThread` 343–354 grava em `vars[19]`, e o
+    `startRenderThread` 385–417 manda `VarInfo = (vars[18], vars[19], vars[20], vars[21])` por
+    `glUniform4f`. Um valor como `4·256 + 2` chega inteiro ao shader.
+  - Quem mais lê o `darkness`: no jar, só `SearchMode`, `PlayerSearchMode`, `WeatherShader` e
+    `RenderSettings$PlayerRenderSettings` citam `getDarkness`/`getShaderDarkness`, e o último só
+    pega o `SearchMode` e zera `smAlpha`/`smRadius` (`updateRenderSettings` 0–11). No Lua
+    vanilla: `ISSearchManager.lua:1081` (escreve o alvo, fora do nosso override) e o painel de
+    debug `DebugUIs/DebugMenu/General/ISSearchMode.lua:42` (mostra).
+  - `timer` é inteiro: `startRenderThread` 163–176 manda `timerVal / 2` (`idiv`, depois `i2f`);
+    `timerVal` anda +1 a cada 2 quadros com `PerformanceSettings.getLockFPS() >= 60` (188–229) ou
+    +2 por quadro abaixo disso (232–239). Animação pelo `timer` anda em degraus (~15 por segundo a
+    60 FPS). `timerWrap` = `1 − 2·timerVal/2³¹` (242–255): quase parado.
 
 ## 16. Outro Mundo sangrento (sprint 0015)
 

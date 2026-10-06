@@ -112,6 +112,79 @@ return {
         assert(R.channel(s, 0, 0).blur == 0)
     end,
 
+    -- sprint 0035: tontura de ~5 s na revelação do Outro Mundo. Sobe rápido (~0,6 s), segura e
+    -- desce até DIZZY_MS, sem degrau
+    screenfx_rules_dizzy_curve = function()
+        assert(R.DIZZY_MS >= 4500 and R.DIZZY_MS <= 5500, "~5 s: " .. R.DIZZY_MS)
+        assert(R.DIZZY_RISE_MS >= 400 and R.DIZZY_RISE_MS <= 800, "sobe em ~0,6 s")
+        assert(R.DIZZY_RISE_MS + R.DIZZY_HOLD_MS < R.DIZZY_MS, "não sobra descida")
+        assert(R.dizzy(nil) == 0 and R.dizzy(-10) == 0 and R.dizzy(0) == 0)
+        local half = R.dizzy(R.DIZZY_RISE_MS / 2)
+        assert(half > 0.2 and half < 0.8, "subida: " .. half)
+        assert(R.dizzy(R.DIZZY_RISE_MS) == 1 and R.dizzy(R.DIZZY_RISE_MS + R.DIZZY_HOLD_MS) == 1, "não segura")
+        assert(R.dizzy(R.DIZZY_MS) == 0 and R.dizzy(R.DIZZY_MS + 60000) == 0, "não acaba")
+        local prev, peak = 0, false
+        for t = 0, R.DIZZY_MS, 25 do
+            local v = R.dizzy(t)
+            assert(v >= 0 and v <= 1)
+            assert(math.abs(v - prev) <= 0.1, "degrau em " .. t .. " ms: " .. prev .. " → " .. v)
+            if v == 1 then peak = true end
+            if peak and t > R.DIZZY_RISE_MS + R.DIZZY_HOLD_MS then assert(v <= prev, "subiu na descida em " .. t) end
+            prev = v
+        end
+        -- a intensidade dos efeitos reduz e nunca aumenta (tontura incomoda)
+        local t = R.DIZZY_RISE_MS
+        assert(R.dizzyLevel(t, 1) == 1 and R.dizzyLevel(t, 2) == 1, "intensidade 2 aumentou")
+        assert(R.dizzyLevel(t, 0.5) == 0.5 and R.dizzyLevel(t, 0) == 0 and R.dizzyLevel(nil, 1) == 0)
+    end,
+
+    -- sem o shader: a vinheta pulsa e uma camada preta escurece um pouco
+    screenfx_rules_dizzy_layers = function()
+        local s = R.new()
+        local none = R.layers(s, 0, 1, 0)
+        assert(not R.visible(none) and none.dark == 0)
+        assert(R.layers(s, 0, 1).dark == 0, "sem tontura escurece")
+        local lo, hi = 1, 0
+        for t = 0, R.DIZZY_PULSE_MS, R.DIZZY_PULSE_MS / 20 do
+            local l = R.layers(s, t, 1, 1)
+            assert(R.visible(l) and l.dark > 0 and l.dark <= 0.3, "escuro: " .. l.dark)
+            lo, hi = math.min(lo, l.vignette), math.max(hi, l.vignette)
+        end
+        assert(hi - lo > 0.15, "a vinheta não pulsa: " .. lo .. " " .. hi)
+        assert(R.DIZZY_PULSE_MS >= 600 and R.DIZZY_PULSE_MS <= 2000)
+        local l = R.layers(s, 0, 1, 0.5)
+        assert(math.abs(l.dark - 0.5 * R.layers(s, 0, 1, 1).dark) < 1e-9, "não segue a curva")
+        -- na névoa a pulsação soma na vinheta da névoa, sem passar de 1
+        local f = fogged(true)
+        assert(R.layers(f, 0, 2, 1).vignette <= 1)
+        local mx = 0
+        for t = 0, R.DIZZY_PULSE_MS, R.DIZZY_PULSE_MS / 20 do mx = math.max(mx, R.layers(f, t, 1, 1).vignette - R.layers(f, t, 1, 0).vignette) end
+        assert(mx > 0.1, "a tontura sumiu na vinheta da névoa")
+    end,
+
+    -- canal do shader: a tontura vai na parte inteira do darkness (VarInfo.y), o pulso do grito
+    -- na resto (0..2); o shader decodifica com floor(v / DIZZY_BASE)
+    screenfx_rules_channel_dizzy = function()
+        local function decode(v)
+            local k = math.floor(v / R.DIZZY_BASE)
+            return v - k * R.DIZZY_BASE, k / R.DIZZY_STEPS
+        end
+        assert(R.DIZZY_BASE > 2, "o pulso (até 2) cruza a base")
+        local s = fogged(false)
+        assert(R.channel(s, 0, 1, 0).darkness == 0 and R.channel(s, 0, 1, 0, 0).darkness == 0, "sem tontura mudou o canal")
+        s.flashAt, s.flashStrength = 0, 1
+        for _, case in ipairs({ { 1, 0.37 }, { 2, 1 }, { 0.5, 0.002 }, { 4, 0.8 }, { 0, 1 } }) do
+            local i, dz = case[1], case[2]
+            local c = R.channel(s, 0, i, 0, dz)
+            local p, d = decode(c.darkness)
+            assert(math.abs(p - math.min(i, 2)) < 1e-6, "pulso " .. i .. ": " .. p)
+            assert(math.abs(d - dz) <= 0.5 / R.DIZZY_STEPS + 1e-9, "tontura " .. dz .. ": " .. d)
+        end
+        -- em float de 32 bits (o uniform) o floor ainda acerta: o pulso fica longe da borda
+        assert((2 + R.DIZZY_BASE * R.DIZZY_STEPS) < 2 ^ 20, "valor grande demais pro float do shader")
+        assert(R.channel(R.new(), 0, 1, 0, 1).blur == 0, "a tontura mexeu na névoa")
+    end,
+
     -- sprint 0018: a intensidade do bloom do jogador vai no marcador (13 + bloom·escala),
     -- independente da intensidade dos efeitos; sem bloom, o marcador da 0013
     screenfx_rules_channel_bloom = function()

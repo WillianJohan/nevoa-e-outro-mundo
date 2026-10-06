@@ -1,4 +1,4 @@
--- Opções de cliente dos efeitos de tela (sprint 0013), da tecla do painel de debug
+-- Opções de cliente dos efeitos de tela (sprint 0013; a tontura, sprint 0035), da tecla do painel de debug
 -- (sprint 0020, só com -debug) e da densidade do sangue e da
 -- erosão na névoa (sprint 0015, client/NOM_FogOverlays.lua), do dissolve e do bloom do
 -- shader (sprint 0018, client/NOM_Dissolve.lua e mod2), da brasa no corpo (sprint 0022): cada jogador escolhe no
@@ -23,6 +23,8 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("ScreenFx", "UI_NOM_ScreenFx", true, "UI_NOM_ScreenFx_tooltip")
     page:addSlider("ScreenFxIntensity", "UI_NOM_ScreenFxIntensity", 0, 2, 0.1, O.DEFAULT_INTENSITY,
         "UI_NOM_ScreenFxIntensity_tooltip")
+    -- tontura na revelação do Outro Mundo (sprint 0035, client/NOM_ScreenFx.lua)
+    page:addTickBox("Dizzy", "UI_NOM_Dizzy", true, "UI_NOM_Dizzy_tooltip")
     page:addSlider("FogOverlayDensity", "UI_NOM_FogOverlayDensity", 0, 2, 0.1, O.DEFAULT_DENSITY,
         "UI_NOM_FogOverlayDensity_tooltip")
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
@@ -59,6 +61,11 @@ function O.intensity()
     if not O.enabled() then return 0 end
     local v = tonumber(value("ScreenFxIntensity", O.DEFAULT_INTENSITY)) or O.DEFAULT_INTENSITY
     return math.max(0, math.min(2, v))
+end
+
+-- Tontura quando o Outro Mundo se espalha: sub-opção dos efeitos de tela, sem eles não há.
+function O.dizzy()
+    return O.enabled() and value("Dizzy", true) == true
 end
 
 -- 0..2: quanto sangue e erosão a névoa põe em volta (1 = o padrão, já pesado).

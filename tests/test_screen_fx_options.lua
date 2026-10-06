@@ -126,6 +126,20 @@ return {
         assert(O.bodyEmbers() == false, "sem o dissolve não há casca")
         assert(load(false).bodyEmbers() == true, "sem a API: padrão")
     end,
+    -- sprint 0035: "Tontura na transição", ligada; sem os efeitos de tela não tem
+    dizzy_option = function()
+        local O = load(true)
+        local opts = PZAPI.ModOptions:getOptions("NevoaEOutroMundo")
+        local d = opts:getOption("Dizzy")
+        assert(d and d.type == "tickbox" and d.value == true and d.name:find("^UI_NOM_") and d.tooltip:find("^UI_NOM_"))
+        assert(O.dizzy() == true)
+        d.value = false
+        assert(O.dizzy() == false)
+        d.value = true
+        opts:getOption("ScreenFx").value = false
+        assert(O.dizzy() == false, "tontura com os efeitos de tela desligados")
+        assert(load(false).dizzy() == true, "sem a API: ligada")
+    end,
     -- sprint 0026: qualidade da névoa do mod Java (0 baixa, 1 média, 2 alta), inteira
     fog_quality_option = function()
         local O = load(true)

@@ -15,6 +15,7 @@
 -- * getPlayerScreenLeft/Top/Width/Height(0) e MainScreen.instance:isReallyVisible()
 --   (client/ISUI/ISSleepingUI.lua:16-17, 49, 60-61); getTexture(caminho) (:14).
 local W = dofile("tests/fog_world.lua")
+local A = dofile("tests/attached_world.lua")
 require "NOM_Rules"
 require "NOM_FogEventRules"
 local FILE = "mod/42/media/lua/client/NOM_ScreenFx.lua"
@@ -93,9 +94,11 @@ local function fakeUI(G)
             G.tick(1)
             G.uiUpdate()
             G.fire("OnPreUIDraw")
+            local before = G.java
             for _, j in ipairs(G.ui) do
                 if j.visible and j.table.render then j.table:render() end
             end
+            G.renderCost = G.java - before -- idas ao Java só do desenho (sem o tick)
             G.fire("OnPostUIDraw")
         end
     end
@@ -153,18 +156,27 @@ local function setup(opts)
     opts = opts or {}
     local G = W.new(opts)
     G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_NightStats", "NOM_Carpideira", "NOM_ScreenFx",
-        "NOM_ScreenFxOptions", "NOM_ScreenFxRules" })
+        "NOM_ScreenFxOptions", "NOM_ScreenFxRules", "NOM_DressingRules" })
     NOM_ShaderMod = opts.shader
-    G.optOn, G.optInt = true, 1
+    G.optOn, G.optInt, G.optDizzy = true, 1, true
     NOM_ScreenFxOptions = {
         enabled = function() return G.optOn end,
         intensity = function() return G.optOn and G.optInt or 0 end,
+        dizzy = function() return G.optOn and G.optDizzy end,
+        overlayDensity = function() return 1 end,
     }
     package.loaded.NOM_ScreenFxOptions = NOM_ScreenFxOptions
     require "NOM_SemRosto"
     require "NOM_Carpideira"
     NOM_SemRosto.install(function() end) -- no solo o server/NOM_Fog.lua instala
     fakeUI(G)
+    -- sprint 0035: a tontura liga no sinal da revelação do NOM_FogOverlays de verdade
+    _G.NOM_FogOverlays, package.loaded.NOM_FogOverlays = nil, nil
+    if opts.overlays then
+        A.install(G)
+        dofile("mod/42/media/lua/client/NOM_FogOverlays.lua")
+        package.loaded.NOM_FogOverlays = NOM_FogOverlays
+    end
     -- o HUD vanilla já está na lista quando o jogo começa
     G.hud = { table = { render = function() G.draws[#G.draws + 1] = { kind = "hud" } end },
         x = 0, y = 0, w = 300, h = 300, visible = true, consume = true }
@@ -208,6 +220,24 @@ end
 
 local R -- NOM_ScreenFxRules depois do setup
 local function T() R = NOM_ScreenFxRules; return R.TEXTURES end
+
+-- a névoa abre ao vivo: a fuga corre quando ela liga (NOM_FogEvent.begin, comando fog no MP)
+local function liveOpen()
+    T()
+    NOM_FogState.setRising(true)
+    NOM_FogState.set(true, 3)
+    NOM_FogState.setRising(false)
+end
+
+-- a camada escura da tontura: a textura branca pintada de preto (o pulso do grito é vermelho)
+local function dark(draws)
+    for _, d in ipairs(draws) do
+        if d.tex == NOM_ScreenFxRules.TEXTURES.white and d.args[1] == 0 and d.args[2] == 0 and d.args[3] == 0 then
+            return d
+        end
+    end
+    return nil
+end
 
 return {
     screenfx_inert_on_dedicated = function()
@@ -540,6 +570,87 @@ return {
         G.frame(60) -- fora do tick da distância do Sem-rosto (a cada 10)
         G.java = 0
         assert(#mine(G.frameDraws()) == 0 and G.java <= 1, "custou " .. G.java)
+    end,
+
+    -- Sprint 0035: tontura na revelação do Outro Mundo ----------------------------------
+
+    -- a névoa abre ao vivo (com a fuga correndo): sem o shader, a tela escurece um pouco e a
+    -- vinheta pulsa por ~5 s; depois, só a névoa
+    dizzy_on_live_reveal = function()
+        local G = setup({ overlays = true })
+        liveOpen()
+        G.frame(math.ceil(R.DIZZY_RISE_MS / 16))
+        local d = dark(G.frameDraws())
+        assert(d and alpha(d) > 0, "sem a tontura na revelação")
+        assert(d.x == 0 and d.y == 0 and d.w == 1920 and d.h == 1080, "não cobre a tela")
+        local lo, hi = 1, 0
+        for _ = 1, math.ceil(R.DIZZY_PULSE_MS / 16) do
+            local v = byTex(G.frameDraws(), R.TEXTURES.vignette)
+            lo, hi = math.min(lo, alpha(v)), math.max(hi, alpha(v))
+        end
+        assert(hi - lo > 0.1, "a vinheta não pulsa: " .. lo .. " " .. hi)
+        G.frame(math.ceil(R.DIZZY_MS / 16))
+        assert(dark(G.frameDraws()) == nil, "a tontura não acabou")
+        assert(byTex(G.draws, R.TEXTURES.vignette), "a névoa sumiu junto")
+    end,
+
+    -- carregou o save com névoa ou entrou no MP no meio: o mundo já está virado, sem tontura
+    dizzy_not_for_mid_fog_entry = function()
+        local G = setup({ overlays = true })
+        T()
+        NOM_FogState.set(true, 3)
+        for _ = 1, math.ceil(R.DIZZY_MS / 16) do
+            assert(dark(G.frameDraws()) == nil, "tontura pra quem entrou no meio")
+        end
+    end,
+
+    -- a opção própria desliga; os efeitos de tela desligados (acessibilidade) também
+    dizzy_follows_options = function()
+        local G = setup({ overlays = true })
+        G.optDizzy = false
+        liveOpen()
+        G.frame(math.ceil(R.DIZZY_RISE_MS / 16))
+        assert(dark(G.frameDraws()) == nil, "opção da tontura desligada e escureceu")
+        G.optDizzy = true
+        assert(dark(G.frameDraws()), "religou e não voltou (a tontura ainda corre)")
+        G.optOn = false
+        assert(#mine(G.frameDraws()) == 0, "efeitos de tela desligados e desenhou")
+        G.optOn, G.optInt = true, 0
+        assert(#mine(G.frameDraws()) == 0, "intensidade 0 desenhou")
+    end,
+
+    -- a tontura segue a própria opção, não o Outro Mundo do sandbox (FogOverlays)
+    dizzy_without_fog_overlays_sandbox = function()
+        local G = setup({ overlays = true, sandbox = { FogOverlays = false } })
+        liveOpen()
+        G.frame(math.ceil(R.DIZZY_RISE_MS / 16))
+        assert(dark(G.frameDraws()), "o sandbox do Outro Mundo desligou a tontura")
+    end,
+
+    -- com o shader a tontura é dele (canal, NOM_FogVignette): o overlay não escurece nem pulsa
+    dizzy_shader_mod_skips_layer = function()
+        local G = setup({ overlays = true, shader = true })
+        liveOpen()
+        G.frame(math.ceil(R.DIZZY_RISE_MS / 16))
+        assert(dark(G.frameDraws()) == nil, "camada da tontura com o shader")
+    end,
+
+    -- custo: só a camada escura a mais no quadro, dentro do teto da névoa (12). Os primeiros
+    -- quadros pedem cada textura uma vez (getTexture, guardada depois): fora da conta
+    dizzy_budget = function()
+        local G = setup({ overlays = true })
+        liveOpen()
+        G.frame(20)
+        assert(dark(G.frameDraws()), "a tontura acabou antes de medir")
+        local worst = 0
+        for _ = 1, math.ceil(R.DIZZY_MS / 16) - 21 do
+            G.frame(1)
+            worst = math.max(worst, G.renderCost)
+        end
+        assert(worst <= 12, "desenho da tontura custou " .. worst)
+        G.frame(math.ceil(R.FADE_MS / 16))
+        G.frame(1)
+        assert(G.renderCost <= worst - 1, "a camada escura não saiu: " .. G.renderCost .. " de " .. worst)
     end,
 
     -- review da 0018: as brasas por cima do grão e da vinheta
