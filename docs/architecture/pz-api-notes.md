@@ -1280,7 +1280,7 @@ sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` fu
 - **Escolha:** anexar ao piso (`getFloor`) e às paredes N/W (`getWall`) que não são
   `IsoThumpable`, `IsoDoor` nem `IsoWindow`; registro de cada instância posta; tirar só elas (mesma
   instância **e** mesmo nome, de trás pra frente); `OnSave` tira tudo e a atualização seguinte põe
-  de volta; raio pela tela, 15 a 30 (sprint 0034, abaixo; além de 30 + 8 sai na hora); `LoadGridsquare` limpa
+  de volta; raio pela tela, 15 a 30 (sprint 0034, abaixo; além de 30 + 8 sai na hora, a cada 2 tiles andados); `LoadGridsquare` limpa
   `floors_burnt_01_*` vazado; a ação atual do jogador segura o square do alvo. Saem: `IsoMarker`,
   `RenderGhostTileColor`, luz relida, fade, visibilidade por prédio.
 - **Custo** (mundo falso, `overlays_budget`): enchendo, ≤ ~2000 chamadas Java e ≤ ~410
@@ -1299,7 +1299,7 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
 | `getPlayerScreenWidth/Height(i)` = `IsoCamera.getScreenWidth/Height(i)` (a tela do jogador, metade na tela dividida) | CONFIRMED | `ISSleepingUI.lua:16-17`; `LuaManager$GlobalObject.getPlayerScreenWidth(I)` 0–4 |
 | `getCore():getZoom(i)` = `displayZoom · tileScale / 2` (1 sem FBO) | CONFIRMED | `ISMenuContextWorld.lua:77`, `ISSearchManager.lua:103`; `Core.getZoom(I)` 0–24 |
 | A câmera trabalha no tamanho do FBO: `offscreenWidth(i) = int(getScreenWidth(i) · getZoom(i))` (idem altura). Por isso o pixel da tela entra × zoom (`ISMenuContextWorld.lua:77` faz igual) | CONFIRMED (bytecode) | `MultiTextureFBO2.getWidth(I)` 0–19, `Core.getOffscreenWidth(I)` 0–34 |
-| `IsoUtils.XToIso(i, sx, sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z`; `YToIso(i, sx, sy, z) = (sx + offX − 2(sy + offY)) / (−64T) + 3z`, com `offX/offY = IsoCamera.getOffX/getOffY(i)` = `int(PlayerCamera.offX + rightClickX)` e `T = Core.tileScale`. É o inverso exato de `XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96T z` | CONFIRMED (bytecode) | `ISCoordConversion.lua:19-24`; `IsoUtils.XToIso(IFFF)` 0–36, `YToIso(IFFF)` 0–36; `IsoCamera.getOffX(I)` 0–8; `PlayerCamera.getOffX()` 0–11 |
+| `IsoUtils.XToIso(i, sx, sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z`; `YToIso(i, sx, sy, z) = (sx + offX − 2(sy + offY)) / (−64T) + 3z`, com `offX/offY = IsoCamera.getOffX/getOffY(i)` = `int(PlayerCamera.offX + rightClickX)` e `T = Core.tileScale`. É o inverso exato de `XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96T z` | CONFIRMED (bytecode) | `server/ISCoordConversion.lua:19-24`; `IsoUtils.XToIso(IFFF)` 0–36, `YToIso(IFFF)` 0–36; `IsoCamera.getOffX(I)` 0–8; `PlayerCamera.getOffX()` 0–11 |
 | A câmera centra no personagem: `offX = XToScreen(x + deferedX, y + deferedY, zCam, 0) − offscreenW/2 + playerOffsetX`, `offY = YToScreen(…) − offscreenH/2 − offsetY · 1,5 + playerOffsetY`, `playerOffsetY = −56 / (2 / T)` (o centro da tela fica 0,875 tile atrás do jogador no Tiles2x); `zCam = getZ()` a pé | CONFIRMED (bytecode) | `PlayerCamera.center` 0–147; `IsoCamera.<clinit>` 46–54; `IsoCamera$FrameState.calculateCameraZ` |
 | `math.huge` no Kahlua | EXISTS (bytecode) | `se.krka.kahlua.j2se.MathLib` registra `huge` = `Infinity` |
 
@@ -1308,10 +1308,24 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
   15). A volta da varredura no raio 30 leva 36 atualizações (~6 s) com `SCAN_BUDGET` 80; o custo
   por atualização não muda (enchendo ~2060 chamadas Java e ≤ 411 invalidações; parado ~175).
 - **Save:** saída em lote acima do raio da hora; na hora acima de 30 + 8 = 38 (constante: o zoom
-  chegando perto tira o anel de fora em lote, 80 por atualização). Salto = 8 tiles num tick (antes,
-  15; o carro anda ~0,5 por tick). Pior caso: 38 + o que o carro anda numa atualização (~5) ou um
-  salto abaixo de 8 → < 46, e o chunk gravado ao sair do mapa está a ≥ 48 (distância de Chebyshev ≤
-  euclidiana).
+  chegando perto tira o anel de fora em lote, 80 por atualização). **Sem supor FPS (review final da
+  0034):** o `OnTick` é por quadro e a atualização a cada 10 ticks; a conta antiga (38 + ~5 de carro
+  numa atualização < 48) só valia a 60 FPS. A 30 FPS e ~30 tiles/s o carro anda ~10 tiles entre
+  atualizações e o anexo visto a 38 chegava aos 48 com o chunk saindo do mapa. Agora o corte de 38
+  roda **no tick** em que o jogador passa de `MOVE_TILES` (2) desde o último corte, sem lote e sem
+  esperar a atualização. Entre cortes nada passa de 38 + 2; no tick do corte o chunk pode sair antes
+  do `OnTick` (o `IsoChunkMap` anda no update do mundo), com o passo daquele tick a mais. Carro a
+  2 tiles por tick (~30 tiles/s a 15 FPS): 38 + 2 + 2 + 1 (o anexo é do square inteiro, o jogador
+  anda em float) = **43 < 48**. Aguenta até ~6 tiles num tick (38 + 2 + 6 + 1 = 47). O chunk
+  gravado está a ≥ 48 em Chebyshev, e Chebyshev ≤ euclidiana.
+  **Salto:** não tem mais caso próprio (era ≥ 8 tiles num tick → tira tudo, o que um engasgo de
+  FPS no carro disparava, com tudo revestido de novo). O teleporte cai no mesmo corte: o lugar novo
+  está longe e tudo passa de 38. Um teleporte maior que ~6 tiles num tick tem o mesmo risco de antes
+  (o chunk velho sair do mapa antes do `OnTick` daquele quadro).
+  Custo (`overlays_fast_car_low_fps_never_past_hard`): o corte é só Lua até achar o que sai (o
+  registro inteiro, a cada 2 tiles andados); o pior tick de carro a 1–2,24 tiles por tick fica em
+  ~1960 chamadas Java, a ordem do enchimento (~1940 por atualização). O anexo mais longe medido:
+  38,6–39,5 tiles.
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido

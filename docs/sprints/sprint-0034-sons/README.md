@@ -61,7 +61,8 @@ tela toda, as casas por dentro ficam destruídas e pichadas, e o sangue sai do c
   soltura da Carpideira depois do grito. Lint novo `api_no_is_remote_zombie`.
 - **Outro Mundo na tela toda** (`NOM_DressingRules.radius`, `client/NOM_FogOverlays.lua`): o raio
   segue o canto da tela mais longe, entre 15 e 30 tiles, relido a cada atualização; além de 38 tiles
-  sai na hora, e o salto que limpa tudo caiu de 15 pra 8 tiles.
+  sai na hora, a cada 2 tiles andados (review final: a margem do save não depende do FPS), e o
+  salto que limpava tudo saiu.
 - **Casa destruída** (`NOM_DressingRules`): parede de dentro com até 3 camadas (rachadura, sujeira,
   sangue e escrita por cima) e pichações e mensagens vanilla inteiras, montadas em trechos de várias
   paredes (mensagem mais comum dentro, pichação mais comum fora).

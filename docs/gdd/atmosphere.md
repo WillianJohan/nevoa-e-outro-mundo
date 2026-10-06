@@ -121,7 +121,7 @@ máximo". Substitui as manchas esparsas da sprint 0005
 - **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
   outra névoa, outro desenho. Nada pisca enquanto se anda.
 - Enche em ~1,5 s quando a névoa chega, do mais perto pro mais longe, acompanha o jogador andando e
-  some do mesmo jeito quando ela baixa. Na morte, no salto e no save some na hora (e volta logo
+  some do mesmo jeito quando ela baixa. Na morte, no teleporte e no save some na hora (e volta logo
   depois do save).
 - **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
   (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.

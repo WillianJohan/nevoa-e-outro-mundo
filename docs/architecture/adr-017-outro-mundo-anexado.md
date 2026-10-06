@@ -39,9 +39,12 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
      jogo; o save de acordar não o dispara).
    - **Raio pela tela** (emenda da sprint 0034; era 15 fixo): o canto da tela do jogador 0 mais
      longe, no chão, + 2, entre 15 e 30, relido a cada atualização. O que sai dele sai em lotes de
-     80 alvos; além de 30 + 8 sai na hora, qualquer zoom. O chunk que sai do mapa (e vai pra fila
-     de gravação) está a ≥ 48 tiles. Evidência: pz-api-notes §16.6 (raio pela tela).
-   - **Salto** (≥ 8 tiles num tick, teleporte; era > 15) e **morte**: tudo sai no tick.
+     80 alvos; além de 30 + 8 sai na hora, qualquer zoom, **no tick** em que o jogador passa de 2
+     tiles desde o último corte (review final da 0034: a margem não depende do FPS). O chunk que
+     sai do mapa (e vai pra fila de gravação) está a ≥ 48 tiles; com o carro a 2 tiles por tick
+     (15 FPS), o pior caso é 38 + 2 + 2 + 1 = 43. Evidência: pz-api-notes §16.6 (raio pela tela).
+   - **Morte**: tudo sai no tick. **Teleporte**: cai no mesmo corte (tudo passa de 38). O salto
+     de 8 tiles num tick (que tirava tudo) saiu: um engasgo de FPS no carro o disparava.
    - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade).
    - **Hot save** (solo, sem evento): o chunk pode ser gravado com anexos do mod; isso só fica no
      disco se o jogo cair antes do próximo save daquele chunk (que sai limpo). Coberto pelo item 5.

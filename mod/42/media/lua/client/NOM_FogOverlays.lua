@@ -16,13 +16,16 @@
 --   frente, mesma instância E mesmo nome, RemoveAttachedAnim(i). Nunca RemoveAttachedAnims()
 --   (apaga blend e decalque do mapa) nem AttachExistingAnim (mexe no IsoSprite compartilhado).
 -- * OnSave (GameWindow.save, antes do IsoCell.save gravar os chunks): tudo sai; volta na
---   atualização seguinte. Morte e salto (teleporte): tudo sai na hora.
+--   atualização seguinte. Morte: tudo sai na hora.
 -- * O chunk que sai do mapa e é gravado está a ≥ 48 tiles. O raio segue a tela (sprint 0034):
 --   os 4 cantos da tela do jogador 0 (getPlayerScreenWidth/Height, ISSleepingUI.lua:16-17; pixel
 --   × getCore():getZoom(0), ISMenuContextWorld.lua:77) no chão do andar dele (IsoUtils.XToIso/
---   YToIso, ISCoordConversion.lua:19-24), + 2, entre 15 e 30 (NOM_DressingRules.radius). Além de
---   30 + SLACK (8) = 38 sai na hora, qualquer zoom; o carro anda ~5 numa atualização e um salto
---   abaixo de JUMP_TILES (8) num tick não é pego: 38 + 8 = 46 < 48.
+--   YToIso, server/ISCoordConversion.lua:19-24), + 2, entre 15 e 30 (NOM_DressingRules.radius).
+--   Além de 30 + SLACK (8) = 38 sai na hora, qualquer zoom, no tick em que o jogador passa de
+--   MOVE_TILES (2) desde o último corte: entre cortes nada passa de 38 + 2, e no tick do corte o
+--   chunk pode sair antes dele, com o passo do tick a mais. Com 2 tiles por tick (carro a
+--   ~30 tiles/s com 15 FPS): 38 + 2 + 2 + 1 (square inteiro) = 43 < 48. Aguenta até ~6 tiles
+--   num tick; acima disso, só o teleporte, que já tinha esse risco.
 -- * LoadGridsquare: floors_burnt_01_* anexado (ninguém no vanilla anexa) que não é nosso é
 --   vazado de uma sessão que caiu depois de um hot save: sai. Nome vanilla vazado fica (ADR-017).
 -- * A ação do jogador em curso segura o square do alvo limpo (pá, marreta, móvel).
@@ -39,11 +42,13 @@ NOM_FogOverlays = {
     UPDATE_TICKS = 10,
     SCAN_BUDGET = 80,    -- squares olhados por atualização (cada anexo invalida o nível do chunk)
     STRIP_BUDGET = 80,   -- alvos tirados por atualização (saiu do raio, fim da névoa, desenho novo)
-    -- Além de MAX_RADIUS + SLACK sai na hora, sem lote (de carro, meio tile por tick, o anel que
-    -- sai passa do lote): o chunk gravado ao sair do mapa está a ≥ 48 tiles. Não depende do zoom:
-    -- chegar o zoom perto tira o anel de fora em lote.
+    -- Além de MAX_RADIUS + SLACK sai na hora, sem lote (de carro o anel que sai passa do lote):
+    -- o chunk gravado ao sair do mapa está a ≥ 48 tiles. Não depende do zoom: chegar o zoom
+    -- perto tira o anel de fora em lote. O corte roda no tick em que o jogador passa de
+    -- MOVE_TILES desde o último corte, não a cada atualização: o tick é por quadro, e a margem
+    -- não pode depender do FPS (conta na pz-api-notes §16.6).
     SLACK = 8,
-    JUMP_TILES = 8,      -- isso num tick é salto (teleporte): tudo sai (o carro anda ~0,5 por tick)
+    MOVE_TILES = 2,
     VERIFY_BUDGET = 20,  -- alvos conferidos por atualização (a lista mexida por baixo: põe de novo)
     RESEEN_TILES = 8,    -- andou isso desde a última âncora: olha tudo de novo, do mais perto
     DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
@@ -62,7 +67,7 @@ local SIDES = { { "N", true }, { "W", false } }
 local reg, nFloor, nWall
 local seen       -- [sk] = true: square decidido desde a âncora (sem chunk: tenta de novo)
 local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
-local cursor, gen, anchorX, anchorY, lastX, lastY
+local cursor, gen, anchorX, anchorY, cutX, cutY
 local density, pendingD, pendingAt
 local verifyKeys, verifyAt
 local radius
@@ -70,7 +75,7 @@ local radius
 local function forget()
     reg, nFloor, nWall = {}, 0, 0
     seen, held = {}, {}
-    cursor, gen, anchorX, anchorY, lastX, lastY = 1, nil, nil, nil, nil, nil
+    cursor, gen, anchorX, anchorY, cutX, cutY = 1, nil, nil, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
@@ -247,10 +252,23 @@ local function scan(px, py, pz, per, d)
     end
 end
 
+local function hardR2()
+    return (D.MAX_RADIUS + O.SLACK) * (D.MAX_RADIUS + O.SLACK)
+end
+
+-- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai.
+local function cut(px, py)
+    local hard = hardR2()
+    stripWhere(function(e)
+        local dx, dy = e.x - px, e.y - py
+        return dx * dx + dy * dy > hard
+    end)
+end
+
 -- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote; além de
 -- MAX_RADIUS + SLACK, na hora.
 local function prune(on, px, py, pz)
-    local hard = (D.MAX_RADIUS + O.SLACK) * (D.MAX_RADIUS + O.SLACK)
+    local hard = hardR2()
     local r2, n = radius * radius, 0
     stripWhere(function(e)
         local dx, dy = e.x - px, e.y - py
@@ -369,17 +387,23 @@ local function update()
     scan(px, py, pz, per, d)
 end
 
--- Todo tick: o salto (teleporte: o chunk velho sai do mapa no mesmo tick) e a morte (no solo o
--- jogo salva logo depois) tiram tudo na hora.
+-- Todo tick: a morte (no solo o jogo salva logo depois) tira tudo na hora; andou MOVE_TILES
+-- desde o último corte (carro com qualquer FPS, teleporte), o que passou de MAX_RADIUS + SLACK
+-- sai na hora. O teleporte não tem caso próprio: o lugar novo está longe e tudo passa do corte.
 local ticks = 0
 Events.OnTick.Add(function()
     local p = getSpecificPlayer(0)
     if p and nFloor + nWall > 0 then
-        local x, y = p:getX(), p:getY()
-        if p:isDead() or (lastX and (math.abs(x - lastX) >= O.JUMP_TILES or math.abs(y - lastY) >= O.JUMP_TILES)) then
+        if p:isDead() then
             O.stripAll()
+        else
+            local x, y = p:getX(), p:getY()
+            local dx, dy = x - (cutX or x), y - (cutY or y)
+            if not cutX or dx * dx + dy * dy >= O.MOVE_TILES * O.MOVE_TILES then
+                cut(math.floor(x), math.floor(y))
+                cutX, cutY = x, y
+            end
         end
-        lastX, lastY = x, y
     end
     ticks = ticks + 1
     if ticks < O.UPDATE_TICKS then return end

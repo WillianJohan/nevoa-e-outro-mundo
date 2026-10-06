@@ -308,20 +308,20 @@ return {
 
     -- o chunk que sai do mapa é gravado (ChunkSaveWorker) a ≥ 48 tiles: com o zoom mais longe
     -- (raio MAX) e andando de carro (meio tile por tick), nada do mod passa de MAX_RADIUS +
-    -- SLACK mais o que o carro anda numa atualização, em nenhum tick; parado, do raio
+    -- SLACK mais MOVE_TILES (o corte na hora roda a cada MOVE_TILES andados), em nenhum tick;
+    -- parado, do raio. 1,5: o anexo é do square (inteiro) e o jogador está no meio do tile
     overlays_leaving_radius_strips = function()
         local G = setup({ density = 2, zoom = 2.5 })
         NOM_FogState.set(true, 3, true)
         G.seconds(8)
         assert(O().radius() == D().MAX_RADIUS, "raio " .. O().radius())
         assert(farthest(G, G.p.x, G.p.y) > D().MAX_RADIUS - 2, "não encheu até o raio (teste não mede)")
-        local step = math.sqrt(0.5 * 0.5 + 0.25 * 0.25)
         for _ = 1, 240 do
             G.p.x = G.p.x + 0.5
             G.p.y = G.p.y + 0.25
             G.tick(1)
             local f = farthest(G, G.p.x, G.p.y)
-            assert(f <= D().MAX_RADIUS + O().SLACK + step * O().UPDATE_TICKS + 0.75 and f < 48, "anexo a " .. f .. " tiles andando")
+            assert(f <= D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5 and f < 48, "anexo a " .. f .. " tiles andando")
         end
         G.seconds(10)
         local r = O().radius()
@@ -644,31 +644,60 @@ return {
         assert(G.ours() == 0, "voltou depois da névoa")
     end,
 
-    -- teleporte (debug, mapa): o chunk velho sai do mapa no mesmo tick; o mod tira tudo no tick.
-    -- Salto = JUMP_TILES num tick (o carro anda meio tile)
-    overlays_jump_strips_now = function()
-        for _, jump in ipairs({ 200, 8 }) do
-            local G = setup({ density = 2 })
-            assert(O().JUMP_TILES == 8)
+    -- review final da 0034: o tick é por quadro, e a 15–30 FPS o carro anda 1 a 2 tiles por
+    -- tick (~30 tiles/s). A margem do save não pode depender disso: depois de todo tick, nada
+    -- do mod passa de MAX_RADIUS + SLACK + MOVE_TILES, e somado ao passo do tick seguinte
+    -- fica abaixo dos 48 tiles do chunk que sai do mapa
+    overlays_fast_car_low_fps_never_past_hard = function()
+        for _, step in ipairs({ { 1, 0 }, { 2, 0 }, { 2, 1 } }) do
+            local G = setup({ density = 2, zoom = 2.5 })
             NOM_FogState.set(true, 3, true)
-            G.seconds(4)
-            G.p.y = G.p.y - jump
-            G.tick(1)
-            assert(G.ours() == 0, "sobrou depois do salto de " .. jump .. ": " .. G.ours())
-            G.seconds(3)
-            assert(laidOut(G, D().MIN_RADIUS) > 300, "não encheu no lugar novo")
+            G.seconds(8)
+            assert(farthest(G, G.p.x, G.p.y) > D().MAX_RADIUS - 2, "não encheu até o raio (teste não mede)")
+            local len = math.sqrt(step[1] * step[1] + step[2] * step[2])
+            local worst, cost = 0, 0
+            for _ = 1, 90 do
+                G.p.x, G.p.y = G.p.x + step[1], G.p.y + step[2]
+                local j = G.java + G.sqCalls
+                G.tick(1)
+                cost = math.max(cost, G.java + G.sqCalls - j)
+                local f = farthest(G, G.p.x, G.p.y)
+                worst = math.max(worst, f)
+                assert(f <= D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5,
+                    "carro a " .. len .. " tiles/tick: anexo a " .. f .. " tiles")
+                assert(f + len < 48, "carro a " .. len .. " tiles/tick: o tick seguinte grava anexo a " .. (f + len))
+            end
+            G.seconds(5)
+            assert(laidOut(G, D().MIN_RADIUS) > 300, "parou e não encheu")
+            print(string.format("[margem] carro a %.2f tiles/tick: anexo mais longe %.1f tiles, até %d chamadas Java por tick",
+                len, worst, cost))
         end
     end,
 
-    -- abaixo de JUMP_TILES num tick não é salto: nada sai de uma vez
-    overlays_fast_move_not_jump = function()
+    -- teleporte (debug, mapa): tudo sai no tick, pelo corte de MAX_RADIUS + SLACK
+    overlays_teleport_strips_now = function()
         local G = setup({ density = 2 })
         NOM_FogState.set(true, 3, true)
         G.seconds(4)
-        local before = G.ours()
-        G.p.x = G.p.x + O().JUMP_TILES - 1
+        G.p.y = G.p.y - 200
         G.tick(1)
-        assert(G.ours() == before, "tirou tudo num passo de " .. (O().JUMP_TILES - 1))
+        assert(G.ours() == 0, "sobrou depois do teleporte: " .. G.ours())
+        G.seconds(3)
+        assert(laidOut(G, D().MIN_RADIUS) > 300, "não encheu no lugar novo")
+    end,
+
+    -- engasgo de FPS no carro (um tick com 10 tiles) não é teleporte: não tira tudo; só o que
+    -- passou de MAX_RADIUS + SLACK sai na hora
+    overlays_fps_hitch_not_jump = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(8)
+        local before = G.ours()
+        G.p.x = G.p.x + 10
+        G.tick(1)
+        assert(G.ours() > before / 2, "o engasgo tirou tudo: " .. before .. " → " .. G.ours())
+        local f = farthest(G, G.p.x, G.p.y)
+        assert(f <= D().MAX_RADIUS + O().SLACK + 1.5, "anexo a " .. f .. " depois do engasgo")
     end,
 
     -- morte (no solo o jogo salva logo depois): tudo sai na hora
