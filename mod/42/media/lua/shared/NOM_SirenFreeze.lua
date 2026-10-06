@@ -3,8 +3,9 @@
 -- o jogador. Quando a névoa começa, todos voltam juntos. Roda onde o zumbi é simulado
 -- (ADR-005): no solo, chamado pelo server/NOM_FogEvent.lua; no MP, pelo
 -- client/NOM_FogClient.lua (comandos "siren", "fog" e "sirenStop"). Cópia remota
--- (z:isRemoteZombie()) é do cliente dono: aqui não se mexe, e o useless dela chega no
--- pacote do dono (pz-api-notes §3.2).
+-- (not z:isLocal()) é do cliente dono: aqui não se mexe, e o useless dela chega no
+-- pacote do dono (pz-api-notes §3.2). Dono é isLocal(), não isRemoteZombie(): no solo
+-- ninguém tem dono de rede e o isRemoteZombie() dá true pra todo zumbi (pz-api-notes §24).
 -- Parada: setUseless(true) + setTarget(nil) no dono (pz-api-notes §3.2 e §13).
 -- Virar: IsoGameCharacter.faceLocationF(FF)Z (uso vanilla
 -- client/BuildingObjects/TimedActions/ISBuildAction.lua:248), refeito a cada passada do
@@ -55,7 +56,7 @@ function F.stop()
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if z:isUseless() and not z:isDead() and not z:isRemoteZombie() and not NOM_Carpideira.still[z]
+        if z:isUseless() and not z:isDead() and z:isLocal() and not NOM_Carpideira.still[z]
             and not gameOwns(z) then
             z:setUseless(false)
         end
@@ -106,7 +107,7 @@ local skipped = { dead = 0, remote = 0, game = 0 } -- só pro log do -debug
 
 local function hold(z, ps)
     if z:isDead() then skipped.dead = skipped.dead + 1 return end
-    if z:isRemoteZombie() then skipped.remote = skipped.remote + 1 return end
+    if not z:isLocal() then skipped.remote = skipped.remote + 1 return end
     if gameOwns(z) then skipped.game = skipped.game + 1 return end
     if not F.frozen[z] then
         z:setUseless(true)

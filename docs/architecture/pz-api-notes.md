@@ -36,6 +36,8 @@
    (ownership) de cada zumbi a uma conexão e só retransmite. Evidência: bytecode
    `NetworkZombieManager.updateAuth(IsoZombie)` (usa `ServerOptions.switchZombiesOwnershipEachUpdate`),
    `IsoZombie.setOwner(UdpConnection)`, `IsoZombie.isRemoteZombie()`, `NetworkZombieSimulator.getAuthorizedZombieCount()`.
+   **Pra saber se este processo é o dono, use `z:isLocal()`, nunca `z:isRemoteZombie()`:** no solo
+   ninguém chama `setOwner` e o `isRemoteZombie()` dá `true` pra todo zumbi (§24, sprint 0034).
    O `walkType` viaja nos dois sentidos: `NetworkZombiePacker` (servidor) **e** `NetworkZombieSimulator`
    (cliente) chamam `IsoZombie.setWalkType(String)`. Consequência: **a decisão** (variante, noite,
    spawn) pode ser autoritativa no servidor, mas **a aplicação** de ajustes de IA (velocidade,
@@ -1171,7 +1173,7 @@ vanilla usa `0..3`, `8..11`, `16..19` pra parede W (`IsoGridSquare.splatBlood` 5
 
 | Set | No pack | Usados (lado) |
 |---|---|---|
-| `overlay_blood_floor_01_` | 43 (0–27, 32–46 com falhas) | 37 de chão |
+| `overlay_blood_floor_01_` | 43 (0–27, 32–46 com falhas) | nenhum desde a sprint 0034 (eram 37 de chão; o Johan achou feio no jogo) |
 | `overlay_grime_floor_01_` | 84 | 82 de chão |
 | `d_streetcracks_1_` | 118 | 118 (rachadura de chão) |
 | `d_plants_1_` | 64 | 33 de chão (musgo, mato rasteiro) |
@@ -1424,7 +1426,7 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 | Posição lembrada | CONFIRMED | `ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela)` (`client/TimedActions/ISBBQInfoAction.lua:29`; `ISLayoutManager.lua:6-60`: x, y e `visible` salvos e restaurados) |
 | God / noclip / invisível | CONFIRMED | `client/ISUI/AdminPanel/ISAdminPowerUI.lua:31-53` (`is/setInvisible`, `is/setGodMod`, `is/setNoClip` no jogador local) e `:403` (`sendPlayerExtraInfo(player)` depois); no MP o servidor aplica as regras dele (UNKNOWN pra quem tem só `-debug` sem ser admin) |
 | Modo deus completo (sprint 0033) | CONFIRMED | `NOM.godMode` liga junto `setGodMod` (`ISAdminPowerUI.lua:44`, lê `isGodMod` `:41`), `setInvisible` (`:36`) e `setZombiesDontAttack` (`:178`, lê `isZombiesDontAttack` `:175`), depois `sendPlayerExtraInfo` (`:403`) |
-| Puxar zumbi (sprint 0033) | CONFIRMED (mesmo caminho do Sem-rosto) | dedicado: servidor manda `debugMove {id,x,y,z}` e o dono (`not z:isRemoteZombie()`) chama `NOM_SemRosto.move` (`teleportTo`, §ADR-007); solo: o processo é o dono. Não usa `semRostoMove`: o cliente dele exige destino fora da vista do jogador. Zumbi sem ID de rede (`getOnlineID() == -1`, solo): o servidor usa o mais perto de quem pede |
+| Puxar zumbi (sprint 0033) | CONFIRMED (mesmo caminho do Sem-rosto) | dedicado: servidor manda `debugMove {id,x,y,z}` e o dono (`z:isLocal()`, §24) chama `NOM_SemRosto.move` (`teleportTo`, §ADR-007); solo: o processo é o dono. Não usa `semRostoMove`: o cliente dele exige destino fora da vista do jogador. Zumbi sem ID de rede (`getOnlineID() == -1`, solo): o servidor usa o mais perto de quem pede |
 | Hora | CONFIRMED (solo) / EXISTS (MP) | `getGameTime():setTimeOfDay(h)` (`client/LastStand/LastStandSetup.lua:63`) só grava o campo (bytecode 0–5). **Nunca pra trás:** no dedicado a data dos clientes dessincroniza (`SyncClockPacket.processClient` → `serverNewDays++` → `advanceOneDay`) e o `getWorldAgeHours` volta (timers da névoa). Hora menor que a de agora vai como `h + 24`: o `GameTime.update` (938–972) tira 24, chama `advanceOneDay` e, no servidor, marca o sync |
 | Spawn espalhado | CONFIRMED | `addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance)` → `ArrayList` (`Steps.lua:2123`): n vezes `addZombiesInOutfit` em `Rand.Next(x1, x2)` (fim exclusivo, bytecode 0–54); outfit `nil` sorteia (`ISSpawnHordeUI.lua:73, 276`); nomes válidos por `getAllOutfits(false/true)` (`ISSpawnHordeUI.lua:71-72`). No servidor dedicado: UNKNOWN, o mesmo do Eco (item 2 abaixo) |
 | Frente do jogador | CONFIRMED | `player:getForwardDirection():getDirection()` em radianos (`shared/Fishing/FishingRod.lua:286`) |
@@ -1468,6 +1470,7 @@ simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mai
 | `z:setUseless(true)` / `z:setTarget(nil)` | CONFIRMED | §3.2 e §13 (uso vanilla em `client/DebugUIs/DebugContextMenu.lua:566,673`) |
 | `z:faceLocationF(x, y)` | EXISTS | `IsoGameCharacter.faceLocationF(FF)Z` (bytecode, `javap`); uso vanilla `client/BuildingObjects/TimedActions/ISBuildAction.lua:248` (`self.character:faceLocationF(self.x + 0.5, self.y)`) |
 | O useless viaja na rede no pacote do dono | EXISTS | §3.2 (`NetworkZombieAI.set` → `getBooleanVariables`): a cópia remota não precisa ser tocada |
+| Dono = `z:isLocal()`; cópia remota = `not z:isLocal()` | CONFIRMED (bytecode) | §24. Até a sprint 0034 o teste era `isRemoteZombie()`, que no solo dá `true` pra todo zumbi: no jogo (2026-10-06) a sirene não congelou ninguém (`congelados=0 ... pulados morto/remoto/jogo=0/20/0`) |
 | `resetForReuse` não limpa o useless | EXISTS | §3.2; por isso o `OnZombieCreate` do módulo solta o objeto reaproveitado que estava congelado |
 | `Events.OnTick`, `OnZombieDead`, `OnZombieCreate` | CONFIRMED | já usados pelo mod (§3, §10, §11.2) |
 | Dedicado: sem `sirenStop` quando a névoa abre | decisão | o cliente solta ao receber `fog {on=true}` ou, sem comando, 15 s (`SAFETY_MS`) depois do fim da sirene |
@@ -1569,6 +1572,35 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
 | o pan do FMOD a 150–500 tiles dá direção clara (o emitter está fora da célula carregada) | ouvir girando a câmera |
 | o `IDToPlayerMap` do cliente traz a posição atual dos jogadores longe dele | MP com dois jogadores |
 | a afinação de 0,95 a 1,05 se ouve como aparelhos diferentes, sem soar desafinado nem "fita acelerada" | ouvir o coro; com `-debug`, o `tom=` de cada sirene sai no console |
+
+## 24. Dono do zumbi: `isLocal`, não `isRemoteZombie` (sprint 0034)
+
+Visto no jogo (solo, `-debug`, 2026-10-06): a sirene não congelou nenhum zumbi, com o log
+`[NOM] sirene congelados=0 ... lista=104 pulados morto/remoto/jogo=0/20/0`. O lote inteiro foi
+pulado como cópia remota, no solo. Causa: `isRemoteZombie()` pergunta "este zumbi tem dono de
+rede?", e no solo nenhum tem. Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Todo zumbi tem um `NetworkZombieComponent` | EXISTS | `IsoZombie.registerECSComponents` 0–14 (`new NetworkZombieComponent(this)`) |
+| `IsoZombie.isRemoteZombie()` = `isRemote()` | EXISTS | `IsoZombie.isRemoteZombie` 0–4 |
+| `IsoGameCharacter.isRemote()` (`public final`) = `NetworkComponent.isRemote()`; sem componente, `false` | EXISTS | `IsoGameCharacter.isRemote` 0–28 (`tryGetECSComponent(NetworkComponent)`, `PZOptional.ifPresent` com padrão `false`) |
+| `NetworkZombieComponent.isRemote()` = `authOwner == null` | EXISTS | `NetworkZombieComponent.isRemote` 0–12 |
+| Só o cliente de MP chama `setOwner`: `NetworkZombieSimulator.becomeLocal` põe `GameClient.connection`, `becomeRemote` limpa, `parseZombie` também mexe. No solo ninguém chama, então **`isRemoteZombie()` dá `true` pra todo zumbi no solo** | EXISTS | `zombie.popman.NetworkZombieSimulator.becomeLocal` 6–9, `becomeRemote` 32–37, `parseZombie` 823–844 |
+| `IsoGameCharacter.isLocal()` (`public final`) = `NetworkComponent.isLocal()`; sem componente, `true` | EXISTS | `IsoGameCharacter.isLocal` 0–28 (padrão `true`) |
+| `NetworkComponent.isLocal()` = `(not isClient() and not isServer()) or not isRemote()`, com `isClient` = `GameClient.client` e `isServer` = `GameServer.server` | EXISTS | `NetworkComponent.isLocal` 0–26, `isClient` 0–3, `isServer` 0–3 |
+| Solo: `isLocal()` = `true` pra todo zumbi. Cliente de MP: `true` só no zumbi de que ele é dono (`authOwner ~= nil`), igual ao `not isRemoteZombie()` de antes | EXISTS | as duas linhas acima |
+| Uso vanilla de `isLocal()` em personagem (método de `IsoGameCharacter`, vale pro `IsoZombie`) | CONFIRMED | `client/Fishing/FishingHandler.lua:16` (`player:isLocal()`), `client/ISUI/ISTradingUI.lua:7` |
+| Nenhum Lua vanilla chama `isRemoteZombie` | CONFIRMED | `rg isRemoteZombie media/lua` vazio; só o Java (`NetworkZombieAI.parse` 204 e 388, que roda no cliente, onde o sentido bate) |
+
+No servidor dedicado `isLocal()` = `authOwner ~= nil` (zumbi com dono cliente é "local" pro
+servidor); o mod não pergunta isso no servidor. Decisão: todo código do mod testa dono com
+`z:isLocal()` e cópia de outro cliente com `not z:isLocal()` (`NOM_SirenFreeze`, `NOM_VariantAI`,
+`NOM_NightStats`, `NOM_Carpideira`, `client/NOM_FogClient.lua`, `client/NOM_Debug.lua`). Antes da
+troca, no solo, além da sirene: a IA das variantes não rodava (Estalador não cegava, Corredor não
+avisava que caçava, Carpideira calma não parava), o laço da noite não reaplicava a velocidade
+re-rolada e a Carpideira não soltava depois do grito. O lint `tests/test_kahlua_compat.lua` (`api_no_is_remote_zombie`) falha se
+`isRemoteZombie` voltar em `mod/` ou `mod2/`, e os fakes de zumbi não têm o método.
 
 ## Abordagem recomendada por mecânica (resumo)
 

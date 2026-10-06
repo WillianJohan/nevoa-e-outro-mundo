@@ -33,7 +33,7 @@ local function moveIfOwner(args)
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z:getOnlineID() == args.id then
-            if not z:isRemoteZombie() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
+            if z:isLocal() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
             return
         end
     end

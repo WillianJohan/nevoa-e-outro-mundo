@@ -43,7 +43,7 @@ NOM_SemRosto.install(function(z, x, y, zz)
     local id = z:getOnlineID()
     if id == -1 then return end
     sendClientCommand(MODULE, "semRostoSeen", { id = id, x = x, y = y, z = zz })
-    if z:isRemoteZombie() then NOM_SemRosto.move(z, x, y, zz) end
+    if not z:isLocal() then NOM_SemRosto.move(z, x, y, zz) end
 end)
 
 -- Só o dono move: o servidor aceita a posição do dono (NetworkZombiePacker.parseZombie
@@ -56,7 +56,7 @@ local function moveIfOwner(args)
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z:getOnlineID() == args.id then
-            if z:isRemoteZombie() then return end
+            if not z:isLocal() then return end
             local sq = getCell():getGridSquare(args.x, args.y, args.z)
             if sq and NOM_SemRosto.hidden(sq) then NOM_SemRosto.move(z, args.x, args.y, args.z) end
             return

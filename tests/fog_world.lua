@@ -254,7 +254,7 @@ function W.new(opts)
         function z:getZ() return self.z end
         function z:getPersistentOutfitID() return self.id end
         function z:getOnlineID() return self.onlineID end
-        function z:isRemoteZombie() return self.remote end
+        function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getModData() return self.md end
         function z:hasModData() return next(self.md) ~= nil end
         function z:getOutfitName() return self.outfitName end

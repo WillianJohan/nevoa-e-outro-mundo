@@ -17,8 +17,25 @@ local function facing(z, p)
 end
 
 return {
-    siren_freeze_holds_local_zombies_facing_player = function()
+    -- visto no jogo (solo, 2026-10-06): "congelados=0 ... pulados remoto=20". No solo ninguém
+    -- é dono de rede, e o isRemoteZombie() dava true pra todo zumbi (pz-api-notes §24)
+    siren_freeze_solo_freezes_all = function()
         local G = setup()
+        local p = G.player({ x = 30, y = 10 })
+        local zs = {}
+        for i = 1, 5 do zs[i] = G.zombie({ x = i, y = 0 }) end
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        for i, z in ipairs(zs) do
+            assert(z.useless == true and NOM_SirenFreeze.frozen[z], "solo: zumbi " .. i .. " não congelou")
+            assert(facing(z, p), "solo: zumbi " .. i .. " não virou")
+        end
+        NOM_SirenFreeze.stop()
+        for _, z in ipairs(zs) do assert(z.useless == false, "solo: não soltou") end
+    end,
+    -- MP: a cópia remota (dono é outro cliente) não é tocada
+    siren_freeze_holds_local_zombies_facing_player = function()
+        local G = setup({ client = true })
         local p = G.player({ x = 30, y = 10 })
         local a = G.zombie({ x = 10, y = 10 })
         local b = G.zombie({ x = 20, y = 20, remote = true })
@@ -189,7 +206,7 @@ return {
     -- passou pelo lote daqui; o stop solta todo zumbi local useless, menos a Carpideira
     -- parada, o useless do próprio jogo (outfit "Useless") e a cópia remota
     siren_freeze_stop_releases_inherited_useless = function()
-        local G = setup()
+        local G = setup({ client = true })
         local inherited = G.zombie({ x = 1, y = 1 })
         local still = G.zombie({ x = 2, y = 2 })
         local game = G.zombie({ x = 3, y = 3, outfit = "Useless" })

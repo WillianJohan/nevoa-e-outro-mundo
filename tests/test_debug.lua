@@ -53,7 +53,7 @@ local function setup(opts)
         local z = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, id = o.id, dead = o.dead or false,
             online = o.online or -1, remote = o.remote == true }
         function z:getOnlineID() return self.online end
-        function z:isRemoteZombie() return self.remote end
+        function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getX() return self.x end
         function z:getY() return self.y end
         function z:getZ() return self.z end

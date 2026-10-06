@@ -43,7 +43,7 @@ local function setup(opts)
             return { playSound = function(_, name) G.played[#G.played + 1] = { name = name, src = z, local_ = true } end }
         end
         function z:playSoundLocal(name) self.local_[#self.local_ + 1] = name; return 1 end
-        function z:isRemoteZombie() return false end
+        function z:isLocal() return true end
         function z:setUseless(b) self.useless = b end
         function z:isUseless() return self.useless == true end
         function z:setTarget(t) self.target = t end

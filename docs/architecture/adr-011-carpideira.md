@@ -71,7 +71,7 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
 ## Consequências
 
 - **Orçamento:** por frame, a calma custa 2 chamadas (as do `VariantAI`: `getModData`,
-  `isRemoteZombie`) e 3 a mais no primeiro, a furiosa 3 (mais `isUseless`); a varredura, ~8 por Carpideira calma a cada
+  `isLocal`) e 3 a mais no primeiro, a furiosa 3 (mais `isUseless`); a varredura, ~8 por Carpideira calma a cada
   10 ticks com um jogador local (+3 por jogador a mais), zero no resto; cada barulho alto
   no servidor, 1 chamada por zumbi carregado. Na vermelha (1/4 de cada), ~2,25·N por
   frame no `VariantAI` (era ~2,3·N com 1/3 de cada).

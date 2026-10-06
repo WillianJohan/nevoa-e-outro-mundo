@@ -53,7 +53,7 @@ sandbox sempre que o zumbi volta do virtual (`createZombieOutsideWorld` →
 |---|---|
 | Aplicar só no servidor | Velocidade sobrescrita pelo pacote do dono; sentidos ignorados (não são do servidor). |
 | Cliente calcular a noite sozinho | Duas fontes da verdade; foge da ADR-002. A flag é barata de mandar. |
-| Aplicar só no zumbi dono (`not isRemoteZombie()`) | A posse troca sem evento; o novo dono ficaria com sentidos do dia até a próxima passada. Aplicar em todas as cópias custa o mesmo lote. |
+| Aplicar só no zumbi dono (`z:isLocal()`) | A posse troca sem evento; o novo dono ficaria com sentidos do dia até a próxima passada. Aplicar em todas as cópias custa o mesmo lote. Até a sprint 0034 este teste de dono era `not isRemoteZombie()`, que no solo dá falso pra todo zumbi (ninguém tem dono de rede): a sirene, a IA das variantes e a reaplicação da velocidade não rodavam no solo ([pz-api-notes §24](pz-api-notes.md)). |
 | Mandar os IDs dos Ecos pro cliente | O outfit `NOM_Eco` já chega ao cliente; `getOutfitName()` basta. |
 
 ## Consequências

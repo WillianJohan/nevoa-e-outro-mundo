@@ -77,7 +77,7 @@ local function setup(opts)
         function z:hasModData() return next(self.md) ~= nil end
         function z:isDead() return self.dead end
         function z:isCrawling() return self.crawling end
-        function z:isRemoteZombie() return self.remote end
+        function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getOutfitName() return self.outfitName end
         function z:isCanCrawlUnderVehicle() return self.canCrawl end
         function z:setCanCrawlUnderVehicle(b) self.canCrawl = b end
@@ -178,7 +178,7 @@ local function setup(opts)
     G.fire = fire
     function G.converge() G.tick(math.ceil(G.zombies:size() / NOM_NightStats.BATCH) + 1) end
 
-    isClient = function() return false end
+    isClient = function() return opts.client == true end
     isServer = function() return false end
     getDebug = function() return false end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
@@ -444,9 +444,10 @@ return {
         G.converge()
         assert(z.speedType == 1 and z.sight == 1)
     end,
-    -- remoto: o pacote do dono manda no walkType; o laço não briga
+    -- remoto (cliente de MP, dono é outro cliente): o pacote do dono manda no walkType; o
+    -- laço não briga
     stats_remote_speed_not_fought = function()
-        local G = setup()
+        local G = setup({ client = true })
         local z = G.spawn({ remote = true })
         NOM_NightStats.setNight(true)
         G.converge()

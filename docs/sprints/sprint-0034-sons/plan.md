@@ -14,6 +14,7 @@
 - **O que vem já na sirene:** a névoa visual sobe aos poucos durante a fuga, com mais escuridão e os sons de ambiente.
 - **O que espera o fim da fuga:** zumbis soltos, monstros, comportamento de névoa, Sem-rosto e Outro Mundo.
 - **Sirene branca:** `branca_engolida` (a névoa engole o som). A vermelha e a preta estão em escolha; o Johan pediu "sirene de verdade, com estática".
+- **Sangue no chão removido** (Johan, 06/10: parecia textura ruim de jogo antigo); sangue de parede fica. Feito no `NOM_DressingRules` (saíram poças, rastros, respingo e o set `bloodFloor`; `MAX_LAYERS` 4 → 2), com o teste `dressing_rules_no_blood_on_floor`; docs na ADR-017 (item 7), GDD e tooltip do sandbox. Na densidade 1 o chão vestido cai de ~82% pra ~66% (vermelha: ~93% → ~83%).
 
 ## Restrições globais
 
@@ -342,6 +343,20 @@ Depende da Tarefa 6 (as duas mexem em `gen_sounds.py` e `NOM_sounds.txt`): só c
   - Gerar os sons e commitar os `.ogg`.
 - [ ] **Passo 4:** rodar `./run-tests.sh`. Esperado: verde.
 - [ ] **Passo 5: commit.** `git commit -m "Sirenes posicionais: 3 por jogador, uma perto e duas longe; zumbis congelados olham pro jogador"`
+
+### Correção: a sirene não congelava ninguém no solo (`isRemoteZombie`)
+
+**Visto no jogo (solo, `-debug`, 2026-10-06):** `[NOM] sirene congelados=0 ... lista=104 pulados morto/remoto/jogo=0/20/0`. O lote inteiro foi pulado como cópia remota.
+
+**Causa (bytecode, [pz-api-notes §24](../../architecture/pz-api-notes.md)):** `isRemoteZombie()` é `authOwner == nil` no `NetworkZombieComponent`, e no solo ninguém chama `setOwner`: dá `true` pra todo zumbi. O teste de dono certo é `isLocal()` (`(not isClient() and not isServer()) or not isRemote()`): `true` no solo, e no cliente de MP o mesmo de antes. Não era só a sirene: no solo a IA das variantes (`NOM_VariantAI`), a reaplicação da velocidade re-rolada (`NOM_NightStats`) e a soltura da Carpideira depois do grito também não rodavam. Os fakes dos testes devolviam `remote = false` no solo, por isso nada pegou.
+
+**Correção:**
+- todo `z:isRemoteZombie()` do mod virou `not z:isLocal()` (`NOM_SirenFreeze`, `NOM_VariantAI`, `NOM_NightStats`, `NOM_Carpideira`, `client/NOM_FogClient.lua`, `client/NOM_Debug.lua`);
+- os fakes de zumbi (`tests/fog_world.lua`, `test_variant_ai`, `test_night_stats`, `test_variant_look`, `test_variants`, `test_debug`) perderam o `isRemoteZombie` e ganharam `isLocal` com a fórmula do jogo; `remote = true` agora só faz sentido em cliente de MP, e os testes de cópia remota passaram a rodar como cliente;
+- lint `api_no_is_remote_zombie` (`tests/test_kahlua_compat.lua`) falha se `isRemoteZombie` voltar em `mod/` ou `mod2/`;
+- regressão: `siren_freeze_solo_freezes_all` (`tests/test_siren_freeze.lua`); com o fake fiel e o código antigo, ele, os outros testes solo do congelamento, `fog_event_solo_siren_freezes` e `night_and_fog_together` (Estalador no solo) ficavam vermelhos.
+
+**Falta no jogo:** a sirene congela no solo (log `congelados=N`, `pulados remoto=0`); Estalador cega e Carpideira para no solo.
 
 ---
 
