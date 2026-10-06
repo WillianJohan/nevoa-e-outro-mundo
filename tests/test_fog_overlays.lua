@@ -1228,7 +1228,13 @@ return {
     end,
 
     -- custo andando com parede N e W em todo square do caminho (estresse): a pé, no teto do
-    -- enchimento; de carro (2 tiles por tick), por tick, nada além do corte duro
+    -- enchimento; de carro (2 tiles por tick), por tick, nada além do corte duro.
+    -- Margem (review final da 0035): o pior "a pé" varia com a ordem do pairs no registro do
+    -- próprio mod (que alvo entra primeiro no lote de retirada e na conferência). No luajit a
+    -- ordem muda a cada processo (hash com semente); no jogo é a do KahluaTableImpl, outra
+    -- ordem qualquer. Fixar a ordem no fake não tira a variação, e ordenar no mod custaria no
+    -- jogo. Em 12 rodadas: 2341–2423 contra o teto de 2500 (folga de ~3%). Passou do teto: o
+    -- custo subiu de verdade (orçamento, regra), não é azar da ordem.
     overlays_walking_cost_stress = function()
         local G = setup({ density = 2, zoom = 2.5 })
         for x = 60, 200 do
