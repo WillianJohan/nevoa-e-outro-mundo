@@ -349,3 +349,17 @@ Estresse (parede N e W em todo square, densidade 3,2, zoom 2,5, raio 30), saindo
 - `README.md` da sprint com o roteiro de teste e os pontos que só o jogo responde (legibilidade das lascas, FPS, tontura incomoda?, texturas no zoom do Johan);
 - GDD (`atmosphere`, `art-direction`), ADR-017 (emenda), ADR nova se o sprite próprio entrar (formato e limpeza);
 - `HANDOFF`, `sprints/README`, CREDITS (texturas novas).
+
+---
+
+### Code review final
+
+O que o review da entrega achou e o que foi corrigido (um commit por item):
+
+- **O esquecimento do `seen` rodava a cada tick no carro** (importante). Ele percorria a memória da varredura inteira dentro do corte, que de carro roda todo tick: só Lua, então o teste de chamadas Java não via. Agora roda na atualização, antes da varredura, quando o jogador andou `MOVE_TILES` desde o último. A margem do save não depende dele: é o `stripWhere` do corte, que não mudou. O `overlays_car_cost_stress` conta as chaves percorridas (`NOM_FogOverlays.seenVisits`) e trava no máximo uma volta por atualização. Voltas em 220 ticks: antes 55, 110 e 220 (0,5, 1 e 2 tiles/tick); depois 21, 21 e 20. Cobertura (100/99/87% a 3 tiles/s), margem e chamadas Java iguais (pz-api-notes §16.6).
+- **Testes da janela ao vivo:** troca de cor aos 2 s, fim da névoa aos 2,5 s, a névoa que volta no meio da retirada e a densidade 0 que volta, todos com `liveOpen` e 0 squares errados no fim. O código já fazia certo: são travas.
+- **A tontura cortava seco** quando a névoa acabava no meio dela. A tontura agora lê `NOM_FogOverlays.lastRevealAt()`, a última borda ao vivo, que o fim da névoa não apaga (carregar ou ir pro menu apaga). `revealStartedAt()` e `revealing()` continuam como eram. ADR-013 emendada.
+- **Lint do `math.random`** no `test_kahlua_compat.lua`. Não há uso em `mod/` nem `mod2/`; o lint tira o comentário antes de casar.
+- **Folga do `overlays_walking_cost_stress`** (2341–2423 contra 2500 em 12 rodadas). A variação é da ordem do `pairs` no registro do próprio mod, não do fake. Fixar a ordem no fake não a tira, e ordenar no mod custaria no jogo. A margem ficou documentada no teste.
+- **Um extra do overlay com erro derrubava o desenho:** cada extra roda em `pcall`. O que falha sai da lista e vai pro log uma vez, com o prefixo `[NOM]`.
+- **As fontes das lascas copiavam o registro inteiro a cada segundo.** Agora `NOM_FogOverlays.targets(px, py, pz, r)` devolve só o andar e o raio pedidos. No teste denso, a cópia caiu de 8227 alvos pra 1781.
