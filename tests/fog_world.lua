@@ -134,9 +134,63 @@ function W.new(opts)
         return n
     end
 
+    -- Emitter do pool (sprint 0034, pz-api-notes §22): getWorld():getFreeEmitter(x, y, z)
+    -- devolve um emitter já posicionado (IsoWorld.getFreeEmitter(FFF) 0–16), que fica onde
+    -- foi posto. O pool devolve o que ficou vazio e outro sistema pode pegá-lo (aqui o mesmo
+    -- objeto volta). playSoundImpl(nome, nil) → id, isPlaying(id), stopSoundLocal(id),
+    -- setVolume(id, v): locais. playSound/stopSound mandam pacote e stopAll mata o som dos
+    -- outros: explodem. G.sounds[id].at é onde o emitter estava ao tocar.
+    function G.newEmitter(where)
+        local e = { x = where.x, y = where.y, z = where.z, vehicle = where.vehicle }
+        function e:playSoundImpl(name, obj)
+            assert(obj == nil, "playSoundImpl com objeto")
+            local id = #G.sounds + 1
+            G.sounds[id] = { name = name, volume = 1, playing = true, emitter = self, at = { x = self.x, y = self.y, z = self.z },
+                vehicle = self.vehicle, startedAt = G.now }
+            self.claimed = G.ticks
+            return id
+        end
+        function e:isPlaying(id) return G.sounds[id] ~= nil and G.sounds[id].emitter == self and G.sounds[id].playing end
+        function e:stopSoundLocal(id)
+            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].playing = false end
+        end
+        function e:setVolume(id, v)
+            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].volume = v end
+        end
+        e.playSound = function() error("emitter:playSound manda pacote no cliente de MP", 2) end
+        e.stopSound = function() error("emitter:stopSound manda sendStopSound", 2) end
+        e.stopAll = function() error("stopAll num emitter do pool mata o som de outro sistema", 2) end
+        function e:empty()
+            for _, s in pairs(G.sounds) do
+                if s.emitter == self and s.playing then return false end
+            end
+            return true
+        end
+        return e
+    end
+    G.pool = {}
+    G.freeCalls = 0
+    getWorld = function()
+        return { getFreeEmitter = function(_, x, y, z)
+            G.freeCalls = G.freeCalls + 1
+            for _, e in ipairs(G.pool) do
+                if e.claimed ~= G.ticks and e:empty() then
+                    e.x, e.y, e.z, e.claimed = x, y, z, G.ticks
+                    return e
+                end
+            end
+            local e = G.newEmitter({ x = x, y = y, z = z })
+            e.claimed = G.ticks
+            G.pool[#G.pool + 1] = e
+            return e
+        end }
+    end
+
     G.byNum = {}
+    G.remotes = {}
+    -- o.remote: jogador de outro cliente, que este cliente só conhece pelo getOnlinePlayers()
     function G.player(o)
-        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = #G.players,
+        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = o.remote and -1 or #G.players,
             dead = false, light = o.light }
         function p:getX() return self.x end
         function p:getY() return self.y end
@@ -156,6 +210,10 @@ function W.new(opts)
             local id = #G.sounds + 1
             G.sounds[id] = { name = name, volume = 1, playing = true }
             return id
+        end
+        if o.remote then
+            G.remotes[#G.remotes + 1] = p
+            return p
         end
         G.players[#G.players + 1] = p
         G.byNum[p.pn] = p
@@ -245,7 +303,16 @@ function W.new(opts)
     -- (ISBuildIsoEntity.lua:195-198); G.flags[k] = { DoorWallN = true, ... }
     IsoFlagType = { water = "water", DoorWallN = "DoorWallN", DoorWallW = "DoorWallW", WindowN = "WindowN",
         WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW" }
-    getOnlinePlayers = function() return jlist(G.players) end
+    -- LuaManager$GlobalObject.getOnlinePlayers 0–30: servidor = GameServer.getPlayers, cliente
+    -- = GameClient.getPlayers (o IDToPlayerMap: os locais e os remotos que ele conhece), solo =
+    -- ArrayList vazia
+    getOnlinePlayers = function()
+        if not opts.client and not opts.server then return jlist({}) end
+        local all = {}
+        for _, p in ipairs(G.players) do all[#all + 1] = p end
+        for _, p in ipairs(G.remotes) do all[#all + 1] = p end
+        return jlist(all)
+    end
     getCell = function()
         return {
             getGridSquare = function(_, x, y, z) return G.square(x, y, z) end,

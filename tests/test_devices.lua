@@ -7,10 +7,7 @@
 -- * DeviceData: getIsTelevision, getIsTurnedOn, getIsBatteryPowered, getPower,
 --   canBePoweredHere, isVehicleDevice. Mudar o estado (setIsTurnedOn, playSoundSend...) explode:
 --   vai pro save e pra rede.
--- * getWorld():getFreeEmitter(x, y, z): emitter do pool, já posicionado. O pool devolve o
---   emitter que ficou vazio e outro sistema pode pegá-lo (aqui o mesmo objeto volta).
--- * emitter: playSoundImpl(nome, nil) → id, isPlaying(id), stopSoundLocal(id), setVolume(id, v),
---   tudo local. playSound/stopSound mandam pacote e stopAll mata o som dos outros: explodem.
+-- * getWorld():getFreeEmitter(x, y, z) e o emitter do pool: tests/fog_world.lua (G.newEmitter).
 -- * BaseVehicle: playSoundImpl(nome, nil) = getEmitter():playSoundImpl; playSound explode.
 -- * addSound (chama zumbi) explode: é só atmosfera.
 local W = dofile("tests/fog_world.lua")
@@ -25,54 +22,6 @@ local function boom(what)
 end
 
 local function world(G)
-    local function emitter(where)
-        local e = { x = where.x, y = where.y, z = where.z, vehicle = where.vehicle }
-        function e:playSoundImpl(name, obj)
-            assert(obj == nil, "playSoundImpl com objeto")
-            local id = #G.sounds + 1
-            G.sounds[id] = { name = name, volume = 1, playing = true, emitter = self, at = { x = self.x, y = self.y, z = self.z },
-                vehicle = self.vehicle }
-            self.claimed = G.ticks
-            return id
-        end
-        function e:isPlaying(id) return G.sounds[id] ~= nil and G.sounds[id].emitter == self and G.sounds[id].playing end
-        function e:stopSoundLocal(id)
-            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].playing = false end
-        end
-        function e:setVolume(id, v)
-            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].volume = v end
-        end
-        e.playSound = boom("emitter:playSound manda pacote no cliente de MP")
-        e.stopSound = boom("emitter:stopSound manda sendStopSound")
-        e.stopAll = boom("stopAll num emitter do pool mata o som de outro sistema")
-        function e:empty()
-            for _, s in pairs(G.sounds) do
-                if s.emitter == self and s.playing then return false end
-            end
-            return true
-        end
-        return e
-    end
-
-    local pool = {}
-    G.pool = pool
-    G.freeCalls = 0
-    getWorld = function()
-        return { getFreeEmitter = function(_, x, y, z)
-            G.freeCalls = G.freeCalls + 1
-            for _, e in ipairs(pool) do
-                if e.claimed ~= G.ticks and e:empty() then
-                    e.x, e.y, e.z, e.claimed = x, y, z, G.ticks
-                    return e
-                end
-            end
-            local e = emitter({ x = x, y = y, z = z })
-            e.claimed = G.ticks
-            pool[#pool + 1] = e
-            return e
-        end }
-    end
-
     G.devices = {}
     G.devicesCalls = 0
     getZomboidRadio = function()
@@ -114,7 +63,7 @@ local function world(G)
     -- carro com a peça "Radio": { x, y, z, installed, on, battery }
     function G.car(o)
         local v = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0 }
-        v.emitter = emitter({ x = v.x, y = v.y, z = v.z, vehicle = v })
+        v.emitter = G.newEmitter({ x = v.x, y = v.y, z = v.z, vehicle = v })
         function v:getEmitter() return self.emitter end
         function v:playSoundImpl(name, obj) return self.emitter:playSoundImpl(name, obj) end
         v.playSound = boom("vehicle:playSound manda pacote")
