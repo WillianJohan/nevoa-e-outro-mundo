@@ -88,8 +88,19 @@ Saída: `spike-sprite-proprio.md` nesta pasta, com o caminho recomendado (tile p
 - Quem entra no meio da névoa, ou o jogador que teleporta: sem atraso (o mundo já está virado).
 - A margem do save (corte a 38 tiles a cada 2 tiles andados, 0034) não muda.
 
-- [ ] Testes que falham (atraso pelo ruído dentro da faixa; nada vestido antes do atraso; tudo vestido depois de `REVEAL_MS`; entrada no meio sem atraso; fim em manchas; save tira tudo na hora; rajada respeita o teto).
-- [ ] Implementar, `./run-tests.sh` verde, commit.
+- [x] Testes que falham (atraso pelo ruído dentro da faixa; nada vestido antes do atraso; tudo vestido depois de `REVEAL_MS`; entrada no meio sem atraso; fim em manchas; save tira tudo na hora; rajada respeita o teto).
+- [x] Implementar, `./run-tests.sh` verde, commit.
+
+**Feito (2026-10-06).** O que foi decidido no caminho:
+- **Ruído:** `R.reveal(x, y, z, period)` em `NOM_DressingRules`, no mesmo ruído de valor da sujeira, numa rede de 6 tiles (`REVEAL_CELL`). O ruído de valor fica quase todo no meio, então ele é esticado de [0,25; 0,75] pra 0..1, com 12% de sorteio por square (borda irregular). Fica bem espalhado: ~22% abre no primeiro décimo do tempo e ~14% no último.
+- **"Ao vivo":** a borda `false → true` do `NOM_FogState.on` (`onChange`) que chega **com a fuga correndo** (`NOM_FogState.rising`). No solo o `NOM_FogEvent.begin` liga a névoa antes de descer a subida; no MP o comando `fog` faz o `set` antes do `dropRising`. Carregar o save com névoa (o primeiro `OnClimateTick` liga a flag e parece uma borda) e entrar no MP no meio (`fogState`) chegam sem a fuga: sem atraso. "Primeiro estado do cliente" não serviria: no solo, carregar sem névoa e ver a névoa abrir depois também é a primeira chamada do `set`.
+- **Custo:** o square cuja vez não chegou vai pra um pendente por fatia de 200 ms (`BUCKET_MS`) e sai de lá sozinho quando a fatia vence. Não gasta o `SCAN_BUDGET`, e a volta olha até 4× o lote (`LOOK_MULT`) só em Lua. Cada square passa pelo ruído uma vez: no raio 30, 2821 squares, no máximo 320 por atualização. Java no pior lote revelando (zoom 2,5): 1337 chamadas e 216 invalidações por atualização, abaixo do enchimento sem transição (~1950). Fora da janela, a varredura é a de antes.
+- **Janela:** `REVEAL_MS` = 6 s, mais 2 s de folga (`REVEAL_TAIL_MS`) pro que o lote atrasou. Depois disso o que ainda espera volta pra varredura sem atraso.
+- **Rajada:** cada alvo vestido na janela pede 2 lascas (`IN_FLAKES`) ao `NOM_Flakes.burst`, que respeita o teto (160). Nada com os efeitos de tela desligados (intensidade 0). `NOM_Flakes.lua` não mudou.
+- **Fechar:** cada alvo sai depois de (1 − ruído) × `UNREVEAL_MS` (4 s): o último a abrir sai primeiro e a erosão recua pro miolo das manchas. Continua no lote de 80 por atualização, com até 6 lascas por atualização (`OUT_FLAKES`). O `OnSave`, a morte e o corte duro a 38 tiles tiram na hora, como antes.
+- **Teleporte:** na janela, um tick que anda mais de 38 tiles (nenhum carro faz isso) fecha a janela: o lugar novo sai sem atraso. O sinal da tontura continua.
+- **Sinal pra Tarefa 3:** `NOM_FogOverlays.revealStartedAt()` (hora da borda ao vivo, até o fim da névoa; nil pra quem entrou no meio), `NOM_FogOverlays.onReveal(fn)` (chamado uma vez na borda, com a hora) e `NOM_FogOverlays.revealing()` (a janela está aberta). Saem mesmo com o Outro Mundo desligado no sandbox: é o sinal da transição, não do desenho.
+- **Pra ver no jogo:** se 6 s ficou longo ou curto, o tamanho das manchas (6 tiles), se a rajada satura o teto cedo demais (a cinza nasce junto) e se a retirada de 4 s aparece antes de a névoa sumir.
 
 ---
 

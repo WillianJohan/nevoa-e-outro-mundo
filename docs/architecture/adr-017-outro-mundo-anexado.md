@@ -45,7 +45,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
      (15 FPS), o pior caso é 38 + 2 + 2 + 1 = 43. Evidência: pz-api-notes §16.6 (raio pela tela).
    - **Morte**: tudo sai no tick. **Teleporte**: cai no mesmo corte (tudo passa de 38). O salto
      de 8 tiles num tick (que tirava tudo) saiu: um engasgo de FPS no carro o disparava.
-   - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade).
+   - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade). Desde a sprint 0035,
+     em manchas (item 9).
    - **Hot save** (solo, sem evento): o chunk pode ser gravado com anexos do mod; isso só fica no
      disco se o jogo cair antes do próximo save daquele chunk (que sai limpo). Coberto pelo item 5.
    - Cliente de MP: o chunk nunca é gravado (`IsoChunk.Save` sai com `GameClient.client`) e o mod
@@ -92,6 +93,15 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    por prédio e sombra de prédio (o anexo é cortado e apagado com o objeto), luz relida (o chunk tem
    a luz), fade (alfa do anexo não refaz o FBO; o anexo surge e some com o lote), teto e raio
    efetivo, `RenderGhostTileColor`.
+9. **Revelação em manchas (emenda da sprint 0035, transição descascando):**
+   - Quando a névoa abre ao vivo (a borda do `on` chega com a fuga correndo), cada square espera
+     `NOM_DressingRules.reveal` × 6 s reais antes de ser vestido. O que espera fica num pendente
+     barato, fora do lote de 80.
+   - No fim da névoa, cada alvo sai na vez dele pelo mesmo ruído, ao contrário, ao longo de 4 s.
+     Continua no lote de 80.
+   - Quem carrega o save com névoa, entra no MP no meio ou teleporta não espera.
+   - É só visual. O `OnSave`, a morte e o corte a 38 tiles continuam tirando na hora, no meio da
+     retirada também. O que espera ainda não foi anexado, então não tem nada pra vazar.
 
 ## Consequências
 
@@ -107,7 +117,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
   nome e a mesma instância do pool global.
 - Ação que guarda o alvo fora dos campos da tabela da ação (só coordenadas, tabela aninhada) não
   segura o square; na marreta de canto no solo, a parede nova levaria os anexos do mod pro save.
-- Sem fade: o desenho surge e some em anéis, lote a lote (~1,5 s pra encher ou esvaziar).
+- Sem fade: o desenho surge e some em anéis, lote a lote (~1,5 s pra encher ou esvaziar). Na
+  abertura e no fim da névoa (0035), em manchas, ao longo de 6 s e 4 s.
 - Só o andar do jogador; só o jogador 0 na tela dividida (os outros veem o mesmo mapa).
 - Remover a trepadeira do mod com a ação vanilla "remover trepadeira" funciona, e ela volta
   (o rodízio põe de novo o que falta): o Outro Mundo cresce de novo.

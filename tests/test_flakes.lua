@@ -186,22 +186,30 @@ return {
         assert(F().count() == 0 and #G.draws == 0, "lasca na fuga")
     end,
 
-    -- fim da névoa: nada nasce, as vivas terminam o fade e somem
+    -- fim da névoa: o ritmo para (só nascem as poucas que a retirada pede, Tarefa 2), as vivas
+    -- terminam o fade e somem
     flakes_stop_at_end_with_fade = function()
         local G = setup()
         NOM_FogState.set(true, 3)
         G.secs(4)
         local before = F().count()
         assert(before > 0)
+        local real, burst = F().burst, 0
+        F().burst = function(...)
+            local n = real(...)
+            burst = burst + n
+            return n
+        end
         NOM_FogState.set(false)
         local last = before
         for _ = 1, 60 do
+            local b = burst
             G.frame(1)
-            assert(F().count() <= last, "nasceu depois do fim")
+            assert(F().count() <= last + burst - b, "nasceu depois do fim fora da retirada")
             last = F().count()
         end
         assert(last > 0 and #G.draws > 0, "sumiram de golpe")
-        G.secs(R().LIFE_MAX_MS / 1000)
+        G.secs(R().LIFE_MAX_MS / 1000 + NOM_FogOverlays.UNREVEAL_MS / 1000)
         assert(F().count() == 0, "sobrou " .. F().count())
         G.frame(1)
         assert(#G.draws == 0 and G.cost == 0, "custo sem lasca: " .. G.cost)
@@ -390,6 +398,79 @@ return {
         G.frame(10)
         assert(#G.draws == 0)
         assert(G.texCalls == n, "getTexture todo quadro: " .. (G.texCalls - n))
+    end,
+
+    -- TRANSIÇÃO DESCASCANDO (sprint 0035, Tarefa 2) -----------------------------------------
+
+    -- a névoa abre ao vivo: o square revelado pede rajada (NOM_FogOverlays → NOM_Flakes.burst),
+    -- nunca além do teto; sem a rajada, no primeiro segundo quase nada nasceria (as fontes são
+    -- relidas 1 vez por segundo e o Outro Mundo ainda está vazio)
+    flakes_burst_on_live_reveal = function()
+        local G = setup({ density = 2 })
+        local spy = { calls = 0, asked = 0 }
+        local real = F().burst
+        F().burst = function(x, y, z, kind, n)
+            spy.calls, spy.asked = spy.calls + 1, spy.asked + n
+            return real(x, y, z, kind, n)
+        end
+        NOM_FogState.setRising(true)
+        NOM_FogState.set(true, 3)
+        NOM_FogState.setRising(false)
+        local peak = 0
+        for _ = 1, math.floor(NOM_FogOverlays.REVEAL_MS / 16) do
+            G.frame(1)
+            assert(F().count() <= R().MAX, "passou do teto: " .. F().count())
+            peak = math.max(peak, F().count())
+        end
+        assert(spy.calls > 50, "rajadas: " .. spy.calls)
+        assert(peak > R().MAX * 0.5, "a rajada não apareceu: pico " .. peak)
+    end,
+
+    -- só na janela: quem entra no meio não ganha rajada, nem quem anda depois da janela
+    flakes_burst_only_in_window = function()
+        for _, live in ipairs({ false, true }) do
+            local G = setup({ density = 2 })
+            local calls = 0
+            local real = F().burst
+            if live then
+                NOM_FogState.setRising(true)
+                NOM_FogState.set(true, 3)
+                NOM_FogState.setRising(false)
+                G.secs((NOM_FogOverlays.REVEAL_MS + NOM_FogOverlays.REVEAL_TAIL_MS) / 1000 + 1)
+            else
+                NOM_FogState.set(true, 3)
+            end
+            F().burst = function(...) calls = calls + 1; return real(...) end
+            G.secs(3)
+            for _ = 1, 40 do G.p.x = G.p.x + 0.5; G.frame(4) end -- 20 tiles: anel novo vestido
+            G.secs(3)
+            assert(calls == 0, (live and "depois da janela" or "entrada no meio") .. ": " .. calls .. " rajadas")
+        end
+    end,
+
+    -- efeitos de tela desligados (intensidade 0): nenhuma rajada
+    flakes_burst_off_with_effects_off = function()
+        local G = setup({ density = 2, intensity = 0 })
+        NOM_FogState.setRising(true)
+        NOM_FogState.set(true, 3)
+        NOM_FogState.setRising(false)
+        G.secs(4)
+        assert(F().count() == 0, "lascas com os efeitos desligados: " .. F().count())
+    end,
+
+    -- fim da névoa: poucas lascas na retirada (no máximo OUT_FLAKES por atualização)
+    flakes_few_on_unreveal = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3)
+        G.secs(5)
+        local asked, updates = 0, 0
+        local real = F().burst
+        F().burst = function(x, y, z, kind, n) asked = asked + n; return real(x, y, z, kind, n) end
+        NOM_FogState.set(false)
+        G.secs(NOM_FogOverlays.UNREVEAL_MS / 1000 + 1)
+        updates = math.ceil((NOM_FogOverlays.UNREVEAL_MS + 1000) / (16 * NOM_FogOverlays.UPDATE_TICKS))
+        assert(asked > 0, "a retirada não soltou lasca")
+        assert(asked <= updates * NOM_FogOverlays.OUT_FLAKES, "muitas: " .. asked)
     end,
 
     -- menu principal: esquece

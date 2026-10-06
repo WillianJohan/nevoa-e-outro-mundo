@@ -772,4 +772,39 @@ return {
         end
         assert(diff > 600, "período novo quase igual: " .. diff)
     end,
+
+    -- sprint 0035, transição descascando: o atraso de revelação de cada square (0..1) vem de
+    -- um ruído de manchas de alguns tiles. Dentro da faixa, espalhado (tem square que abre na
+    -- hora e square que só abre no fim), em manchas (o vizinho abre perto do square), igual ao
+    -- andar e voltar, outro com outro período
+    dressing_rules_reveal_patches = function()
+        local R = load()
+        local n, early, late, step, steps, jump = 0, 0, 0, 0, 0, 0
+        local first, diff = {}, 0
+        for x = 0, 59 do
+            for y = 0, 59 do
+                local v = R.reveal(700 + x, 900 + y, 0, 3)
+                assert(type(v) == "number" and v >= 0 and v <= 1, "fora de 0..1: " .. tostring(v))
+                first[x .. "," .. y] = v
+                n = n + 1
+                if v < 0.2 then early = early + 1 end
+                if v > 0.8 then late = late + 1 end
+                if x > 0 then
+                    local d = math.abs(v - first[(x - 1) .. "," .. y])
+                    step, steps = step + d, steps + 1
+                    if d > 0.35 then jump = jump + 1 end
+                end
+                if math.abs(v - R.reveal(700 + x, 900 + y, 0, 4)) > 0.1 then diff = diff + 1 end
+            end
+        end
+        assert(early > n * 0.08 and late > n * 0.08, "pouco espalhado: cedo " .. early .. ", tarde " .. late .. " de " .. n)
+        -- o vizinho de lado: perto (manchas), mas com a borda irregular (não liso de tile em tile)
+        assert(step / steps < 0.15, "sem manchas: passo médio " .. step / steps)
+        assert(jump < steps * 0.02, "salto entre vizinhos: " .. jump)
+        assert(diff > n * 0.4, "período novo quase igual: " .. diff)
+        R = load()
+        for x = 0, 59, 7 do
+            for y = 0, 59, 7 do assert(R.reveal(700 + x, 900 + y, 0, 3) == first[x .. "," .. y], "mudou sem mudar a entrada") end
+        end
+    end,
 }

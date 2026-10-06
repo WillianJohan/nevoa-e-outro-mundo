@@ -57,6 +57,13 @@ NOM_DressingRules = {
     -- O tipo e o desenho do trecho não dependem de dentro/fora; a chance de aparecer, sim.
     RUN_SLOT = 6,
     RUN = { graffiti = { outside = 0.45, inside = 0.35 }, messages = { outside = 0.15, inside = 0.6 } },
+    -- Transição descascando (sprint 0035): o atraso de revelação de cada square vem de um ruído
+    -- numa rede de REVEAL_CELL tiles, esticado de [REVEAL_LO, REVEAL_HI] pra 0..1 (o ruído de
+    -- valor fica quase todo no meio), com REVEAL_JITTER por square (borda irregular).
+    REVEAL_CELL = 6,
+    REVEAL_LO = 0.25,
+    REVEAL_HI = 0.75,
+    REVEAL_JITTER = 0.12,
 }
 
 local R = NOM_DressingRules
@@ -213,6 +220,15 @@ end
 -- Ruído das manchas de sujeira em (x, y): 0..1.
 function R.grimeNoise(x, y, z, period)
     return noise(x, y, z, period, R.GRIME_CELL, 54)
+end
+
+-- Atraso de revelação do square (0..1): a erosão abre em manchas, do miolo pra borda
+-- (client/NOM_FogOverlays.lua, × REVEAL_MS ao abrir; ao contrário, × UNREVEAL_MS ao fechar).
+function R.reveal(x, y, z, period)
+    local n = (noise(x, y, z, period, R.REVEAL_CELL, 70) - R.REVEAL_LO) / (R.REVEAL_HI - R.REVEAL_LO)
+    local j = R.REVEAL_JITTER
+    local v = n * (1 - j) + u(sqId(x, y, z), period, 71) * j
+    return math.max(0, math.min(1, v))
 end
 
 -- Sprite de sujeira do square: a classe (x + 2y) mod 5 nunca é a de um vizinho de lado

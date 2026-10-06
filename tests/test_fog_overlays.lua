@@ -102,6 +102,37 @@ local function farthest(G, x, y)
     return m
 end
 
+-- A névoa abre ao vivo (sprint 0035): a sirene sobe a névoa visual, a borda chega com a subida
+-- ainda ligada e ela desce depois (solo: NOM_FogEvent.begin chama setFog antes do rise(false);
+-- MP: o comando fog faz set antes do dropRising, client/NOM_FogClient.lua).
+local function liveOpen(per, red)
+    NOM_FogState.setRising(true, red)
+    NOM_FogState.set(true, per or 3, red)
+    NOM_FogState.setRising(false)
+end
+
+-- atraso de revelação do square, em ms
+local function delay(x, y, per)
+    return D().reveal(x, y, 0, per or NOM_FogState.period) * O().REVEAL_MS
+end
+
+-- pisos carregados num bloco (o fake só cria o objeto quando alguém pede)
+local function floors(G, x0, y0, x1, y1)
+    for x = x0, x1 do for y = y0, y1 do G.floorOf(x, y, 0) end end
+end
+
+-- os objetos que a regra veste a até r tiles de (100, 100): { obj, want }
+local function wanted(G, r)
+    local out = {}
+    for _, o in pairs(G.objs) do
+        if o.z == 0 and o.class == "IsoObject" and (o.x - 100) ^ 2 + (o.y - 100) ^ 2 <= r * r then
+            local want = expect(G, o.x, o.y, 0, o.kind)
+            if want ~= "" then out[#out + 1] = { obj = o, want = want } end
+        end
+    end
+    return out
+end
+
 -- primeiro square perto do jogador cujo piso a regra enche com a condição pedida
 local function findFloor(G, cond)
     for r = 1, 10 do
@@ -573,20 +604,22 @@ return {
     -- a volta da varredura tem #OFFSETS squares); e com as paredes dentro de casa (camadas
     -- empilhadas, sprint 0034)
     overlays_budget = function()
-        for _, c in ipairs({ { zoom = 1 }, { zoom = 2.5 }, { zoom = 1, inside = true } }) do
+        for _, c in ipairs({ { zoom = 1 }, { zoom = 2.5 }, { zoom = 1, inside = true }, { zoom = 2.5, reveal = true } }) do
             local zoom = c.zoom
             local G = setup({ density = 2, zoom = zoom })
             walls(G, 90, 90, 20)
             if c.inside then
                 for x = 90, 109 do for y = 90, 109 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
             end
-            NOM_FogState.set(true, 3, true)
+            if c.reveal then liveOpen(3, true) else NOM_FogState.set(true, 3, true) end
+            -- revelando (sprint 0035), o enchimento vai até o fim do REVEAL_MS
+            local fillEnd = c.reveal and 50 or 10
             local maxFill, maxIdle, maxInv = 0, 0, 0
             for i = 1, 90 do
                 local j, inv = G.java + G.sqCalls, G.invalidations
                 G.tick(O().UPDATE_TICKS)
                 local cost = G.java + G.sqCalls - j
-                if i <= 10 then maxFill = math.max(maxFill, cost) elseif i > 60 then maxIdle = math.max(maxIdle, cost) end
+                if i <= fillEnd then maxFill = math.max(maxFill, cost) elseif i > 60 then maxIdle = math.max(maxIdle, cost) end
                 maxInv = math.max(maxInv, G.invalidations - inv)
             end
             local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
@@ -595,7 +628,7 @@ return {
             -- ≤ 80 squares por lote: MAX_LAYERS + sujeira no piso e WALL_LAYERS em cada parede
             assert(maxInv <= O().SCAN_BUDGET * (D().MAX_LAYERS + 1 + 2 * D().WALL_LAYERS), "invalidações por lote: " .. maxInv)
             print(string.format("[budget] outro mundo (zoom %.1f%s, raio %d, volta %d squares = %d atualizações): enchendo %d, parado %d chamadas, %d invalidações por atualização",
-                zoom, c.inside and ", casa" or "", O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
+                zoom, c.inside and ", casa" or c.reveal and ", revelando" or "", O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
         end
     end,
 
@@ -762,5 +795,216 @@ return {
             G.seconds(3)
             for kind, v in pairs(want) do assert(mods(G, G.objs[c.sq .. kind]) == v, c.field .. ": " .. kind .. " não voltou") end
         end
+    end,
+
+    -- TRANSIÇÃO DESCASCANDO (sprint 0035) -----------------------------------------------------
+
+    -- a névoa abre ao vivo: nenhum square é vestido antes do atraso dele (ruído × REVEAL_MS); no
+    -- meio do caminho, parte vestida e parte esperando (a erosão se espalha em manchas)
+    overlays_reveal_waits_for_the_noise = function()
+        local G = setup({ density = 2 })
+        walls(G, 96, 96, 8)
+        floors(G, 80, 80, 120, 120)
+        liveOpen()
+        local t0 = G.now
+        assert(O().revealStartedAt() == t0, "sem o sinal da revelação")
+        assert(O().revealing(), "não está revelando")
+        local list = wanted(G, D().MIN_RADIUS)
+        assert(#list > 500, "pouco pra medir: " .. #list)
+        local partial = false
+        for _ = 1, 40 do
+            G.tick(O().UPDATE_TICKS)
+            local el = G.now - t0
+            local dressed = 0
+            for _, w in ipairs(list) do
+                if mods(G, w.obj) ~= "" then
+                    assert(delay(w.obj.x, w.obj.y) <= el, w.obj.kind .. " " .. w.obj.x .. "," .. w.obj.y .. " vestido a "
+                        .. el .. " ms, atraso " .. delay(w.obj.x, w.obj.y))
+                    dressed = dressed + 1
+                end
+            end
+            if el > 1500 and el < 4500 and dressed > #list * 0.15 and dressed < #list * 0.85 then partial = true end
+        end
+        assert(partial, "não passou pela metade (tudo de uma vez ou nada)")
+    end,
+
+    -- depois de REVEAL_MS (mais o orçamento), tudo vestido como sem a transição, também no zoom
+    -- mais longe (raio MAX, a volta maior); a janela fecha
+    overlays_reveal_complete_after_reveal_ms = function()
+        for _, zoom in ipairs({ 1, 2.5 }) do
+            local G = setup({ density = 2, zoom = zoom })
+            walls(G, 96, 96, 8)
+            liveOpen()
+            G.seconds(O().REVEAL_MS / 1000 + 2)
+            local r = O().radius()
+            assert(laidOut(G, r - 1) > 500, "zoom " .. zoom .. ": pouco vestido")
+            G.seconds(O().REVEAL_TAIL_MS / 1000)
+            assert(not O().revealing(), "a janela não fechou")
+            assert(O().revealStartedAt(), "o sinal sumiu antes do fim da névoa")
+        end
+    end,
+
+    -- squares esperando não travam a fila: a revelação olha cada square uma vez por volta (o que
+    -- espera vai pro pendente), não o anel inteiro a cada atualização
+    overlays_reveal_pending_is_cheap = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        local real, calls = D().reveal, 0
+        D().reveal = function(...) calls = calls + 1; return real(...) end
+        liveOpen()
+        local worst, total = 0, 0
+        for _ = 1, 50 do
+            local c = calls
+            G.tick(O().UPDATE_TICKS)
+            worst = math.max(worst, calls - c)
+            total = total + calls - c
+        end
+        assert(O().radius() == D().MAX_RADIUS)
+        local ring = D().WITHIN[D().MAX_RADIUS]
+        assert(worst <= O().SCAN_BUDGET * O().LOOK_MULT, "ruído por atualização: " .. worst)
+        -- cada square: uma vez ao chegar, uma ao ser vestido (o rv do alvo); folga pros sem chunk
+        assert(total <= 3 * ring, "o anel olhado de novo: " .. total .. " pra " .. ring .. " squares")
+        D().reveal = real
+        print(string.format("[budget] revelação (raio %d, %d squares): ruído até %d squares por atualização, %d em 50 atualizações",
+            D().MAX_RADIUS, ring, worst, total))
+    end,
+
+    -- carregou o save com névoa ou entrou no MP no meio (a borda chega sem a fuga): sem atraso,
+    -- sem o sinal
+    overlays_mid_fog_entry_no_delay = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3)
+        G.tick(O().UPDATE_TICKS * 2)
+        assert(O().revealStartedAt() == nil and not O().revealing(), "revelou pra quem entrou no meio")
+        local late = 0
+        for x = 98, 102 do
+            for y = 98, 102 do
+                local want = expect(G, x, y, 0, "F")
+                assert(mods(G, G.floorOf(x, y, 0)) == want, x .. "," .. y .. " esperando")
+                if want ~= "" and delay(x, y) > 2 * O().UPDATE_TICKS * 16 then late = late + 1 end
+            end
+        end
+        assert(late > 0, "nenhum square de atraso longo perto (teste não mede)")
+    end,
+
+    -- o sinal sai uma vez, na borda ao vivo, com a hora (a tontura da Tarefa 3 liga nele)
+    overlays_reveal_signal = function()
+        local G = setup({ density = 1 })
+        local got = {}
+        O().onReveal(function(at) got[#got + 1] = at end)
+        NOM_FogState.set(true, 3)
+        NOM_FogState.set(false)
+        G.seconds(6)
+        assert(#got == 0, "sinal na entrada no meio")
+        liveOpen()
+        G.seconds(1)
+        NOM_FogState.set(true, 3) -- sem borda
+        assert(#got == 1 and got[1] == O().revealStartedAt(), "sinal: " .. #got)
+        NOM_FogState.set(false)
+        assert(O().revealStartedAt() == nil, "o sinal ficou depois do fim")
+    end,
+
+    -- teleporte no meio da revelação: o lugar novo sai sem atraso
+    overlays_teleport_mid_reveal_no_delay = function()
+        local G = setup({ density = 2 })
+        liveOpen()
+        G.seconds(0.5)
+        G.p.y = G.p.y - 200
+        G.tick(1)
+        assert(not O().revealing(), "continuou revelando depois do teleporte")
+        G.tick(O().UPDATE_TICKS * 2)
+        local late = 0
+        for x = 98, 102 do
+            for y = -102, -98 do
+                local want = expect(G, x, y, 0, "F")
+                assert(mods(G, G.floorOf(x, y, 0)) == want, x .. "," .. y .. " esperando no lugar novo")
+                if want ~= "" and delay(x, y) > 1500 then late = late + 1 end
+            end
+        end
+        assert(late > 0, "nenhum square de atraso longo (teste não mede)")
+        assert(O().revealStartedAt(), "o sinal sumiu (a tontura já começou)")
+    end,
+
+    -- andando na revelação: no fim, tudo vestido em volta do lugar novo, nada duplicado
+    overlays_reveal_while_walking = function()
+        local G = setup({ density = 2 })
+        walls(G, 96, 96, 30)
+        liveOpen()
+        for _ = 1, 40 do G.p.x = G.p.x + 0.25; G.tick(O().UPDATE_TICKS / 2) end -- 10 tiles em 3,2 s
+        G.seconds(O().REVEAL_MS / 1000)
+        laidOut(G, D().MIN_RADIUS)
+    end,
+
+    -- fim da névoa: os squares saem pelo mesmo ruído, ao contrário (o que abriu por último sai
+    -- primeiro), ao longo de UNREVEAL_MS; no meio, parte ainda lá
+    overlays_fog_end_in_patches = function()
+        local G = setup({ density = 2 })
+        walls(G, 95, 95, 10)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        local before = {}
+        for _, o in pairs(G.objs) do
+            if mods(G, o) ~= "" then before[#before + 1] = o end
+        end
+        assert(#before > 500)
+        NOM_FogState.set(false)
+        local t0, partial = G.now, false
+        for _ = 1, 40 do
+            G.tick(O().UPDATE_TICKS)
+            local el, gone = G.now - t0, 0
+            for _, o in ipairs(before) do
+                if mods(G, o) == "" then
+                    gone = gone + 1
+                    local at = (1 - D().reveal(o.x, o.y, 0, 3)) * O().UNREVEAL_MS
+                    assert(at <= el, o.kind .. " " .. o.x .. "," .. o.y .. " saiu a " .. el .. " ms, vez " .. at)
+                end
+            end
+            if el > 1000 and el < 3000 and gone > #before * 0.15 and gone < #before * 0.85 then partial = true end
+        end
+        assert(partial, "não saiu em manchas")
+        assert(G.ours() == 0, "sobrou: " .. G.ours())
+    end,
+
+    -- save no meio da retirada: tudo sai na hora e não volta (ADR-017)
+    overlays_save_mid_unreveal_clean = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        NOM_FogState.set(false)
+        G.seconds(1)
+        assert(G.ours() > 100, "esvaziou cedo (teste não mede)")
+        assert(G.saveSnapshot().ours == 0, "o save gravaria anexo da retirada")
+        G.seconds(1)
+        assert(G.ours() == 0, "voltou depois do save")
+    end,
+
+    -- a retirada não segura nada além do corte duro: de carro, nenhum tick passa de
+    -- MAX_RADIUS + SLACK + MOVE_TILES
+    overlays_unreveal_keeps_hard_cut = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(8)
+        NOM_FogState.set(false)
+        local had = false
+        for _ = 1, 160 do
+            G.p.x = G.p.x + 0.5
+            G.tick(1)
+            if G.ours() > 0 then had = true end
+            local f = farthest(G, G.p.x, G.p.y)
+            assert(f <= D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5, "anexo a " .. f .. " tiles na retirada")
+        end
+        assert(had)
+    end,
+
+    -- morte no meio da retirada: tudo na hora
+    overlays_death_mid_unreveal = function()
+        local G = setup({ density = 2 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(4)
+        NOM_FogState.set(false)
+        G.seconds(0.5)
+        assert(G.ours() > 0)
+        G.p.dead = true
+        G.tick(1)
+        assert(G.ours() == 0, "sobrou na morte: " .. G.ours())
     end,
 }
