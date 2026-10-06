@@ -52,6 +52,17 @@ return {
         C.fire("OnServerCommand", "NevoaEOutroMundo", "night", { on = true, night = 4 })
         assert(NOM_NightStats.night == true and NOM_NightStats.nightNumber == 4)
     end,
+    -- calmaria depois da névoa: o servidor manda, o cliente dono aplica
+    night_client_follows_calm = function()
+        local C = setup(true)
+        assert(NOM_NightStats.calm == false)
+        C.fire("OnServerCommand", "NevoaEOutroMundo", "calm", { on = true })
+        assert(NOM_NightStats.calm == true)
+        C.fire("OnServerCommand", "NevoaEOutroMundo", "calm", { on = false })
+        assert(NOM_NightStats.calm == false)
+        C.fire("OnServerCommand", "OutroMod", "calm", { on = true })
+        assert(NOM_NightStats.calm == false, "comando de outro mod")
+    end,
     night_client_asks_state_on_join = function()
         local C = setup(true)
         local p = {}

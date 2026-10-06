@@ -18,7 +18,8 @@ require "NOM_FogState"
 -- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
 -- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
 -- antes de qualquer chamada Java.
-NOM_NightStats = { night = false, BATCH = 20, variants = {} }
+-- calm: calmaria depois da névoa (sprint 0033); o servidor manda, como a noite.
+NOM_NightStats = { night = false, calm = false, BATCH = 20, variants = {} }
 
 local LORE = {
     speed = "ZombieLore.Speed",
@@ -149,7 +150,8 @@ local function process(z, c)
     local md = z:getModData()
     local cur = md.NOM_night
     local fog = NOM_FogState.on
-    if cur == nil and not NOM_NightStats.night and not fog then -- dia sem névoa, intocado
+    local calm = NOM_NightStats.calm
+    if cur == nil and not NOM_NightStats.night and not fog and not calm then -- dia sem névoa nem calmaria, intocado
         look(z, nil)
         return false
     end
@@ -174,7 +176,7 @@ local function process(z, c)
     if dayTier == nil and not (c.inactive and c.speed == 4) then
         dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
     end
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c)
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key
@@ -227,7 +229,8 @@ function NOM_NightStats.tick()
     end
     cursor = size > 0 and (cursor + n) % size or 0
     logPass(size, n, applied)
-    if NOM_NightStats.night or NOM_FogState.on then return end
+    -- calmaria: zumbi que nasce ou volta do virtual precisa ser pego; não dorme
+    if NOM_NightStats.night or NOM_FogState.on or NOM_NightStats.calm then return end
     sweep.seen = sweep.seen + n
     sweep.applied = sweep.applied + applied
     if sweep.seen >= size and fromQueue == 0 then
@@ -242,6 +245,13 @@ function NOM_NightStats.setNight(on, nightNumber)
     wake()
     NOM_NightStats.night = on
     NOM_NightStats.nightNumber = nightNumber
+end
+
+-- Calmaria ligada ou desligada pelo servidor (NOM_World.calm). Acorda o tick: de
+-- dia ele dorme, e a virada precisa de uma passada nova.
+function NOM_NightStats.setCalm(on)
+    wake()
+    NOM_NightStats.calm = on == true
 end
 
 -- OnZombieCreate: inclusive zumbi que volta do virtual com stats re-sorteados.
