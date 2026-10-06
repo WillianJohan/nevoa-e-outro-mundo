@@ -94,8 +94,9 @@ O Johan deu autonomia pro resto. Decisões tomadas em nome dele, pra revisar no 
 - [ ] Grade, ferrugem, chapa e tinta aparecem nítidas, com profundidade certa — roteiro, passos 4 a 6
 - [ ] Nada vaza pro save — roteiro, passo 7
 - [ ] A borda da tela enche andando — roteiro, passo 8
-- [x] Regras puras, cliente, texturas, lints e docs — testes verdes (`./run-tests.sh`); **não**
-  confirma nada no jogo
+- [x] Regras puras, cliente, texturas, lints e docs — testes verdes (`./run-tests.sh`: 1004 testes
+  Lua, 9 de contraste, 11 das texturas do Outro Mundo, os do mod3 e 29 de build); **não** confirma
+  nada no jogo
 
 Marcar cada item sem evidência não vale: ao marcar, escrever como foi confirmado.
 

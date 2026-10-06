@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprint 0034 implementada pelo Cursor, na branch). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprint 0035 implementada pelo Cursor, na branch, pronta pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura) e 0033 (ritmo novo) `em teste`**. A **0034 (sons I: sirene e fuga)** está na branch `sprint/0034-sons`, ainda fora da `main`. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)** está na branch `sprint/0035-silent-hill`, pronta pro teste no jogo; o merge na `main` vem logo em seguida. O roadmap está em [sprints/README.md](sprints/README.md).
 - **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
-- 897 testes Lua (na branch da 0034), 5 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 1004 testes Lua (na branch da 0035), 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -75,9 +75,39 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Estado atual: sons I, sirene e fuga (sprint 0034)
+## Estado atual: Outro Mundo estilo Silent Hill (sprint 0035)
 
-**Implementada na branch `sprint/0034-sons`, com testes verdes, aguardando o code review final e o teste do Johan no jogo.** Só depois entra na `main`, com push e `scripts/dev-sync.sh`. Plano em [sprints/sprint-0034-sons/plan.md](sprints/sprint-0034-sons/plan.md); resumo, decisões e roteiro em [sprints/sprint-0034-sons/README.md](sprints/sprint-0034-sons/README.md). O mapa de tudo que vem é a spec [modelo novo](superpowers/specs/2026-10-06-modelo-novo-design.md).
+**Implementada na branch `sprint/0035-silent-hill`, com testes verdes e pronta pro teste do Johan no jogo.** O code review final roda em paralelo; depois dele vêm o merge na `main`, o push e o `scripts/dev-sync.sh`. Plano em [sprints/sprint-0035-silent-hill/plan.md](sprints/sprint-0035-silent-hill/plan.md); resumo, decisões e roteiro em [sprints/sprint-0035-silent-hill/README.md](sprints/sprint-0035-silent-hill/README.md).
+
+**O que a 0035 entrega:**
+- **Transição descascando:** quando a névoa abre ao vivo, a erosão se espalha em manchas ao longo de 6 s e recua do mesmo jeito em 4 s no fim. Quem carrega o save ou entra no meio vê o mundo já virado.
+- **Lascas e cinza subindo** do chão e das paredes vestidas (`client/NOM_Flakes.lua`, `shared/NOM_FlakeRules.lua`), até 160 vivas, com rajada onde a erosão abre.
+- **Tontura na transição** (~5 s): com o shader, a tela ondula, desdobra e turva; sem shader, a vinheta pulsa e escurece. Opção `Dizzy`, ligada por padrão.
+- **50 texturas próprias Silent Hill** (`scripts/gen_tiles.py`): grade, ferrugem, chapa e tinta no chão; tinta, descasca e ferrugem nas paredes W e N. Viram sprite em runtime ([ADR-018](architecture/adr-018-sprite-proprio-em-runtime.md)).
+- **Borda da tela ao andar:** a varredura lembra o que já viu; o anel de 25–30 tiles vai de 28% pra 87% vestido a 3 tiles/s.
+- **Teto de custo do carro** em área densa (`LIGHT_DIV` 4): pior tick de ~3900 pra ~2250 chamadas ao Java.
+- **Cobertura além da tela medida e não feita:** a margem do save não deixa (emenda da [ADR-017](architecture/adr-017-outro-mundo-anexado.md), item 11).
+- **Debug:** `NOM.ownSprites()` e todo comando do `NOM.HELP` com botão no `NOM.panel()`.
+
+**O que o Johan precisa conferir no jogo** (roteiro passo a passo no README da sprint):
+- legibilidade das lascas, FPS, a tontura (duração, ondulação, imagem dupla) e a duração da transição;
+- texturas: nitidez no zoom 0,5–2,5, grade em piso escuro, ferrugem de longe, profundidade na parede W, N e de canto com recorte, decalque embaixo do jogador e do zumbi, textura vazia na primeira névoa depois de carregar;
+- sair e voltar ao save com névoa (nada vazado);
+- pendências da 0034 no mesmo teste: congelamento da sirene depois da correção `isLocal`, IA das variantes no solo, chão sem sangue.
+
+**Decisões tomadas em nome do Johan na 0035** (ele deu autonomia; revisar no teste):
+- **Não cobrir além da tela:** a margem do save manda (raio + folga ≤ 42 com o carro a 2 tiles por tick), e o ganho é pequeno.
+- **Caminho 1b** (sprite criado em runtime a partir do PNG) em vez de tile pack; o tile pack fica de plano B se a textura ficar ruim no jogo.
+- **A tinta da parede só desenha o buraco:** a tinta que fica é a parede do jogo, então serve em qualquer cor.
+- **Sem vermelho no chão:** a tinta de chão é amarelo industrial desbotado.
+- **Preta fica pra 0038:** a regra só conhece branca e vermelha.
+- **Tontura ligada por padrão**, com opção própria e presa à intensidade 1.
+- **Pesos do sorteio:** branca com ~1/3 do chão vestido em metal (Grade 0,4, Ferrugem 0,25, Chapa 0,2, Tinta 0,15) e tinta como a camada mais comum da parede; vermelha com sangue de parede e ferrugem.
+- **Teto de custo do carro:** trocar de desenho dirigindo tira o desenho velho mais devagar (20 alvos por atualização).
+
+## Em teste: sons I, sirene e fuga (sprint 0034)
+
+**Na `main` desde o merge `615df0f`.** Plano em [sprints/sprint-0034-sons/plan.md](sprints/sprint-0034-sons/plan.md); resumo, decisões e roteiro em [sprints/sprint-0034-sons/README.md](sprints/sprint-0034-sons/README.md). O mapa de tudo que vem é a spec [modelo novo](superpowers/specs/2026-10-06-modelo-novo-design.md).
 
 **O que a 0034 entrega:**
 - **Presságio:** 3 s antes da sirene, a tela ganha estática na cor da névoa (fraca no começo, forte no fim), que fica sutil a névoa toda; os aparelhos a até 25 tiles estouram em chiado.
@@ -99,11 +129,14 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 ## Próximo passo
 
-1. **Fechar a 0034:** code review final da entrega, testes verdes, merge na `main`, push e `scripts/dev-sync.sh`. O Johan testa no jogo pelo roteiro do README da sprint e reinicia o jogo depois do sync.
-2. **Fila nova, decidida pelo Johan em 06/10/2026** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
-   - **0035 — Outro Mundo estilo Silent Hill**: texturas procedurais nossas de tinta descascando, ferrugem e grade na erosão; partículas presas no mundo saindo do chão e das paredes; transição "descascando" no shader logo depois da sirene; mais a transição escondida e a tontura, que eram da 0036. Detalhes no item 3 da fila abaixo.
-   - **0036 — Equilíbrio:** visão de ~4 tiles e perambular, com medição de custo (era a 0035).
-   - **0037–0044:** sem mudança (sonar do Estalador, névoa preta I e II, vermelha nova, facelift).
+1. **Fechar a 0035:** code review final da entrega, testes verdes, merge na `main`, push e `scripts/dev-sync.sh`. O Johan testa no jogo pelo [roteiro do README da sprint](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e reinicia o jogo depois do sync.
+2. **Sprint 0036 — Equilíbrio:** visão de ~4 tiles e vaguear (perambular), com medição de custo. Branch `sprint/0036-equilibrio` saindo da `main` depois do merge da 0035.
+3. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
+   - **0037** — sonar do Estalador;
+   - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
+   - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
+   - **0040** — vermelha nova: tentáculos e cinza no ar;
+   - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
 
 **Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)).
 
@@ -205,7 +238,7 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep -E "NOM-Re
    - luz fria e escura pelo clima e pelo shader;
    - esporos e cinza flutuando no overlay de tela. As partículas de clima vanilla não têm cor e mexem na neve.
    - Atualização do Johan (06/10/2026): o visual do Outro Mundo passa a ser **mais Silent Hill** (ferrugem, tinta descascando, grade metálica, lascas subindo). O item 3 (sprint 0035) tem prioridade sobre este; os tentáculos e a cinza continuam na 0040.
-3. **Sprint 0035 — Outro Mundo estilo Silent Hill**, logo depois de fechar a 0034 (decisão do Johan, 06/10/2026). Parte do Outro Mundo da 0034: raio pela tela, casa destruída e sangue no chão já tirado (parecia textura ruim de jogo antigo; o sangue de parede fica).
+3. ~~**Sprint 0035 — Outro Mundo estilo Silent Hill**~~: feita (em teste). Saiu sem shader de dissolve na tela e sem máscara pelo mod3: a transição é a erosão abrindo em manchas, com lascas e tontura ([README da sprint](sprints/sprint-0035-silent-hill/README.md)). O plano original, logo depois de fechar a 0034 (decisão do Johan, 06/10/2026): Parte do Outro Mundo da 0034: raio pela tela, casa destruída e sangue no chão já tirado (parecia textura ruim de jogo antigo; o sangue de parede fica).
    - Texturas procedurais nossas (`scripts/gen_*.py`) anexadas no chão e nas paredes pela erosão: tinta descascando, ferrugem, grade. UNKNOWN: como registrar sprite próprio pro `addAttachedAnimSpriteByName` (tile pack nosso ou outra via). Conferir antes de prometer.
    - Partículas presas no mundo, saindo do chão e das paredes perto do jogador e subindo: lascas girando e cinza. Sprite sheet gerado em Python, algumas centenas por quadro.
    - Transição na chegada da névoa, logo depois da sirene: o shader dissolve a tela com ruído ("descascando") e uma leva de lascas voa pra cima.
