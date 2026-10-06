@@ -8,6 +8,9 @@ trap 'rm -rf "$TMP"' EXIT
 
 pass=0
 fail=0
+# chave descartável pra assinar o jar do mod3 (a de verdade fica em ~/.signing, fora dos testes)
+export NOM_ZBS_KEY="$TMP/zbs-test.pem"
+openssl genpkey -algorithm ed25519 -out "$NOM_ZBS_KEY" 2>/dev/null
 DEST_REL="Zomboid/Workshop/NevoaEOutroMundo"
 
 # cópia do repo só com o que o build lê, num git próprio (o build só manda o que
@@ -16,7 +19,8 @@ fake_repo() {
     local r
     r="$(mktemp -d "$TMP/repo.XXXX")"
     mkdir -p "$r/docs"
-    cp -R "$REPO/mod" "$REPO/mod2" "$REPO/scripts" "$r/"
+    cp -R "$REPO/mod" "$REPO/mod2" "$REPO/mod3" "$REPO/scripts" "$r/"
+    rm -rf "$r/mod3/42/media/java" # o jar compilado é fora do git no repo de verdade
     cp -R "$REPO/docs/workshop" "$r/docs/"
     rm -f "$r/docs/workshop/workshop-id.txt"
     git -C "$r" init -q
@@ -87,7 +91,8 @@ build_excludes_repo_only() {
     d="$h/$DEST_REL"
     test "$(ls "$d" | tr '\n' ' ')" = "Contents preview.png workshop.txt "
     test "$(ls "$d/Contents")" = "mods"
-    test "$(ls "$d/Contents/mods" | tr '\n' ' ')" = "NevoaEOutroMundo NevoaEOutroMundo_Shader "
+    test "$(ls "$d/Contents/mods" | tr '\n' ' ')" = "NevoaEOutroMundo NevoaEOutroMundo_Shader NevoaEOutroMundo_Volumetrica "
+    test "$(ls "$d/Contents/mods/NevoaEOutroMundo_Volumetrica" | tr '\n' ' ')" = "42 common "
     test "$(ls "$d/Contents/mods/NevoaEOutroMundo" | tr '\n' ' ')" = "42 common "
     test "$(ls "$d/Contents/mods/NevoaEOutroMundo_Shader" | tr '\n' ' ')" = "42 common "
     # SteamWorkshopItem.validateFileTypes recusa estes
@@ -320,6 +325,55 @@ build_refuses_uncommitted_change_in_mod2() {
     grep -q "screen.frag" "$h/out.txt"
 }
 
+# terceiro mod no mesmo item: a névoa volumétrica (Java via ZombieBuddy), com o jar compilado do
+# HEAD e assinado (sem assinatura válida o ZombieBuddy exclui o jar); os fontes Java ficam de fora
+build_ships_volumetric_mod() {
+    local h d jar
+    h="$(build)"
+    d="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Volumetrica"
+    grep -qx "id=NevoaEOutroMundo_Volumetrica" "$d/42/mod.info"
+    cmp -s "$d/42/media/shaders/NOM_VolFog.frag" "$REPO/mod3/42/media/shaders/NOM_VolFog.frag"
+    jar="$d/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar"
+    unzip -l "$jar" | grep -q "nom/render/FlowGrid.class"
+    test -z "$(find "$d" -name '*.java')"
+    # o .zbs assina "ZBS:<SteamID64>:<sha256 do jar>" (ZBSVerifier)
+    local sid sig
+    sid="$(sed -n 's/^SteamID64://p' "$jar.zbs")"
+    sig="$(sed -n 's/^Signature://p' "$jar.zbs")"
+    printf 'ZBS:%s:%s' "$sid" "$(sha256sum "$jar" | cut -d' ' -f1)" >"$h/msg"
+    echo "$sig" | xxd -r -p >"$h/sig"
+    openssl pkey -in "$NOM_ZBS_KEY" -pubout -out "$h/pub.pem"
+    openssl pkeyutl -verify -pubin -inkey "$h/pub.pem" -rawin -in "$h/msg" -sigfile "$h/sig" >/dev/null
+    grep -q "NevoaEOutroMundo_Volumetrica" "$h/out.txt"
+}
+
+build_refuses_unsigned_volumetric() {
+    local h
+    if h="$(NOM_ZBS_KEY="$TMP/nao-existe.pem" build)"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "chave" "$h/out.txt"
+}
+
+build_jar_comes_from_head() {
+    local r h
+    r="$(fake_repo)"
+    echo "class Rascunho {}" >"$r/mod3/java/nom/render/Rascunho.java"
+    h="$(build "$r")"
+    local list
+    list="$(unzip -l "$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Volumetrica/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar")"
+    grep -q "nom/render/Flow.class" <<<"$list"
+    ! grep -q Rascunho <<<"$list"
+}
+
+build_refuses_uncommitted_change_in_mod3() {
+    local r h
+    r="$(fake_repo)"
+    echo "// mudança" >>"$r/mod3/java/nom/render/Flow.java"
+    if h="$(build "$r")"; then return 1; fi
+    test ! -e "$h/Zomboid"
+    grep -q "Flow.java" "$h/out.txt"
+}
+
 # dev-sync: cópia (não symlink) dos dois mods pra pasta de mods do jogo
 dev_sync_copies_both_mods() {
     local z
@@ -333,7 +387,7 @@ dev_sync_copies_both_mods() {
     test ! -L "$z/mods/NevoaEOutroMundo_Shader"
 }
 
-for t in build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 dev_sync_copies_both_mods build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
+for t in build_ships_volumetric_mod build_refuses_unsigned_volumetric build_jar_comes_from_head build_refuses_uncommitted_change_in_mod3 build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 dev_sync_copies_both_mods build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
     build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
     build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \

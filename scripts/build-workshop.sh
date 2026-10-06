@@ -4,6 +4,8 @@
 #   <pasta do jogo>/Workshop/NevoaEOutroMundo/ (~/Zomboid, ou a da Steam Flatpak)
 #     Contents/mods/NevoaEOutroMundo/   ← mod/ como está no último commit (git archive)
 #     Contents/mods/NevoaEOutroMundo_Shader/  ← mod2/ (shader opcional, sprint 0013)
+#     Contents/mods/NevoaEOutroMundo_Volumetrica/ ← mod3/42 e common + o jar compilado do HEAD e
+#                                       assinado (névoa volumétrica, Java via ZombieBuddy)
 #     preview.png                       ← docs/workshop/preview.png
 #     workshop.txt                      ← gerado de docs/workshop/description-*.txt
 #
@@ -22,6 +24,10 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MOD_ID="NevoaEOutroMundo"
 SHADER_ID="NevoaEOutroMundo_Shader" # segundo mod do mesmo item (validateModsFolder valida cada pasta)
+VOL_ID="NevoaEOutroMundo_Volumetrica" # terceiro: a pasta java/ (fontes) fica de fora, não é versão nem common
+VOL_JAR="42/media/java/client/$VOL_ID.jar"
+# Sem assinatura válida o ZombieBuddy exclui o jar (ZBSVerifier): sem a chave, não sai upload.
+ZBS_KEY="${NOM_ZBS_KEY:-$HOME/.signing/nom-zbs-ed25519.pem}"
 TITLE="Névoa e Outro Mundo"
 TAGS="Build 42;Hardmode;Multiplayer" # permitidas em media/WorkshopTags.txt do jogo
 DEFAULT_VISIBILITY="unlisted"        # primeiro upload: só com o link, até o teste da instalação limpa
@@ -38,6 +44,7 @@ fi
 DEST="$ZOMBOID_DIR/Workshop/$MOD_ID"
 SRC_MOD="$REPO/mod"
 SRC_SHADER="$REPO/mod2"
+SRC_VOL="$REPO/mod3"
 PREVIEW="$REPO/docs/workshop/preview.png"
 DESC_EN="$REPO/docs/workshop/description-en.txt"
 DESC_PT="$REPO/docs/workshop/description-ptbr.txt"
@@ -59,11 +66,14 @@ warn() { echo "AVISO: $*" >&2; }
 say() { if [ "$DRY" = 1 ]; then echo "[dry-run] $*"; else echo "$*"; fi; }
 
 # --- conferências antes de escrever qualquer coisa ---
-for f in "$SRC_MOD/42/mod.info" "$SRC_MOD/common" "$SRC_SHADER/42/mod.info" "$SRC_SHADER/common" "$PREVIEW" "$DESC_EN" "$DESC_PT"; do
+for f in "$SRC_MOD/42/mod.info" "$SRC_MOD/common" "$SRC_SHADER/42/mod.info" "$SRC_SHADER/common" \
+    "$SRC_VOL/42/mod.info" "$SRC_VOL/common" "$PREVIEW" "$DESC_EN" "$DESC_PT"; do
     [ -e "$f" ] || die "falta $f"
 done
 grep -qx "id=$MOD_ID" "$SRC_MOD/42/mod.info" || die "mod/42/mod.info sem id=$MOD_ID"
 grep -qx "id=$SHADER_ID" "$SRC_SHADER/42/mod.info" || die "mod2/42/mod.info sem id=$SHADER_ID"
+grep -qx "id=$VOL_ID" "$SRC_VOL/42/mod.info" || die "mod3/42/mod.info sem id=$VOL_ID"
+[ -f "$ZBS_KEY" ] || die "sem a chave de assinatura do mod3 em $ZBS_KEY (o ZombieBuddy exclui jar sem assinatura válida)"
 
 size=$(wc -c <"$PREVIEW")
 [ "$size" -le "$MAX_PREVIEW_BYTES" ] || die "preview.png com $size bytes (o jogo recusa acima de $MAX_PREVIEW_BYTES)"
@@ -77,17 +87,17 @@ desc_bytes=$(($(wc -c <"$DESC_EN") + $(wc -c <"$DESC_PT") + 1))
 
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || die "$REPO não é um repositório git"
 # o mod sai do HEAD (git archive): sem estes no commit, a pasta sairia pela metade
-for f in mod/42/mod.info mod/common/.gitkeep mod2/42/mod.info mod2/common/.gitkeep; do
+for f in mod/42/mod.info mod/common/.gitkeep mod2/42/mod.info mod2/common/.gitkeep mod3/42/mod.info mod3/common/.gitkeep; do
     git -C "$REPO" cat-file -e "HEAD:$f" 2>/dev/null || die "o HEAD não tem $f: commite antes (o upload sai do último commit)"
 done
 # texto, preview e ID do Workshop também têm de ser os do commit que leva a tag
 untracked=()
 while IFS= read -r line; do
     case "$line" in
-        "?? mod/"* | "?? mod2/"*) untracked+=("${line#?? }") ;;
-        *) die "mudança não commitada em mod/, mod2/ ou docs/workshop/ ($line): commite antes, o upload é o último commit" ;;
+        "?? mod/"* | "?? mod2/"* | "?? mod3/"*) untracked+=("${line#?? }") ;;
+        *) die "mudança não commitada em mod/, mod2/, mod3/ ou docs/workshop/ ($line): commite antes, o upload é o último commit" ;;
     esac
-done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod mod2 docs/workshop)
+done < <(git -C "$REPO" status --porcelain --untracked-files=all -- mod mod2 mod3 docs/workshop)
 for f in ${untracked[@]+"${untracked[@]}"}; do warn "$f não está no git: fica fora do upload"; done
 
 repo_id=""
@@ -116,10 +126,20 @@ fi
 say "destino: $DEST"
 say "Contents/mods/$MOD_ID/ <- mod/ do commit $(git -C "$REPO" rev-parse --short HEAD) ($(git -C "$REPO" ls-files mod | wc -l) arquivos, cópia limpa)"
 say "Contents/mods/$SHADER_ID/ <- mod2/ do mesmo commit ($(git -C "$REPO" ls-files mod2 | wc -l) arquivos)"
+say "Contents/mods/$VOL_ID/ <- mod3/42 e common do mesmo commit + jar compilado dos fontes do commit, assinado"
 say "preview.png <- docs/workshop/preview.png ($size bytes)"
 say "workshop.txt <- docs/workshop/description-en.txt + description-ptbr.txt ($desc_bytes bytes);" \
     "${id_line:-sem id (primeiro upload)}, visibility=$visibility"
 [ "$DRY" = 1 ] && exit 0
+
+# --- jar do mod3, antes de escrever: se não compilar, nada muda no destino ---
+BUILD_TMP="$(mktemp -d)"
+trap 'rm -rf "$BUILD_TMP"' EXIT
+git -C "$REPO" archive HEAD mod3/java | tar -x -C "$BUILD_TMP"
+MOD3_SRC="$BUILD_TMP/mod3/java" MOD3_OUT="$BUILD_TMP/$VOL_ID.jar" NOM_ZBS_KEY="$ZBS_KEY" \
+    MOD3_DATE="$(git -C "$REPO" log -1 --format=%cI)" bash "$REPO/scripts/build-mod3.sh" >"$BUILD_TMP/mod3.log" 2>&1 ||
+    die "o jar do mod3 não compilou: $(cat "$BUILD_TMP/mod3.log")"
+[ -f "$BUILD_TMP/$VOL_ID.jar.zbs" ] || die "o jar do mod3 saiu sem assinatura: $(cat "$BUILD_TMP/mod3.log")"
 
 # --- escrita ---
 mkdir -p "$DEST"
@@ -128,6 +148,10 @@ mkdir -p "$DEST/Contents/mods/$MOD_ID"
 git -C "$REPO" archive HEAD mod | tar -x -C "$DEST/Contents/mods/$MOD_ID" --strip-components=1
 mkdir -p "$DEST/Contents/mods/$SHADER_ID"
 git -C "$REPO" archive HEAD mod2 | tar -x -C "$DEST/Contents/mods/$SHADER_ID" --strip-components=1
+mkdir -p "$DEST/Contents/mods/$VOL_ID"
+git -C "$REPO" archive HEAD mod3/42 mod3/common | tar -x -C "$DEST/Contents/mods/$VOL_ID" --strip-components=1
+mkdir -p "$(dirname "$DEST/Contents/mods/$VOL_ID/$VOL_JAR")"
+cp "$BUILD_TMP/$VOL_ID.jar" "$BUILD_TMP/$VOL_ID.jar.zbs" "$(dirname "$DEST/Contents/mods/$VOL_ID/$VOL_JAR")/"
 cp "$PREVIEW" "$DEST/preview.png"
 
 # Formato lido por SteamWorkshopItem.readWorkshopTxt: uma linha description= por
