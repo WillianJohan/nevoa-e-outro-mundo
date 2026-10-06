@@ -57,6 +57,11 @@ function NOM_DebugRules.parse(args)
             if type(args[k]) ~= "number" or args[k] ~= args[k] then return nil end
         end
         return { op = op, n = n, outfit = args.outfit, x = args.x, y = args.y, z = args.z }
+    elseif op == "setFog" then
+        -- névoa na cor pedida (NOM_FogEvent.force, sprint 0033): red false/nil = branca forçada
+        if args.red ~= nil and type(args.red) ~= "boolean" then return nil end
+        if args.skip ~= nil and type(args.skip) ~= "boolean" then return nil end
+        return { op = op, red = args.red == true, skip = args.skip == true }
     elseif op == "pull" then
         -- puxar o zumbi mais perto até o jogador (NOM.getZombie, sprint 0033). id é o ID de rede
         -- (-1 no solo: o servidor acha o mais perto); x, y, z o tile de destino.

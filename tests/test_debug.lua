@@ -169,6 +169,10 @@ local function setup(opts)
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
         status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
+        force = function(red, skip)
+            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true)
+            return true
+        end,
     }
     NOM_Eco = {
         spawnAt = function(x, y, z)
@@ -663,37 +667,46 @@ return {
     end) end,
 
     -- sprint 0033, tarefa 7: atalhos novos em cima do que já existe
-    nom_set_fog_is_white_and_plays_siren = function() run(function()
+    -- um único pedido: o servidor desfaz o que estiver aberto e força a cor (NOM_FogEvent.force)
+    nom_set_fog_sends_single_white_request = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.setFog()
-        assert(#G.sentClient == 2, "esperava redFog e fog")
-        local a, b = G.sentClient[1].args, G.sentClient[2].args
-        assert(a.op == "redFog" and a.value == false, "não desfez a vermelha forçada")
-        assert(b.op == "fog" and b.value == true and not b.skip, "sem sirene")
-        assert(table.concat(G.fogCalls, ",") == "red:false,siren:false", table.concat(G.fogCalls, ","))
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.red == false and not a.skip, "pedido errado")
+        assert(table.concat(G.fogCalls, ",") == "force:false:false", table.concat(G.fogCalls, ","))
         NOM.setFog(true)
-        assert(G.sentClient[4].args.skip == true, "não mandou skip")
-    end) end,
-    -- névoa aberta: termina e abre de novo branca (a sirene só toca com o evento fechado)
-    nom_set_fog_reopens_open_fog = function() run(function()
-        local G = setup()
-        G.player({ x = 0, y = 0 })
+        assert(#G.sentClient == 2 and G.sentClient[2].args.skip == true and G.sentClient[2].args.red == false)
+        assert(G.fogCalls[2] == "force:false:true", G.fogCalls[2])
+        -- névoa aberta no cliente: o mesmo pedido (quem reabre é o servidor)
         NOM_FogState.on = true
         NOM.setFog(true)
-        local ops = {}
-        for _, m in ipairs(G.sentClient) do ops[#ops + 1] = m.args.op .. ":" .. tostring(m.args.value) end
-        assert(table.concat(ops, ",") == "fog:false,redFog:false,fog:true", table.concat(ops, ","))
+        assert(#G.sentClient == 3 and G.sentClient[3].args.op == "setFog")
     end) end,
     nom_set_red_fog = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.setRedFog()
-        assert(#G.sentClient == 1 and G.sentClient[1].args.op == "redFog" and G.sentClient[1].args.value == true)
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.red == true and not a.skip, "pedido errado")
         NOM.setRedFog(true)
-        assert(#G.sentClient == 3 and G.sentClient[3].args.op == "fog" and G.sentClient[3].args.skip == true,
-            "skip não abriu a névoa")
-        assert(G.sentClient[2].args.op == "redFog" and G.sentClient[2].args.value == true)
+        assert(#G.sentClient == 2 and G.sentClient[2].args.red == true and G.sentClient[2].args.skip == true)
+        assert(table.concat(G.fogCalls, ",") == "force:true:false,force:true:true", table.concat(G.fogCalls, ","))
+    end) end,
+    -- o servidor confere o pedido e não aceita sem permissão
+    debug_set_fog_op_needs_permission = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local weak = G.player({ x = 0, y = 0, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", weak, { op = "setFog", red = true, skip = true })
+        assert(#G.fogCalls == 0, "sem permissão forçou a névoa")
+        local admin = G.player({ x = 0, y = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", admin, { op = "setFog", red = "sim" })
+        assert(#G.fogCalls == 0, "aceitou red inválido")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", admin, { op = "setFog", red = true, skip = true })
+        assert(table.concat(G.fogCalls, ",") == "force:true:true", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa forcada vermelha=true"), table.concat(G.printed, "\n"))
     end) end,
     nom_set_black_fog_not_yet = function() run(function()
         local G = setup()

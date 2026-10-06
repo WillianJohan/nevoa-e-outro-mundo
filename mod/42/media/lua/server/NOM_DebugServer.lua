@@ -60,6 +60,13 @@ function ops.fog(_, a)
     return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
 end
 
+-- NOM.setFog / NOM.setRedFog (sprint 0033): névoa branca ou vermelha de verdade, qualquer
+-- que seja o estado (fecha o que estiver aberto ou contando); skip abre sem a espera.
+function ops.setFog(_, a)
+    local color = a.red and "vermelha" or "branca"
+    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip))
+end
+
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
 -- (grito do Corredor, sumiço do Sem-rosto) e os clientes (quem simula e quem vê)
 -- recebem o mesmo forçado.

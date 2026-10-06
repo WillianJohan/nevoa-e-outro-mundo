@@ -31,8 +31,9 @@ if not isServer() then NOM_SirenFreeze.install() end
 local countdown, lastMs -- ms reais até a névoa; nil = sem sirene tocando
 -- Névoa vermelha (sprint 0010): a sirene decide e salva em data.fog.red (sprint 0019:
 -- a chance muda com os dias, então re-sortear na recarga podia trocar a cor);
--- forcedRed = NOM_Debug.redFog(true) pra próxima sirene (nil = sorteio), só em memória
--- (recarregar antes da sirene perde o forçado: só debug).
+-- forcedRed pra próxima sirene, só em memória (recarregar antes da sirene perde o forçado:
+-- só debug): nil = sorteio, true = vermelha (NOM_Debug.redFog(true), NOM_FogEvent.force),
+-- false = branca forçada (só NOM_FogEvent.force; NOM_Debug.redFog(false) volta ao sorteio).
 local forcedRed
 
 local function debugLog(msg)
@@ -159,11 +160,24 @@ function NOM_FogEvent.setRed(on)
     return true
 end
 
+-- Debug (NOM.setFog / NOM.setRedFog): névoa na cor pedida, sempre (red false = branca, não
+-- sorteio). Evento aberto ou sirene contando fecham antes (stop), então vale pra quem
+-- estiver aberto; depois toca a sirene (skip: a névoa abre no próximo tick). Sem a
+-- calmaria que o stop acabou de ligar: é uma névoa nova, não o fim de uma.
+function NOM_FogEvent.force(red, skip)
+    if state().inNight or countdown then NOM_FogEvent.stop() end
+    state().calmUntil = nil
+    NOM_World.setCalm(false)
+    forcedRed = red == true
+    return NOM_FogEvent.siren(skip)
+end
+
 local function begin()
     countdown = nil
     forcedRed = nil
     if not isServer() then NOM_SirenFreeze.stop() end -- a sirene acabou: os zumbis soltam antes da névoa
     if not R.start(state(), now(), cfg(), rand, state().red) then return end
+    NOM_World.setCalm(false) -- R.start zerou a calmaria; o clima só relê no minuto seguinte
     debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. " vermelha=" .. tostring(state().red))
     NOM_World.setFog(true, state().red)
 end

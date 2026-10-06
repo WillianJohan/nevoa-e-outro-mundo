@@ -491,6 +491,80 @@ return {
         G.seconds(46)
         assert(NOM_World.red == true)
     end,
+    -- NOM_FogEvent.force (sprint 0033, debug setFog/setRedFog): a cor pedida vale sempre,
+    -- mesmo com a chance sorteando o contrário
+    fog_event_force_white_beats_red_chance = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        assert(NOM_FogEvent.force(false))
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "sirene vermelha com branco forçado")
+        assert(NOM_FogEvent.status().sirenMs == 45000, "sem a contagem de 45 s")
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.red == false and fogMD(G).red == false, "saiu vermelha")
+        -- o forçado vale só pra esse evento: o seguinte sorteia (100% vermelha)
+        NOM_FogEvent.stop()
+        G.advance(24)
+        toSiren(G)
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.red == true, "forçado branco vazou")
+    end,
+    fog_event_force_red_beats_white_chance = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        assert(NOM_FogEvent.force(true))
+        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0)
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.red == true)
+    end,
+    -- skip: a sirene toca e a névoa abre no próximo tick, sem a contagem de 45 s
+    fog_event_force_skip_opens_without_countdown = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        assert(NOM_FogEvent.force(true, true))
+        assert(G.played("NOM_SirenRed") == 1, "sem sirene vermelha")
+        assert(NOM_FogEvent.status().sirenMs == 0 and NOM_World.fog == false)
+        G.tick(1)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.red == true, "não abriu vermelha")
+        assert(NOM_FogEvent.status().sirenMs == nil, "contagem sobrou")
+    end,
+    -- névoa aberta (vermelha ou branca): termina e abre de novo na cor pedida, com período novo
+    fog_event_force_reopens_open_fog_in_other_color = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        toSiren(G)
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.period == 1)
+        assert(NOM_FogEvent.force(false, true))
+        G.tick(1)
+        assert(NOM_World.fog and NOM_World.red == false and NOM_FogState.period == 2, "não reabriu branca")
+        assert(NOM_FogState.red == false)
+        assert(NOM_FogEvent.force(true, true))
+        G.tick(1)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_FogState.period == 3, "não reabriu vermelha")
+    end,
+    -- o stop do evento aberto liga a calmaria; a névoa nova não pode herdá-la
+    fog_event_force_reopen_has_no_calm = function()
+        local G = setup()
+        toSiren(G)
+        G.seconds(46)
+        assert(NOM_FogEvent.force(false)) -- fecha (calmaria ligaria) e toca a sirene nova
+        assert(NOM_World.calm == false, "calmaria durante a sirene da névoa forçada")
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.calm == false, "névoa aberta em calmaria")
+        assert(fogMD(G).calmUntil == nil)
+        G.climate(3)
+        assert(NOM_World.fog and NOM_World.calm == false)
+    end,
+    -- sirene contando: cancela (sirenStop no dedicado) e toca de novo na cor pedida
+    fog_event_force_restarts_counting_siren = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 0 } })
+        toSiren(G)
+        G.seconds(10)
+        G.sentServer = {}
+        assert(NOM_FogEvent.force(true))
+        assert(#G.commands(G.sentServer, "sirenStop") == 1, "não cancelou a sirene que contava")
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].args.red == true, "nova sirene sem a cor pedida")
+        assert(NOM_FogEvent.status().sirenMs == 45000, "contagem não recomeçou")
+        G.seconds(46)
+        assert(NOM_World.fog and NOM_World.red == true)
+    end,
     -- semente do mundo (review): sorteada uma vez com ZombRand, salva no data.fog,
     -- a mesma depois de recarregar; save antigo sem ela ganha uma no primeiro uso
     fog_event_world_seed_saved_once = function()

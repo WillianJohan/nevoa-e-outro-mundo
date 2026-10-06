@@ -100,6 +100,16 @@ return {
         assert(D.parse({ op = "pull", id = 1, x = 1, y = 1 / 0, z = 0 }) == nil)
         assert(D.parse({ op = "pull", id = 1, x = 1, y = 1 }) == nil)
     end,
+    -- sprint 0033: névoa na cor pedida (NOM.setFog / NOM.setRedFog)
+    debug_rules_parse_set_fog = function()
+        local a = D.parse({ op = "setFog", red = true, skip = true })
+        assert(a.op == "setFog" and a.red == true and a.skip == true)
+        a = D.parse({ op = "setFog", red = false })
+        assert(a.red == false and a.skip == false, "skip nil é falso")
+        assert(D.parse({ op = "setFog" }).red == false, "red nil é branca")
+        assert(D.parse({ op = "setFog", red = "sim" }) == nil)
+        assert(D.parse({ op = "setFog", red = true, skip = 1 }) == nil)
+    end,
     -- toggle da névoa: quem decide é o servidor (sabe da sirene)
     debug_rules_parse_fog_toggle = function()
         assert(D.parse({ op = "fog", toggle = true }).toggle == true)

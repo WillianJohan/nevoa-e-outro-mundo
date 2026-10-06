@@ -88,20 +88,16 @@ function NOM.panel()
     if NOM_DebugPanel then NOM_DebugPanel.toggle() end
 end
 
--- Névoa branca (sprint 0033): desfaz a vermelha forçada e toca a sirene (45 s, com o
--- congelamento); skip abre já. Névoa aberta: termina e abre de novo (a sirene só toca com
--- o evento fechado). O pedido vai em ordem pro servidor. A cor é a do sorteio da sirene
--- (NOM_FogEvent.siren): "desfaz" não força branca, então a partir do dia 7 pode sair vermelha.
+-- Névoa branca de verdade (sprint 0033): um pedido só, o servidor decide
+-- (NOM_FogEvent.force). Toca a sirene de 45 s (com o congelamento) e abre a névoa;
+-- skip abre já. Com névoa aberta ou sirene contando, fecha e recomeça na cor pedida.
 function NOM.setFog(skip)
-    if NOM_FogState.on then NOM_Debug.fog(false) end
-    NOM_Debug.redFog(false)
-    NOM_Debug.fog(true, skip)
+    NOM_Debug.send({ op = "setFog", red = false, skip = skip })
 end
 
--- Névoa vermelha: força a cor; a sirene vermelha toca, a não ser com skip.
+-- Névoa vermelha de verdade: o mesmo pedido, na cor vermelha.
 function NOM.setRedFog(skip)
-    NOM_Debug.redFog(true)
-    if skip then NOM_Debug.fog(true, true) end
+    NOM_Debug.send({ op = "setFog", red = true, skip = skip })
 end
 
 -- A névoa preta chega na sprint 0038.
@@ -171,8 +167,8 @@ function NOM.wind(on)
 end
 
 NOM.HELP = {
-    { "NOM.setFog(skip)", "névoa branca: sirene de 45 s (zumbis congelam) e depois a névoa; setFog(true) abre na hora; com névoa aberta, reabre" },
-    { "NOM.setRedFog(skip)", "névoa vermelha: sirene vermelha de 45 s e a névoa; setRedFog(true) abre na hora" },
+    { "NOM.setFog(skip)", "névoa sempre branca: sirene de 45 s (zumbis congelam) e depois a névoa; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setRedFog(skip)", "névoa sempre vermelha: sirene vermelha de 45 s e a névoa; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
     { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
