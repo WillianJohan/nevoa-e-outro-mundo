@@ -598,6 +598,7 @@ return {
     -- os outros extras; sai da lista e vai pro log uma vez
     extra_error_dropped_and_logged_once = function()
         local G = setup()
+        T()
         fogOn(G)
         local before, after, bad = 0, 0, 0
         local function good1() before = before + 1 end
