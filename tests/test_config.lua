@@ -158,7 +158,14 @@ return {
         assert(body("NOM_FogDrone"):find("loop = true", 1, true), "drone sem loop")
         assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
         assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
-        assert(not body("NOM_Siren"):find("loop", 1, true), "sirene em loop (toca uma vez por evento)")
+        -- sirenes posicionais (sprint 0034): uma vez por evento, ouvidas de 40 a 200 tiles. O
+        -- rolloff do FMOD atenua de distanceMin a distanceMax e não zera depois (pz-api-notes §23)
+        for _, name in ipairs({ "NOM_Siren", "NOM_SirenRed", "NOM_SirenFar", "NOM_SirenRedFar" }) do
+            local b = assert(body(name), "sirene sem declaração: " .. name)
+            assert(not b:find("loop", 1, true), name .. " em loop (toca uma vez por evento)")
+            assert(tonumber(b:match("distanceMin = (%d+)")) == 20, name .. ": distanceMin")
+            assert(tonumber(b:match("distanceMax = (%d+)")) == 220, name .. ": distanceMax")
+        end
         -- Carpideira: soluço em loop e baixo (perto); grito uma vez e de longe
         local sob, scream = body("NOM_CarpideiraSob"), body("NOM_CarpideiraScream")
         assert(sob and sob:find("loop = true", 1, true), "soluço sem loop")
@@ -192,7 +199,7 @@ return {
         end
         assert(n >= 5, "sons declarados: " .. n)
         for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren", "NOM_SirenRed",
-        "NOM_CarpideiraSob", "NOM_CarpideiraScream" }) do
+        "NOM_SirenFar", "NOM_SirenRedFar", "NOM_CarpideiraSob", "NOM_CarpideiraScream" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
     end,

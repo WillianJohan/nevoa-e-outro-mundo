@@ -58,6 +58,8 @@ module Base
         clip
         {
             file = media/sound/NOM_Siren.ogg,
+            distanceMin = 20,
+            distanceMax = 220,
         }
     }
 
@@ -67,6 +69,30 @@ module Base
         clip
         {
             file = media/sound/NOM_SirenRed.ogg,
+            distanceMin = 20,
+            distanceMax = 220,
+        }
+    }
+
+    sound NOM_SirenFar
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenFar.ogg,
+            distanceMin = 20,
+            distanceMax = 220,
+        }
+    }
+
+    sound NOM_SirenRedFar
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRedFar.ogg,
+            distanceMin = 20,
+            distanceMax = 220,
         }
     }
 

@@ -24,6 +24,8 @@ Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/ge
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
 | `mod/42/media/sound/NOM_Siren.ogg` | sirene de ataque aéreo, sobe e cai duas vezes (~24 s; rotor de harmônicos ímpares, segundo rotor desafinado, ecos) | aviso do evento de névoa, 15 s reais antes |
 | `mod/42/media/sound/NOM_SirenRed.ogg` | a sirene mais grave (~30%), rasgada e longa (~28 s): rotor com desafinação que oscila, ronco uma oitava abaixo, saturação, chiado filtrado, ecos longos | aviso da névoa vermelha, 15 s reais antes |
+| `mod/42/media/sound/NOM_SirenFar.ogg` | a sirene branca ouvida longe (~24 s): o mesmo sinal com passa-baixa (o ar come o agudo), reverb longo e escuro com reflexões de fachada, ataque macio | as 2 sirenes longe (80 a 200 tiles) da névoa branca |
+| `mod/42/media/sound/NOM_SirenRedFar.ogg` | a sirene vermelha ouvida longe (~28 s), do mesmo jeito | as 2 sirenes longe da névoa vermelha |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
 | `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
 | `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |

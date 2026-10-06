@@ -170,6 +170,19 @@ def siren_red(rng):
     return np.tanh(1.5 * wet / np.max(np.abs(wet)))
 
 
+FAR_CREST_DB = 8.0  # pico/RMS da sirene longe: RMS ~ -9,8 dBFS, a perto fica em ~ -7
+
+
+def far(sinal, seed):
+    """Versão "longe" de uma sirene (sprint 0034): o mesmo sinal ouvido a 80-200 tiles, numa
+    cidade vazia. O ar e os prédios comem o agudo (passa-baixa), chega mais eco que som direto
+    (reverb longo e escuro, com reflexões de fachada) e o ataque amacia. A queda de volume com a
+    distância é do FMOD (distanceMin/distanceMax em media/scripts/NOM_sounds.txt)."""
+    direto = lowpass(sinal, 1100, 2)
+    eco = reverb_wet(direto, 3.2, 0.09, 1400, seed, echoes=((0.31, 0.6), (0.74, 0.4), (1.3, 0.25)))
+    return fades(0.45 * direto + eco, 0.4, 1.5)
+
+
 def sob(rng):
     """Carpideira calma: choro baixo de mulher, soluços entrecortados, ~7 s em loop.
 
@@ -658,6 +671,12 @@ def main():
         if want(name):
             write(name, fn(np.random.default_rng(SEED + k)))
     os.makedirs(OUT, exist_ok=True)
+    # sprint 0034: as sirenes longe, com a semente da perto (o mesmo sinal por baixo). Pelo
+    # limitador, quase no nível da perto: quem baixa com a distância é o FMOD, não o arquivo.
+    for name, base, k in (("NOM_SirenFar", siren, 4), ("NOM_SirenRedFar", siren_red, 5)):
+        if want(name):
+            sig = far(base(np.random.default_rng(SEED + k)), SEED + 10 * k)
+            ns.write(os.path.join(OUT, name + ".ogg"), sig, crest_db=FAR_CREST_DB)
     for name, fn, crest in DEVICES:  # sprint 0034: aparelhos do Outro Mundo
         if want(name):
             ns.write(os.path.join(OUT, name + ".ogg"), fn(), crest_db=crest)
