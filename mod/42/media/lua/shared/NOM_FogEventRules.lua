@@ -4,27 +4,43 @@
 -- state = { night = número do período, inNight = evento aberto,
 --           next = hora de mundo da próxima sirene, endAt = hora de mundo do fim,
 --           red = névoa vermelha (sprint 0010), decidida na sirene e limpa no fim,
---           bornAt = hora de mundo do nascimento do save pra curva (sprint 0019) }
+--           bornAt = hora de mundo do nascimento do save pra curva (sprint 0019),
+--           seed = semente do mundo (sorteio determinístico, sprint 0033),
+--           day = último dia de jogo planejado, hadFog = teve névoa neste dia,
+--           daysWithout = dias seguidos sem névoa, wantSecond = segunda no mesmo dia,
+--           lastEnd = hora de fim da última névoa, calmUntil = fim da calmaria }
 -- salvo no ModData global (data.fog). night/inNight são as chaves da sprint 0005
 -- (névoa natural): saves antigos continuam com o mesmo número de período.
+require "NOM_VariantRules"
 NOM_FogEventRules = {}
 local R = NOM_FogEventRules
 
-R.SIREN_MS = 30000    -- a sirene toca 30 s reais antes da névoa
+R.SIREN_MS = 45000    -- a sirene toca 45 s reais antes da névoa (sprint 0033)
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
-
-function R.config(get)
-    return { everyDays = get("FogEventEveryDays"), minHours = get("FogMinHours"), maxHours = get("FogMaxHours"),
-        escalation = get("FogEscalation"), redGraceDays = get("RedFogGraceDays") }
-end
-
-local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
 -- Curva de tensão (sprint 0019, análise do PO): dias de jogo desde o bornAt.
 -- Ponto neutro da curva: no dia 30 o intervalo é 1× e a vermelha 1× (e a carência,
 -- até 60 dias no sandbox, já passou se for menor que 30).
 R.NEUTRAL_DAYS = 30
+
+-- Sais do sorteio do dia: cada um é um sorteio independente do mesmo dia.
+R.DAY_SALT = 15485863
+R.HOUR_SALT = 32452843
+R.SECOND_SALT = 49979687
+R.SECOND_HOUR_SALT = 67867967
+R.DIR_SALT = 86028121
+
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+
+function R.config(get)
+    return { dailyChance = get("FogDailyChance"), maxDailyChance = get("FogMaxDailyChance"),
+        escalationDays = get("FogEscalationDays"), escalation = get("FogEscalation"),
+        secondChance = get("FogSecondChance"), minGapHours = get("FogMinGapHours"),
+        maxDaysWithout = get("FogMaxDaysWithout"), minHours = get("FogMinHours"), maxHours = get("FogMaxHours"),
+        redMinHours = get("RedFogMinHours"), redMaxHours = get("RedFogMaxHours"),
+        redGraceDays = get("RedFogGraceDays"), calmHours = get("FogCalmHours") }
+end
 
 -- Grava o bornAt uma vez. Save novo nasce agora; save veterano (já tem agenda: night ou
 -- next, sem bornAt) nasce NEUTRAL_DAYS atrás, pra não sentir a curva (review da 0019).
@@ -40,29 +56,59 @@ function R.days(state, now)
     return math.max(0, now - (state.bornAt or now)) / 24
 end
 
--- Média do intervalo no dia d: everyDays × clamp(1,5 − d/60, 0,75, 1,5). Com a base 2:
--- 3 dias no começo, 2 no dia 30, 1,5 do dia 45 em diante. Sem a escalada, o sandbox.
-function R.everyDays(cfg, d)
-    if not cfg.escalation then return cfg.everyDays end
-    return cfg.everyDays * clamp(1.5 - d / 60, 0.75, 1.5)
+function R.dayOf(hours) return math.floor(hours / 24) end
+
+-- Sorteio em [0, 1) do dia (ou período) n com a semente do mundo; sal separa sorteios.
+function R.frac(seed, n, salt)
+    return NOM_VariantRules.hash(seed or 0, n, salt) / NOM_VariantRules.Q
 end
 
--- Chance (0–100) de vermelha no dia d: 0 antes de redGraceDays (com ou sem a escalada);
--- depois chance × clamp(1 + (d − 30)/60, 1, 2): igual até o dia 30, o dobro do 90 em diante.
-function R.redChance(chance, cfg, d)
-    if d < (cfg.redGraceDays or 0) then return 0 end
-    if not cfg.escalation then return chance end
-    return chance * clamp(1 + (d - 30) / 60, 1, 2)
+-- Chance (%) do dia d de save: com a curva, sobe em linha reta da chance do sandbox
+-- até o teto no dia escalationDays e fica lá.
+function R.dayChance(cfg, d)
+    local base = cfg.dailyChance or 0
+    if not cfg.escalation then return base end
+    local days = cfg.escalationDays or 0
+    local t = days > 0 and clamp(d / days, 0, 1) or 1
+    return base + ((cfg.maxDailyChance or base) - base) * t
 end
 
-local function gap(state, now, cfg, rand)
-    return R.gapHours(R.everyDays(cfg, R.days(state, now)), rand())
+-- Hora de mundo da primeira névoa do dia D. Se já passou (save carregado no meio
+-- do dia), vai pra parte do dia que sobra, na mesma proporção.
+function R.firstStart(seed, D, now)
+    local dayStart = D * 24
+    local h = R.frac(seed, D, R.HOUR_SALT) * 24
+    local start = dayStart + h
+    if start < now then start = now + h / 24 * (dayStart + 24 - now) end
+    return start
 end
 
--- Horas até a próxima sirene, contadas do fim do evento anterior: uniforme entre
--- 0,5× e 1,5× de everyDays (média = everyDays). r em [0, 1).
-function R.gapHours(everyDays, r)
-    return everyDays * 24 * (0.5 + r)
+-- Nenhuma névoa começa antes de minGapHours depois do fim da anterior (a folga).
+local function afterGap(state, t, cfg)
+    if state.lastEnd == nil then return t end
+    return math.max(t, state.lastEnd + (cfg.minGapHours or 0))
+end
+
+-- Planeja o dia D uma vez: conta os dias sem névoa, sorteia se tem névoa (a garantia
+-- força) e se vai querer segunda. Sirene pendente (save antigo, ou empurrada da
+-- véspera pela folga) vale pelo dia: sem sorteio novo.
+function R.planDay(state, D, now, cfg)
+    if state.day ~= nil then
+        local missed = math.max(0, D - state.day - 1)
+        if state.hadFog then
+            state.daysWithout = missed
+        else
+            state.daysWithout = (state.daysWithout or 0) + 1 + missed
+        end
+    else
+        state.daysWithout = state.daysWithout or 0
+    end
+    state.day, state.hadFog, state.wantSecond = D, false, false
+    if state.next ~= nil then return end
+    local forced = state.daysWithout >= (cfg.maxDaysWithout or 2)
+    if not forced and R.frac(state.seed, D, R.DAY_SALT) * 100 >= R.dayChance(cfg, R.days(state, now)) then return end
+    state.next = afterGap(state, R.firstStart(state.seed, D, now), cfg)
+    state.wantSecond = R.frac(state.seed, D, R.SECOND_SALT) * 100 < (cfg.secondChance or 0)
 end
 
 -- Duração uniforme entre min e max; min > max no sandbox troca os dois.
@@ -71,40 +117,66 @@ function R.durationHours(a, b, r)
     return lo + (hi - lo) * r
 end
 
--- Uma vez por minuto de jogo. Devolve "siren" enquanto for hora de tocar a sirene
--- e o evento não começou (quem chama ignora se a contagem já corre), "end" na
--- borda do fim, nil no resto. Estado aberto sem endAt é save da sprint 0008 (névoa
--- natural): fecha sem contar período.
+-- Uma vez por minuto de jogo. "siren" enquanto for hora e o evento não começou,
+-- "end" na borda do fim, nil no resto. Estado aberto sem endAt é save da 0008: fecha.
 function R.update(state, now, cfg, rand)
     if state.inNight and state.endAt == nil then state.inNight = false end
     if state.inNight then
         if now < state.endAt then return nil end
-        R.stop(state, now, cfg, rand)
+        R.stop(state, now, cfg)
+        if R.dayOf(now) ~= state.day then R.planDay(state, R.dayOf(now), now, cfg) end
         return "end"
     end
-    if state.next == nil then state.next = now + gap(state, now, cfg, rand) end
-    if now >= state.next then return "siren" end
+    local D = R.dayOf(now)
+    if state.day ~= D then R.planDay(state, D, now, cfg) end
+    if state.next ~= nil and now >= state.next then return "siren" end
     return nil
 end
 
--- Abre o evento: período novo, fim sorteado. Evento dentro de evento não existe.
--- red: o que a sirene decidiu (névoa vermelha, sprint 0010).
+-- Abre o evento com a duração do tipo. red: o que a sirene decidiu.
 function R.start(state, now, cfg, rand, red)
     if state.inNight then return false end
     state.night = (state.night or 0) + 1
-    state.inNight = true
-    state.red = red == true
-    state.endAt = now + R.durationHours(cfg.minHours, cfg.maxHours, rand())
-    state.next = nil
+    state.inNight, state.red, state.hadFog = true, red == true, true
+    local lo, hi = cfg.minHours, cfg.maxHours
+    if state.red then lo, hi = cfg.redMinHours, cfg.redMaxHours end
+    state.endAt = now + R.durationHours(lo, hi, rand())
+    state.next, state.calmUntil = nil, nil
     return true
 end
 
--- Fecha o evento e agenda a próxima sirene a partir de agora, com a média do dia de agora.
-function R.stop(state, now, cfg, rand)
-    state.inNight = false
-    state.endAt = nil
-    state.red = nil
-    state.next = now + gap(state, now, cfg, rand)
+-- Fecha o evento: calmaria, folga e, se o dia quis e couber, a segunda névoa
+-- (começa antes da meia-noite, depois de minGapHours).
+function R.stop(state, now, cfg)
+    state.inNight, state.endAt, state.red = false, nil, nil
+    state.lastEnd = now
+    state.calmUntil = now + (cfg.calmHours or 0)
+    if state.next ~= nil then state.next = afterGap(state, state.next, cfg) end
+    if state.next == nil and state.wantSecond and state.day == R.dayOf(now) then
+        local from, to = now + (cfg.minGapHours or 0), (state.day + 1) * 24
+        if from < to then state.next = from + R.frac(state.seed, state.day, R.SECOND_HOUR_SALT) * (to - from) end
+    end
+    state.wantSecond = false
+end
+
+-- Sirene cancelada (debug): a pendente sai, o dia não ganha outra.
+function R.cancel(state)
+    state.next = nil
+end
+
+function R.calm(state, now)
+    return not state.inNight and state.calmUntil ~= nil and now < state.calmUntil
+end
+
+-- Vermelha: 0 na carência, a chance do sandbox depois. A curva é só da chance do dia.
+function R.redChance(chance, cfg, d)
+    if d < (cfg.redGraceDays or 0) then return 0 end
+    return chance
+end
+
+-- De onde a sirene "vem" no período: graus em [0, 360), igual em toda máquina.
+function R.sirenDir(seed, period)
+    return R.frac(seed, period, R.DIR_SALT) * 360
 end
 
 -- Contagem regressiva da sirene em ms reais: parada com o jogo pausado, e um
