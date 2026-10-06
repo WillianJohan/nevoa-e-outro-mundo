@@ -121,6 +121,35 @@ return {
         G.server("presage", nil) -- servidor antigo / sem argumentos: branca
         assert(NOM_FogState.omenAt ~= nil and NOM_FogState.omenRed == false)
     end,
+    -- EXTRA da 0034: se o fog (on) ou o sirenStop se perder, a subida e o presságio não ficam
+    -- pra sempre: depois de PRESAGE_MS + GRACE_MS + 15 s sem confirmação, desligam sozinhos
+    fog_client_rising_safety_timeout = function()
+        local G = setup()
+        local R = NOM_FogEventRules
+        local limit = R.PRESAGE_MS + R.GRACE_MS + NOM_SirenFreeze.SAFETY_MS
+        G.player({ x = 0, y = 0 })
+        G.server("presage", { red = true })
+        G.seconds(3)
+        G.server("siren", { red = true, dir = 0 })
+        G.seconds((limit - 1000) / 1000)
+        assert(NOM_FogState.rising == true, "desligou antes do prazo")
+        G.seconds(1.1)
+        assert(NOM_FogState.rising == false and NOM_FogState.omenAt == nil, "a subida ficou sem confirmação")
+        -- presságio sozinho (a sirene se perdeu também)
+        G.server("presage", { red = false })
+        G.seconds(limit / 1000 + 0.1)
+        assert(NOM_FogState.omenAt == nil, "o presságio ficou sem confirmação")
+        -- confirmado (fog on): o prazo não derruba a névoa aberta nem uma subida nova depois
+        G.server("siren", { red = false, dir = 0 })
+        G.seconds(10)
+        G.server("fog", { on = true, period = 1 })
+        G.seconds(limit / 1000 + 1)
+        assert(NOM_FogState.on == true and NOM_FogState.visible() == true)
+        G.server("fog", { on = false, period = 1 })
+        G.server("siren", { red = false, dir = 0 })
+        G.seconds(limit / 1000 - 5)
+        assert(NOM_FogState.rising == true, "prazo velho derrubou a subida nova")
+    end,
     fog_client_asks_state_on_join = function()
         local G = setup()
         local p = {}

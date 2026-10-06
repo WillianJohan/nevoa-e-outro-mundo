@@ -16,6 +16,23 @@ local MODULE = "NevoaEOutroMundo"
 -- Sirene: o cliente dono congela os zumbis dele (shared/NOM_SirenFreeze, ADR-005).
 NOM_SirenFreeze.install()
 
+-- Rede de segurança da subida e do presságio (sprint 0034), como o SAFETY_MS do
+-- congelamento: se o fog (on) ou o sirenStop se perder, o drone, a vinheta e a estática não
+-- ficam pra sempre. Renovado a cada presage/siren; o fog (on) e o sirenStop desarmam.
+local RISING_SAFETY_MS = NOM_FogEventRules.PRESAGE_MS + NOM_FogEventRules.GRACE_MS + NOM_SirenFreeze.SAFETY_MS
+local risingUntil -- getTimestampMs (CONFIRMED server/ISObjectClickHandler.lua:352)
+
+local function arm() risingUntil = getTimestampMs() + RISING_SAFETY_MS end
+
+local function dropRising()
+    risingUntil = nil
+    NOM_FogState.setRising(false)
+end
+
+Events.OnTick.Add(function()
+    if risingUntil and getTimestampMs() > risingUntil then dropRising() end
+end)
+
 -- Avisa o servidor pelo ID de rede (-1 = sem ID: o servidor não acharia). Se a
 -- cópia daqui é remota (o dono é outro cliente), ela vai direto pro destino: o
 -- dono move quando o servidor mandar, e os pacotes dele trazem a mesma posição,
@@ -54,18 +71,20 @@ Events.OnServerCommand.Add(function(module, command, args)
         -- a névoa abre: a fuga acabou (o servidor não manda sirenStop nesse caso). O fog off
         -- não desce a subida: quem entra na fuga recebe fog (off) e depois siren.
         if args.on == true then
-            NOM_FogState.setRising(false)
+            dropRising()
             NOM_SirenFreeze.stop()
         end
     elseif command == "presage" then -- 3 s antes da sirene: estática na tela (NOM_ScreenFx)
         NOM_FogState.setOmen(type(args) == "table" and args.red == true)
+        arm()
     elseif command == "siren" then -- evento de névoa: começa a fuga de 30 s (NOM_FogEvent)
         local red = type(args) == "table" and args.red == true
         NOM_Siren.play(red)
         NOM_FogState.setRising(true, red)
+        arm()
         NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.GRACE_MS)
     elseif command == "sirenStop" then -- presságio ou sirene cancelada (NOM_FogEvent.stop)
-        NOM_FogState.setRising(false)
+        dropRising()
         NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este
