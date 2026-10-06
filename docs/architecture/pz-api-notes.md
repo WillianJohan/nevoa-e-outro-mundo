@@ -1408,6 +1408,46 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
 | Dedicado: sem `sirenStop` quando a névoa abre | decisão | o cliente solta ao receber `fog {on=true}` ou, sem comando, 15 s (`SAFETY_MS`) depois do fim da sirene |
 | UNKNOWN | — | se o zumbi useless, parado pelo idle, mantém o `faceLocationF` por frames ou volta a girar sozinho; o módulo vira de novo a cada passada (lote de 20 por tick). Conferir no jogo |
 
+## 22. Aparelhos do Outro Mundo (sprint 0034)
+
+`client/NOM_Devices.lua` (regras em `shared/NOM_DeviceRules.lua`): TV, rádio, caixa de som e
+rádio de carro perto do jogador 0 chiam e "falam" no presságio e na névoa aberta, ligados ou
+não. Atmosfera local (ADR-007): nada vai pra rede nem pro save, não chama zumbi e o aparelho
+não muda de estado. Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `getZomboidRadio()` global | CONFIRMED | `server/radio/ISDynamicRadio.lua:32`, `client/RadioCom/RadioWindowModules/RWMGeneral.lua:69` |
+| `ZomboidRadio:getDevices()` → `ArrayList<WaveSignalDevice>` com todo `IsoWaveSignal` (TV, rádio) e toda `VehiclePart` com `DeviceData` em chunk carregado | EXISTS | bytecode `ZomboidRadio.getDevices` (devolve o campo `devices`); `IsoWaveSignal.addToWorld`/`removeFromWorld` → `RegisterDevice`/`UnRegisterDevice`; `VehicleParts.addToWorld` registra parte com `getDeviceData() ~= nil`; chunk que descarrega chama `removeFromWorld` (`IsoChunk.removeFromWorld` 464) |
+| `WaveSignalDevice`: `getX/getY/getZ` (float; a da `VehiclePart` é a posição do carro), `getDeviceData()` | EXISTS | `javap zombie.radio.devices.WaveSignalDevice`; `VehiclePart.getX` 0–9 |
+| `dd:getIsTelevision()` | CONFIRMED | `RWMGeneral.lua:67` |
+| `dd:isVehicleDevice()`, `dd:getIsTurnedOn()` | CONFIRMED | `shared/RadioCom/ISRadioAction.lua:63-64` |
+| "Pode ligar": `getIsBatteryPowered() and getPower() > 0 or canBePoweredHere()` (no carro, `canBePoweredHere` = bateria do carro) | CONFIRMED | `ISRadioAction.lua:57`; bytecode `DeviceData.canBePoweredHere` 0–121 |
+| Rádio de carro instalado: `part:getInventoryItem()` | CONFIRMED | `client/Vehicles/ISUI/ISVehicleDashboard.lua:541` |
+| `part:getVehicle()` | CONFIRMED | `shared/Vehicles/TimedActions/ISRepairLightbar.lua:91` |
+| `getWorld():getFreeEmitter(x, y, z)` → emitter do pool já posicionado; o pool devolve o emitter quando ele fica vazio | EXISTS | bytecode `IsoWorld.getFreeEmitter(FFF)` 0–16; `IsoWorld` 8947–8990 (`currentEmitters` → `freeEmitters`); `getWorld()` CONFIRMED `client/Traps/CTrapGlobalObject.lua:32` |
+| `emitter:playSoundImpl(nome, nil)` → id, **local** (sem pacote) | CONFIRMED | `shared/TimedActions/ISAddItemInRecipe.lua:44`; bytecode `FMODSoundEmitter.playSoundImpl(String,IsoObject)` 0–24 |
+| `vehicle:playSoundImpl(nome, nil)` = `getEmitter():playSoundImpl`; o emitter segue o carro | EXISTS | bytecode `BaseVehicle.playSoundImpl` 0–9, `BaseVehicle.updateSounds` 96–113 |
+| `emitter:setVolume(id, v)`, `isPlaying(id)`, `stopSoundLocal(id)` | CONFIRMED | §4.3 |
+| Volume que sai = volume da instância (`setVolume`) × `volume` do clip no script | CONFIRMED (bytecode) | `FMODSoundEmitter$Sound.getVolume` 0–23 (`volume * clip.getEffectiveVolume()`) |
+| `emitter:playSound`, `getSoundManager():PlayWorldSound`, `deviceData:playSoundSend` mandam pacote no cliente de MP | CONFIRMED (bytecode) | `FMODSoundEmitter.playSound(String)` 0–107; `SoundManager.PlayWorldSound` 12–35; `ISRadioAction.lua:63` |
+| O emitter do próprio aparelho (`dd:getEmitter()`) só existe ligado e com ouvinte a até 16 tiles | CONFIRMED (bytecode) | `DeviceData.updateEmitter` 0–143 (`cleanSoundsAndEmitter` fora disso) |
+| Som com `distanceMax` não zera depois dele (rolloff inverso do FMOD) | LIKELY | nenhum modo de rolloff no jar; `FMOD_System_Set3DSettings(1, 1, 1)`: o cliente para o som a 20 tiles |
+| Som tocado não chama zumbi; o que chama é `addSound` | CONFIRMED | §4.2 |
+
+Decisões: o emitter do pool é parado só pelo id (`stopSoundLocal`), nunca por `stopAll`, porque
+outro sistema pode estar usando o mesmo emitter. O rádio instalado num carro durante a sessão
+pode só entrar na lista quando o carro voltar ao mundo (`VehiclePart.createSignalDevice` não
+registra): sem fallback pelos veículos até o jogo mostrar que faz falta. O grito do Corredor não
+chega ao cliente pelo Lua (`sendPlaySound` do servidor), então só o da Carpideira
+(`NOM_Carpideira.onScream`) faz o aparelho respirar na vermelha.
+
+| UNKNOWN | — |
+|---|---|
+| tamanho da lista numa cidade, e se os aparelhos das casas a ~15 tiles estão nela no cliente de MP | `getZomboidRadio():getDevices():size()` no console |
+| atenuação real com `distanceMin` 2 e `distanceMax` 18; oclusão atrás de parede | ouvir no jogo |
+| `stopSoundLocal(id)` para mesmo o som de um emitter do pool que já se afastou | ouvir no jogo |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1426,6 +1466,8 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
+| Som local num ponto do mundo | `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, nil)`, parado pelo id; no carro, `vehicle:playSoundImpl` (§22) | — (`PlayWorldSound` manda pacote) |
+| Achar aparelho perto | `getZomboidRadio():getDevices()` filtrado por distância² (§22) | varrer quadrados (caro, sem o carro) |
 | Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio, na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
@@ -1469,3 +1511,6 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
     voltar na névoa e depois dela sem nada sobrando (roteiro da sprint 0023)
 16. Debug amigável (sprint 0020): Insert livre em `-debug` (as 46 classes dizem que sim)? `NOM.time` no dedicado chega nos
     clientes, com a data certa? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)
+17. Aparelhos do Outro Mundo (sprint 0034): a TV e o rádio das casas perto estão na
+    `getZomboidRadio():getDevices()`? O som some com a distância e para a 20 tiles? O rádio de
+    carro toca no carro? Volume e frequência agradam? (§22)

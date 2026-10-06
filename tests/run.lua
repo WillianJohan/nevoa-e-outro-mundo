@@ -42,6 +42,8 @@ local FILES = {
     "tests/test_siren_freeze.lua",
     "tests/test_fog_client.lua",
     "tests/test_fog_sound.lua",
+    "tests/test_device_rules.lua",
+    "tests/test_devices.lua",
     "tests/test_fog_vignette.lua",
     "tests/test_dressing_rules.lua",
     "tests/test_fog_overlays.lua",
