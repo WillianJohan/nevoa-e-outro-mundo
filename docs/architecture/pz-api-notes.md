@@ -1346,6 +1346,26 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
   registro inteiro, a cada 2 tiles andados); o pior tick de carro a 1–2,24 tiles por tick fica em
   ~1960 chamadas Java, a ordem do enchimento (~1940 por atualização). O anexo mais longe medido:
   38,6–39,5 tiles.
+- **Além da tela (sprint 0035, Tarefa 5): não feito.** A medição e as tabelas estão no
+  [plano da sprint](../sprints/sprint-0035-silent-hill/plan.md) (Tarefa 5).
+  - O zoom máximo do jogo é 2,5 (`MultiTextureFBO2.<init>` 4–61: `zoomLevelsDefault` =
+    2,5, 2,25, 2, 1,75, 1,5, 1,25, 1, 0,75, 0,5, 0,25).
+  - **A conta:** R + `SLACK` + `MOVE_TILES` + 2 (carro por tick) + 1 (square) < 48, então
+    R + `SLACK` ≤ 42. Com `SLACK` 8, o maior R seguro é 34; com `SLACK` 2, 40. O 45 não cabe nem
+    com `SLACK` 0.
+  - **A folga:** hoje (38) o corte aguenta ~6 tiles num tick; em 42, só 2. Um engasgo pra 10 FPS
+    no carro dá 3.
+  - **O `SLACK`:** diminuir não causa pisca-pisca. O mod só põe anexo a até r ≤ `MAX_RADIUS` e só
+    tira na hora acima de `MAX_RADIUS` + `SLACK`, então as faixas nunca se cruzam. Mas cada tile
+    que sai do `SLACK` e vai pro raio sai da folga.
+  - **O custo:** as chamadas por atualização quase não mudam com o raio (orçamentos), mas os
+    anexos vivos e a volta crescem com R²: 4694 anexos e 36 atualizações no 30, 8481 e 63 no 40.
+  - **O ganho:** em 1080p no zoom 2,5, a tela coberta vai de 84,6% (30) a 95% (34). Em 1440p e 4K
+    o canto passa dos 48 tiles com qualquer raio. Andando, a cobertura além de 15 tiles é a mesma
+    em qualquer raio: quem manda é a vazão da varredura (o `reseen()` a cada `RESEEN_TILES`
+    zera o `seen`), não o raio.
+  - **A trava:** `overlays_save_margin_invariant` falha se `MAX_RADIUS` + `SLACK` +
+    `MOVE_TILES` + 3 ≥ 48.
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido

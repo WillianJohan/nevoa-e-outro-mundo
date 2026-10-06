@@ -147,6 +147,75 @@ Hoje (0034) o raio é o da tela, de 15 a 30 tiles. A spec pede todos os tiles ca
 - **Medir primeiro**, no mundo falso: chamadas por tick e anexos vivos com raio 30, 40 e o limite que a margem do save permite (o corte duro a 38 tiles e o chunk sai do mapa a ≥48: ver pz-api-notes §16.6).
 - A margem do save manda: se cobrir mais longe exigir passar do corte duro, NÃO fazer. Registrar a conta e a decisão.
 
+- [x] Medir (mundo falso), fazer a conta da margem, decidir.
+- [x] Teste que trava a margem (`overlays_save_margin_invariant`), `./run-tests.sh` verde, commit.
+
+**Decidido (2026-10-06): não fazer.** `MAX_RADIUS` 30, `MARGIN` 2 e `SLACK` 8 ficam. Os motivos:
+- o maior raio que a margem aceita mal passa de 30;
+- o ganho visual é pequeno;
+- e esse ganho custaria a folga contra engasgo de FPS no carro.
+
+**Medição.** Script descartável sobre `tests/fog_world.lua` + `tests/attached_world.lua`, com o `setup` dos testes e `MAX_RADIUS` trocado antes do load (o `OFFSETS` é montado no load). Zoom 2,5, o máximo do jogo (`MultiTextureFBO2.<init>`: `zoomLevelsDefault` = 2,5 … 0,25). Tela 1920×1080; o raio 45 só é alcançado numa tela 2560×1440 (em 1080p o canto fica a 40,4 tiles e o raio vira 43). Campo aberto (só piso), densidade 3,2 (vermelha, opção 2). Chamadas = idas ao Java (`G.java + G.sqCalls`). "A pé" = 0,1 tile por tick (6 tiles/s); "carro" = 1 e 2 tiles por tick.
+
+| Raio | Squares na volta | Alvos / anexos vivos | Volta (atualizações) | Enchendo / parado (por atualização) | A pé (pior atualização) | Carro 1 / 2 t/tick (pior tick) | Invalidações: enchendo / a pé / carro | Pior caso com SLACK 8 |
+|---|---|---|---|---|---|---|---|---|
+| 30 | 2821 | 2771 / 4694 | 36 (~6 s) | 1052 / 136 | 919 | 1880 / 1885 | 158 / 172 / 393 | 43 |
+| 34 | 3625 | 3555 / 6066 | 46 | 1052 / 136 | 945 | 2057 / 2069 | 158 / 187 / 444 | 47 |
+| 36 | 4053 | 3974 / 6802 | 51 | 1052 / 136 | 969 | 2036 / 2114 | 158 / 191 / 459 | 49 ✗ |
+| 40 | 5025 | 4923 / 8481 | 63 (~10,5 s) | 1052 / 136 | 1020 | 2176 / 2194 | 158 / 208 / 511 | 53 ✗ |
+| 45 | 6361 | 6234 / 10704 | 80 | 1052 / 134 | 1072 | 2230 / 2201 | 158 / 216 / 505 | 58 ✗ |
+
+Com parede N e W em todo square (estresse, bloco de 61×61):
+- anexos vivos: 10136 (30), 15573 (40) e 17869 (45);
+- enchendo: 1959 chamadas; parado: ~128;
+- a pé: 1338 (30) a 1584 (40);
+- carro: 2738 (30), 2963 (40) e 3046 (45) por tick;
+- invalidações: 310 enchendo e 614 a 698 no carro.
+
+As chamadas por atualização quase não mudam com o raio: o `SCAN_BUDGET` e o `STRIP_BUDGET` mandam. O que cresce com R² é o resto:
+- os anexos vivos (o que o jogo desenha e o FBO do chunk invalida; UNKNOWN no jogo);
+- a volta da varredura, de 6 s pra 10,5 s no raio 40;
+- o registro que o corte percorre em Lua a cada 2 tiles andados.
+
+O anexo mais longe no carro fica em R + SLACK + 1,5 (39,5 no 30/8), como a conta prevê.
+
+**A conta da margem** (§16.6). Raio R, corte duro em R + SLACK, com o carro a 2 tiles por tick: R + SLACK + `MOVE_TILES` (2) + 2 + 1 < 48, ou seja, **R + SLACK ≤ 42**.
+- Com `SLACK` 8, o maior R seguro é **34**. Com `SLACK` 2, 40. O 45 não cabe nem com `SLACK` 0 (45 + 0 + 2 + 2 + 1 = 50).
+- Hoje (30 + 8 = 38) o corte aguenta até ~6 tiles num tick (38 + 2 + 6 + 1 = 47). Em 42 só aguenta 2 tiles por tick. Um engasgo pra 10 FPS com o carro a ~30 tiles/s já dá 3 tiles num tick e grava anexo no save.
+- **Diminuir o SLACK não causa pisca-pisca.** O mod só põe anexo a até r ≤ `MAX_RADIUS` e o corte só tira acima de `MAX_RADIUS` + `SLACK`, então as duas faixas nunca se cruzam. O custo do carro também não sobe: no raio 40, 2081 chamadas com `SLACK` 2 contra 2176 com `SLACK` 8.
+- Só que cada tile tirado do `SLACK` pra dar ao raio sai da folga contra engasgo. Não vale.
+
+**O ganho.** Fração da tela coberta pelo disco do raio, câmera centrada:
+
+| Tela, zoom | Canto | R30 | R34 | R40 | R45 |
+|---|---|---|---|---|---|
+| 1920×1080, 2,0 | 32,5 | 99,0% | 100% | 100% | 100% |
+| 1920×1080, 2,25 | 36,5 | 93,8% | 99,3% | 100% | 100% |
+| 1920×1080, 2,5 | 40,4 | 84,6% | 95,0% | 100% | 100% |
+| 2560×1440, 2,5 | 53,6 | 50,2% | 64,5% | 84,8% | 94,7% |
+| 3840×2160, 2,5 | 80,0 | 22,3% | 28,6% | 39,7% | 50,2% |
+
+- Em 1080p, o 34 só fecha os cantos nos zooms 2,25 e 2,5, e só com o jogador parado.
+- Em 1440p e 4K, nenhum raio dentro da margem cobre a tela: o canto passa dos 48 tiles do chunk que sai do mapa.
+- "Todos os tiles carregados" (13 × 13 chunks, ~52 tiles em Chebyshev) está fora da margem por definição.
+- **Andando, o raio não muda nada.** Cobertura dos pisos que a regra pede, por faixa de distância, depois de 20 s andando no zoom 2,5:
+  - a 3 tiles/s: 15–20 tiles 66%, 20–25 37%, 25–30 25%;
+  - a 6 tiles/s: 30%, 21% e 18%;
+  - os números são iguais nos raios 30, 36, 40 e 45.
+- Quem limita a borda andando é a vazão da varredura, não o raio. A cada 8 tiles (`RESEEN_TILES`), o `reseen()` zera o `seen` e a volta recomeça pelos squares já vestidos (cada um gasta orçamento). A volta de 36 atualizações nunca chega ao anel de fora.
+- Subir o raio piora o que dá pra ver: a volta parada fica mais longa (o zoom out enche mais devagar) e há 29% (34) a 81% (40) mais anexos vivos.
+
+**Fica pra depois (proposta, não feita):** a borda ao andar. Variante medida numa cópia descartável:
+- a âncora só volta o cursor (`cursor = 1`), sem zerar o `seen` (a chave já é absoluta);
+- a 3 tiles/s, a faixa de 20–25 tiles vai de 37% pra 97% e a de 25–30, de 25% pra 88%;
+- a 6 tiles/s, a de 15–20 vai de 30% pra 91% e a de 20–25, de 21% pra 85%;
+- custo a pé: 919 → 1372 chamadas por atualização (estresse: 1338 → 2102), dentro do teto de 2500;
+- falta limitar o `seen`, que cresce com o caminho: por exemplo, apagar as chaves além de `MAX_RADIUS` + `SLACK` no corte.
+
+É uma tarefa própria, com TDD.
+
+**Trava:** `overlays_save_margin_invariant` falha se `MAX_RADIUS` + `SLACK` + `MOVE_TILES` + 3 ≥ 48. Ela confere também que o `OFFSETS` vai até o `MAX_RADIUS`.
+
 ---
 
 ### Tarefa 5b: todos os comandos de debug no `NOM.panel()`

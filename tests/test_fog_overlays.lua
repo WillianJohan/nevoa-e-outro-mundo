@@ -707,6 +707,20 @@ return {
         end
     end,
 
+    -- trava a margem do save (sprint 0035, Tarefa 5): o chunk que sai do mapa e é gravado está a
+    -- ≥ 48 tiles (IsoChunkMap.chunkGridWidth 13 × 8, pz-api-notes §16.6). Entre cortes nada passa
+    -- de MAX_RADIUS + SLACK + MOVE_TILES; no tick do corte o chunk pode sair antes do OnTick, com
+    -- o passo do tick a mais (carro a 2 tiles por tick) e 1 do square inteiro. Raio, folga ou
+    -- passo maiores que isso gravam anexo do mod no save
+    overlays_save_margin_invariant = function()
+        setup()
+        local CHUNK_SAVE_TILES, CAR_STEP, SQUARE = 48, 2, 1
+        local worst = D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + CAR_STEP + SQUARE
+        assert(worst < CHUNK_SAVE_TILES, string.format("MAX_RADIUS %d + SLACK %d + MOVE_TILES %d + %d = %d: o save grava a %d",
+            D().MAX_RADIUS, O().SLACK, O().MOVE_TILES, CAR_STEP + SQUARE, worst, CHUNK_SAVE_TILES))
+        assert(D().MIN_RADIUS <= D().MAX_RADIUS and #D().OFFSETS == D().WITHIN[D().MAX_RADIUS], "OFFSETS não vai até MAX_RADIUS")
+    end,
+
     -- teleporte (debug, mapa): tudo sai no tick, pelo corte de MAX_RADIUS + SLACK
     overlays_teleport_strips_now = function()
         local G = setup({ density = 2 })
