@@ -119,7 +119,70 @@ Depende da escolha do Johan pra vermelha. Vem dos protótipos em `.superpowers/s
 
 ---
 
-### Tarefa 4: documentação da sprint
+### Tarefa 5: estática na tela, 3 s antes da sirene e sutil durante a névoa
+
+Pedido do Johan (2026-10-06):
+- 3 segundos ANTES da sirene, a tela do jogador começa a ganhar estática, sutil no início e depois com mais destaque;
+- a estática tem a cor da névoa;
+- ela continua sutil a névoa toda, como efeito auxiliar.
+
+Depende da Tarefa 2 (mesmos arquivos do evento).
+
+**Arquivos:**
+- Modificar:
+  - `server/NOM_FogEvent.lua` (fase de presságio)
+  - `server/NOM_Fog.lua` (se precisar)
+  - `client/NOM_FogClient.lua` (comando `presage`)
+  - `shared/NOM_FogState.lua` (presságio e marcas de tempo)
+  - `client/NOM_ScreenFx.lua` (camada nova)
+- Criar ou modificar a regra pura da curva: `shared/NOM_ScreenFxRules.lua` (`R.staticLevel`), ou um `shared/NOM_FogStaticRules.lua` se ficar mais limpo.
+- Textura: `scripts/gen_textures.py` gera `NOM/NOM_NevoaEstatica.png`, um chiado fino em tons de cinza que fecha em mosaico. Commitar o PNG e atualizar a lista do topo do script.
+- Testes: regra da curva, `test_fog_event` (presságio), `test_fog_client` (comando) e o teste do ScreenFx que existir.
+
+**Comportamento:**
+- **Presságio no servidor:** quando `R.update` devolve `"siren"`, o evento não toca a sirene na hora.
+  - Decide a cor (o `decideRed` que hoje está no `siren()` passa pra cá; a sirene reaproveita a cor salva).
+  - Abre uma contagem real de `R.PRESAGE_MS = 3000`, com o mesmo `R.countdown` (para com o jogo pausado).
+  - Avisa quem vê: no dedicado, `sendServerCommand("presage", { red })`; no solo, direto no `NOM_FogState`.
+  - No fim da contagem, chama `siren(false)`.
+  - `stop()` durante o presságio cancela como a sirene (com o `R.cancel` e o `sirenStop` que já existem).
+  - No `status()`, o presságio conta como sirene pendente, pros toggles do debug.
+  - O debug `force(red, skip)` sem skip passa pelo presságio, pra dar pra testar; com skip, vai direto.
+  - Recarregar no meio do presságio: ele está só em memória, e o próximo `R.update` devolve `"siren"` de novo. Confira que é isso que acontece.
+- **Estado de quem vê:** `NOM_FogState.setOmen(red)` guarda `omenAt` (getTimestampMs) e a cor. O `siren` guarda `sirenAt`. O fim da névoa e o `sirenStop` limpam o presságio.
+- **Curva** (regra pura, testada com luajit), devolvendo o alfa base de 0 a 1:
+  - **Presságio (0 a 3 s depois de `omenAt`):** de 0,03 a 0,22 em curva que acelera (`t^2`), sutil no começo e com destaque no fim.
+  - **Da sirene em diante:** desce de 0,22 até o nível SUTIL de 0,05 em ~4 s.
+  - **Durante a subida e a névoa** (`NOM_FogState.visible()`): fica em 0,05.
+  - **Fim da névoa ou sirene cancelada:** desce a 0 em ~3 s.
+  - Os valores são constantes nomeadas, pra ajustar no teste do Johan.
+- **Cor:** a da névoa.
+  - Branca: `NOM_Rules.FOG_COLOR`.
+  - Vermelha: `NOM_Rules.RED_FOG_COLOR`, usando o RGB e ignorando o alfa da cor do clima.
+  - Deixe um ponto único (`R.staticColor(kind)`) pra preta entrar na 0038.
+- **Desenho:**
+  - camada nova no `NOM_ScreenFx`: `drawTextureTiled` da textura, com deslocamento aleatório por frame, como o granulado (`R.grainFrame`), pra chiar;
+  - multiplicada pela intensidade das opções (`NOM_ScreenFxOptions`) e desligada junto com o toggle `ScreenFx`, que vale como opção de acessibilidade;
+  - tem que funcionar FORA do Outro Mundo também: o presságio vem antes de qualquer névoa;
+  - evidência: as chamadas de desenho já usadas no próprio `NOM_ScreenFx.lua`.
+- **MP:** quem entra no meio da névoa recebe só o nível sutil (pelo `fog` e `visible()`), sem presságio.
+
+- [ ] **Passo 1: testes que falham.**
+  - Curva: 0,03 em t=0, cresce até 0,22 em 3 s, desce a 0,05 depois da sirene, fica em 0,05 na névoa e chega a 0 depois do fim.
+  - Cor por tipo.
+  - `R.update` dá `"siren"`, mas a sirene só toca 3 s reais depois, com o `presage` enviado no dedicado.
+  - Pausa congela o presságio.
+  - `stop` no presságio cancela sem tocar a sirene.
+  - `force` sem skip passa pelo presságio.
+  - Cliente: `presage` liga o presságio.
+- [ ] **Passo 2:** rodar `luajit tests/run.lua`. Esperado: FAIL.
+- [ ] **Passo 3:** implementar, gerar a textura com `python3 scripts/gen_textures.py` e conferir o contraste (`./run-tests.sh` roda o teste de contraste).
+- [ ] **Passo 4:** rodar `./run-tests.sh`. Esperado: verde.
+- [ ] **Passo 5: commit.** `git commit -m "Estática na tela: presságio 3 s antes da sirene e chiado sutil na névoa, na cor dela"`
+
+---
+
+### Tarefa 4: documentação da sprint (por último, depois da Tarefa 5)
 
 - `README.md` da sprint, com o roteiro de teste;
 - GDD (`world-states`, `atmosphere`, `Overview`);
