@@ -217,4 +217,16 @@ assert "NOM_FLOW_FENCE_W" in volfog and "NOM_FLOW_FENCE_N" in volfog, "mod3: o d
 assert re.search(r"has\(IsoFlagType\.HoppableW\)", cell_fn) and re.search(r"has\(IsoFlagType\.HoppableN\)", cell_fn), \
     "mod3: o Flow tem que ler a cerca baixa (HoppableW/N)"
 assert "setTileFenceW" in flow and "setTileFenceN" in flow, "mod3: a cerca tem que chegar na grade"
+# Foco de vento (sprint 0033): NOMRender_setParam(11, 1) sorteia um foco perto do jogador (borda lida na
+# thread principal) que sopra constante; o foco chega na simulação pelo Input e é aplicado antes do passo.
+# Padrão desligado; o NOM.wind do Lua escreve no mesmo índice.
+assert re.search(r"PARAM_WIND_SOURCE = 11;", java), "mod3: PARAM_WIND_SOURCE (11) ausente"
+assert not re.search(r"luaParams\[PARAM_WIND_SOURCE\] = [1-9]", java), "mod3: o foco de vento tem que começar desligado (0)"
+assert "PARAM_WIND_SOURCE" in main_part and "pickSource(" in main_part, \
+    "mod3: o sorteio do foco tem que ficar na thread principal"
+apply_part = flow.split("private static void apply")[1].split("private static void publish")[0]
+assert re.search(r"grid\.impulse\(in\.sourceX, in\.sourceY, in\.sourceVX, in\.sourceVY, SOURCE_RADIUS\)", apply_part), \
+    "mod3: a simulação tem que aplicar o foco de vento pelo Input"
+console = (src.parent.parent.parent.parent / "mod/42/media/lua/client/NOM_Console.lua").read_text()
+assert "NOMRender_setParam(11," in console, "mod3: o NOM.wind do Lua não escreve no parâmetro 11"
 print("mod3 contrato Java/GLSL ok")

@@ -11,6 +11,8 @@ require "NOM_Debug"
 require "NOM_DebugRules"
 require "NOM_Math"
 require "NOM_NightStats"
+require "NOM_FogState"
+require "NOM_VariantRules"
 
 NOM = {}
 
@@ -86,8 +88,94 @@ function NOM.panel()
     if NOM_DebugPanel then NOM_DebugPanel.toggle() end
 end
 
+-- Névoa branca de verdade (sprint 0033): um pedido só, o servidor decide
+-- (NOM_FogEvent.force). Toca a sirene de 45 s (com o congelamento) e abre a névoa;
+-- skip abre já. Com névoa aberta ou sirene contando, fecha e recomeça na cor pedida.
+function NOM.setFog(skip)
+    NOM_Debug.send({ op = "setFog", red = false, skip = skip })
+end
+
+-- Névoa vermelha de verdade: o mesmo pedido, na cor vermelha.
+function NOM.setRedFog(skip)
+    NOM_Debug.send({ op = "setFog", red = true, skip = skip })
+end
+
+-- A névoa preta chega na sprint 0038.
+function NOM.setBlackFog()
+    print("[NOM] debug névoa preta ainda não existe (sprint 0038)")
+end
+
+-- Termina a névoa aberta ou cancela a sirene (sirenStop no MP).
+function NOM.setEndFog() NOM_Debug.fog(false) end
+
+-- O zumbi vivo mais perto, no mesmo andar, vai pro tile do jogador. O servidor move (solo)
+-- ou manda o dono mover (dedicado): server/NOM_DebugServer.lua, op pull.
+function NOM.getZombie()
+    local p = player()
+    if not p then return end
+    local z = NOM_Debug.nearest(p)
+    if not z then
+        print("[NOM] debug nenhum zumbi perto")
+        return
+    end
+    NOM_Debug.send({ op = "pull", id = z:getOnlineID(),
+        x = math.floor(p:getX()), y = math.floor(p:getY()), z = math.floor(p:getZ()) })
+end
+
+-- Zumbi mais perto vira o tipo número i da lista de NOM_VariantRules.KINDS; 0 desfaz.
+function NOM.turnZombie(i)
+    local kinds = NOM_VariantRules.KINDS
+    if i == nil then i = 0 end
+    if type(i) ~= "number" or i ~= math.floor(i) or i < 0 or i > #kinds then
+        local list = {}
+        for n, k in ipairs(kinds) do list[#list + 1] = n .. " " .. k end
+        print("[NOM] debug uso: NOM.turnZombie(i), 0 desfaz, " .. table.concat(list, ", "))
+        return
+    end
+    if i > 0 and not NOM_FogState.on then
+        print("[NOM] debug variante só aparece com névoa (NOM.setFog(true))")
+    end
+    NOM_Debug.variant(i > 0 and kinds[i] or nil)
+end
+
+-- Modo deus de verdade: god, invisível e zumbis não atacam juntos (ISAdminPowerUI.lua:44,
+-- 36, 178); sem argumento inverte pelo isGodMod (:41).
+function NOM.godMode(on)
+    local p = player()
+    if not p then return end
+    if on == nil then on = not p:isGodMod() end
+    on = on == true
+    p:setGodMod(on)
+    p:setInvisible(on)
+    p:setZombiesDontAttack(on)
+    sendPlayerExtraInfo(p)
+    print("[NOM] debug godMode=" .. tostring(on))
+end
+
+-- Foco de vento do mod Volumétrica (tarefa 8 da sprint 0033): parâmetro 11 do mod3.
+-- O global só existe com o mod3 carregado (client/NOM_FogQualitySync.lua).
+local windOn = false
+function NOM.wind(on)
+    if NOMRender_setParam == nil then
+        print("[NOM] debug vento precisa do mod Volumétrica (mod3)")
+        return
+    end
+    if on == nil then on = not windOn end
+    windOn = on == true
+    NOMRender_setParam(11, windOn and 1 or 0)
+    print("[NOM] debug vento=" .. tostring(windOn))
+end
+
 NOM.HELP = {
-    { "NOM.fog(on, skip)", "névoa: true sirene e névoa em 30 s, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
+    { "NOM.setFog(skip)", "névoa sempre branca: sirene de 45 s (zumbis congelam) e depois a névoa; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setRedFog(skip)", "névoa sempre vermelha: sirene vermelha de 45 s e a névoa; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
+    { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
+    { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
+    { "NOM.turnZombie(i)", "zumbi mais perto vira o tipo i: 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa)" },
+    { "NOM.godMode(on)", "deus + invisível + zumbis não atacam, juntos; sem argumento inverte" },
+    { "NOM.wind(on)", "foco de vento do mod Volumétrica (mod3); sem argumento inverte" },
+    { "NOM.fog(on, skip)", "névoa: true sirene de 45 s e névoa, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
     { "NOM.redFog(on)", "névoa vermelha: true força (com névoa aberta vira na hora), false desfaz; sem argumento inverte" },
     { "NOM.night(on)", "noite forçada (true) ou dia forçado (false); sem argumento inverte; NOM_Debug.night() volta pro relógio" },
     { "NOM.time(hora)", "muda a hora do relógio do jogo, sempre pra frente (hora que já passou é a de amanhã), ex.: NOM.time(22)" },

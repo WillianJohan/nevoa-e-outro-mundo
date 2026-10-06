@@ -2,7 +2,7 @@
 -- em -debug: força a noite (NOM_World.forced), começa e termina um evento de névoa
 -- (NOM_FogEvent), força a névoa vermelha, força a variante de um zumbi
 -- (NOM_VariantRules.forced), spawna um Eco, muda a hora, spawna zumbis comuns e
--- imprime o estado do mod. Quem chama
+-- puxa um zumbi até o jogador, imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
 -- A noite forçada vive em memória até o servidor reiniciar, MAS ela e o evento de
 -- névoa avançam os contadores salvos de noites e de névoas (NOM_NightCount e
@@ -17,6 +17,7 @@ require "NOM_NightCount"
 require "NOM_Fog"
 require "NOM_FogEvent"
 require "NOM_Eco"
+require "NOM_SemRosto"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -50,13 +51,20 @@ function ops.night(_, a)
     return "noite forcada=" .. tostring(a.value)
 end
 
--- Evento de verdade: sirene (e a névoa 30 s reais depois, ou já com skip), ou fim.
+-- Evento de verdade: sirene (e a névoa 45 s reais depois, ou já com skip), ou fim.
 -- toggle (NOM.fog sem argumento): névoa aberta ou sirene contando termina; senão, sirene.
 -- Quem decide é o servidor: o cliente não sabe da contagem.
 function ops.fog(_, a)
     if a.toggle then a.value = not (NOM_World.fog or NOM_FogEvent.status().sirenMs ~= nil) end
     if a.value then return "nevoa sirene=" .. tostring(NOM_FogEvent.siren(a.skip)) end
     return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
+end
+
+-- NOM.setFog / NOM.setRedFog (sprint 0033): névoa branca ou vermelha de verdade, qualquer
+-- que seja o estado (fecha o que estiver aberto ou contando); skip abre sem a espera.
+function ops.setFog(_, a)
+    local color = a.red and "vermelha" or "branca"
+    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip))
 end
 
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
@@ -110,6 +118,52 @@ function ops.spawn(player, a)
     local fx, fy, fz = math.floor(a.x), math.floor(a.y), math.floor(a.z)
     local list = addZombiesInOutfitArea(fx - 1, fy - 1, fx + 2, fy + 2, fz, a.n, a.outfit, nil)
     return "spawn n=" .. a.n .. " criados=" .. (list and list:size() or 0) .. " outfit=" .. (a.outfit or "-")
+end
+
+-- Zumbi vivo mais perto de quem pede, no mesmo andar (a mesma conta do NOM_Debug.nearest).
+local function nearestTo(player)
+    local best, bestD
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if not z:isDead() and math.floor(z:getZ()) == math.floor(player:getZ()) then
+            local dx, dy = z:getX() - player:getX(), z:getY() - player:getY()
+            local d = dx * dx + dy * dy
+            if not bestD or d < bestD then best, bestD = z, d end
+        end
+    end
+    return best
+end
+
+local function byOnlineId(id)
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z:getOnlineID() == id then return z end
+    end
+end
+
+-- NOM.getZombie (sprint 0033): puxa um zumbi pro tile de quem pede. Só o dono simula o
+-- zumbi (ADR-005): no dedicado o servidor não move a cópia dele, avisa todos
+-- (debugMove) e o cliente dono move (client/NOM_Debug.lua, mesmo sem -debug). No solo este
+-- processo é o dono: move direto. Sem ID de rede (-1, como no solo) vale o mais perto de
+-- quem pede; no dedicado, -1 é recusado.
+-- Não reaproveita o semRostoMove: o cliente dele só move se nenhum jogador vê o destino
+-- e reserva o tile do Sem-rosto; o jogador está parado no destino, então nunca moveria.
+function ops.pull(player, a)
+    local dx, dy = a.x + 0.5 - player:getX(), a.y + 0.5 - player:getY()
+    local reach = NOM_DebugRules.PULL_REACH
+    if not (dx * dx + dy * dy <= reach * reach and a.z == math.floor(player:getZ())) then return "pull longe" end
+    if isServer() then
+        if a.id == -1 then return "zumbi sem ID de rede" end -- nenhum cliente acharia
+        sendServerCommand(MODULE, "debugMove", { id = a.id, x = a.x, y = a.y, z = a.z })
+        return "zumbi puxado x=" .. a.x .. " y=" .. a.y
+    end
+    local z
+    if a.id == -1 then z = nearestTo(player) else z = byOnlineId(a.id) end
+    if not z then return "zumbi não achado" end
+    NOM_SemRosto.move(z, a.x, a.y, a.z)
+    return "zumbi puxado x=" .. a.x .. " y=" .. a.y
 end
 
 function ops.status()

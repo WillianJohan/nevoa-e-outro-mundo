@@ -8,6 +8,7 @@
 require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_Carpideira"
+require "NOM_SirenFreeze"
 require "NOM_VariantRules"
 require "NOM_Config"
 
@@ -141,7 +142,7 @@ local function heldByMod(id)
 end
 
 local function unstick(z)
-    if blinded[z] or NOM_Carpideira.still[z] or z:isRemoteZombie() or not z:isUseless() then return end
+    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or z:isRemoteZombie() or not z:isUseless() then return end
     if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
     if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
 end

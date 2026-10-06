@@ -23,6 +23,16 @@ end
 if not isServer() then NOM_NightStats.install() end
 
 NOM_World.onChange(function(flag, on)
+    -- Calmaria depois da névoa (NOM_FogEvent → NOM_World.setCalm): mesmo caminho da noite.
+    if flag == "calm" then
+        if isServer() then
+            sendServerCommand(MODULE, "calm", { on = on })
+        else
+            NOM_NightStats.setCalm(on)
+        end
+        debugLog("calm=" .. tostring(on))
+        return
+    end
     if flag ~= "night" then return end
     -- O número da noite vai junto (status do debug). As variantes usam o período de
     -- névoa, que vai pelo comando "fog" (server/NOM_Fog.lua, ADR-006).
@@ -39,6 +49,7 @@ end)
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "nightState" then return end
     sendServerCommand(player, MODULE, "night", { on = NOM_World.night, night = NOM_NightCount.current() })
+    sendServerCommand(player, MODULE, "calm", { on = NOM_World.calm })
 end)
 
 local function alive()

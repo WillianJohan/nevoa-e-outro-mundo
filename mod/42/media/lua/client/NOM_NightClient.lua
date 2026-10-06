@@ -10,11 +10,15 @@ local MODULE = "NevoaEOutroMundo"
 NOM_NightStats.install()
 
 Events.OnServerCommand.Add(function(module, command, args)
-    if module ~= MODULE or command ~= "night" then return end
-    NOM_NightStats.setNight(args.on == true, args.night)
+    if module ~= MODULE then return end
+    if command == "night" then
+        NOM_NightStats.setNight(args.on == true, args.night)
+    elseif command == "calm" then
+        NOM_NightStats.setCalm(args.on == true)
+    end
 end)
 
--- Entrou no meio da noite: a borda já passou, pergunta o estado.
+-- Entrou no meio da noite (ou da calmaria): a borda já passou, pergunta o estado.
 Events.OnCreatePlayer.Add(function(_, player)
     sendClientCommand(player, MODULE, "nightState", {})
 end)

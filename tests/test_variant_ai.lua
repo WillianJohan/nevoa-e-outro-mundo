@@ -590,6 +590,18 @@ return {
         NOM_NightStats.unstick(old)
         assert(old.useless)
     end,
+    -- sprint 0033: o zumbi que a sirene congelou não é "useless herdado" (o unstick o soltaria)
+    ai_unstick_leaves_siren_frozen = function()
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 3) })
+        NOM_SirenFreeze.frozen[z] = true
+        NOM_NightStats.unstick(z)
+        assert(z.useless, "soltou o congelado pela sirene")
+        NOM_SirenFreeze.frozen[z] = nil
+        NOM_NightStats.unstick(z)
+        assert(not z.useless, "sem a sirene devia soltar (controle do teste)")
+    end,
     -- tutorial: o mod não mexe em useless nenhum
     ai_unstick_does_nothing_in_tutorial = function()
         local G = setup({ fog = false, gameMode = "Tutorial" })

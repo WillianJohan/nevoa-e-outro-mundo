@@ -22,7 +22,7 @@ local function setup(opts)
     end
     function G.player(o)
         local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, cap = o.cap ~= false, dir = o.dir or 0,
-            god = false, noclip = false, invisible = false }
+            god = false, noclip = false, invisible = false, dontAttack = false }
         -- Vector2.getDirection(): ângulo em radianos (FishingRod.lua:286)
         function p:getForwardDirection()
             local me = self
@@ -35,6 +35,9 @@ local function setup(opts)
         function p:setNoClip(v) self.noclip = v end
         function p:isInvisible() return self.invisible end
         function p:setInvisible(v) self.invisible = v end
+        -- ISAdminPowerUI.lua:175, 178
+        function p:isZombiesDontAttack() return self.dontAttack end
+        function p:setZombiesDontAttack(v) self.dontAttack = v end
         function p:getX() return self.x end
         function p:getY() return self.y end
         function p:getZ() return self.z end
@@ -46,7 +49,11 @@ local function setup(opts)
         return p
     end
     function G.zombie(o)
-        local z = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, id = o.id, dead = o.dead or false }
+        -- online: ID de rede (dedicado); sem ele é -1, como no solo e em zumbi sem ID (NOM_Fog.lua:153)
+        local z = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, id = o.id, dead = o.dead or false,
+            online = o.online or -1, remote = o.remote == true }
+        function z:getOnlineID() return self.online end
+        function z:isRemoteZombie() return self.remote end
         function z:getX() return self.x end
         function z:getY() return self.y end
         function z:getZ() return self.z end
@@ -162,6 +169,10 @@ local function setup(opts)
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
         status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
+        force = function(red, skip)
+            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true)
+            return true
+        end,
     }
     NOM_Eco = {
         spawnAt = function(x, y, z)
@@ -173,7 +184,12 @@ local function setup(opts)
     }
     NOM_NightStats = { night = false, variants = {} }
     NOM_FogState = { on = false }
-    NOM_SemRosto = { nearest = function() return nil end }
+    -- move: o de verdade teleporta o zumbi (NOM_SemRosto.move); aqui registra quem foi pra onde
+    G.moves = {}
+    NOM_SemRosto = {
+        nearest = function() return nil end,
+        move = function(z, x, y, zz) G.moves[#G.moves + 1] = { z = z, x = x, y = y, zz = zz } end,
+    }
     for _, m in ipairs({ "NOM_Fog", "NOM_FogEvent", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
         package.loaded[m] = _G[m]
     end
@@ -648,6 +664,250 @@ return {
         for _, h in ipairs(NOM.HELP) do
             assert(type(NOM[h[1]:match("^NOM%.([%w_]+)")]) == "function", "help cita o que não existe: " .. h[1])
         end
+    end) end,
+
+    -- sprint 0033, tarefa 7: atalhos novos em cima do que já existe
+    -- um único pedido: o servidor desfaz o que estiver aberto e força a cor (NOM_FogEvent.force)
+    nom_set_fog_sends_single_white_request = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.setFog()
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.red == false and not a.skip, "pedido errado")
+        assert(table.concat(G.fogCalls, ",") == "force:false:false", table.concat(G.fogCalls, ","))
+        NOM.setFog(true)
+        assert(#G.sentClient == 2 and G.sentClient[2].args.skip == true and G.sentClient[2].args.red == false)
+        assert(G.fogCalls[2] == "force:false:true", G.fogCalls[2])
+        -- névoa aberta no cliente: o mesmo pedido (quem reabre é o servidor)
+        NOM_FogState.on = true
+        NOM.setFog(true)
+        assert(#G.sentClient == 3 and G.sentClient[3].args.op == "setFog")
+    end) end,
+    nom_set_red_fog = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.setRedFog()
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.red == true and not a.skip, "pedido errado")
+        NOM.setRedFog(true)
+        assert(#G.sentClient == 2 and G.sentClient[2].args.red == true and G.sentClient[2].args.skip == true)
+        assert(table.concat(G.fogCalls, ",") == "force:true:false,force:true:true", table.concat(G.fogCalls, ","))
+    end) end,
+    -- o servidor confere o pedido e não aceita sem permissão
+    debug_set_fog_op_needs_permission = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local weak = G.player({ x = 0, y = 0, cap = false })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", weak, { op = "setFog", red = true, skip = true })
+        assert(#G.fogCalls == 0, "sem permissão forçou a névoa")
+        local admin = G.player({ x = 0, y = 0 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", admin, { op = "setFog", red = "sim" })
+        assert(#G.fogCalls == 0, "aceitou red inválido")
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", admin, { op = "setFog", red = true, skip = true })
+        assert(table.concat(G.fogCalls, ",") == "force:true:true", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa forcada vermelha=true"), table.concat(G.printed, "\n"))
+    end) end,
+    nom_set_black_fog_not_yet = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.setBlackFog()
+        NOM.setBlackFog(true)
+        assert(#G.sentClient == 0, "névoa preta mandou algo")
+        assert(has(G.printed, "^%[NOM%] debug névoa preta ainda não existe %(sprint 0038%)"), table.concat(G.printed, "\n"))
+    end) end,
+    nom_set_end_fog = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOM.setEndFog()
+        assert(#G.sentClient == 1 and G.sentClient[1].args.op == "fog" and G.sentClient[1].args.value == false)
+        assert(table.concat(G.fogCalls, ",") == "stop", table.concat(G.fogCalls, ","))
+    end) end,
+    nom_turn_zombie_by_number = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 7 })
+        NOM_FogState.on = true
+        NOM.turnZombie(2)
+        assert(G.sentClient[1].args.op == "variant" and G.sentClient[1].args.kind == "corredor")
+        assert(NOM_VariantRules.forced[7] == "corredor")
+        NOM.turnZombie(4)
+        assert(NOM_VariantRules.forced[7] == "carpideira", "4 é carpideira")
+        NOM.turnZombie(3)
+        assert(NOM_VariantRules.forced[7] == "semrosto", "3 é semrosto")
+        NOM.turnZombie(1)
+        assert(NOM_VariantRules.forced[7] == "estalador", "1 é estalador")
+        NOM.turnZombie(0)
+        assert(G.sentClient[#G.sentClient].args.kind == nil and NOM_VariantRules.forced[7] == nil, "0 não desfez")
+        NOM.turnZombie()
+        assert(G.sentClient[#G.sentClient].args.kind == nil)
+        local n = #G.sentClient
+        NOM.turnZombie(9)
+        NOM.turnZombie(-1)
+        NOM.turnZombie(1.5)
+        NOM.turnZombie("x")
+        assert(#G.sentClient == n, "mandou número fora da faixa")
+        assert(has(G.printed, "^%[NOM%] debug uso: NOM.turnZombie%(i%).*1 estalador.*2 corredor.*3 semrosto.*4 carpideira"),
+            table.concat(G.printed, "\n"))
+    end) end,
+    -- sem névoa aberta o forçado só vale quando ela abrir: avisa, mas manda
+    nom_turn_zombie_warns_without_fog = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 7 })
+        NOM.turnZombie(1)
+        assert(has(G.printed, "^%[NOM%] debug variante só aparece com névoa %(NOM.setFog%(true%)%)"), table.concat(G.printed, "\n"))
+        assert(#G.sentClient == 1 and NOM_VariantRules.forced[7] == "estalador", "não mandou mesmo assim")
+        G.printed = {}
+        NOM_FogState.on = true
+        NOM.turnZombie(1)
+        assert(not has(G.printed, "só aparece com névoa"), "avisou com névoa aberta")
+    end) end,
+    nom_god_mode_sets_all_three = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        NOM.godMode(true)
+        assert(p.god and p.invisible and p.dontAttack, "não ligou os três")
+        assert(#G.extraInfo == 1 and G.extraInfo[1] == p)
+        assert(has(G.printed, "^%[NOM%] debug godMode=true"), table.concat(G.printed, "\n"))
+        NOM.godMode() -- inverte pelo isGodMod
+        assert(not p.god and not p.invisible and not p.dontAttack, "não desligou os três")
+        assert(#G.extraInfo == 2 and has(G.printed, "^%[NOM%] debug godMode=false"))
+        NOM.godMode()
+        assert(p.god and p.invisible and p.dontAttack)
+        NOM.godMode(false)
+        assert(not p.god and not p.invisible and not p.dontAttack)
+    end) end,
+    nom_get_zombie_pulls_nearest = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 100, y = 100 })
+        G.zombie({ x = 130, y = 100, id = 1, online = 11 })
+        G.zombie({ x = 103, y = 100, id = 2, online = 12 })
+        G.zombie({ x = 101, y = 100, id = 3, online = 13, dead = true })
+        NOM.getZombie()
+        local a = G.sentClient[1].args
+        assert(a.op == "pull" and a.id == 12 and a.x == 100 and a.y == 100 and a.z == 0, "pedido errado")
+        -- solo: o servidor local move o zumbi pro jogador
+        assert(#G.moves == 1 and G.moves[1].z == G.zombies[2] and G.moves[1].x == 100 and G.moves[1].y == 100
+            and G.moves[1].zz == 0, "não moveu")
+        assert(has(G.printed, "^%[NOM%] debug zumbi puxado x=100 y=100"), table.concat(G.printed, "\n"))
+    end) end,
+    nom_get_zombie_none_near = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, z = 1, id = 1 }) -- outro andar
+        NOM.getZombie()
+        assert(#G.sentClient == 0, "pediu sem zumbi")
+        assert(has(G.printed, "^%[NOM%] debug nenhum zumbi perto"), table.concat(G.printed, "\n"))
+    end) end,
+    -- solo: sem ID de rede (-1) o servidor usa o mais perto de quem pediu
+    debug_pull_solo_without_online_id_uses_nearest = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 100, y = 100, z = 0 })
+        G.zombie({ x = 120, y = 100, id = 1 })
+        local near = G.zombie({ x = 102, y = 100, id = 2 })
+        G.zombie({ x = 101, y = 100, z = 1, id = 3 }) -- outro andar
+        NOM_Debug.send({ op = "pull", id = -1, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1 and G.moves[1].z == near and G.moves[1].x == 100 and G.moves[1].y == 100, "não moveu o mais perto")
+        assert(has(G.printed, "^%[NOM%] debug zumbi puxado x=100 y=100"), table.concat(G.printed, "\n"))
+    end) end,
+    debug_pull_solo_by_online_id = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 1, online = 5 })
+        local far = G.zombie({ x = 110, y = 100, id = 2, online = 6 })
+        NOM_Debug.send({ op = "pull", id = 6, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1 and G.moves[1].z == far, "achou pelo ID de rede")
+        NOM_Debug.send({ op = "pull", id = 99, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1, "moveu zumbi que não existe")
+        assert(has(G.printed, "^%[NOM%] debug zumbi não achado"), table.concat(G.printed, "\n"))
+    end) end,
+    -- dedicado: o servidor não move a cópia dele; manda debugMove a todos e o dono move
+    debug_pull_dedicated_broadcasts = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.zombie({ x = 105, y = 100, id = 1, online = 8 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "pull", id = 8, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 0, "servidor moveu a cópia dele")
+        local c = G.sentServer[#G.sentServer - 1]
+        assert(c and c.player == nil and c.module == "NevoaEOutroMundo" and c.command == "debugMove"
+            and c.args.id == 8 and c.args.x == 100 and c.args.y == 100 and c.args.z == 0, "não mandou debugMove a todos")
+        -- sem permissão, nada
+        local weak = G.player({ x = 100, y = 100, cap = false })
+        local n = #G.sentServer
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", weak, { op = "pull", id = 8, x = 100, y = 100, z = 0 })
+        assert(#G.sentServer == n, "sem permissão puxou")
+        -- destino longe de quem pediu (pedido montado à mão) é recusado
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "pull", id = 8, x = 140, y = 100, z = 0 })
+        for _, s in ipairs(G.sentServer) do
+            assert(not (s.command == "debugMove" and s.args.x == 140), "puxou pra longe do jogador")
+        end
+    end) end,
+    -- review final da 0033 (M4): sem ID de rede ninguém acharia o zumbi; o dedicado avisa
+    debug_pull_dedicated_without_online_id_fails = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.zombie({ x = 105, y = 100, id = 1 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "pull", id = -1, x = 100, y = 100, z = 0 })
+        for _, s in ipairs(G.sentServer) do assert(s.command ~= "debugMove", "mandou debugMove sem ID de rede") end
+        local r = G.sentServer[#G.sentServer]
+        assert(r and r.player == p and r.command == "debugReply" and r.args.msg:find("sem ID de rede", 1, true),
+            "resposta: " .. tostring(r and r.args.msg))
+    end) end,
+    -- o servidor já conferiu a permissão: o dono move mesmo sem -debug no cliente dele
+    debug_move_owner_without_debug_moves = function() run(function()
+        local G = setup({ client = true, debug = false, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        local mine = G.zombie({ x = 105, y = 100, id = 1, online = 8 })
+        assert(NOM_Debug == nil)
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = 8, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1 and G.moves[1].z == mine, "dono sem -debug não moveu")
+    end) end,
+    debug_move_only_owner_moves = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        local mine = G.zombie({ x = 105, y = 100, id = 1, online = 8 })
+        G.zombie({ x = 106, y = 100, id = 2, online = 9, remote = true })
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = 9, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 0, "cópia remota moveu")
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = 8, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1 and G.moves[1].z == mine and G.moves[1].x == 100, "dono não moveu")
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = 8, x = "a", y = 1, z = 0 })
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = -1, x = 1, y = 1, z = 0 })
+        assert(#G.moves == 1, "aceitou lixo")
+    end) end,
+    nom_wind_calls_render_param = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local calls = {}
+        NOMRender_setParam = function(i, v) calls[#calls + 1] = i .. "=" .. v end
+        NOM.wind(true)
+        NOM.wind(false)
+        NOM.wind() -- inverte o último mandado (false → true)
+        NOM.wind()
+        NOMRender_setParam = nil
+        assert(table.concat(calls, ",") == "11=1,11=0,11=1,11=0", table.concat(calls, ","))
+    end) end,
+    nom_wind_without_mod3 = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        NOMRender_setParam = nil
+        NOM.wind(true)
+        assert(has(G.printed, "^%[NOM%] debug vento precisa do mod Volumétrica %(mod3%)"), table.concat(G.printed, "\n"))
+    end) end,
+    nom_help_has_new_commands_on_top_and_45s = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind" }
+        for i, name in ipairs(order) do
+            assert(NOM[name] and NOM.HELP[i][1]:find("^NOM%." .. name .. "%("), "help fora de ordem: " .. name)
+        end
+        local fogLine
+        for _, h in ipairs(NOM.HELP) do if h[1]:find("^NOM%.fog%(") then fogLine = h[2] end end
+        assert(fogLine:find("45 s") and not fogLine:find("30 s"), fogLine)
+        local all = {}
+        for _, h in ipairs(NOM.HELP) do all[#all + 1] = h[2] end
+        assert(table.concat(all, "\n"):find("1 estalador", 1, true), "help sem a numeração do turnZombie")
     end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()

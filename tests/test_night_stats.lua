@@ -224,6 +224,77 @@ local function sameLore(G, want)
 end
 
 return {
+    -- calmaria (sprint 0033): o comum fica um degrau pior em velocidade, visão e audição
+    stats_calm_dulls_common_by_day = function()
+        local G = setup()
+        local z = G.spawn()
+        G.tick()
+        assert(z.md.NOM_night == nil, "dia sem calmaria mexeu no zumbi")
+        NOM_NightStats.setCalm(true)
+        assert(NOM_NightStats.calm == true)
+        G.converge()
+        assert(z.speedType == 3 and z.sight == 3 and z.hearing == 3, "calmaria não aplicou")
+        assert(z.md.NOM_night == "c3,3,3", "chave: " .. tostring(z.md.NOM_night))
+        NOM_NightStats.setCalm(false)
+        assert(NOM_NightStats.calm == false)
+        G.converge()
+        assert(z.md.NOM_night == nil and z.md.NOM_dayTier == nil, "cache ficou depois da calmaria")
+        assert(z.sight == 2 and z.hearing == 2, "sentidos não voltaram")
+    end,
+    -- o zumbi já estava em dia "dormindo" (idle): a calmaria acorda o tick
+    stats_calm_wakes_sleeping_tick = function()
+        local G = setup()
+        local z = G.spawn()
+        G.tick(5) -- passada inteira sem nada a devolver: dorme
+        NOM_NightStats.setCalm(true)
+        G.converge()
+        assert(z.md.NOM_night == "c3,3,3", "tick continuou dormindo")
+    end,
+    -- durante a calmaria o tick não dorme: zumbi que nasce ou volta do virtual é pego
+    stats_calm_keeps_tick_awake = function()
+        local G = setup()
+        G.spawn()
+        NOM_NightStats.setCalm(true)
+        G.tick(5)
+        local late = G.spawn()
+        G.converge()
+        assert(late.md.NOM_night == "c3,3,3" and late.speedType == 3, "zumbi novo escapou da calmaria")
+    end,
+    -- saiu a calmaria: o tick acorda, limpa, e só então volta a dormir
+    stats_calm_end_then_sleeps = function()
+        local G = setup()
+        local z = G.spawn()
+        NOM_NightStats.setCalm(true)
+        G.converge()
+        NOM_NightStats.setCalm(false)
+        G.tick(5)
+        assert(z.md.NOM_night == nil)
+        local s0 = G.calls.speedReads
+        G.tick(5)
+        assert(G.calls.speedReads == s0, "tick não voltou a dormir")
+    end,
+    -- à noite a calmaria vence nos comuns; a variante e o Eco seguem o próprio perfil
+    stats_calm_beats_night_for_common = function()
+        local G = setup()
+        local z, eco = G.spawn(), G.spawn({ outfit = "NOM_Eco" })
+        NOM_NightStats.setNight(true)
+        NOM_NightStats.setCalm(true)
+        G.converge()
+        assert(z.speedType == 3 and z.sight == 3 and z.md.NOM_night == "c3,3,3")
+        assert(eco.speedType == 3 and eco.md.NOM_night == "eco", "Eco: " .. tostring(eco.md.NOM_night))
+        NOM_NightStats.setCalm(false)
+        G.converge()
+        assert(z.speedType == 1 and z.sight == 1, "noite não voltou depois da calmaria")
+    end,
+    -- sandbox de velocidade aleatória: a calmaria parte do degrau do zumbi
+    stats_calm_from_zombie_tier = function()
+        local G = setup({ lore = { Speed = 4 } })
+        local z = G.spawn()
+        z.speedType = 1
+        NOM_NightStats.setCalm(true)
+        G.converge()
+        assert(z.speedType == 2, "um degrau abaixo do corredor: " .. z.speedType)
+    end,
     stats_night_boosts_speed_and_senses = function()
         local G = setup()
         local zs = {}

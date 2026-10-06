@@ -33,6 +33,9 @@
 --   emitter:setVolume(id, v), isPlaying(id), stopSoundLocal(id) são locais. Já
 --   emitter:playSound e stopSound mandam pacote no cliente de MP
 --   (FMODSoundEmitter.playSound 0–104, stopSound → sendStopSound): aqui explodem.
+-- * Sirene (sprint 0033): z:faceLocationF(x, y) = IsoGameCharacter.faceLocationF(FF)Z
+--   (javap; uso vanilla client/BuildingObjects/TimedActions/ISBuildAction.lua:248): vira o
+--   zumbi pro ponto, sem rede, e devolve true; o fake guarda em z.faced. getX/getY: IsoMovingObject.
 local W = {}
 
 local function jlist(items)
@@ -201,6 +204,7 @@ function W.new(opts)
         function z:isUseless() return self.useless == true end
         function z:setUseless(b) self.useless = b end
         function z:setTarget(t) self.target = t end
+        function z:faceLocationF(x, y) self.faced = { x = x, y = y }; return true end
         function z:getTarget() return self.target end
         function z:spotted(p, forced)
             if self.useless then self.target = nil return end
@@ -218,6 +222,8 @@ function W.new(opts)
     isClient = function() return opts.client == true end
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end -- -debug do processo
+    -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
+    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {

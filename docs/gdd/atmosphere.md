@@ -61,11 +61,11 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 ## Som
 
 - **Sirene** (evento de névoa): sirene de ataque aéreo, ~24 s, sobe e cai duas vezes,
-  tocada pra todo jogador 30 s reais antes da névoa, alta e audível em qualquer lugar
+  tocada pra todo jogador 45 s reais antes da névoa, alta e audível em qualquer lugar
   (toca no próprio jogador). Sem toggle: é o aviso do evento.
 - **Sirene vermelha** (névoa vermelha): a mesma sirene, ~30% mais grave, rasgada, com
   o rotor gemendo e um ronco uma oitava abaixo, ~28 s. Toca no lugar da normal, no
-  mesmo momento (30 s reais antes): quem ouve sabe o que vem. Nos primeiros
+  mesmo momento (45 s reais antes): quem ouve sabe o que vem. Nos primeiros
   `RedFogGraceDays` (7) dias do save ela não toca (sprint 0019): o jogador aprende a
   sirene normal antes.
 - Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
@@ -118,7 +118,7 @@ máximo". Substitui as manchas esparsas da sprint 0005
 
 > Vinheta, sangue e erosão, drone e rádio **só aparecem no evento de névoa**,
 > nunca só de noite. Pra ver sem esperar: `NOM_Debug.fog(true, true)` no console
-> (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 30 s depois).
+> (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 45 s depois).
 > Vermelha: `NOM_Debug.redFog(true)`.
 
 - `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,

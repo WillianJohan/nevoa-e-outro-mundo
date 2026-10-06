@@ -63,6 +63,7 @@ public final class RenderContext {
     static final int PARAM_VANILLA_FOG = 8;     // 1 devolve a névoa vanilla (ImprovedFog) por baixo da nossa
     static final int PARAM_FLOW_RES = 9;        // células por tile da névoa fluida, 1 a 3 (Opções > Mods, pelo Lua)
     static final int PARAM_VACUUM = 10;         // 1 vácuo atrás dos prédios (o Johan escolheu no A/B); 0 a esteira enche
+    static final int PARAM_WIND_SOURCE = 11;    // 1 liga um foco de vento aleatório perto do jogador (teste, sprint 0033); padrão 0
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_FLOW_RES] = 2f;

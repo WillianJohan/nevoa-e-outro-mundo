@@ -150,13 +150,16 @@ return {
         assert(est.md.NOM_variant == "estalador", "Estalador sumiu de dia com névoa")
         assert(est.speedType == 2, "ficou com a velocidade da noite de dia: " .. est.speedType)
         assert(NOM_FogState.on == true and #G.playing("NOM_FogDrone") == 1)
-        -- noite de novo, a névoa baixa: o Estalador vira comum, a noite fica
+        -- noite de novo, a névoa baixa: o Estalador vira comum, a noite fica (com a calmaria por cima)
         G.set(23, 0)
         G.frame(30)
         G.seconds(12)
         assert(NOM_NightStats.night == true and NOM_FogState.on == false)
         assert(est.md.NOM_variant == nil and est.useless == false, "Estalador ficou sem névoa")
-        assert(est.speedType == 1, "perdeu a noite junto com a névoa")
+        -- a névoa que acaba abre a calmaria (sprint 0033): o comum fica um degrau pior
+        -- e ela vence a noite (a volta da noite depois da calmaria: test_night_stats)
+        assert(NOM_World.calm == true and NOM_NightStats.calm == true, "calmaria não abriu no fim da névoa")
+        assert(est.speedType == 3, "calmaria não pesou no zumbi comum: " .. est.speedType)
         assert(#G.playing("NOM_FogDrone") == 0 and #G.playing("NOM_RadioStatic") == 0, "som da névoa ficou")
         assert(G.enabled[0] == false, "vinheta ficou")
         local fog = G.commands(G.sentServer, "fog")

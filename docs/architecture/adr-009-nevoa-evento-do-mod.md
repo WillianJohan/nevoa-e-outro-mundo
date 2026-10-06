@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Substitui | o gatilho "névoa natural do clima" ([world-states.md](../gdd/world-states.md), sprint 0001) |
-| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`) |
+| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`); [emenda da sprint 0033](#emenda-de-2026-10-06--sprint-0033-ritmo-novo) (agenda por dia, sirene de 45 s, congelamento, calmaria; **substitui o intervalo e a curva do intervalo**) |
 | Emenda | [ADR-004](adr-004-clima-antes-de-shader.md) e [ADR-008](adr-008-noite-pela-luz-global.md) (o canal `FLOAT_FOG_INTENSITY` sai do look) |
 
 ## Contexto
@@ -111,3 +111,63 @@ Balanceamento do PO aprovado pelo Johan: a agenda deixa de ter média fixa.
 Sono ou fast-forward de meses satura a curva (0,75×), sem acumular evento. Default da base
 passou de 3 pra 2 dias e da duração mínima de 2 pra 3 horas: com a curva, o começo do save
 fica ~3 dias efetivos, como era.
+
+## Emenda de 2026-10-06 — sprint 0033: ritmo novo
+
+Decisão do Johan ([modelo novo](../superpowers/specs/2026-10-06-modelo-novo-design.md), seções 2 a 4). A
+agenda deixa de ser um intervalo depois do fim da névoa: o servidor sorteia **por dia de jogo**. As
+decisões 1 e 2 acima e a emenda da 0019 (intervalo e `everyDays`) ficam como histórico; o canal de névoa, a
+recarga e o resto continuam valendo.
+
+1. **Agenda por dia** (`NOM_FogEventRules.update`/`planDay`). À meia-noite de jogo o dia é planejado uma
+   vez: `data.fog.day` (último dia planejado), `hadFog`, `daysWithout`, `wantSecond`, `lastEnd`. O sorteio
+   usa `NOM_VariantRules.hash(seed, dia, sal)` (um sal por sorteio: se tem névoa, hora, segunda, hora da
+   segunda, direção), então salvar e carregar não muda nada.
+   - **Chance do dia:** `FogDailyChance` (65%), subindo em linha reta até `FogMaxDailyChance` (85%) em
+     `FogEscalationDays` (60) com `FogEscalation`. A curva é só da chance do dia: o `bornAt` da 0019 segue
+     existindo pra ela e pra carência da vermelha.
+   - **Garantia:** `FogMaxDaysWithout` (2) dias seguidos sem névoa e o seguinte tem névoa.
+   - **Segunda névoa:** `FogSecondChance` (15%), começando antes da meia-noite e a `FogMinGapHours` (6 h)
+     do fim da anterior. Nenhuma névoa começa antes dessa folga do fim da anterior (a folga empurra o
+     `next`).
+   - **Save antigo:** `data.fog.next` já agendado vale como a névoa do dia (sem sorteio novo) se cair até
+     o fim do dia; marcado pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
+   - `FogEventEveryDays` e `R.everyDays`/`R.gap` saem.
+2. **Duração por cor:** branca `FogMinHours`–`FogMaxHours` (3–5), vermelha `RedFogMinHours`–`RedFogMaxHours`
+   (4–6). A vermelha é `RedFogChance` (20%) fixa depois da carência; a subida até o dobro da 0019 saiu.
+3. **Sirene de 45 s** (`R.SIREN_MS`, eram 30 000 ms) e **direção**: `R.sirenDir(seed, período)` em graus,
+   pura, igual em toda máquina; o comando `siren` leva `{ red, dir }` e o `fogState` de quem entra
+   também. A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 45 s.
+4. **Congelamento** (`shared/NOM_SirenFreeze.lua`, [pz-api-notes §21](pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
+   O servidor decide e avisa a direção; quem simula o zumbi aplica, igual aos stats da noite
+   ([ADR-005](adr-005-quem-simula-aplica.md)): no solo o próprio processo, no MP o cliente dono
+   (`siren`, `fog`, `sirenStop`). Cada zumbi fica `setUseless(true)`, sem alvo e com `faceLocationF` pra
+   direção. Quando a névoa abre, quem solta é quem congelou: no solo, o `begin()` (antes do `R.start`, pra
+   uma recusa não deixar ninguém preso); no dedicado, cada cliente ao receber `fog {on=true}` (o servidor
+   não manda `sirenStop` nesse caso). Cancelar a sirene (`R.cancel`, que agora também limpa `red`) manda
+   `sirenStop`. O cliente tem rede de segurança: solta sozinho 15 s depois do fim previsto da sirene (no
+   solo, a contagem renova esse prazo a cada tick, e a pausa não o vence). O fim também solta o zumbi
+   local que herdou o `useless` na troca de posse; o `useless` do próprio jogo (outfit "Useless", modo
+   Tutorial) não é tocado nem no começo nem no fim.
+5. **Calmaria:** `R.stop` grava `calmUntil = fim + FogCalmHours`; `R.calm` vira a flag `NOM_World.calm`
+   (`setCalm`, a cada `OnClimateTick`, e na hora no `stop()` de debug). `NOM_NightRules.wanted` recebe
+   `calm` e dá ao zumbi comum um degrau a menos de velocidade, visão e audição (`dull`); a calmaria vence
+   a noite no comum, e Eco e variantes não sentem. O `begin()` e o `force` zeram a flag. O comando
+   `calm {on}` leva a flag ao cliente dono no dedicado.
+6. **Debug:** `NOM_FogEvent.force(red, skip)` reinicia a sirene na cor pedida (`forcedRed` agora tem
+   "branco forçado"), pra `NOM.setFog`/`NOM.setRedFog` serem sempre brancas/vermelhas.
+
+**Alternativas recusadas:**
+
+| Alternativa | Por que não |
+|---|---|
+| Manter o intervalo e só encurtar a média | A frequência continua imprevisível e a curva puxava a média pra 3 dias; o Johan quer "quase todo dia" com garantia |
+| Congelar no servidor | O `useless` e o alvo do zumbi são do dono no MP (ADR-005); o servidor não simularia nada no dedicado |
+| Calmaria como multiplicador de velocidade | O jogo só tem degraus (`doZombieSpeed`); o mesmo caminho da noite aproveita os testes e o dono |
+
+**Consequências:**
+- Mudar o sandbox no meio do save vale a partir do próximo dia planejado; o `next` já salvo pro dia não muda.
+- Sono e fast-forward longos planejam o dia em que se acorda e contam os dias perdidos como sem névoa
+  (a garantia pode forçar a seguinte); nada se acumula.
+- UNKNOWN registrado: se o zumbi `useless` parado mantém a direção do `faceLocationF` entre as passadas
+  (conferir no jogo, [roteiro da 0033](../sprints/sprint-0033-ritmo-novo/README.md#roteiro-in-game)).

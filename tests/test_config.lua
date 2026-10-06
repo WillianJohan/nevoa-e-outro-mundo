@@ -3,7 +3,7 @@ require "NOM_Config"
 return {
     config_missing_sandboxvars_uses_default = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogEventEveryDays") == 2)
+        assert(NOM_Config.get("FogDailyChance") == 65)
         assert(NOM_Config.get("DarkEnabled") == true)
     end,
     config_missing_page_uses_default = function()
@@ -11,8 +11,8 @@ return {
         assert(NOM_Config.get("DarkIntensity") == 1.0)
     end,
     config_reads_sandbox_value = function()
-        SandboxVars = { NevoaEOutroMundo = { FogEventEveryDays = 0.8 } }
-        assert(NOM_Config.get("FogEventEveryDays") == 0.8)
+        SandboxVars = { NevoaEOutroMundo = { FogDailyChance = 40 } }
+        assert(NOM_Config.get("FogDailyChance") == 40)
     end,
     config_false_is_not_missing = function()
         SandboxVars = { NevoaEOutroMundo = { DarkEnabled = false } }
@@ -54,18 +54,28 @@ return {
     config_red_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("RedFogEnabled") == true)
-        assert(NOM_Config.get("RedFogChance") == 10)
+        assert(NOM_Config.get("RedFogChance") == 20)
     end,
     config_fog_event_defaults = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogEventEveryDays") == 2)
+        assert(NOM_Config.DEFAULTS.FogEventEveryDays == nil, "FogEventEveryDays ainda no Lua")
+        assert(NOM_Config.get("FogDailyChance") == 65)
+        assert(NOM_Config.get("FogMaxDailyChance") == 85)
+        assert(NOM_Config.get("FogEscalationDays") == 60)
+        assert(NOM_Config.get("FogSecondChance") == 15)
+        assert(NOM_Config.get("FogMinGapHours") == 6)
+        assert(NOM_Config.get("FogMaxDaysWithout") == 2)
         assert(NOM_Config.get("FogMinHours") == 3)
-        assert(NOM_Config.get("FogMaxHours") == 6)
+        assert(NOM_Config.get("FogMaxHours") == 5)
+        assert(NOM_Config.get("RedFogMinHours") == 4)
+        assert(NOM_Config.get("RedFogMaxHours") == 6)
+        assert(NOM_Config.get("FogCalmHours") == 2)
         assert(NOM_Config.DEFAULTS.FogThreshold == nil, "FogThreshold ainda no Lua")
         local f = assert(io.open("mod/42/media/sandbox-options.txt"))
         local txt = f:read("*a")
         f:close()
         assert(not txt:find("FogThreshold", 1, true), "FogThreshold ainda no menu")
+        assert(not txt:find("FogEventEveryDays", 1, true), "FogEventEveryDays ainda no menu")
     end,
     config_fog_defaults = function()
         SandboxVars = nil
@@ -117,9 +127,9 @@ return {
         local grace = txt:match("option NevoaEOutroMundo%.RedFogGraceDays = {(.-)}")
         assert(grace and grace:match("min = (%d+)") == "0" and grace:match("max = (%d+)") == "60", "faixa da carência")
     end,
-    -- review da 0019: o tooltip da chance de vermelha avisa da carência e da escalada
+    -- sprint 0033: o tooltip da chance de vermelha avisa da carência (sem curva até o dobro)
     config_red_chance_tooltip_mentions_curve = function()
-        for lang, words in pairs({ PTBR = { "carência", "dobro" }, EN = { "grace", "double" } }) do
+        for lang, words in pairs({ PTBR = { "carência" }, EN = { "grace" } }) do
             local f = assert(io.open("mod/42/media/lua/shared/Translate/" .. lang .. "/Sandbox.json"))
             local txt = f:read("*a")
             f:close()

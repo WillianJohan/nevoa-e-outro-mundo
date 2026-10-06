@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-05 (noite, sprint 0024 entregue pelo Cursor). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprint 0033 implementada pelo Cursor). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna) e 0032 (névoa com altura) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura) e 0033 (ritmo novo, na branch `sprint/0033-ritmo-novo`, ainda fora da `main`) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
 - **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
-- 711 testes Lua, 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), 30 do núcleo da névoa fluida em Java (15 da 0024, 15 da viajante, do vento e do redemoinho) (com os shaders compilados pelo `glslangValidator`) e 25 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 791 testes Lua (na branch da 0033), 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -59,6 +59,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
+| `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -74,6 +75,30 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Estado atual: ritmo novo (sprint 0033)
+
+**Implementada na branch `sprint/0033-ritmo-novo`, aguardando o review final e o teste do Johan no jogo.** Só depois entra na `main`, com push e `scripts/dev-sync.sh`.
+
+O Johan mudou o mindset da névoa: ela é frequente (quase todo dia) e o fim dela é uma folga pra explorar. O mapa de tudo que vem é a spec [modelo novo](superpowers/specs/2026-10-06-modelo-novo-design.md) (sprints 0033 a 0044); o plano e o roteiro da 0033 estão em [sprints/sprint-0033-ritmo-novo/README.md](sprints/sprint-0033-ritmo-novo/README.md).
+
+**O que a 0033 entrega:**
+- **Agenda por dia** (`shared/NOM_FogEventRules.lua`): 65% subindo até 85% no dia 60, segunda névoa de 15% depois de 6 h de folga, garantia no terceiro dia sem névoa, branca de 3–5 h e vermelha (20% depois do dia 7, sem a subida da 0019) de 4–6 h. Determinística pelo número do dia e pela semente. Sandbox: `FogEventEveryDays` saiu; entraram `FogDailyChance`, `FogMaxDailyChance`, `FogEscalationDays`, `FogSecondChance`, `FogMinGapHours`, `FogMaxDaysWithout`, `RedFogMinHours`, `RedFogMaxHours` e `FogCalmHours`.
+- **Sirene de 45 s com direção** (`server/NOM_FogEvent.lua`) e **congelamento** (`shared/NOM_SirenFreeze.lua`): todo zumbi para virado pra direção dela e ignora o jogador; a névoa começando solta todos. Quem simula aplica (ADR-005).
+- **Calmaria** (`NOM_World.calm`, `NOM_NightRules`/`NOM_NightStats`): 2 h de jogo depois da névoa, o zumbi comum um degrau mais lento e de sentidos reduzidos.
+- **Comandos de debug novos:** `NOM.setFog(skip)` (sempre branca), `NOM.setRedFog(skip)` (sempre vermelha), `NOM.setBlackFog()` (só avisa até a 0038), `NOM.setEndFog()`, `NOM.getZombie()`, `NOM.turnZombie(i)`, `NOM.godMode(on)` e `NOM.wind(on)`.
+- **mod3:** foco de vento aleatório de teste, `NOMRender_setParam(11, 1)` (`WindSource.java`).
+- **Docs:** GDD (`world-states.md`, `sandbox.md`, `Overview.md`) e emenda de 2026-10-06 na [ADR-009](architecture/adr-009-nevoa-evento-do-mod.md). Os presets Leve e Pesadelo da `sandbox.md` foram traduzidos sem jogar; o Johan ainda precisa confirmar.
+
+**O que o Johan precisa conferir no jogo** (roteiro completo no README da sprint):
+- a sirene de 45 s, todo mundo parado e virado pro mesmo lado, e a volta junta quando a névoa começa;
+- **UNKNOWN (pz-api-notes §21):** o zumbi `useless` mantém a direção do `faceLocationF`, ou volta a girar sozinho entre as passadas do módulo (lote de 20 por tick)?
+- a calmaria de 2 h e a duração de cada cor;
+- o foco de vento no mod3 (precisa do `scripts/build-mod3.sh`; o jar é assinado e fica fora do git).
+
+**Próximo passo:** a **0034 (sons)**, depois que o Johan ouvir as amostras do `scripts/gen_sounds.py` e escolher as sirenes (branca melhorada, vermelha bizarra com gritos, e um dos três conceitos da preta: fita morrendo, sirenes fora de fase ou quase silêncio). Não começar a 0034 antes da escolha. Quem pegar a 0034 também lê o resultado do UNKNOWN acima.
+
+**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)).
+
 ## Em teste: névoa com altura (sprint 0032)
 
 Etapa 2 da [pesquisa](architecture/pesquisa-nevoa-volumetrica.md), enxuta:
@@ -84,7 +109,6 @@ Etapa 2 da [pesquisa](architecture/pesquisa-nevoa-volumetrica.md), enxuta:
 
 Roteiro em [sprints/sprint-0032-nevoa-com-altura/README.md](sprints/sprint-0032-nevoa-com-altura/README.md).
 
-**Próxima (0033):** quadrado censurado com chiado de TV sobre a cara do Sem Rosto, passe do mod3 (ideia do Johan).
 
 ## Em teste: névoa que contorna (sprint 0031)
 

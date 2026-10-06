@@ -7,6 +7,30 @@ local function cfg(o)
 end
 
 return {
+    -- calmaria depois da névoa: o zumbi comum fica um degrau pior em tudo (sprint 0033)
+    night_rules_calm_dulls_common = function()
+        local R = NOM_NightRules
+        local c = cfg()
+        local w = R.wanted(false, nil, 2, c, true)
+        assert(w.speed == 3 and w.sight == 3 and w.hearing == 3 and w.key == "c3,3,3")
+        w = R.wanted(true, nil, 2, c, true)
+        assert(w.speed == 3 and w.key == "c3,3,3", "calmaria vence a noite no comum")
+        assert(R.wanted(false, nil, 3, c, true).speed == 3, "já arrastado fica arrastado")
+        assert(R.wanted(true, "eco", 2, c, true).key == "eco", "Eco não sente a calmaria")
+        assert(R.wanted(false, nil, 2, c, false).key == "day", "sem calmaria, dia normal")
+        assert(R.wanted(false, nil, 2, c).key == "day", "calm nil = sem calmaria")
+    end,
+    night_rules_dull_clamps = function()
+        assert(NOM_NightRules.dull(1, 1) == 2 and NOM_NightRules.dull(2, 1) == 3)
+        assert(NOM_NightRules.dull(3, 1) == 3 and NOM_NightRules.dull(2, 5) == 3)
+    end,
+    -- calmaria parte da base do sandbox (1..3), não dos degraus da noite
+    night_rules_calm_uses_sandbox_senses = function()
+        local w = NOM_NightRules.wanted(false, nil, 1, cfg({ sight = 1, hearing = 3 }), true)
+        assert(w.speed == 2 and w.sight == 2 and w.hearing == 3 and w.key == "c2,2,3")
+        w = NOM_NightRules.wanted(false, nil, 2, cfg({ sight = 4, hearing = 5 }), true)
+        assert(w.sight == 3 and w.hearing == 3, "sorteio por zumbi: base normal, um degrau abaixo")
+    end,
     -- degraus do jogo: 1.0 não muda, 1.5 sobe um, 2.5 sobe dois
     night_rules_steps = function()
         local R = NOM_NightRules

@@ -8,8 +8,8 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - À noite, bem mais escura que a vanilla, os zumbis caçam, enxergam e ouvem mais longe.
 - Corpos de quem morreu antes do anoitecer soltam **Ecos**: almas fracas que somem
   com o sol. Queime ou enterre os mortos.
-- A cada ~3 dias no começo (e mais seguido com o passar dos dias), numa hora qualquer, uma sirene toca; 30 segundos depois vem a névoa
-  (de 3 a 6 horas, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
+- Quase todo dia, numa hora qualquer, uma sirene toca e os zumbis param; 45 segundos depois vem a névoa
+  (a branca dura de 3 a 5 horas, a vermelha de 4 a 6, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
   aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda),
   o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto — e a
   **Carpideira**, parada, chorando baixinho, até alguém acordá-la.
@@ -32,7 +32,7 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Balanceamento, MP e performance | orçamento por sistema travado por teste, comandos de debug, presets documentados | 0006 |
 | Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
 | Ajustes do 1º teste | noite escura pela luz global, monstros só na névoa (5/2/5), Eco só de quem morreu antes do anoitecer | 0008 |
-| Névoa como evento | sirene 30 s reais antes, hora aleatória a cada ~3 dias, 2–6 h; névoa natural do jogo some | 0009 |
+| Névoa como evento | sirene 45 s reais antes (os zumbis param virados pra ela), hora aleatória quase todo dia, branca 3–5 h e vermelha 4–6 h, calmaria de 2 h depois; névoa natural do jogo some | 0009, 0033 |
 | Névoa vermelha | 10% das névoas: sirene própria, névoa e luz vermelhas, todo zumbi é monstro (1/4 de cada) | 0010 |
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça; contraste cheio e formas grandes pra ler sob a névoa | 0012, 0014 |
@@ -56,6 +56,11 @@ Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e pre
 e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
 Em servidor: `WorkshopItems=3814379207` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
 `Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
+Com a névoa volumétrica, o **ZombieBuddy vem primeiro** na linha:
+`Mods=ZombieBuddy;NevoaEOutroMundo;NevoaEOutroMundo_Shader;NevoaEOutroMundo_Volumetrica`.
+O cliente carrega o ZombieBuddy antes de tudo. Se o servidor o carregar em outra posição, as listas
+de Lua saem em ordem diferente e o checksum expulsa o jogador com
+"File doesn't exist on the client: media/lua/client/nom_console.lua".
 
 **Dev:** cópia do repositório na pasta de mods (`mod/` e o shader opcional `mod2/`):
 

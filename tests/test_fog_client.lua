@@ -6,7 +6,7 @@ local function setup(opts)
     opts = opts or {}
     if opts.client == nil then opts.client = true end
     local G = W.new(opts)
-    G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_Siren" })
+    G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_Siren", "NOM_SirenFreeze" })
     dofile(FILE)
     function G.server(command, args) G.fire("OnServerCommand", "NevoaEOutroMundo", command, args) end
     return G
@@ -36,6 +36,44 @@ return {
         assert(G.played("NOM_Siren") == 1 and G.playing("NOM_Siren")[1].volume == 1)
         G.fire("OnServerCommand", "OutroMod", "siren", {})
         assert(G.played("NOM_Siren") == 1)
+    end,
+    -- sprint 0033: a sirene congela os zumbis que este cliente simula (dono), virados pra dir
+    fog_client_siren_freezes_owned_zombies = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
+        local remote = G.zombie({ x = 20, y = 20, onlineID = 6, remote = true })
+        G.server("siren", { red = false, dir = 90 })
+        G.tick(1)
+        assert(NOM_SirenFreeze.active and mine.useless == true, "dono não congelou")
+        assert(math.abs(mine.faced.y - (mine.y + NOM_SirenFreeze.FAR)) < 1e-6, "dir 90° = +y")
+        assert(not remote.useless, "cópia remota é do outro cliente")
+        G.fire("OnServerCommand", "OutroMod", "sirenStop", {})
+        assert(mine.useless == true, "comando de outro módulo soltou")
+        G.server("sirenStop", {})
+        assert(mine.useless == false and not NOM_SirenFreeze.active, "sirenStop não soltou")
+    end,
+    fog_client_fog_on_releases_freeze = function()
+        local G = setup()
+        local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
+        G.server("siren", { red = true, dir = 0 })
+        G.tick(1)
+        assert(mine.useless == true)
+        G.server("fog", { on = false, period = 1 })
+        assert(mine.useless == true, "fog off não devia soltar")
+        G.server("fog", { on = true, period = 2 })
+        assert(mine.useless == false and not NOM_SirenFreeze.active, "a névoa não soltou")
+    end,
+    -- sirene sem argumentos (servidor antigo): direção 0 e a mesma segurança de fim
+    fog_client_siren_without_args_and_safety = function()
+        local G = setup()
+        local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
+        G.server("siren", nil)
+        G.tick(1)
+        assert(mine.useless == true and math.abs(mine.faced.x - (mine.x + NOM_SirenFreeze.FAR)) < 1e-6)
+        G.now = G.now + 45000 + NOM_SirenFreeze.SAFETY_MS + 1000
+        G.tick(1)
+        assert(mine.useless == false, "sem sirenStop nem fog, ficou congelado")
     end,
     fog_client_asks_state_on_join = function()
         local G = setup()

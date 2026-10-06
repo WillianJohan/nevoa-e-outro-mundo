@@ -22,6 +22,11 @@ function NOM_NightRules.sharpen(tier, steps)
     return math.max(1, tier - steps)
 end
 
+-- Calmaria: steps degraus pra pior (3 é o piso: arrastado, ruim, ruim).
+function NOM_NightRules.dull(tier, steps)
+    return math.min(3, math.max(1, tier + steps))
+end
+
 -- Sandbox de sentidos: 1..3 fixo; 4 e 5 são sorteios por zumbi, a base é normal.
 function NOM_NightRules.baseSense(v)
     if v >= 1 and v <= 3 then return v end
@@ -39,8 +44,17 @@ end
 -- cima dos stats da noite; de dia, por cima dos do jogo). cfg = { fasterOn, sensesOn, speedMult, senseMult, sight, hearing }
 -- (sight/hearing = valores do sandbox). sight/hearing nil = os do sandbox.
 -- key == "day" quando nada muda em relação ao jogo.
-function NOM_NightRules.wanted(night, kind, dayTier, cfg)
+-- calm: calmaria depois da névoa (sprint 0033). O zumbi comum (kind nil) fica um
+-- degrau pior em velocidade, visão e audição, e isso vale também à noite. Variantes
+-- e Eco não sentem a calmaria (o Eco já é o mais lento).
+function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm)
     local R = NOM_NightRules
+    if calm and kind == nil then
+        local w = { speed = R.dull(dayTier, 1), sight = R.dull(R.baseSense(cfg.sight or 2), 1),
+            hearing = R.dull(R.baseSense(cfg.hearing or 2), 1) }
+        w.key = "c" .. w.speed .. "," .. w.sight .. "," .. w.hearing
+        return w
+    end
     if not night and (kind == nil or kind == "eco") then return { key = "day", speed = dayTier } end
     if kind == "eco" then return { key = "eco", speed = R.ECO_SPEED } end
     local w = { speed = dayTier }

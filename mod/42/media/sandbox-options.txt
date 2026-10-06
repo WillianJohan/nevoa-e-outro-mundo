@@ -10,9 +10,39 @@ option NevoaEOutroMundo.DarkIntensity = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.DarkIntensity,
 }
 
-option NevoaEOutroMundo.FogEventEveryDays = {
-    type = double, min = 0.5, max = 30.0, default = 2.0,
-    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEventEveryDays,
+option NevoaEOutroMundo.FogDailyChance = {
+    type = integer, min = 0, max = 100, default = 65,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogDailyChance,
+}
+
+option NevoaEOutroMundo.FogEscalation = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEscalation,
+}
+
+option NevoaEOutroMundo.FogMaxDailyChance = {
+    type = integer, min = 0, max = 100, default = 85,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMaxDailyChance,
+}
+
+option NevoaEOutroMundo.FogEscalationDays = {
+    type = integer, min = 1, max = 365, default = 60,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEscalationDays,
+}
+
+option NevoaEOutroMundo.FogSecondChance = {
+    type = integer, min = 0, max = 100, default = 15,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogSecondChance,
+}
+
+option NevoaEOutroMundo.FogMinGapHours = {
+    type = double, min = 0.0, max = 24.0, default = 6.0,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMinGapHours,
+}
+
+option NevoaEOutroMundo.FogMaxDaysWithout = {
+    type = integer, min = 0, max = 30, default = 2,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMaxDaysWithout,
 }
 
 option NevoaEOutroMundo.FogMinHours = {
@@ -21,13 +51,8 @@ option NevoaEOutroMundo.FogMinHours = {
 }
 
 option NevoaEOutroMundo.FogMaxHours = {
-    type = double, min = 0.5, max = 48.0, default = 6.0,
+    type = double, min = 0.5, max = 48.0, default = 5.0,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogMaxHours,
-}
-
-option NevoaEOutroMundo.FogEscalation = {
-    type = boolean, default = true,
-    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogEscalation,
 }
 
 option NevoaEOutroMundo.RedFogEnabled = {
@@ -36,13 +61,28 @@ option NevoaEOutroMundo.RedFogEnabled = {
 }
 
 option NevoaEOutroMundo.RedFogChance = {
-    type = integer, min = 0, max = 100, default = 10,
+    type = integer, min = 0, max = 100, default = 20,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogChance,
 }
 
 option NevoaEOutroMundo.RedFogGraceDays = {
     type = integer, min = 0, max = 60, default = 7,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogGraceDays,
+}
+
+option NevoaEOutroMundo.RedFogMinHours = {
+    type = double, min = 0.5, max = 48.0, default = 4.0,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogMinHours,
+}
+
+option NevoaEOutroMundo.RedFogMaxHours = {
+    type = double, min = 0.5, max = 48.0, default = 6.0,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.RedFogMaxHours,
+}
+
+option NevoaEOutroMundo.FogCalmHours = {
+    type = double, min = 0.0, max = 24.0, default = 2.0,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogCalmHours,
 }
 
 option NevoaEOutroMundo.EcoEnabled = {

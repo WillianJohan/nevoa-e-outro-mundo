@@ -138,6 +138,43 @@ return {
         assert(G.sent[2].args.on == false)
         assert(NOM_NightStats.night == false)
     end,
+    -- calmaria (sprint 0033): dedicado avisa na borda, o cliente dono aplica
+    night_mp_broadcasts_calm = function()
+        local G = setup({ server = true })
+        G.sent = {}
+        NOM_World.setCalm(true)
+        assert(#G.sent == 1, "avisos: " .. #G.sent)
+        assert(G.sent[1].module == "NevoaEOutroMundo" and G.sent[1].command == "calm" and G.sent[1].args.on == true)
+        NOM_World.setCalm(true) -- sem borda, sem aviso
+        assert(#G.sent == 1)
+        NOM_World.setCalm(false)
+        assert(#G.sent == 2 and G.sent[2].command == "calm" and G.sent[2].args.on == false)
+        assert(NOM_NightStats.calm == false, "dedicado aplicou stats")
+    end,
+    -- solo: este processo simula e aplica, sem rede
+    night_sp_applies_calm = function()
+        local G = setup()
+        NOM_World.setCalm(true)
+        assert(NOM_NightStats.calm == true)
+        NOM_World.setCalm(false)
+        assert(NOM_NightStats.calm == false)
+        assert(#G.sent == 0, "solo mandou comando de rede")
+    end,
+    -- cliente que entra no meio da calmaria não viu a borda: o nightState responde com ela
+    night_state_includes_calm = function()
+        local G = setup({ server = true, tod = 23 })
+        NOM_World.setCalm(true)
+        G.sent = {}
+        local who = {}
+        G.clientCommand("NevoaEOutroMundo", "nightState", who, {})
+        assert(#G.sent == 2, "respostas: " .. #G.sent)
+        assert(G.sent[1].command == "night" and G.sent[1].player == who)
+        assert(G.sent[2].command == "calm" and G.sent[2].player == who and G.sent[2].args.on == true)
+        NOM_World.setCalm(false)
+        G.sent = {}
+        G.clientCommand("NevoaEOutroMundo", "nightState", who, {})
+        assert(G.sent[2].args.on == false)
+    end,
     -- o número da noite viaja com a flag: o cliente sorteia as variantes igual ao servidor
     night_mp_sends_night_number = function()
         local G = setup({ server = true })
@@ -172,7 +209,9 @@ return {
         local who = {}
         G.clientCommand("NevoaEOutroMundo", "nightState", who, {})
         G.clientCommand("OutroMod", "nightState", who, {})
-        assert(#G.sent == 1 and G.sent[1].player == who and G.sent[1].args.on == true)
+        -- noite e calmaria, as duas só pra ele
+        assert(#G.sent == 2 and G.sent[1].player == who and G.sent[1].command == "night" and G.sent[1].args.on == true)
+        assert(G.sent[2].player == who and G.sent[2].command == "calm" and G.sent[2].args.on == false)
     end,
     hunt_every_interval_at_night = function()
         local G = setup({ tod = 23, sandbox = { HuntIntervalMinutes = 30, HuntRadius = 25, NightSharperSenses = false },
