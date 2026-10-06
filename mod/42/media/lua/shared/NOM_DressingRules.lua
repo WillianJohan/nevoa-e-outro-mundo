@@ -10,10 +10,12 @@ require "NOM_VariantRules"
 require "NOM_Math"
 
 NOM_DressingRules = {
-    -- Tiles do jogador (sprint 0023). O anexo vai pro save com o chunk: fica bem dentro da
-    -- distância em que o chunk sai do mapa e é gravado (≥ 48 tiles, IsoChunkMap.chunkGridWidth
-    -- 13 × 8; ADR-017).
-    RADIUS = 15,
+    -- Raio em tiles do jogador: o canto da tela mais longe + MARGIN, entre MIN e MAX (sprint
+    -- 0034). O anexo vai pro save com o chunk: fica bem dentro da distância em que o chunk sai
+    -- do mapa e é gravado (≥ 48 tiles, IsoChunkMap.chunkGridWidth 13 × 8; ADR-017).
+    MIN_RADIUS = 15,
+    MAX_RADIUS = 30,
+    MARGIN = 2,
     MAX_LAYERS = 4,    -- camadas no piso (a sujeira, à parte)
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
     CELL = 7,          -- uma poça possível por célula de 7×7
@@ -303,11 +305,29 @@ function R.wall(x, y, z, period, d, north, outside)
     end
 end
 
--- Deslocamentos no raio, mais perto primeiro (a varredura do cliente segue esta ordem).
+local function finite(v)
+    return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+-- Raio da varredura: a distância do jogador (px, py) ao canto mais longe (corners = { {x, y}, ... },
+-- os cantos da tela no chão, em tiles) + MARGIN, pra cima, preso em [MIN_RADIUS, MAX_RADIUS].
+-- Sem cantos ou com um que não é número: MIN_RADIUS.
+function R.radius(px, py, corners)
+    if not finite(px) or not finite(py) or type(corners) ~= "table" or #corners == 0 then return R.MIN_RADIUS end
+    local far = 0
+    for _, c in ipairs(corners) do
+        if type(c) ~= "table" or not finite(c[1]) or not finite(c[2]) then return R.MIN_RADIUS end
+        local dx, dy = c[1] - px, c[2] - py
+        far = math.max(far, dx * dx + dy * dy)
+    end
+    return math.max(R.MIN_RADIUS, math.min(R.MAX_RADIUS, math.ceil(math.sqrt(far) + R.MARGIN)))
+end
+
+-- Deslocamentos até MAX_RADIUS, mais perto primeiro (a varredura do cliente segue esta ordem).
 R.OFFSETS = {}
-for dx = -R.RADIUS, R.RADIUS do
-    for dy = -R.RADIUS, R.RADIUS do
-        if dx * dx + dy * dy <= R.RADIUS * R.RADIUS then R.OFFSETS[#R.OFFSETS + 1] = { dx, dy } end
+for dx = -R.MAX_RADIUS, R.MAX_RADIUS do
+    for dy = -R.MAX_RADIUS, R.MAX_RADIUS do
+        if dx * dx + dy * dy <= R.MAX_RADIUS * R.MAX_RADIUS then R.OFFSETS[#R.OFFSETS + 1] = { dx, dy } end
     end
 end
 table.sort(R.OFFSETS, function(a, b)
@@ -317,14 +337,18 @@ table.sort(R.OFFSETS, function(a, b)
     return a[2] < b[2]
 end)
 
--- WITHIN[r] = quantos deslocamentos estão a até r tiles (os primeiros de OFFSETS).
+-- WITHIN[r] = quantos deslocamentos estão a até r tiles (os primeiros de OFFSETS), r até MAX_RADIUS.
 R.WITHIN = {}
-for r = 0, R.RADIUS do
+do
     local n = 0
-    for _, o in ipairs(R.OFFSETS) do
-        if o[1] * o[1] + o[2] * o[2] <= r * r then n = n + 1 end
+    for r = 0, R.MAX_RADIUS do
+        local o = R.OFFSETS[n + 1]
+        while o and o[1] * o[1] + o[2] * o[2] <= r * r do
+            n = n + 1
+            o = R.OFFSETS[n + 1]
+        end
+        R.WITHIN[r] = n
     end
-    R.WITHIN[r] = n
 end
 
 return NOM_DressingRules

@@ -37,9 +37,11 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    - `OnSave` (sai antes do `IsoCell.save` gravar os chunks, na mesma thread): tira tudo, sem lote.
      A atualização seguinte põe de volta. O mod **não** depende do `OnPostSave` (só sai na saída do
      jogo; o save de acordar não o dispara).
-   - **Raio de 15 tiles**: o que sai dele sai em lotes de 80 alvos; além de 15 + 8 sai na hora. O
-     chunk que sai do mapa (e vai pra fila de gravação) está a ≥ 48 tiles.
-   - **Salto** (> 15 tiles num tick, teleporte) e **morte**: tudo sai no tick.
+   - **Raio pela tela** (emenda da sprint 0034; era 15 fixo): o canto da tela do jogador 0 mais
+     longe, no chão, + 2, entre 15 e 30, relido a cada atualização. O que sai dele sai em lotes de
+     80 alvos; além de 30 + 8 sai na hora, qualquer zoom. O chunk que sai do mapa (e vai pra fila
+     de gravação) está a ≥ 48 tiles. Evidência: pz-api-notes §16.6 (raio pela tela).
+   - **Salto** (≥ 8 tiles num tick, teleporte; era > 15) e **morte**: tudo sai no tick.
    - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade).
    - **Hot save** (solo, sem evento): o chunk pode ser gravado com anexos do mod; isso só fica no
      disco se o jogo cair antes do próximo save daquele chunk (que sai limpo). Coberto pelo item 5.
@@ -85,4 +87,5 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 - Remover a trepadeira do mod com a ação vanilla "remover trepadeira" funciona, e ela volta
   (o rodízio põe de novo o que falta): o Outro Mundo cresce de novo.
 - Custo novo: enchendo, ~2000 chamadas Java e ~410 invalidações de nível de chunk por atualização
-  (umas 9 atualizações); parado, ~165; `LoadGridsquare`, ~3–7 chamadas por square carregado.
+  (umas 9 atualizações; no raio 30 da 0034, até 36); parado, ~165; `LoadGridsquare`, ~3–7
+  chamadas por square carregado.

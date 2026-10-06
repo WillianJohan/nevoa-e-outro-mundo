@@ -411,14 +411,15 @@ return {
         end
     end,
 
-    -- quantos deslocamentos há até cada raio (a varredura limita o cursor por ele)
+    -- quantos deslocamentos há até cada raio (a varredura limita o cursor por ele), até o máximo
     dressing_rules_offsets_within = function()
         local R = load()
-        for r = 0, R.RADIUS do
+        for r = 0, R.MAX_RADIUS do
             local n = 0
             for _, o in ipairs(R.OFFSETS) do if o[1] * o[1] + o[2] * o[2] <= r * r then n = n + 1 end end
             assert(R.WITHIN[r] == n, "WITHIN[" .. r .. "]")
         end
+        assert(R.WITHIN[R.MAX_RADIUS] == #R.OFFSETS)
     end,
 
     dressing_rules_offsets_nearest_first = function()
@@ -427,12 +428,43 @@ return {
         local seen = {}
         for _, o in ipairs(R.OFFSETS) do
             local d = o[1] * o[1] + o[2] * o[2]
-            assert(d >= last and d <= R.RADIUS * R.RADIUS)
+            assert(d >= last and d <= R.MAX_RADIUS * R.MAX_RADIUS)
             last = d
             seen[o[1] .. "," .. o[2]] = true
         end
         assert(R.OFFSETS[1][1] == 0 and R.OFFSETS[1][2] == 0)
-        assert(seen[R.RADIUS .. ",0"] and seen["0,-" .. R.RADIUS])
-        assert(#R.OFFSETS > 3 * R.RADIUS * R.RADIUS, "raio pequeno: " .. #R.OFFSETS)
+        assert(seen[R.MAX_RADIUS .. ",0"] and seen["0,-" .. R.MAX_RADIUS])
+        assert(#R.OFFSETS > 3 * R.MAX_RADIUS * R.MAX_RADIUS, "raio pequeno: " .. #R.OFFSETS)
+    end,
+
+    -- raio pela tela: o canto mais longe do jogador + MARGIN, pra cima, entre MIN e MAX
+    dressing_rules_radius_from_screen_corners = function()
+        local R = load()
+        assert(R.MIN_RADIUS == 15 and R.MAX_RADIUS == 30 and R.MARGIN == 2)
+        local function box(px, py, d) -- os 4 cantos a d tiles nos eixos
+            return { { px - d, py }, { px + d, py }, { px, py - d }, { px, py + d } }
+        end
+        assert(R.radius(100, 100, box(100, 100, 5)) == R.MIN_RADIUS, "perto: " .. R.radius(100, 100, box(100, 100, 5)))
+        assert(R.radius(100, 100, box(100, 100, 80)) == R.MAX_RADIUS, "longe")
+        -- canto mais longe em (+12, +9,1): 15,06 + 2 = 17,06 → 18
+        local c = { { 90, 100 }, { 112, 109.1 }, { 100, 101 }, { 101, 100 } }
+        local far = math.sqrt(12 * 12 + 9.1 * 9.1)
+        assert(R.radius(100, 100, c) == math.ceil(far + R.MARGIN), "meio-termo: " .. R.radius(100, 100, c))
+        -- exatamente inteiro não sobe mais um
+        assert(R.radius(0, 0, { { 20, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }) == 22)
+        -- na borda: 13 + 2 = 15, 28 + 2 = 30, 28,5 + 2 → 31 → 30
+        assert(R.radius(0, 0, { { 13, 0 } }) == 15 and R.radius(0, 0, { { 28, 0 } }) == 30)
+        assert(R.radius(0, 0, { { 28.5, 0 } }) == 30)
+    end,
+
+    -- sem cantos, ou canto que não é número (tela de 0 px, zoom estranho): o mínimo
+    dressing_rules_radius_invalid_is_min = function()
+        local R = load()
+        local nan = 0 / 0
+        for _, c in ipairs({ "nil", {}, { { 50, 50 }, "x" }, { { 50 } }, { { nan, 50 } }, { { 1 / 0, 0 } }, 7 }) do
+            if c == "nil" then c = nil end
+            assert(R.radius(0, 0, c) == R.MIN_RADIUS, "inválido virou " .. tostring(R.radius(0, 0, c)))
+        end
+        assert(R.radius(nil, 0, { { 50, 0 } }) == R.MIN_RADIUS)
     end,
 }

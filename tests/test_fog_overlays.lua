@@ -125,7 +125,7 @@ return {
         for x = 102, 110 do for y = 102, 110 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
         NOM_FogState.set(true, 3)
         G.seconds(5)
-        local n = laidOut(G, D().RADIUS)
+        local n = laidOut(G, D().MIN_RADIUS)
         assert(n > 400, "pouco anexado: " .. n)
         local wallsDressed = 0
         for _, o in pairs(G.objs) do
@@ -280,23 +280,101 @@ return {
         assert(burnt > 10 and plants > 10, "queimado " .. burnt .. ", mato " .. plants)
     end,
 
-    -- o chunk que sai do mapa é gravado (ChunkSaveWorker) a ≥ 48 tiles: andando de carro (meio
-    -- tile por tick), nada do mod passa de RADIUS + SLACK mais o que o carro anda numa
-    -- atualização, em nenhum tick; parado, de RADIUS
+    -- o chunk que sai do mapa é gravado (ChunkSaveWorker) a ≥ 48 tiles: com o zoom mais longe
+    -- (raio MAX) e andando de carro (meio tile por tick), nada do mod passa de MAX_RADIUS +
+    -- SLACK mais o que o carro anda numa atualização, em nenhum tick; parado, do raio
     overlays_leaving_radius_strips = function()
-        local G = setup({ density = 2 })
+        local G = setup({ density = 2, zoom = 2.5 })
         NOM_FogState.set(true, 3, true)
-        G.seconds(3)
-        for _ = 1, 160 do
+        G.seconds(8)
+        assert(O().radius() == D().MAX_RADIUS, "raio " .. O().radius())
+        assert(farthest(G, G.p.x, G.p.y) > D().MAX_RADIUS - 2, "não encheu até o raio (teste não mede)")
+        local step = math.sqrt(0.5 * 0.5 + 0.25 * 0.25)
+        for _ = 1, 240 do
             G.p.x = G.p.x + 0.5
             G.p.y = G.p.y + 0.25
             G.tick(1)
             local f = farthest(G, G.p.x, G.p.y)
-            assert(f <= D().RADIUS + O().SLACK + 0.6 * O().UPDATE_TICKS and f < 40, "anexo a " .. f .. " tiles andando")
+            assert(f <= D().MAX_RADIUS + O().SLACK + step * O().UPDATE_TICKS + 0.75 and f < 48, "anexo a " .. f .. " tiles andando")
         end
-        G.seconds(3)
-        assert(farthest(G, G.p.x, G.p.y) <= D().RADIUS + 1, "parado, longe demais: " .. farthest(G, G.p.x, G.p.y))
-        assert(laidOut(G, D().RADIUS - 1) > 300, "o lugar novo não encheu")
+        G.seconds(10)
+        local r = O().radius()
+        assert(farthest(G, G.p.x, G.p.y) <= r + 0.75, "parado, longe demais: " .. farthest(G, G.p.x, G.p.y))
+        assert(laidOut(G, r - 1) > 1500, "o lugar novo não encheu")
+    end,
+
+    -- o fake é o jogo: o centro da tela cai no jogador (PlayerCamera.center), 0,875 tile pra
+    -- trás (playerOffsetY −56 px); o canto de cima à esquerda, ~16 tiles a oeste no zoom 1
+    overlays_fake_camera_matches_game = function()
+        local G = setup({ density = 1 })
+        local w, h = G.screenW * G.zoom, G.screenH * G.zoom
+        local cx, cy = IsoUtils.XToIso(0, w / 2, h / 2, 0), IsoUtils.YToIso(0, w / 2, h / 2, 0)
+        assert(math.abs(cx - (G.p.x - 0.875)) < 1e-6 and math.abs(cy - (G.p.y - 0.875)) < 1e-6, cx .. "," .. cy)
+        local x0, y0 = IsoUtils.XToIso(0, 0, 0, 0), IsoUtils.YToIso(0, 0, 0, 0)
+        assert(math.abs(x0 - (G.p.x - 0.875 - 2040 / 128)) < 1e-6 and math.abs(y0 - (G.p.y - 0.875 - 120 / 128)) < 1e-6, x0 .. "," .. y0)
+        -- a direção do mapa: x cresce pra direita e pra baixo na tela
+        assert(IsoUtils.XToIso(0, w, h, 0) > cx and IsoUtils.YToIso(0, 0, h, 0) > cy)
+    end,
+
+    -- o raio segue a tela: zoom de perto fica no mínimo; zoom longe leva o Outro Mundo além de
+    -- MIN_RADIUS, até o raio calculado pelos cantos e não além
+    overlays_radius_follows_zoom = function()
+        for _, c in ipairs({ { zoom = 0.5, min = 15, max = 15 }, { zoom = 1, min = 18, max = 20 },
+            { zoom = 1.5, min = 25, max = 28 }, { zoom = 2.5, min = 30, max = 30 } }) do
+            local G = setup({ density = 2, zoom = c.zoom })
+            NOM_FogState.set(true, 3, true)
+            G.seconds(8)
+            local r = O().radius()
+            assert(r >= c.min and r <= c.max, "zoom " .. c.zoom .. ": raio " .. r)
+            local f = farthest(G, G.p.x, G.p.y)
+            assert(f <= r + 0.75, "zoom " .. c.zoom .. ": anexo a " .. f .. " (raio " .. r .. ")")
+            assert(f > r - 1.5, "zoom " .. c.zoom .. ": não chegou no raio, só a " .. f)
+            laidOut(G, r)
+        end
+    end,
+
+    -- o carro olha pra frente (deferedX/Y) ou o jogador mira (rightClick): a câmera sai do
+    -- centro e o raio cobre o canto que ficou mais longe
+    overlays_radius_off_center_camera = function()
+        local G = setup({ density = 1, zoom = 1 })
+        NOM_FogState.set(true, 3)
+        G.tick(O().UPDATE_TICKS)
+        local centered = O().radius()
+        G.camera.deferX, G.camera.deferY = 6, 6
+        G.tick(O().UPDATE_TICKS)
+        assert(O().radius() >= centered + 5, "câmera adiantada: " .. centered .. " → " .. O().radius())
+    end,
+
+    -- zoom chegando perto: o que passou do raio novo sai em lotes de STRIP_BUDGET (não tudo de
+    -- uma vez), e nada passa de MAX_RADIUS + SLACK
+    overlays_zoom_in_strips_in_batches = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        NOM_FogState.set(true, 3, true)
+        G.seconds(8)
+        local function beyond(r)
+            local n = 0
+            for _, o in pairs(G.objs) do
+                if #G.attachedNames(o, "mod") > 0 and (o.x - 100) ^ 2 + (o.y - 100) ^ 2 > r * r then n = n + 1 end
+            end
+            return n
+        end
+        local outside = beyond(D().MIN_RADIUS)
+        assert(outside > 3 * O().STRIP_BUDGET, "pouco além do mínimo (teste não mede o lote): " .. outside)
+        G.zoom = 0.5
+        local updates, stillThere = 0, false
+        while beyond(D().MIN_RADIUS) > 0 do
+            local a, b = O().count()
+            G.tick(O().UPDATE_TICKS)
+            updates = updates + 1
+            local c, e = O().count()
+            assert(a + b - (c + e) <= O().STRIP_BUDGET, "lote grande demais: " .. (a + b - c - e))
+            assert(farthest(G, G.p.x, G.p.y) <= D().MAX_RADIUS + O().SLACK, "passou da folga")
+            if updates == 1 and beyond(D().MIN_RADIUS) > 0 then stillThere = true end
+            assert(updates < 80, "não esvaziou o anel de fora")
+        end
+        assert(stillThere, "arrancou tudo de uma vez")
+        assert(O().radius() == D().MIN_RADIUS)
+        laidOut(G, D().MIN_RADIUS)
     end,
 
     -- fim da névoa: tudo do mod sai, em lotes de STRIP_BUDGET alvos por atualização
@@ -328,16 +406,16 @@ return {
         walls(G, 96, 96, 8)
         NOM_FogState.set(true, 3)
         G.seconds(4)
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
         NOM_FogState.set(true, 4)
         G.seconds(8)
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
         NOM_ScreenFxOptions.overlayDensity = function() return 2 end
         G.seconds(8)
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
         NOM_FogState.set(true, 4, true)
         G.seconds(8)
-        assert(laidOut(G, D().RADIUS) > 500, "vermelha rala")
+        assert(laidOut(G, D().MIN_RADIUS) > 500, "vermelha rala")
     end,
 
     -- o slider anda de 0,1 em 0,1: a densidade nova só vale parada DENSITY_MS
@@ -353,7 +431,7 @@ return {
             assert(mods(G, G.floorOf(x, y, 0)) == before, "redesenhou com o slider andando")
         end
         G.seconds(8)
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
     end,
 
     -- a lista mexida por baixo (pá do vanilla limpa tudo; MP: o servidor manda a lista dele):
@@ -367,7 +445,7 @@ return {
         G.wipe(floor)
         G.seconds(15)
         assert(mods(G, floor) == want, "não voltou: " .. mods(G, floor) .. " / " .. want)
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
     end,
 
     -- o objeto trocado (pacote do servidor no MP): o novo ganha o desenho; o velho, fora do
@@ -449,7 +527,7 @@ return {
             for _, i in ipairs(rawget(o, "list")) do if i == inst then still = true end end
             assert(still, "o anexo perto foi tirado e posto de novo andando: " .. o.x .. "," .. o.y)
         end
-        laidOut(G, D().RADIUS)
+        laidOut(G, D().MIN_RADIUS)
     end,
 
     -- trocou de andar: o andar velho sai, o novo enche
@@ -462,27 +540,32 @@ return {
         for _, o in pairs(G.objs) do
             if o.z == 0 then assert(mods(G, o) == "", "sobrou no andar de baixo") end
         end
-        assert(laidOut(G, D().RADIUS) > 300, "o andar de cima não encheu")
+        assert(laidOut(G, D().MIN_RADIUS) > 300, "o andar de cima não encheu")
     end,
 
-    -- custo por atualização (10 ticks): enchendo e parado
+    -- custo por atualização (10 ticks): enchendo e parado, no zoom 1 e no mais longe (raio MAX:
+    -- a volta da varredura tem #OFFSETS squares)
     overlays_budget = function()
-        local G = setup({ density = 2 })
-        walls(G, 90, 90, 20)
-        NOM_FogState.set(true, 3, true)
-        local maxFill, maxIdle, maxInv = 0, 0, 0
-        for i = 1, 60 do
-            local j, inv = G.java + G.sqCalls, G.invalidations
-            G.tick(O().UPDATE_TICKS)
-            local cost = G.java + G.sqCalls - j
-            if i <= 10 then maxFill = math.max(maxFill, cost) elseif i > 40 then maxIdle = math.max(maxIdle, cost) end
-            maxInv = math.max(maxInv, G.invalidations - inv)
+        for _, zoom in ipairs({ 1, 2.5 }) do
+            local G = setup({ density = 2, zoom = zoom })
+            walls(G, 90, 90, 20)
+            NOM_FogState.set(true, 3, true)
+            local maxFill, maxIdle, maxInv = 0, 0, 0
+            for i = 1, 90 do
+                local j, inv = G.java + G.sqCalls, G.invalidations
+                G.tick(O().UPDATE_TICKS)
+                local cost = G.java + G.sqCalls - j
+                if i <= 10 then maxFill = math.max(maxFill, cost) elseif i > 60 then maxIdle = math.max(maxIdle, cost) end
+                maxInv = math.max(maxInv, G.invalidations - inv)
+            end
+            local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
+            assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
+            assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
+            -- ≤ 80 squares por lote, até 3 alvos e 5 anexos no piso
+            assert(maxInv <= O().SCAN_BUDGET * 7, "invalidações por lote: " .. maxInv)
+            print(string.format("[budget] outro mundo (zoom %.1f, raio %d, volta %d squares = %d atualizações): enchendo %d, parado %d chamadas, %d invalidações por atualização",
+                zoom, O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
         end
-        assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
-        assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
-        -- ≤ 80 squares por lote, até 3 alvos e 5 anexos no piso
-        assert(maxInv <= O().SCAN_BUDGET * 7, "invalidações por lote: " .. maxInv)
-        print(string.format("[budget] outro mundo: enchendo %d, parado %d chamadas, %d invalidações por atualização", maxFill, maxIdle, maxInv))
     end,
 
     -- SAVE (Task 4) ------------------------------------------------------------------------
@@ -508,10 +591,10 @@ return {
         walls(G, 96, 96, 8)
         NOM_FogState.set(true, 3)
         G.seconds(4)
-        local n = laidOut(G, D().RADIUS)
+        local n = laidOut(G, D().MIN_RADIUS)
         G.saveSnapshot()
         G.seconds(3)
-        assert(laidOut(G, D().RADIUS) == n, "não voltou igual depois do save")
+        assert(laidOut(G, D().MIN_RADIUS) == n, "não voltou igual depois do save")
     end,
 
     -- review focus: save no meio do lote (fim da névoa tirando, ou enchendo): nada do mod
@@ -530,16 +613,31 @@ return {
         assert(G.ours() == 0, "voltou depois da névoa")
     end,
 
-    -- teleporte (debug, mapa): o chunk velho sai do mapa no mesmo tick; o mod tira tudo no tick
+    -- teleporte (debug, mapa): o chunk velho sai do mapa no mesmo tick; o mod tira tudo no tick.
+    -- Salto = JUMP_TILES num tick (o carro anda meio tile)
     overlays_jump_strips_now = function()
+        for _, jump in ipairs({ 200, 8 }) do
+            local G = setup({ density = 2 })
+            assert(O().JUMP_TILES == 8)
+            NOM_FogState.set(true, 3, true)
+            G.seconds(4)
+            G.p.y = G.p.y - jump
+            G.tick(1)
+            assert(G.ours() == 0, "sobrou depois do salto de " .. jump .. ": " .. G.ours())
+            G.seconds(3)
+            assert(laidOut(G, D().MIN_RADIUS) > 300, "não encheu no lugar novo")
+        end
+    end,
+
+    -- abaixo de JUMP_TILES num tick não é salto: nada sai de uma vez
+    overlays_fast_move_not_jump = function()
         local G = setup({ density = 2 })
         NOM_FogState.set(true, 3, true)
         G.seconds(4)
-        G.p.x = G.p.x + 200
+        local before = G.ours()
+        G.p.x = G.p.x + O().JUMP_TILES - 1
         G.tick(1)
-        assert(G.ours() == 0, "sobrou depois do salto: " .. G.ours())
-        G.seconds(3)
-        assert(laidOut(G, D().RADIUS) > 300, "não encheu no lugar novo")
+        assert(G.ours() == before, "tirou tudo num passo de " .. (O().JUMP_TILES - 1))
     end,
 
     -- morte (no solo o jogo salva logo depois): tudo sai na hora

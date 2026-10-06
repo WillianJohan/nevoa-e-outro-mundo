@@ -36,6 +36,17 @@
 -- * Sirene (sprint 0033): z:faceLocationF(x, y) = IsoGameCharacter.faceLocationF(FF)Z
 --   (javap; uso vanilla client/BuildingObjects/TimedActions/ISBuildAction.lua:248): vira o
 --   zumbi pro ponto, sem rede, e devolve true; o fake guarda em z.faced. getX/getY: IsoMovingObject.
+-- * Tela e câmera do jogador 0 (sprint 0034, bytecode B42.21, pz-api-notes §16.6):
+--   getPlayerScreenWidth/Height(i) = IsoCamera.getScreenWidth/Height(i) (LuaManager$GlobalObject);
+--   getCore():getZoom(i) = displayZoom · T/2 (Core.getZoom(I), T = Core.tileScale, 2 no Tiles2x);
+--   a câmera centra no jogador (PlayerCamera.center 0–147): offX = XToScreen(x + deferedX,
+--   y + deferedY, zCam, 0) − offscreenW/2 + playerOffsetX (0), offY = YToScreen(...) − offscreenH/2
+--   − offsetY · 1,5 (0 aqui) + playerOffsetY (−56 / (2 / T), IsoCamera.<clinit>), com zCam = getZ() a pé
+--   (FrameState.calculateCameraZ) e offscreenW = int(w · zoom) (MultiTextureFBO2.getWidth(I));
+--   IsoCamera.getOffX(i) = int(offX + rightClickX) (PlayerCamera.getOffX). IsoUtils.XToIso(i, sx,
+--   sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z; YToIso = (sx + offX − 2(sy + offY)) / (−64T)
+--   + 3z (IsoUtils.XToIso(IFFF) 0–36, YToIso(IFFF) 0–36). G.camera.deferX/deferY (o carro olha
+--   pra frente) e panX/panY (rightClick, mirar) tiram a câmera do centro.
 local W = {}
 
 local function jlist(items)
@@ -299,7 +310,37 @@ function W.new(opts)
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end -- -debug do processo
     -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
-    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
+    G.screenW, G.screenH, G.zoom, G.tileScale = opts.screenW or 1920, opts.screenH or 1080, opts.zoom or 1, 2
+    G.camera = { deferX = 0, deferY = 0, panX = 0, panY = 0 }
+    local function java() G.java = (G.java or 0) + 1 end
+    getCore = function()
+        return { getGameMode = function() return opts.gameMode or "Sandbox" end,
+            getZoom = function(_, i) java(); assert(i == 0, "zoom de outro jogador"); return G.zoom end }
+    end
+    getPlayerScreenWidth = function(i) java(); assert(i == 0); return G.screenW end
+    getPlayerScreenHeight = function(i) java(); assert(i == 0); return G.screenH end
+    local function trunc(v) return v >= 0 and math.floor(v) or math.ceil(v) end
+    local function cameraOff()
+        local p, T, c = G.players[1], G.tileScale, G.camera
+        local x, y = p.x + c.deferX, p.y + c.deferY
+        local offX = 32 * T * (x - y) - trunc(G.screenW * G.zoom) / 2
+        local offY = 16 * T * (x + y) - 96 * T * p.z - trunc(G.screenH * G.zoom) / 2 + trunc(-56 / trunc(2 / T))
+        return trunc(offX + c.panX), trunc(offY + c.panY)
+    end
+    IsoUtils = {
+        XToIso = function(i, sx, sy, z)
+            java()
+            assert(i == 0 and z ~= nil, "XToIso(int, F, F, F)")
+            local ox, oy = cameraOff()
+            return (sx + ox + 2 * (sy + oy)) / (64 * G.tileScale) + 3 * z
+        end,
+        YToIso = function(i, sx, sy, z)
+            java()
+            assert(i == 0 and z ~= nil, "YToIso(int, F, F, F)")
+            local ox, oy = cameraOff()
+            return (sx + ox - 2 * (sy + oy)) / (-64 * G.tileScale) + 3 * z
+        end,
+    }
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {

@@ -15,7 +15,12 @@
 --   (apaga blend e decalque do mapa) nem AttachExistingAnim (mexe no IsoSprite compartilhado).
 -- * OnSave (GameWindow.save, antes do IsoCell.save gravar os chunks): tudo sai; volta na
 --   atualização seguinte. Morte e salto (teleporte): tudo sai na hora.
--- * Nada além de RADIUS (15) tiles: o chunk que sai do mapa e é gravado está a ≥ 48.
+-- * O chunk que sai do mapa e é gravado está a ≥ 48 tiles. O raio segue a tela (sprint 0034):
+--   os 4 cantos da tela do jogador 0 (getPlayerScreenWidth/Height, ISSleepingUI.lua:16-17; pixel
+--   × getCore():getZoom(0), ISMenuContextWorld.lua:77) no chão do andar dele (IsoUtils.XToIso/
+--   YToIso, ISCoordConversion.lua:19-24), + 2, entre 15 e 30 (NOM_DressingRules.radius). Além de
+--   30 + SLACK (8) = 38 sai na hora, qualquer zoom; o carro anda ~5 numa atualização e um salto
+--   abaixo de JUMP_TILES (8) num tick não é pego: 38 + 8 = 46 < 48.
 -- * LoadGridsquare: floors_burnt_01_* anexado (ninguém no vanilla anexa) que não é nosso é
 --   vazado de uma sessão que caiu depois de um hot save: sai. Nome vanilla vazado fica (ADR-017).
 -- * A ação do jogador em curso segura o square do alvo limpo (pá, marreta, móvel).
@@ -32,9 +37,11 @@ NOM_FogOverlays = {
     UPDATE_TICKS = 10,
     SCAN_BUDGET = 80,    -- squares olhados por atualização (cada anexo invalida o nível do chunk)
     STRIP_BUDGET = 80,   -- alvos tirados por atualização (saiu do raio, fim da névoa, desenho novo)
-    -- Além de RADIUS + SLACK sai na hora, sem lote (de carro, meio tile por tick, o anel que sai
-    -- passa do lote): o chunk gravado ao sair do mapa está a ≥ 48 tiles.
+    -- Além de MAX_RADIUS + SLACK sai na hora, sem lote (de carro, meio tile por tick, o anel que
+    -- sai passa do lote): o chunk gravado ao sair do mapa está a ≥ 48 tiles. Não depende do zoom:
+    -- chegar o zoom perto tira o anel de fora em lote.
     SLACK = 8,
+    JUMP_TILES = 8,      -- isso num tick é salto (teleporte): tudo sai (o carro anda ~0,5 por tick)
     VERIFY_BUDGET = 20,  -- alvos conferidos por atualização (a lista mexida por baixo: põe de novo)
     RESEEN_TILES = 8,    -- andou isso desde a última âncora: olha tudo de novo, do mais perto
     DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
@@ -56,6 +63,7 @@ local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
 local cursor, gen, anchorX, anchorY, lastX, lastY
 local density, pendingD, pendingAt
 local verifyKeys, verifyAt
+local radius
 
 local function forget()
     reg, nFloor, nWall = {}, 0, 0
@@ -63,11 +71,31 @@ local function forget()
     cursor, gen, anchorX, anchorY, lastX, lastY = 1, nil, nil, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
     verifyKeys, verifyAt = {}, 1
+    radius = D.MIN_RADIUS
 end
 forget()
 
 function O.count()
     return nFloor, nWall -- alvos com anexo do mod: pisos e paredes
+end
+
+function O.radius()
+    return radius
+end
+
+local CORNERS = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }
+
+-- Raio da tela do jogador 0: os cantos em pixel × zoom (a câmera do jogo trabalha no tamanho
+-- do FBO, MultiTextureFBO2.getWidth = tela × zoom) levados ao chão do andar dele.
+local function screenRadius(p, px, py)
+    local w, h = getPlayerScreenWidth(0), getPlayerScreenHeight(0)
+    local zoom, z = getCore():getZoom(0), p:getZ()
+    local corners = {}
+    for i, c in ipairs(CORNERS) do
+        local sx, sy = c[1] * w * zoom, c[2] * h * zoom
+        corners[i] = { IsoUtils.XToIso(0, sx, sy, z), IsoUtils.YToIso(0, sx, sy, z) }
+    end
+    return D.radius(px, py, corners)
 end
 
 local function count(e, n)
@@ -200,12 +228,13 @@ local function dress(cell, x, y, z, sk, per, d)
     return true
 end
 
--- Um lote da varredura: mais perto primeiro (D.OFFSETS), em volta contínua (o anel novo de quem
--- anda, o square que perdeu o anexo); o square já decidido custa só a chave.
+-- Um lote da varredura: mais perto primeiro (D.OFFSETS), em volta contínua até o raio (o anel
+-- novo de quem anda, o square que perdeu o anexo); o square já decidido custa só a chave.
 local function scan(px, py, pz, per, d)
     local cell = getCell()
+    local n = D.WITHIN[radius]
     for _ = 1, O.SCAN_BUDGET do
-        if cursor > #D.OFFSETS then cursor = 1 end
+        if cursor > n then cursor = 1 end
         local o = D.OFFSETS[cursor]
         cursor = cursor + 1
         local x, y = px + o[1], py + o[2]
@@ -215,9 +244,10 @@ local function scan(px, py, pz, per, d)
 end
 
 -- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote; além de
--- RADIUS + SLACK, na hora.
+-- MAX_RADIUS + SLACK, na hora.
 local function prune(on, px, py, pz)
-    local r2, hard, n = D.RADIUS * D.RADIUS, (D.RADIUS + O.SLACK) * (D.RADIUS + O.SLACK), 0
+    local hard = (D.MAX_RADIUS + O.SLACK) * (D.MAX_RADIUS + O.SLACK)
+    local r2, n = radius * radius, 0
     stripWhere(function(e)
         local dx, dy = e.x - px, e.y - py
         local d2 = dx * dx + dy * dy
@@ -321,6 +351,7 @@ local function update()
     local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
     local per = NOM_FogState.period or 0
     if on then
+        radius = screenRadius(p, px, py)
         local g = per .. ":" .. d
         if g ~= gen then gen, seen, cursor = g, {}, 1 end -- outro desenho: o velho sai no prune
         if not anchorX or math.abs(px - anchorX) >= O.RESEEN_TILES or math.abs(py - anchorY) >= O.RESEEN_TILES then
@@ -341,7 +372,7 @@ Events.OnTick.Add(function()
     local p = getSpecificPlayer(0)
     if p and nFloor + nWall > 0 then
         local x, y = p:getX(), p:getY()
-        if p:isDead() or (lastX and (math.abs(x - lastX) > D.RADIUS or math.abs(y - lastY) > D.RADIUS)) then
+        if p:isDead() or (lastX and (math.abs(x - lastX) >= O.JUMP_TILES or math.abs(y - lastY) >= O.JUMP_TILES)) then
             O.stripAll()
         end
         lastX, lastY = x, y

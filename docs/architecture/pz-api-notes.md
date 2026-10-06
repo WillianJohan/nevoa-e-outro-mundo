@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1275,7 +1275,7 @@ sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` fu
 - **Escolha:** anexar ao piso (`getFloor`) e às paredes N/W (`getWall`) que não são
   `IsoThumpable`, `IsoDoor` nem `IsoWindow`; registro de cada instância posta; tirar só elas (mesma
   instância **e** mesmo nome, de trás pra frente); `OnSave` tira tudo e a atualização seguinte põe
-  de volta; raio 15 (+8 de folga: além disso sai na hora); `LoadGridsquare` limpa
+  de volta; raio pela tela, 15 a 30 (sprint 0034, abaixo; além de 30 + 8 sai na hora); `LoadGridsquare` limpa
   `floors_burnt_01_*` vazado; a ação atual do jogador segura o square do alvo. Saem: `IsoMarker`,
   `RenderGhostTileColor`, luz relida, fade, visibilidade por prédio.
 - **Custo** (mundo falso, `overlays_budget`): enchendo, ≤ ~2000 chamadas Java e ≤ ~410
@@ -1284,6 +1284,33 @@ sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` fu
 - **UNKNOWN (roteiro da 0023):** o mato anexado ao piso fica bem (ele sai antes do que está atrás
   dele); o recorte de parede e o telhado com anexo; o custo de invalidar ~400 níveis de chunk por
   lote; o `LoadGridsquare` no cliente de MP.
+
+**Raio pela tela (sprint 0034).** O Johan via o limite dos 15 tiles com o zoom longe. O raio
+agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, + 2, entre 15 e 30
+(`NOM_DressingRules.radius`), relido a cada atualização (10 ticks). Bytecode do B42.21.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `getPlayerScreenWidth/Height(i)` = `IsoCamera.getScreenWidth/Height(i)` (a tela do jogador, metade na tela dividida) | CONFIRMED | `ISSleepingUI.lua:16-17`; `LuaManager$GlobalObject.getPlayerScreenWidth(I)` 0–4 |
+| `getCore():getZoom(i)` = `displayZoom · tileScale / 2` (1 sem FBO) | CONFIRMED | `ISMenuContextWorld.lua:77`, `ISSearchManager.lua:103`; `Core.getZoom(I)` 0–24 |
+| A câmera trabalha no tamanho do FBO: `offscreenWidth(i) = int(getScreenWidth(i) · getZoom(i))` (idem altura). Por isso o pixel da tela entra × zoom (`ISMenuContextWorld.lua:77` faz igual) | CONFIRMED (bytecode) | `MultiTextureFBO2.getWidth(I)` 0–19, `Core.getOffscreenWidth(I)` 0–34 |
+| `IsoUtils.XToIso(i, sx, sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z`; `YToIso(i, sx, sy, z) = (sx + offX − 2(sy + offY)) / (−64T) + 3z`, com `offX/offY = IsoCamera.getOffX/getOffY(i)` = `int(PlayerCamera.offX + rightClickX)` e `T = Core.tileScale`. É o inverso exato de `XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96T z` | CONFIRMED (bytecode) | `ISCoordConversion.lua:19-24`; `IsoUtils.XToIso(IFFF)` 0–36, `YToIso(IFFF)` 0–36; `IsoCamera.getOffX(I)` 0–8; `PlayerCamera.getOffX()` 0–11 |
+| A câmera centra no personagem: `offX = XToScreen(x + deferedX, y + deferedY, zCam, 0) − offscreenW/2 + playerOffsetX`, `offY = YToScreen(…) − offscreenH/2 − offsetY · 1,5 + playerOffsetY`, `playerOffsetY = −56 / (2 / T)` (o centro da tela fica 0,875 tile atrás do jogador no Tiles2x); `zCam = getZ()` a pé | CONFIRMED (bytecode) | `PlayerCamera.center` 0–147; `IsoCamera.<clinit>` 46–54; `IsoCamera$FrameState.calculateCameraZ` |
+| `math.huge` no Kahlua | EXISTS (bytecode) | `se.krka.kahlua.j2se.MathLib` registra `huge` = `Infinity` |
+
+- **Números** (fake fiel acima, 1920×1080, Tiles2x): zoom 1 → canto a ~16,4 tiles → raio 19;
+  zoom 0,5 e 0,75 → 15; 1,25 → 23; 1,5 → 27; 2 em diante → 30. `OFFSETS` vai até 30: 2821 deslocamentos (709 até
+  15). A volta da varredura no raio 30 leva 36 atualizações (~6 s) com `SCAN_BUDGET` 80; o custo
+  por atualização não muda (enchendo ~2060 chamadas Java e ≤ 411 invalidações; parado ~175).
+- **Save:** saída em lote acima do raio da hora; na hora acima de 30 + 8 = 38 (constante: o zoom
+  chegando perto tira o anel de fora em lote, 80 por atualização). Salto = 8 tiles num tick (antes,
+  15; o carro anda ~0,5 por tick). Pior caso: 38 + o que o carro anda numa atualização (~5) ou um
+  salto abaixo de 8 → < 46, e o chunk gravado ao sair do mapa está a ≥ 48 (distância de Chebyshev ≤
+  euclidiana).
+- **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
+  de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
+  carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido
+  a borda da tela pode ver o anel ainda enchendo; a tela dividida (só o jogador 0).
 
 ## 17. Dissolve e bloom (sprint 0018)
 
@@ -1507,7 +1534,7 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
 | Som local num ponto do mundo | `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil)`, parado pelo id; no carro, `vehicle:playSoundImpl` (§22) | — (`PlayWorldSound` manda pacote) |
 | Achar aparelho perto | `getZomboidRadio():getDevices()` filtrado por distância² (§22) | varrer quadrados (caro, sem o carro) |
-| Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio, na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
+| Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio (pela tela, 15 a 30), na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
@@ -1556,3 +1583,7 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
 18. Sirenes posicionais (sprint 0034): as 3 vêm de lados diferentes e a perto se destaca? A
     longe se ouve a 200 tiles? Os zumbis congelados olham pro jogador e acompanham quando ele
     anda? (§23)
+19. Outro Mundo na tela toda (sprint 0034, §16.6): no zoom mais longe o desenho chega nas
+    bordas da tela? O FPS aguenta ~2800 squares com anexo? De carro, a borda que entra enche a
+    tempo? Dormir e sair do jogo com o zoom longe, voltar: nada sobrando
+    (`[NOM] outro mundo: N alvos limpos pro save` no console com `-debug`)
