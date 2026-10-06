@@ -1,9 +1,9 @@
 -- Sirene do evento de névoa (sprint 0009, ADR-009), no jogo de quem ouve: solo
 -- (o server/NOM_FogEvent.lua chama direto) e cliente de MP (comando "siren", em
--- client/NOM_FogClient.lua). Sprint 0034: não é mais um som chapado no jogador. São 3
--- sirenes em volta do jogador local, uma perto e duas longe, cada uma num emitter do mundo
--- parado onde foi posto (posições e atrasos: shared/NOM_SirenSpotsRules.lua). Tudo local,
--- sem pacote (pz-api-notes §22 e §23):
+-- client/NOM_FogClient.lua). Sprint 0034: não é mais um som chapado no jogador. São 5
+-- sirenes longe do jogador local (150 a 500 tiles), cada uma num emitter do mundo parado onde
+-- foi posto (posições, sons e atrasos: shared/NOM_SirenSpotsRules.lua). Tudo local, sem pacote
+-- (pz-api-notes §22 e §23):
 -- * tocar: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil). Com
 --   (nome, nil) o Kahlua escolhe o overload do IsoGridSquare, que dá NPE em square.x
 --   (FMODSoundEmitter 1208–1235; visto no console.txt); o de 3 argumentos cai no do
@@ -28,7 +28,7 @@ local function start(x, y, z, sound)
     end
 end
 
--- As longe entram no atraso delas (getTimestampMs, CONFIRMED server/ISObjectClickHandler.lua:352).
+-- As atrasadas entram na hora delas (getTimestampMs, CONFIRMED server/ISObjectClickHandler.lua:352).
 local function tick()
     if #pending == 0 then return end
     local now = getTimestampMs()

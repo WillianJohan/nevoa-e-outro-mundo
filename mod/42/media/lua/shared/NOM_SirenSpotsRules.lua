@@ -1,21 +1,25 @@
--- Sirenes posicionais (sprint 0034): onde tocam as 3 sirenes de cada jogador, qual som e com
--- que atraso. Uma perto (40 a 80 tiles) e duas longe (80 a 200), de lados diferentes (pelo
--- menos 60° entre elas), e as longe entram depois, em coro desencontrado. Puro, sem API do
--- jogo; quem toca é o shared/NOM_Siren.lua. O sorteio é local: dois jogadores não precisam
--- ouvir as mesmas posições.
+-- Sirenes posicionais (sprint 0034): onde tocam as 5 sirenes de cada jogador, qual som e com
+-- que atraso. Todas longe, de 150 a 500 tiles ("não quero que fique gritando no ouvido do
+-- jogador", Johan, 2026-10-06), de lados diferentes (pelo menos 40° entre vizinhas) e
+-- desencontradas: a primeira entra na hora e cada uma das outras na sua janela de 1 s, até 4 s,
+-- pelo menos 0,3 s depois da anterior. Puro, sem API do jogo; quem toca é o shared/NOM_Siren.lua.
+-- O sorteio é local: dois jogadores não precisam ouvir as mesmas posições.
 require "NOM_Math"
 
 NOM_SirenSpotsRules = {
-    NEAR_MIN = 40, NEAR_MAX = 80,
-    FAR_MIN = 80, FAR_MAX = 200,
-    MIN_GAP_DEG = 60,
-    DELAY_MIN_MS = 400, DELAY_MAX_MS = 2500,
-    -- Ponto único dos sons por tipo de névoa: "near" pra sirene perto, "far" pras longe (a
-    -- distância embutida no arquivo). Tipo sem lista usa a branca. A vermelha é o aviso da
-    -- névoa vermelha (ADR-010): as listas não se misturam.
+    COUNT = 5,
+    DIST_MIN = 150, DIST_MAX = 500,
+    MIN_GAP_DEG = 40,
+    DELAY_MAX_MS = 4000, DELAY_MIN_GAP_MS = 300,
+    -- Ponto único dos sons por tipo de névoa (gerados em scripts/gen_sounds.py, OFICIAIS). Tipo
+    -- sem lista usa a branca. A vermelha é o aviso da névoa vermelha (ADR-010): as listas não se
+    -- misturam. A preta só toca a partir da sprint 0038.
     SOUNDS = {
-        white = { near = { "NOM_Siren" }, far = { "NOM_SirenFar" } },
-        red = { near = { "NOM_SirenRed" }, far = { "NOM_SirenRedFar" } },
+        white = { "NOM_SirenWhite1", "NOM_SirenWhite2", "NOM_SirenWhite3", "NOM_SirenWhite4", "NOM_SirenWhite5",
+            "NOM_SirenWhite6" },
+        red = { "NOM_SirenRed1", "NOM_SirenRed2", "NOM_SirenRed3", "NOM_SirenRed4", "NOM_SirenRed5", "NOM_SirenRed6" },
+        black = { "NOM_SirenBlack1", "NOM_SirenBlack2", "NOM_SirenBlack3", "NOM_SirenBlack4", "NOM_SirenBlack5",
+            "NOM_SirenBlack6", "NOM_SirenBlack7", "NOM_SirenBlack8", "NOM_SirenBlack9", "NOM_SirenBlack10" },
     },
 }
 local R = NOM_SirenSpotsRules
@@ -34,35 +38,48 @@ local function pick(list, used, rand)
     return s
 end
 
--- Três ângulos com pelo menos MIN_GAP_DEG entre vizinhos no círculo: as três folgas somam 360,
+-- COUNT ângulos com pelo menos MIN_GAP_DEG entre vizinhos no círculo: as folgas somam 360,
 -- cada uma com MIN_GAP_DEG mais um pedaço sorteado do que sobra. Vale pra qualquer rand.
 local function angles(rand)
-    local spare = 360 - 3 * R.MIN_GAP_DEG
-    local u, v = rand(), rand()
-    if u > v then u, v = v, u end
+    local spare = 360 - R.COUNT * R.MIN_GAP_DEG
+    local u = {}
+    for i = 1, R.COUNT - 1 do u[i] = rand() end
+    table.sort(u)
     local a = rand() * 360
-    return { a, a + R.MIN_GAP_DEG + spare * u, a + 2 * R.MIN_GAP_DEG + spare * v }
+    local out = { a }
+    for i = 1, R.COUNT - 1 do out[i + 1] = a + i * R.MIN_GAP_DEG + spare * u[i] end
+    return out
 end
 
-local function spot(px, py, deg, dist, near, sound, delayMs)
-    local a = math.rad(deg)
-    return { x = px + math.cos(a) * dist, y = py + math.sin(a) * dist, deg = NOM_Math.mod(deg, 360),
-        dist = dist, near = near, sound = sound, delayMs = delayMs }
+-- Ordem de entrada embaralhada: senão o coro sempre giraria em volta do jogador.
+local function shuffled(n, rand)
+    local order = {}
+    for i = 1, n do order[i] = i end
+    for i = n, 2, -1 do
+        local j = math.min(i, math.floor(rand() * i) + 1)
+        order[i], order[j] = order[j], order[i]
+    end
+    return order
 end
 
--- As 3 sirenes em volta de (px, py): a perto primeiro (atraso 0), depois as duas longe.
--- kind: "white"/"red". rand: função que devolve [0, 1).
+-- Atraso da k-ésima a entrar (k = 1 é a primeira, na hora).
+local function delay(k, rand)
+    if k == 1 then return 0 end
+    local slot = R.DELAY_MAX_MS / (R.COUNT - 1)
+    return (k - 2) * slot + R.DELAY_MIN_GAP_MS + (slot - R.DELAY_MIN_GAP_MS) * rand()
+end
+
+-- As COUNT sirenes em volta de (px, py), na ordem em que entram (a primeira com atraso 0).
+-- kind: "white"/"red"/"black". rand: função que devolve [0, 1).
 function R.spots(px, py, kind, rand)
     local sounds = R.SOUNDS[kind] or R.SOUNDS.white
     local deg = angles(rand)
-    local nearAt = math.min(3, math.floor(rand() * 3) + 1)
     local used = {}
-    local out = { spot(px, py, deg[nearAt], lerp(R.NEAR_MIN, R.NEAR_MAX, rand()), true, pick(sounds.near, used, rand), 0) }
-    for i = 1, 3 do
-        if i ~= nearAt then
-            out[#out + 1] = spot(px, py, deg[i], lerp(R.FAR_MIN, R.FAR_MAX, rand()), false, pick(sounds.far, used, rand),
-                lerp(R.DELAY_MIN_MS, R.DELAY_MAX_MS, rand()))
-        end
+    local out = {}
+    for k, i in ipairs(shuffled(R.COUNT, rand)) do
+        local a, dist = math.rad(deg[i]), lerp(R.DIST_MIN, R.DIST_MAX, rand())
+        out[k] = { x = px + math.cos(a) * dist, y = py + math.sin(a) * dist, deg = NOM_Math.mod(deg[i], 360),
+            dist = dist, sound = pick(sounds, used, rand), delayMs = delay(k, rand) }
     end
     return out
 end

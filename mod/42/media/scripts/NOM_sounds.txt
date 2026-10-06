@@ -52,47 +52,249 @@ module Base
         }
     }
 
-    sound NOM_Siren
+    /* Sirenes oficiais (sprint 0034): 5 por jogador, de 150 a 500 tiles, uma vez por evento.
+       Rolloff inverso do FMOD: ganho distanceMin/d até distanceMax, constante depois (o jogo
+       não corta por distância, pz-api-notes seção 23). Com 50: -9,5 dB a 150 tiles e -20 dB a
+       500 (queda de 10,5 dB na faixa); 5 juntas somam ~ -8 dB, abaixo da sirene antiga perto. */
+    sound NOM_SirenWhite1
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_Siren.ogg,
-            distanceMin = 20,
-            distanceMax = 220,
+            file = media/sound/NOM_SirenWhite1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 
-    sound NOM_SirenRed
+    sound NOM_SirenWhite2
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_SirenRed.ogg,
-            distanceMin = 20,
-            distanceMax = 220,
+            file = media/sound/NOM_SirenWhite2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 
-    sound NOM_SirenFar
+    sound NOM_SirenWhite3
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_SirenFar.ogg,
-            distanceMin = 20,
-            distanceMax = 220,
+            file = media/sound/NOM_SirenWhite3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 
-    sound NOM_SirenRedFar
+    sound NOM_SirenWhite4
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_SirenRedFar.ogg,
-            distanceMin = 20,
-            distanceMax = 220,
+            file = media/sound/NOM_SirenWhite4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed1
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed2
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack1
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack2
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack9.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack10
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack10.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 

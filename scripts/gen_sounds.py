@@ -14,15 +14,17 @@ import wave
 import numpy as np
 
 import nom_synth as ns
+import sirenes
 from nom_synth import (alto_falante, bandpass, bipe, canal_am, chiado_radio, crepitar, desvanecimento,
                        estalo, estatica, highpass, lowpass, lowpass_ctrl, motivo, norm, nsamp, peak, peaking,
-                       phase_of, put, quase_voz, ramp_out, respiracao, reverb_wet, sirene_invertida,
+                       phase_of, put, quase_voz, ramp_out, respiracao, reverb_wet, rms, sirene_invertida,
                        smooth_noise, smoothstep, tsec, window, zumbido_rede)
+from sirenes import v1 as sv1, v2 as sv2, v3 as sv3, v4 as sv4, v5 as sv5, v6 as sv6, v7 as sv7, v8 as sv8
 
 RATE = 44100
 SEED = 4004
 OUT = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "sound")
-assert RATE == ns.RATE
+assert RATE == ns.RATE == sirenes.RATE_GEN and SEED == sirenes.SEED_GEN
 
 
 def resonator(x, freq, q):
@@ -108,79 +110,6 @@ def radio_static(rng):
     crackle = (rng.random(len(t)) > 0.9993) * rng.standard_normal(len(t)) * 8
     hum = 0.15 * np.sin(2 * np.pi * 60 * t)
     return loopable(hiss * flutter + crackle + hum, 0.3)
-
-
-def siren(rng):
-    """Sirene de ataque aéreo do evento de névoa: sobe, segura e cai, duas vezes, ~24 s.
-
-    Rotor de sirene: onda quase quadrada (harmônicos ímpares) com um segundo rotor
-    levemente desafinado (batimento), ecoando longe como numa cidade vazia.
-    """
-    cycle = [0, 4.0, 7.0, 12.0]  # sobe 4 s, segura 3 s, cai 5 s
-    knots_t, knots_f = [], []
-    for k in range(2):
-        for ct, f in zip(cycle, (170, 620, 620, 150)):
-            knots_t.append(k * 12.0 + ct)
-            knots_f.append(f)
-    dur = 24.0
-    t = np.arange(int(dur * RATE)) / RATE
-    f0 = np.interp(t, knots_t, knots_f) * (1 + 0.004 * np.sin(2 * np.pi * 5.5 * t))
-    out = np.zeros_like(t)
-    for detune, gain in ((1.0, 1.0), (1.012, 0.6)):
-        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
-        out += gain * sum(np.sin(k * phase) / k for k in (1, 3, 5, 7, 9))
-    env = np.minimum(1, t / 0.3) * np.minimum(1, (dur - t) / 1.5)
-    out = out * env
-    wet = out.copy()
-    for delay, gain in ((0.19, 0.35), (0.43, 0.25), (0.77, 0.15)):  # prédios longe
-        k = int(delay * RATE)
-        wet[k:] += gain * out[:-k]
-    return np.tanh(1.2 * wet / np.max(np.abs(wet)))
-
-
-def siren_red(rng):
-    """Sirene da névoa vermelha: a mesma sirene, mais grave, rasgada e longa, ~28 s.
-
-    Rotor uns 30% mais grave, subida mais lenta e queda que não volta ao fundo,
-    desafinação que oscila (o rotor "geme"), saturação pesada e um ronco grave
-    embaixo; ecos mais longos.
-    """
-    cycle = [0, 5.0, 9.0, 14.0]  # sobe 5 s, segura 4 s, cai 5 s
-    knots_t, knots_f = [], []
-    for k in range(2):
-        for ct, f in zip(cycle, (110, 430, 410, 120)):
-            knots_t.append(k * 14.0 + ct)
-            knots_f.append(f)
-    dur = 28.0
-    t = np.arange(int(dur * RATE)) / RATE
-    wobble = 1 + 0.012 * np.sin(2 * np.pi * 0.7 * t) + 0.006 * np.sin(2 * np.pi * 6.3 * t)
-    f0 = np.interp(t, knots_t, knots_f) * wobble
-    out = np.zeros_like(t)
-    for detune, gain in ((1.0, 1.0), (1.021, 0.7), (0.5, 0.5)):  # o 0.5 é o ronco uma oitava abaixo
-        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
-        out += gain * sum(np.sin(k * phase) / k for k in (1, 3, 5, 7, 9, 11))
-    out = np.tanh(3.0 * out / np.max(np.abs(out)))  # rasgado
-    out = out + 0.08 * resonator(rng.standard_normal(len(t)), 300, 1.5)  # chiado de alto-falante velho
-    env = np.minimum(1, t / 0.5) * np.minimum(1, (dur - t) / 2.5)
-    out = out * env
-    wet = out.copy()
-    for delay, gain in ((0.27, 0.4), (0.61, 0.3), (1.1, 0.2), (1.7, 0.12)):  # cidade vazia, mais longe
-        k = int(delay * RATE)
-        wet[k:] += gain * out[:-k]
-    return np.tanh(1.5 * wet / np.max(np.abs(wet)))
-
-
-FAR_CREST_DB = 8.0  # pico/RMS da sirene longe: RMS ~ -9,8 dBFS, a perto fica em ~ -7
-
-
-def far(sinal, seed):
-    """Versão "longe" de uma sirene (sprint 0034): o mesmo sinal ouvido a 80-200 tiles, numa
-    cidade vazia. O ar e os prédios comem o agudo (passa-baixa), chega mais eco que som direto
-    (reverb longo e escuro, com reflexões de fachada) e o ataque amacia. A queda de volume com a
-    distância é do FMOD (distanceMin/distanceMax em media/scripts/NOM_sounds.txt)."""
-    direto = lowpass(sinal, 1100, 2)
-    eco = reverb_wet(direto, 3.2, 0.09, 1400, seed, echoes=((0.31, 0.6), (0.74, 0.4), (1.3, 0.25)))
-    return fades(0.45 * direto + eco, 0.4, 1.5)
 
 
 def sob(rng):
@@ -646,6 +575,100 @@ DEVICES = [
 ]
 
 
+# ------------------------------------------------- sirenes oficiais (sprint 0034, tarefa 3)
+# Os protótipos que o Johan aprovou, portados em scripts/sirenes/ (síntese sem mudança). Aqui
+# cada um é encurtado pra 10,6 s sem mudar o tom, ganha o passa-baixa da distância e o eco de
+# cidade (com 1,2 s de cauda: 11,8 s no total) e é gravado com o RMS do protótipo. Tocam a
+# 150–500 tiles do jogador, 5 de uma vez (shared/NOM_SirenSpotsRules.lua); quem baixa o volume
+# com a distância é o FMOD (distanceMin/distanceMax em media/scripts/NOM_sounds.txt).
+SIREN_CONTENT_S = 10.6
+SIREN_TAIL_S = 1.2
+SIREN_DIST_LP = 4000.0  # ~300 m de ar: -3 dB em 4 kHz, -12 dB em 8 kHz
+# reflexões de fachada e morro: (atraso s, ganho, passa-baixa Hz); cada uma mais longe e escura
+ECO_TAPS = ((0.31, 0.45, 2800), (0.56, 0.34, 2200), (0.84, 0.25, 1700), (1.13, 0.18, 1350), (1.47, 0.12, 1050))
+ECO_CAUDA = 0.35  # reverb distante (rt60 2,6 s, escuro), com a energia do sinal seco vezes isto
+
+# nome do som -> (módulo em scripts/sirenes, sirene do protótipo). A branca_engolida da v7 é a
+# da v5 byte a byte: entra uma vez só, senão o coro poderia tocar a mesma duas vezes.
+OFICIAIS = [
+    ("NOM_SirenWhite1", sv8, "branca_a"), ("NOM_SirenWhite2", sv5, "branca_engolida"),
+    ("NOM_SirenWhite3", sv3, "branca_radio"), ("NOM_SirenWhite4", sv2, "branca_a_fita_limpa"),
+    ("NOM_SirenWhite5", sv2, "branca_b_manivela"), ("NOM_SirenWhite6", sv1, "branca_melhorada"),
+    ("NOM_SirenRed1", sv7, "vermelha_garganta"), ("NOM_SirenRed2", sv6, "vermelha_ataque"),
+    ("NOM_SirenRed3", sv4, "vermelha_uivo"), ("NOM_SirenRed4", sv3, "vermelha_uivo"),
+    ("NOM_SirenRed5", sv2, "vermelha_b_uivo"), ("NOM_SirenRed6", sv2, "vermelha_c_duas_fitas"),
+    ("NOM_SirenBlack1", sv8, "preta_a"), ("NOM_SirenBlack2", sv8, "preta_b"),
+    ("NOM_SirenBlack3", sv7, "preta_apagao"), ("NOM_SirenBlack4", sv5, "preta_inalada"),
+    ("NOM_SirenBlack5", sv4, "preta_b_apagao"), ("NOM_SirenBlack6", sv4, "preta_c_brasa"),
+    ("NOM_SirenBlack7", sv3, "preta_c_brasa"), ("NOM_SirenBlack8", sv3, "preta_b_apagao"),
+    ("NOM_SirenBlack9", sv2, "preta_fita"), ("NOM_SirenBlack10", sv1, "preta_c_silencio"),
+]
+
+
+def fim_util(x, abaixo_db=20.0, passo=0.25):
+    """Onde o som acaba de verdade: depois da última janela a menos de `abaixo_db` do RMS do
+    arquivo. O que vem depois é cauda quase muda, que o eco de cidade substitui."""
+    k = nsamp(passo)
+    lim = rms(x) * 10 ** (-abaixo_db / 20)
+    vivas = [i for i in range(0, len(x) - k + 1, k) if rms(x[i:i + k]) >= lim]
+    return min(len(x), vivas[-1] + 2 * k) if vivas else len(x)
+
+
+def encurtar(x, n_out, quadro=2048, tol=512):
+    """Muda a duração pra `n_out` amostras sem mudar o tom (WSOLA): recorta quadros de 46 ms
+    do original em passos maiores e sobrepõe em passos fixos; cada quadro é procurado (±11,6 ms)
+    onde melhor continua a onda do anterior, pra emenda não bater fase."""
+    fator = n_out / len(x)
+    hop = quadro // 2
+    w = np.hanning(quadro + 1)[:-1]
+    frames = int(np.ceil(n_out / hop)) + 1
+    fim_x = int(np.ceil((frames + 1) * hop / fator)) + 2 * tol + 2 * quadro
+    xp = np.concatenate([np.zeros(tol), x, np.zeros(max(0, fim_x - len(x)))])
+    out = np.zeros(frames * hop + quadro)
+    wsum = np.zeros_like(out)
+    delta = 0
+    for k in range(frames):
+        start = int(round(k * hop / fator)) + tol + delta
+        out[k * hop:k * hop + quadro] += w * xp[start:start + quadro]
+        wsum[k * hop:k * hop + quadro] += w
+        nat = xp[start + hop:start + hop + quadro]
+        nxt = int(round((k + 1) * hop / fator)) + tol
+        delta = int(np.argmax(np.correlate(xp[nxt - tol:nxt + tol + quadro], nat, "valid"))) - tol
+    return out[:n_out] / np.maximum(wsum[:n_out], 1e-3)
+
+
+def eco_cidade(x, seed):
+    """A sirene ouvida a 150–500 tiles numa cidade vazia: o ar come o agudo, e chegam as
+    reflexões de prédios e morros (0,3 a 1,5 s depois, cada vez mais baixas e escuras; os
+    atrasos variam ±8% por sirene, pra cinco juntas não ecoarem iguais) e a cauda de reverb
+    distante. Devolve o sinal com `SIREN_TAIL_S` a mais no fim."""
+    rng = np.random.default_rng(seed)
+    n = len(x) + nsamp(SIREN_TAIL_S)
+    direto = np.concatenate([lowpass(x, SIREN_DIST_LP, 2), np.zeros(n - len(x))])
+    out = direto.copy()
+    for d, g, fc in ECO_TAPS:
+        k = nsamp(d * rng.uniform(0.92, 1.08))
+        out[k:] += g * lowpass(direto, fc, 2)[:n - k]
+    out += ECO_CAUDA * reverb_wet(direto, 2.6, 0.12, 1500, seed)
+    return out
+
+
+def sirene_oficial(fn, seed):
+    """Sinal pronto pra gravar: encurtado, com distância e eco, e fim composto (a cauda do eco
+    morre num fade de 0,6 s, nunca num degrau). Devolve (sinal, crest_db do protótipo)."""
+    x, crest = fn()
+    n_c = nsamp(SIREN_CONTENT_S)
+    if len(x) > n_c:
+        x = x[:max(fim_util(x), n_c)]
+    if len(x) > n_c:
+        x = encurtar(x, n_c)
+    x = np.concatenate([x, np.zeros(n_c - len(x))])
+    x = x * np.clip((SIREN_CONTENT_S - tsec(n_c)) / 0.25, 0, 1)
+    y = eco_cidade(x, seed)
+    d = len(y) / RATE
+    return y * np.clip((d - tsec(len(y))) / 0.6, 0, 1), crest
+
+
 def main():
     only = set(sys.argv[1:])
 
@@ -662,24 +685,20 @@ def main():
     # sprint 0005 em diante: um gerador e uma semente por som
     singles = [
         ("NOM_FogDrone", drone, 1), ("NOM_FogMetal", metal, 2), ("NOM_RadioStatic", radio_static, 3),
-        ("NOM_Siren", siren, 4),              # sprint 0009: sirene do evento de névoa
-        ("NOM_SirenRed", siren_red, 5),       # sprint 0010: sirene da névoa vermelha
-        ("NOM_CarpideiraSob", sob, 6),        # sprint 0011: Carpideira
+        ("NOM_CarpideiraSob", sob, 6),        # sprint 0011: Carpideira (4 e 5 eram as sirenes antigas)
         ("NOM_CarpideiraScream", wail, 7),
     ]
     for name, fn, k in singles:
         if want(name):
             write(name, fn(np.random.default_rng(SEED + k)))
     os.makedirs(OUT, exist_ok=True)
-    # sprint 0034: as sirenes longe, com a semente da perto (o mesmo sinal por baixo). Pelo
-    # limitador, quase no nível da perto: quem baixa com a distância é o FMOD, não o arquivo.
-    for name, base, k in (("NOM_SirenFar", siren, 4), ("NOM_SirenRedFar", siren_red, 5)):
-        if want(name):
-            sig = far(base(np.random.default_rng(SEED + k)), SEED + 10 * k)
-            ns.write(os.path.join(OUT, name + ".ogg"), sig, crest_db=FAR_CREST_DB)
     for name, fn, crest in DEVICES:  # sprint 0034: aparelhos do Outro Mundo
         if want(name):
             ns.write(os.path.join(OUT, name + ".ogg"), fn(), crest_db=crest)
+    for i, (name, mod, proto) in enumerate(OFICIAIS):  # sprint 0034: sirenes oficiais
+        if want(name):
+            sig, crest = sirene_oficial(mod.SIRENES[proto], SEED + 900 + i)
+            ns.write(os.path.join(OUT, name + ".ogg"), sig, crest_db=crest)
 
 
 if __name__ == "__main__":

@@ -109,13 +109,23 @@ Sons e texturas só pelos nossos `scripts/gen_*.py`.
 
 ---
 
-### Tarefa 3: sirenes novas no `gen_sounds.py`
+### Tarefa 3: sirenes novas no `gen_sounds.py` (FEITA, falta o commit)
 
 Depende da escolha do Johan pra vermelha. Vem dos protótipos em `.superpowers/sirens/` (não versionados).
 
 - `scripts/gen_sounds.py`: as funções `siren` e `siren_red` passam a gerar as escolhidas, com 15 s e o mesmo formato. Porte o código numpy dos protótipos; nada copiado de terceiros.
 - Rodar o script e commitar os `.ogg` gerados, como os outros sons.
 - Conferir que o `NOM_Siren` não depende da duração antiga.
+
+**Decisões do Johan (2026-10-06), que trocaram o pedido acima:**
+- 23 protótipos aprovados como oficiais (7 brancos, 6 vermelhos, 10 pretos); a `branca_engolida` da v7 é a mesma da v5, então ficam 22 sons.
+- 10 a 12 s com fim natural, em vez de 15 s; eco de cidade embutido no arquivo.
+- 5 sirenes por jogador, todas a 150–500 tiles, em direções diferentes e desencontradas; o perto/longe da Tarefa 7 sai.
+
+**Como ficou:**
+- Síntese dos protótipos em `scripts/sirenes/` (v1 a v8, idêntica ao protótipo a 15 s; a v1 refeita pra caber em 10,6 s). O `gen_sounds.py` corta no fim útil, encurta pra 10,6 s sem mudar o tom (WSOLA nosso), aplica a distância (passa-baixa de 4 kHz, 5 reflexões de 0,31 a 1,47 s, cauda de reverb) e termina num fade: 11,8 s cada.
+- Sons `NOM_SirenWhite1`–`6`, `NOM_SirenRed1`–`6` e `NOM_SirenBlack1`–`10` (a preta só toca na 0038), `distanceMin` 50 e `distanceMax` 500 (conta na [pz-api-notes §23](../../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)). Saíram `NOM_Siren`, `NOM_SirenRed`, `NOM_SirenFar` e `NOM_SirenRedFar`.
+- `NOM_SirenSpotsRules`: `COUNT` 5, 150–500 tiles, pelo menos 40° entre vizinhas pra qualquer sorteio, a primeira em 0 e as outras em janelas até 4 s, sons sem repetir no coro.
 
 ---
 
@@ -258,6 +268,8 @@ Depende da Tarefa 2 (mesmos arquivos do evento).
 ---
 
 ### Tarefa 7: sirenes posicionais (3 por jogador) e zumbis olhando pro jogador
+
+> A Tarefa 3 trocou a quantidade, as distâncias e os sons: 5 sirenes a 150–500 tiles, sem perto/longe.
 
 **Pedido do Johan (2026-10-06):** "se a gente tiver múltiplas sirenes no mapa, o som não é mais 2D chapado, ele vem de alguma posição... podem vir longe, podem vir perto, mas sempre num range do jogador".
 

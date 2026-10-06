@@ -3,6 +3,22 @@ local W = dofile("tests/fog_world.lua")
 require "NOM_FogEventRules"
 local FILE = "mod/42/media/lua/client/NOM_FogClient.lua"
 
+
+-- sirenes tocadas de uma névoa: as 5 do coro de cada jogador (shared/NOM_SirenSpotsRules.lua)
+local function played(G, kind)
+    local n = 0
+    for _, name in ipairs(NOM_SirenSpotsRules.SOUNDS[kind]) do n = n + G.played(name) end
+    return n
+end
+
+local function playing(G, kind)
+    local out = {}
+    for _, name in ipairs(NOM_SirenSpotsRules.SOUNDS[kind]) do
+        for _, s in ipairs(G.playing(name)) do out[#out + 1] = s end
+    end
+    return out
+end
+
 local function setup(opts)
     opts = opts or {}
     if opts.client == nil then opts.client = true end
@@ -31,12 +47,12 @@ return {
     fog_client_plays_siren = function()
         local G = setup()
         G.server("siren", {})
-        assert(G.played("NOM_Siren") == 0, "tocou sem jogador")
+        assert(played(G, "white") == 0, "tocou sem jogador")
         G.player({ x = 0, y = 0 })
         G.server("siren", {})
-        assert(G.played("NOM_Siren") == 1 and G.playing("NOM_Siren")[1].volume == 1)
+        assert(played(G, "white") == 1 and playing(G, "white")[1].volume == 1)
         G.fire("OnServerCommand", "OutroMod", "siren", {})
-        assert(G.played("NOM_Siren") == 1)
+        assert(played(G, "white") == 1)
     end,
     -- sprint 0033: a sirene congela os zumbis que este cliente simula (dono), virados pro
     -- jogador mais perto (sprint 0034), e o sirenStop solta e cala as sirenes
@@ -54,18 +70,18 @@ return {
         assert(mine.useless == true, "comando de outro módulo soltou")
         G.server("sirenStop", {})
         assert(mine.useless == false and not NOM_SirenFreeze.active, "sirenStop não soltou")
-        assert(#G.playing("NOM_Siren") == 0, "sirenStop deixou a sirene tocando")
-        G.seconds(3)
-        assert(G.played("NOM_SirenFar") == 0, "a sirene atrasada entrou depois do sirenStop")
+        assert(#playing(G, "white") == 0, "sirenStop deixou a sirene tocando")
+        G.seconds(NOM_SirenSpotsRules.DELAY_MAX_MS / 1000 + 0.1)
+        assert(played(G, "white") == 1, "a sirene atrasada entrou depois do sirenStop")
     end,
-    -- sprint 0034: 3 sirenes por jogador, nas posições, em volta do jogador local
-    fog_client_plays_three_positioned_sirens = function()
+    -- sprint 0034: 5 sirenes por jogador, nas posições, longe do jogador local
+    fog_client_plays_five_positioned_sirens = function()
         local G = setup()
         G.player({ x = 500, y = 500 })
         G.server("siren", { red = true })
-        G.seconds(3)
-        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_SirenRedFar") == 2)
-        for _, s in ipairs(G.playing("NOM_SirenRedFar")) do assert(s.emitter, "sirene fora de emitter do mundo") end
+        G.seconds(NOM_SirenSpotsRules.DELAY_MAX_MS / 1000 + 0.1)
+        assert(played(G, "red") == NOM_SirenSpotsRules.COUNT and played(G, "white") == 0)
+        for _, s in ipairs(playing(G, "red")) do assert(s.emitter, "sirene fora de emitter do mundo") end
     end,
     fog_client_fog_on_releases_freeze = function()
         local G = setup()
@@ -123,7 +139,7 @@ return {
         G.player({ x = 0, y = 0 })
         G.server("presage", { red = true })
         assert(NOM_FogState.omenAt == G.now and NOM_FogState.omenRed == true, "o presságio não ligou")
-        assert(NOM_FogState.rising == false and G.played("NOM_SirenRed") == 0 and not NOM_SirenFreeze.active)
+        assert(NOM_FogState.rising == false and played(G, "red") == 0 and not NOM_SirenFreeze.active)
         G.fire("OnServerCommand", "OutroMod", "presage", { red = false })
         assert(NOM_FogState.omenRed == true, "comando de outro módulo")
         G.seconds(3)
@@ -229,10 +245,10 @@ return {
         local G = setup()
         G.player({ x = 0, y = 0 })
         G.server("siren", { red = true })
-        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0)
-        assert(G.playing("NOM_SirenRed")[1].volume == 1)
+        assert(played(G, "red") == 1 and played(G, "white") == 0)
+        assert(playing(G, "red")[1].volume == 1)
         G.server("fog", { on = true, period = 4, red = true })
-        assert(NOM_FogState.on and NOM_FogState.red == true and G.played("NOM_SirenRed") == 1)
+        assert(NOM_FogState.on and NOM_FogState.red == true and played(G, "red") == 1)
         G.server("fog", { on = false, period = 4, red = true })
         assert(NOM_FogState.red == false, "vermelho sem névoa")
     end,
