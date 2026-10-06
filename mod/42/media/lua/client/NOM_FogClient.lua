@@ -8,8 +8,12 @@ if not isClient() then return end
 require "NOM_FogState"
 require "NOM_SemRosto"
 require "NOM_Siren"
+require "NOM_SirenFreeze"
 
 local MODULE = "NevoaEOutroMundo"
+
+-- Sirene: o cliente dono congela os zumbis dele (shared/NOM_SirenFreeze, ADR-005).
+NOM_SirenFreeze.install()
 
 -- Avisa o servidor pelo ID de rede (-1 = sem ID: o servidor não acharia). Se a
 -- cópia daqui é remota (o dono é outro cliente), ela vai direto pro destino: o
@@ -46,8 +50,13 @@ Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "fog" then
         NOM_FogState.set(args.on == true, args.period, args.red == true)
+        -- a névoa abre: a sirene acabou (o servidor não manda sirenStop nesse caso)
+        if args.on == true then NOM_SirenFreeze.stop() end
     elseif command == "siren" then -- evento de névoa: 45 s reais antes (NOM_FogEvent)
         NOM_Siren.play(type(args) == "table" and args.red == true)
+        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, 45000)
+    elseif command == "sirenStop" then -- sirene cancelada (NOM_FogEvent.stop)
+        NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este
         -- cliente vir vai pra outro, mesmo que o sumiço tenha sido visto por outro cliente

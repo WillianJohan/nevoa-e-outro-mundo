@@ -23,7 +23,7 @@ local function setup(opts)
     end
     local G = W.new(opts)
     G.world.hours = opts.hours or 100
-    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto" })
+    G.reload({ "NOM_World", "NOM_FogState", "NOM_Fog", "NOM_FogEvent", "NOM_FogEventRules", "NOM_Siren", "NOM_SemRosto", "NOM_SirenFreeze" })
     dofile(FOG_FILE) -- puxa o NOM_FogEvent (require), como no jogo
     function G.climate(n)
         for _ = 1, n or 1 do G.fire("OnClimateTick") end
@@ -270,29 +270,34 @@ return {
         assert(NOM_FogEvent.stop())
         assert(#G2.commands(G2.sentServer, "sirenStop") == 0)
     end,
-    -- solo: o congelamento (shared/NOM_SirenFreeze, tarefa seguinte) começa com a sirene e
-    -- para quando ela é cancelada ou a névoa abre
-    fog_event_solo_drives_siren_freeze = function()
-        local calls = {}
+    -- solo: o congelamento (shared/NOM_SirenFreeze) começa com a sirene, vira pra direção
+    -- dela e solta quando ela é cancelada ou a névoa abre
+    fog_event_solo_siren_freezes = function()
         local G = setup()
-        NOM_SirenFreeze = {
-            start = function(dir, ms) calls[#calls + 1] = "start:" .. dir .. ":" .. ms end,
-            stop = function() calls[#calls + 1] = "stop" end,
-        }
-        local ok, err = pcall(function()
-            toSiren(G)
-            local dir = NOM_FogEventRules.sirenDir(fogMD(G).seed, 1)
-            assert(calls[1] == "start:" .. dir .. ":" .. NOM_FogEventRules.SIREN_MS, "start: " .. tostring(calls[1]))
-            assert(NOM_FogEvent.stop())
-            assert(calls[2] == "stop", "cancelar não parou o congelamento")
-            G.at(G.world.hours + 24)
-            toSiren(G)
-            local n = #calls
-            G.seconds(46)
-            assert(calls[n + 1] == "stop" and NOM_World.fog, "a névoa não parou o congelamento")
-        end)
-        NOM_SirenFreeze = nil
-        assert(ok, err)
+        local a = G.zombie({ x = 10, y = 10 })
+        toSiren(G)
+        G.tick(1)
+        assert(NOM_SirenFreeze.active and a.useless == true, "a sirene não congelou")
+        local dir = math.rad(NOM_FogEventRules.sirenDir(fogMD(G).seed, 1))
+        assert(math.abs(a.faced.x - (a.x + NOM_SirenFreeze.FAR * math.cos(dir))) < 1e-6, "virou pra outra direção")
+        assert(math.abs(a.faced.y - (a.y + NOM_SirenFreeze.FAR * math.sin(dir))) < 1e-6)
+        assert(NOM_FogEvent.stop())
+        assert(a.useless == false and not NOM_SirenFreeze.active, "cancelar não soltou")
+        G.at(G.world.hours + 24)
+        toSiren(G)
+        G.tick(1)
+        assert(a.useless == true)
+        G.seconds(46)
+        assert(NOM_World.fog and a.useless == false and not NOM_SirenFreeze.active, "a névoa não soltou")
+    end,
+    -- dedicado: o servidor não simula zumbi; quem congela é o cliente dono (nada instalado aqui)
+    fog_event_dedicated_does_not_freeze = function()
+        local G = setup({ server = true, player = false })
+        local a = G.zombie({ x = 10, y = 10 })
+        toSiren(G)
+        G.tick(2)
+        assert(not NOM_SirenFreeze.active and not a.useless)
+        assert(#G.handlers.OnTick == 1, "o servidor registrou o tick do congelamento")
     end,
     -- review 2: quem entra no MP durante a contagem ouve a sirene (com a direção)
     fog_event_mp_join_during_siren_hears_it = function()

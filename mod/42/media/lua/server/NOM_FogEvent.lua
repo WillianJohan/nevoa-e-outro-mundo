@@ -16,12 +16,17 @@ require "NOM_World"
 require "NOM_Config"
 require "NOM_FogEventRules"
 require "NOM_Siren"
+require "NOM_SirenFreeze"
 require "NOM_VariantRules"
 
 local MODULE = "NevoaEOutroMundo"
 local R = NOM_FogEventRules
 
 NOM_FogEvent = {}
+
+-- Solo: este processo simula os zumbis e congela direto. Dedicado: quem congela é o
+-- cliente dono (client/NOM_FogClient.lua); o servidor não simula zumbi.
+if not isServer() then NOM_SirenFreeze.install() end
 
 local countdown, lastMs -- ms reais até a névoa; nil = sem sirene tocando
 -- Névoa vermelha (sprint 0010): a sirene decide e salva em data.fog.red (sprint 0019:
@@ -69,17 +74,6 @@ function NOM_FogEvent.status()
         sirenDir = countdown and s.sirenDir or nil }
 end
 
--- Congelamento da sirene (shared/NOM_SirenFreeze, sprint 0033): no solo este processo
--- simula os zumbis e chama direto; no dedicado quem congela é o cliente dono (comandos
--- "siren" e "sirenStop"). O módulo é opcional aqui: pode não estar carregado.
-local function freezeStart(dir, ms)
-    if NOM_SirenFreeze then NOM_SirenFreeze.start(dir, ms) end
-end
-
-local function freezeStop()
-    if NOM_SirenFreeze then NOM_SirenFreeze.stop() end
-end
-
 -- O vermelho é do período que a sirene anuncia (o próximo): sorteio puro do número e da
 -- semente (NOM_VariantRules.redFog), com a chance do sandbox no dia de agora (zero na
 -- carência: NOM_FogEventRules.redChance). Devolve a cor e a chance usada (pro log).
@@ -111,7 +105,7 @@ function NOM_FogEvent.siren(skip)
         sendServerCommand(MODULE, "siren", { red = s.red, dir = dir })
     else
         NOM_Siren.play(s.red)
-        freezeStart(dir, countdown)
+        NOM_SirenFreeze.start(dir, countdown)
     end
     -- inteiro: "contagem=45000"; dias e chance da vermelha com 2 casas
     debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
@@ -132,7 +126,7 @@ function NOM_FogEvent.stop()
             if isServer() then
                 sendServerCommand(MODULE, "sirenStop", {})
             else
-                freezeStop()
+                NOM_SirenFreeze.stop()
             end
         end
         return was
@@ -168,8 +162,8 @@ end
 local function begin()
     countdown = nil
     forcedRed = nil
+    if not isServer() then NOM_SirenFreeze.stop() end -- a sirene acabou: os zumbis soltam antes da névoa
     if not R.start(state(), now(), cfg(), rand, state().red) then return end
-    if not isServer() then freezeStop() end -- a sirene acabou: os zumbis soltam antes da névoa
     debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. " vermelha=" .. tostring(state().red))
     NOM_World.setFog(true, state().red)
 end

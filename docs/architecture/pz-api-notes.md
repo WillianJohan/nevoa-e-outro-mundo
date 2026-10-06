@@ -1389,6 +1389,23 @@ Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para 
 | `isHoppableTo` não serve | EXISTS | `IsoGridSquare.isHoppableTo` → `isHoppable(edge)` → `getHoppableOrWindowFrame` → `IsoObject.isHoppableOrWindowFrame`: conta moldura de janela, que é buraco na parede |
 | Cerca baixa bloqueia o `isBlockedTo` | UNKNOWN | provável (o personagem tem que pular); o `Flow` não depende disso: cerca baixa vira face aberta com altura de qualquer jeito |
 
+## 21. Sirene que congela (sprint 0033)
+
+`shared/NOM_SirenFreeze.lua`: durante os 45 s da sirene, todo zumbi que este processo
+simula fica parado, virado pra direção dela. No solo é o próprio processo
+(`server/NOM_FogEvent.lua`); no MP, o cliente dono (`client/NOM_FogClient.lua`, comandos
+`siren`, `fog` e `sirenStop`). Não há API nova além do `faceLocationF`.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `z:setUseless(true)` / `z:setTarget(nil)` | CONFIRMED | §3.2 e §13 (uso vanilla em `client/DebugUIs/DebugContextMenu.lua:566,673`) |
+| `z:faceLocationF(x, y)` | EXISTS | `IsoGameCharacter.faceLocationF(FF)Z` (bytecode, `javap`); uso vanilla `client/BuildingObjects/TimedActions/ISBuildAction.lua:248` (`self.character:faceLocationF(self.x + 0.5, self.y)`) |
+| O useless viaja na rede no pacote do dono | EXISTS | §3.2 (`NetworkZombieAI.set` → `getBooleanVariables`): a cópia remota não precisa ser tocada |
+| `resetForReuse` não limpa o useless | EXISTS | §3.2; por isso o `OnZombieCreate` do módulo solta o objeto reaproveitado que estava congelado |
+| `Events.OnTick`, `OnZombieDead`, `OnZombieCreate` | CONFIRMED | já usados pelo mod (§3, §10, §11.2) |
+| Dedicado: sem `sirenStop` quando a névoa abre | decisão | o cliente solta ao receber `fog {on=true}` ou, sem comando, 15 s (`SAFETY_MS`) depois do fim da sirene |
+| UNKNOWN | — | se o zumbi useless, parado pelo idle, mantém o `faceLocationF` por frames ou volta a girar sozinho; o módulo vira de novo a cada passada (lote de 20 por tick). Conferir no jogo |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
