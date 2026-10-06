@@ -14,16 +14,21 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 - Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
 - Névoa vermelha (`RedFogEnabled`, padrão ligado): parte das névoas vem vermelha, com sirene própria, e todo zumbi nela é monstro ([monsters.md](monsters.md#regra-geral))
 - Curva de tensão (`FogEscalation`, padrão ligado, sprint 0019): a névoa começa mais rara e a vermelha mais fraca, e as duas apertam com os dias do save ([abaixo](#curva-de-tensão-sprint-0019))
-- Névoa (evento com sirene, sem toggle: `FogEventEveryDays` alto deixa rara): som ambiente (`FogAmbience`) · sangue e erosão no chão e nas paredes (`FogOverlays`; a quantidade é opção de cada jogador, Opções > Mods, sprint 0015; anexado ao mapa e tirado antes do save desde a 0023) · vinheta (`FogVignette`), todos padrão ligado
+- Névoa (evento com sirene, sem toggle: `FogDailyChance` baixa e `FogMaxDaysWithout` alto deixam rara): som ambiente (`FogAmbience`) · sangue e erosão no chão e nas paredes (`FogOverlays`; a quantidade é opção de cada jogador, Opções > Mods, sprint 0015; anexado ao mapa e tirado antes do save desde a 0023) · vinheta (`FogVignette`), todos padrão ligado
 
 ## Números
 
 | Opção | Sistema |
 |---|---|
-| `FogEventEveryDays` (2, faixa 0.5–30 dias de jogo): média entre névoas (com `FogEscalation`, multiplicada pela curva: 1,5× no começo, 0,75× do dia 45); cada intervalo sorteado entre 0,5× e 1,5×, contado do fim da anterior | [world-states.md](world-states.md) |
-| `FogMinHours` (3), `FogMaxHours` (6), faixa 0.5–48 horas de jogo: duração sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
-| `RedFogChance` (10, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); com `FogEscalation`, sobe do dia 30 até 2× no dia 90 | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
-| `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso, com ou sem a escalada; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) |
+| `FogDailyChance` (65, faixa 0–100 %): chance de o dia ter névoa; sorteado uma vez por dia de jogo pelo número do dia e pela semente do save | [world-states.md](world-states.md) |
+| `FogEscalation` (ligada), `FogMaxDailyChance` (85, faixa 0–100 %), `FogEscalationDays` (60, faixa 1–365): a chance do dia sobe em linha reta até o teto no dia indicado e fica fixa; desligada, a chance é sempre a `FogDailyChance` | [abaixo](#curva-de-tensão-sprint-0019) |
+| `FogSecondChance` (15, faixa 0–100 %), `FogMinGapHours` (6, faixa 0–24 h): chance de uma segunda névoa no mesmo dia, só começando antes da meia-noite e depois da folga mínima do fim da anterior | [world-states.md](world-states.md) |
+| `FogMaxDaysWithout` (2, faixa 0–30): dias seguidos sem névoa antes de o seguinte ter névoa garantida | [world-states.md](world-states.md) |
+| `FogMinHours` (3), `FogMaxHours` (5), faixa 0.5–48 horas de jogo: duração da **branca**, sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
+| `RedFogMinHours` (4), `RedFogMaxHours` (6), faixa 0.5–48 horas de jogo: duração da **vermelha** | [world-states.md](world-states.md) |
+| `FogCalmHours` (2, faixa 0–24 horas de jogo): calmaria depois da névoa, com o zumbi comum um degrau mais lento e de sentidos reduzidos; 0 desliga | [world-states.md](world-states.md) |
+| `RedFogChance` (20, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); **sem subida**: a curva é só da chance do dia (sprint 0033) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
+| `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
 | `DarkIntensity` (1.0, faixa 0–2) | [atmosphere.md](atmosphere.md) |
 | `NightSpeedMult` (1.5, faixa 1–3, em degraus: 1.5 sobe um, 2.5 sobe dois) | [night.md](night.md) |
@@ -39,20 +44,30 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 ## Presets
 
 Dois jeitos prontos de ajustar o sofrimento, além do padrão (revistos pelo PO na sprint
-0019, aprovados pelo Johan em 05/10/2026). Valores exatos de todas as opções da página
-"Névoa e Outro Mundo":
+0019, aprovados pelo Johan em 05/10/2026). Na sprint 0033 as opções da névoa mudaram
+(`FogEventEveryDays` saiu), e os valores de névoa de Leve e Pesadelo abaixo são a **tradução
+proposta, sem jogar**, ainda pra o Johan confirmar; o resto da tabela segue como estava. Valores
+exatos de todas as opções da página "Névoa e Outro Mundo":
 
 | Opção | Padrão | Leve | Pesadelo |
 |---|---|---|---|
 | `DarkEnabled` | ligado | ligado | ligado |
 | `DarkIntensity` | 1.0 | 0.7 | 1.5 |
-| `FogEventEveryDays` | 2 | 3 | 1.5 |
-| `FogMinHours` | 3 | 2 | 4 |
-| `FogMaxHours` | 6 | 4 | 8 |
+| `FogDailyChance` | 65 | 40 | 85 |
 | `FogEscalation` | ligado | **desligado** | ligado |
+| `FogMaxDailyChance` | 85 | 40 | 95 |
+| `FogEscalationDays` | 60 | 60 | 30 |
+| `FogSecondChance` | 15 | 5 | 30 |
+| `FogMinGapHours` | 6 | 8 | 4 |
+| `FogMaxDaysWithout` | 2 | 4 | 1 |
+| `FogMinHours` | 3 | 2 | 4 |
+| `FogMaxHours` | 5 | 4 | 7 |
+| `FogCalmHours` | 2 | 3 | 1 |
 | `RedFogEnabled` | ligado | ligado | ligado |
-| `RedFogChance` | 10 | 5 | 20 |
+| `RedFogChance` | 20 | 5 | 35 |
 | `RedFogGraceDays` | 7 | 14 | 3 |
+| `RedFogMinHours` | 4 | 3 | 5 |
+| `RedFogMaxHours` | 6 | 5 | 8 |
 | `EcoEnabled` | ligado | ligado | ligado |
 | `EcoMaxPerPlayer` | 20 | 10 | 40 |
 | `EcoRadius` | 30 | 25 | 45 |
@@ -79,16 +94,18 @@ Dois jeitos prontos de ajustar o sofrimento, além do padrão (revistos pelo PO 
 | `FogVignette` | ligado | ligado | ligado |
 | `FogVignetteIntensity` | 1.0 | 0.7 | 1.5 |
 
-- **Padrão — "o mundo tem horário":** a primeira semana ensina (névoa a cada ~3 dias, sem
-  vermelha até o dia 7); do dia 30 em diante a névoa vem a cada ~2 dias e a vermelha começa
-  a engrossar. 14% de monstros por névoa.
+- **Padrão — "o mundo tem horário":** névoa em 65% dos dias, subindo até 85% no dia 60, sem
+  vermelha até o dia 7 (depois, 1 em 5), com garantia no terceiro dia, de 3 a 5 h (vermelha de
+  4 a 6 h) e 2 h de calmaria depois. 14% de monstros por névoa.
 - **Leve — "primeira visita":** a noite muda o jeito de jogar sem virar corrida — os zumbis
-  não ganham velocidade, a caça vem a cada 2 horas de perto, a névoa vem a cada ~3 dias sem
-  curva, de 2 a 4 horas, com 9% de monstros; vermelha rara (5%) e só depois de duas semanas.
+  não ganham velocidade, a caça vem a cada 2 horas de perto, a névoa vem em 40% dos dias, sem
+  curva, com garantia só no quinto dia, de 2 a 4 horas e 3 de calmaria, com 9% de monstros;
+  vermelha rara (5%) e só depois de duas semanas.
 - **Pesadelo — "a cidade é proibida":** dois degraus de velocidade e sentidos (arrastado vira
-  corredor), caça a cada 45 minutos de longe, névoa a cada ~2 dias no começo e ~1 dia no fim
-  da curva, de 4 a 8 horas, com 21% de monstros (Carpideiras que acordam a 6 tiles e gritam
-  pra 70); vermelha já no dia 3, uma em cada cinco, chegando a duas em cinco no dia 90.
+  corredor), caça a cada 45 minutos de longe, névoa em 85% dos dias e 95% já no dia 30,
+  com garantia no segundo dia e segunda névoa em 30% deles, de 4 a 7 horas e só 1 de calmaria,
+  com 21% de monstros (Carpideiras que acordam a 6 tiles e gritam pra 70); vermelha já no dia 3,
+  mais de uma em cada três, de 5 a 8 horas.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -102,17 +119,17 @@ preset vanilla escolhido.
 `FogEscalation` (padrão ligado) e `RedFogGraceDays` (7, faixa 0–60 dias). `d` = dias de
 jogo desde o nascimento do save (`data.fog.bornAt`, gravado uma vez como a semente). Save
 anterior à sprint 0019 que já tinha agenda de névoa nasce **no ponto neutro** (30 dias antes
-do primeiro carregamento): intervalo 1×, vermelha 1×, carência já vencida, ou seja, nada muda
+do primeiro carregamento): carência já vencida e curva do dia no ponto neutro, ou seja, pouco muda
 pra quem já jogava; a curva só aperta dali pra frente. Save antigo também **guarda o próprio
 sandbox** (`SandboxOptions.load` lê o `map_sand.bin`; só opção nova ganha o default): os
-defaults novos (2 dias, 3–6 h etc.) valem pra save novo ou pra quem mudar à mão.
+defaults novos (da 0033: 65% por dia, 3–5 h etc.) valem pra save novo ou pra quem mudar à mão.
 
-- **Intervalo:** média `FogEventEveryDays × clamp(1,5 − d/60, 0,75, 1,5)`. Com a base 2: 3
-  dias no começo, 2 no dia 30, 1,5 do dia 45 em diante. Cada intervalo continua sorteado entre
-  0,5× e 1,5× da média, no fim da névoa anterior (com o dia do fim), e salvo.
-- **Vermelha:** 0 antes de `RedFogGraceDays`; depois `RedFogChance × clamp(1 + (d − 30)/60,
-  1, 2)`: 10% do dia 7 ao 30, subindo até 20% no dia 90. Decidida na sirene e salva: recarregar
-  não muda a cor.
+- **Chance do dia (sprint 0033, no lugar do intervalo):** `FogDailyChance + (FogMaxDailyChance −
+  FogDailyChance) × clamp(d / FogEscalationDays, 0, 1)`: com os padrões, 65% no começo, 75% no
+  dia 30 e 85% do dia 60 em diante. Desligada, é sempre a `FogDailyChance`. O sorteio é do dia
+  (número do dia e semente), então recarregar não muda.
+- **Vermelha:** 0 antes de `RedFogGraceDays`; depois, `RedFogChance` fixa (20%). A subida até o
+  dobro no dia 90 saiu na 0033. Decidida na sirene e salva: recarregar não muda a cor.
 - **A carência vale com ou sem a escalada** (é opção própria; 0 desliga). Escalada desligada e
   carência 0 = a agenda de antes da sprint 0019 com os números do sandbox.
 - Chances dos monstros e a noite **não** seguem a curva (sorteio da
@@ -151,7 +168,7 @@ jogar, trocar número é chute; o que precisa ser sentido está no
 - **`DarkIntensity` 1.0:** depende de como a tela fica; só jogando.
 - **Névoa a cada 3 dias, 2–6 h (sprint 0009, decisão do Johan):** ~5% do tempo de jogo
   com névoa (4 h a cada ~3,2 dias). Se ficar raro demais pra ver os monstros, o ajuste
-  é `FogEventEveryDays`.
+  era `FogEventEveryDays` (saiu na 0033; hoje, `FogDailyChance`).
 
 ## Revisão do PO (2026-10-05, sprint 0019, aprovada pelo Johan)
 
@@ -163,7 +180,7 @@ histórico.
 
 | Opção | Antes | Agora | Item do playtest |
 |---|---|---|---|
-| `FogEventEveryDays` | 3 | 2 (com a curva, o começo fica ~3 dias efetivos) | — |
+| `FogEventEveryDays` (saiu na 0033, virou `FogDailyChance`) | 3 | 2 (com a curva, o começo ficava ~3 dias efetivos) | — |
 | `FogMinHours` | 2 | 3 | 8 |
 | `EcoMaxPerPlayer` / `EcoRadius` | 30 / 40 | 20 / 30 | 3 |
 | `HuntIntervalMinutes` / `HuntRadius` | 60 / 30 | 90 / 25 | 1, 2 |

@@ -32,7 +32,7 @@ scripts/dev-sync.sh       # COPIA mod/ e mod2/ pra pasta de mods do jogo (symlin
 
 1. Branch `sprint/00NN-slug` saindo da `main`.
 2. Plano, TDD e docs da sprint em `docs/sprints/sprint-00NN-slug/`.
-3. **Sem code review**, por enquanto.
+3. **Code review só no final de cada entrega** (decisão do Johan, 2026-10-06).
 4. Testes verdes, merge na `main`, push, `scripts/dev-sync.sh`.
 5. O Johan testa no jogo e reinicia o jogo depois de cada sync.
 

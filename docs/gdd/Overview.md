@@ -29,8 +29,8 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 
 Dia: saquear, limpar corpos (queimar/enterrar), preparar abrigo →
 noite: sobreviver aos infectados agressivos e aos Ecos →
-sirene → névoa (de dia ou de noite, a cada ~3 dias): fugir ou se esconder do Outro Mundo — Estaladores,
-Corredores, Sem-rosto, Carpideiras → amanhecer → repetir.
+sirene → névoa (de dia ou de noite, quase todo dia): fugir ou se esconder do Outro Mundo — Estaladores,
+Corredores, Sem-rosto, Carpideiras → fim da névoa e calmaria (a folga pra explorar) → amanhecer → repetir.
 
 ## Índice de sistemas
 
@@ -158,3 +158,20 @@ Só viram escopo por promoção explícita.
   Presets Leve ("primeira visita"), Padrão ("o mundo tem horário") e Pesadelo ("a cidade é
   proibida") revistos ([sandbox.md](sandbox.md#curva-de-tensão-sprint-0019),
   [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md), [ADR-010](../architecture/adr-010-nevoa-vermelha.md)).
+- **2026-10-06** — **Ritmo novo** (sprint 0033), "mudei um pouco meu mindset": a névoa deixa o jogador
+  tenso (enxerga um pouco, nunca sabe o que vem) e o fim dela é um alívio, uma folga pra explorar.
+  Por isso ela fica **frequente** e ganha ritmo, no
+  [modelo novo](../superpowers/specs/2026-10-06-modelo-novo-design.md):
+  1. **Sorteio por dia**, no lugar do intervalo (`FogEventEveryDays` saiu): 65% subindo até 85%
+     no dia 60; segunda névoa de 15% depois de 6 h de folga; garantia no terceiro dia sem névoa.
+  2. **Duração por tipo:** branca 3–5 h, vermelha 4–6 h. A vermelha é 20% (a partir do dia 7) e
+     não sobe mais até o dobro no dia 90 (reverte parte da 0019).
+  3. **Sirene de 45 s** (era 30) com **todos os zumbis parados**, virados pra uma direção, e
+     voltando juntos quando a névoa começa.
+  4. **Calmaria:** 2 h de jogo depois da névoa, com o zumbi comum um degrau mais lento e de
+     sentidos reduzidos.
+
+  O resto do modelo (sons, visão de ~4 tiles, Outro Mundo por chunk, sonar, névoa preta e
+  facelift) está na spec e entra nas sprints 0034 a 0044. O rosto censurado do Sem-rosto, que era
+  a 0033 antiga, virou parte do facelift ([world-states.md](world-states.md),
+  [sandbox.md](sandbox.md), [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md#emenda-de-2026-10-06--sprint-0033-ritmo-novo)).
