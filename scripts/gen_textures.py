@@ -29,6 +29,11 @@ Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
 Estática da névoa (sprint 0034), tons de cinza com alfa, tingida pela cor da névoa:
   NOM/ScreenFx/NOM_NevoaEstatica.png 256  chiado fino de 1 px com riscos curtos, fecha em mosaico
 
+Lascas do Outro Mundo (sprint 0035), fundo transparente, tingidas pela cor da névoa no desenho:
+  NOM/NOM_Lascas.png             256×96  sprite sheet: 8 quadros de giro × 3 formatos de lasca
+                                         (tinta escura, borda clara ou ferrugem; verso ferrugem)
+  NOM/NOM_Cinza.png              16   ponto de cinza claro e macio, tons de cinza
+
 Semente fixa: rodar de novo dá os mesmos bytes. Uso: python3 scripts/gen_textures.py
 """
 import os
@@ -273,6 +278,72 @@ def screen_static(rng, size=256):
     return color((255, 255, 255), 0.35 + 0.65 * v), a
 
 
+FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 3   # = shared/NOM_FlakeRules.lua
+PAINT, PAINT_EDGE = (52, 49, 46), (228, 220, 202)    # tinta velha escura, borda descascada clara
+RUST, RUST_DARK = (150, 70, 30), (82, 38, 18)        # o verso da lasca, ferrugem
+
+
+def flake_outline(rng):
+    """Polígono irregular de 6 a 8 pontas em volta da origem, raio ~1 (lasca de tinta)."""
+    n = int(rng.integers(6, 9))
+    ang = np.sort(rng.random(n) * 2 * np.pi)
+    rad = 0.55 + 0.45 * rng.random(n)
+    return np.stack([np.cos(ang) * rad, np.sin(ang) * rad], 1)
+
+
+def flake_cell(pts, frame, axis, edge, ss=4):
+    """Um quadro do giro: a lasca tomba em volta de axis (largura × cos) e roda no plano.
+    Frente: tinta escura com a borda edge; verso (cos < 0): ferrugem com a borda mais escura."""
+    from PIL import ImageDraw
+    phi = 2 * np.pi * frame / FLAKE_FRAMES                    # tombo: uma volta inteira
+    spin = np.pi * frame / FLAKE_FRAMES                       # e meia volta no plano
+    c, s = np.cos(axis), np.sin(axis)
+    local = pts @ np.array([[c, -s], [s, c]])                 # eixo do tombo no x
+    local[:, 1] *= max(abs(np.cos(phi)), 0.18)                # de lado vira um risco fino
+    rot = np.array([[np.cos(spin), np.sin(spin)], [-np.sin(spin), np.cos(spin)]])
+    p = (local @ rot) * (FLAKE_CELL / 2 - 3) + FLAKE_CELL / 2
+    big = FLAKE_CELL * ss
+    front = np.cos(phi) >= 0
+    body, rim = (PAINT, edge) if front else (RUST, RUST_DARK)
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    poly = [tuple(v) for v in p * ss]
+    d.polygon(poly, fill=rim + (255,))
+    # o corpo é o polígono encolhido pro centro: sobra a borda de ~2 px
+    mid = p.mean(axis=0)
+    inner = [tuple(v) for v in (mid + (p - mid) * 0.72) * ss]
+    d.polygon(inner, fill=body + (255,))
+    # média dos sub-pixels com alfa pré-multiplicado: a borda não escurece pelo fundo vazio
+    small = img.convert("RGBa").resize((FLAKE_CELL, FLAKE_CELL), Image.BOX).convert("RGBA")
+    a = np.asarray(small, np.float32)
+    a[[0, -1], :, 3] = 0
+    a[:, [0, -1], 3] = 0
+    return a
+
+
+def flake_sheet(rng):
+    # lascas de tinta (sprint 0035, Silent Hill): FLAKE_SHAPES formatos × FLAKE_FRAMES quadros de
+    # giro. Borda clara de tinta descascada nos dois primeiros, ferrugem no terceiro; o verso de
+    # todas é ferrugem. A cor da névoa multiplica no desenho (NOM_FlakeRules.palette).
+    rows = []
+    for shape in range(FLAKE_SHAPES):
+        pts = flake_outline(rng)
+        axis = rng.random() * np.pi
+        edge = PAINT_EDGE if shape < 2 else (176, 92, 44)
+        rows.append(np.concatenate([flake_cell(pts, f, axis, edge) for f in range(FLAKE_FRAMES)], 1))
+    a = np.concatenate(rows, 0)
+    return a[..., :3], a[..., 3] / 255
+
+
+def ash_dot(size=16):
+    # cinza (sprint 0035): ponto claro e macio, tons de cinza (a cor sai do desenho)
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    d = np.hypot(x - (size - 1) / 2, y - (size - 1) / 2) / (size / 2 - 1)
+    a = np.clip(1.25 - d * 1.25, 0, 1) ** 1.2
+    a[d >= 1] = 0
+    return color((236, 236, 236), np.ones((size, size), np.float32)), a
+
+
 def main():
     # um gerador por textura: mexer no desenho de uma não sorteia as outras de novo
     def rng(i):
@@ -302,6 +373,11 @@ def main():
     # estática da névoa: gerador próprio, pra não mudar as de cima
     rgb, a = screen_static(np.random.default_rng((SEED, 14)))
     save(rgb, "NOM/ScreenFx/NOM_NevoaEstatica.png", alpha=a)
+    # lascas e cinza do Outro Mundo (sprint 0035): gerador próprio
+    rgb, a = flake_sheet(np.random.default_rng((SEED, 15)))
+    save(rgb, "NOM/NOM_Lascas.png", alpha=a)
+    rgb, a = ash_dot()
+    save(rgb, "NOM/NOM_Cinza.png", alpha=a)
 
 
 if __name__ == "__main__":

@@ -115,6 +115,8 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_White.png` | 8×8 | branco opaco, tingido de vermelho no pulso do grito da Carpideira |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_NevoaEstatica.png` | 256×256 | estática da névoa na tela: chiado fino em tons de cinza, em mosaico, tingido pela cor da névoa (sprint 0034) |
+| `mod/42/media/textures/NOM/NOM_Lascas.png` | 256×96 | lascas de tinta do Outro Mundo (sprint 0035): sprite sheet de 8 quadros de giro × 3 formatos, tinta velha escura com borda clara ou ferrugem, verso ferrugem, fundo transparente; tingidas pela cor da névoa no desenho |
+| `mod/42/media/textures/NOM/NOM_Cinza.png` | 16×16 | cinza do Outro Mundo (sprint 0035): ponto claro e macio em tons de cinza, tingido pela cor da névoa |
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 

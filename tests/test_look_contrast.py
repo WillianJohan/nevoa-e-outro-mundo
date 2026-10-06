@@ -104,13 +104,21 @@ def check(name, img):
     return errs, (std, mid, far)
 
 
+# Lascas do Outro Mundo (sprint 0035): partícula, não monstro. Sprite sheet de FRAMES quadros de
+# giro (colunas) × SHAPES formatos (linhas), célula de CELL px, recortada no jogo por
+# drawSubTexture (shared/NOM_FlakeRules.lua). A cinza é um ponto branco tingido no desenho.
+FLAKE_SHEET, FLAKE_ASH = "NOM/NOM_Lascas.png", "NOM/NOM_Cinza.png"
+FLAKE_CELL, FLAKE_FRAMES, FLAKE_SHAPES = 32, 8, 3
+PARTICLES = {FLAKE_SHEET, FLAKE_ASH}
+
+
 def test_every_look_texture_has_limits():
     found = set()
     for sub in ("Body", "NOM"):
         for f in os.listdir(os.path.join(TEX, sub)):
             if f.startswith("NOM_") and f.endswith(".png"):
                 found.add(sub + "/" + f)
-    missing = found - set(LIMITS) - set(PALE)
+    missing = found - set(LIMITS) - set(PALE) - PARTICLES
     assert not missing, "textura de visual sem limite de contraste: %s" % sorted(missing)
 
 
@@ -174,9 +182,58 @@ def test_screen_static_gray_fine_tiles():
         assert 0.6 < r < 1.4, "emenda no mosaico (eixo %d): %.2f" % (axis, r)
 
 
+def rgba(name):
+    return np.asarray(Image.open(os.path.join(TEX, name)).convert("RGBA"), np.float32) / 255
+
+
+def test_flake_sheet_cells():
+    # cada célula: lasca no meio, borda de 1 px transparente (o filtro linear do recorte não
+    # puxa o quadro vizinho); o giro muda de um quadro pro outro e passa pelo verso
+    a = rgba(FLAKE_SHEET)
+    assert a.shape[:2] == (FLAKE_CELL * FLAKE_SHAPES, FLAKE_CELL * FLAKE_FRAMES), "sheet %s" % (a.shape[:2],)
+    c = FLAKE_CELL
+    for r in range(FLAKE_SHAPES):
+        prev = None
+        for f in range(FLAKE_FRAMES):
+            cell = a[r * c:(r + 1) * c, f * c:(f + 1) * c]
+            al = cell[..., 3]
+            assert max(al[0].max(), al[-1].max(), al[:, 0].max(), al[:, -1].max()) == 0, \
+                "célula %d,%d encosta na borda" % (r, f)
+            cover = float((al > 0.5).mean())
+            assert 0.03 < cover < 0.6, "célula %d,%d cobre %.3f" % (r, f, cover)
+            if prev is not None:
+                assert np.abs(al - prev).mean() > 0.01, "quadro %d,%d igual ao anterior" % (r, f)
+            prev = al
+
+
+def test_flake_sheet_paint_and_rust():
+    # tinta velha: corpo escuro e borda clara (contraste dentro da lasca); o verso é ferrugem
+    a = rgba(FLAKE_SHEET)
+    opaque = a[..., 3] > 0.5
+    lum = 0.299 * a[..., 0] + 0.587 * a[..., 1] + 0.114 * a[..., 2]
+    vals = lum[opaque]
+    dark, light = float((vals < 0.3).mean()), float((vals > 0.65).mean())
+    assert dark > 0.3, "pouco corpo escuro: %.3f" % dark
+    assert light > 0.06, "pouca borda clara: %.3f" % light
+    rust = (a[..., 0] - a[..., 2] > 0.25) & opaque
+    assert float(rust.sum() / opaque.sum()) > 0.1, "sem ferrugem"
+    print("  %-30s escuro=%.3f claro=%.3f ferrugem=%.3f" % (FLAKE_SHEET, dark, light, rust.sum() / opaque.sum()))
+
+
+def test_flake_ash_dot():
+    # ponto claro em tons de cinza (a cor sai do desenho), macio, com os cantos vazios
+    a = rgba(FLAKE_ASH)
+    rgb, al = a[..., :3], a[..., 3]
+    assert np.all(rgb[..., 0] == rgb[..., 1]) and np.all(rgb[..., 1] == rgb[..., 2]), "cinza com cor"
+    assert float(rgb[..., 0][al > 0.5].mean()) > 0.75, "cinza escura"
+    assert max(al[0, 0], al[0, -1], al[-1, 0], al[-1, -1]) == 0, "cantos cheios"
+    assert 0 < float(((al > 0) & (al < 1)).mean()), "borda dura"
+
+
 def main():
     tests = [test_every_look_texture_has_limits, test_contrast_catches_wool, test_contrast_catches_cow_and_lattice,
-             test_textures_contrast, test_screen_static_gray_fine_tiles]
+             test_textures_contrast, test_screen_static_gray_fine_tiles, test_flake_sheet_cells,
+             test_flake_sheet_paint_and_rust, test_flake_ash_dot]
     fail = 0
     for t in tests:
         try:

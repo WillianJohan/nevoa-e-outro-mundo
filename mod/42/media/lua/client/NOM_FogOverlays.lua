@@ -90,6 +90,14 @@ function O.radius()
     return radius
 end
 
+-- Os alvos vestidos agora ({ x, y, z, kind = "F"|"N"|"W" }, só leitura): as fontes das lascas
+-- (client/NOM_Flakes.lua, sprint 0035). Só Lua.
+function O.targets()
+    local out = {}
+    for _, e in pairs(reg) do out[#out + 1] = e end
+    return out
+end
+
 local CORNERS = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }
 
 -- Raio da tela do jogador 0: os cantos em pixel × zoom (a câmera do jogo trabalha no tamanho

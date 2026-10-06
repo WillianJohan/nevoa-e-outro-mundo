@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034; §25: sprint 0035) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1622,6 +1622,26 @@ troca, no solo, além da sirene: a IA das variantes não rodava (Estalador não 
 avisava que caçava, Carpideira calma não parava), o laço da noite não reaplicava a velocidade
 re-rolada e a Carpideira não soltava depois do grito. O lint `tests/test_kahlua_compat.lua` (`api_no_is_remote_zombie`) falha se
 `isRemoteZombie` voltar em `mod/` ou `mod2/`, e os fakes de zumbi não têm o método.
+
+## 25. Lascas do Outro Mundo (sprint 0035)
+
+Lascas de tinta e cinza que sobem do chão e das paredes vestidos (`client/NOM_Flakes.lua`,
+regra em `shared/NOM_FlakeRules.lua`), desenhadas pelo overlay de tela da 0013 (§15.1), como as
+brasas do Eco. Bytecode do B42.21 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `isoToScreenX/Y(i, x, y, z)`: ponto do mundo → pixel da tela do jogador `i` | CONFIRMED | `client/ISUI/ISButtonPrompt.lua:176-177` |
+| É afim em x, y, z dentro do quadro: `(XToScreen(x + fjx, y + fjy, z, 0) − PlayerCamera.getOffX()) / zoom + IsoCamera.getScreenLeft(i)`, idem Y com `getOffY`/`getScreenTop`; `XToScreen = 32T(x − y)` (não lê z), `YToScreen = 16T(x + y) + 96T(0 − z)`. Projetar 4 pontos por quadro dá a base; cada lasca sai em Lua | EXISTS | `LuaManager$GlobalObject.isoToScreenX/Y(IFFF)` 0–60; `IsoUtils.XToScreen(FFFI)` 0–33, `YToScreen(FFFI)` 0–50. `fjx/fjy` = `PlayerCamera.fixJigglyModelsSquareX/Y` (campo, fixo no quadro) |
+| Devolve `float`: com x, y ~10⁴ tiles (~6·10⁵ px antes de tirar o offset) o erro é ~0,06 px. A base usa pontos a 16 tiles e divide | EXISTS | o mesmo bytecode (`freturn`, contas em `F`) |
+| `drawSubTexture(tex, subX, subY, subW, subH, x, y, w, h, a, r, g, b)` recorta a textura em **pixels dela** | CONFIRMED | `client/ISUI/ISUIElement.lua:1043-1052`; `client/ISUI/ISUISprite.lua:106-118`; `client/ISUI/ISLcdBar.lua:69-72` (recorte `índice × charW`, em pixels) |
+| `UIElement.DrawSubTextureRGBA`: o recorte é preso a `[0, getWidth/Height]`, dividido pelo tamanho e levado a `xStart..xEnd` / `yStart..yEnd` (a folga de potência de 2 da textura não atrapalha); sai cedo invisível, com `w`/`h` ≤ 0 ou `y` fora de `[−h, 4096]` | EXISTS | `UIElement.DrawSubTextureRGBA(Texture, 12×D)` 0–122 (saídas), 123–306 (recorte → UV) |
+| **Pegadinha:** sem `r`, o `drawSubTexture` vanilla chama `DrawSubTextureRGBA(tex, x, y, w, h, 1, 1, 1, a)`, sem o recorte: desenha o sheet inteiro na caixa. O mod passa a cor sempre | CONFIRMED | `client/ISUI/ISUIElement.lua:1046-1047` |
+| Não existe `math.random` no Kahlua: o `MathLib` registra `abs` … `tanh`, sem `random`; o `RandomLib` dá `newrandom()`, sem uso vanilla. O mod usa um Park–Miller próprio (`NOM_FlakeRules.rng`, semente `getTimestampMs()`) | EXISTS | `se.krka.kahlua.j2se.MathLib.<clinit>` (nomes), `se.krka.kahlua.stdlib.RandomLib`; `rg 'math.random\|newrandom' media/lua` vazio |
+| `drawTextureScaled` com cor, `getCore():getZoom(0)`, retângulo da tela, menu aberto | CONFIRMED | §15.1 e §16.6 |
+
+Custo medido no mundo falso (`tests/test_flakes.lua`, `flakes_budget`): até 160 lascas vivas, pior
+quadro ~175 idas ao Java (até 20 de base + 1 por lasca na tela). Sem névoa e sem lasca, 0.
 
 ## Abordagem recomendada por mecânica (resumo)
 
