@@ -257,7 +257,81 @@ Depende da Tarefa 2 (mesmos arquivos do evento).
 
 ---
 
-### Tarefa 4: documentação da sprint (por último, depois das Tarefas 5 e 6)
+### Tarefa 7: sirenes posicionais (3 por jogador) e zumbis olhando pro jogador
+
+**Pedido do Johan (2026-10-06):** "se a gente tiver múltiplas sirenes no mapa, o som não é mais 2D chapado, ele vem de alguma posição... podem vir longe, podem vir perto, mas sempre num range do jogador".
+
+**Decisões do Johan:**
+- pega o jogador e sorteia uma distância entre 40 e 200 tiles; tocam 3 sirenes em paralelo;
+- no máximo 1 perto, as outras longe;
+- os zumbis congelados viram pro jogador mais próximo.
+
+Depende da Tarefa 6 (as duas mexem em `gen_sounds.py` e `NOM_sounds.txt`): só comece depois que ela estiver commitada.
+
+**Arquivos:**
+- Criar:
+  - `shared/NOM_SirenSpotsRules.lua`: posições, variantes e atrasos, regra pura;
+  - `tests/test_siren_spots_rules.lua`.
+- Modificar:
+  - `shared/NOM_Siren.lua`: toca nas posições, em vez do som chapado;
+  - `shared/NOM_SirenFreeze.lua`: virar pro jogador mais próximo;
+  - `server/NOM_FogEvent.lua` e `client/NOM_FogClient.lua`: chamadas, e o `dir` sai;
+  - `scripts/gen_sounds.py`: versão "longe" de cada sirene;
+  - `media/scripts/NOM_sounds.txt`: `distanceMin`/`distanceMax` das sirenes;
+  - os testes de sirene, congelamento, evento e cliente;
+  - `docs/architecture/pz-api-notes.md`.
+
+**Comportamento:**
+- **Posições (por jogador, local no cliente; no solo, o mesmo processo):** na hora da sirene, a partir da posição do jogador local:
+  - **Perto:** 1 sirene a 40–80 tiles, versão perto.
+  - **Longe:** 2 sirenes a 80–200 tiles, versão longe.
+  - **Ângulos:** sorteados, com pelo menos 60° entre elas, pra virem de lados diferentes.
+  - **Variante:** sorteada sem repetir entre as três, quando houver mais de uma na lista do tipo de névoa.
+  - **Entradas desencontradas:** a mais perto em 0 s e as outras com atraso de 0,4 a 2,5 s, em coro desencontrado.
+  - O sorteio é aleatório local (`ZombRand` ou o rand do mod); não precisa ser igual entre jogadores.
+- **Tocar:**
+  - `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, nil)`, só local (evidência em `.superpowers/sound/api-aparelhos.md` e a mesma técnica da Tarefa 6);
+  - os emissores ficam parados no mundo enquanto o jogador anda;
+  - parar todas (`stopSoundLocal(id)`) no `sirenStop` ou no cancelamento;
+  - a sirene termina sozinha, porque o arquivo tem 15 s.
+- **Audibilidade a 200 tiles:**
+  - declare as sirenes com `distanceMin` e `distanceMax` largos (sirene é fonte alta: comece com `distanceMin` 20 e `distanceMax` 220) e a versão "longe" com a distância embutida (passa-baixa e reverb, gerada no `gen_sounds.py`);
+  - se a pesquisa ou o bytecode mostrar que o jogo corta som 3D além de um raio fixo, aproxime o emissor na MESMA direção até o limite, e deixe a distância embutida no arquivo fazer o resto.
+  - Registre a decisão e a evidência.
+- **Sons:**
+  - por enquanto, a lista de cada tipo de névoa tem as sirenes que já existem (`NOM_Siren`, `NOM_SirenRed`) mais as versões `...Far`;
+  - a Tarefa 3 troca e amplia a lista quando o Johan escolher as sirenes novas;
+  - deixe um ponto único (`R.SOUNDS[kind] = { near = {...}, far = {...} }`).
+- **Congelamento:**
+  - em vez de `dirDeg`, cada zumbi congelado vira pro jogador vivo mais próximo dele, e o giro é atualizado no lote de cada tick, pra acompanhar o jogador andando;
+  - no solo, os jogadores locais;
+  - no MP, quem simula é o cliente dono, que olha os jogadores que conhece (busque a evidência de como listar jogadores no cliente, ex.: `getOnlinePlayers()`, no Lua vanilla);
+  - sem jogador por perto, ele fica como está.
+  - `NOM_FogEventRules.sirenDir`, `s.sirenDir` e o `dir` do comando saem, se nada mais usar.
+
+- [ ] **Passo 1: testes que falham.**
+  - **Regra pura:**
+    - 3 posições, 1 entre 40 e 80 e 2 entre 80 e 200;
+    - ângulos com pelo menos 60° entre si;
+    - atrasos na faixa;
+    - variantes sem repetir;
+    - perto usa `near` e longe usa `far`.
+  - **Tocar:** a sirene toca 3 emissores nas posições e `sirenStop` para todos.
+  - **Congelamento:**
+    - o zumbi congelado olha pro jogador mais próximo;
+    - com dois jogadores, cada zumbi olha pro dele;
+    - o jogador se mexe e o giro acompanha.
+  - Os testes antigos de `dir` saem ou mudam.
+- [ ] **Passo 2:** rodar `luajit tests/run.lua`. Esperado: FAIL.
+- [ ] **Passo 3:** implementar.
+  - Gerar as versões "longe" (`NOM_SirenFar`, `NOM_SirenRedFar`) no `gen_sounds.py` com uma função `far(sinal)` reutilizável.
+  - Gerar os sons e commitar os `.ogg`.
+- [ ] **Passo 4:** rodar `./run-tests.sh`. Esperado: verde.
+- [ ] **Passo 5: commit.** `git commit -m "Sirenes posicionais: 3 por jogador, uma perto e duas longe; zumbis congelados olham pro jogador"`
+
+---
+
+### Tarefa 4: documentação da sprint (por último, depois das Tarefas 5, 6 e 7)
 
 - `README.md` da sprint, com o roteiro de teste;
 - GDD (`world-states`, `atmosphere`, `Overview`);
