@@ -68,7 +68,8 @@ P.ROWS = {
         { "UI_NOM_Debug_Invisible", function() NOM.invisible() end, cheat("isInvisible") },
         { "UI_NOM_Debug_GodMode", function() NOM.godMode() end, cheat("isGodMod") } },
     { { "UI_NOM_Debug_Wind", function() NOM.wind() end },
-        { "UI_NOM_Debug_Status", function() NOM.status() end } },
+        { "UI_NOM_Debug_Status", function() NOM.status() end },
+        { "UI_NOM_Debug_OwnSprites", function() NOM.ownSprites() end } },
 }
 
 local function yesNo(v) return getText(v and "UI_NOM_Debug_Yes" or "UI_NOM_Debug_No") end

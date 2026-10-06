@@ -167,6 +167,18 @@ function NOM.wind(on)
     print("[NOM] debug vento=" .. tostring(windOn))
 end
 
+-- Texturas próprias do Outro Mundo (sprint 0035): registra se o mundo mudou (o ensure é barato
+-- na mesma sessão) e diz quantas estão registradas e quais PNG faltam.
+function NOM.ownSprites()
+    if not NOM_OwnSprites then
+        print("[NOM] debug sprites próprios: NOM_OwnSprites não carregou")
+        return
+    end
+    local n = NOM_OwnSprites.ensure()
+    print("[NOM] debug sprites próprios: " .. n .. " de " .. NOM_OwnSprites.total() .. " registrados")
+    for _, m in ipairs(NOM_OwnSprites.missing()) do print("[NOM] debug sem textura: " .. m) end
+end
+
 NOM.HELP = {
     { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
@@ -187,6 +199,7 @@ NOM.HELP = {
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },
     { "NOM.status()", "estado do mod, local e do servidor" },
+    { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },
 }

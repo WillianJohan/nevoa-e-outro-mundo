@@ -59,5 +59,6 @@
     "UI_NOM_Debug_UndoVariant": "Desfaz variante",
     "UI_NOM_Debug_GodMode": "Modo deus",
     "UI_NOM_Debug_Wind": "Vento (liga/desliga)",
-    "UI_NOM_Debug_Status": "Status no console"
+    "UI_NOM_Debug_Status": "Status no console",
+    "UI_NOM_Debug_OwnSprites": "Texturas próprias no console"
 }
