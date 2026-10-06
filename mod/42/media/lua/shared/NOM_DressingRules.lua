@@ -1,8 +1,10 @@
 -- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021, anexado na 0023): o
 -- que cada square ganha na névoa. Chão: chão queimado (dentro) ou mato e folha (fora),
--- rachadura e sangue (poças e rastros), e sujeira em manchas à parte (mais leve). Parede: um
--- sprite por lado (sangue, sujeira, rachadura; trepadeira só fora). Sem API do jogo, testável
--- com ./run-tests.sh. Quem anexa: client/NOM_FogOverlays.lua (ADR-017).
+-- rachadura e sangue (poças e rastros), e sujeira em manchas à parte (mais leve). Parede de fora:
+-- um sprite por lado (sangue, sujeira, rachadura, trepadeira ou pichação). Parede de dentro (casa
+-- destruída, sprint 0034): até WALL_LAYERS camadas de tipos diferentes (rachadura, sujeira,
+-- sangue, pichação ou mensagem). Sem API do jogo, testável com ./run-tests.sh. Quem anexa:
+-- client/NOM_FogOverlays.lua (ADR-017).
 --
 -- Nada é guardado: a resposta é função do square, do período de névoa e da
 -- densidade (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
@@ -48,7 +50,17 @@ NOM_DressingRules = {
     -- O prefixo que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*: ADR-017). Um
     -- anexo com ele que não é nosso agora é vazado de uma sessão que caiu: sai no LoadGridsquare.
     OWN_PREFIX = "floors_burnt_01_",
-    WALL = 0.75,       -- chance de cada parede ter algo
+    WALL = 0.75,       -- chance de cada parede de fora ter algo
+    -- Dentro (casa destruída): a 1ª camada quase sempre, a 2ª e a 3ª menos, sem repetir tipo.
+    WALL_IN = 1,
+    WALL_IN_2 = 0.5,
+    WALL_IN_3 = 0.25,
+    WALL_LAYERS = 3,
+    -- Pichação e mensagem são desenhos de várias paredes (o pack corta em peças de um tile). A
+    -- fileira de paredes vai em trechos de RUN_SLOT tiles; um trecho pode ter um desenho inteiro.
+    -- O tipo e o desenho do trecho não dependem de dentro/fora; a chance de aparecer, sim.
+    RUN_SLOT = 6,
+    RUN = { graffiti = { outside = 0.45, inside = 0.35 }, messages = { outside = 0.15, inside = 0.6 } },
 }
 
 local R = NOM_DressingRules
@@ -100,8 +112,34 @@ R.SETS = {
         41, 48, 49, 50, 57, 58, 59, 66, 67, 68, 69 } },
     vinesWallW = { wall = "W", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [0] = true, [1] = true }) },
     vinesWallN = { wall = "N", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [2] = true, [3] = true }) },
+    -- Pichação e mensagem (sprint 0034, scripts/audit_wall_sprites.py): cada run é um desenho
+    -- inteiro, peças da esquerda pra direita na tela. O lado bate nas três evidências (recorte,
+    -- tileDepthTextureAssignments, attachedW/N); fora: graffiti 92 (attachedN num recorte W) e
+    -- messages 34–39 (sem attachedW/N, conteúdo além da face).
+    graffitiWallW = { wall = "W", prefix = "overlay_graffiti_wall_01_", runs = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7 },
+        { 8, 9 }, { 10 }, { 11, 12, 13 }, { 14, 15 }, { 40 }, { 41, 42, 43 }, { 44, 45, 46 }, { 47 }, { 54, 55 },
+        { 56, 57, 58 }, { 64, 65 }, { 72, 73 }, { 74, 75, 76 }, { 80, 81 }, { 82, 83, 84 }, { 85 }, { 86 }, { 87 },
+        { 93, 94, 95 } } },
+    graffitiWallN = { wall = "N", prefix = "overlay_graffiti_wall_01_", runs = { { 16, 17, 18 }, { 19, 20 },
+        { 21, 22, 23 }, { 24, 25, 26 }, { 27, 28, 29, 30, 31 }, { 32, 33, 34 }, { 35, 36 }, { 37, 38, 39 },
+        { 48, 49, 50 }, { 51 }, { 52, 53 }, { 59 }, { 60, 61, 62, 63 }, { 66, 67 }, { 68, 69, 70, 71 },
+        { 77, 78, 79 }, { 88, 89, 90 }, { 91 }, { 96, 97, 98 }, { 100 }, { 101 }, { 102 }, { 103 },
+        { 104, 105, 106, 107, 108 }, { 112, 113, 114, 115 } } },
+    -- "KEEP OUT" (6, 7, 14, 15) e "ALIVE INSIDE" (24–27): duas palavras, um desenho
+    messagesWallW = { wall = "W", prefix = "overlay_messages_wall_01_", runs = { { 0, 1, 2 }, { 3, 4, 5 },
+        { 6, 7, 14, 15 }, { 8, 9, 10 }, { 16, 17, 18 }, { 24, 25, 26, 27 } } },
+    messagesWallN = { wall = "N", prefix = "overlay_messages_wall_01_", runs = { { 11, 12, 13 }, { 19, 20, 21 },
+        { 28, 29, 30, 31 } } },
 }
 for i = 32, 46 do R.SETS.bloodFloor.idx[#R.SETS.bloodFloor.idx + 1] = i end
+for _, s in pairs(R.SETS) do
+    if s.runs then
+        s.idx = {}
+        for _, run in ipairs(s.runs) do
+            for _, i in ipairs(run) do s.idx[#s.idx + 1] = i end
+        end
+    end
+end
 
 -- Nome do sprite de uma camada { set, índice }.
 function R.name(layer)
@@ -113,8 +151,10 @@ function R.own(name)
     return type(name) == "string" and name:sub(1, #R.OWN_PREFIX) == R.OWN_PREFIX
 end
 
--- Faixas do sorteio da parede, por tipo (somam 1): sangue manda.
+-- Faixas do sorteio da parede, por tipo (somam 1). Fora, sangue manda; dentro ("apagadas,
+-- acabadas, sujas", Johan, sprint 0034), sujeira e rachadura.
 local WALL_KINDS = { { "blood", 0.45 }, { "grime", 0.25 }, { "cracks", 0.15 }, { "vines", 0.15 } }
+local WALL_KINDS_IN = { { "grime", 0.4 }, { "cracks", 0.3 }, { "blood", 0.3 } }
 
 local function u(id, period, salt)
     return V.hash(id, period or 0, salt) / V.Q
@@ -286,23 +326,74 @@ function R.floor(x, y, z, period, d, outside)
     return out
 end
 
--- Sprite da parede norte (north = true) ou oeste do square, ou nil. A face que se vê é a do
--- square dono da parede: trepadeira só se ele é de fora (outside); dentro, a faixa dela vira
--- sangue.
+-- Tipo do sorteio da parede, pelas faixas de kinds.
+local function wallKind(id, period, salt, kinds)
+    local roll, acc = u(id, period, salt), 0
+    for _, k in ipairs(kinds) do
+        acc = acc + k[2]
+        if roll < acc or k == kinds[#kinds] then return k[1] end
+    end
+end
+
+-- Peça de pichação ou mensagem da parede, ou nil. Parede N: a fileira anda em x (a peça k em
+-- start + k: x cresce pra direita na tela); W: anda em y, e y cresce pra esquerda (a peça k em
+-- start + #run − 1 − k).
+local function writing(x, y, z, period, d, north, outside)
+    local pos, line = north and x or y, north and y or x
+    local slot = math.floor(pos / R.RUN_SLOT)
+    local id = sqId(slot, line, z)
+    local salt = north and 110 or 120
+    local kind = u(id, period, salt) < 0.5 and "messages" or "graffiti"
+    if u(id, period, salt + 1) >= chance(R.RUN[kind][outside and "outside" or "inside"], d) then return nil end
+    local set = kind .. "Wall" .. (north and "N" or "W")
+    local runs = R.SETS[set].runs
+    local run = runs[math.floor(u(id, period, salt + 2) * #runs) + 1]
+    local k = pos - slot * R.RUN_SLOT - math.floor(u(id, period, salt + 3) * (R.RUN_SLOT - #run + 1))
+    if k < 0 or k >= #run then return nil end
+    if not north then k = #run - 1 - k end
+    return { set, run[k + 1] }
+end
+
+-- Dentro, de baixo pra cima.
+local INSIDE_KINDS = { "cracks", "grime", "blood" }
+
+-- Camadas da parede norte (north = true) ou oeste do square, de baixo pra cima, ou nil. A face
+-- que se vê é a do square dono da parede (outside: ele é de fora). Fora: uma camada, a peça de
+-- pichação do trecho ou o sorteio. Dentro: o sorteio, mais até duas de outro tipo, e a peça de
+-- pichação/mensagem em cima, até WALL_LAYERS.
 function R.wall(x, y, z, period, d, north, outside)
     if not d or d <= 0 then return nil end
     local id = sqId(x, y, z)
     local salt = north and 70 or 80
-    if u(id, period, salt) >= chance(R.WALL, d) then return nil end
-    local roll, acc = u(id, period, salt + 1), 0
-    for _, k in ipairs(WALL_KINDS) do
-        acc = acc + k[2]
-        if roll < acc or k == WALL_KINDS[#WALL_KINDS] then
-            local kind = k[1]
-            if kind == "vines" and not outside then kind = "blood" end
-            return pick(kind .. "Wall" .. (north and "N" or "W"), id, period, salt + 2)
+    local side = north and "N" or "W"
+    local write = writing(x, y, z, period, d, north, outside)
+    if outside then
+        if write then return { write } end
+        if u(id, period, salt) >= chance(R.WALL, d) then return nil end
+        return { pick(wallKind(id, period, salt + 1, WALL_KINDS) .. "Wall" .. side, id, period, salt + 2) }
+    end
+    local has, n = {}, 0
+    if u(id, period, salt) < chance(R.WALL_IN, d) then
+        has[wallKind(id, period, salt + 1, WALL_KINDS_IN)] = true
+        n = 1
+        local room = R.WALL_LAYERS - (write and 1 or 0)
+        for k, base in ipairs({ R.WALL_IN_2, R.WALL_IN_3 }) do
+            if n >= room or u(id, period, salt + 2 + k) >= chance(base, d) then break end
+            local rest = {}
+            for _, kind in ipairs(INSIDE_KINDS) do
+                if not has[kind] then rest[#rest + 1] = kind end
+            end
+            has[rest[math.floor(u(id, period, salt + 4 + k) * #rest) + 1]] = true
+            n = n + 1
         end
     end
+    local out = {}
+    for i, kind in ipairs(INSIDE_KINDS) do
+        if has[kind] then out[#out + 1] = pick(kind .. "Wall" .. side, id, period, salt + 6 + i) end
+    end
+    if write then out[#out + 1] = write end
+    if #out == 0 then return nil end
+    return out
 end
 
 local function finite(v)

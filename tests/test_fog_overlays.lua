@@ -44,8 +44,7 @@ local function expect(G, x, y, z, kind)
         for _, l in ipairs(f or {}) do out[#out + 1] = D().name(l) end
         if f and f.grime then out[#out + 1] = D().name(f.grime) end
     else
-        local w = D().wall(x, y, z, per, d, kind == "N", outside)
-        if w then out[1] = D().name(w) end
+        for _, l in ipairs(D().wall(x, y, z, per, d, kind == "N", outside) or {}) do out[#out + 1] = D().name(l) end
     end
     return table.concat(out, "|")
 end
@@ -134,6 +133,33 @@ return {
         assert(wallsDressed > 40, "paredes sem nada: " .. wallsDressed)
         local fl, wl = O().count()
         assert(fl > 300 and wl == wallsDressed, "count: " .. fl .. "/" .. wl)
+    end,
+
+    -- sprint 0034, "casa destruída": a parede de dentro ganha as camadas empilhadas na ordem da
+    -- regra (rachadura embaixo, pichação em cima); a pichação de fora também sai; nada fora do pack
+    overlays_inside_walls_stacked = function()
+        local G = setup({ density = 1 })
+        walls(G, 90, 90, 20)
+        for x = 90, 99 do for y = 90, 109 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+        NOM_FogState.set(true, 3)
+        G.seconds(5)
+        laidOut(G, D().MIN_RADIUS)
+        local stacked, writingIn, writingOut = 0, 0, 0
+        for _, o in pairs(G.objs) do
+            if o.kind ~= "F" then
+                local names = G.attachedNames(o, "mod")
+                local inside = o.x <= 99
+                if inside and #names >= 2 then stacked = stacked + 1 end
+                for _, n in ipairs(names) do
+                    if n:find("^overlay_graffiti") or n:find("^overlay_messages") then
+                        if inside then writingIn = writingIn + 1 else writingOut = writingOut + 1 end
+                    end
+                    if not inside then assert(#names == 1, "parede de fora empilhada") end
+                end
+            end
+        end
+        assert(stacked > 150, "parede de dentro sem camadas: " .. stacked)
+        assert(writingIn > 10 and writingOut > 5, "pichação dentro " .. writingIn .. ", fora " .. writingOut)
     end,
 
     -- sprint 0034: o Outro Mundo espera o fim da fuga (decisão do Johan); a subida da sirene
@@ -544,11 +570,16 @@ return {
     end,
 
     -- custo por atualização (10 ticks): enchendo e parado, no zoom 1 e no mais longe (raio MAX:
-    -- a volta da varredura tem #OFFSETS squares)
+    -- a volta da varredura tem #OFFSETS squares); e com as paredes dentro de casa (camadas
+    -- empilhadas, sprint 0034)
     overlays_budget = function()
-        for _, zoom in ipairs({ 1, 2.5 }) do
+        for _, c in ipairs({ { zoom = 1 }, { zoom = 2.5 }, { zoom = 1, inside = true } }) do
+            local zoom = c.zoom
             local G = setup({ density = 2, zoom = zoom })
             walls(G, 90, 90, 20)
+            if c.inside then
+                for x = 90, 109 do for y = 90, 109 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+            end
             NOM_FogState.set(true, 3, true)
             local maxFill, maxIdle, maxInv = 0, 0, 0
             for i = 1, 90 do
@@ -561,10 +592,10 @@ return {
             local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
             assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
             assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
-            -- ≤ 80 squares por lote, até 3 alvos e 5 anexos no piso
-            assert(maxInv <= O().SCAN_BUDGET * 7, "invalidações por lote: " .. maxInv)
-            print(string.format("[budget] outro mundo (zoom %.1f, raio %d, volta %d squares = %d atualizações): enchendo %d, parado %d chamadas, %d invalidações por atualização",
-                zoom, O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
+            -- ≤ 80 squares por lote: até 5 anexos no piso (MAX_LAYERS + sujeira) e WALL_LAYERS em cada parede
+            assert(maxInv <= O().SCAN_BUDGET * (D().MAX_LAYERS + 1 + 2 * D().WALL_LAYERS), "invalidações por lote: " .. maxInv)
+            print(string.format("[budget] outro mundo (zoom %.1f%s, raio %d, volta %d squares = %d atualizações): enchendo %d, parado %d chamadas, %d invalidações por atualização",
+                zoom, c.inside and ", casa" or "", O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
         end
     end,
 

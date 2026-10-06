@@ -1,7 +1,8 @@
 -- Outro Mundo sangrento (sprint 0015; anexado ao piso e à parede desde a 0023): na névoa, o
 -- chão e as paredes em volta do jogador ganham sangue, sujeira, rachadura, chão queimado
--- (dentro), mato e folha (fora) e trepadeira, só na tela de quem vê (solo e cliente de MP). O
--- que vai em cada square: shared/NOM_DressingRules.lua. ADR-017, pz-api-notes §16.6.
+-- (dentro), mato e folha (fora), trepadeira e pichação (paredes de dentro empilhadas, sprint
+-- 0034), só na tela de quem vê (solo e cliente de MP). O que vai em cada square:
+-- shared/NOM_DressingRules.lua. ADR-017, pz-api-notes §16.6.
 --
 -- Como (bytecode B42.21): obj:addAttachedAnimSpriteByName(nome) no piso (sq:getFloor()) e na
 -- parede (sq:getWall(north)), o caminho da erosão vanilla (WallVines.update →
@@ -220,7 +221,9 @@ local function dress(cell, x, y, z, sk, per, d)
                 local obj = sq:getWall(north)
                 props = props or (obj and sq:getProperties())
                 if plain(obj) and not frame(props, side) then
-                    add(sk .. side, sq, sk, side, obj, x, y, z, { D.name(w) }, nil)
+                    local names = {}
+                    for _, l in ipairs(w) do names[#names + 1] = D.name(l) end
+                    add(sk .. side, sq, sk, side, obj, x, y, z, names, nil)
                 end
             end
         end

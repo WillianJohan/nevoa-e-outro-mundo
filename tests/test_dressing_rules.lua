@@ -41,6 +41,40 @@ end
 -- Medida do pack (scripts/audit_floor_sprites.py, sprints 0021 e 0023): por nome, inside, cov,
 -- rise, wind (geometria do sprite anexado ao piso).
 local AUDIT = dofile("tests/floor_sprites.lua")
+-- Paredes (scripts/audit_wall_sprites.py, sprint 0034): left, lo, hi, depth, attached.
+local WALLS = dofile("tests/wall_sprites.lua")
+
+-- tipo da camada de parede: "blood", "grime", "cracks", "vines" ou "writing" (pichação e mensagem)
+local function wallKind(layer)
+    local k = layer[1]:match("^(%l+)Wall[NW]$")
+    if k == "graffiti" or k == "messages" then return "writing" end
+    return k
+end
+
+local ORDER = { cracks = 1, grime = 2, vines = 2, blood = 3, writing = 4 }
+
+-- paredes de um quarteirão, dentro ou fora: { [x,y,lado] = camadas }
+local function wallsOf(R, outside, d, per, size)
+    local out = {}
+    for x = 0, (size or 60) - 1 do
+        for y = 0, (size or 60) - 1 do
+            for _, north in ipairs({ true, false }) do
+                out[(3000 + x) .. "," .. (5000 + y) .. "," .. (north and "N" or "W")] =
+                    R.wall(3000 + x, 5000 + y, 0, per or 5, d or 1, north, outside) or false
+            end
+        end
+    end
+    return out
+end
+
+-- o run e a posição de uma peça de pichação/mensagem no set
+local function runOf(R, layer)
+    for _, run in ipairs(R.SETS[layer[1]].runs) do
+        for k, i in ipairs(run) do
+            if i == layer[2] then return run, k end
+        end
+    end
+end
 
 local function floorNames(R)
     local out = {}
@@ -174,10 +208,12 @@ return {
         for x = 0, 59 do
             for y = 0, 59 do
                 for _, north in ipairs({ true, false }) do
-                    local a = R.wall(800 + x, 900 + y, 0, 6, 1, north, false)
-                    local b = R.wall(800 + x, 900 + y, 0, 6, 1, north, true)
-                    if a and a[1]:find("^vines") then vinesIn = vinesIn + 1 end
-                    if b and b[1]:find("^vines") then vinesOut = vinesOut + 1 end
+                    for _, l in ipairs(R.wall(800 + x, 900 + y, 0, 6, 1, north, false) or {}) do
+                        if l[1]:find("^vines") then vinesIn = vinesIn + 1 end
+                    end
+                    for _, l in ipairs(R.wall(800 + x, 900 + y, 0, 6, 1, north, true) or {}) do
+                        if l[1]:find("^vines") then vinesOut = vinesOut + 1 end
+                    end
                 end
             end
         end
@@ -372,14 +408,16 @@ return {
         for x = 0, 59 do
             for y = 0, 59 do
                 for _, north in ipairs({ true, false }) do
-                    local w = R.wall(800 + x, 900 + y, 0, 6, 1, north, true)
-                    if w then
-                        local s = R.SETS[w[1]]
-                        assert(s.wall == (north and "N" or "W"), w[1] .. " no lado errado")
-                        assert(set(s.idx)[w[2]], w[1] .. " índice fora: " .. w[2])
-                        local pack = PACK[w[1]]
-                        if pack then assert(set(pack)[w[2]], w[1] .. " fora do pack: " .. w[2]) end
-                        got[north and "N" or "W"] = got[north and "N" or "W"] + 1
+                    for _, outside in ipairs({ true, false }) do
+                        local ws = R.wall(800 + x, 900 + y, 0, 6, 1, north, outside)
+                        for _, w in ipairs(ws or {}) do
+                            local s = R.SETS[w[1]]
+                            assert(s.wall == (north and "N" or "W"), w[1] .. " no lado errado")
+                            assert(set(s.idx)[w[2]], w[1] .. " índice fora: " .. w[2])
+                            local pack = PACK[w[1]]
+                            if pack then assert(set(pack)[w[2]], w[1] .. " fora do pack: " .. w[2]) end
+                        end
+                        if ws and outside then got[north and "N" or "W"] = got[north and "N" or "W"] + 1 end
                     end
                 end
             end
@@ -466,5 +504,249 @@ return {
             assert(R.radius(0, 0, c) == R.MIN_RADIUS, "inválido virou " .. tostring(R.radius(0, 0, c)))
         end
         assert(R.radius(nil, 0, { { 50, 0 } }) == R.MIN_RADIUS)
+    end,
+
+    -- sprint 0034: todo sprite de parede existe no pack e cai no lado do set pelo recorte e pela
+    -- profundidade; pichação e mensagem também pela definição do tile (attachedW/N: o mapa
+    -- vanilla anexa pelo lado), as três evidências juntas
+    dressing_rules_wall_sets_audited = function()
+        local R = load()
+        local n = 0
+        for name, s in pairs(R.SETS) do
+            if s.wall then
+                for _, i in ipairs(s.idx) do
+                    local a = WALLS[s.prefix .. i]
+                    assert(a, "sprite fora do pack: " .. s.prefix .. i)
+                    assert((a.left >= 0.5 and "W" or "N") == s.wall, "recorte no lado errado: " .. s.prefix .. i)
+                    assert(a.depth == nil or a.depth == s.wall, "profundidade no lado errado: " .. s.prefix .. i)
+                    if name:find("^graffiti") or name:find("^messages") then
+                        assert(a.depth == s.wall and a.attached == s.wall, "evidência faltando ou divergente: " .. s.prefix .. i)
+                    end
+                    n = n + 1
+                end
+            end
+        end
+        assert(n > 250, "poucos sprites de parede: " .. n)
+    end,
+
+    -- pichação e mensagem são desenhos de várias paredes (o pack corta em peças de um tile): o
+    -- set lista os desenhos inteiros (runs), nunca metade de um. Duas peças seguidas do pack em
+    -- que o desenho atravessa a borda (hi de uma, lo da outra) estão no mesmo run.
+    dressing_rules_writing_runs_whole = function()
+        local R = load()
+        local total = 0
+        for _, kind in ipairs({ "graffiti", "messages" }) do
+            for _, side in ipairs({ "N", "W" }) do
+                local s = R.SETS[kind .. "Wall" .. side]
+                assert(s and s.runs and #s.runs >= 3, "sem desenhos: " .. kind .. side)
+                local runAt, flat = {}, {}
+                for r, run in ipairs(s.runs) do
+                    assert(#run >= 1 and #run <= R.RUN_SLOT, "desenho maior que o trecho: " .. kind .. side .. " " .. r)
+                    for _, i in ipairs(run) do
+                        assert(not runAt[i], "peça repetida: " .. s.prefix .. i)
+                        runAt[i] = r
+                        flat[#flat + 1] = i
+                    end
+                end
+                assert(table.concat(flat, ",") == table.concat(s.idx, ","), "idx ≠ runs: " .. kind .. side)
+                for i in pairs(runAt) do
+                    for _, j in ipairs({ i - 1, i + 1 }) do
+                        local a, b = WALLS[s.prefix .. math.min(i, j)], WALLS[s.prefix .. math.max(i, j)]
+                        local bs = WALLS[s.prefix .. j]
+                        if a and b and bs and (bs.left >= 0.5 and "W" or "N") == side and a.hi and b.lo then
+                            assert(runAt[j] == runAt[i], "desenho cortado entre " .. s.prefix .. i .. " e " .. j)
+                        end
+                    end
+                end
+                total = total + #s.runs
+            end
+        end
+        assert(total >= 50, "poucos desenhos: " .. total)
+    end,
+
+    -- o desenho lê inteiro ao longo da parede: peça k em x + k (parede N, x cresce pra direita na
+    -- tela) e em y − k (parede W, y cresce pra esquerda); dentro e fora
+    dressing_rules_writing_reads_along_the_wall = function()
+        local R = load()
+        for _, outside in ipairs({ true, false }) do
+            local seen, whole = 0, 0
+            for line = 0, 39 do
+                for pos = 0, 79 do
+                    for _, north in ipairs({ true, false }) do
+                        local x, y = north and 2000 + pos or 2000 + line, north and 7000 + line or 7000 + pos
+                        for _, l in ipairs(R.wall(x, y, 0, 8, 1, north, outside) or {}) do
+                            if wallKind(l) == "writing" then
+                                seen = seen + 1
+                                local run, k = runOf(R, l)
+                                assert(run, "peça fora dos desenhos: " .. l[1] .. l[2])
+                                local function at(step)
+                                    local nx, ny = north and x + step or x, north and y or y - step
+                                    for _, m in ipairs(R.wall(nx, ny, 0, 8, 1, north, outside) or {}) do
+                                        if wallKind(m) == "writing" then return m end
+                                    end
+                                end
+                                for step = 1 - k, #run - k do
+                                    if step ~= 0 then
+                                        local m = at(step)
+                                        assert(m and m[1] == l[1] and m[2] == run[k + step],
+                                            "desenho quebrado em " .. x .. "," .. y .. (north and "N" or "W") .. " passo " .. step)
+                                    end
+                                end
+                                if k == 1 then whole = whole + 1 end
+                            end
+                        end
+                    end
+                end
+            end
+            assert(seen > 200 and whole > 60, "pouca pichação: " .. seen .. "/" .. whole)
+        end
+    end,
+
+    -- o desenho do trecho não depende de dentro/fora (só se aparece): uma fileira que cruza a
+    -- porta da varanda perde peças, nunca emenda dois desenhos
+    dressing_rules_writing_same_inside_and_outside = function()
+        local R = load()
+        local both = 0
+        for x = 0, 79 do
+            for y = 0, 79 do
+                for _, north in ipairs({ true, false }) do
+                    local a, b
+                    for _, l in ipairs(R.wall(4000 + x, 4000 + y, 0, 3, 1, north, true) or {}) do
+                        if wallKind(l) == "writing" then a = l end
+                    end
+                    for _, l in ipairs(R.wall(4000 + x, 4000 + y, 0, 3, 1, north, false) or {}) do
+                        if wallKind(l) == "writing" then b = l end
+                    end
+                    if a and b then
+                        both = both + 1
+                        assert(a[1] == b[1] and a[2] == b[2], "desenho diferente dentro e fora")
+                    end
+                end
+            end
+        end
+        assert(both > 50, "nada pra comparar: " .. both)
+    end,
+
+    -- "casa destruída" (sprint 0034): parede de dentro quase sempre com algo, em até WALL_LAYERS
+    -- camadas de tipos diferentes, de baixo pra cima rachadura, sujeira, sangue, pichação
+    dressing_rules_inside_walls_ruined = function()
+        local R = load()
+        assert(R.WALL_LAYERS and R.WALL_LAYERS >= 2 and R.WALL_LAYERS <= 3)
+        local walls, dressed, layers, three, n = 0, 0, 0, 0, {}
+        for _, ls in pairs(wallsOf(R, false, 1)) do
+            walls = walls + 1
+            if ls then
+                dressed = dressed + 1
+                layers = layers + #ls
+                if #ls == 3 then three = three + 1 end
+                assert(#ls <= R.WALL_LAYERS, "camadas demais: " .. #ls)
+                local kinds, last = {}, 0
+                for _, l in ipairs(ls) do
+                    local k = wallKind(l)
+                    assert(k ~= "vines", "trepadeira dentro")
+                    assert(not kinds[k], "tipo repetido na parede: " .. k)
+                    kinds[k] = true
+                    n[k] = (n[k] or 0) + 1
+                    assert(ORDER[k] > last, "ordem das camadas: " .. k)
+                    last = ORDER[k]
+                end
+            end
+        end
+        assert(dressed / walls >= 0.9, "parede de dentro limpa: " .. dressed / walls)
+        assert(layers / dressed >= 1.6, "camadas por parede de dentro: " .. layers / dressed)
+        assert(three / walls >= 0.1, "pouca parede com 3 camadas: " .. three / walls)
+        -- "apagadas, acabadas, sujas" (Johan): dentro, a sujeira não fica atrás do sangue
+        assert((n.grime or 0) >= (n.blood or 0), "dentro: sujeira " .. (n.grime or 0) .. ", sangue " .. (n.blood or 0))
+    end,
+
+    -- fora: uma camada por lado, como antes; sangue continua mandando, pichação entra
+    dressing_rules_outside_walls_one_layer = function()
+        local R = load()
+        local n = {}
+        for _, ls in pairs(wallsOf(R, true, 1)) do
+            if ls then
+                assert(#ls == 1, "parede de fora com " .. #ls .. " camadas")
+                local k = wallKind(ls[1])
+                n[k] = (n[k] or 0) + 1
+            end
+        end
+        local writing = n.writing or 0
+        assert(writing > 150, "pouca pichação fora: " .. writing)
+        for k, v in pairs(n) do
+            if k ~= "blood" then assert((n.blood or 0) > v, "sangue não manda fora: blood " .. (n.blood or 0) .. ", " .. k .. " " .. v) end
+        end
+    end,
+
+    -- mensagem escrita é mais de dentro; pichação, de fora
+    dressing_rules_messages_more_inside = function()
+        local R = load()
+        local function count(outside)
+            local m, g = 0, 0
+            for _, ls in pairs(wallsOf(R, outside, 1, 7, 80)) do
+                for _, l in ipairs(ls or {}) do
+                    if l[1]:find("^messages") then m = m + 1 elseif l[1]:find("^graffiti") then g = g + 1 end
+                end
+            end
+            return m, g
+        end
+        local mi, gi = count(false)
+        local mo, go = count(true)
+        assert(mi > gi, "dentro: mensagem " .. mi .. ", pichação " .. gi)
+        assert(go > mo, "fora: pichação " .. go .. ", mensagem " .. mo)
+        assert(mi / (mi + gi) > 1.5 * mo / (mo + go), "mensagem não é mais de dentro")
+    end,
+
+    -- a densidade e a névoa vermelha escalam a parede de dentro e a pichação
+    dressing_rules_walls_scale_with_density = function()
+        local R = load()
+        local function measure(d, outside)
+            local layers, writing = 0, 0
+            for _, ls in pairs(wallsOf(R, outside, d, 4, 50)) do
+                for _, l in ipairs(ls or {}) do
+                    layers = layers + 1
+                    if wallKind(l) == "writing" then writing = writing + 1 end
+                end
+            end
+            return layers, writing
+        end
+        local low, wLow = measure(0.5, false)
+        local mid, wMid = measure(1, false)
+        local red, wRed = measure(R.density(1, true), false)
+        assert(low < mid and mid < red, "camadas dentro: " .. low .. " " .. mid .. " " .. red)
+        assert(wLow < wMid and wMid < wRed, "pichação dentro: " .. wLow .. " " .. wMid .. " " .. wRed)
+        local _, oMid = measure(1, true)
+        local _, oRed = measure(R.density(1, true), true)
+        assert(oMid < oRed, "pichação fora: " .. oMid .. " " .. oRed)
+    end,
+
+    -- andar e voltar: a mesma parede dá o mesmo desenho; período novo, outro
+    dressing_rules_walls_deterministic = function()
+        local R = load()
+        local function key(ls)
+            if not ls then return "-" end
+            local t = {}
+            for _, l in ipairs(ls) do t[#t + 1] = l[1] .. l[2] end
+            return table.concat(t, ";")
+        end
+        local first = {}
+        for x = 0, 29 do
+            for y = 0, 29 do
+                for _, outside in ipairs({ true, false }) do
+                    first[x .. "," .. y .. tostring(outside)] = key(R.wall(600 + x, 600 + y, 0, 3, 1, true, outside))
+                end
+            end
+        end
+        R = load()
+        local diff = 0
+        for x = 0, 29 do
+            for y = 0, 29 do
+                for _, outside in ipairs({ true, false }) do
+                    local a = key(R.wall(600 + x, 600 + y, 0, 3, 1, true, outside))
+                    assert(a == first[x .. "," .. y .. tostring(outside)], "mudou sem mudar a entrada")
+                    if a ~= key(R.wall(600 + x, 600 + y, 0, 4, 1, true, outside)) then diff = diff + 1 end
+                end
+            end
+        end
+        assert(diff > 600, "período novo quase igual: " .. diff)
     end,
 }

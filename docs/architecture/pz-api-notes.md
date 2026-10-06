@@ -1179,10 +1179,13 @@ vanilla usa `0..3`, `8..11`, `16..19` pra parede W (`IsoGridSquare.splatBlood` 5
 | `overlay_grime_wall_01_` | 46 | 9 W, 9 N (cantos e pilares fora) |
 | `d_wallcracks_1_` | 72 | 24 W, 24 N |
 | `f_wallvines_1_` | 72 | 24 W, 24 N (4 estágios) |
+| `overlay_graffiti_wall_01_` | 112 (0–98, 100–108, 112–115) | 22 desenhos W (47 peças), 25 N (64 peças); fora o 92 (sprint 0034) |
+| `overlay_messages_wall_01_` | 36 (0–21, 24–31, 34–39) | 6 desenhos W (20 peças), 3 N (10 peças); fora 34–39 (sprint 0034) |
 
 Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_floor_small/med/large`
-(1x), `overlay_graffiti_wall_01/02`, `overlay_messages_wall_01` (texto legível: não é Outro Mundo),
-`d_floorleaves_1_` (12), `floors_burnt_01_` (29).
+(1x), `overlay_graffiti_wall_02_` (64, não auditado). `d_floorleaves_1_` (12) e
+`floors_burnt_01_` (29) entraram no chão na 0023. Lixo, objeto avariado e parede queimada: §16.6
+(casa destruída).
 
 ### 16.4 Custo
 
@@ -1311,6 +1314,38 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido
   a borda da tela pode ver o anel ainda enchendo; a tela dividida (só o jogador 0).
+
+**Casa destruída (sprint 0034).** O Johan quer a erosão nas casas: "apagadas, acabadas, sujas,
+pichadas". A parede de dentro ganha até 3 camadas e entram pichação e mensagem. Só leitura do
+jogo instalado (B42.21): packs, arquivos de texto, Lua e bytecode. A regra está na
+[ADR-017](adr-017-outro-mundo-anexado.md), decisão 7. A medida sai de
+`scripts/audit_wall_sprites.py` → `tests/wall_sprites.lua`.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Pichação e mensagem estão no `Tiles2x.pack` (não no `Overlays2x`), em quadro de 128×256 como as outras paredes | CONFIRMED (pack) | `scripts/audit_wall_sprites.py` |
+| Lado por três caminhos, que batem: recorte (metade esquerda = W), `tileDepthTextureAssignments.txt` (`preset_depthmaps_01_4` = W, `_5` = N) e `attachedW`/`attachedN` na definição do tile | CONFIRMED | `media/newtiledefinitions.tiles.txt:162363` (`overlay_graffiti_wall_01_0`: `WallOverlay`, `attachedW`), `:162475` (`_16`: `attachedN`), `:164043` (`overlay_messages_wall_01_6`: `attachedW`); `tests/wall_sprites.lua` |
+| Divergentes, fora do pool: `overlay_graffiti_wall_01_92` (recorte e profundidade W, definição `attachedN`); `overlay_messages_wall_01_34..39` ("WE SHOOT ON SIGHT": só `WallOverlay`, sem `attachedW/N`, conteúdo até x = 127, além da face) | CONFIRMED | `media/newtiledefinitions.tiles.txt:164211-164246` (34 a 39); `tests/wall_sprites.lua` |
+| São desenhos de **1 a 5 paredes** cortados em peças de um tile. A peça que continua no vizinho encosta na borda da face (`hi` de uma, `lo` da seguinte). A ordem no sheet é a da tela, da esquerda pra direita: parede N em x crescente (`XToScreen = 32T(x − y)`), parede W em y decrescente. Montados assim, os desenhos leem certo ("KEEP OUT", "ALIVE INSIDE", "TEA BOYS") | CONFIRMED (medida + montagem conferida a olho, fora do repo) | `tests/wall_sprites.lua` (`lo`/`hi`); `IsoUtils.XToScreen` |
+| Quem anexa no vanilla: o `CellLoader` põe `WallOverlay`/`attachedN/W` na parede ao carregar o mapa → nome vanilla, **não** entra no `R.own` | CONFIRMED (bytecode) | `CellLoader.DoTileObjectCreation` 1673 (`WallOverlay`), 1711 (`attachedW`), 1790 (`attachedN`) |
+| Propriedade de sprite anexado não vai pro square: `RecalcProperties` soma só `IsoObject.getProperties()` (o sprite do objeto) | CONFIRMED (bytecode) | `IsoGridSquare.RecalcProperties` 150 (`IsoObject.getProperties`) → 232 (`PropertyContainer.AddProperties`) |
+| **A coleta lê os anexos**: `forageSystem.getAffinitySpriteNames(obj)` junta o nome do sprite e o de cada `IsoSpriteInstance` anexado (`getName` = `parentSprite.getName`). Usado pelo ícone de coleta do cliente e pelo sorteio do servidor | CONFIRMED (Lua + bytecode) | `shared/Foraging/forageSystem.lua:1569-1584`; `client/Foraging/ISSearchManager.lua:321-335`; `server/Foraging/forageServer.lua:141-150`; `IsoSpriteInstance.getName` 0–7 |
+| `trash_01_*` é afinidade "trash" da coleta, objeto móvel (`IsMoveAble`, `CanScrap`, `CustomName = Trash`). 31 peças passam no critério de decalque do chão (≥ 95% no losango, nada acima dele). **Não usado**: anexado, mudaria a coleta | CONFIRMED | `forageSystem.lua:245-261`; `newtiledefinitions.tiles.txt:232063`; `scripts/audit_floor_sprites.py` (`measure`) |
+| `d_plants_1_*` (o mato que o mod anexa fora desde a 0023) é afinidade `genericPlants` da coleta: na névoa, o mato do mod pode dar ícone de coleta de planta | CONFIRMED (efeito colateral que já existia) | `forageSystem.lua:189-200` |
+| `damaged_objects_01_*`: objeto em pé (sobe 25 a 125 px acima do losango, `StopCar`). **Não usado** | CONFIRMED | `newtiledefinitions.tiles.txt:30935`; medida |
+| `walls_burnt_01_*`: sprite de parede inteira (`WallW`/`wall`, profundidade de parede e de canto, opaco na face toda), não decalque. **Não usado** | CONFIRMED | `newtiledefinitions.tiles.txt:253314`; `tileDepthTextureAssignments.txt` |
+
+- **Escolha:** a parede de dentro empilha até 3 tipos diferentes (rachadura, sujeira, sangue,
+  escrita em cima). Pichação e mensagem entram como desenho inteiro, num trecho de 6 paredes da
+  fileira. O desenho do trecho é o mesmo dentro e fora; só a chance de aparecer muda. Só pichação
+  e mensagem entram de novo; o lixo fica pra quando houver um decalque sem afinidade.
+- **Custo** (`overlays_budget`): fora, quase igual (enchendo ~2060 chamadas e 417 invalidações,
+  contra ~2000 e 411). Casa de estresse (parede N e W em todo square, densidade 3,2): enchendo
+  ~1980 → ~2360 chamadas, 387 → 656 invalidações por atualização. Teto: 80 × (5 + 2 × 3).
+- **UNKNOWN (roteiro da 0034, casa destruída):** a escrita anexada fica em cima do recorte
+  certo (a peça é do mesmo quadro da parede); mensagem branca e apagada some em parede clara; a
+  peça cortada quando a parede vizinha da fileira é porta, janela ou falta; o tempo de quadro
+  numa casa grande com 3 camadas por parede; o ícone de coleta de planta no mato do mod.
 
 ## 17. Dissolve e bloom (sprint 0018)
 
