@@ -98,10 +98,11 @@ local SIDES = { { "N", true }, { "W", false } }
 -- reg[k] (k = "x,y,z" .. "F"|"N"|"W") = { obj, sq, sk, kind, x, y, z, gen, rv, list = { {inst, name} } }
 local reg, nFloor, nWall
 -- seen[sk] = pack(x, y): square decidido (sem chunk: tenta de novo). Andando, a volta não esquece
--- nem recomeça do centro (o que já viu custa só a chave, e ela chega no anel de fora); o corte
--- esquece o que passou de radius + SLACK, e o tamanho fica o da área do raio, não o do caminho.
--- nSeen: quantos, contado por cima (o corte reconta).
-local seen, nSeen
+-- nem recomeça do centro (o que já viu custa só a chave, e ela chega no anel de fora); a
+-- atualização esquece o que passou de radius + SLACK, e o tamanho fica o da área do raio, não o
+-- do caminho. nSeen: quantos, contado por cima (o esquecimento reconta). forX/Y: a posição no
+-- último esquecimento.
+local seen, nSeen, forX, forY
 local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
 local cursor, gen, cutX, cutY
 local updX, updY -- a posição na atualização anterior (LIGHT_DIV)
@@ -119,7 +120,7 @@ local revealFns = {}
 
 local function forget()
     reg, nFloor, nWall = {}, 0, 0
-    seen, nSeen, held = {}, 0, {}
+    seen, nSeen, held, forX, forY = {}, 0, {}, nil, nil
     cursor, gen, cutX, cutY = 1, nil, nil, nil
     updX, updY = nil, nil
     density, pendingD, pendingAt = nil, nil, nil
@@ -145,6 +146,8 @@ local function pack(x, y)
     return x * SPAN + y + HALF
 end
 
+local visits = 0 -- chaves do "já visto" percorridas pelo esquecimento, desde o carregamento
+
 -- Esquece o que passou de radius + SLACK (só Lua; apaga depois da volta, como o stripWhere). O
 -- que volta pro raio é olhado de novo; o pendente esquecido o drain pula. Esqueceu mais do que
 -- guardou (teleporte): lugar novo, a volta recomeça do mais perto.
@@ -157,8 +160,14 @@ local function forgetFar(px, py)
         if dx * dx + dy * dy > far then out[#out + 1] = sk else n = n + 1 end
     end
     for _, sk in ipairs(out) do seen[sk] = nil end
+    visits = visits + n + #out
     nSeen = n
     if #out > n then cursor = 1 end
+end
+
+-- Trabalho Lua do esquecimento (testes): quantas chaves do "já visto" ele percorreu até agora.
+function O.seenVisits()
+    return visits
 end
 
 -- Quantos squares o "já visto" guarda (testes e debug; conta na hora).
@@ -366,7 +375,7 @@ local function dress(cell, x, y, z, sk, per, d, rv)
 end
 
 -- Revelando: veste o pendente cuja vez chegou (fatias até el / BUCKET_MS), até budget squares.
--- O que saiu do raio, de outro andar ou da ação em curso volta pra volta; o que o corte esqueceu
+-- O que saiu do raio, de outro andar ou da ação em curso volta pra volta; o que o esquecimento tirou
 -- já voltou (a volta o põe de novo no pendente, se precisar). Devolve o que sobrou.
 local function drain(cell, px, py, pz, per, d, el, budget)
     local top = math.floor(el / O.BUCKET_MS)
@@ -434,16 +443,14 @@ local function hardR2()
     return (D.MAX_RADIUS + O.SLACK) * (D.MAX_RADIUS + O.SLACK)
 end
 
--- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai. O "já visto"
--- esquece o longe junto. Devolve quantos alvos saíram.
+-- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai. Devolve quantos
+-- alvos saíram.
 local function cut(px, py)
     local hard = hardR2()
-    local n = stripWhere(function(e)
+    return stripWhere(function(e)
         local dx, dy = e.x - px, e.y - py
         return dx * dx + dy * dy > hard
     end)
-    forgetFar(px, py)
-    return n
 end
 
 -- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote (light: ÷ LIGHT_DIV).
@@ -587,6 +594,12 @@ local function update(busy)
     prune(on, px, py, pz, now, moving)
     if not on then return end
     verify()
+    -- o esquecimento percorre o "já visto" inteiro: aqui, não no corte (de carro, todo tick)
+    local gx, gy = fx - (forX or fx), fy - (forY or fy)
+    if not forX or gx * gx + gy * gy >= O.MOVE_TILES * O.MOVE_TILES then
+        forgetFar(px, py)
+        forX, forY = fx, fy
+    end
     scan(px, py, pz, per, d, now, busy)
 end
 

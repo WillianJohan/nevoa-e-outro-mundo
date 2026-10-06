@@ -1216,19 +1216,31 @@ return {
             assert(farthest(G, G.p.x, G.p.y) > D().MAX_RADIUS - 2, "não encheu até o raio (teste não mede)")
             local limit = D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5
             local cost, worst = 0, 0
+            local passes, visited, pass = 0, 0, 0
             for _ = 1, ticks do
                 G.p.x = G.p.x + step
-                local j = G.java + G.sqCalls
+                local j, v = G.java + G.sqCalls, O().seenVisits()
                 G.tick(1)
                 cost = math.max(cost, G.java + G.sqCalls - j)
+                v = O().seenVisits() - v
+                if v > 0 then passes = passes + 1 end
+                visited, pass = visited + v, math.max(pass, v)
                 local f = farthest(G, G.p.x, G.p.y)
                 worst = math.max(worst, f)
                 assert(f <= limit, "carro a " .. step .. " tiles/tick: anexo a " .. f .. " tiles")
                 assert(f + step < 48, "carro a " .. step .. " tiles/tick: o tick seguinte grava anexo a " .. (f + step))
             end
-            print(string.format("[budget] estresse de carro a %.1f tiles/tick: até %d chamadas Java por tick, anexo mais longe %.1f tiles",
-                step, cost, worst))
+            print(string.format("[budget] estresse de carro a %.1f tiles/tick: até %d chamadas Java por tick, anexo mais longe %.1f tiles;"
+                .. " \"já visto\" percorrido %d vezes em %d ticks (até %d chaves, média %.0f por tick)",
+                step, cost, worst, passes, ticks, pass, visited / ticks))
             assert(cost <= 2500, "carro a " .. step .. " tiles/tick: " .. cost .. " chamadas Java num tick")
+            -- review final da 0035: o esquecimento é só Lua e o teste de chamadas Java não o vê.
+            -- No máximo uma volta no "já visto" por atualização, nunca por tick
+            local most = math.ceil(ticks / O().UPDATE_TICKS) + 1
+            assert(passes <= most, string.format("carro a %.1f tiles/tick: \"já visto\" percorrido %d vezes em %d ticks (teto %d)",
+                step, passes, ticks, most))
+            local cap = disk(D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5)
+            assert(pass <= cap, string.format("carro a %.1f tiles/tick: %d chaves numa volta (teto %d)", step, pass, cap))
             G.seconds(8)
             assert(laidOut(G, O().radius() - 1) > 1500, "carro a " .. step .. " tiles/tick: parou e não encheu")
         end

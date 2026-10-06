@@ -1371,9 +1371,12 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
   - o `seen` não é mais zerado a cada 8 tiles: a âncora e o `RESEEN_TILES` saíram;
   - o square já visto custa só a chave, contada nas olhadas (`SCAN_BUDGET` × `LOOK_MULT`) e fora
     do lote de 80 que vai ao Java;
-  - o corte no tick (a cada `MOVE_TILES`) esquece do `seen` o que passou de `radius` + `SLACK`.
-    Assim o `seen` fica do tamanho da área do raio, não do caminho. O valor é x e y num número só
-    (`pack`). Se o corte esquece mais do que guarda (teleporte), a volta recomeça do mais perto.
+  - a atualização, se o jogador andou `MOVE_TILES` desde a última vez, esquece do `seen` o que
+    passou de `radius` + `SLACK` (antes da varredura). Assim o `seen` fica do tamanho da área do
+    raio, não do caminho. O valor é x e y num número só (`pack`). Se o esquecimento tira mais do
+    que guarda (teleporte), a volta recomeça do mais perto. Até o review final da 0035 isso rodava
+    no corte do tick: de carro (corte todo tick), uma volta no `seen` por tick, só Lua, que o
+    teste de chamadas Java não via. A margem do save não depende dele (é o `stripWhere` do corte).
   - A 3 tiles/s, as faixas de 15–20, 20–25 e 25–30 tiles vão de 78%, 39% e 28% pra 100%, 99% e
     87%. A 6 tiles/s, de 32%, 22% e 18% pra 95%, 88% e 67%.
   - Custo a pé: ~900 → ~1400 chamadas Java por atualização (estresse: ~1360 → ~2400, teto
@@ -1414,6 +1417,12 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
     20 alvos por atualização; o que fica pra trás o corte leva.
   - Teste: `overlays_car_cost_stress` (0,5, 1 e 2 tiles por tick, teto 2500, margem em todo
     tick, enche ao parar).
+  - **Trabalho Lua do esquecimento (review final da 0035).** O mesmo teste conta as chaves do
+    `seen` percorridas (`NOM_FogOverlays.seenVisits`). Voltas no `seen` em 220 ticks: antes 55,
+    110 e 220 (0,5, 1 e 2 tiles por tick, média de 345, 350 e 261 chaves por tick); depois 21, 21
+    e 20 (média de 130, 60 e 15). Trava: no máximo uma volta por atualização
+    (⌈ticks ÷ `UPDATE_TICKS`⌉ + 1) e até 5417 chaves numa volta. Cobertura, margem e chamadas
+    Java não mudaram.
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido
