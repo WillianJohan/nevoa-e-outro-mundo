@@ -182,7 +182,82 @@ Depende da Tarefa 2 (mesmos arquivos do evento).
 
 ---
 
-### Tarefa 4: documentação da sprint (por último, depois da Tarefa 5)
+### Tarefa 6: aparelhos do Outro Mundo (TV, rádio, caixa de som, carro)
+
+**Pedido do Johan (2026-10-06):** "onde tem rádio, caixa de som, até carro, dá pra colocar sons de estática... coisas que venham de outro mundo tentando se comunicar".
+
+**Decisões do Johan:**
+- entra nesta sprint;
+- qualquer aparelho fala, ligado ou não, e o ligado tem prioridade e fala mais alto.
+
+**Material de base** (não versionado; leia antes):
+- **Proposta:** `.superpowers/sound/guia-sonoro.md`, §4.
+- **Pesquisa de API, com evidência:** `.superpowers/sound/api-aparelhos.md`.
+- **Protótipos:** `.superpowers/sound/aparelhos/` (`proto_aparelhos.py`, `nom_synth.py` em `.superpowers/sound/`).
+
+**Arquivos:**
+- Criar:
+  - `shared/NOM_DeviceRules.lua`: regras puras, testadas com luajit;
+  - `client/NOM_Devices.lua`: varredura e reprodução, só no cliente; no solo, o mesmo processo;
+  - `tests/test_device_rules.lua` e `tests/test_devices.lua`, registrados em `tests/run.lua`.
+- Modificar:
+  - `scripts/gen_sounds.py`: porte da síntese dos protótipos. A base comum (`nom_synth.py`) pode virar `scripts/nom_synth.py`, importada pelo `gen_sounds.py`;
+  - o arquivo de sons em `media/scripts` que já declara os sons do mod;
+  - `docs/architecture/pz-api-notes.md` (§ nova com as evidências usadas).
+- Opção: se for preciso desligar a feature, use a opção de sandbox de ambiente que já existe (`FogAmbience`). Não crie opção nova sem necessidade.
+
+**Comportamento** (§4 do guia, com estes cortes):
+- **Quem fala:**
+  - **TV** (`IsoTelevision`): sons `tv*`.
+  - **Rádio e aparelho de som** (`IsoRadio`/`IsoWaveSignal` que não é TV): sons `radio*`, ou `caixa_de_som` pra alguns. Sorteio estável por coordenada, pra o mesmo aparelho sempre ter a mesma "voz".
+  - **Rádio de carro** (peça `"Radio"`): som `carro`.
+  - Tudo vem da lista do jogo (`getZomboidRadio():getDevices()`). Se o rádio do carro não aparecer nela, percorra os veículos com `:iterator()`.
+  - Ligado com energia tem prioridade e volume maior (a regra de energia vanilla está na pesquisa).
+- **Quando fala:**
+  1. **Presságio** (`NOM_FogState`, Tarefa 5): todo aparelho num raio de 25 tiles toca um estouro curto de estática (som novo de ~3 s, `NOM_DevBurst`), cortado quando a sirene chega.
+  2. **Fuga** (`rising` sem `on`): nada.
+  3. **Névoa aberta (`on`):** a cada 90 a 180 s reais (mínimo de 60 s), o aparelho elegível mais perto entre 6 e 18 tiles toca um evento. Nunca dois ao mesmo tempo pro mesmo jogador. O mesmo arquivo não repete em menos de 3 chamados.
+  4. **Sem-rosto a até 10 tiles de um aparelho:** esse aparelho chia junto, com o `NOM_SemRosto.nearest` que o cliente já tem.
+     - A respiração depois do grito da vermelha só entra se o cliente já receber um sinal de grito (o `NOM_ScreenFx` tem um flash de grito; confira). Se não houver, fica pra depois e vai no relatório.
+  5. **Calmaria, sem névoa ou jogador morto:** silêncio, e o som que estiver tocando para.
+- **Som por névoa:**
+  - branca: `tv`, `radio`, `caixa_de_som`, `carro`;
+  - vermelha: `tv_vermelha`, `radio_vermelha`; caixa e carro usam a versão branca até ganharem a vermelha.
+  - Os da preta (`tv_preta`, `radio_preta`) são gerados e declarados, mas só tocam na 0038. Deixe o ponto único de escolha por tipo de névoa pronto.
+- **Tocar:**
+  - `getWorld():getFreeEmitter(x+0.5, y+0.5, z):playSoundImpl(nome, nil)`, local, sem pacote; no carro, `vehicle:playSoundImpl`;
+  - guardar o emissor e o id e parar com `stopSoundLocal(id)`;
+  - parar também se o jogador passar de 20 tiles, porque o FMOD não zera depois do `distanceMax`.
+  - Os sons são declarados com `distanceMin` 2 e `distanceMax` 18 (veja como os sons do mod já são declarados) e volume de 0,35 a 0,5 do da sirene. A TV é mais baixa e mais rara.
+- **Custo:** varrer a lista no máximo a cada ~1 s, filtrando por distância ao quadrado. Nada de varrer quadrados.
+- **ADR-005/007:** é atmosfera local do cliente. Não chama zumbi (nada de `addSound`) e não muda o estado do aparelho.
+
+- [ ] **Passo 1: testes que falham.**
+  - **Regras:**
+    - elegibilidade por distância;
+    - o mais perto na faixa de 6 a 18 tiles;
+    - intervalo entre 90 e 180 s com mínimo de 60;
+    - sem repetição em 3 chamados;
+    - nada na fuga, na calmaria ou sem névoa;
+    - estouro no presságio em 25 tiles;
+    - ligado com prioridade;
+    - lista de sons por névoa;
+    - "voz" estável por coordenada.
+  - **Cliente**, com fakes fiéis (lista de dispositivos, emissor com `playSoundImpl`/`stopSoundLocal`, veículo com a peça `Radio`):
+    - toca no aparelho certo;
+    - para fora do raio;
+    - para quando a névoa acaba;
+    - o estouro corta na sirene.
+- [ ] **Passo 2:** rodar `luajit tests/run.lua`. Esperado: FAIL.
+- [ ] **Passo 3:** implementar.
+  - Portar a síntese pro `scripts/gen_sounds.py` (nomes `NOM_DevTv`, `NOM_DevTvRed`, `NOM_DevTvBlack`, `NOM_DevRadio`, `NOM_DevRadioRed`, `NOM_DevRadioBlack`, `NOM_DevSpeaker`, `NOM_DevCar`, `NOM_DevBurst`).
+  - Gerar os sons e commitar os `.ogg`, como os outros.
+- [ ] **Passo 4:** rodar `./run-tests.sh`. Esperado: verde.
+- [ ] **Passo 5: commit.** `git commit -m "Aparelhos do Outro Mundo: TV, rádio, caixa de som e carro chiam na névoa"`
+
+---
+
+### Tarefa 4: documentação da sprint (por último, depois das Tarefas 5 e 6)
 
 - `README.md` da sprint, com o roteiro de teste;
 - GDD (`world-states`, `atmosphere`, `Overview`);
