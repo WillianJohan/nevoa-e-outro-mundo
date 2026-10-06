@@ -224,6 +224,19 @@ return {
         G.seconds(5)
         assert(G.all[0].desat == 1, "vermelha não chegou ao canal")
     end,
+    -- review final da 0034: com o shader a vinheta também sobe na fuga (visible), na cor da
+    -- subida (visibleRed); as camadas do Outro Mundo (NOM_ScreenFx) seguem esperando a névoa
+    vignette_channel_rises_with_siren = function()
+        local G = setup({ shader = true })
+        NOM_FogState.setRising(true, true)
+        G.seconds(5)
+        assert(G.override[0] == true and G.all[0] and G.all[0].blur == 1, "o canal não subiu na fuga")
+        assert(G.all[0].desat == 1, "a subida vermelha não chegou ao canal")
+        assert(NOM_ScreenFx.state.fog == 0 and NOM_ScreenFx.state.red == 0, "o Outro Mundo da tela abriu na fuga")
+        NOM_FogState.setRising(false)
+        G.seconds(NOM_ScreenFxRules.FADE_MS / 1000 + 1)
+        assert(G.override[0] == false and G.all[0].blur == 0, "segurou o canal depois da sirene cancelada")
+    end,
     -- override com fade do forrageamento em andamento congelaria o fade (isShaderEnabled
     -- preso em true): espera acabar
     vignette_channel_waits_for_search_fade = function()

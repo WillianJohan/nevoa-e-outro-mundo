@@ -38,6 +38,9 @@ NOM_ScreenFx = {
     STATIC_JITTER = 128, -- a estática da névoa (sprint 0034), na textura de 256 px
     -- fog/red (0..1, com fade), static (volume do rádio), flashAt/flashStrength (grito)
     state = NOM_ScreenFxRules.new(),
+    -- fog/red da névoa que se vê (subida e névoa), com o mesmo fade: o canal da vinheta do
+    -- shader (NOM_FogVignette) sobe já na fuga, como a vinheta sem shader
+    seen = NOM_ScreenFxRules.new(),
     ui = nil,
     -- desenhos de outros sistemas no mesmo overlay, com ou sem névoa: função(el, agora).
     -- Sem nada a desenhar, cada uma sai sem tocar no Java (as brasas do Eco, sprint 0018).
@@ -62,7 +65,7 @@ local function tex(path)
 end
 
 function S.reset()
-    S.state = R.new()
+    S.state, S.seen = R.new(), R.new()
     lastMs = nil
 end
 
@@ -79,7 +82,16 @@ function S.sample(now)
     if visible then red = F.visibleRed() else red = F.omenRed end
     R.stepStatic(S.state, { omenAt = F.omenAt, sirenAt = F.sirenAt, visible = visible,
         kind = red and "red" or "white" }, now)
+    R.step(S.seen, { fog = visible, red = visible and F.visibleRed() }, dt)
     return R.step(S.state, { fog = F.on, red = F.red }, dt)
+end
+
+-- O estado do canal da vinheta do shader: a névoa que se vê (S.seen) com o chiado e o grito
+-- do estado de sempre (os dois só existem com a névoa de jogo).
+function S.sampleSeen(now)
+    local s = S.sample(now)
+    return { fog = S.seen.fog, red = S.seen.red, static = s.static, flashAt = s.flashAt,
+        flashStrength = s.flashStrength }
 end
 
 local function frame(now)
