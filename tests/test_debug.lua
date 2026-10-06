@@ -843,6 +843,26 @@ return {
             assert(not (s.command == "debugMove" and s.args.x == 140), "puxou pra longe do jogador")
         end
     end) end,
+    -- review final da 0033 (M4): sem ID de rede ninguém acharia o zumbi; o dedicado avisa
+    debug_pull_dedicated_without_online_id_fails = function() run(function()
+        local G = setup({ server = true, loadClient = false })
+        local p = G.player({ x = 100, y = 100 })
+        G.zombie({ x = 105, y = 100, id = 1 })
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "debug", p, { op = "pull", id = -1, x = 100, y = 100, z = 0 })
+        for _, s in ipairs(G.sentServer) do assert(s.command ~= "debugMove", "mandou debugMove sem ID de rede") end
+        local r = G.sentServer[#G.sentServer]
+        assert(r and r.player == p and r.command == "debugReply" and r.args.msg:find("sem ID de rede", 1, true),
+            "resposta: " .. tostring(r and r.args.msg))
+    end) end,
+    -- o servidor já conferiu a permissão: o dono move mesmo sem -debug no cliente dele
+    debug_move_owner_without_debug_moves = function() run(function()
+        local G = setup({ client = true, debug = false, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        local mine = G.zombie({ x = 105, y = 100, id = 1, online = 8 })
+        assert(NOM_Debug == nil)
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugMove", { id = 8, x = 100, y = 100, z = 0 })
+        assert(#G.moves == 1 and G.moves[1].z == mine, "dono sem -debug não moveu")
+    end) end,
     debug_move_only_owner_moves = function() run(function()
         local G = setup({ client = true, loadServer = false })
         G.player({ x = 100, y = 100 })

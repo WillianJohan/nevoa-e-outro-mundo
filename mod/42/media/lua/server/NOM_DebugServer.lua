@@ -145,8 +145,9 @@ end
 
 -- NOM.getZombie (sprint 0033): puxa um zumbi pro tile de quem pede. Só o dono simula o
 -- zumbi (ADR-005): no dedicado o servidor não move a cópia dele, avisa todos
--- (debugMove) e o cliente dono move (client/NOM_Debug.lua). No solo este processo é o dono:
--- move direto. Sem ID de rede (-1, como no solo) vale o mais perto de quem pede.
+-- (debugMove) e o cliente dono move (client/NOM_Debug.lua, mesmo sem -debug). No solo este
+-- processo é o dono: move direto. Sem ID de rede (-1, como no solo) vale o mais perto de
+-- quem pede; no dedicado, -1 é recusado.
 -- Não reaproveita o semRostoMove: o cliente dele só move se nenhum jogador vê o destino
 -- e reserva o tile do Sem-rosto; o jogador está parado no destino, então nunca moveria.
 function ops.pull(player, a)
@@ -154,6 +155,7 @@ function ops.pull(player, a)
     local reach = NOM_DebugRules.PULL_REACH
     if not (dx * dx + dy * dy <= reach * reach and a.z == math.floor(player:getZ())) then return "pull longe" end
     if isServer() then
+        if a.id == -1 then return "zumbi sem ID de rede" end -- nenhum cliente acharia
         sendServerCommand(MODULE, "debugMove", { id = a.id, x = a.x, y = a.y, z = a.z })
         return "zumbi puxado x=" .. a.x .. " y=" .. a.y
     end

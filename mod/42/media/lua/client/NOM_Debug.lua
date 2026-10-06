@@ -16,15 +16,43 @@
 -- Tudo vai pro servidor (server/NOM_DebugServer.lua), que confere e decide. No solo
 -- o sendClientCommand vira OnClientCommand no mesmo processo (SinglePlayerClient).
 -- A forma com jogador: a de 3 argumentos chega no solo sem jogador (playerIndex -1).
-if isServer() or not getDebug() then return end
+if isServer() then return end
+
+require "NOM_SemRosto"
+
+local MODULE = "NevoaEOutroMundo"
+
+-- Dedicado: o servidor avisa todos (op pull); só o dono do zumbi (não remoto) move a
+-- cópia, e o servidor aceita a posição do dono (mesmo caminho do semRostoMove,
+-- client/NOM_FogClient.lua, sem a conferência de vista: o destino é o jogador).
+-- Fica antes do return do -debug: quem confere a permissão é o servidor (ops.pull), e o
+-- dono do zumbi pode estar sem -debug.
+local function moveIfOwner(args)
+    if args.id == -1 then return end
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z:getOnlineID() == args.id then
+            if not z:isRemoteZombie() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
+            return
+        end
+    end
+end
+
+Events.OnServerCommand.Add(function(module, command, args)
+    if module ~= MODULE or command ~= "debugMove" then return end
+    if type(args.id) == "number" and type(args.x) == "number" and type(args.y) == "number"
+        and type(args.z) == "number" then
+        moveIfOwner(args)
+    end
+end)
+
+if not getDebug() then return end
 
 require "NOM_VariantRules"
 require "NOM_DebugRules"
 require "NOM_NightStats"
 require "NOM_FogState"
-require "NOM_SemRosto"
-
-local MODULE = "NevoaEOutroMundo"
 
 NOM_Debug = {}
 
@@ -104,29 +132,11 @@ function NOM_Debug.status()
     send({ op = "status" })
 end
 
--- Dedicado: o servidor avisa todos (op pull); só o dono do zumbi (não remoto) move a
--- cópia, e o servidor aceita a posição do dono (mesmo caminho do semRostoMove,
--- client/NOM_FogClient.lua, sem a conferência de vista: o destino é o jogador).
-local function moveIfOwner(args)
-    if args.id == -1 then return end
-    local list = getCell():getZombieList()
-    for i = 0, list:size() - 1 do
-        local z = list:get(i)
-        if z:getOnlineID() == args.id then
-            if not z:isRemoteZombie() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
-            return
-        end
-    end
-end
-
 -- MP: resposta do servidor no console do cliente e variante forçada pra todos.
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "debugReply" then
         print(args.msg)
-    elseif command == "debugMove" and type(args.id) == "number" and type(args.x) == "number"
-        and type(args.y) == "number" and type(args.z) == "number" then
-        moveIfOwner(args)
     elseif command == "debugVariant" and type(args.id) == "number" then
         NOM_VariantRules.forced[args.id] = args.kind
     elseif command == "debugForced" and type(args.list) == "table" then -- entrou depois
