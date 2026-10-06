@@ -59,6 +59,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
+| `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.

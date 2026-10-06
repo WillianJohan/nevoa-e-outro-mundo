@@ -51,6 +51,13 @@ final class Flow {
     static final int LOUD_RADIUS = 20;     // som com raio de pelo menos isso (tiro, explosão) empurra a névoa
     static final int MAX_BLASTS = 8;
     static final float STILL_DECAY = 0.08f;   // 1/s, com o vácuo ligado (o da 0026)
+    // foco de vento (sprint 0033, PARAM_WIND_SOURCE): sorteado na borda de subida, sopra constante até desligar
+    static final float SOURCE_MIN_DIST = WindSource.MIN_DIST, SOURCE_MAX_DIST = WindSource.MAX_DIST;
+    static final float SOURCE_SPEED = WindSource.SPEED;       // tiles/s
+    static final float SOURCE_RADIUS = WindSource.RADIUS;     // tiles
+    static float sourceX, sourceY, sourceVX, sourceVY;        // só a thread principal escreve
+    static boolean sourceOn;
+    private static final java.util.Random sourceRandom = new java.util.Random();
     static final int PARAM_ON = 4;         // NOMRender_setParam(4, 0) desliga, (4, 1) liga
     static final int UNIT = 6;
     static final int W_OPEN = 1 << 8, N_OPEN = 1 << 9;   // na máscara empilhada, junto das flags
@@ -93,6 +100,8 @@ final class Flow {
         final float[] winds = new float[MAX_PENDING_STEPS * 2];
         int steps;
         float stillDecay;   // sorvedouro do ar parado: o vácuo atrás dos prédios (PARAM_VACUUM)
+        boolean sourceOn;   // foco de vento ligado (PARAM_WIND_SOURCE); posição e sopro em coordenadas de mundo
+        float sourceX, sourceY, sourceVX, sourceVY;
 
         boolean hasWork() { return reset || scroll || maskCount > 0 || steps > 0; }
 
@@ -213,6 +222,15 @@ final class Flow {
                 }
                 float vac = RenderContext.luaParams[RenderContext.PARAM_VACUUM];
                 in.stillDecay = STILL_DECAY * (vac < 0f ? 0f : (vac > 1f ? 1f : vac));
+                // foco de vento: na borda de subida do parâmetro sorteia outro; desligado, para de soprar
+                boolean srcWant = RenderContext.luaParams[RenderContext.PARAM_WIND_SOURCE] >= 0.5f;
+                if (srcWant && !sourceOn) pickSource(cx, cy, sourceRandom);
+                sourceOn = srcWant;
+                in.sourceOn = sourceOn;
+                in.sourceX = sourceX;
+                in.sourceY = sourceY;
+                in.sourceVX = sourceVX;
+                in.sourceVY = sourceVY;
                 for (int r = 0; r < ROWS_PER_FRAME; r++) {
                     buildRow(cell, in, maskRow);
                     maskRow = (maskRow + 1) % TILES;
@@ -259,6 +277,16 @@ final class Flow {
         } catch (Throwable t) {
             die("ERRO no fluido, simulação desligada (a névoa segue sem ela): ", t);
         }
+    }
+
+    /** Sorteia o foco de vento perto de (px, py) e loga. O sorteio em si é do WindSource (puro, testável). */
+    public static void pickSource(float px, float py, java.util.Random r) {
+        WindSource w = WindSource.pick(px, py, r);
+        sourceX = w.x;
+        sourceY = w.y;
+        sourceVX = w.vx;
+        sourceVY = w.vy;
+        RenderContext.log(String.format("vento: foco em (%.1f,%.1f) soprando (%.2f,%.2f)", sourceX, sourceY, sourceVX, sourceVY));
     }
 
     private static void die(String why, Throwable t) {
@@ -443,6 +471,7 @@ final class Flow {
                 int o = k * 5;
                 grid.impulse(in.movers[o], in.movers[o + 1], in.movers[o + 2], in.movers[o + 3], in.movers[o + 4]);
             }
+            if (in.sourceOn) grid.impulse(in.sourceX, in.sourceY, in.sourceVX, in.sourceVY, SOURCE_RADIUS);
             if (s == 0)
                 for (int k = 0; k < in.blastCount; k++) grid.blast(in.blasts[k * 3], in.blasts[k * 3 + 1], in.blasts[k * 3 + 2]);
             grid.step(STEP);
