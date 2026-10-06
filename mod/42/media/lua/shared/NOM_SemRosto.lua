@@ -185,6 +185,18 @@ function NOM_SemRosto.nearest(p)
     return best
 end
 
+-- Algum Sem-rosto da última varredura a até r tiles de (x, y), no andar zz (os aparelhos
+-- chiam junto, client/NOM_Devices.lua).
+function NOM_SemRosto.near(x, y, zz, r)
+    if not NOM_FogState.on then return false end
+    for _, z in ipairs(known) do
+        if not z:isDead() and math.floor(z:getZ()) == zz and dist(x, y, z:getX(), z:getY()) <= r then
+            return true
+        end
+    end
+    return false
+end
+
 -- report(z, x, y, z, jogador): um jogador local viu o Sem-rosto e (x, y, z) é
 -- onde ele pode reaparecer.
 function NOM_SemRosto.install(report)

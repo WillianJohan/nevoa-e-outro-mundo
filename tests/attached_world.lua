@@ -4,7 +4,8 @@
 --   addAttachedAnimSpriteInstance cria). Viva: size()/get(i) leem a lista na hora.
 -- * obj:addAttachedAnimSpriteByName(nome): nome vazio ou sem sprite (namedMap) não faz nada,
 --   nem cria sprite vazio; com sprite, uma IsoSpriteInstance do POOL vai pro fim da lista e o
---   nível do chunk é invalidado (G.invalidations).
+--   nível do chunk é invalidado (G.invalidations). O namedMap do fake: os nomes medidos no
+--   pack (tests/floor_sprites.lua, tests/wall_sprites.lua), menos G.unknown.
 -- * obj:RemoveAttachedAnim(i): índice fora não faz nada; tira o i (os de trás andam um) e a
 --   instância VOLTA PRO POOL: o próximo anexo de qualquer um reusa a mesma tabela (Lua) — o
 --   mesmo objeto Java (IsoSpriteInstance.add / get).
@@ -23,6 +24,11 @@ local A = {}
 
 local PARENT = { IsoThumpable = "IsoObject", IsoDoor = "IsoObject", IsoWindow = "IsoObject",
     IsoMovingObject = "IsoObject", IsoPlayer = "IsoMovingObject", IsoZombie = "IsoMovingObject" }
+
+local KNOWN = {}
+for _, file in ipairs({ "tests/floor_sprites.lua", "tests/wall_sprites.lua" }) do
+    for name in pairs(dofile(file)) do KNOWN[name] = true end
+end
 
 function A.install(G)
     G.objs, G.unknown, G.invalidations, G.java = {}, {}, 0, G.java or 0
@@ -63,7 +69,7 @@ function A.install(G)
                 return { size = function() return #o.list end, get = function(_, i) return o.list[i + 1] end }
             end,
             addAttachedAnimSpriteByName = function(_, name)
-                if name == nil or name == "" or G.unknown[name] then return end
+                if name == nil or name == "" or G.unknown[name] or not KNOWN[name] then return end
                 o.list = o.list or {}
                 o.list[#o.list + 1] = newInst(name, false)
                 G.invalidations = G.invalidations + 1

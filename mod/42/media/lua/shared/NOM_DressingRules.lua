@@ -1,8 +1,11 @@
 -- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021, anexado na 0023): o
 -- que cada square ganha na névoa. Chão: chão queimado (dentro) ou mato e folha (fora),
--- rachadura e sangue (poças e rastros), e sujeira em manchas à parte (mais leve). Parede: um
--- sprite por lado (sangue, sujeira, rachadura; trepadeira só fora). Sem API do jogo, testável
--- com ./run-tests.sh. Quem anexa: client/NOM_FogOverlays.lua (ADR-017).
+-- rachadura, e sujeira em manchas à parte (mais leve); sem sangue (saiu na sprint 0034: parecia
+-- textura ruim de jogo antigo, Johan). Parede de fora:
+-- um sprite por lado (sangue, sujeira, rachadura, trepadeira ou pichação). Parede de dentro (casa
+-- destruída, sprint 0034): até WALL_LAYERS camadas de tipos diferentes (rachadura, sujeira,
+-- sangue, pichação ou mensagem). Sem API do jogo, testável com ./run-tests.sh. Quem anexa:
+-- client/NOM_FogOverlays.lua (ADR-017).
 --
 -- Nada é guardado: a resposta é função do square, do período de névoa e da
 -- densidade (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
@@ -10,17 +13,14 @@ require "NOM_VariantRules"
 require "NOM_Math"
 
 NOM_DressingRules = {
-    -- Tiles do jogador (sprint 0023). O anexo vai pro save com o chunk: fica bem dentro da
-    -- distância em que o chunk sai do mapa e é gravado (≥ 48 tiles, IsoChunkMap.chunkGridWidth
-    -- 13 × 8; ADR-017).
-    RADIUS = 15,
-    MAX_LAYERS = 4,    -- camadas no piso (a sujeira, à parte)
+    -- Raio em tiles do jogador: o canto da tela mais longe + MARGIN, entre MIN e MAX (sprint
+    -- 0034). O anexo vai pro save com o chunk: fica bem dentro da distância em que o chunk sai
+    -- do mapa e é gravado (≥ 48 tiles, IsoChunkMap.chunkGridWidth 13 × 8; ADR-017).
+    MIN_RADIUS = 15,
+    MAX_RADIUS = 30,
+    MARGIN = 2,
+    MAX_LAYERS = 2,    -- camadas no piso: queimado ou mato, e rachadura (a sujeira, à parte)
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
-    CELL = 7,          -- uma poça possível por célula de 7×7
-    -- Calibrado pro zoom do Johan (print de 05/10, névoa vermelha: ~6×6 tiles na tela e
-    -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
-    POOL = 0.85,       -- chance de poça por célula, na densidade 1
-    BACKGROUND = 0.15, -- respingo solto por square
     CRACKS = 0.45,
     -- Sujeira (print 7: losango cheio por tile lia como xadrez): em manchas (ruído numa rede
     -- de GRIME_CELL tiles, recortado por um ruído fino de GRIME_FINE), sprite parcial que não
@@ -46,7 +46,17 @@ NOM_DressingRules = {
     -- O prefixo que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*: ADR-017). Um
     -- anexo com ele que não é nosso agora é vazado de uma sessão que caiu: sai no LoadGridsquare.
     OWN_PREFIX = "floors_burnt_01_",
-    WALL = 0.75,       -- chance de cada parede ter algo
+    WALL = 0.75,       -- chance de cada parede de fora ter algo
+    -- Dentro (casa destruída): a 1ª camada quase sempre, a 2ª e a 3ª menos, sem repetir tipo.
+    WALL_IN = 1,
+    WALL_IN_2 = 0.5,
+    WALL_IN_3 = 0.25,
+    WALL_LAYERS = 3,
+    -- Pichação e mensagem são desenhos de várias paredes (o pack corta em peças de um tile). A
+    -- fileira de paredes vai em trechos de RUN_SLOT tiles; um trecho pode ter um desenho inteiro.
+    -- O tipo e o desenho do trecho não dependem de dentro/fora; a chance de aparecer, sim.
+    RUN_SLOT = 6,
+    RUN = { graffiti = { outside = 0.45, inside = 0.35 }, messages = { outside = 0.15, inside = 0.6 } },
 }
 
 local R = NOM_DressingRules
@@ -74,7 +84,6 @@ end
 -- sai antes de personagens e paredes). Medido por scripts/audit_floor_sprites.py
 -- (tests/floor_sprites.lua).
 R.SETS = {
-    bloodFloor = { prefix = "overlay_blood_floor_01_", idx = every(0, 1, 27) },
     -- sujeira: além disso, parcial (cobertura < 50%) e sem as faixas de borda de tile (sprint 0021)
     grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 38, 88 } },
     cracksFloor = { prefix = "d_streetcracks_1_",
@@ -98,8 +107,33 @@ R.SETS = {
         41, 48, 49, 50, 57, 58, 59, 66, 67, 68, 69 } },
     vinesWallW = { wall = "W", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [0] = true, [1] = true }) },
     vinesWallN = { wall = "N", prefix = "f_wallvines_1_", idx = byMod(72, 6, { [2] = true, [3] = true }) },
+    -- Pichação e mensagem (sprint 0034, scripts/audit_wall_sprites.py): cada run é um desenho
+    -- inteiro, peças da esquerda pra direita na tela. O lado bate nas três evidências (recorte,
+    -- tileDepthTextureAssignments, attachedW/N); fora: graffiti 92 (attachedN num recorte W) e
+    -- messages 34–39 (sem attachedW/N, conteúdo além da face).
+    graffitiWallW = { wall = "W", prefix = "overlay_graffiti_wall_01_", runs = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7 },
+        { 8, 9 }, { 10 }, { 11, 12, 13 }, { 14, 15 }, { 40 }, { 41, 42, 43 }, { 44, 45, 46 }, { 47 }, { 54, 55 },
+        { 56, 57, 58 }, { 64, 65 }, { 72, 73 }, { 74, 75, 76 }, { 80, 81 }, { 82, 83, 84 }, { 85 }, { 86 }, { 87 },
+        { 93, 94, 95 } } },
+    graffitiWallN = { wall = "N", prefix = "overlay_graffiti_wall_01_", runs = { { 16, 17, 18 }, { 19, 20 },
+        { 21, 22, 23 }, { 24, 25, 26 }, { 27, 28, 29, 30, 31 }, { 32, 33, 34 }, { 35, 36 }, { 37, 38, 39 },
+        { 48, 49, 50 }, { 51 }, { 52, 53 }, { 59 }, { 60, 61, 62, 63 }, { 66, 67 }, { 68, 69, 70, 71 },
+        { 77, 78, 79 }, { 88, 89, 90 }, { 91 }, { 96, 97, 98 }, { 100 }, { 101 }, { 102 }, { 103 },
+        { 104, 105, 106, 107, 108 }, { 112, 113, 114, 115 } } },
+    -- "KEEP OUT" (6, 7, 14, 15) e "ALIVE INSIDE" (24–27): duas palavras, um desenho
+    messagesWallW = { wall = "W", prefix = "overlay_messages_wall_01_", runs = { { 0, 1, 2 }, { 3, 4, 5 },
+        { 6, 7, 14, 15 }, { 8, 9, 10 }, { 16, 17, 18 }, { 24, 25, 26, 27 } } },
+    messagesWallN = { wall = "N", prefix = "overlay_messages_wall_01_", runs = { { 11, 12, 13 }, { 19, 20, 21 },
+        { 28, 29, 30, 31 } } },
 }
-for i = 32, 46 do R.SETS.bloodFloor.idx[#R.SETS.bloodFloor.idx + 1] = i end
+for _, s in pairs(R.SETS) do
+    if s.runs then
+        s.idx = {}
+        for _, run in ipairs(s.runs) do
+            for _, i in ipairs(run) do s.idx[#s.idx + 1] = i end
+        end
+    end
+end
 
 -- Nome do sprite de uma camada { set, índice }.
 function R.name(layer)
@@ -111,8 +145,10 @@ function R.own(name)
     return type(name) == "string" and name:sub(1, #R.OWN_PREFIX) == R.OWN_PREFIX
 end
 
--- Faixas do sorteio da parede, por tipo (somam 1): sangue manda.
+-- Faixas do sorteio da parede, por tipo (somam 1). Fora, sangue manda; dentro ("apagadas,
+-- acabadas, sujas", Johan, sprint 0034), sujeira e rachadura.
 local WALL_KINDS = { { "blood", 0.45 }, { "grime", 0.25 }, { "cracks", 0.15 }, { "vines", 0.15 } }
+local WALL_KINDS_IN = { { "grime", 0.4 }, { "cracks", 0.3 }, { "blood", 0.3 } }
 
 local function u(id, period, salt)
     return V.hash(id, period or 0, salt) / V.Q
@@ -138,43 +174,18 @@ function R.density(option, red)
     return d * (red and R.RED_MULT or 1)
 end
 
--- Poça da célula (cx, cy): centro, raio e rastro (direção, tamanho); nil = sem poça.
-local function makePool(cx, cy, z, period, d)
-    local id = sqId(cx, cy, z) + 7
-    if u(id, period, 11) >= chance(R.POOL, d) then return false end
-    local c = R.CELL
-    local a = u(id, period, 14) * 2 * math.pi
-    return { x = (cx + u(id, period, 12)) * c, y = (cy + u(id, period, 13)) * c, r = 1.6 + 1.8 * u(id, period, 15),
-        dx = math.cos(a), dy = math.sin(a), len = 3 + 6 * u(id, period, 16) }
-end
-
--- Cada square olha 9 células (e 4 cantos da rede da sujeira): guardados por período e
--- densidade (o hash é o caro no Kahlua). Zera quando um dos dois muda; cresce com o
--- caminho andado numa névoa.
-local pools, corners, poolsPeriod, poolsD = {}, {}, nil, nil
-
-local function fresh(period, d)
-    if period ~= poolsPeriod or d ~= poolsD then pools, corners, poolsPeriod, poolsD = {}, {}, period, d end
-end
-
-local function pool(cx, cy, z, period, d)
-    fresh(period, d)
-    local k = sqId(cx, cy, z) -- chave numérica: nada de string por chamada
-    local p = pools[k]
-    if p == nil then
-        p = makePool(cx, cy, z, period, d)
-        pools[k] = p
-    end
-    return p or nil
-end
+-- Cada square olha os 4 cantos da rede de cada ruído: guardados por período (o hash é o caro
+-- no Kahlua). Zera quando o período muda; cresce com o caminho andado numa névoa.
+local corners, cornersPeriod = {}, nil
 
 local function corner(i, j, z, period, salt)
+    if period ~= cornersPeriod then corners, cornersPeriod = {}, period end
     local t = corners[salt]
     if not t then
         t = {}
         corners[salt] = t
     end
-    local k = sqId(i, j, z)
+    local k = sqId(i, j, z) -- chave numérica: nada de string por chamada
     local v = t[k]
     if v == nil then
         v = u(k + 3, period, salt)
@@ -214,35 +225,6 @@ local function grimePick(x, y, id, period)
     return { "grimeFloor", own[math.floor(u(id, period, 61) * #own) + 1] }
 end
 
--- Camadas de sangue do square pelas poças das 9 células em volta: 3 no miolo, 2 na
--- borda, 1 no rastro (com falhas). 0 = nada.
-local function bloodLevel(x, y, z, id, period, d)
-    local px, py = x + 0.5, y + 0.5
-    local cx, cy = math.floor(x / R.CELL), math.floor(y / R.CELL)
-    local level = 0
-    for i = cx - 1, cx + 1 do
-        for j = cy - 1, cy + 1 do
-            local p = pool(i, j, z, period, d)
-            if p then
-                local ox, oy = px - p.x, py - p.y
-                local dist = math.sqrt(ox * ox + oy * oy)
-                if dist <= p.r * 0.65 then return 3 end
-                if dist <= p.r then
-                    level = 2
-                elseif level == 0 then
-                    local t = ox * p.dx + oy * p.dy
-                    if t > 0 and t < p.len and math.abs(ox * p.dy - oy * p.dx) <= 1
-                        and u(id, period, 31) < 0.8 then
-                        level = 1
-                    end
-                end
-            end
-        end
-    end
-    if level == 0 and u(id, period, 32) < chance(R.BACKGROUND, d) then level = 1 end
-    return level
-end
-
 -- Mancha pelo ruído: quanto o ruído passa do corte (≥ 0), ou nil fora da mancha.
 local function patch(x, y, z, period, d, base, max, cell, salt)
     local over = noise(x, y, z, period, cell, salt) - (1 - math.min(max, base * d))
@@ -263,12 +245,11 @@ local function ground(x, y, z, id, period, d, outside)
     return pick(set, id, period, 65)
 end
 
--- Camadas do chão do square, de baixo pra cima (queimado ou mato, rachadura, depois sangue), e
--- a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o square é de fora
--- (sem telhado).
+-- Camadas do chão do square, de baixo pra cima (queimado ou mato, depois rachadura; até
+-- MAX_LAYERS), e a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o
+-- square é de fora (sem telhado).
 function R.floor(x, y, z, period, d, outside)
     if not d or d <= 0 then return nil end
-    fresh(period, d)
     local id = sqId(x, y, z)
     local out = {}
     out[1] = ground(x, y, z, id, period, d, outside)
@@ -276,38 +257,104 @@ function R.floor(x, y, z, period, d, outside)
     local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
         and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
     if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
-    local blood = bloodLevel(x, y, z, id, period, d)
-    while #out + blood > R.MAX_LAYERS do table.remove(out) end
-    for k = 1, blood do out[#out + 1] = pick("bloodFloor", id, period, 40 + k) end
     if grime then out.grime = grimePick(x, y, id, period) end
     if #out == 0 and not grime then return nil end
     return out
 end
 
--- Sprite da parede norte (north = true) ou oeste do square, ou nil. A face que se vê é a do
--- square dono da parede: trepadeira só se ele é de fora (outside); dentro, a faixa dela vira
--- sangue.
+-- Tipo do sorteio da parede, pelas faixas de kinds.
+local function wallKind(id, period, salt, kinds)
+    local roll, acc = u(id, period, salt), 0
+    for _, k in ipairs(kinds) do
+        acc = acc + k[2]
+        if roll < acc or k == kinds[#kinds] then return k[1] end
+    end
+end
+
+-- Peça de pichação ou mensagem da parede, ou nil. Parede N: a fileira anda em x (a peça k em
+-- start + k: x cresce pra direita na tela); W: anda em y, e y cresce pra esquerda (a peça k em
+-- start + #run − 1 − k).
+local function writing(x, y, z, period, d, north, outside)
+    local pos, line = north and x or y, north and y or x
+    local slot = math.floor(pos / R.RUN_SLOT)
+    local id = sqId(slot, line, z)
+    local salt = north and 110 or 120
+    local kind = u(id, period, salt) < 0.5 and "messages" or "graffiti"
+    if u(id, period, salt + 1) >= chance(R.RUN[kind][outside and "outside" or "inside"], d) then return nil end
+    local set = kind .. "Wall" .. (north and "N" or "W")
+    local runs = R.SETS[set].runs
+    local run = runs[math.floor(u(id, period, salt + 2) * #runs) + 1]
+    local k = pos - slot * R.RUN_SLOT - math.floor(u(id, period, salt + 3) * (R.RUN_SLOT - #run + 1))
+    if k < 0 or k >= #run then return nil end
+    if not north then k = #run - 1 - k end
+    return { set, run[k + 1] }
+end
+
+-- Dentro, de baixo pra cima.
+local INSIDE_KINDS = { "cracks", "grime", "blood" }
+
+-- Camadas da parede norte (north = true) ou oeste do square, de baixo pra cima, ou nil. A face
+-- que se vê é a do square dono da parede (outside: ele é de fora). Fora: uma camada, a peça de
+-- pichação do trecho ou o sorteio. Dentro: o sorteio, mais até duas de outro tipo, e a peça de
+-- pichação/mensagem em cima, até WALL_LAYERS.
 function R.wall(x, y, z, period, d, north, outside)
     if not d or d <= 0 then return nil end
     local id = sqId(x, y, z)
     local salt = north and 70 or 80
-    if u(id, period, salt) >= chance(R.WALL, d) then return nil end
-    local roll, acc = u(id, period, salt + 1), 0
-    for _, k in ipairs(WALL_KINDS) do
-        acc = acc + k[2]
-        if roll < acc or k == WALL_KINDS[#WALL_KINDS] then
-            local kind = k[1]
-            if kind == "vines" and not outside then kind = "blood" end
-            return pick(kind .. "Wall" .. (north and "N" or "W"), id, period, salt + 2)
+    local side = north and "N" or "W"
+    local write = writing(x, y, z, period, d, north, outside)
+    if outside then
+        if write then return { write } end
+        if u(id, period, salt) >= chance(R.WALL, d) then return nil end
+        return { pick(wallKind(id, period, salt + 1, WALL_KINDS) .. "Wall" .. side, id, period, salt + 2) }
+    end
+    local has, n = {}, 0
+    if u(id, period, salt) < chance(R.WALL_IN, d) then
+        has[wallKind(id, period, salt + 1, WALL_KINDS_IN)] = true
+        n = 1
+        local room = R.WALL_LAYERS - (write and 1 or 0)
+        for k, base in ipairs({ R.WALL_IN_2, R.WALL_IN_3 }) do
+            if n >= room or u(id, period, salt + 2 + k) >= chance(base, d) then break end
+            local rest = {}
+            for _, kind in ipairs(INSIDE_KINDS) do
+                if not has[kind] then rest[#rest + 1] = kind end
+            end
+            has[rest[math.floor(u(id, period, salt + 4 + k) * #rest) + 1]] = true
+            n = n + 1
         end
     end
+    local out = {}
+    for i, kind in ipairs(INSIDE_KINDS) do
+        if has[kind] then out[#out + 1] = pick(kind .. "Wall" .. side, id, period, salt + 6 + i) end
+    end
+    if write then out[#out + 1] = write end
+    if #out == 0 then return nil end
+    return out
 end
 
--- Deslocamentos no raio, mais perto primeiro (a varredura do cliente segue esta ordem).
+local function finite(v)
+    return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+-- Raio da varredura: a distância do jogador (px, py) ao canto mais longe (corners = { {x, y}, ... },
+-- os cantos da tela no chão, em tiles) + MARGIN, pra cima, preso em [MIN_RADIUS, MAX_RADIUS].
+-- Sem cantos ou com um que não é número: MIN_RADIUS.
+function R.radius(px, py, corners)
+    if not finite(px) or not finite(py) or type(corners) ~= "table" or #corners == 0 then return R.MIN_RADIUS end
+    local far = 0
+    for _, c in ipairs(corners) do
+        if type(c) ~= "table" or not finite(c[1]) or not finite(c[2]) then return R.MIN_RADIUS end
+        local dx, dy = c[1] - px, c[2] - py
+        far = math.max(far, dx * dx + dy * dy)
+    end
+    return math.max(R.MIN_RADIUS, math.min(R.MAX_RADIUS, math.ceil(math.sqrt(far) + R.MARGIN)))
+end
+
+-- Deslocamentos até MAX_RADIUS, mais perto primeiro (a varredura do cliente segue esta ordem).
 R.OFFSETS = {}
-for dx = -R.RADIUS, R.RADIUS do
-    for dy = -R.RADIUS, R.RADIUS do
-        if dx * dx + dy * dy <= R.RADIUS * R.RADIUS then R.OFFSETS[#R.OFFSETS + 1] = { dx, dy } end
+for dx = -R.MAX_RADIUS, R.MAX_RADIUS do
+    for dy = -R.MAX_RADIUS, R.MAX_RADIUS do
+        if dx * dx + dy * dy <= R.MAX_RADIUS * R.MAX_RADIUS then R.OFFSETS[#R.OFFSETS + 1] = { dx, dy } end
     end
 end
 table.sort(R.OFFSETS, function(a, b)
@@ -317,14 +364,18 @@ table.sort(R.OFFSETS, function(a, b)
     return a[2] < b[2]
 end)
 
--- WITHIN[r] = quantos deslocamentos estão a até r tiles (os primeiros de OFFSETS).
+-- WITHIN[r] = quantos deslocamentos estão a até r tiles (os primeiros de OFFSETS), r até MAX_RADIUS.
 R.WITHIN = {}
-for r = 0, R.RADIUS do
+do
     local n = 0
-    for _, o in ipairs(R.OFFSETS) do
-        if o[1] * o[1] + o[2] * o[2] <= r * r then n = n + 1 end
+    for r = 0, R.MAX_RADIUS do
+        local o = R.OFFSETS[n + 1]
+        while o and o[1] * o[1] + o[2] * o[2] <= r * r do
+            n = n + 1
+            o = R.OFFSETS[n + 1]
+        end
+        R.WITHIN[r] = n
     end
-    R.WITHIN[r] = n
 end
 
 return NOM_DressingRules

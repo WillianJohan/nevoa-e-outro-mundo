@@ -147,6 +147,16 @@ return {
         G2.seconds(1)
         assert(G2.enabled[0] == true)
     end,
+    -- sprint 0034: a vinheta escurece já na subida da sirene e sai se ela for cancelada
+    vignette_on_while_rising = function()
+        local G = setup()
+        NOM_FogState.setRising(true)
+        G.seconds(2)
+        assert(G.enabled[0] == true and G.managers[G.p].isOverride == true, "vinheta sem a subida")
+        NOM_FogState.setRising(false)
+        G.seconds(1)
+        assert(G.managers[G.p].isOverride == false and G.enabled[0] == false, "vinheta ficou depois da subida")
+    end,
     vignette_off_toggle = function()
         for _, sb in ipairs({ { FogVignette = false }, { FogVignetteIntensity = 0 } }) do
             local G = setup({ sandbox = sb })
@@ -213,6 +223,19 @@ return {
         NOM_FogState.set(true, 1, true)
         G.seconds(5)
         assert(G.all[0].desat == 1, "vermelha não chegou ao canal")
+    end,
+    -- review final da 0034: com o shader a vinheta também sobe na fuga (visible), na cor da
+    -- subida (visibleRed); as camadas do Outro Mundo (NOM_ScreenFx) seguem esperando a névoa
+    vignette_channel_rises_with_siren = function()
+        local G = setup({ shader = true })
+        NOM_FogState.setRising(true, true)
+        G.seconds(5)
+        assert(G.override[0] == true and G.all[0] and G.all[0].blur == 1, "o canal não subiu na fuga")
+        assert(G.all[0].desat == 1, "a subida vermelha não chegou ao canal")
+        assert(NOM_ScreenFx.state.fog == 0 and NOM_ScreenFx.state.red == 0, "o Outro Mundo da tela abriu na fuga")
+        NOM_FogState.setRising(false)
+        G.seconds(NOM_ScreenFxRules.FADE_MS / 1000 + 1)
+        assert(G.override[0] == false and G.all[0].blur == 0, "segurou o canal depois da sirene cancelada")
     end,
     -- override com fade do forrageamento em andamento congelaria o fade (isShaderEnabled
     -- preso em true): espera acabar

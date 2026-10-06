@@ -27,6 +27,7 @@ local function all()
     out[#out + 1] = R.TEXTURES.vignette
     out[#out + 1] = R.TEXTURES.lines
     out[#out + 1] = R.TEXTURES.white
+    out[#out + 1] = R.TEXTURES.static
     return out
 end
 

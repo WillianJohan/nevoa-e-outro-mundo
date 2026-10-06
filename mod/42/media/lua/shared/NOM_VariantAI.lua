@@ -26,8 +26,10 @@ local CLICK_ODDS = 2
 NOM_VariantAI.BLIND_FRAMES = 60
 
 -- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates } }.
--- Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica.
-local blinded = {}
+-- Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica. Exposta só pra
+-- leitura: o rodízio do NOM_SirenFreeze não solta o Estalador cego.
+NOM_VariantAI.blinded = {}
+local blinded = NOM_VariantAI.blinded
 
 -- Agachado e sem correr: o Estalador não tem como saber que o jogador está ali.
 local function silent(p)
@@ -88,7 +90,7 @@ local function onUpdate(z, report)
         NOM_NightStats.variants[z] = nil
         kind = nil
     end
-    local on = NOM_FogState.on and not z:isRemoteZombie()
+    local on = NOM_FogState.on and z:isLocal() -- dono (pz-api-notes §24)
     if kind == "estalador" and on then
         estalador(z, md, blind)
     elseif blind then
@@ -142,7 +144,7 @@ local function heldByMod(id)
 end
 
 local function unstick(z)
-    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or z:isRemoteZombie() or not z:isUseless() then return end
+    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or not z:isLocal() or not z:isUseless() then return end
     if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
     if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
 end

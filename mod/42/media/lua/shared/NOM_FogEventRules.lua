@@ -15,7 +15,11 @@ require "NOM_VariantRules"
 NOM_FogEventRules = {}
 local R = NOM_FogEventRules
 
-R.SIREN_MS = 45000    -- a sirene toca 45 s reais antes da névoa (sprint 0033)
+-- Fuga (sprint 0034): da sirene até os bichos, em ms reais. A névoa visual sobe nesse tempo
+-- (NOM_World.rising); os sons do coro duram ~12 s e não contam aqui.
+R.GRACE_MS = 30000
+-- Presságio (sprint 0034): a estática na tela começa 3 s reais antes da sirene. Só em memória.
+R.PRESAGE_MS = 3000
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 
@@ -30,7 +34,6 @@ R.DAY_SALT = 15485863
 R.HOUR_SALT = 32452843
 R.SECOND_SALT = 49979687
 R.SECOND_HOUR_SALT = 67867967
-R.DIR_SALT = 86028121
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
@@ -176,11 +179,6 @@ end
 function R.redChance(chance, cfg, d)
     if d < (cfg.redGraceDays or 0) then return 0 end
     return chance
-end
-
--- De onde a sirene "vem" no período: graus em [0, 360), igual em toda máquina.
-function R.sirenDir(seed, period)
-    return R.frac(seed, period, R.DIR_SALT) * 360
 end
 
 -- Contagem regressiva da sirene em ms reais: parada com o jogo pausado, e um

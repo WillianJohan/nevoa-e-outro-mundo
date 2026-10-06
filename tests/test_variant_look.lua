@@ -198,7 +198,7 @@ local function setup(opts)
         function z:hasModData() return true end
         function z:isDead() return self.dead end
         function z:isCrawling() return false end
-        function z:isRemoteZombie() return self.remote end
+        function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getOutfitName() return self.outfit end
         function z:isCanCrawlUnderVehicle() return true end
         function z:setCanCrawlUnderVehicle() end

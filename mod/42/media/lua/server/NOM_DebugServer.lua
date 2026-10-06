@@ -51,7 +51,8 @@ function ops.night(_, a)
     return "noite forcada=" .. tostring(a.value)
 end
 
--- Evento de verdade: sirene (e a névoa 45 s reais depois, ou já com skip), ou fim.
+-- Evento de verdade: sirene (a névoa sobe e os bichos soltam 30 s reais depois, ou já com
+-- skip), ou fim.
 -- toggle (NOM.fog sem argumento): névoa aberta ou sirene contando termina; senão, sirene.
 -- Quem decide é o servidor: o cliente não sabe da contagem.
 function ops.fog(_, a)

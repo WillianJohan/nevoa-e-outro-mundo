@@ -82,8 +82,10 @@ local function channelIntensity()
     return NOM_ScreenFxOptions.intensity() * NOM_Config.get("FogVignetteIntensity")
 end
 
+-- A névoa do canal é a que se vê (NOM_FogState.visible): sobe já na fuga, como a vinheta sem
+-- shader. As camadas do NOM_ScreenFx esperam a névoa de jogo.
 local function channelValues(now)
-    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sample(now), now, channelIntensity(), NOM_ScreenFxOptions.bloom())
+    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sampleSeen(now), now, channelIntensity(), NOM_ScreenFxOptions.bloom())
 end
 
 local function write(pn, c)
@@ -157,7 +159,7 @@ end
 local function update()
     if NOM_ShaderMod then return updateChannel() end
     local intensity = NOM_Config.get("FogVignetteIntensity")
-    local on = NOM_FogState.on and NOM_Config.get("FogVignette") and intensity > 0
+    local on = NOM_FogState.visible() and NOM_Config.get("FogVignette") and intensity > 0
     local seen = {}
     for i = 0, getNumActivePlayers() - 1 do
         local p = getSpecificPlayer(i)

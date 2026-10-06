@@ -120,7 +120,7 @@ function C.scream(z, p)
         local ok, err = pcall(fn, z)
         if not ok and getDebug() then print("[NOM] grito: erro de quem ouve: " .. tostring(err)) end
     end
-    if z:isRemoteZombie() then return end
+    if not z:isLocal() then return end
     C.letGo(z)
     if p then z:spotted(p, true) end
 end

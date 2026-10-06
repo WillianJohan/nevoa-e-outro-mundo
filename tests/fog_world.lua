@@ -36,6 +36,17 @@
 -- * Sirene (sprint 0033): z:faceLocationF(x, y) = IsoGameCharacter.faceLocationF(FF)Z
 --   (javap; uso vanilla client/BuildingObjects/TimedActions/ISBuildAction.lua:248): vira o
 --   zumbi pro ponto, sem rede, e devolve true; o fake guarda em z.faced. getX/getY: IsoMovingObject.
+-- * Tela e câmera do jogador 0 (sprint 0034, bytecode B42.21, pz-api-notes §16.6):
+--   getPlayerScreenWidth/Height(i) = IsoCamera.getScreenWidth/Height(i) (LuaManager$GlobalObject);
+--   getCore():getZoom(i) = displayZoom · T/2 (Core.getZoom(I), T = Core.tileScale, 2 no Tiles2x);
+--   a câmera centra no jogador (PlayerCamera.center 0–147): offX = XToScreen(x + deferedX,
+--   y + deferedY, zCam, 0) − offscreenW/2 + playerOffsetX (0), offY = YToScreen(...) − offscreenH/2
+--   − offsetY · 1,5 (0 aqui) + playerOffsetY (−56 / (2 / T), IsoCamera.<clinit>), com zCam = getZ() a pé
+--   (FrameState.calculateCameraZ) e offscreenW = int(w · zoom) (MultiTextureFBO2.getWidth(I));
+--   IsoCamera.getOffX(i) = int(offX + rightClickX) (PlayerCamera.getOffX). IsoUtils.XToIso(i, sx,
+--   sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z; YToIso = (sx + offX − 2(sy + offY)) / (−64T)
+--   + 3z (IsoUtils.XToIso(IFFF) 0–36, YToIso(IFFF) 0–36). G.camera.deferX/deferY (o carro olha
+--   pra frente) e panX/panY (rightClick, mirar) tiram a câmera do centro.
 local W = {}
 
 local function jlist(items)
@@ -134,9 +145,77 @@ function W.new(opts)
         return n
     end
 
+    -- Emitter do pool (sprint 0034, pz-api-notes §22): getWorld():getFreeEmitter(x, y, z)
+    -- devolve um emitter já posicionado (IsoWorld.getFreeEmitter(FFF) 0–16), que fica onde
+    -- foi posto. O pool devolve o que ficou vazio e outro sistema pode pegá-lo (aqui o mesmo
+    -- objeto volta). playSoundImpl(nome, false, nil) → id, isPlaying(id), stopSoundLocal(id),
+    -- setVolume(id, v): locais. playSound/stopSound mandam pacote e stopAll mata o som dos
+    -- outros: explodem. G.sounds[id].at é onde o emitter estava ao tocar.
+    -- FMODSoundEmitter tem playSoundImpl(String, IsoGridSquare) e (String, IsoObject): com
+    -- nil o Kahlua escolhe o do square, que lê square.x e dá NPE (bytecode 1208–1235; visto
+    -- no console.txt). (String, boolean, IsoObject) (1245–1250) cai no do IsoObject com nil.
+    function G.newEmitter(where)
+        local e = { x = where.x, y = where.y, z = where.z, vehicle = where.vehicle }
+        function e:playSoundImpl(name, flag, obj)
+            if type(flag) ~= "boolean" then
+                error('Cannot read field "x" because "square" is null (playSoundImpl(nome, nil))', 2)
+            end
+            assert(obj == nil, "playSoundImpl com objeto")
+            local id = #G.sounds + 1
+            G.sounds[id] = { name = name, volume = 1, pitch = 1, playing = true, emitter = self,
+                at = { x = self.x, y = self.y, z = self.z }, vehicle = self.vehicle, startedAt = G.now }
+            self.claimed = G.ticks
+            return id
+        end
+        function e:isPlaying(id) return G.sounds[id] ~= nil and G.sounds[id].emitter == self and G.sounds[id].playing end
+        function e:stopSoundLocal(id)
+            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].playing = false end
+        end
+        function e:setVolume(id, v)
+            if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].volume = v end
+        end
+        -- FMODSoundEmitter.setPitch(long, float), 0–112: o id só decide o DebugLog; a afinação vai
+        -- pra TODO som do emitter (toStart e instances). Local, sem pacote.
+        function e:setPitch(id, pitch)
+            assert(type(id) == "number" and type(pitch) == "number", "setPitch(long, float)")
+            for _, s in pairs(G.sounds) do
+                if s.emitter == self and s.playing then s.pitch = pitch end
+            end
+        end
+        e.playSound = function() error("emitter:playSound manda pacote no cliente de MP", 2) end
+        e.stopSound = function() error("emitter:stopSound manda sendStopSound", 2) end
+        e.stopAll = function() error("stopAll num emitter do pool mata o som de outro sistema", 2) end
+        function e:empty()
+            for _, s in pairs(G.sounds) do
+                if s.emitter == self and s.playing then return false end
+            end
+            return true
+        end
+        return e
+    end
+    G.pool = {}
+    G.freeCalls = 0
+    getWorld = function()
+        return { getFreeEmitter = function(_, x, y, z)
+            G.freeCalls = G.freeCalls + 1
+            for _, e in ipairs(G.pool) do
+                if e.claimed ~= G.ticks and e:empty() then
+                    e.x, e.y, e.z, e.claimed = x, y, z, G.ticks
+                    return e
+                end
+            end
+            local e = G.newEmitter({ x = x, y = y, z = z })
+            e.claimed = G.ticks
+            G.pool[#G.pool + 1] = e
+            return e
+        end }
+    end
+
     G.byNum = {}
+    G.remotes = {}
+    -- o.remote: jogador de outro cliente, que este cliente só conhece pelo getOnlinePlayers()
     function G.player(o)
-        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = #G.players,
+        local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, face = o.face or 0, pn = o.remote and -1 or #G.players,
             dead = false, light = o.light }
         function p:getX() return self.x end
         function p:getY() return self.y end
@@ -157,6 +236,10 @@ function W.new(opts)
             G.sounds[id] = { name = name, volume = 1, playing = true }
             return id
         end
+        if o.remote then
+            G.remotes[#G.remotes + 1] = p
+            return p
+        end
         G.players[#G.players + 1] = p
         G.byNum[p.pn] = p
         return p
@@ -171,7 +254,7 @@ function W.new(opts)
         function z:getZ() return self.z end
         function z:getPersistentOutfitID() return self.id end
         function z:getOnlineID() return self.onlineID end
-        function z:isRemoteZombie() return self.remote end
+        function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getModData() return self.md end
         function z:hasModData() return next(self.md) ~= nil end
         function z:getOutfitName() return self.outfitName end
@@ -205,6 +288,18 @@ function W.new(opts)
         function z:setUseless(b) self.useless = b end
         function z:setTarget(t) self.target = t end
         function z:faceLocationF(x, y) self.faced = { x = x, y = y }; return true end
+        -- Andando (PathFindState): o useless não para, o PathFindState.execute nem olha
+        -- (bytecode). Para quando bPathfind e bMoving caem e o caminho some (o fim do
+        -- execute 128–149). o.walking: o zumbi já nasce indo pra algum lugar.
+        z.vars = { bPathfind = o.walking == true, bMoving = o.walking == true }
+        z.path = o.walking and {} or nil
+        function z:setVariable(k, v) self.vars[k] = v end
+        function z:setPath2(p) self.path = p end
+        function z:getPathFindBehavior2()
+            local zz = self
+            return { cancel = function() zz.pathCancelled = true end }
+        end
+        function z:isMoving() return self.vars.bMoving == true or self.vars.bPathfind == true end
         function z:getTarget() return self.target end
         function z:spotted(p, forced)
             if self.useless then self.target = nil return end
@@ -223,7 +318,37 @@ function W.new(opts)
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end -- -debug do processo
     -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
-    getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
+    G.screenW, G.screenH, G.zoom, G.tileScale = opts.screenW or 1920, opts.screenH or 1080, opts.zoom or 1, 2
+    G.camera = { deferX = 0, deferY = 0, panX = 0, panY = 0 }
+    local function java() G.java = (G.java or 0) + 1 end
+    getCore = function()
+        return { getGameMode = function() return opts.gameMode or "Sandbox" end,
+            getZoom = function(_, i) java(); assert(i == 0, "zoom de outro jogador"); return G.zoom end }
+    end
+    getPlayerScreenWidth = function(i) java(); assert(i == 0); return G.screenW end
+    getPlayerScreenHeight = function(i) java(); assert(i == 0); return G.screenH end
+    local function trunc(v) return v >= 0 and math.floor(v) or math.ceil(v) end
+    local function cameraOff()
+        local p, T, c = G.players[1], G.tileScale, G.camera
+        local x, y = p.x + c.deferX, p.y + c.deferY
+        local offX = 32 * T * (x - y) - trunc(G.screenW * G.zoom) / 2
+        local offY = 16 * T * (x + y) - 96 * T * p.z - trunc(G.screenH * G.zoom) / 2 + trunc(-56 / trunc(2 / T))
+        return trunc(offX + c.panX), trunc(offY + c.panY)
+    end
+    IsoUtils = {
+        XToIso = function(i, sx, sy, z)
+            java()
+            assert(i == 0 and z ~= nil, "XToIso(int, F, F, F)")
+            local ox, oy = cameraOff()
+            return (sx + ox + 2 * (sy + oy)) / (64 * G.tileScale) + 3 * z
+        end,
+        YToIso = function(i, sx, sy, z)
+            java()
+            assert(i == 0 and z ~= nil, "YToIso(int, F, F, F)")
+            local ox, oy = cameraOff()
+            return (sx + ox - 2 * (sy + oy)) / (-64 * G.tileScale) + 3 * z
+        end,
+    }
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {
@@ -245,7 +370,16 @@ function W.new(opts)
     -- (ISBuildIsoEntity.lua:195-198); G.flags[k] = { DoorWallN = true, ... }
     IsoFlagType = { water = "water", DoorWallN = "DoorWallN", DoorWallW = "DoorWallW", WindowN = "WindowN",
         WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW" }
-    getOnlinePlayers = function() return jlist(G.players) end
+    -- LuaManager$GlobalObject.getOnlinePlayers 0–30: servidor = GameServer.getPlayers, cliente
+    -- = GameClient.getPlayers (o IDToPlayerMap: os locais e os remotos que ele conhece), solo =
+    -- ArrayList vazia
+    getOnlinePlayers = function()
+        if not opts.client and not opts.server then return jlist({}) end
+        local all = {}
+        for _, p in ipairs(G.players) do all[#all + 1] = p end
+        for _, p in ipairs(G.remotes) do all[#all + 1] = p end
+        return jlist(all)
+    end
     getCell = function()
         return {
             getGridSquare = function(_, x, y, z) return G.square(x, y, z) end,

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -36,6 +36,8 @@
    (ownership) de cada zumbi a uma conexão e só retransmite. Evidência: bytecode
    `NetworkZombieManager.updateAuth(IsoZombie)` (usa `ServerOptions.switchZombiesOwnershipEachUpdate`),
    `IsoZombie.setOwner(UdpConnection)`, `IsoZombie.isRemoteZombie()`, `NetworkZombieSimulator.getAuthorizedZombieCount()`.
+   **Pra saber se este processo é o dono, use `z:isLocal()`, nunca `z:isRemoteZombie()`:** no solo
+   ninguém chama `setOwner` e o `isRemoteZombie()` dá `true` pra todo zumbi (§24, sprint 0034).
    O `walkType` viaja nos dois sentidos: `NetworkZombiePacker` (servidor) **e** `NetworkZombieSimulator`
    (cliente) chamam `IsoZombie.setWalkType(String)`. Consequência: **a decisão** (variante, noite,
    spawn) pode ser autoritativa no servidor, mas **a aplicação** de ajustes de IA (velocidade,
@@ -815,11 +817,18 @@ e sem `master` (volume de efeitos). No MP o servidor manda `sendServerCommand(MO
 "siren", {})` e cada cliente toca a dele. UNKNOWN: se o emitter do jogador pausa o som
 com o jogo pausado (a contagem para de qualquer jeito).
 
-Sprint 0033: a sirene dura 45 s e o comando passa a levar `{ red, dir }` (`dir` = graus
+Sprint 0033: a sirene dura 15 s e o comando passa a levar `{ red, dir }` (`dir` = graus
 de onde ela "vem", `NOM_FogEventRules.sirenDir`, igual em toda máquina). Sirene cancelada
 no dedicado manda `sendServerCommand(MODULE, "sirenStop", {})` (mesma forma do `siren`,
 sem API nova); no solo o servidor chama `NOM_SirenFreeze.start/stop` direto. Cliente que
 não conhece um comando o ignora (`client/NOM_FogClient.lua`: cadeia de `if` sem `else`).
+
+Sprint 0034: a sirene deixa de ser chapada no jogador. São 3 por jogador, em emitters do
+mundo (§23); o `dir` e o `NOM_FogEventRules.sirenDir` saíram, e o comando leva só `{ red }`.
+Review final da 0034: o debug que troca a cor no meio do presságio ou da fuga (`NOM_FogEvent.setRed`)
+manda `sendServerCommand(MODULE, "sirenColor", { red })` (mesma forma, sem API nova); o cliente só
+troca a cor do presságio e da subida que já correm (`NOM_FogState.recolor`), sem tocar a sirene de
+novo.
 
 ## 12. Névoa vermelha (sprint 0010)
 
@@ -1168,7 +1177,7 @@ vanilla usa `0..3`, `8..11`, `16..19` pra parede W (`IsoGridSquare.splatBlood` 5
 
 | Set | No pack | Usados (lado) |
 |---|---|---|
-| `overlay_blood_floor_01_` | 43 (0–27, 32–46 com falhas) | 37 de chão |
+| `overlay_blood_floor_01_` | 43 (0–27, 32–46 com falhas) | nenhum desde a sprint 0034 (eram 37 de chão; o Johan achou feio no jogo) |
 | `overlay_grime_floor_01_` | 84 | 82 de chão |
 | `d_streetcracks_1_` | 118 | 118 (rachadura de chão) |
 | `d_plants_1_` | 64 | 33 de chão (musgo, mato rasteiro) |
@@ -1176,10 +1185,13 @@ vanilla usa `0..3`, `8..11`, `16..19` pra parede W (`IsoGridSquare.splatBlood` 5
 | `overlay_grime_wall_01_` | 46 | 9 W, 9 N (cantos e pilares fora) |
 | `d_wallcracks_1_` | 72 | 24 W, 24 N |
 | `f_wallvines_1_` | 72 | 24 W, 24 N (4 estágios) |
+| `overlay_graffiti_wall_01_` | 112 (0–98, 100–108, 112–115) | 22 desenhos W (47 peças), 25 N (64 peças); fora o 92 (sprint 0034) |
+| `overlay_messages_wall_01_` | 36 (0–21, 24–31, 34–39) | 6 desenhos W (20 peças), 3 N (10 peças); fora 34–39 (sprint 0034) |
 
 Outros que existem e ficaram de fora: `overlay_blood_fence_01_` (24), `blood_floor_small/med/large`
-(1x), `overlay_graffiti_wall_01/02`, `overlay_messages_wall_01` (texto legível: não é Outro Mundo),
-`d_floorleaves_1_` (12), `floors_burnt_01_` (29).
+(1x), `overlay_graffiti_wall_02_` (64, não auditado). `d_floorleaves_1_` (12) e
+`floors_burnt_01_` (29) entraram no chão na 0023. Lixo, objeto avariado e parede queimada: §16.6
+(casa destruída).
 
 ### 16.4 Custo
 
@@ -1272,7 +1284,7 @@ sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` fu
 - **Escolha:** anexar ao piso (`getFloor`) e às paredes N/W (`getWall`) que não são
   `IsoThumpable`, `IsoDoor` nem `IsoWindow`; registro de cada instância posta; tirar só elas (mesma
   instância **e** mesmo nome, de trás pra frente); `OnSave` tira tudo e a atualização seguinte põe
-  de volta; raio 15 (+8 de folga: além disso sai na hora); `LoadGridsquare` limpa
+  de volta; raio pela tela, 15 a 30 (sprint 0034, abaixo; além de 30 + 8 sai na hora, a cada 2 tiles andados); `LoadGridsquare` limpa
   `floors_burnt_01_*` vazado; a ação atual do jogador segura o square do alvo. Saem: `IsoMarker`,
   `RenderGhostTileColor`, luz relida, fade, visibilidade por prédio.
 - **Custo** (mundo falso, `overlays_budget`): enchendo, ≤ ~2000 chamadas Java e ≤ ~410
@@ -1281,6 +1293,79 @@ sai embaixo do jogador; `wall:addAttachedAnimSpriteByName("f_wallvines_1_2")` fu
 - **UNKNOWN (roteiro da 0023):** o mato anexado ao piso fica bem (ele sai antes do que está atrás
   dele); o recorte de parede e o telhado com anexo; o custo de invalidar ~400 níveis de chunk por
   lote; o `LoadGridsquare` no cliente de MP.
+
+**Raio pela tela (sprint 0034).** O Johan via o limite dos 15 tiles com o zoom longe. O raio
+agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, + 2, entre 15 e 30
+(`NOM_DressingRules.radius`), relido a cada atualização (10 ticks). Bytecode do B42.21.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `getPlayerScreenWidth/Height(i)` = `IsoCamera.getScreenWidth/Height(i)` (a tela do jogador, metade na tela dividida) | CONFIRMED | `ISSleepingUI.lua:16-17`; `LuaManager$GlobalObject.getPlayerScreenWidth(I)` 0–4 |
+| `getCore():getZoom(i)` = `displayZoom · tileScale / 2` (1 sem FBO) | CONFIRMED | `ISMenuContextWorld.lua:77`, `ISSearchManager.lua:103`; `Core.getZoom(I)` 0–24 |
+| A câmera trabalha no tamanho do FBO: `offscreenWidth(i) = int(getScreenWidth(i) · getZoom(i))` (idem altura). Por isso o pixel da tela entra × zoom (`ISMenuContextWorld.lua:77` faz igual) | CONFIRMED (bytecode) | `MultiTextureFBO2.getWidth(I)` 0–19, `Core.getOffscreenWidth(I)` 0–34 |
+| `IsoUtils.XToIso(i, sx, sy, z) = (sx + offX + 2(sy + offY)) / (64T) + 3z`; `YToIso(i, sx, sy, z) = (sx + offX − 2(sy + offY)) / (−64T) + 3z`, com `offX/offY = IsoCamera.getOffX/getOffY(i)` = `int(PlayerCamera.offX + rightClickX)` e `T = Core.tileScale`. É o inverso exato de `XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96T z` | CONFIRMED (bytecode) | `server/ISCoordConversion.lua:19-24`; `IsoUtils.XToIso(IFFF)` 0–36, `YToIso(IFFF)` 0–36; `IsoCamera.getOffX(I)` 0–8; `PlayerCamera.getOffX()` 0–11 |
+| A câmera centra no personagem: `offX = XToScreen(x + deferedX, y + deferedY, zCam, 0) − offscreenW/2 + playerOffsetX`, `offY = YToScreen(…) − offscreenH/2 − offsetY · 1,5 + playerOffsetY`, `playerOffsetY = −56 / (2 / T)` (o centro da tela fica 0,875 tile atrás do jogador no Tiles2x); `zCam = getZ()` a pé | CONFIRMED (bytecode) | `PlayerCamera.center` 0–147; `IsoCamera.<clinit>` 46–54; `IsoCamera$FrameState.calculateCameraZ` |
+| `math.huge` no Kahlua | EXISTS (bytecode) | `se.krka.kahlua.j2se.MathLib` registra `huge` = `Infinity` |
+
+- **Números** (fake fiel acima, 1920×1080, Tiles2x): zoom 1 → canto a ~16,4 tiles → raio 19;
+  zoom 0,5 e 0,75 → 15; 1,25 → 23; 1,5 → 27; 2 em diante → 30. `OFFSETS` vai até 30: 2821 deslocamentos (709 até
+  15). A volta da varredura no raio 30 leva 36 atualizações (~6 s) com `SCAN_BUDGET` 80; o custo
+  por atualização não muda (enchendo ~2060 chamadas Java e ≤ 411 invalidações; parado ~175).
+- **Save:** saída em lote acima do raio da hora; na hora acima de 30 + 8 = 38 (constante: o zoom
+  chegando perto tira o anel de fora em lote, 80 por atualização). **Sem supor FPS (review final da
+  0034):** o `OnTick` é por quadro e a atualização a cada 10 ticks; a conta antiga (38 + ~5 de carro
+  numa atualização < 48) só valia a 60 FPS. A 30 FPS e ~30 tiles/s o carro anda ~10 tiles entre
+  atualizações e o anexo visto a 38 chegava aos 48 com o chunk saindo do mapa. Agora o corte de 38
+  roda **no tick** em que o jogador passa de `MOVE_TILES` (2) desde o último corte, sem lote e sem
+  esperar a atualização. Entre cortes nada passa de 38 + 2; no tick do corte o chunk pode sair antes
+  do `OnTick` (o `IsoChunkMap` anda no update do mundo), com o passo daquele tick a mais. Carro a
+  2 tiles por tick (~30 tiles/s a 15 FPS): 38 + 2 + 2 + 1 (o anexo é do square inteiro, o jogador
+  anda em float) = **43 < 48**. Aguenta até ~6 tiles num tick (38 + 2 + 6 + 1 = 47). O chunk
+  gravado está a ≥ 48 em Chebyshev, e Chebyshev ≤ euclidiana.
+  **Salto:** não tem mais caso próprio (era ≥ 8 tiles num tick → tira tudo, o que um engasgo de
+  FPS no carro disparava, com tudo revestido de novo). O teleporte cai no mesmo corte: o lugar novo
+  está longe e tudo passa de 38. Um teleporte maior que ~6 tiles num tick tem o mesmo risco de antes
+  (o chunk velho sair do mapa antes do `OnTick` daquele quadro).
+  Custo (`overlays_fast_car_low_fps_never_past_hard`): o corte é só Lua até achar o que sai (o
+  registro inteiro, a cada 2 tiles andados); o pior tick de carro a 1–2,24 tiles por tick fica em
+  ~1960 chamadas Java, a ordem do enchimento (~1940 por atualização). O anexo mais longe medido:
+  38,6–39,5 tiles.
+- **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
+  de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
+  carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido
+  a borda da tela pode ver o anel ainda enchendo; a tela dividida (só o jogador 0).
+
+**Casa destruída (sprint 0034).** O Johan quer a erosão nas casas: "apagadas, acabadas, sujas,
+pichadas". A parede de dentro ganha até 3 camadas e entram pichação e mensagem. Só leitura do
+jogo instalado (B42.21): packs, arquivos de texto, Lua e bytecode. A regra está na
+[ADR-017](adr-017-outro-mundo-anexado.md), decisão 7. A medida sai de
+`scripts/audit_wall_sprites.py` → `tests/wall_sprites.lua`.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Pichação e mensagem estão no `Tiles2x.pack` (não no `Overlays2x`), em quadro de 128×256 como as outras paredes | CONFIRMED (pack) | `scripts/audit_wall_sprites.py` |
+| Lado por três caminhos, que batem: recorte (metade esquerda = W), `tileDepthTextureAssignments.txt` (`preset_depthmaps_01_4` = W, `_5` = N) e `attachedW`/`attachedN` na definição do tile | CONFIRMED | `media/newtiledefinitions.tiles.txt:162363` (`overlay_graffiti_wall_01_0`: `WallOverlay`, `attachedW`), `:162475` (`_16`: `attachedN`), `:164043` (`overlay_messages_wall_01_6`: `attachedW`); `tests/wall_sprites.lua` |
+| Divergentes, fora do pool: `overlay_graffiti_wall_01_92` (recorte e profundidade W, definição `attachedN`); `overlay_messages_wall_01_34..39` ("WE SHOOT ON SIGHT": só `WallOverlay`, sem `attachedW/N`, conteúdo até x = 127, além da face) | CONFIRMED | `media/newtiledefinitions.tiles.txt:164211-164246` (34 a 39); `tests/wall_sprites.lua` |
+| São desenhos de **1 a 5 paredes** cortados em peças de um tile. A peça que continua no vizinho encosta na borda da face (`hi` de uma, `lo` da seguinte). A ordem no sheet é a da tela, da esquerda pra direita: parede N em x crescente (`XToScreen = 32T(x − y)`), parede W em y decrescente. Montados assim, os desenhos leem certo ("KEEP OUT", "ALIVE INSIDE", "TEA BOYS") | CONFIRMED (medida + montagem conferida a olho, fora do repo) | `tests/wall_sprites.lua` (`lo`/`hi`); `IsoUtils.XToScreen` |
+| Quem anexa no vanilla: o `CellLoader` põe `WallOverlay`/`attachedN/W` na parede ao carregar o mapa → nome vanilla, **não** entra no `R.own` | CONFIRMED (bytecode) | `CellLoader.DoTileObjectCreation` 1673 (`WallOverlay`), 1711 (`attachedW`), 1790 (`attachedN`) |
+| Propriedade de sprite anexado não vai pro square: `RecalcProperties` soma só `IsoObject.getProperties()` (o sprite do objeto) | CONFIRMED (bytecode) | `IsoGridSquare.RecalcProperties` 150 (`IsoObject.getProperties`) → 232 (`PropertyContainer.AddProperties`) |
+| **A coleta lê os anexos**: `forageSystem.getAffinitySpriteNames(obj)` junta o nome do sprite e o de cada `IsoSpriteInstance` anexado (`getName` = `parentSprite.getName`). Usado pelo ícone de coleta do cliente e pelo sorteio do servidor | CONFIRMED (Lua + bytecode) | `shared/Foraging/forageSystem.lua:1569-1584`; `client/Foraging/ISSearchManager.lua:321-335`; `server/Foraging/forageServer.lua:141-150`; `IsoSpriteInstance.getName` 0–7 |
+| `trash_01_*` é afinidade "trash" da coleta, objeto móvel (`IsMoveAble`, `CanScrap`, `CustomName = Trash`). 31 peças passam no critério de decalque do chão (≥ 95% no losango, nada acima dele). **Não usado**: anexado, mudaria a coleta | CONFIRMED | `forageSystem.lua:245-261`; `newtiledefinitions.tiles.txt:232063`; `scripts/audit_floor_sprites.py` (`measure`) |
+| `d_plants_1_*` (o mato que o mod anexa fora desde a 0023) é afinidade `genericPlants` da coleta: na névoa, o mato do mod pode dar ícone de coleta de planta | CONFIRMED (efeito colateral que já existia) | `forageSystem.lua:189-200` |
+| `damaged_objects_01_*`: objeto em pé (sobe 25 a 125 px acima do losango, `StopCar`). **Não usado** | CONFIRMED | `newtiledefinitions.tiles.txt:30935`; medida |
+| `walls_burnt_01_*`: sprite de parede inteira (`WallW`/`wall`, profundidade de parede e de canto, opaco na face toda), não decalque. **Não usado** | CONFIRMED | `newtiledefinitions.tiles.txt:253314`; `tileDepthTextureAssignments.txt` |
+
+- **Escolha:** a parede de dentro empilha até 3 tipos diferentes (rachadura, sujeira, sangue,
+  escrita em cima). Pichação e mensagem entram como desenho inteiro, num trecho de 6 paredes da
+  fileira. O desenho do trecho é o mesmo dentro e fora; só a chance de aparecer muda. Só pichação
+  e mensagem entram de novo; o lixo fica pra quando houver um decalque sem afinidade.
+- **Custo** (`overlays_budget`): fora, quase igual (enchendo ~2060 chamadas e 417 invalidações,
+  contra ~2000 e 411). Casa de estresse (parede N e W em todo square, densidade 3,2): enchendo
+  ~1980 → ~2360 chamadas, 387 → 656 invalidações por atualização. Teto: 80 × (5 + 2 × 3).
+- **UNKNOWN (roteiro da 0034, casa destruída):** a escrita anexada fica em cima do recorte
+  certo (a peça é do mesmo quadro da parede); mensagem branca e apagada some em parede clara; a
+  peça cortada quando a parede vizinha da fileira é porta, janela ou falta; o tempo de quadro
+  numa casa grande com 3 camadas por parede; o ícone de coleta de planta no mato do mod.
 
 ## 17. Dissolve e bloom (sprint 0018)
 
@@ -1359,7 +1444,7 @@ Verificado no B42.21 instalado (bytecode e Lua vanilla).
 | Posição lembrada | CONFIRMED | `ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela)` (`client/TimedActions/ISBBQInfoAction.lua:29`; `ISLayoutManager.lua:6-60`: x, y e `visible` salvos e restaurados) |
 | God / noclip / invisível | CONFIRMED | `client/ISUI/AdminPanel/ISAdminPowerUI.lua:31-53` (`is/setInvisible`, `is/setGodMod`, `is/setNoClip` no jogador local) e `:403` (`sendPlayerExtraInfo(player)` depois); no MP o servidor aplica as regras dele (UNKNOWN pra quem tem só `-debug` sem ser admin) |
 | Modo deus completo (sprint 0033) | CONFIRMED | `NOM.godMode` liga junto `setGodMod` (`ISAdminPowerUI.lua:44`, lê `isGodMod` `:41`), `setInvisible` (`:36`) e `setZombiesDontAttack` (`:178`, lê `isZombiesDontAttack` `:175`), depois `sendPlayerExtraInfo` (`:403`) |
-| Puxar zumbi (sprint 0033) | CONFIRMED (mesmo caminho do Sem-rosto) | dedicado: servidor manda `debugMove {id,x,y,z}` e o dono (`not z:isRemoteZombie()`) chama `NOM_SemRosto.move` (`teleportTo`, §ADR-007); solo: o processo é o dono. Não usa `semRostoMove`: o cliente dele exige destino fora da vista do jogador. Zumbi sem ID de rede (`getOnlineID() == -1`, solo): o servidor usa o mais perto de quem pede |
+| Puxar zumbi (sprint 0033) | CONFIRMED (mesmo caminho do Sem-rosto) | dedicado: servidor manda `debugMove {id,x,y,z}` e o dono (`z:isLocal()`, §24) chama `NOM_SemRosto.move` (`teleportTo`, §ADR-007); solo: o processo é o dono. Não usa `semRostoMove`: o cliente dele exige destino fora da vista do jogador. Zumbi sem ID de rede (`getOnlineID() == -1`, solo): o servidor usa o mais perto de quem pede |
 | Hora | CONFIRMED (solo) / EXISTS (MP) | `getGameTime():setTimeOfDay(h)` (`client/LastStand/LastStandSetup.lua:63`) só grava o campo (bytecode 0–5). **Nunca pra trás:** no dedicado a data dos clientes dessincroniza (`SyncClockPacket.processClient` → `serverNewDays++` → `advanceOneDay`) e o `getWorldAgeHours` volta (timers da névoa). Hora menor que a de agora vai como `h + 24`: o `GameTime.update` (938–972) tira 24, chama `advanceOneDay` e, no servidor, marca o sync |
 | Spawn espalhado | CONFIRMED | `addZombiesInOutfitArea(x1, y1, x2, y2, z, n, outfit, femaleChance)` → `ArrayList` (`Steps.lua:2123`): n vezes `addZombiesInOutfit` em `Rand.Next(x1, x2)` (fim exclusivo, bytecode 0–54); outfit `nil` sorteia (`ISSpawnHordeUI.lua:73, 276`); nomes válidos por `getAllOutfits(false/true)` (`ISSpawnHordeUI.lua:71-72`). No servidor dedicado: UNKNOWN, o mesmo do Eco (item 2 abaixo) |
 | Frente do jogador | CONFIRMED | `player:getForwardDirection():getDirection()` em radianos (`shared/Fishing/FishingRod.lua:286`) |
@@ -1393,8 +1478,8 @@ Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para 
 
 ## 21. Sirene que congela (sprint 0033)
 
-`shared/NOM_SirenFreeze.lua`: durante os 45 s da sirene, todo zumbi que este processo
-simula fica parado, virado pra direção dela. No solo é o próprio processo
+`shared/NOM_SirenFreeze.lua`: durante os 30 s de fuga depois da sirene, todo zumbi que este processo
+simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mais perto, §23). No solo é o próprio processo
 (`server/NOM_FogEvent.lua`); no MP, o cliente dono (`client/NOM_FogClient.lua`, comandos
 `siren`, `fog` e `sirenStop`). Não há API nova além do `faceLocationF`.
 
@@ -1402,11 +1487,141 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
 |---|---|---|
 | `z:setUseless(true)` / `z:setTarget(nil)` | CONFIRMED | §3.2 e §13 (uso vanilla em `client/DebugUIs/DebugContextMenu.lua:566,673`) |
 | `z:faceLocationF(x, y)` | EXISTS | `IsoGameCharacter.faceLocationF(FF)Z` (bytecode, `javap`); uso vanilla `client/BuildingObjects/TimedActions/ISBuildAction.lua:248` (`self.character:faceLocationF(self.x + 0.5, self.y)`) |
+| `z:isMoving()` (só no log do `-debug`, contagem `andando=`) | EXISTS | `IsoGameCharacter.isMoving()Z` (bytecode, `javap`, 0–23): devolve o campo `isMoving`; no `IsoPlayer` com `isAttackAnimThrowTimeOut()` dá `false`. Nenhum uso no Lua vanilla. Não decide nada: o congelamento para todo zumbi local pelo `halt` |
 | O useless viaja na rede no pacote do dono | EXISTS | §3.2 (`NetworkZombieAI.set` → `getBooleanVariables`): a cópia remota não precisa ser tocada |
+| Dono = `z:isLocal()`; cópia remota = `not z:isLocal()` | CONFIRMED (bytecode) | §24. Até a sprint 0034 o teste era `isRemoteZombie()`, que no solo dá `true` pra todo zumbi: no jogo (2026-10-06) a sirene não congelou ninguém (`congelados=0 ... pulados morto/remoto/jogo=0/20/0`) |
 | `resetForReuse` não limpa o useless | EXISTS | §3.2; por isso o `OnZombieCreate` do módulo solta o objeto reaproveitado que estava congelado |
 | `Events.OnTick`, `OnZombieDead`, `OnZombieCreate` | CONFIRMED | já usados pelo mod (§3, §10, §11.2) |
 | Dedicado: sem `sirenStop` quando a névoa abre | decisão | o cliente solta ao receber `fog {on=true}` ou, sem comando, 15 s (`SAFETY_MS`) depois do fim da sirene |
-| UNKNOWN | — | se o zumbi useless, parado pelo idle, mantém o `faceLocationF` por frames ou volta a girar sozinho; o módulo vira de novo a cada passada (lote de 20 por tick). Conferir no jogo |
+| Posse que chega **depois** do stop (review final da 0034): o useless do dono antigo vem no pacote (§3.2) num zumbi que a passada do stop não pegou | decisão | por `SWEEP_MS` (10 s reais) depois do stop, o `F.tick` segue em rodízio (`BATCH` por tick) soltando zumbi local useless, menos a Carpideira parada (`NOM_Carpideira.still`), o Estalador que este processo cegou (`NOM_VariantAI.blinded`, exposta pra isso) e o useless do jogo. Sem API nova. Posse que chega depois dos 10 s fica presa (UNKNOWN de MP, README da 0034) |
+| O useless **não para quem já anda** | EXISTS | `PathFindState.execute` não lê `isUseless` (bytecode, `javap`); só `WalkTowardState.enter` (106) e `ZombieIdleState` leem. No jogo (2026-10-06) os zumbis não pararam na sirene |
+| Parar o zumbi andando: `getPathFindBehavior2():cancel()`, `setPath2(nil)`, `setVariable("bPathfind", false)`, `setVariable("bMoving", false)` | EXISTS | é o que o `PathFindState.execute` faz ao chegar (128–149); `setVariable` em zumbi: `client/DebugUIs/DebugContextMenu.lua:642-643`; `cancel` + `setPath2(nil)`: `client/TimedActions/WalkToTimedAction.lua:49-50` (métodos de `IsoGameCharacter`). Refeito a cada passada do lote |
+| UNKNOWN | — | se a troca de estado sai do `PathFindState`/`WalkTowardState` no mesmo frame (o `WalkTowardState.execute` mexe em `bPathfind`/`bMoving`); se o zumbi useless parado mantém o `faceLocationF` ou volta a girar sozinho. Conferir no jogo pelo log `[NOM] sirene congelados=N andando=M` (`-debug`) |
+
+## 22. Aparelhos do Outro Mundo (sprint 0034)
+
+`client/NOM_Devices.lua` (regras em `shared/NOM_DeviceRules.lua`): TV, rádio, caixa de som e
+rádio de carro perto do jogador 0 chiam e "falam" no presságio e na névoa aberta, ligados ou
+não. Atmosfera local (ADR-007): nada vai pra rede nem pro save, não chama zumbi e o aparelho
+não muda de estado. Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `getZomboidRadio()` global | CONFIRMED | `server/radio/ISDynamicRadio.lua:32`, `client/RadioCom/RadioWindowModules/RWMGeneral.lua:69` |
+| `ZomboidRadio:getDevices()` → `ArrayList<WaveSignalDevice>` com todo `IsoWaveSignal` (TV, rádio) e toda `VehiclePart` com `DeviceData` em chunk carregado | EXISTS | bytecode `ZomboidRadio.getDevices` (devolve o campo `devices`); `IsoWaveSignal.addToWorld`/`removeFromWorld` → `RegisterDevice`/`UnRegisterDevice`; `VehicleParts.addToWorld` registra parte com `getDeviceData() ~= nil`; chunk que descarrega chama `removeFromWorld` (`IsoChunk.removeFromWorld` 464) |
+| `WaveSignalDevice`: `getX/getY/getZ` (float; a da `VehiclePart` é a posição do carro), `getDeviceData()` | EXISTS | `javap zombie.radio.devices.WaveSignalDevice`; `VehiclePart.getX` 0–9 |
+| `dd:getIsTelevision()` | CONFIRMED | `RWMGeneral.lua:67` |
+| `dd:isVehicleDevice()`, `dd:getIsTurnedOn()` | CONFIRMED | `shared/RadioCom/ISRadioAction.lua:63-64` |
+| "Pode ligar": `getIsBatteryPowered() and getPower() > 0 or canBePoweredHere()` (no carro, `canBePoweredHere` = bateria do carro) | CONFIRMED | `ISRadioAction.lua:57`; bytecode `DeviceData.canBePoweredHere` 0–121 |
+| Rádio de carro instalado: `part:getInventoryItem()` | CONFIRMED | `client/Vehicles/ISUI/ISVehicleDashboard.lua:541` |
+| `part:getVehicle()` | CONFIRMED | `shared/Vehicles/TimedActions/ISRepairLightbar.lua:91` |
+| `getWorld():getFreeEmitter(x, y, z)` → emitter do pool já posicionado; o pool devolve o emitter quando ele fica vazio | EXISTS | bytecode `IsoWorld.getFreeEmitter(FFF)` 0–16; `IsoWorld` 8947–8990 (`currentEmitters` → `freeEmitters`); `getWorld()` CONFIRMED `client/Traps/CTrapGlobalObject.lua:32` |
+| `emitter:playSoundImpl(nome, false, nil)` → id, **local** (sem pacote), no emitter do pool | CONFIRMED | bytecode `FMODSoundEmitter.playSoundImpl(String,boolean,IsoObject)` 0–6 → `(String,IsoObject)` 0–24. **NÃO use `(nome, nil)` no `FMODSoundEmitter`:** ele também tem `(String,IsoGridSquare)` (1208–1235, lê `square.x`), o Kahlua escolhe esse com nil e dá NPE (console.txt, 2026-10-06). O `(nome, nil)` de `shared/TimedActions/ISAddItemInRecipe.lua:44` é no emitter de personagem, que não tem o overload do square |
+| `vehicle:playSoundImpl(nome, nil)` = `getEmitter():playSoundImpl`; o emitter segue o carro | EXISTS | bytecode `BaseVehicle.playSoundImpl` 0–9, `BaseVehicle.updateSounds` 96–113 |
+| `emitter:setVolume(id, v)`, `isPlaying(id)`, `stopSoundLocal(id)` | CONFIRMED | §4.3 |
+| Volume que sai = volume da instância (`setVolume`) × `volume` do clip no script | CONFIRMED (bytecode) | `FMODSoundEmitter$Sound.getVolume` 0–23 (`volume * clip.getEffectiveVolume()`) |
+| `emitter:playSound`, `getSoundManager():PlayWorldSound`, `deviceData:playSoundSend` mandam pacote no cliente de MP | CONFIRMED (bytecode) | `FMODSoundEmitter.playSound(String)` 0–107; `SoundManager.PlayWorldSound` 12–35; `ISRadioAction.lua:63` |
+| O emitter do próprio aparelho (`dd:getEmitter()`) só existe ligado e com ouvinte a até 16 tiles | CONFIRMED (bytecode) | `DeviceData.updateEmitter` 0–143 (`cleanSoundsAndEmitter` fora disso) |
+| Som com `distanceMax` não zera depois dele (rolloff inverso do FMOD) | LIKELY | nenhum modo de rolloff no jar; `FMOD_System_Set3DSettings(1, 1, 1)`: o cliente para o som a 20 tiles |
+| Som tocado não chama zumbi; o que chama é `addSound` | CONFIRMED | §4.2 |
+
+Decisões: o emitter do pool é parado só pelo id (`stopSoundLocal`), nunca por `stopAll`, porque
+outro sistema pode estar usando o mesmo emitter. O rádio instalado num carro durante a sessão
+pode só entrar na lista quando o carro voltar ao mundo (`VehiclePart.createSignalDevice` não
+registra): sem fallback pelos veículos até o jogo mostrar que faz falta. O grito do Corredor não
+chega ao cliente pelo Lua (`sendPlaySound` do servidor), então só o da Carpideira
+(`NOM_Carpideira.onScream`) faz o aparelho respirar na vermelha.
+
+| UNKNOWN | — |
+|---|---|
+| tamanho da lista numa cidade, e se os aparelhos das casas a ~15 tiles estão nela no cliente de MP | `getZomboidRadio():getDevices():size()` no console |
+| atenuação real com `distanceMin` 2 e `distanceMax` 18; oclusão atrás de parede | ouvir no jogo |
+| `stopSoundLocal(id)` para mesmo o som de um emitter do pool que já se afastou | ouvir no jogo |
+
+## 23. Sirenes posicionais (sprint 0034)
+
+`shared/NOM_Siren.lua` (posições, sons e atrasos em `shared/NOM_SirenSpotsRules.lua`): 5
+sirenes por jogador local, todas de 150 a 500 tiles (tarefa 3, pedido do Johan em 2026-10-06:
+"não quero que fique gritando no ouvido do jogador"), pelo menos 40° entre vizinhas, a
+primeira na hora e as outras 4 cada uma na sua janela (0,3–1, 1,3–2, 2,3–3 e 3,3–4 s, então
+pelo menos 0,3 s entre duas), em ordem de direção embaralhada; o som de cada uma sai da lista
+da névoa sem repetir no coro, com afinação sorteada por sirene (`pitch`, 0,95 a 1,05).
+Cada uma num emitter do mundo, parado onde foi posto, com a mesma técnica da §22
+(`getFreeEmitter` + `playSoundImpl`, afinada por `setPitch(id, fator)` e parada por
+`stopSoundLocal(id)` no `sirenStop` e no cancelamento do solo). O congelamento (§21) vira cada zumbi pro jogador vivo mais perto.
+Bytecode do B42 instalado.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| As 4 atrasadas contam o atraso como a fuga (`NOM_FogEventRules.countdown`, review final da 0034): param com `isGamePaused()` e cada tick desconta no máximo `MAX_STEP_MS`; antes seguiam `getTimestampMs` e entravam com o jogo pausado | CONFIRMED | §11.2 (`isGamePaused`, uso vanilla `client/ISUI/ISJoystickButtonRadialMenu.lua:68`, `client/Foraging/ISSearchManager.lua:1462`); se o som que já toca pausa junto segue UNKNOWN (§11.3) |
+| O jogo não corta som de arquivo 3D por distância: nada em `FMODSoundEmitter.addSound` (chamado pelo `playClip`) nem no `FileSound.tick` compara a distância do ouvinte com o `distanceMax`; o `tick` só posiciona (`Set3DAttributes`, z × 3), passa `Set3DMinMaxDistance(distanceMin, distanceMax)` e a oclusão | CONFIRMED (bytecode) | `FMODSoundEmitter.addSound` 259–487 (ramo `file`); `FMODSoundEmitter$FileSound.tick` 52–264 (`Set3DAttributes`), 353–386 (`Set3DLevel` só abaixo de 2 tiles do ouvinte), 893–908 (`Set3DMinMaxDistance`) |
+| O pool do `IsoWorld` faz `tick` em todo emitter em uso, sem filtro de distância, e só devolve o vazio | CONFIRMED (bytecode) | `IsoWorld` 8930–8990 (`currentEmitters` → `freeEmitters` quando `isEmpty`) |
+| Square do emitter fora da célula carregada (a 150–500 tiles, quase sempre) só pula a oclusão: o som toca | CONFIRMED (bytecode) | `FileSound.tick` 909–936 (`getGridSquare` nulo → salta pro fim, 1533) |
+| Sem modo de rolloff explícito: inverso do FMOD, ganho `distanceMin / d` entre `distanceMin` e `distanceMax`, e constante depois (não zera) | LIKELY | §22 / `api-aparelhos.md` §5; `FMOD_System_Set3DSettings(1, 1, 1)` |
+| `getOnlinePlayers()`: servidor = `GameServer.getPlayers`, cliente = `GameClient.getPlayers` (o `IDToPlayerMap`: os jogadores que o cliente conhece), solo = `ArrayList` vazia | CONFIRMED | uso vanilla no cliente `client/Chat/ISChat.lua:560`; bytecode `LuaManager$GlobalObject.getOnlinePlayers` 0–30, `GameClient.getPlayers` 0–42 |
+| `emitter:setPitch(id, fator)` existe no `FMODSoundEmitter` (classe exposta ao Lua), com um overload só: `setPitch(long, float)`, a mesma conversão do id que o `setVolume(long, float)` já usa | EXISTS | `javap fmod.fmod.FMODSoundEmitter` (o pacote é `fmod.fmod`, não `zombie.audio`); abstrato em `zombie.audio.BaseSoundEmitter`; `LuaManager$Exposer` 163–165 (`setExposed(FMODSoundEmitter)`). Nenhum uso no Lua vanilla |
+| `setPitch` é **local**: só grava `Sound.pitch` e, se o id bate, escreve no `DebugLog` ("Set pitch for ToStart/Instance", uma linha no console por sirene). Nenhum pacote | CONFIRMED (bytecode) | `FMODSoundEmitter.setPitch` 0–112: dois laços (`toStart` 3–53, `instances` 59–109), `putfield Sound.pitch` 47 e 103 |
+| Pegadinha: o id **não filtra**: o `lcmp` (35 e 91) só decide o log; o `putfield` vale pra todo som do emitter. Com o emitter do pool vazio e só a sirene nele, afina só ela | CONFIRMED (bytecode) | `FMODSoundEmitter.setPitch` 36 `ifne 44` e 92 `ifne 100` pulam só o `DebugLog.log` |
+| Funciona em som de arquivo (`clip { file = ... }`): o `addSound` copia o `pitch` do clip (padrão 1,0) pro `FileSound`, e o `FileSound.tick` passa o campo pro canal no início e em todo tick, mesmo com o square fora da célula carregada | CONFIRMED (bytecode) | `FMODSoundEmitter.addSound` 410–416 (`GameSoundClip.pitch` → `FileSound.pitch`); `GameSoundClip.<init>` 9–11 (1,0); `FileSound.tick` 179–187 e 1747–1755 (`FMOD_Channel_SetPitch`), 936 `ifnull 1533` segue até 1755 sem `return`. O `EventSound` (FMOD Studio) não lê o campo |
+| O FMOD muda tom e velocidade juntos (fator 1,05 = +84 cents e 5% mais curto) | LIKELY | semântica de `FMOD_Channel_SetPitch` (multiplicador da frequência de reprodução) |
+
+Alternativa descartada: o campo `pitch` do clip no script de som (`GameSoundScript` 176–192 →
+`GameSoundClip.pitch`) é fixo por som; afinação por sirene exigiria variantes declaradas
+(5 tons × 31 sons), e o `setPitch` em tempo de execução faz o mesmo sem nenhuma.
+
+Decisão (audibilidade, tarefa 3): as 31 sirenes oficiais (`NOM_SirenWhite1`–`9`,
+`NOM_SirenRed1`–`9`, `NOM_SirenBlack1`–`13`) são declaradas com `distanceMin` 50 e
+`distanceMax` 500. Com o rolloff inverso, uma sirene sai a −9,5 dB em 150 tiles e −20 dB em
+500 (queda de 10,5 dB na faixa, que é o que separa "perto" de "longe" no coro), e o
+`distanceMax` em 500 faz a queda valer até o fim da faixa. Os arquivos têm RMS ~ −12 dBFS
+(~ −12 LUFS); com 5 distâncias uniformes em [150, 500], a soma das potências esperada é
+`5 × 50² / (150 × 500)` = −7,8 dB, ou seja ~ −20 LUFS no ouvido, contra −13,4 a −19,4 LUFS da
+sirene perto antiga (−7,4 LUFS no arquivo, a 40–80 tiles com `distanceMin` 20). Como o jogo
+não corta, **o emitter fica na posição sorteada**, sem aproximar. A distância que o FMOD não
+faz vem embutida no arquivo (`scripts/gen_sounds.py`, `eco_cidade`): passa-baixa de ar
+(4 kHz, 2ª ordem), cinco reflexões de cidade de 0,31 a 1,47 s (ganho 0,45 → 0,12, cada vez
+mais escuras, atrasos ±8% por sirene) e cauda de reverb distante (rt60 2,6 s).
+
+Jogadores do congelamento: os locais (`getNumActivePlayers` + `getSpecificPlayer`) e, no
+cliente de MP, os do `getOnlinePlayers()`; o mais perto até `NOM_SirenFreeze.RANGE` (100 tiles).
+Sem jogador nesse raio, o zumbi congela e fica virado como estava.
+
+| UNKNOWN | — |
+|---|---|
+| a 500 tiles (−20 dB, ~ −32 LUFS no ouvido) a sirene ainda se ouve sobre o drone e a chuva? o coro de 5 incomoda? | ouvir no jogo |
+| o FMOD não virtualiza (corta) canal baixo com muitos sons tocando (5 sirenes + drone + aparelhos) | ouvir na cidade, com a névoa subindo |
+| o pan do FMOD a 150–500 tiles dá direção clara (o emitter está fora da célula carregada) | ouvir girando a câmera |
+| o `IDToPlayerMap` do cliente traz a posição atual dos jogadores longe dele | MP com dois jogadores |
+| a afinação de 0,95 a 1,05 se ouve como aparelhos diferentes, sem soar desafinado nem "fita acelerada" | ouvir o coro; com `-debug`, o `tom=` de cada sirene sai no console |
+
+## 24. Dono do zumbi: `isLocal`, não `isRemoteZombie` (sprint 0034)
+
+Visto no jogo (solo, `-debug`, 2026-10-06): a sirene não congelou nenhum zumbi, com o log
+`[NOM] sirene congelados=0 ... lista=104 pulados morto/remoto/jogo=0/20/0`. O lote inteiro foi
+pulado como cópia remota, no solo. Causa: `isRemoteZombie()` pergunta "este zumbi tem dono de
+rede?", e no solo nenhum tem. Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Todo zumbi tem um `NetworkZombieComponent` | EXISTS | `IsoZombie.registerECSComponents` 0–14 (`new NetworkZombieComponent(this)`) |
+| `IsoZombie.isRemoteZombie()` = `isRemote()` | EXISTS | `IsoZombie.isRemoteZombie` 0–4 |
+| `IsoGameCharacter.isRemote()` (`public final`) = `NetworkComponent.isRemote()`; sem componente, `false` | EXISTS | `IsoGameCharacter.isRemote` 0–28 (`tryGetECSComponent(NetworkComponent)`, `PZOptional.ifPresent` com padrão `false`) |
+| `NetworkZombieComponent.isRemote()` = `authOwner == null` | EXISTS | `NetworkZombieComponent.isRemote` 0–12 |
+| Só o cliente de MP chama `setOwner`: `NetworkZombieSimulator.becomeLocal` põe `GameClient.connection`, `becomeRemote` limpa, `parseZombie` também mexe. No solo ninguém chama, então **`isRemoteZombie()` dá `true` pra todo zumbi no solo** | EXISTS | `zombie.popman.NetworkZombieSimulator.becomeLocal` 6–9, `becomeRemote` 32–37, `parseZombie` 823–844 |
+| `IsoGameCharacter.isLocal()` (`public final`) = `NetworkComponent.isLocal()`; sem componente, `true` | EXISTS | `IsoGameCharacter.isLocal` 0–28 (padrão `true`) |
+| `NetworkComponent.isLocal()` = `(not isClient() and not isServer()) or not isRemote()`, com `isClient` = `GameClient.client` e `isServer` = `GameServer.server` | EXISTS | `NetworkComponent.isLocal` 0–26, `isClient` 0–3, `isServer` 0–3 |
+| Solo: `isLocal()` = `true` pra todo zumbi. Cliente de MP: `true` só no zumbi de que ele é dono (`authOwner ~= nil`), igual ao `not isRemoteZombie()` de antes | EXISTS | as duas linhas acima |
+| Uso vanilla de `isLocal()` em personagem (método de `IsoGameCharacter`, vale pro `IsoZombie`) | CONFIRMED | `client/Fishing/FishingHandler.lua:16` (`player:isLocal()`), `client/ISUI/ISTradingUI.lua:7` |
+| Nenhum Lua vanilla chama `isRemoteZombie` | CONFIRMED | `rg isRemoteZombie media/lua` vazio; só o Java (`NetworkZombieAI.parse` 204 e 388, que roda no cliente, onde o sentido bate) |
+
+No servidor dedicado `isLocal()` = `authOwner ~= nil` (zumbi com dono cliente é "local" pro
+servidor); o mod não pergunta isso no servidor. Decisão: todo código do mod testa dono com
+`z:isLocal()` e cópia de outro cliente com `not z:isLocal()` (`NOM_SirenFreeze`, `NOM_VariantAI`,
+`NOM_NightStats`, `NOM_Carpideira`, `client/NOM_FogClient.lua`, `client/NOM_Debug.lua`). Antes da
+troca, no solo, além da sirene: a IA das variantes não rodava (Estalador não cegava, Corredor não
+avisava que caçava, Carpideira calma não parava), o laço da noite não reaplicava a velocidade
+re-rolada e a Carpideira não soltava depois do grito. O lint `tests/test_kahlua_compat.lua` (`api_no_is_remote_zombie`) falha se
+`isRemoteZombie` voltar em `mod/` ou `mod2/`, e os fakes de zumbi não têm o método.
 
 ## Abordagem recomendada por mecânica (resumo)
 
@@ -1426,7 +1641,9 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
-| Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio, na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
+| Som local num ponto do mundo | `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil)`, parado pelo id; no carro, `vehicle:playSoundImpl` (§22) | — (`PlayWorldSound` manda pacote) |
+| Achar aparelho perto | `getZomboidRadio():getDevices()` filtrado por distância² (§22) | varrer quadrados (caro, sem o carro) |
+| Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio (pela tela, 15 a 30), na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |
 | Névoa só do mod | camada modded da névoa + `setEnableOverride(false)` no `OnClimateTick` (§11) | — |
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
@@ -1469,3 +1686,13 @@ simula fica parado, virado pra direção dela. No solo é o próprio processo
     voltar na névoa e depois dela sem nada sobrando (roteiro da sprint 0023)
 16. Debug amigável (sprint 0020): Insert livre em `-debug` (as 46 classes dizem que sim)? `NOM.time` no dedicado chega nos
     clientes, com a data certa? `NOM.god` de quem tem `-debug` mas não é admin vale no MP? (§18)
+17. Aparelhos do Outro Mundo (sprint 0034): a TV e o rádio das casas perto estão na
+    `getZomboidRadio():getDevices()`? O som some com a distância e para a 20 tiles? O rádio de
+    carro toca no carro? Volume e frequência agradam? (§22)
+18. Sirenes posicionais (sprint 0034): as 5 vêm de lados diferentes, desencontradas, sem
+    gritar no ouvido? A de 500 tiles ainda se ouve? A afinação por sirene soa natural? Os
+    zumbis congelados olham pro jogador e acompanham quando ele anda? (§23)
+19. Outro Mundo na tela toda (sprint 0034, §16.6): no zoom mais longe o desenho chega nas
+    bordas da tela? O FPS aguenta ~2800 squares com anexo? De carro, a borda que entra enche a
+    tempo? Dormir e sair do jogo com o zoom longe, voltar: nada sobrando
+    (`[NOM] outro mundo: N alvos limpos pro save` no console com `-debug`)

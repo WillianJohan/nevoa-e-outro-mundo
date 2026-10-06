@@ -201,10 +201,14 @@ local function onClimateTick(clim)
     -- fim/carga acertam no OnClimateTick do NOM_FogEvent, que roda depois deste
     -- (ordem alfabética de carga). A rampa começa até 1 minuto de jogo depois da
     -- borda; com 20 minutos de rampa não se vê.
-    state.eventRamp = NOM_Rules.ramp(state.eventRamp, w.fog, TRANSITION_MINUTES)
-    state.redRamp = NOM_Rules.ramp(state.redRamp, w.fog and w.red, TRANSITION_MINUTES)
+    -- A névoa sobe já na fuga (rising, sprint 0034): os 30 s reais (~12 minutos de jogo no
+    -- dia padrão) deixam ela pelo meio quando os bichos soltam, e a rampa segue sem degrau.
+    local fog = w.fog or w.rising
+    local red = (w.fog and w.red) or (w.rising and w.risingRed)
+    state.eventRamp = NOM_Rules.ramp(state.eventRamp, fog, TRANSITION_MINUTES)
+    state.redRamp = NOM_Rules.ramp(state.redRamp, red, TRANSITION_MINUTES)
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
-    state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and w.fog, TRANSITION_MINUTES)
+    state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and fog, TRANSITION_MINUTES)
     local dump = logDebug(w)
     ownFog(clim:getClimateFloat(ClimateManager.FLOAT_FOG_INTENSITY))
     paintFogColor(clim:getClimateColor(COLOR_NEW_FOG))

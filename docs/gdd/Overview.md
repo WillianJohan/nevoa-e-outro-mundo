@@ -29,7 +29,7 @@ Quando os dois coincidem, valem juntos: é a pior noite possível, de propósito
 
 Dia: saquear, limpar corpos (queimar/enterrar), preparar abrigo →
 noite: sobreviver aos infectados agressivos e aos Ecos →
-sirene → névoa (de dia ou de noite, quase todo dia): fugir ou se esconder do Outro Mundo — Estaladores,
+sirenes ao longe e 30 s de fuga → névoa (de dia ou de noite, quase todo dia): fugir ou se esconder do Outro Mundo — Estaladores,
 Corredores, Sem-rosto, Carpideiras → fim da névoa e calmaria (a folga pra explorar) → amanhecer → repetir.
 
 ## Índice de sistemas
@@ -166,8 +166,9 @@ Só viram escopo por promoção explícita.
      no dia 60; segunda névoa de 15% depois de 6 h de folga; garantia no terceiro dia sem névoa.
   2. **Duração por tipo:** branca 3–5 h, vermelha 4–6 h. A vermelha é 20% (a partir do dia 7) e
      não sobe mais até o dobro no dia 90 (reverte parte da 0019).
-  3. **Sirene de 45 s** (era 30) com **todos os zumbis parados**, virados pra uma direção, e
-     voltando juntos quando a névoa começa.
+  3. **Sirene de 45 s** (30 antes) com **todos os zumbis parados**, virados pra uma direção, e
+     voltando juntos quando a névoa começa. A 0034 trocou isso pelo coro de sirenes ao longe e a fuga
+     de 30 s, com os zumbis virados pro jogador (abaixo).
   4. **Calmaria:** 2 h de jogo depois da névoa, com o zumbi comum um degrau mais lento e de
      sentidos reduzidos.
 
@@ -175,3 +176,31 @@ Só viram escopo por promoção explícita.
   facelift) está na spec e entra nas sprints 0034 a 0044. O rosto censurado do Sem-rosto, que era
   a 0033 antiga, virou parte do facelift ([world-states.md](world-states.md),
   [sandbox.md](sandbox.md), [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md#emenda-de-2026-10-06--sprint-0033-ritmo-novo)).
+- **2026-10-06** — **Sem sangue no chão do Outro Mundo** (sprint 0034), visto no jogo pelo Johan:
+  as poças e rastros ficaram "parecendo jogo dos anos 2000 com textura ruim". Saem do chão; fica o
+  resto (sangue de parede, sujeira, rachadura, mato e folha, chão queimado)
+  ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
+  [ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).
+- **2026-10-06** — **Sirenes e fuga** (sprint 0034), decisões do Johan na mesma sessão:
+  1. **Sirene curta:** "45 segundos é tempo demais, o jogador vai ficar surdo". Os sons oficiais têm
+     11,8 s.
+  2. **Fuga de 30 s, fixa:** "quando a sirene toca, já começa a névoa... o tempo de 30/45 segundos é
+     o tempo pro jogador se movimentar antes dos bichos começarem". A névoa visual, a escuridão e o
+     drone sobem na sirene; bichos, comportamento, Sem-rosto e Outro Mundo esperam o fim da fuga.
+  3. **Coro de sirenes ao longe:** "o som não é mais 2D chapado, ele vem de alguma posição". Cada
+     jogador ouve 5, a 150–500 tiles ("não quero que fique gritando no ouvido do jogador"), cada uma
+     com afinação própria; 31 sons nossos (9 brancas, 9 vermelhas, 13 pretas pra 0038). Os zumbis
+     congelados viram pro jogador mais perto.
+  4. **Estática na tela** 3 s antes da sirene e sutil a névoa toda, na cor dela.
+  5. **Aparelhos do Outro Mundo:** TV, rádio, caixa de som e carro chiam na névoa, "coisas que venham
+     de outro mundo tentando se comunicar".
+  6. **Outro Mundo na tela toda** (raio de 15 a 30 tiles pelo zoom) e **casa destruída** ("apagadas,
+     acabadas, sujas, pichadas"): paredes de dentro em camadas, pichações e mensagens inteiras.
+
+  ([world-states.md](world-states.md), [atmosphere.md](atmosphere.md#som),
+  [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md#emenda-de-2026-10-06--sprint-0034-sirenes-posicionais)).
+- **2026-10-06** — **Outro Mundo estilo Silent Hill e fila nova**: o visual do Outro Mundo passa a ser
+  mais Silent Hill (tinta descascando, ferrugem, grade metálica, lascas e cinza subindo do chão e das
+  paredes, transição "descascando" no shader logo depois da sirene). Vira a sprint **0035**, junto da
+  transição escondida e da tontura; o equilíbrio (visão de ~4 tiles e perambular) passa pra **0036**
+  ([spec §10](../superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)).

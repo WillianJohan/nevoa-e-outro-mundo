@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento), 0023 (anexado ao chão e às paredes) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento), 0023 (anexado ao chão e às paredes), 0034 (coro de sirenes, estática na tela, aparelhos, casa destruída, sem sangue no chão) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -24,7 +24,9 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
   mudam: de noite, luz vira o que separa ver de não ver.
 - **Névoa: do mod, não do clima** ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)).
   O canal de névoa do clima é 0 fora do evento e denso (0.85) durante, com entrada e
-  saída de ~20 minutos de jogo. Vale com o clima sombrio desligado: a névoa é o evento.
+  saída de ~20 minutos de jogo. Desde a sprint 0034 a entrada começa já na sirene: nos 30 s reais
+  da fuga (~12 minutos de jogo) a névoa chega a uns 60% e completa logo depois que o evento abre.
+  Sirene cancelada, a rampa desce. Vale com o clima sombrio desligado: a névoa é o evento.
   Por cima, o look: dessaturação forte (de dia), tint sépia bem escuro, luz ambiente menor. Contra a luz de névoa vanilla (que também escurece)
   a luz do céu cai mais 29–46% com `DarkIntensity` 1, o azul mais (sépia).
 - **Névoa vermelha** ([ADR-010](../architecture/adr-010-nevoa-vermelha.md)): a névoa
@@ -60,16 +62,33 @@ mesmo processo; em MP o cliente não escreve no clima, só recebe.
 
 ## Som
 
-- **Sirene** (evento de névoa): sirene de ataque aéreo, ~24 s, sobe e cai duas vezes,
-  tocada pra todo jogador 45 s reais antes da névoa, alta e audível em qualquer lugar
-  (toca no próprio jogador). Sem toggle: é o aviso do evento.
-- **Sirene vermelha** (névoa vermelha): a mesma sirene, ~30% mais grave, rasgada, com
-  o rotor gemendo e um ronco uma oitava abaixo, ~28 s. Toca no lugar da normal, no
-  mesmo momento (45 s reais antes): quem ouve sabe o que vem. Nos primeiros
-  `RedFogGraceDays` (7) dias do save ela não toca (sprint 0019): o jogador aprende a
-  sirene normal antes.
+- **Sirenes** (evento de névoa, sprint 0034): um **coro de 5 sirenes ao longe**, no jogo de cada
+  jogador, sorteadas em volta dele a 150–500 tiles, de lados diferentes e desencontradas em até 4 s.
+  Cada uma fica parada no mundo enquanto o jogador anda, toca um som diferente da lista da névoa e
+  tem afinação própria (0,95 a 1,05), pra duas do coro nunca soarem como o mesmo aparelho. Cada som
+  dura 11,8 s, com o eco de uma cidade vazia embutido no arquivo. A sirene abre a **fuga**: 30 s
+  reais até os bichos ([world-states.md](world-states.md)). Sem toggle: é o aviso do evento.
+  - **Brancas** (9): sirenes de defesa civil, de rotor no poste, de rádio de emergência e de fita
+    velha, abafadas pela névoa.
+  - **Vermelhas** (9): sinal de ataque com o rotor rosnando, uivos quase orgânicos pelo megafone,
+    estática agressiva. Tocam no lugar das brancas: quem ouve sabe o que vem. Nos primeiros
+    `RedFogGraceDays` (7) dias do save não há vermelha (sprint 0019): o jogador aprende a branca antes.
+  - **Pretas** (13): apagões, disjuntores e sirenes graves morrendo. Já geradas; só tocam na névoa
+    preta (sprint 0038).
+- **Aparelhos do Outro Mundo** (sprint 0034, com `FogAmbience`): TV, rádio, caixa de som e rádio de
+  carro, ligados ou não, "tentam falar". O ligado tem prioridade e fala mais alto.
+  - No presságio (3 s antes da sirene), todo aparelho a até 25 tiles dá um estouro curto de estática,
+    cortado pela sirene. Na fuga, silêncio.
+  - Na névoa aberta, a cada 90 a 180 s reais o aparelho mais perto entre 6 e 18 tiles toca um evento
+    (TV fora do ar, rádio varrendo estações mortas, caixa de som de poste, rádio de carro ligando
+    sozinho; versões vermelhas da TV e do rádio). Nunca dois juntos pro mesmo jogador; para se ele
+    passa de 20 tiles.
+  - O Sem-rosto a até 10 tiles de um aparelho o faz chiar; na vermelha, o grito da Carpideira faz o
+    aparelho perto respirar.
+  - Só no jogo de quem ouve: não chama zumbi e não mexe no aparelho.
 - Névoa (`FogAmbience`): um drone grave em loop entra em ~8 s e sai em ~8 s com
-  a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s).
+  a névoa; ruídos metálicos distantes de vez em quando (a cada 20–60 s). Desde a sprint 0034 ele
+  já entra na sirene, com a névoa subindo.
 - Rádio chiando por proximidade do Sem-rosto (`SemRostoEnabled`): loop de estática
   com volume pela distância do Sem-rosto mais perto; para quando a névoa baixa.
 - Estalo do Estalador, grito do Corredor.
@@ -82,14 +101,18 @@ máximo". Substitui as manchas esparsas da sprint 0005
 ([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md); como, desde a sprint 0023:
 [ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).
 
-- **Chão, num raio de 15 tiles:** poças de sangue (até 3 camadas no miolo), rastros saindo delas
-  e respingos soltos, por cima de rachaduras; sujeira em manchas, mais leve que o sangue. Dentro de
-  casa, **chão queimado** em manchas (casa destruída: o miolo todo queimado, a borda só marcada);
-  fora, **mato e folha** rasteiros. Na densidade 1, ~85% dos squares mudam; qualquer enquadramento
-  de 7×7 tiles perto do jogador tem sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda
-  não tá o outro mundo": grama verde e asfalto limpos no zoom de perto).
+- **Chão, num raio de 15 a 30 tiles (segue a tela):** rachaduras e sujeira em manchas, mais leve.
+  Dentro de casa, **chão queimado** em manchas (casa destruída: o miolo todo queimado, a borda só
+  marcada); fora, **mato e folha** rasteiros. **Sem sangue no chão** (sprint 0034: as poças e
+  rastros pareciam "jogo dos anos 2000 com textura ruim", decisão do Johan); o sangue fica nas
+  paredes. Na densidade 1, ~66% dos squares mudam (~83% na névoa vermelha).
 - **Paredes** (de volta na sprint 0023): sangue escorrido, sujeira e rachadura; trepadeira nas
   paredes de fora.
+- **Casa destruída** (sprint 0034, pedido do Johan: "apagadas, acabadas, sujas, pichadas"): a parede
+  de dentro ganha quase sempre uma camada e pode empilhar até 3 de tipos diferentes (rachadura,
+  sujeira, sangue e, por cima, escrita). Pichações e mensagens vanilla ("KEEP OUT", "ALIVE INSIDE"
+  e outras) aparecem **inteiras**, espalhadas pelas paredes seguidas que o desenho ocupa: mensagem
+  mais comum dentro de casa, pichação mais comum fora. A parede de fora continua com uma camada.
 - **Colado no mundo** (sprint 0023): o desenho vai preso ao chão e à parede de verdade, como a
   erosão do jogo. Fica embaixo dos personagens, pega a luz do lugar (a lanterna clareia, o breu
   esconde), some com a parede quando o jogo a corta e com o telhado quando o jogador está fora. Sem
@@ -98,7 +121,7 @@ máximo". Substitui as manchas esparsas da sprint 0005
 - **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
   outra névoa, outro desenho. Nada pisca enquanto se anda.
 - Enche em ~1,5 s quando a névoa chega, do mais perto pro mais longe, acompanha o jogador andando e
-  some do mesmo jeito quando ela baixa. Na morte, no salto e no save some na hora (e volta logo
+  some do mesmo jeito quando ela baixa. Na morte, no teleporte e no save some na hora (e volta logo
   depois do save).
 - **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
   (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.
@@ -108,18 +131,21 @@ máximo". Substitui as manchas esparsas da sprint 0005
   depois de gravar um pedaço do mapa em segundo plano).
 - Enquanto o jogador faz uma ação num lugar (cavar, marretar, pegar um móvel), aquele square fica
   limpo; volta quando a ação acaba.
-- Sprites vanilla por nome: `overlay_blood_floor_01_*`, `overlay_grime_floor_01_*`,
-  `d_streetcracks_1_*`, `floors_burnt_01_*`, `d_plants_1_*`, `d_floorleaves_1_*`; nas paredes
-  `overlay_blood_wall_01_*`, `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`
+- Sprites vanilla por nome: `overlay_grime_floor_01_*`, `d_streetcracks_1_*`, `floors_burnt_01_*`, `d_plants_1_*`, `d_floorleaves_1_*`; nas paredes
+  `overlay_blood_wall_01_*`, `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`,
+  `overlay_graffiti_wall_01_*`, `overlay_messages_wall_01_*`
   ([pz-api-notes §16](../architecture/pz-api-notes.md#16-outro-mundo-sangrento-sprint-0015)).
+- **Próximo visual** (decisão do Johan, 06/10/2026): o Outro Mundo fica mais **Silent Hill** (tinta
+  descascando, ferrugem, grade metálica, lascas subindo) na sprint 0035
+  ([spec](../superpowers/specs/2026-10-06-modelo-novo-design.md#7-outro-mundo)).
 - Limites: só o andar do jogador; montado pro jogador 0 na tela dividida.
 
 ## Vinheta (só na névoa)
 
 > Vinheta, sangue e erosão, drone e rádio **só aparecem no evento de névoa**,
-> nunca só de noite. Pra ver sem esperar: `NOM_Debug.fog(true, true)` no console
-> (névoa na hora) ou `NOM_Debug.fog(true)` (sirene e névoa 45 s depois).
-> Vermelha: `NOM_Debug.redFog(true)`.
+> nunca só de noite. Pra ver sem esperar: `NOM.setFog(true)` no console
+> (névoa na hora) ou `NOM.setFog()` (presságio, sirene e névoa 30 s depois).
+> Vermelha: `NOM.setRedFog(true)`. A vinheta e o drone já sobem durante a fuga.
 
 - `FogVignette`, `FogVignetteIntensity` (1.0, 0–2): as bordas da tela escurecem,
   desfocam e perdem cor, com fade. É o efeito de tela do modo de busca do jogo,
@@ -140,10 +166,14 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
   mais próximo: a mesma distância do rádio (a partir de 30 tiles, cheio a 3).
 - **Pulso vermelho** quando uma Carpideira grita perto: cheio a até 6 tiles, nada a partir de 30,
   some em menos de 1 s.
+- **Estática da névoa** (sprint 0034): chiado em mosaico, na cor da névoa (branca ou vermelha). É a
+  única camada que aparece **antes** da névoa: começa 3 s antes da sirene (o presságio), fraca no
+  começo e forte no fim; depois da sirene desce em ~4 s até um nível sutil, que fica a fuga e a névoa
+  inteiras; no fim some em ~3 s. Segue a mesma opção e intensidade dos outros efeitos de tela.
 - **Opção do jogador, não do servidor:** Opções > Mods > "Névoa e Outro Mundo": liga/desliga e
   intensidade (1.0, 0–2). Cada um ajusta a própria tela.
-- **Fora da névoa, nada**, nem à noite: a noite é escuridão; o filme granulado é a assinatura do
-  Outro Mundo (decisão da sprint 0013, ADR-013).
+- **Fora da névoa, nada**, nem à noite, a não ser a estática do presságio e da fuga: a noite é
+  escuridão; o filme granulado é a assinatura do Outro Mundo (decisão da sprint 0013, ADR-013).
 - Só o primeiro jogador na tela dividida; some com o menu aberto e morto.
 - É desenhado pela UI: esconder a UI (tecla do HUD) esconde o efeito, e ele anda no ritmo de
   quadros da UI do jogo.

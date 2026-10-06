@@ -184,7 +184,7 @@ local function process(z, c)
     local need = (cur or "day") ~= key
     -- O jogo re-rola os stats às vezes (addZombiesInOutfit, makeInactive). Remoto:
     -- a velocidade vem do pacote do dono (NetworkZombieAI.parse), não briga.
-    if not need and key ~= "day" and not c.inactive and not z:isRemoteZombie() and not z:isCrawling() then
+    if not need and key ~= "day" and not c.inactive and z:isLocal() and not z:isCrawling() then
         need = z:getSpeedType() ~= w.speed
         -- Diagnóstico (só -debug): visto no jogo um zumbi reaplicado a cada passada.
         if need and getDebug() then

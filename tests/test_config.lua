@@ -1,5 +1,36 @@
 require "NOM_Config"
 
+-- as listas de sirene por névoa, do ponto único do mod (shared/NOM_SirenSpotsRules.lua)
+local function sirenLists()
+    package.loaded.NOM_SirenSpotsRules = nil
+    require "NOM_SirenSpotsRules"
+    return NOM_SirenSpotsRules.SOUNDS
+end
+
+local function le(s, i, n)
+    local v = 0
+    for k = n - 1, 0, -1 do v = v * 256 + s:byte(i + k) end
+    return v
+end
+
+-- Duração de um ogg Vorbis sem decodificar: a taxa vem do cabeçalho de identificação
+-- ("\1vorbis", versão de 4 bytes, canais, taxa) e o total de amostras, da granule position
+-- (bytes 7–14, little-endian) da última página "OggS".
+local function oggSeconds(path)
+    local f = assert(io.open(path, "rb"), "não abriu " .. path)
+    local s = f:read("*a")
+    f:close()
+    local id = assert(s:find("\1vorbis", 1, true), path .. ": sem cabeçalho Vorbis")
+    local rate = le(s, id + 12, 4)
+    local last, at = nil, 1
+    while true do
+        local i = s:find("OggS", at, true)
+        if not i then break end
+        last, at = i, i + 4
+    end
+    return le(s, last + 6, 8) / rate
+end
+
 return {
     config_missing_sandboxvars_uses_default = function()
         SandboxVars = nil
@@ -158,7 +189,6 @@ return {
         assert(body("NOM_FogDrone"):find("loop = true", 1, true), "drone sem loop")
         assert(body("NOM_RadioStatic"):find("loop = true", 1, true), "rádio sem loop")
         assert(not body("NOM_FogMetal"):find("loop", 1, true), "metal em loop")
-        assert(not body("NOM_Siren"):find("loop", 1, true), "sirene em loop (toca uma vez por evento)")
         -- Carpideira: soluço em loop e baixo (perto); grito uma vez e de longe
         local sob, scream = body("NOM_CarpideiraSob"), body("NOM_CarpideiraScream")
         assert(sob and sob:find("loop = true", 1, true), "soluço sem loop")
@@ -191,9 +221,42 @@ return {
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic", "NOM_Siren", "NOM_SirenRed",
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic",
         "NOM_CarpideiraSob", "NOM_CarpideiraScream" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
+        for _, list in pairs(sirenLists()) do
+            for _, name in ipairs(list) do assert(declared[name], "sirene sem declaração: " .. name) end
+        end
+    end,
+    -- sirenes oficiais (sprint 0034, tarefa 3): tocam uma vez por evento, de 150 a 500 tiles. O
+    -- rolloff inverso do FMOD dá ganho distanceMin/d até distanceMax e constante depois, sem
+    -- zerar (pz-api-notes §23): 50/150 = -9,5 dB e 50/500 = -20 dB
+    config_sirens_far_short_and_used = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local used = {}
+        for kind, list in pairs(sirenLists()) do
+            for _, name in ipairs(list) do
+                used[name] = true
+                local b = assert(txt:match("sound%s+" .. name .. "%s*(%b{})"), "sirene sem declaração: " .. name)
+                assert(not b:find("loop", 1, true), name .. " em loop (toca uma vez por evento)")
+                assert(b:find("category = World,", 1, true), name .. ": categoria")
+                assert(tonumber(b:match("distanceMin = (%d+)")) == 50, name .. ": distanceMin")
+                assert(tonumber(b:match("distanceMax = (%d+)")) == 500, name .. ": distanceMax")
+                local secs = oggSeconds("mod/42/" .. b:match("file%s*=%s*([^,%s]+)"))
+                assert(secs >= 10 and secs <= 12, name .. " (" .. kind .. ") com " .. secs .. " s")
+            end
+        end
+        for _, old in ipairs({ "NOM_Siren", "NOM_SirenRed", "NOM_SirenFar", "NOM_SirenRedFar" }) do
+            assert(not txt:match("sound%s+" .. old .. "%s*{"), "sirene antiga ainda declarada: " .. old)
+        end
+        local p = io.popen("ls mod/42/media/sound")
+        for file in p:lines() do
+            local name = file:match("^(NOM_Siren[%w_]*)%.ogg$")
+            assert(not name or used[name], "sirene sem uso no mod: " .. file)
+        end
+        p:close()
     end,
 }

@@ -13,7 +13,9 @@ código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
 ## Sons
 
 Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/gen_sounds.py)
-(numpy + ffmpeg, semente fixa). Nenhuma amostra de terceiros, do jogo ou de outro mod.
+(numpy + ffmpeg, semente fixa). Nenhuma amostra de terceiros, do jogo ou de outro mod. A
+síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Johan aprovou); o
+`gen_sounds.py` as encurta sem mudar o tom e põe a distância e o eco de cidade.
 
 | Arquivo | Som | Uso |
 |---|---|---|
@@ -22,13 +24,52 @@ Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/ge
 | `mod/42/media/sound/NOM_FogDrone.ogg` | drone grave em loop (senos graves + ronco filtrado) | ambiente da névoa |
 | `mod/42/media/sound/NOM_FogMetal.ogg` | pancada metálica distante (parciais inarmônicos + ecos) | ruídos metálicos da névoa |
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
-| `mod/42/media/sound/NOM_Siren.ogg` | sirene de ataque aéreo, sobe e cai duas vezes (~24 s; rotor de harmônicos ímpares, segundo rotor desafinado, ecos) | aviso do evento de névoa, 45 s reais antes |
-| `mod/42/media/sound/NOM_SirenRed.ogg` | a sirene mais grave (~30%), rasgada e longa (~28 s): rotor com desafinação que oscila, ronco uma oitava abaixo, saturação, chiado filtrado, ecos longos | aviso da névoa vermelha, 45 s reais antes |
+| `mod/42/media/sound/NOM_SirenWhite1.ogg` | "o chamado e a resposta" (11,8 s): sirene de rotor no poste e uma segunda que responde meio tom abaixo, de dentro da névoa, cada vez mais perto | sirene da névoa branca (coro de 5, a 150–500 tiles) |
+| `mod/42/media/sound/NOM_SirenWhite2.ogg` | "o som que a névoa engole" (11,8 s): sirene de defesa civil que a névoa abafa sem baixar o volume, até sobrar um sopro grave, um zumbido de ouvido e um estalo seco de madeira | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite3.ogg` | sirene pelo rádio de emergência (11,8 s): squelch, três bipes de alerta, a sirene em banda estreita com chiado e a rajada de squelch no fim | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite4.ogg` | sirene de defesa civil numa fita velha (11,8 s): wow leve, chiado, uma subida, uma segurada e a descida até parar | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite5.ogg` | sirene de manivela gravada em fita (11,8 s): o tom sobe em surtos a cada volta, perde o fôlego, ganha um segundo e larga; o rotor roda livre até parar | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite6.ogg` | sirene de defesa civil clássica (11,8 s): uma volta (sobe, segura, cai) com corneta, alto-falante velho saturando e eco de cidade vazia | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite7.ogg` | "alerta contínuo" (11,8 s): sirene de rotor que sobe e segura o tom, com a corneta girando no poste; cada passada chega mais apagada até o contator desligar | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite8.ogg` | "a caixa da estação" (11,8 s): wail eletrônico de fita velha num alto-falante de corneta, com falhas de contato; a fita acaba no topo e sobra o zumbido do amplificador | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenWhite9.ogg` | "duas notas" (11,8 s): sirene de dois rotores em terça menor; quando o motor desliga, a névoa engole primeiro a voz aguda | sirene da névoa branca |
+| `mod/42/media/sound/NOM_SirenRed1.ogg` | "garganta" (11,8 s): sinal de ataque ondulante com o rotor desbalanceando (rosna a 70–120 Hz), a estática devolvendo a sirene invertida e a última resposta quebrando uma quinta | sirene da névoa vermelha (coro de 5, a 150–500 tiles) |
+| `mod/42/media/sound/NOM_SirenRed2.ogg` | sinal de ataque (11,8 s): tom ondulante sem parar, segunda sirene de outro bairro fora de fase e estática agressiva crescendo até o motor desligar | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed3.ogg` | uivo pelo megafone longe, com 40% do efeito (11,8 s): a sirene se dobra num uivo quase orgânico, com mais corpo | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed4.ogg` | uivo pelo megafone longe, efeito cheio (11,8 s): a mesma dobra em banda estreita, saturada e com chiado | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed5.ogg` | uivo (11,8 s): vibrato irregular, quebras de registro, formantes largos que derivam sem formar vogal e um rosnado grave antes da cauda | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed6.ogg` | duas fitas (11,8 s): duas gravações da mesma sirene que se desencontram até o batimento virar ronco | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed7.ogg` | "toque de fogo" (11,8 s): sirene de quartel em pulsos que encurtam, rotor rosnando e estática nas pausas; o último toque passa do topo e o motor larga | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed8.ogg` | "megafone rasgado" (11,8 s): wail que vira yelp acelerando num cone rasgado, com a aba solta batendo a ~88 Hz; volta ao wail caindo e o amplificador desliga | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenRed9.ogg` | "motor disparado" (11,8 s): a tensão dispara e o rotor passa do topo, com mancal guinchando e rajadas de estática, até o disjuntor cair | sirene da névoa vermelha |
+| `mod/42/media/sound/NOM_SirenBlack1.ogg` | "a resposta no escuro" (11,8 s): zumbido da rede, o disjuntor desarma, responde uma sirene uma oitava abaixo; a cidade tenta religar e cai de novo; sobram brasas | sirene da névoa preta (sprint 0038) |
+| `mod/42/media/sound/NOM_SirenBlack2.ogg` | "a buzina afogada" (11,8 s): três toques de buzina de névoa cada vez mais graves e escuros; o último engasga, a lâmpada queima e fica o escuro | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack3.ogg` | "apagão" (11,8 s): três quedas de tensão roubam o brilho, o disjuntor desarma com baque seco e, no chiado, o motivo de três bipes | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack4.ogg` | "a luz sendo sugada" (11,8 s): hum da iluminação, a sirene ao contrário em swells cada vez mais graves, a grande inspiração e a brasa no escuro | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack5.ogg` | apagão pelo megafone, 40% do efeito (11,8 s): a energia cai em degraus e a sirene fica lenta e grave até sobrar o hum | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack6.ogg` | brasa pelo megafone, 40% do efeito (11,8 s): sirene grave, quase um sopro, por baixo de uma brasa perto que cresce | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack7.ogg` | brasa pelo megafone, efeito cheio (11,8 s): a mesma, mais longe e em banda estreita | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack8.ogg` | apagão pelo megafone, efeito cheio (11,8 s): cinco degraus de energia com baque de disjuntor até o rotor parar | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack9.ogg` | fita morrendo (11,8 s): wow forte e chiado de rádio, o tom escorrega, cortes cada vez maiores e um grave arrastado no fim | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack10.ogg` | quase silêncio (11,8 s): zumbido elétrico com surtos, rádio varrendo o dial e sirenes distantes tocadas ao contrário | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack11.ogg` | "bateria morrendo" (11,8 s): a rede cai, a sirene eletrônica passa pra bateria e fica lenta e grave, até o amplificador oscilar em pulsos graves que espaçam | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack12.ogg` | "o gerador" (11,8 s): sirene ligada num gerador a diesel que tosse três vezes, dá tiros no escapamento e afoga; sobram os tiques do metal esfriando | sirene da névoa preta |
+| `mod/42/media/sound/NOM_SirenBlack13.ogg` | "uma por uma" (11,8 s): três sirenes graves de bairros diferentes; os transformadores estouram de fora pra dentro e o zumbido da rede some | sirene da névoa preta |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
 | `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
+| `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
+| `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
+| `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |
+| `mod/42/media/sound/NOM_DevRadio.ogg` | rádio varrendo estações mortas (9 s): assobios de sintonia, trava numa portadora e uma "voz que não é voz" (pulso glotal em formantes que derivam) | rádio na névoa branca |
+| `mod/42/media/sound/NOM_DevRadioRed.ogg` | dial desesperado (8 s) que trava numa respiração rouca, sirene invertida longe, corte seco | rádio na névoa vermelha |
+| `mod/42/media/sound/NOM_DevRadioBlack.ogg` | portadora morta (9 s): contagem de cinco bipes descendo e o motivo, e o rádio morre | rádio na névoa preta (sprint 0038) |
+| `mod/42/media/sound/NOM_DevSpeaker.ogg` | caixa de som de poste (7 s): zumbido de terra na corneta, pulsos graves de passada, microfonia cortada seca, eco de rua | caixa de som na névoa |
+| `mod/42/media/sound/NOM_DevCar.ogg` | rádio de carro ligando sozinho, ouvido de fora (8 s): relé, busca de estação, contagem de cinco sílabas, abafado pela lataria | rádio de carro na névoa |
+| `mod/42/media/sound/NOM_DevBurst.ogg` | estouro de estática de aparelho (3 s): chiado na banda AM que cresce, crepitação e rajadas de arco, corte seco | presságio da sirene e aparelho perto do Sem-rosto |
 
-Pra regerar: `python3 scripts/gen_sounds.py`. Os sons são declarados em
-`mod/42/media/scripts/NOM_sounds.txt`.
+Pra regerar: `python3 scripts/gen_sounds.py` (ou só alguns: `python3 scripts/gen_sounds.py NOM_DevTv`).
+A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
+são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
 
 ## Imagens
 
@@ -73,6 +114,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_White.png` | 8×8 | branco opaco, tingido de vermelho no pulso do grito da Carpideira |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_NevoaEstatica.png` | 256×256 | estática da névoa na tela: chiado fino em tons de cinza, em mosaico, tingido pela cor da névoa (sprint 0034) |
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 
@@ -98,7 +140,6 @@ Pra regerar: `python3 scripts/gen_textures.py`.
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |
 | `scripts/NOM_clothing.txt` | ícones dos itens | `SkiGogglesWhite`, `SurgicalMaskBlue`, `Balaclava`, `VeilWedding`, `HospitalGown`, `Hazmatsuit`, pelo nome |
-| `NOM_FogOverlays.lua` | manchas de sangue no chão | sprites `overlay_blood_floor_01_0` a `_27`, por nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |
 | `NOM_FogVignette.lua` | vinheta da névoa | efeito de tela do modo de busca do jogo (`getSearchMode()`), sem textura própria |
 | `NOM_ScreenFx.lua` | efeitos de tela | desenho pela UI do jogo (`ISUIElement`), com as texturas originais acima |

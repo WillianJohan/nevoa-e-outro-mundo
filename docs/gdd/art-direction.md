@@ -150,16 +150,16 @@ Pedido do Johan depois do primeiro teste: a névoa ficou "LINDA", falta a tela. 
 Pedido do Johan (05/10): "o Outro Mundo eu imaginei com bastante sangue e com a erosão no máximo".
 Na névoa, o lugar em volta é o mesmo lugar, abandonado há décadas e onde alguma coisa sangrou muito.
 
-- **Sangue que conta história:** poças (o miolo escuro, de camadas sobrepostas) com um rastro
-  saindo, como algo arrastado; respingo solto entre elas. Nas paredes, escorrido. Não é carpete
-  uniforme: é onde aconteceu alguma coisa.
+- **Sangue nas paredes, escorrido.** No chão não tem sangue: as poças e rastros (sprints 0015 a
+  0023) saíram na 0034, depois que o Johan os viu no jogo ("parecendo jogo dos anos 2000 com
+  textura ruim").
 - **Erosão no máximo:** sujeira e rachadura no chão e nas paredes; trepadeira subindo as paredes de
   fora e mato rasteiro no chão de fora; dentro, o chão queimado da casa destruída (o miolo do cômodo
   carbonizado, a borda só marcada). O que a natureza levaria anos pra fazer, a névoa faz em
   segundos. A sujeira vem em manchas, nunca um losango por tile (lia como xadrez, print de 05/10).
   Desde a sprint 0023 tudo vai colado no chão e na parede de verdade: embaixo dos pés, com a luz e o
   recorte do jogo.
-- **Vermelha é pior:** mais poças, mais rastro, mais parede suja.
+- **Vermelha é pior:** mais chão marcado, mais parede suja.
 - Só sprites vanilla pelo nome (nada copiado nem gerado), com a luz do lugar (desde a 0023 o breu
   esconde de verdade; a lanterna revela). Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md),
   [ADR-017](../architecture/adr-017-outro-mundo-anexado.md).

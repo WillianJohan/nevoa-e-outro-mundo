@@ -1,11 +1,11 @@
 -- Comandos de console pro teste in-game (docs/teste-in-game.md), só com o jogo em
 -- -debug. Uso no console Lua do debug:
 --   NOM_Debug.night(true|false|nil)   noite forçada; nil devolve pro relógio
---   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene e névoa 45 s
---                                     reais depois; com o 2º true, a névoa vem já
+--   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene, a névoa sobe e os
+--                                     bichos soltam 30 s reais depois; com o 2º true, já
 --   NOM_Debug.fog(false)              termina o evento (ou cancela a sirene)
 --   NOM_Debug.redFog(true|false)      névoa vermelha: aberta vira na hora; senão, sirene
---                                     vermelha e evento 45 s depois; false desfaz
+--                                     vermelha e evento 30 s depois; false desfaz
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto",
 --                                     "carpideira"; nil desfaz; só vale na névoa)
@@ -33,7 +33,7 @@ local function moveIfOwner(args)
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z:getOnlineID() == args.id then
-            if not z:isRemoteZombie() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
+            if z:isLocal() then NOM_SemRosto.move(z, args.x, args.y, args.z) end
             return
         end
     end

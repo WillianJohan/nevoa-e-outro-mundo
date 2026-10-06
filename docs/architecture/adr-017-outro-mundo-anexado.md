@@ -37,9 +37,14 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    - `OnSave` (sai antes do `IsoCell.save` gravar os chunks, na mesma thread): tira tudo, sem lote.
      A atualização seguinte põe de volta. O mod **não** depende do `OnPostSave` (só sai na saída do
      jogo; o save de acordar não o dispara).
-   - **Raio de 15 tiles**: o que sai dele sai em lotes de 80 alvos; além de 15 + 8 sai na hora. O
-     chunk que sai do mapa (e vai pra fila de gravação) está a ≥ 48 tiles.
-   - **Salto** (> 15 tiles num tick, teleporte) e **morte**: tudo sai no tick.
+   - **Raio pela tela** (emenda da sprint 0034; era 15 fixo): o canto da tela do jogador 0 mais
+     longe, no chão, + 2, entre 15 e 30, relido a cada atualização. O que sai dele sai em lotes de
+     80 alvos; além de 30 + 8 sai na hora, qualquer zoom, **no tick** em que o jogador passa de 2
+     tiles desde o último corte (review final da 0034: a margem não depende do FPS). O chunk que
+     sai do mapa (e vai pra fila de gravação) está a ≥ 48 tiles; com o carro a 2 tiles por tick
+     (15 FPS), o pior caso é 38 + 2 + 2 + 1 = 43. Evidência: pz-api-notes §16.6 (raio pela tela).
+   - **Morte**: tudo sai no tick. **Teleporte**: cai no mesmo corte (tudo passa de 38). O salto
+     de 8 tiles num tick (que tirava tudo) saiu: um engasgo de FPS no carro o disparava.
    - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade).
    - **Hot save** (solo, sem evento): o chunk pode ser gravado com anexos do mod; isso só fica no
      disco se o jogo cair antes do próximo save daquele chunk (que sai limpo). Coberto pelo item 5.
@@ -54,6 +59,10 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    `CellLoader` troca o sprite do piso, não anexa; o fogo e o worldgen usam como piso). O
    `LoadGridsquare` tira todo `floors_burnt_01_*` anexado que não está no registro, com névoa ou
    sem (um square recém-carregado nunca tem anexo vivo do mod). Os nomes vanilla vazados ficam.
+   Pichação e mensagem (emenda da sprint 0034) são `WallOverlay` com `attachedW/N`: o mapa as
+   anexa à parede (`CellLoader`), então **não** são do mod. O lixo (`trash_01_*`) ficou de fora,
+   não virou prefixo próprio: a coleta vanilla lê os nomes anexados ao objeto e o lixo é afinidade
+   dela (pz-api-notes §16.6).
 6. **Ação do jogador**: a ação atual (`ISTimedActionQueue.queues[jogador].queue[1]`, lida a cada
    atualização) segura limpo o square de todo campo dela que é square ou objeto do mapa (não
    personagem). Cobre a marreta que copia os anexos pra parede de canto nova no solo, a pá, pegar
@@ -61,6 +70,24 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 7. **Conteúdo:** chão queimado (`floors_burnt_01_*`, em manchas, cheio no miolo) só em square de
    dentro; mato e folha rasteiros só fora; trepadeira só em parede de square de fora. A
    regra pura continua por square e período (ADR-006): andar e voltar dá o mesmo desenho.
+   **Sem sangue no chão (emenda da sprint 0034):** o Johan testou e as poças e rastros pareciam
+   "jogo dos anos 2000 com textura ruim". Saem as poças, os rastros e o respingo; o chão fica com
+   queimado ou mato, rachadura e sujeira (`MAX_LAYERS` = 2, mais a sujeira à parte). O sangue fica
+   só na parede, dentro e fora. Na densidade 1 o chão vestido cai de ~82% pra ~66%.
+   **Casa destruída (emenda da sprint 0034, pedido do Johan: "apagadas, acabadas, sujas,
+   pichadas"):**
+   - Parede de dentro: a 1ª camada quase sempre (`WALL_IN` 1, presa em 0,95; sorteio sujeira
+     0,4, rachadura 0,3, sangue 0,3). Depois, até mais duas de outro tipo (`WALL_IN_2` 0,5,
+     `WALL_IN_3` 0,25, × densidade) e a peça de pichação ou mensagem em cima, até `WALL_LAYERS` = 3.
+     A ordem, de baixo pra cima: rachadura, sujeira, sangue, escrita.
+   - Parede de fora: continua com uma camada, a peça de pichação do trecho ou o sorteio de antes
+     (sangue manda).
+   - Pichação e mensagem são desenhos de 1 a 5 paredes que o pack corta em peças de um tile. A
+     fileira de paredes vai em trechos de 6 (`RUN_SLOT`), e um trecho pode ter **um desenho
+     inteiro**, na ordem da tela.
+   - O tipo e o desenho do trecho não dependem de dentro/fora; só a chance de aparecer depende:
+     pichação 0,45 fora e 0,35 dentro, mensagem 0,15 fora e 0,6 dentro, × densidade. Uma fileira
+     que cruza dentro/fora perde peças, mas nunca emenda dois desenhos.
 8. **Sai** o que só existia por causa do marcador: chão apagado debaixo de personagem, visibilidade
    por prédio e sombra de prédio (o anexo é cortado e apagado com o objeto), luz relida (o chunk tem
    a luz), fade (alfa do anexo não refaz o FBO; o anexo surge e some com o lote), teto e raio
@@ -70,8 +97,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 
 - O Outro Mundo fica embaixo dos personagens, com a luz e o recorte do jogo; as paredes voltam.
 - **Custo do vazamento (se der errado):** um crash depois de um hot save deixa no mapa daquele save
-  os decalques vanilla do mod que estavam no chunk (sangue, sujeira, rachadura, trepadeira, sangue
-  de parede). Ficam pra sempre, iguais à erosão e ao sangue do mapa. O chão queimado vazado sai
+  os decalques vanilla do mod que estavam no chunk (sujeira, rachadura, trepadeira, sangue de
+  parede; até a sprint 0034, sangue de chão também). Ficam pra sempre, iguais à erosão e ao sangue do mapa. O chão queimado vazado sai
   sozinho no próximo carregamento. Janela: entre um hot save e o próximo save do mesmo chunk
   (sair do raio, sair do jogo, dormir).
 - **Instância reusada:** se o vanilla tirar uma instância do mod (vai pro pool) e anexar outra com o
@@ -85,4 +112,10 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 - Remover a trepadeira do mod com a ação vanilla "remover trepadeira" funciona, e ela volta
   (o rodízio põe de novo o que falta): o Outro Mundo cresce de novo.
 - Custo novo: enchendo, ~2000 chamadas Java e ~410 invalidações de nível de chunk por atualização
-  (umas 9 atualizações); parado, ~165; `LoadGridsquare`, ~3–7 chamadas por square carregado.
+  (umas 9 atualizações; no raio 30 da 0034, até 36); parado, ~165; `LoadGridsquare`, ~3–7
+  chamadas por square carregado.
+- Casa destruída (0034): fora, quase igual (~2060 chamadas, ~417 invalidações). Na casa de
+  estresse do teste (parede N e W em todo square, densidade 3,2), o enchimento vai de ~1980 pra
+  ~2360 chamadas e de 387 pra 656 invalidações por atualização (teto teórico: 80 squares × 11
+  anexos). Num lote, uma casa de verdade tem bem menos paredes. O vazamento de um crash depois do
+  hot save também pode levar pichação e mensagem (vanilla, ficam como as do mapa).

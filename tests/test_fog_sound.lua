@@ -88,6 +88,20 @@ return {
         G.seconds(1)
         assert(one(G, "NOM_FogDrone") ~= nil and G.played("NOM_FogDrone") == 2, "loop morto ficou mudo")
     end,
+    -- sprint 0034: drone e metal entram já na subida da sirene; o rádio do Sem-rosto espera a
+    -- névoa de verdade
+    sound_ambience_on_rising_radio_waits = function()
+        local G = setup()
+        G.zombie({ x = 92.5, y = 100, id = W.semRostoID(1, true) })
+        NOM_FogState.setRising(true)
+        G.seconds(NOM_FogSound.METAL_MAX_MS / 1000 + 1)
+        assert(one(G, "NOM_FogDrone") ~= nil, "drone sem a subida")
+        assert(G.played("NOM_FogMetal") >= 1, "metal sem a subida")
+        assert(G.played("NOM_RadioStatic") == 0, "rádio na fuga")
+        NOM_FogState.setRising(false)
+        G.seconds(NOM_FogSound.FADE_MS / 1000 + 1)
+        assert(one(G, "NOM_FogDrone") == nil, "drone ficou depois da subida cancelada")
+    end,
     sound_toggles = function()
         local G = setup({ sandbox = { FogAmbience = false, SemRostoEnabled = false } })
         G.zombie({ x = 92, y = 100, id = W.semRostoID(1, true) })

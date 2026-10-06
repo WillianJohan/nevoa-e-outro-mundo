@@ -15,6 +15,8 @@
 -- * getPlayerScreenLeft/Top/Width/Height(0) e MainScreen.instance:isReallyVisible()
 --   (client/ISUI/ISSleepingUI.lua:16-17, 49, 60-61); getTexture(caminho) (:14).
 local W = dofile("tests/fog_world.lua")
+require "NOM_Rules"
+require "NOM_FogEventRules"
 local FILE = "mod/42/media/lua/client/NOM_ScreenFx.lua"
 
 local function fakeUI(G)
@@ -250,6 +252,80 @@ return {
         assert(G.java <= 1, "chamadas Java fora da névoa: " .. G.java)
     end,
 
+    -- sprint 0034: os efeitos do Outro Mundo esperam a fuga; na subida só a estática sutil,
+    -- na cor da névoa que vem
+    screenfx_only_static_while_rising = function()
+        local G = setup()
+        local tex = T()
+        NOM_FogState.setRising(true, true)
+        G.frame(60)
+        local m = mine(G.frameDraws())
+        assert(#m == 1 and m[1].tex == tex.static, "na fuga desenhou além da estática: " .. #m)
+        assert(m[1].kind == "tiled", "a estática não é em mosaico")
+        assert(math.abs(alpha(m[1]) - R.STATIC_SUBTLE) < 1e-9, "não é o sutil: " .. alpha(m[1]))
+        local C = NOM_Rules.RED_FOG_COLOR
+        assert(m[1].args[1] == C[1] and m[1].args[2] == C[2] and m[1].args[3] == C[3], "não é a cor da vermelha")
+    end,
+
+    -- presságio: fora de qualquer névoa, a estática cresce 3 s e ganha destaque; cobre a tela
+    -- e chia (anda a cada quadro); a sirene leva ao sutil
+    screenfx_static_presage_grows = function()
+        local G = setup()
+        local tex = T()
+        NOM_FogState.setOmen(false)
+        local first = byTex(G.frameDraws(), tex.static)
+        assert(first and alpha(first) < R.STATIC_PEAK / 4, "o presságio não começou sutil")
+        assert(#mine(G.draws) == 1, "o presságio ligou o Outro Mundo")
+        local F = NOM_Rules.FOG_COLOR
+        assert(first.args[1] == F[1] and first.args[2] == F[2] and first.args[3] == F[3], "não é a cor da branca")
+        assert(first.x <= 0 and first.y <= 0 and first.x + first.w >= 1920 and first.y + first.h >= 1080, "não cobre")
+        local pos = {}
+        for _ = 1, 10 do
+            local d = byTex(G.frameDraws(), tex.static)
+            pos[d.x .. "," .. d.y] = true
+        end
+        local n = 0
+        for _ in pairs(pos) do n = n + 1 end
+        assert(n >= 3, "a estática está parada")
+        G.frame(math.ceil(NOM_FogEventRules.PRESAGE_MS / 16))
+        local peak = byTex(G.frameDraws(), tex.static)
+        assert(math.abs(alpha(peak) - R.STATIC_PEAK) < 1e-9, "sem destaque no fim: " .. alpha(peak))
+        NOM_FogState.setRising(true, false)
+        G.frame(math.ceil(R.STATIC_SETTLE_MS / 16) + 2)
+        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - R.STATIC_SUBTLE) < 1e-9, "não desceu ao sutil")
+    end,
+
+    -- na névoa: a estática sutil junto com o resto; acabou, some em ~3 s
+    screenfx_static_in_fog_and_fades = function()
+        local G = setup()
+        local tex = T()
+        fogOn(G)
+        local d = byTex(G.frameDraws(), tex.static)
+        assert(d and math.abs(alpha(d) - R.STATIC_SUBTLE) < 1e-9, "sem estática na névoa")
+        NOM_FogState.set(false, 1)
+        G.frame(math.ceil(R.STATIC_FADE_MS / 32))
+        local mid = byTex(G.frameDraws(), tex.static)
+        assert(mid and alpha(mid) > 0 and alpha(mid) < R.STATIC_SUBTLE, "não desceu aos poucos")
+        G.frame(math.ceil(R.STATIC_FADE_MS / 16) + 2)
+        assert(byTex(G.frameDraws(), tex.static) == nil, "ficou depois do fim")
+    end,
+
+    -- a opção ScreenFx (acessibilidade) desliga e o slider escala a estática também
+    screenfx_static_follows_options = function()
+        local G = setup()
+        local tex = T()
+        NOM_FogState.setRising(true, false)
+        G.frame(5)
+        G.optInt = 2
+        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - 2 * R.STATIC_SUBTLE) < 1e-9, "não escala")
+        G.optOn = false
+        assert(#mine(G.frameDraws()) == 0, "desligado desenha a estática")
+        G.optOn = true
+        NOM_FogState.setRising(false)
+        NOM_FogState.setOmen(true)
+        G.optInt = 0
+        assert(#mine(G.frameDraws()) == 0, "intensidade 0 desenha o presságio")
+    end,
     screenfx_fog_draws_grain_and_vignette = function()
         local G = setup()
         local tex = T()

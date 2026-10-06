@@ -20,12 +20,17 @@ acaba, o alívio é tanto que ele aproveita pra sair e explorar, como uma folga.
 | Tema | Cegueira (Silent Hill) | O Outro Mundo sangra | A escuridão (Alan Wake) |
 | Regra central | Som é tudo: jogador e zumbi enxergam ~4 tiles | Caçada: todo zumbi é variante, gritos chamam horda | Luz é tudo: o Tição congela no facho |
 | Ameaça | Zumbis perambulando, variantes raras (14%) | As quatro variantes, 1/4 cada | Só o Tição (todo zumbi vira Tição) |
-| Outro Mundo | Erosão, ferrugem, sujeira, pouco sangue | Muito sangue, tentáculos pretos, cinza no ar | Chão queimado, cinzas, brasas apagando |
+| Outro Mundo | Erosão, ferrugem, sujeira, pouco sangue; mais Silent Hill (tinta descascando, ferrugem, grade) a partir da 0035; sem sangue no chão | Muito sangue, tentáculos pretos, cinza no ar | Chão queimado, cinzas, brasas apagando |
 | Sirene | Normal, melhorada | Bizarra, com gritos | Fora de sintonia |
 | Duração | 3–5 h de jogo | 4–6 h | 2–3 h |
 | Frequência | o resto (~75%) | 20%, a partir do dia 7 | 5%, a partir do dia 14 |
 
 A branca é o dia a dia, a vermelha é o pico, a preta é rara e temida (a pior, por isso curta).
+
+> **Emenda de 2026-10-06 (decisões do Johan na sprint 0034):** o visual do Outro Mundo passa a ser
+> **mais Silent Hill** (tinta descascando, ferrugem, grade metálica, lascas e cinza subindo), na
+> sprint 0035. **Sangue no chão saiu** em todas as névoas: as poças e rastros pareciam "jogo dos anos
+> 2000 com textura ruim". O sangue de parede fica, e "muito sangue" na vermelha quer dizer nas paredes.
 
 ## 2. Agenda
 
@@ -70,7 +75,20 @@ sai: a curva agora é só da chance do dia.
 
 ## 3. Sirene
 
-- Passa de 30 para **45 s reais**.
+- Passa de 30 para **45 s reais** (emenda sprint 0034: **15 s reais** — decisão do Johan, 2026-10-06:
+  "45 segundos é tempo demais, o jogador vai ficar surdo").
+- **Emenda de 2026-10-06 (sprint 0034), como ficou:**
+  - **Presságio:** 3 s antes da sirene, estática na tela na cor da névoa e estouro de chiado nos
+    aparelhos por perto.
+  - **Coro de 5 sirenes posicionais** por jogador, sorteadas no jogo dele a **150–500 tiles**, de lados
+    diferentes (pelo menos 40° entre vizinhas), desencontradas em até 4 s, sem repetir som no coro e
+    com afinação própria (0,95 a 1,05). Cada som dura **11,8 s**, com eco de cidade embutido.
+  - **31 sons:** 9 brancos, 9 vermelhos e 13 pretos (os pretos só tocam na 0038), todos dos protótipos
+    nossos que o Johan aprovou na escuta.
+  - **Fuga de 30 s reais**, fixa, separada do som: a névoa visual, a escuridão e o drone sobem já na
+    sirene; zumbis soltos, monstros, comportamento, Sem-rosto e Outro Mundo esperam o fim da fuga.
+  - Os zumbis congelados viram pro **jogador vivo mais perto** deles, não mais pra uma direção.
+  - Detalhes: [ADR-009](../../architecture/adr-009-nevoa-evento-do-mod.md), emendas da 0034.
 - Um som por tipo, inconfundível desde o primeiro segundo: o jogador decide na hora se corre pro
   abrigo ou pega a lanterna.
 - Os sons saem do `scripts/gen_sounds.py`. Antes da sprint 0034, o Johan ouve as amostras e escolhe:
@@ -80,8 +98,10 @@ sai: a curva agora é só da chance do dia.
     - (a) fita morrendo: desacelera, entorta o tom, falha, entra chiado de rádio e termina num grave arrastado;
     - (b) várias sirenes fora de fase num acorde dissonante que nunca resolve;
     - (c) quase silêncio: zumbido elétrico, rádio fora de sintonia e uma sirene distante tocada ao contrário.
-- **Todos parados:** cada névoa sorteia uma direção de onde a sirene "vem".
-  - Enquanto ela toca, todo zumbi para em pé, virado pra essa direção, e ignora o jogador, mesmo se apanhar.
+- **Todos parados:** cada névoa sorteia uma direção de onde a sirene "vem" (sprint 0034: saiu; cada
+  zumbi vira pro jogador vivo mais perto).
+  - Enquanto ela toca (sprint 0034: durante a fuga), todo zumbi para em pé, virado pra essa direção, e
+    ignora o jogador, mesmo se apanhar.
   - Quando a névoa começa, todos voltam de uma vez.
 
 ## 4. Calmaria
@@ -141,6 +161,14 @@ noite. Usa o mesmo caminho dos stats da noite (`NOM_NightRules`), com um degrau 
   - Desligável em Opções > Mods, porque tontura incomoda algumas pessoas.
 - **Visual por tipo:** conforme a tabela da seção 1.
   - Os tentáculos e a cinza da vermelha vêm da fila antiga (HANDOFF, "Névoa vermelha estilo Upside Down").
+  - **Emenda de 2026-10-06 (decisão do Johan):** o visual do Outro Mundo passa a ser **mais Silent
+    Hill**, na sprint 0035: texturas procedurais nossas de tinta descascando, ferrugem e grade
+    metálica anexadas pela erosão; partículas presas no mundo (lascas e cinza) saindo do chão e das
+    paredes; transição "descascando" no shader logo depois da sirene. **Sangue no chão saiu** na
+    0034, em todas as névoas (parecia textura ruim de jogo antigo); o de parede fica.
+  - **Já feito na 0034:** o raio do Outro Mundo segue a tela (15 a 30 tiles pelo zoom, o plano B da
+    cobertura acima) e as casas por dentro ficam destruídas (paredes em até 3 camadas, pichações e
+    mensagens inteiras).
 
 ## 8. Névoa preta
 
@@ -211,9 +239,9 @@ ADR nova e a licença do modelo conferida.
 | Sprint | Entrega |
 |---|---|
 | 0033 | Ritmo novo: sorteio diário, tipos com duração, sirene de 45 s com todos parados, calmaria |
-| 0034 | Sons: sirenes escolhidas na escuta, gritos dos monstros e de gente, crepitar |
-| 0035 | Equilíbrio: visão de ~4 tiles e perambular, com medição de custo |
-| 0036 | Outro Mundo por chunk, transição escondida, tontura, visual da branca |
+| 0034 | Sons I: coro de 5 sirenes ao longe (31 sons de 11,8 s), fuga de 30 s com a névoa subindo, estática na tela, aparelhos do Outro Mundo; Outro Mundo pela tela, casa destruída, sem sangue no chão. Gritos dos monstros e de gente e o crepitar ficaram de fora |
+| 0035 | Outro Mundo estilo Silent Hill: texturas procedurais de tinta descascando, ferrugem e grade na erosão, partículas presas no mundo saindo do chão e das paredes, transição descascando no shader logo depois da sirene, mais a transição escondida e a tontura (decisão do Johan, 2026-10-06; era a 0036). A cobertura de todos os tiles carregados também vem pra cá, medida primeiro; a 0034 já cobre a tela toda |
+| 0036 | Equilíbrio: visão de ~4 tiles e perambular, com medição de custo (era a 0035) |
 | 0037 | Sonar do Estalador |
 | 0038 | Névoa preta I: escuridão, Tição, luz que congela, lanterna piscando |
 | 0039 | Névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado |
@@ -232,8 +260,8 @@ Cada sprint segue o fluxo do AGENTS.md: branch, plano com TDD, testes verdes, me
   - escolha dos grupos que perambulam.
 - **Java (`FlowGrid`):** testes da fonte radial do sonar e do vento da luz.
 - **Desempenho é critério de aceite:**
-  - 0035: custo da cegueira com ~300 zumbis;
-  - 0036: FPS, memória e tempo de save com o Outro Mundo cheio;
+  - 0035: FPS, memória e tempo de save com o Outro Mundo cheio;
+  - 0036: custo da cegueira com ~300 zumbis;
   - 0038: custo da checagem de luz.
 - **Regras de sempre:**
   - o servidor decide e quem simula aplica;

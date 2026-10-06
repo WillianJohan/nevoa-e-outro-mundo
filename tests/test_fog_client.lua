@@ -1,6 +1,23 @@
 -- client/NOM_FogClient.lua: no MP a flag de névoa vem do servidor.
 local W = dofile("tests/fog_world.lua")
+require "NOM_FogEventRules"
 local FILE = "mod/42/media/lua/client/NOM_FogClient.lua"
+
+
+-- sirenes tocadas de uma névoa: as 5 do coro de cada jogador (shared/NOM_SirenSpotsRules.lua)
+local function played(G, kind)
+    local n = 0
+    for _, name in ipairs(NOM_SirenSpotsRules.SOUNDS[kind]) do n = n + G.played(name) end
+    return n
+end
+
+local function playing(G, kind)
+    local out = {}
+    for _, name in ipairs(NOM_SirenSpotsRules.SOUNDS[kind]) do
+        for _, s in ipairs(G.playing(name)) do out[#out + 1] = s end
+    end
+    return out
+end
 
 local function setup(opts)
     opts = opts or {}
@@ -30,33 +47,46 @@ return {
     fog_client_plays_siren = function()
         local G = setup()
         G.server("siren", {})
-        assert(G.played("NOM_Siren") == 0, "tocou sem jogador")
+        assert(played(G, "white") == 0, "tocou sem jogador")
         G.player({ x = 0, y = 0 })
         G.server("siren", {})
-        assert(G.played("NOM_Siren") == 1 and G.playing("NOM_Siren")[1].volume == 1)
+        assert(played(G, "white") == 1 and playing(G, "white")[1].volume == 1)
         G.fire("OnServerCommand", "OutroMod", "siren", {})
-        assert(G.played("NOM_Siren") == 1)
+        assert(played(G, "white") == 1)
     end,
-    -- sprint 0033: a sirene congela os zumbis que este cliente simula (dono), virados pra dir
+    -- sprint 0033: a sirene congela os zumbis que este cliente simula (dono), virados pro
+    -- jogador mais perto (sprint 0034), e o sirenStop solta e cala as sirenes
     fog_client_siren_freezes_owned_zombies = function()
         local G = setup()
-        G.player({ x = 0, y = 0 })
+        local p = G.player({ x = 0, y = 0 })
         local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
         local remote = G.zombie({ x = 20, y = 20, onlineID = 6, remote = true })
-        G.server("siren", { red = false, dir = 90 })
+        G.server("siren", { red = false })
         G.tick(1)
         assert(NOM_SirenFreeze.active and mine.useless == true, "dono não congelou")
-        assert(math.abs(mine.faced.y - (mine.y + NOM_SirenFreeze.FAR)) < 1e-6, "dir 90° = +y")
+        assert(mine.faced.x == p.x and mine.faced.y == p.y, "não virou pro jogador")
         assert(not remote.useless, "cópia remota é do outro cliente")
         G.fire("OnServerCommand", "OutroMod", "sirenStop", {})
         assert(mine.useless == true, "comando de outro módulo soltou")
         G.server("sirenStop", {})
         assert(mine.useless == false and not NOM_SirenFreeze.active, "sirenStop não soltou")
+        assert(#playing(G, "white") == 0, "sirenStop deixou a sirene tocando")
+        G.seconds(NOM_SirenSpotsRules.DELAY_MAX_MS / 1000 + 0.1)
+        assert(played(G, "white") == 1, "a sirene atrasada entrou depois do sirenStop")
+    end,
+    -- sprint 0034: 5 sirenes por jogador, nas posições, longe do jogador local
+    fog_client_plays_five_positioned_sirens = function()
+        local G = setup()
+        G.player({ x = 500, y = 500 })
+        G.server("siren", { red = true })
+        G.seconds(NOM_SirenSpotsRules.DELAY_MAX_MS / 1000 + 0.1)
+        assert(played(G, "red") == NOM_SirenSpotsRules.COUNT and played(G, "white") == 0)
+        for _, s in ipairs(playing(G, "red")) do assert(s.emitter, "sirene fora de emitter do mundo") end
     end,
     fog_client_fog_on_releases_freeze = function()
         local G = setup()
         local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
-        G.server("siren", { red = true, dir = 0 })
+        G.server("siren", { red = true })
         G.tick(1)
         assert(mine.useless == true)
         G.server("fog", { on = false, period = 1 })
@@ -64,16 +94,111 @@ return {
         G.server("fog", { on = true, period = 2 })
         assert(mine.useless == false and not NOM_SirenFreeze.active, "a névoa não soltou")
     end,
-    -- sirene sem argumentos (servidor antigo): direção 0 e a mesma segurança de fim
+    -- sirene sem argumentos (servidor antigo): congela e tem a mesma segurança de fim
     fog_client_siren_without_args_and_safety = function()
         local G = setup()
         local mine = G.zombie({ x = 10, y = 10, onlineID = 5 })
         G.server("siren", nil)
         G.tick(1)
-        assert(mine.useless == true and math.abs(mine.faced.x - (mine.x + NOM_SirenFreeze.FAR)) < 1e-6)
-        G.now = G.now + 45000 + NOM_SirenFreeze.SAFETY_MS + 1000
+        assert(mine.useless == true)
+        G.now = G.now + NOM_FogEventRules.GRACE_MS + NOM_SirenFreeze.SAFETY_MS + 1000
         G.tick(1)
         assert(mine.useless == false, "sem sirenStop nem fog, ficou congelado")
+    end,
+    -- sprint 0034: a sirene sobe a névoa de quem vê (com a cor dela); a névoa aberta e o
+    -- cancelamento descem a subida. A névoa de jogo (on) só vem no fog.
+    fog_client_siren_raises_fog = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("siren", { red = true })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == true, "a sirene não subiu a névoa")
+        assert(NOM_FogState.on == false, "a sirene abriu a névoa de jogo")
+        G.server("fog", { on = true, period = 2, red = true })
+        assert(NOM_FogState.rising == false and NOM_FogState.on == true and NOM_FogState.visibleRed() == true)
+        G.server("siren", { red = false })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false)
+        G.server("sirenStop", {})
+        assert(NOM_FogState.rising == false, "sirenStop não desceu a subida")
+        G.server("siren", nil)
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false, "sirene sem argumentos")
+    end,
+    -- quem entra na fuga recebe fog (off) e depois siren (server/NOM_Fog.lua, fogState): sobe
+    fog_client_join_during_grace_rises = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("fog", { on = false, period = 1, red = false })
+        G.server("siren", { red = true })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == true, "entrou na fuga sem a subida")
+        G.server("fog", { on = false, period = 1, red = false })
+        assert(NOM_FogState.rising == true, "fog off desceu a subida")
+    end,
+    -- sprint 0034, estática: o presságio liga o presságio de quem vê (com a cor), sem subir a
+    -- névoa nem tocar a sirene; a sirene depois marca a hora dela
+    fog_client_presage_sets_omen = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("presage", { red = true })
+        assert(NOM_FogState.omenAt == G.now and NOM_FogState.omenRed == true, "o presságio não ligou")
+        assert(NOM_FogState.rising == false and played(G, "red") == 0 and not NOM_SirenFreeze.active)
+        G.fire("OnServerCommand", "OutroMod", "presage", { red = false })
+        assert(NOM_FogState.omenRed == true, "comando de outro módulo")
+        G.seconds(3)
+        G.server("siren", { red = true })
+        assert(NOM_FogState.sirenAt == G.now and NOM_FogState.omenAt ~= nil)
+        G.server("sirenStop", {})
+        assert(NOM_FogState.omenAt == nil and NOM_FogState.sirenAt == nil, "sirenStop não limpou")
+        G.server("presage", nil) -- servidor antigo / sem argumentos: branca
+        assert(NOM_FogState.omenAt ~= nil and NOM_FogState.omenRed == false)
+    end,
+    -- review final da 0034: o debug trocou a cor no meio do presságio ou da fuga (sirenColor):
+    -- a cor muda sem recomeçar nada, sem tocar a sirene de novo e sem ligar o que não corre
+    fog_client_siren_color_recolors = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("sirenColor", { red = true })
+        assert(NOM_FogState.rising == false and NOM_FogState.omenAt == nil, "a cor ligou alguma coisa")
+        G.server("presage", { red = false })
+        local omenAt = NOM_FogState.omenAt
+        G.tick(5)
+        G.server("sirenColor", { red = true })
+        assert(NOM_FogState.omenRed == true and NOM_FogState.omenAt == omenAt, "o presságio não trocou de cor")
+        G.seconds(3)
+        G.server("siren", { red = true })
+        local sirenAt = NOM_FogState.sirenAt
+        G.tick(5)
+        G.server("sirenColor", { red = false })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false, "a subida não trocou de cor")
+        assert(NOM_FogState.sirenAt == sirenAt, "a subida recomeçou")
+        assert(played(G, "red") == 1 and played(G, "white") == 0, "tocou a sirene de novo")
+    end,
+    -- EXTRA da 0034: se o fog (on) ou o sirenStop se perder, a subida e o presságio não ficam
+    -- pra sempre: depois de PRESAGE_MS + GRACE_MS + 15 s sem confirmação, desligam sozinhos
+    fog_client_rising_safety_timeout = function()
+        local G = setup()
+        local R = NOM_FogEventRules
+        local limit = R.PRESAGE_MS + R.GRACE_MS + NOM_SirenFreeze.SAFETY_MS
+        G.player({ x = 0, y = 0 })
+        G.server("presage", { red = true })
+        G.seconds(3)
+        G.server("siren", { red = true })
+        G.seconds((limit - 1000) / 1000)
+        assert(NOM_FogState.rising == true, "desligou antes do prazo")
+        G.seconds(1.1)
+        assert(NOM_FogState.rising == false and NOM_FogState.omenAt == nil, "a subida ficou sem confirmação")
+        -- presságio sozinho (a sirene se perdeu também)
+        G.server("presage", { red = false })
+        G.seconds(limit / 1000 + 0.1)
+        assert(NOM_FogState.omenAt == nil, "o presságio ficou sem confirmação")
+        -- confirmado (fog on): o prazo não derruba a névoa aberta nem uma subida nova depois
+        G.server("siren", { red = false })
+        G.seconds(10)
+        G.server("fog", { on = true, period = 1 })
+        G.seconds(limit / 1000 + 1)
+        assert(NOM_FogState.on == true and NOM_FogState.visible() == true)
+        G.server("fog", { on = false, period = 1 })
+        G.server("siren", { red = false })
+        G.seconds(limit / 1000 - 5)
+        assert(NOM_FogState.rising == true, "prazo velho derrubou a subida nova")
     end,
     fog_client_asks_state_on_join = function()
         local G = setup()
@@ -141,10 +266,10 @@ return {
         local G = setup()
         G.player({ x = 0, y = 0 })
         G.server("siren", { red = true })
-        assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0)
-        assert(G.playing("NOM_SirenRed")[1].volume == 1)
+        assert(played(G, "red") == 1 and played(G, "white") == 0)
+        assert(playing(G, "red")[1].volume == 1)
         G.server("fog", { on = true, period = 4, red = true })
-        assert(NOM_FogState.on and NOM_FogState.red == true and G.played("NOM_SirenRed") == 1)
+        assert(NOM_FogState.on and NOM_FogState.red == true and played(G, "red") == 1)
         G.server("fog", { on = false, period = 4, red = true })
         assert(NOM_FogState.red == false, "vermelho sem névoa")
     end,

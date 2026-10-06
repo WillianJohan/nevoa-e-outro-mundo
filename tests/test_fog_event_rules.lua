@@ -23,8 +23,14 @@ local function cfg(over)
 end
 
 return {
-    fog_event_rules_siren_is_45_seconds = function()
-        assert(R.SIREN_MS == 45000)
+    -- sprint 0034: a contagem é a fuga de 30 s (o som da sirene dura 15 s e não conta)
+    fog_event_rules_grace_is_30_seconds = function()
+        assert(R.GRACE_MS == 30000)
+        assert(R.SIREN_MS == nil, "sobrou a constante velha")
+    end,
+    -- sprint 0034: o presságio (estática na tela) vem 3 s reais antes da sirene
+    fog_event_rules_presage_is_3_seconds = function()
+        assert(R.PRESAGE_MS == 3000)
     end,
     -- 65% subindo em linha reta até 85% no dia 60, fixo depois; sem curva, o sandbox
     fog_event_rules_day_chance_curve = function()
@@ -169,20 +175,16 @@ return {
         local c = cfg({ escalation = true })
         assert(R.redChance(20, c, 6.99) == 0 and R.redChance(20, c, 7) == 20 and R.redChance(20, c, 90) == 20)
     end,
-    fog_event_rules_siren_dir = function()
-        local d = R.sirenDir(SEED, 3)
-        assert(d >= 0 and d < 360 and d == R.sirenDir(SEED, 3) and d ~= R.sirenDir(SEED, 4))
-    end,
     fog_event_rules_closes_stale_0008_save = function()
         local s = { night = 4, inNight = true, seed = SEED, bornAt = 0 }
         R.update(s, 100, cfg(), seq(0))
         assert(s.inNight == false and s.night == 4)
     end,
     fog_event_rules_countdown_pauses_and_caps = function()
-        assert(R.countdown(45000, 16, false) == 44984)
-        assert(R.countdown(45000, 16, true) == 45000, "pausado contou")
-        assert(R.countdown(45000, 10000, false) == 45000 - R.MAX_STEP_MS, "travada comeu a sirene")
-        assert(R.countdown(45000, -5, false) == 45000, "relógio voltou")
+        assert(R.countdown(R.GRACE_MS, 16, false) == R.GRACE_MS - 16)
+        assert(R.countdown(R.GRACE_MS, 16, true) == R.GRACE_MS, "pausado contou")
+        assert(R.countdown(R.GRACE_MS, 10000, false) == R.GRACE_MS - R.MAX_STEP_MS, "travada comeu a sirene")
+        assert(R.countdown(R.GRACE_MS, -5, false) == R.GRACE_MS, "relógio voltou")
     end,
     fog_event_rules_config_reads_sandbox = function()
         local t = { FogDailyChance = 65, FogMaxDailyChance = 85, FogEscalationDays = 60, FogEscalation = true,

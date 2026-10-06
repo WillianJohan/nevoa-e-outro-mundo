@@ -10,14 +10,14 @@ Horror para o Build 42, inspirado em The Last of Us e Silent Hill. [b]A noite tr
 [/list]
 
 [h2]Névoa[/h2]
-Quase todo dia, numa hora qualquer, uma sirene toca no mapa inteiro e os zumbis param onde estão. Quarenta e cinco segundos depois a névoa chega, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, sangue e erosão tomam chão e paredes, as bordas da tela se fecham e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
+Quase todo dia, numa hora qualquer, sirenes tocam ao longe, de vários lados, e os zumbis param onde estão. A névoa começa a subir e, 30 segundos depois, chega de vez, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, rádios e TVs chiam sozinhos, a erosão toma chão e paredes, que sangram, as bordas da tela se fecham e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
 [list]
 [*][b]Estaladores[/b]: cegos, guiados só por som, estalam de aviso. Agachado e em silêncio, dá pra passar do lado.
 [*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.
 [/list]
 [b]A Carpideira[/b] fica parada na névoa, soluçando baixinho. Chegue perto, aponte a lanterna pra ela ou atire por perto e ela grita: todo zumbi a 50 tiles vem, e ela corre direto pra você.
 [b]O Sem-rosto[/b] anda na névoa. Olhe pra ele, ou ilumine, e ele some, pra voltar mais perto, atrás de você. Colado, ataca. O rádio chia na sua cabeça quando ele está perto.
-Às vezes a sirene toca mais grave e rasgada: é a [b]névoa vermelha[/b]. A névoa e a luz ficam vermelhas e todo zumbi dentro dela é monstro.
+Às vezes as sirenes tocam mais graves e rasgadas: é a [b]névoa vermelha[/b]. A névoa e a luz ficam vermelhas e todo zumbi dentro dela é monstro.
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
 
 [h2]Sandbox[/h2]

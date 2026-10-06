@@ -69,6 +69,22 @@ return {
         assert(not percentProblem("    return NOM_Math.mod(now, R.BREATH_MS)"))
         assert(not percentProblem("    h = h % Q -- kahlua-%-ok: motivo"))
     end,
+    -- visto no jogo (sprint 0034): a sirene não congelou ninguém no solo
+    api_no_is_remote_zombie = function()
+        local bad = {}
+        for _, path in ipairs(luaFiles()) do
+            local n = 0
+            for line in io.lines(path) do
+                n = n + 1
+                if line:gsub("%-%-.*$", ""):find("isRemoteZombie") then
+                    bad[#bad + 1] = path .. ":" .. n .. ": isRemoteZombie() devolve true pra todo zumbi no solo"
+                        .. " (NetworkZombieComponent.isRemote = authOwner == nil, e no solo ninguém chama setOwner);"
+                        .. " use isLocal() (pz-api-notes §24)"
+                end
+            end
+        end
+        assert(#bad == 0, "\n  " .. table.concat(bad, "\n  "))
+    end,
     kahlua_percent_safe = function()
         local bad = {}
         for _, path in ipairs(luaFiles()) do

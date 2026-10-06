@@ -26,6 +26,9 @@ Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Lines.png     512×256  linhas horizontais de chiado, falhadas
   NOM/ScreenFx/NOM_White.png     8    branco opaco (o pulso do grito, tingido de vermelho)
 
+Estática da névoa (sprint 0034), tons de cinza com alfa, tingida pela cor da névoa:
+  NOM/ScreenFx/NOM_NevoaEstatica.png 256  chiado fino de 1 px com riscos curtos, fecha em mosaico
+
 Semente fixa: rodar de novo dá os mesmos bytes. Uso: python3 scripts/gen_textures.py
 """
 import os
@@ -256,6 +259,20 @@ def screen_lines(rng, w=512, h=256):
     return np.full((h, w, 3), 255, np.float32), a
 
 
+def screen_static(rng, size=256):
+    # estática da névoa (sprint 0034): chiado fino de TV fora do ar, em tons de cinza (a cor
+    # da névoa sai do desenho). Grão de 1 px e riscos horizontais curtos; os riscos dão a volta
+    # na borda, então fecha em mosaico. O contrário do Sem-rosto: nada que se leia de longe.
+    v = rng.random((size, size)).astype(np.float32)
+    streak = np.zeros((size, size), np.float32)
+    for _ in range(size * 3):
+        r, x0, n = rng.integers(0, size), rng.integers(0, size), rng.integers(4, 24)
+        streak[r, (x0 + np.arange(n)) % size] = 0.6 + 0.4 * rng.random()
+    v = np.maximum(v, streak)
+    a = np.clip(v ** 1.6, 0, 1)
+    return color((255, 255, 255), 0.35 + 0.65 * v), a
+
+
 def main():
     # um gerador por textura: mexer no desenho de uma não sorteia as outras de novo
     def rng(i):
@@ -282,6 +299,9 @@ def main():
     rgb, a = screen_lines(srng)
     save(rgb, "NOM/ScreenFx/NOM_Lines.png", alpha=a)
     save(np.full((8, 8, 3), 255, np.float32), "NOM/ScreenFx/NOM_White.png", alpha=np.ones((8, 8), np.float32))
+    # estática da névoa: gerador próprio, pra não mudar as de cima
+    rgb, a = screen_static(np.random.default_rng((SEED, 14)))
+    save(rgb, "NOM/ScreenFx/NOM_NevoaEstatica.png", alpha=a)
 
 
 if __name__ == "__main__":

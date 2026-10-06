@@ -76,7 +76,7 @@ local function setup(opts)
         end
         def("hasModData", function(self) return next(self.md) ~= nil end)
         def("getModData", function(self) return self.md end)
-        def("isRemoteZombie", function(self) return self.remote end)
+        def("isLocal", function(self) return (not isClient() and not isServer()) or not self.remote end)
         def("isDead", function(self) return self.dead end)
         def("getTarget", function(self) return self.target end)
         def("setTarget", function(self, t) self.target = t end)
@@ -262,7 +262,7 @@ return {
     end,
     -- MP: só o dono roda a IA; cópia remota não decide nada
     ai_remote_untouched = function()
-        local G = setup()
+        local G = setup({ client = true })
         local e = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true })
         local c = G.zombie({ x = 0, y = 2, variant = "corredor", remote = true })
         local p = G.player({ x = 1, y = 0, sneaking = true })
@@ -363,7 +363,7 @@ return {
     -- MP: o dono cegou, a posse troca no meio da janela; o novo dono recebeu o
     -- useless pelo pacote sem a entrada local. Não pode ficar inerte pra sempre.
     ai_ownership_transfer_mid_window = function()
-        local G = setup()
+        local G = setup({ client = true })
         local z = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true, useless = true })
         local p = G.player({ x = 1, y = 0, sneaking = true })
         G.frame(3)
@@ -420,8 +420,8 @@ return {
         assert(#e.sounds == 10, "Estalador não estalou")
     end,
     -- orçamento da névoa vermelha (review): ninguém é comum. Por frame, sem alvo:
-    -- Estalador 4 chamadas (getModData, isRemoteZombie, isUseless, getTarget), Corredor
-    -- 3 (getModData, isRemoteZombie, getTarget); o Sem-rosto não tem IA aqui (0)
+    -- Estalador 4 chamadas (getModData, isLocal, isUseless, getTarget), Corredor
+    -- 3 (getModData, isLocal, getTarget); o Sem-rosto não tem IA aqui (0)
     ai_red_fog_budget_per_frame = function()
         local G = setup()
         NOM_FogState.set(true, 1, true)
@@ -437,7 +437,7 @@ return {
         assert(sum(by.estalador) <= 100 * 10 * 4, "Estalador: " .. sum(by.estalador))
         assert(sum(by.corredor) <= 100 * 10 * 3, "Corredor: " .. sum(by.corredor))
         assert(sum(by.none) == 0, "Sem-rosto/comum: " .. sum(by.none))
-        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isRemoteZombie) e, no
+        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isLocal) e, no
         -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
         assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
         -- estalo: 1/min, só nos Estaladores, ≤ 3 chamadas cada (getModData, isDead, playSoundLocal)
@@ -498,7 +498,7 @@ return {
     -- MP: só o dono mexe; a cópia remota segue o pacote (o useless viaja nele:
     -- NetworkZombieAI.set/parse), então nasce parada como a do dono
     ai_carpideira_remote_untouched = function()
-        local G = setup()
+        local G = setup({ client = true })
         local z = G.zombie({ x = 0, y = 0, variant = "carpideira", remote = true, useless = true })
         G.frame(5)
         assert(z.useless, "cópia remota mexeu no useless")
@@ -524,8 +524,8 @@ return {
         local z2 = G2.zombie({ x = 0, y = 0, useless = true, id = idFor("carpideira", 1) })
         G2.reuse(z2)
         assert(not z2.useless, "reaproveitado nasceu parado")
-        -- remoto, Useless do jogo (outfit de debug) e parada pelo próprio mod: não mexe
-        local G3 = setup()
+        -- remoto (cliente de MP), Useless do jogo (outfit de debug) e parada pelo próprio mod: não mexe
+        local G3 = setup({ client = true })
         local r = G3.zombie({ x = 0, y = 0, useless = true, remote = true, id = idFor("carpideira", 1) })
         local dbg = G3.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor("carpideira", 1) })
         local mine = G3.zombie({ x = 0, y = 9, variant = "carpideira" })

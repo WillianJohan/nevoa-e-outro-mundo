@@ -52,21 +52,348 @@ module Base
         }
     }
 
-    sound NOM_Siren
+    /* Sirenes oficiais (sprint 0034): 5 por jogador, de 150 a 500 tiles, uma vez por evento.
+       Rolloff inverso do FMOD: ganho distanceMin/d até distanceMax, constante depois (o jogo
+       não corta por distância, pz-api-notes seção 23). Com 50: -9,5 dB a 150 tiles e -20 dB a
+       500 (queda de 10,5 dB na faixa); 5 juntas somam ~ -8 dB, abaixo da sirene antiga perto. */
+    sound NOM_SirenWhite1
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_Siren.ogg,
+            file = media/sound/NOM_SirenWhite1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 
-    sound NOM_SirenRed
+    sound NOM_SirenWhite2
     {
         category = World,
         clip
         {
-            file = media/sound/NOM_SirenRed.ogg,
+            file = media/sound/NOM_SirenWhite2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite9.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed1
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed2
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed9.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack1
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack1.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack2
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack2.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack3.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack4.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack5.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack9.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack10
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack10.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack11
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack11.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack12
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack12.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack13
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack13.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
         }
     }
 
@@ -89,6 +416,123 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream.ogg,
             distanceMax = 150,
+        }
+    }
+
+    sound NOM_DevTv
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTv.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevTvRed
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTvRed.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevTvBlack
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTvBlack.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevRadio
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadio.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevRadioRed
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadioRed.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevRadioBlack
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadioBlack.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevSpeaker
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevSpeaker.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevCar
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevCar.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevBurst
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevBurst.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.5,
         }
     }
 }

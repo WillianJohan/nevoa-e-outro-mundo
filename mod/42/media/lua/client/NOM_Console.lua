@@ -89,8 +89,9 @@ function NOM.panel()
 end
 
 -- Névoa branca de verdade (sprint 0033): um pedido só, o servidor decide
--- (NOM_FogEvent.force). Toca a sirene de 45 s (com o congelamento) e abre a névoa;
--- skip abre já. Com névoa aberta ou sirene contando, fecha e recomeça na cor pedida.
+-- (NOM_FogEvent.force). Presságio de 3 s (estática na tela), sirene (com o congelamento), a
+-- névoa sobe e abre 30 s depois; skip abre já, sem presságio. Com névoa aberta ou sirene
+-- contando, fecha e recomeça na cor pedida.
 function NOM.setFog(skip)
     NOM_Debug.send({ op = "setFog", red = false, skip = skip })
 end
@@ -167,15 +168,15 @@ function NOM.wind(on)
 end
 
 NOM.HELP = {
-    { "NOM.setFog(skip)", "névoa sempre branca: sirene de 45 s (zumbis congelam) e depois a névoa; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
-    { "NOM.setRedFog(skip)", "névoa sempre vermelha: sirene vermelha de 45 s e a névoa; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
     { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
     { "NOM.turnZombie(i)", "zumbi mais perto vira o tipo i: 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa)" },
     { "NOM.godMode(on)", "deus + invisível + zumbis não atacam, juntos; sem argumento inverte" },
     { "NOM.wind(on)", "foco de vento do mod Volumétrica (mod3); sem argumento inverte" },
-    { "NOM.fog(on, skip)", "névoa: true sirene de 45 s e névoa, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
+    { "NOM.fog(on, skip)", "névoa: true sirene, a névoa sobe e os bichos soltam em 30 s, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
     { "NOM.redFog(on)", "névoa vermelha: true força (com névoa aberta vira na hora), false desfaz; sem argumento inverte" },
     { "NOM.night(on)", "noite forçada (true) ou dia forçado (false); sem argumento inverte; NOM_Debug.night() volta pro relógio" },
     { "NOM.time(hora)", "muda a hora do relógio do jogo, sempre pra frente (hora que já passou é a de amanhã), ex.: NOM.time(22)" },

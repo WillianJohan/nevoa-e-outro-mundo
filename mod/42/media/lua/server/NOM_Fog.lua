@@ -36,12 +36,17 @@ NOM_World.onChange(function(flag)
 end)
 
 -- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
--- durante a contagem, ouve a sirene também (atrasada, mas avisa).
+-- durante a contagem, ouve a sirene também (atrasada, mas avisa); no presságio (sprint
+-- 0034), recebe o presságio, e a sirene chega pra todos no fim dele.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
     sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red })
     local ev = NOM_FogEvent.status()
-    if ev.sirenMs then sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed, dir = ev.sirenDir }) end
+    if ev.presageMs then
+        sendServerCommand(player, MODULE, "presage", { red = ev.sirenRed })
+    elseif ev.sirenMs then
+        sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed })
+    end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------
