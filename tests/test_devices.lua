@@ -65,7 +65,8 @@ local function world(G)
         local v = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0 }
         v.emitter = G.newEmitter({ x = v.x, y = v.y, z = v.z, vehicle = v })
         function v:getEmitter() return self.emitter end
-        function v:playSoundImpl(name, obj) return self.emitter:playSoundImpl(name, obj) end
+        -- BaseVehicle só tem playSoundImpl(String, IsoObject) (javap): nil não é ambíguo
+        function v:playSoundImpl(name, obj) return self.emitter:playSoundImpl(name, false, obj) end
         v.playSound = boom("vehicle:playSound manda pacote")
         local part = { vehicle = v }
         function part:getX() return v.x end

@@ -107,7 +107,7 @@ return {
         G.seconds(3)
         for _, s in ipairs(sirens(G)) do s.playing = false end
         local other = G.pool[1]
-        local id = other:playSoundImpl("NOM_FogMetal", nil) -- outro sistema pegou o emitter
+        local id = other:playSoundImpl("NOM_FogMetal", false, nil) -- outro sistema pegou o emitter
         NOM_Siren.stop()
         assert(other:isPlaying(id), "o stop parou o som de outro sistema")
     end,

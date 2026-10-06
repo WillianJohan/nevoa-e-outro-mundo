@@ -5,8 +5,10 @@
 -- shared/NOM_DeviceRules.lua. Evidência das APIs: docs/architecture/pz-api-notes.md §22.
 -- * Aparelhos: getZomboidRadio():getDevices(), a lista que o jogo mantém com todo
 --   IsoWaveSignal e VehiclePart com rádio em chunk carregado. Nada de varrer quadrados.
--- * Tocar: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, nil), local; no carro,
---   vehicle:playSoundImpl(nome, nil) (o emitter segue o carro). O emitter do próprio
+-- * Tocar: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil), local (o
+--   (nome, nil) cai no overload do IsoGridSquare e dá NPE: shared/NOM_Siren.lua); no carro,
+--   vehicle:playSoundImpl(nome, nil), que só tem o overload do IsoObject (javap) e o
+--   emitter segue o carro. O emitter do próprio
 --   aparelho só existe ligado e perto, e playSound/PlayWorldSound mandam pacote.
 -- * Parar: stopSoundLocal(id) no emitter guardado, nunca stopAll (o emitter é do pool e
 --   pode estar tocando som de outro sistema).
@@ -90,7 +92,7 @@ local function play(c, name, kind)
         id = c.vehicle:playSoundImpl(name, nil)
     else
         e = getWorld():getFreeEmitter(c.x + 0.5, c.y + 0.5, c.z)
-        id = e:playSoundImpl(name, nil)
+        id = e:playSoundImpl(name, false, nil)
     end
     e:setVolume(id, R.volume(c.live))
     return { e = e, id = id, d = c.d, kind = kind }

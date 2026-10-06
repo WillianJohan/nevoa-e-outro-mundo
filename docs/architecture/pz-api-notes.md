@@ -1429,7 +1429,7 @@ não muda de estado. Bytecode do B42 instalado (`javap -c -p`).
 | Rádio de carro instalado: `part:getInventoryItem()` | CONFIRMED | `client/Vehicles/ISUI/ISVehicleDashboard.lua:541` |
 | `part:getVehicle()` | CONFIRMED | `shared/Vehicles/TimedActions/ISRepairLightbar.lua:91` |
 | `getWorld():getFreeEmitter(x, y, z)` → emitter do pool já posicionado; o pool devolve o emitter quando ele fica vazio | EXISTS | bytecode `IsoWorld.getFreeEmitter(FFF)` 0–16; `IsoWorld` 8947–8990 (`currentEmitters` → `freeEmitters`); `getWorld()` CONFIRMED `client/Traps/CTrapGlobalObject.lua:32` |
-| `emitter:playSoundImpl(nome, nil)` → id, **local** (sem pacote) | CONFIRMED | `shared/TimedActions/ISAddItemInRecipe.lua:44`; bytecode `FMODSoundEmitter.playSoundImpl(String,IsoObject)` 0–24 |
+| `emitter:playSoundImpl(nome, false, nil)` → id, **local** (sem pacote), no emitter do pool | CONFIRMED | bytecode `FMODSoundEmitter.playSoundImpl(String,boolean,IsoObject)` 0–6 → `(String,IsoObject)` 0–24. **NÃO use `(nome, nil)` no `FMODSoundEmitter`:** ele também tem `(String,IsoGridSquare)` (1208–1235, lê `square.x`), o Kahlua escolhe esse com nil e dá NPE (console.txt, 2026-10-06). O `(nome, nil)` de `shared/TimedActions/ISAddItemInRecipe.lua:44` é no emitter de personagem, que não tem o overload do square |
 | `vehicle:playSoundImpl(nome, nil)` = `getEmitter():playSoundImpl`; o emitter segue o carro | EXISTS | bytecode `BaseVehicle.playSoundImpl` 0–9, `BaseVehicle.updateSounds` 96–113 |
 | `emitter:setVolume(id, v)`, `isPlaying(id)`, `stopSoundLocal(id)` | CONFIRMED | §4.3 |
 | Volume que sai = volume da instância (`setVolume`) × `volume` do clip no script | CONFIRMED (bytecode) | `FMODSoundEmitter$Sound.getVolume` 0–23 (`volume * clip.getEffectiveVolume()`) |
@@ -1503,7 +1503,7 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
 | Som próprio | script `sound { clip { file = media/sound/x.ogg } }` | `.wav` |
 | Som no mundo | `sendPlaySound` (servidor) / `z:playSound` (SP) | `playServerSound` |
 | Ambiente local | `playSoundLocal` + `emitter:setVolume/stopSoundLocal` | `playUISound` (sem volume) |
-| Som local num ponto do mundo | `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, nil)`, parado pelo id; no carro, `vehicle:playSoundImpl` (§22) | — (`PlayWorldSound` manda pacote) |
+| Som local num ponto do mundo | `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil)`, parado pelo id; no carro, `vehicle:playSoundImpl` (§22) | — (`PlayWorldSound` manda pacote) |
 | Achar aparelho perto | `getZomboidRadio():getDevices()` filtrado por distância² (§22) | varrer quadrados (caro, sem o carro) |
 | Decal local de chão e de parede | `obj:addAttachedAnimSpriteByName` no piso/parede, registro do que o mod pôs, tirado no `OnSave`, fora do raio, na morte e no salto (§16.6) | — (`IsoMarker` e `RenderGhostTileColor` saíram: §16.5) |
 | Pós-processo | `SearchMode` (vinheta/blur/desat/escuro) | override de `media/shaders/*.frag` |

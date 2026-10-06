@@ -137,12 +137,18 @@ function W.new(opts)
     -- Emitter do pool (sprint 0034, pz-api-notes §22): getWorld():getFreeEmitter(x, y, z)
     -- devolve um emitter já posicionado (IsoWorld.getFreeEmitter(FFF) 0–16), que fica onde
     -- foi posto. O pool devolve o que ficou vazio e outro sistema pode pegá-lo (aqui o mesmo
-    -- objeto volta). playSoundImpl(nome, nil) → id, isPlaying(id), stopSoundLocal(id),
+    -- objeto volta). playSoundImpl(nome, false, nil) → id, isPlaying(id), stopSoundLocal(id),
     -- setVolume(id, v): locais. playSound/stopSound mandam pacote e stopAll mata o som dos
     -- outros: explodem. G.sounds[id].at é onde o emitter estava ao tocar.
+    -- FMODSoundEmitter tem playSoundImpl(String, IsoGridSquare) e (String, IsoObject): com
+    -- nil o Kahlua escolhe o do square, que lê square.x e dá NPE (bytecode 1208–1235; visto
+    -- no console.txt). (String, boolean, IsoObject) (1245–1250) cai no do IsoObject com nil.
     function G.newEmitter(where)
         local e = { x = where.x, y = where.y, z = where.z, vehicle = where.vehicle }
-        function e:playSoundImpl(name, obj)
+        function e:playSoundImpl(name, flag, obj)
+            if type(flag) ~= "boolean" then
+                error('Cannot read field "x" because "square" is null (playSoundImpl(nome, nil))', 2)
+            end
             assert(obj == nil, "playSoundImpl com objeto")
             local id = #G.sounds + 1
             G.sounds[id] = { name = name, volume = 1, playing = true, emitter = self, at = { x = self.x, y = self.y, z = self.z },

@@ -4,7 +4,10 @@
 -- sirenes em volta do jogador local, uma perto e duas longe, cada uma num emitter do mundo
 -- parado onde foi posto (posições e atrasos: shared/NOM_SirenSpotsRules.lua). Tudo local,
 -- sem pacote (pz-api-notes §22 e §23):
--- * tocar: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, nil);
+-- * tocar: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil). Com
+--   (nome, nil) o Kahlua escolhe o overload do IsoGridSquare, que dá NPE em square.x
+--   (FMODSoundEmitter 1208–1235; visto no console.txt); o de 3 argumentos cai no do
+--   IsoObject com nil (1245–1250), e a posição é a do getFreeEmitter;
 -- * parar: stopSoundLocal(id) no emitter guardado, nunca stopAll (o emitter é do pool e,
 --   depois que a sirene acaba, pode estar tocando o som de outro sistema).
 -- A sirene acaba sozinha (one-shot); o stop é pro cancelamento (sirenStop).
@@ -18,7 +21,7 @@ local ticking = false
 
 local function start(x, y, z, sound)
     local e = getWorld():getFreeEmitter(x, y, z)
-    playing[#playing + 1] = { e = e, id = e:playSoundImpl(sound, nil) }
+    playing[#playing + 1] = { e = e, id = e:playSoundImpl(sound, false, nil) }
 end
 
 -- As longe entram no atraso delas (getTimestampMs, CONFIRMED server/ISObjectClickHandler.lua:352).
