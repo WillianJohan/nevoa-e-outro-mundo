@@ -26,9 +26,19 @@ Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/ge
 | `mod/42/media/sound/NOM_SirenRed.ogg` | a sirene mais grave (~30%), rasgada e longa (~28 s): rotor com desafinação que oscila, ronco uma oitava abaixo, saturação, chiado filtrado, ecos longos | aviso da névoa vermelha, 15 s reais antes |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
 | `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
+| `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
+| `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
+| `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |
+| `mod/42/media/sound/NOM_DevRadio.ogg` | rádio varrendo estações mortas (9 s): assobios de sintonia, trava numa portadora e uma "voz que não é voz" (pulso glotal em formantes que derivam) | rádio na névoa branca |
+| `mod/42/media/sound/NOM_DevRadioRed.ogg` | dial desesperado (8 s) que trava numa respiração rouca, sirene invertida longe, corte seco | rádio na névoa vermelha |
+| `mod/42/media/sound/NOM_DevRadioBlack.ogg` | portadora morta (9 s): contagem de cinco bipes descendo e o motivo, e o rádio morre | rádio na névoa preta (sprint 0038) |
+| `mod/42/media/sound/NOM_DevSpeaker.ogg` | caixa de som de poste (7 s): zumbido de terra na corneta, pulsos graves de passada, microfonia cortada seca, eco de rua | caixa de som na névoa |
+| `mod/42/media/sound/NOM_DevCar.ogg` | rádio de carro ligando sozinho, ouvido de fora (8 s): relé, busca de estação, contagem de cinco sílabas, abafado pela lataria | rádio de carro na névoa |
+| `mod/42/media/sound/NOM_DevBurst.ogg` | estouro de estática de aparelho (3 s): chiado na banda AM que cresce, crepitação e rajadas de arco, corte seco | presságio da sirene e aparelho perto do Sem-rosto |
 
-Pra regerar: `python3 scripts/gen_sounds.py`. Os sons são declarados em
-`mod/42/media/scripts/NOM_sounds.txt`.
+Pra regerar: `python3 scripts/gen_sounds.py` (ou só alguns: `python3 scripts/gen_sounds.py NOM_DevTv`).
+A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
+são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
 
 ## Imagens
 

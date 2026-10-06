@@ -91,4 +91,121 @@ module Base
             distanceMax = 150,
         }
     }
+
+    sound NOM_DevTv
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTv.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevTvRed
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTvRed.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevTvBlack
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevTvBlack.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.35,
+        }
+    }
+
+    sound NOM_DevRadio
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadio.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevRadioRed
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadioRed.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevRadioBlack
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevRadioBlack.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevSpeaker
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevSpeaker.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevCar
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevCar.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.45,
+        }
+    }
+
+    sound NOM_DevBurst
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_DevBurst.ogg,
+            distanceMin = 2,
+            distanceMax = 18,
+            volume = 0.5,
+        }
+    }
 }
