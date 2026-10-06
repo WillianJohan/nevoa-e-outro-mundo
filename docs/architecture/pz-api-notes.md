@@ -1366,6 +1366,23 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
     zera o `seen`), não o raio.
   - **A trava:** `overlays_save_margin_invariant` falha se `MAX_RADIUS` + `SLACK` +
     `MOVE_TILES` + 3 ≥ 48.
+- **A borda ao andar (sprint 0035, Tarefa 5c): feito.** O raio continua 30, e a margem do save não
+  muda. O que mudou foi a varredura:
+  - o `seen` não é mais zerado a cada 8 tiles: a âncora e o `RESEEN_TILES` saíram;
+  - o square já visto custa só a chave, contada nas olhadas (`SCAN_BUDGET` × `LOOK_MULT`) e fora
+    do lote de 80 que vai ao Java;
+  - o corte no tick (a cada `MOVE_TILES`) esquece do `seen` o que passou de `radius` + `SLACK`.
+    Assim o `seen` fica do tamanho da área do raio, não do caminho. O valor é x e y num número só
+    (`pack`). Se o corte esquece mais do que guarda (teleporte), a volta recomeça do mais perto.
+  - A 3 tiles/s, as faixas de 15–20, 20–25 e 25–30 tiles vão de 78%, 39% e 28% pra 100%, 99% e
+    87%. A 6 tiles/s, de 32%, 22% e 18% pra 95%, 88% e 67%.
+  - Custo a pé: ~900 → ~1400 chamadas Java por atualização (estresse: ~1360 → ~2400, teto
+    2500). Carro em campo aberto: até ~2090 por tick. No estresse, ~3270 → ~3900 por tick: o lote
+    de 80 agora vai inteiro pra square novo.
+  - Testes: `overlays_walking_covers_screen_edge`, `overlays_seen_memory_bounded` (sem o
+    esquecimento, 33212 squares em 520 tiles sem piso; com ele, até 3234),
+    `overlays_leave_and_return_redressed`, `overlays_walking_cost_stress` e
+    `overlays_reveal_walking_far`.
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido

@@ -102,6 +102,12 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    - Quem carrega o save com névoa, entra no MP no meio ou teleporta não espera.
    - É só visual. O `OnSave`, a morte e o corte a 38 tiles continuam tirando na hora, no meio da
      retirada também. O que espera ainda não foi anexado, então não tem nada pra vazar.
+10. **Borda ao andar (emenda da sprint 0035, Tarefa 5c):**
+    - A varredura não esquece o que já viu a cada 8 tiles andados, e o square já visto não gasta o
+      lote de 80. Andando a 3 tiles/s, o anel de 25–30 tiles fica 87% vestido (antes, 28%).
+    - O corte no tick (a cada 2 tiles) esquece o que passou do raio + 8. O "já visto" fica do
+      tamanho da área do raio. O square que sai e volta é vestido de novo.
+    - Raio, folga e margem do save não mudam (pz-api-notes §16.6).
 
 ## Consequências
 

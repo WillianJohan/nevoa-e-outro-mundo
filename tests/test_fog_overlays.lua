@@ -146,6 +146,78 @@ local function findFloor(G, cond)
     error("nenhum square com a condição")
 end
 
+-- Faixas de distância do jogador, [de, até) em tiles, pra cobertura andando (Tarefa 5c).
+local BANDS = { { 15, 20 }, { 20, 25 }, { 25, 30 } }
+
+-- fração dos pisos que a regra pede, em cada faixa, que estão vestidos agora
+local function coverage(G)
+    local px, py = math.floor(G.p.x), math.floor(G.p.y)
+    local R = BANDS[#BANDS][2]
+    local want, got = {}, {}
+    for i = 1, #BANDS do want[i], got[i] = 0, 0 end
+    for dx = -R, R do
+        for dy = -R, R do
+            local d = math.sqrt(dx * dx + dy * dy)
+            for i, b in ipairs(BANDS) do
+                if d >= b[1] and d < b[2] then
+                    local x, y = px + dx, py + dy
+                    local w = expect(G, x, y, 0, "F")
+                    if w ~= "" then
+                        want[i] = want[i] + 1
+                        local o = G.objs[x .. "," .. y .. ",0F"]
+                        if o and mods(G, o) == w then got[i] = got[i] + 1 end
+                    end
+                end
+            end
+        end
+    end
+    local out = {}
+    for i = 1, #BANDS do out[i] = got[i] / math.max(1, want[i]) end
+    return out
+end
+
+-- Anda em +x a speed tiles/s (tick de 16 ms) por secs segundos; a cada segundo depois de warm,
+-- uma amostra da cobertura. A cada UPDATE_TICKS (uma atualização) mede o custo e confere que
+-- nada passa do corte duro. Devolve a média por faixa e o pior custo (idas ao Java) de uma
+-- atualização.
+local function walkCoverage(G, speed, secs, warm)
+    local step = speed * 0.016
+    local sum, n, worst = { 0, 0, 0 }, 0, 0
+    local limit = D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5
+    local perSec = math.floor(1000 / 16 + 0.5)
+    local j = G.java + G.sqCalls
+    for t = 1, secs * perSec do
+        G.p.x = G.p.x + step
+        G.tick(1)
+        if t % O().UPDATE_TICKS == 0 then
+            worst = math.max(worst, G.java + G.sqCalls - j)
+            local f = farthest(G, G.p.x, G.p.y)
+            assert(f <= limit, "anexo a " .. f .. " tiles andando")
+            j = G.java + G.sqCalls
+        end
+        if t % perSec == 0 and t / perSec > warm then
+            local before = G.java + G.sqCalls
+            local c = coverage(G)
+            j = j + G.java + G.sqCalls - before -- a medição da cobertura não conta
+            for i = 1, #BANDS do sum[i] = sum[i] + c[i] end
+            n = n + 1
+        end
+    end
+    for i = 1, #BANDS do sum[i] = sum[i] / n end
+    return sum, worst
+end
+
+-- quantos squares inteiros estão a até r tiles de um ponto (teto do "já visto" em volta dele)
+local function disk(r)
+    local n, R = 0, math.ceil(r)
+    for dx = -R, R do
+        for dy = -R, R do
+            if dx * dx + dy * dy <= r * r then n = n + 1 end
+        end
+    end
+    return n
+end
+
 return {
     -- o piso e as paredes N/W ganham, anexados pelo nome, exatamente o que a regra pede (fora e
     -- dentro); o blend vanilla de cada piso fica
@@ -700,6 +772,7 @@ return {
                     "carro a " .. len .. " tiles/tick: anexo a " .. f .. " tiles")
                 assert(f + len < 48, "carro a " .. len .. " tiles/tick: o tick seguinte grava anexo a " .. (f + len))
             end
+            assert(cost <= 2500, "carro a " .. len .. " tiles/tick: " .. cost .. " chamadas Java num tick")
             G.seconds(5)
             assert(laidOut(G, D().MIN_RADIUS) > 300, "parou e não encheu")
             print(string.format("[margem] carro a %.2f tiles/tick: anexo mais longe %.1f tiles, até %d chamadas Java por tick",
@@ -1020,5 +1093,118 @@ return {
         G.p.dead = true
         G.tick(1)
         assert(G.ours() == 0, "sobrou na morte: " .. G.ours())
+    end,
+
+    -- BORDA AO ANDAR (sprint 0035, Tarefa 5c) -------------------------------------------------
+
+    -- "quero tela toda" (Johan): andando, a varredura chega no anel de fora do raio. No zoom
+    -- mais longe (raio MAX), a 3 tiles/s, os pisos que a regra pede vestidos por faixa; a
+    -- 6 tiles/s, a faixa de perto. O custo a pé fica no teto do enchimento
+    overlays_walking_covers_screen_edge = function()
+        for _, c in ipairs({ { speed = 3, min = { 0.95, 0.9, 0.8 } }, { speed = 6, min = { 0.9, 0.8, 0.6 } } }) do
+            local G = setup({ density = 2, zoom = 2.5 })
+            NOM_FogState.set(true, 3, true)
+            G.seconds(8)
+            assert(O().radius() == D().MAX_RADIUS)
+            local cov, cost = walkCoverage(G, c.speed, 20, 10)
+            print(string.format("[borda] andando a %d tiles/s: 15–20 %.0f%%, 20–25 %.0f%%, 25–30 %.0f%%; até %d chamadas por atualização",
+                c.speed, cov[1] * 100, cov[2] * 100, cov[3] * 100, cost))
+            for i, b in ipairs(BANDS) do
+                assert(cov[i] >= c.min[i], string.format("a %d tiles/s, %d–%d tiles: %.0f%% vestido (pede %.0f%%)",
+                    c.speed, b[1], b[2], cov[i] * 100, c.min[i] * 100))
+            end
+            assert(cost <= 2500, "a pé: " .. cost .. " chamadas por atualização")
+        end
+    end,
+
+    -- o "já visto" não cresce com o caminho: depois de 500+ tiles em linha e em círculo, só o
+    -- que está a até o corte (raio + SLACK, mais o que andou desde o último corte). Sem piso
+    -- (nada a vestir), o lote não tira nada: só o corte esquece
+    overlays_seen_memory_bounded = function()
+        for _, c in ipairs({ { "linha" }, { "círculo" }, { "linha", true }, { "círculo", true } }) do
+            local path, bare = c[1], c[2]
+            local G = setup({ density = 2, zoom = 2.5 })
+            G.noFloor = bare
+            NOM_FogState.set(true, 3, true)
+            G.seconds(8)
+            local cap = disk(D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5)
+            local cx, cy, R, a = G.p.x, G.p.y + 50, 50, -math.pi / 2
+            local worst, walked = 0, 0
+            while walked < 520 do
+                local step = 0.1 -- 6 tiles/s
+                if path == "linha" then
+                    G.p.x = G.p.x + step
+                else
+                    a = a + step / R
+                    G.p.x, G.p.y = cx + R * math.cos(a), cy + R * math.sin(a)
+                end
+                walked = walked + step
+                G.tick(1)
+                worst = math.max(worst, O().seenSize())
+            end
+            print(string.format("[memória] %s%s, %d tiles a pé: \"já visto\" até %d squares (teto %d, a volta do raio %d)",
+                path, bare and " sem piso" or "", walked, worst, cap, D().WITHIN[D().MAX_RADIUS]))
+            assert(worst > D().WITHIN[D().MAX_RADIUS] / 2, path .. ": quase nada visto (teste não mede): " .. worst)
+            assert(worst <= cap, path .. ": \"já visto\" com " .. worst .. " squares (teto " .. cap .. ")")
+            G.seconds(10)
+            laidOut(G, O().radius())
+        end
+    end,
+
+    -- o square vestido que sai do raio e volta é vestido de novo: dentro da folga do corte (o
+    -- lote tira) e além dela (o corte tira e o "já visto" esquece)
+    overlays_leave_and_return_redressed = function()
+        for _, away in ipairs({ 25, 60 }) do
+            local G = setup({ density = 2, zoom = 1 })
+            NOM_FogState.set(true, 3, true)
+            G.seconds(5)
+            local x, y, want = findFloor(G, function() return true end)
+            local floor = G.floorOf(x, y, 0)
+            assert(mods(G, floor) == want, "não vestiu (teste não mede)")
+            assert(away > O().radius() + 2, "não sai do raio (teste não mede)")
+            for _ = 1, away * 10 do G.p.x = G.p.x + 0.1; G.tick(1) end
+            G.seconds(5)
+            assert(mods(G, floor) == "", away .. " tiles: ficou vestido fora do raio")
+            for _ = 1, away * 10 do G.p.x = G.p.x - 0.1; G.tick(1) end
+            G.seconds(8)
+            assert(mods(G, floor) == want, away .. " tiles: não voltou: " .. mods(G, floor))
+            laidOut(G, O().radius())
+        end
+    end,
+
+    -- custo andando com parede N e W em todo square do caminho (estresse): a pé, no teto do
+    -- enchimento; de carro (2 tiles por tick), por tick, nada além do corte duro
+    overlays_walking_cost_stress = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        for x = 60, 200 do
+            for y = 60, 140 do
+                G.obj(x, y, 0, "N")
+                G.obj(x, y, 0, "W")
+            end
+        end
+        NOM_FogState.set(true, 3, true)
+        G.seconds(8)
+        local _, foot = walkCoverage(G, 3, 10, 10)
+        local car = 0
+        for _ = 1, 25 do
+            G.p.x = G.p.x + 2
+            local j = G.java + G.sqCalls
+            G.tick(1)
+            car = math.max(car, G.java + G.sqCalls - j)
+            assert(farthest(G, G.p.x, G.p.y) + 2 < 48, "o tick seguinte grava anexo")
+        end
+        print(string.format("[budget] estresse andando: a pé até %d chamadas por atualização, carro até %d por tick", foot, car))
+        assert(foot <= 2500, "a pé: " .. foot)
+    end,
+
+    -- revelação andando pra longe: o pendente que ficou pra trás (esquecido no corte) não duplica
+    -- nem trava; no fim, o lugar novo vestido como pede a regra
+    overlays_reveal_walking_far = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        liveOpen()
+        for _ = 1, 400 do G.p.x = G.p.x + 0.1; G.tick(1) end -- 40 tiles em 6,4 s
+        G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 6)
+        assert(not O().revealing())
+        laidOut(G, O().radius())
     end,
 }

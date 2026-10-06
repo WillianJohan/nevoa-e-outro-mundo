@@ -55,11 +55,11 @@ NOM_FogOverlays = {
     SLACK = 8,
     MOVE_TILES = 2,
     VERIFY_BUDGET = 20,  -- alvos conferidos por atualização (a lista mexida por baixo: põe de novo)
-    RESEEN_TILES = 8,    -- andou isso desde a última âncora: olha tudo de novo, do mais perto
     DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
     -- Transição descascando (sprint 0035): na borda ao vivo, cada square espera
     -- D.reveal × REVEAL_MS reais; o que espera vai pra um pendente por fatia de BUCKET_MS e
-    -- não gasta o SCAN_BUDGET (revelando, a volta olha até SCAN_BUDGET × LOOK_MULT squares).
+    -- não gasta o SCAN_BUDGET. A volta olha até SCAN_BUDGET × LOOK_MULT squares por atualização
+    -- (o já visto e o que espera custam só Lua).
     -- A janela (atraso e rajada) fecha REVEAL_MS + REVEAL_TAIL_MS depois da borda.
     REVEAL_MS = 6000,
     REVEAL_TAIL_MS = 2000,
@@ -83,9 +83,13 @@ local SIDES = { { "N", true }, { "W", false } }
 
 -- reg[k] (k = "x,y,z" .. "F"|"N"|"W") = { obj, sq, sk, kind, x, y, z, gen, rv, list = { {inst, name} } }
 local reg, nFloor, nWall
-local seen       -- [sk] = true: square decidido desde a âncora (sem chunk: tenta de novo)
+-- seen[sk] = pack(x, y): square decidido (sem chunk: tenta de novo). Andando, a volta não esquece
+-- nem recomeça do centro (o que já viu custa só a chave, e ela chega no anel de fora); o corte
+-- esquece o que passou de radius + SLACK, e o tamanho fica o da área do raio, não o do caminho.
+-- nSeen: quantos, contado por cima (o corte reconta).
+local seen, nSeen
 local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
-local cursor, gen, anchorX, anchorY, cutX, cutY
+local cursor, gen, cutX, cutY
 local density, pendingD, pendingAt
 local verifyKeys, verifyAt
 local radius
@@ -99,8 +103,8 @@ local revealFns = {}
 
 local function forget()
     reg, nFloor, nWall = {}, 0, 0
-    seen, held = {}, {}
-    cursor, gen, anchorX, anchorY, cutX, cutY = 1, nil, nil, nil, nil, nil
+    seen, nSeen, held = {}, 0, {}
+    cursor, gen, cutX, cutY = 1, nil, nil, nil
     density, pendingD, pendingAt = nil, nil, nil
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
@@ -111,8 +115,39 @@ forget()
 
 -- Tudo de novo, do mais perto (o pendente vai junto: a volta o refaz).
 local function reseen()
-    seen, cursor = {}, 1
+    seen, nSeen, cursor = {}, 0, 1
     pend, pendAt = {}, 0
+end
+
+-- x e y num número só (o valor do seen, sem tabela por square): |y| < SPAN / 2 em qualquer mapa.
+local SPAN = 1048576
+local HALF = SPAN / 2
+
+local function pack(x, y)
+    return x * SPAN + y + HALF
+end
+
+-- Esquece o que passou de radius + SLACK (só Lua; apaga depois da volta, como o stripWhere). O
+-- que volta pro raio é olhado de novo; o pendente esquecido o drain pula. Esqueceu mais do que
+-- guardou (teleporte): lugar novo, a volta recomeça do mais perto.
+local function forgetFar(px, py)
+    local far = (radius + O.SLACK) * (radius + O.SLACK)
+    local out, n = {}, 0
+    for sk, v in pairs(seen) do
+        local x = math.floor(v / SPAN)
+        local dx, dy = x - px, v - x * SPAN - HALF - py
+        if dx * dx + dy * dy > far then out[#out + 1] = sk else n = n + 1 end
+    end
+    for _, sk in ipairs(out) do seen[sk] = nil end
+    nSeen = n
+    if #out > n then cursor = 1 end
+end
+
+-- Quantos squares o "já visto" guarda (testes e debug; conta na hora).
+function O.seenSize()
+    local n = 0
+    for _ in pairs(seen) do n = n + 1 end
+    return n
 end
 
 -- Fecha a janela: o que esperava volta pra volta, sem atraso.
@@ -312,7 +347,8 @@ local function dress(cell, x, y, z, sk, per, d, rv)
 end
 
 -- Revelando: veste o pendente cuja vez chegou (fatias até el / BUCKET_MS), até budget squares.
--- O que saiu do raio, de outro andar ou da ação em curso volta pra volta. Devolve o que sobrou.
+-- O que saiu do raio, de outro andar ou da ação em curso volta pra volta; o que o corte esqueceu
+-- já voltou (a volta o põe de novo no pendente, se precisar). Devolve o que sobrou.
 local function drain(cell, px, py, pz, per, d, el, budget)
     local top = math.floor(el / O.BUCKET_MS)
     local r2 = radius * radius
@@ -326,11 +362,13 @@ local function drain(cell, px, py, pz, per, d, el, budget)
             l[#l] = nil
             local x, y, sk = s[1], s[2], s[4]
             local dx, dy = x - px, y - py
-            if s[3] ~= pz or held[sk] or dx * dx + dy * dy > r2 then
-                seen[sk] = nil
-            else
-                budget = budget - 1
-                if not dress(cell, x, y, pz, sk, per, d, s[5]) then seen[sk] = nil end
+            if seen[sk] then
+                if s[3] ~= pz or held[sk] or dx * dx + dy * dy > r2 then
+                    seen[sk] = nil
+                else
+                    budget = budget - 1
+                    if not dress(cell, x, y, pz, sk, per, d, s[5]) then seen[sk] = nil end
+                end
             end
         end
     end
@@ -338,8 +376,8 @@ local function drain(cell, px, py, pz, per, d, el, budget)
 end
 
 -- Um lote da varredura: mais perto primeiro (D.OFFSETS), em volta contínua até o raio (o anel
--- novo de quem anda, o square que perdeu o anexo); o square já decidido custa só a chave.
--- Revelando, o square cuja vez não chegou vai pro pendente (só Lua, fora do SCAN_BUDGET).
+-- novo de quem anda, o square que perdeu o anexo); o square já decidido custa só a chave, fora
+-- do SCAN_BUDGET. Revelando, o square cuja vez não chegou vai pro pendente (só Lua, fora dele).
 local function scan(px, py, pz, per, d, now)
     local cell = getCell()
     local n = D.WITHIN[radius]
@@ -353,9 +391,7 @@ local function scan(px, py, pz, per, d, now)
         cursor = cursor + 1
         local x, y = px + o[1], py + o[2]
         local sk = x .. "," .. y .. "," .. pz
-        if seen[sk] or held[sk] then
-            budget = budget - 1
-        else
+        if not seen[sk] and not held[sk] then
             local rv = el and D.reveal(x, y, pz, per)
             local b = rv and math.ceil(rv * O.REVEAL_MS / O.BUCKET_MS)
             if b and b * O.BUCKET_MS > el then
@@ -365,10 +401,10 @@ local function scan(px, py, pz, per, d, now)
                     pend[b] = l
                 end
                 l[#l + 1] = { x, y, pz, sk, rv }
-                seen[sk] = true
+                seen[sk], nSeen = pack(x, y), nSeen + 1
             else
                 budget = budget - 1
-                if dress(cell, x, y, pz, sk, per, d, rv) then seen[sk] = true end
+                if dress(cell, x, y, pz, sk, per, d, rv) then seen[sk], nSeen = pack(x, y), nSeen + 1 end
             end
         end
     end
@@ -378,13 +414,15 @@ local function hardR2()
     return (D.MAX_RADIUS + O.SLACK) * (D.MAX_RADIUS + O.SLACK)
 end
 
--- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai.
+-- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai. O "já visto"
+-- esquece o longe junto.
 local function cut(px, py)
     local hard = hardR2()
     stripWhere(function(e)
         local dx, dy = e.x - px, e.y - py
         return dx * dx + dy * dy > hard
     end)
+    forgetFar(px, py)
 end
 
 -- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote; além de
@@ -518,10 +556,6 @@ local function update()
             gen = g
             reseen()
         end
-        if not anchorX or math.abs(px - anchorX) >= O.RESEEN_TILES or math.abs(py - anchorY) >= O.RESEEN_TILES then
-            anchorX, anchorY = px, py -- recomeça do mais perto
-            reseen()
-        end
         hold(p)
     end
     prune(on, px, py, pz, now)
@@ -539,7 +573,7 @@ local ticks = 0
 Events.OnTick.Add(function()
     local p = getSpecificPlayer(0)
     local any = nFloor + nWall > 0
-    if p and (any or revealAt) then
+    if p and (any or revealAt or nSeen > 0) then
         if p:isDead() then
             if any then O.stripAll() end
         else
@@ -549,7 +583,7 @@ Events.OnTick.Add(function()
                 if jx * jx + jy * jy > hardR2() then endReveal() else tickX, tickY = x, y end
             end
             local dx, dy = x - (cutX or x), y - (cutY or y)
-            if any and (not cutX or dx * dx + dy * dy >= O.MOVE_TILES * O.MOVE_TILES) then
+            if (any or nSeen > 0) and (not cutX or dx * dx + dy * dy >= O.MOVE_TILES * O.MOVE_TILES) then
                 cut(math.floor(x), math.floor(y))
                 cutX, cutY = x, y
             end
@@ -614,6 +648,7 @@ NOM_FogState.onChange(function(on)
         for _, fn in ipairs(revealFns) do fn(now) end
     else
         endReveal()
+        reseen() -- a próxima névoa olha tudo de novo
         revealSince, unrevealAt = nil, now
     end
 end)

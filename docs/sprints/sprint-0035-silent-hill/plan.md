@@ -36,6 +36,7 @@ Texturas, sprites e partículas só pelos nossos `scripts/gen_*.py`. Nada de out
 | 3 | Tontura na transição (shader e sem shader), desligável | 2 |
 | 4 | Texturas Silent Hill na erosão (ferrugem, tinta descascando, grade) | 0 |
 | 5 | Cobertura além da tela (medir primeiro) | 4 |
+| 5c | Borda ao andar: a varredura lembra o que já viu | 5 |
 | 6 | Docs da sprint | todas |
 
 ---
@@ -205,7 +206,7 @@ O anexo mais longe no carro fica em R + SLACK + 1,5 (39,5 no 30/8), como a conta
 - Quem limita a borda andando é a vazão da varredura, não o raio. A cada 8 tiles (`RESEEN_TILES`), o `reseen()` zera o `seen` e a volta recomeça pelos squares já vestidos (cada um gasta orçamento). A volta de 36 atualizações nunca chega ao anel de fora.
 - Subir o raio piora o que dá pra ver: a volta parada fica mais longa (o zoom out enche mais devagar) e há 29% (34) a 81% (40) mais anexos vivos.
 
-**Fica pra depois (proposta, não feita):** a borda ao andar. Variante medida numa cópia descartável:
+**Fica pra depois (proposta, não feita):** a borda ao andar (feita na Tarefa 5c). Variante medida numa cópia descartável:
 - a âncora só volta o cursor (`cursor = 1`), sem zerar o `seen` (a chave já é absoluta);
 - a 3 tiles/s, a faixa de 20–25 tiles vai de 37% pra 97% e a de 25–30, de 25% pra 88%;
 - a 6 tiles/s, a de 15–20 vai de 30% pra 91% e a de 20–25, de 21% pra 85%;
@@ -237,6 +238,36 @@ Pedido do Johan (2026-10-06): "não esquece de adicionar todos os comandos de de
 7. Deus, Noclip, Invisível e Modo deus (`godMode()`), os quatro com sim/não (Modo deus pelo `isGodMod`).
 8. Vento (liga/desliga) (`wind()`; sem o mod3 o comando só avisa no console) e Status no console (`status()`).
 - **Teste:** carrega o `NOM_Console` de verdade pra ler o `NOM.HELP`, troca cada `NOM.*` por espião, aperta todos os botões e cobra que cada comando do HELP (menos `panel` e `help`) foi chamado: "comando sem botão no NOM.panel(): NOM.x (regra do AGENTS.md)".
+
+---
+
+### Tarefa 5c: borda ao andar
+
+Pedido do Johan (2026-10-06): "a erosão... ainda tá aqueles chunks limitados... quero tela toda". A medição da Tarefa 5 mostrou o porquê: a cada 8 tiles a varredura zerava o `seen` e recomeçava pelos squares já vestidos.
+
+- [x] Testes que falham (cobertura por faixa andando, memória do `seen`), implementar, `./run-tests.sh` verde, commit.
+
+**Feito (2026-10-06).** Em `client/NOM_FogOverlays.lua`:
+- a âncora e o `RESEEN_TILES` saíram. Andando, a volta é contínua e o `seen` fica;
+- o square já visto custa só a chave: entra nas olhadas (`SCAN_BUDGET` × `LOOK_MULT`, só Lua), mas não no lote de 80 que vai ao Java;
+- o corte no tick (a cada `MOVE_TILES`) esquece do `seen` o que passou de `radius` + `SLACK`. O valor do `seen` guarda x e y num número só. Se o corte esquece mais do que guarda (teleporte), a volta recomeça do mais perto;
+- o pendente da revelação que o corte esqueceu, o `drain` pula: a volta o põe de novo se ele voltar pro raio;
+- no fim da névoa, o `seen` é zerado: a próxima névoa olha tudo de novo.
+
+Desvio do protótipo: o protótipo só voltava o cursor (`cursor = 1`) e mantinha o `seen`. Sozinho, isso não mudou nada no mundo falso (78%, 39% e 28%): o square já visto ainda gastava o lote de 80, e a volta parava em ~20 tiles. Voltar ao centro a cada 8 tiles também atrapalha a 6 tiles/s: a 3 tiles/s dá 77% no anel de fora contra 87% sem voltar; a 6 tiles/s, 44% contra 67%.
+
+Medição (zoom 2,5, raio 30, campo aberto, densidade 3,2; média de 10 amostras depois de 10 s andando em linha). A cobertura é a fração dos pisos que a regra pede que estão vestidos:
+
+| | 15–20 | 20–25 | 25–30 | Chamadas por atualização |
+|---|---|---|---|---|
+| Antes, 3 tiles/s | 78% | 39% | 28% | ~900 |
+| Depois, 3 tiles/s | 100% | 99% | 87% | ~1400 |
+| Antes, 6 tiles/s | 32% | 22% | 18% | ~900 |
+| Depois, 6 tiles/s | 95% | 88% | 67% | ~1430 |
+
+- **Estresse** (parede N e W em todo square do caminho): a pé, de ~1360 pra ~2400 chamadas por atualização (100 rodadas: 2335 a 2434; o teto é 2500). De carro a 2 tiles por tick, de ~3270 pra ~3900 por tick: o lote de 80 agora vai inteiro pra square novo. Em campo aberto, até ~2090 por tick (teto 2500, cobrado agora no `overlays_fast_car_low_fps_never_past_hard`).
+- **Memória do `seen`** depois de 520 tiles a pé (teto: o disco de raio 30 + 8 + 2 + 1,5, 5417 squares): com piso, até 2821 em linha e em círculo; sem piso (nada a vestir, só o corte esquece), até 3234. Sem o esquecimento seriam 33212.
+- **Testes novos:** `overlays_walking_covers_screen_edge`, `overlays_seen_memory_bounded`, `overlays_leave_and_return_redressed` (sai do raio e volta, a 25 e a 60 tiles), `overlays_walking_cost_stress` e `overlays_reveal_walking_far`. A `overlays_save_margin_invariant` não mudou; nada passa do corte duro em nenhuma atualização andando.
 
 ---
 
