@@ -48,7 +48,10 @@ local FILES = {
     "tests/test_devices.lua",
     "tests/test_fog_vignette.lua",
     "tests/test_dressing_rules.lua",
+    "tests/test_own_sprites.lua",
     "tests/test_fog_overlays.lua",
+    "tests/test_flake_rules.lua",
+    "tests/test_flakes.lua",
     "tests/test_night_and_fog.lua",
     "tests/test_fog_event_rules.lua",
     "tests/test_debug_rules.lua",
@@ -56,6 +59,7 @@ local FILES = {
     "tests/test_debug_panel.lua",
     "tests/test_translations.lua",
     "tests/test_credits.lua",
+    "tests/test_own_sprite_list.lua",
     "tests/test_look_assets.lua",
     "tests/test_variant_look.lua",
 }

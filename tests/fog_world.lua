@@ -349,6 +349,26 @@ function W.new(opts)
             return (sx + ox - 2 * (sy + oy)) / (-64 * G.tileScale) + 3 * z
         end,
     }
+    -- LuaManager$GlobalObject.isoToScreenX/Y(IFFF) 0–60 (sprint 0035): (IsoUtils.XToScreen(x + fjx,
+    -- y + fjy, z, 0) − PlayerCamera.getOffX()) / zoom + IsoCamera.getScreenLeft(i), com XToScreen =
+    -- 32T(x − y) e YToScreen = 16T(x + y) − 96Tz (IsoUtils 0–33, 0–50). G.camera.jiggleX/Y é o
+    -- PlayerCamera.fixJigglyModelsSquareX/Y; a tela do jogador 0 começa em (0, 0).
+    getPlayerScreenLeft = function(i) java(); assert(i == 0); return 0 end
+    getPlayerScreenTop = function(i) java(); assert(i == 0); return 0 end
+    isoToScreenX = function(i, x, y, z)
+        java()
+        assert(i == 0 and z ~= nil, "isoToScreenX(int, F, F, F)")
+        local ox = cameraOff()
+        local c = G.camera
+        return (32 * G.tileScale * ((x + (c.jiggleX or 0)) - (y + (c.jiggleY or 0))) - ox) / G.zoom
+    end
+    isoToScreenY = function(i, x, y, z)
+        java()
+        assert(i == 0 and z ~= nil, "isoToScreenY(int, F, F, F)")
+        local _, oy = cameraOff()
+        local c = G.camera
+        return (16 * G.tileScale * ((x + (c.jiggleX or 0)) + (y + (c.jiggleY or 0))) - 96 * G.tileScale * z - oy) / G.zoom
+    end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
     G.globalMD = opts.globalMD or {}
     ModData = {
@@ -369,7 +389,9 @@ function W.new(opts)
     -- batentes: as do sprite de porta/janela somam nas propriedades do square
     -- (ISBuildIsoEntity.lua:195-198); G.flags[k] = { DoorWallN = true, ... }
     IsoFlagType = { water = "water", DoorWallN = "DoorWallN", DoorWallW = "DoorWallW", WindowN = "WindowN",
-        WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW" }
+        WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW",
+        -- flags do sprite próprio (sprint 0035; enum IsoFlagType do bytecode)
+        FloorOverlay = "FloorOverlay", WallOverlay = "WallOverlay", attachedN = "attachedN", attachedW = "attachedW" }
     -- LuaManager$GlobalObject.getOnlinePlayers 0–30: servidor = GameServer.getPlayers, cliente
     -- = GameClient.getPlayers (o IDToPlayerMap: os locais e os remotos que ele conhece), solo =
     -- ArrayList vazia

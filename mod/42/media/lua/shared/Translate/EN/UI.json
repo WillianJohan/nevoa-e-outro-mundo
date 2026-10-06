@@ -4,6 +4,8 @@
     "UI_NOM_ScreenFx_tooltip": "Film grain, a breathing vignette, static lines when the Faceless is near and a red flash when a Mourner screams. Only on your screen.",
     "UI_NOM_ScreenFxIntensity": "Screen effects intensity",
     "UI_NOM_ScreenFxIntensity_tooltip": "0 turns the effects off, 1 is the default, 2 is double.",
+    "UI_NOM_Dizzy": "Dizziness on the shift",
+    "UI_NOM_Dizzy_tooltip": "When the Otherworld starts to spread, the screen sways and blurs for about 5 seconds (without the Shader mod, the vignette pulses and the screen darkens). On-screen dizziness bothers some people: turn it off if it makes you feel unwell. Off when screen effects are off.",
     "UI_NOM_FogOverlayDensity": "Blood and decay in the fog",
     "UI_NOM_FogOverlayDensity_tooltip": "How much blood, grime, cracks and decay the fog spreads on the floors and walls around you. 0 turns it off, 1 is the default, 2 is double. Red fog is always heavier.",
     "UI_NOM_Dissolve": "Monsters burn in and out",
@@ -47,5 +49,16 @@
     "UI_NOM_Debug_StatusFog": "Fog",
     "UI_NOM_Debug_StatusRed": "Red",
     "UI_NOM_Debug_StatusHour": "Hour",
-    "UI_NOM_Debug_StatusMonsters": "Monsters here"
+    "UI_NOM_Debug_StatusMonsters": "Monsters here",
+    "UI_NOM_Debug_SetFog": "White siren",
+    "UI_NOM_Debug_SetFogNow": "White now",
+    "UI_NOM_Debug_SetRedFog": "Red siren",
+    "UI_NOM_Debug_SetRedFogNow": "Red now",
+    "UI_NOM_Debug_SetBlackFog": "Black",
+    "UI_NOM_Debug_GetZombie": "Pull zombie",
+    "UI_NOM_Debug_UndoVariant": "Undo variant",
+    "UI_NOM_Debug_GodMode": "God mode",
+    "UI_NOM_Debug_Wind": "Wind (toggle)",
+    "UI_NOM_Debug_Status": "Status to console",
+    "UI_NOM_Debug_OwnSprites": "Own textures to console"
 }

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034; §25 e §26: sprint 0035) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1123,6 +1123,22 @@ Verificado no bytecode do B42.21 (o instalado) e no Lua vanilla. Decisão na
   `\` e separa por vírgula.
 - **UNKNOWN:** o vencedor quando dois mods trazem `screen.frag` (ordem do `activeFileMap`); o
   shader compilando no driver do Johan (roteiro).
+- **Tontura no `darkness` (sprint 0035, ADR-013 emenda).** Bytecode do B42.21 instalado:
+  - `SearchModeFloat.setAll(F)` só chama `setExterior`/`setTargetExterior`/`setInterior`/
+    `setTargetInterior`, sem prender em `min`/`max` (os campos existem e não são lidos ali);
+    `PlayerSearchMode.getShaderDarkness` 0–24 devolve `getExterior`/`getInterior` pelo
+    `isPlayerExterior`; `WeatherShader.startMainThread` 343–354 grava em `vars[19]`, e o
+    `startRenderThread` 385–417 manda `VarInfo = (vars[18], vars[19], vars[20], vars[21])` por
+    `glUniform4f`. Um valor como `4·256 + 2` chega inteiro ao shader.
+  - Quem mais lê o `darkness`: no jar, só `SearchMode`, `PlayerSearchMode`, `WeatherShader` e
+    `RenderSettings$PlayerRenderSettings` citam `getDarkness`/`getShaderDarkness`, e o último só
+    pega o `SearchMode` e zera `smAlpha`/`smRadius` (`updateRenderSettings` 0–11). No Lua
+    vanilla: `ISSearchManager.lua:1081` (escreve o alvo, fora do nosso override) e o painel de
+    debug `DebugUIs/DebugMenu/General/ISSearchMode.lua:42` (mostra).
+  - `timer` é inteiro: `startRenderThread` 163–176 manda `timerVal / 2` (`idiv`, depois `i2f`);
+    `timerVal` anda +1 a cada 2 quadros com `PerformanceSettings.getLockFPS() >= 60` (188–229) ou
+    +2 por quadro abaixo disso (232–239). Animação pelo `timer` anda em degraus (~15 por segundo a
+    60 FPS). `timerWrap` = `1 − 2·timerVal/2³¹` (242–255): quase parado.
 
 ## 16. Outro Mundo sangrento (sprint 0015)
 
@@ -1330,6 +1346,83 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
   registro inteiro, a cada 2 tiles andados); o pior tick de carro a 1–2,24 tiles por tick fica em
   ~1960 chamadas Java, a ordem do enchimento (~1940 por atualização). O anexo mais longe medido:
   38,6–39,5 tiles.
+- **Além da tela (sprint 0035, Tarefa 5): não feito.** A medição e as tabelas estão no
+  [plano da sprint](../sprints/sprint-0035-silent-hill/plan.md) (Tarefa 5).
+  - O zoom máximo do jogo é 2,5 (`MultiTextureFBO2.<init>` 4–61: `zoomLevelsDefault` =
+    2,5, 2,25, 2, 1,75, 1,5, 1,25, 1, 0,75, 0,5, 0,25).
+  - **A conta:** R + `SLACK` + `MOVE_TILES` + 2 (carro por tick) + 1 (square) < 48, então
+    R + `SLACK` ≤ 42. Com `SLACK` 8, o maior R seguro é 34; com `SLACK` 2, 40. O 45 não cabe nem
+    com `SLACK` 0.
+  - **A folga:** hoje (38) o corte aguenta ~6 tiles num tick; em 42, só 2. Um engasgo pra 10 FPS
+    no carro dá 3.
+  - **O `SLACK`:** diminuir não causa pisca-pisca. O mod só põe anexo a até r ≤ `MAX_RADIUS` e só
+    tira na hora acima de `MAX_RADIUS` + `SLACK`, então as faixas nunca se cruzam. Mas cada tile
+    que sai do `SLACK` e vai pro raio sai da folga.
+  - **O custo:** as chamadas por atualização quase não mudam com o raio (orçamentos), mas os
+    anexos vivos e a volta crescem com R²: 4694 anexos e 36 atualizações no 30, 8481 e 63 no 40.
+  - **O ganho:** em 1080p no zoom 2,5, a tela coberta vai de 84,6% (30) a 95% (34). Em 1440p e 4K
+    o canto passa dos 48 tiles com qualquer raio. Andando, a cobertura além de 15 tiles é a mesma
+    em qualquer raio: quem manda é a vazão da varredura (o `reseen()` a cada `RESEEN_TILES`
+    zera o `seen`), não o raio.
+  - **A trava:** `overlays_save_margin_invariant` falha se `MAX_RADIUS` + `SLACK` +
+    `MOVE_TILES` + 3 ≥ 48.
+- **A borda ao andar (sprint 0035, Tarefa 5c): feito.** O raio continua 30, e a margem do save não
+  muda. O que mudou foi a varredura:
+  - o `seen` não é mais zerado a cada 8 tiles: a âncora e o `RESEEN_TILES` saíram;
+  - o square já visto custa só a chave, contada nas olhadas (`SCAN_BUDGET` × `LOOK_MULT`) e fora
+    do lote de 80 que vai ao Java;
+  - a atualização, se o jogador andou `MOVE_TILES` desde a última vez, esquece do `seen` o que
+    passou de `radius` + `SLACK` (antes da varredura). Assim o `seen` fica do tamanho da área do
+    raio, não do caminho. O valor é x e y num número só (`pack`). Se o esquecimento tira mais do
+    que guarda (teleporte), a volta recomeça do mais perto. Até o review final da 0035 isso rodava
+    no corte do tick: de carro (corte todo tick), uma volta no `seen` por tick, só Lua, que o
+    teste de chamadas Java não via. A margem do save não depende dele (é o `stripWhere` do corte).
+  - A 3 tiles/s, as faixas de 15–20, 20–25 e 25–30 tiles vão de 78%, 39% e 28% pra 100%, 99% e
+    87%. A 6 tiles/s, de 32%, 22% e 18% pra 95%, 88% e 67%.
+  - Custo a pé: ~900 → ~1400 chamadas Java por atualização (estresse: ~1360 → ~2400, teto
+    2500). Carro em campo aberto: até ~2090 por tick. No estresse, ~3270 → ~3900 por tick: o lote
+    de 80 agora vai inteiro pra square novo.
+  - Testes: `overlays_walking_covers_screen_edge`, `overlays_seen_memory_bounded` (sem o
+    esquecimento, 33212 squares em 520 tiles sem piso; com ele, até 3234),
+    `overlays_leave_and_return_redressed`, `overlays_walking_cost_stress` e
+    `overlays_reveal_walking_far`.
+- **Teto de custo do carro na área densa (sprint 0035, Tarefa 5c): feito.** Estresse (parede N
+  e W em todo square, densidade 3,2, zoom 2,5, raio 30), saindo do disco cheio, 220 ticks. O
+  maior de cada parte num tick (uma rodada; a ordem do `pairs` varia: o pior tick, em 12
+  rodadas, fica em 2005–2050 a 0,5 tile/tick, 1992–2059 a 1 e 2216–2284 a 2):
+
+  | Carro | Corte duro | Retirada em lote | Conferência | Vestir | Pior tick |
+  |---|---|---|---|---|---|
+  | Antes, 0,5 tile/tick | 1581 | 1086 | 100 | 1872 | 3751 |
+  | Antes, 1 tile/tick | 1598 | 455 | 86 | 1878 | 3898 |
+  | Antes, 2 tiles/tick | 1628 | 431 | 80 | 1864 | 3851 |
+  | Depois, 0,5 tile/tick | 1657 | 140 | 112 | 1865 | 2081 |
+  | Depois, 1 tile/tick | 1646 | 137 | 106 | 1860 | 2088 |
+  | Depois, 2 tiles/tick | 1650 | 116 | 64 | 1892 (446 no tick do corte) | 2248 |
+
+  - O pior tick de antes era o corte de um anel cheio (~1600, os primeiros ~30 ticks) somado à
+    atualização inteira no mesmo tick. A 0,5 tile por tick, a retirada em lote também tirava sem
+    lote o que passava de 38 entre dois cortes.
+  - **O corte sozinho fica em ~1650**, abaixo de 2500: ele continua inteiro, sem lote.
+  - No tick em que o corte tirou alguma coisa, a atualização vai pro tick seguinte. A 0,5 e a
+    1 tile por tick ela nunca cai em cima do corte. A 2 tiles por tick (corte em todo tick) ela
+    roda com o lote de vestir ÷ `LIGHT_DIV` (4): 20 squares, ~450 chamadas.
+  - Quem andou `MOVE_TILES` desde a atualização anterior (≥ 0,2 tile por tick) tira em lote
+    `STRIP_BUDGET` ÷ 4 = 20 alvos. O que passou de 38 entra nesse lote como qualquer alvo fora do
+    raio: o corte no tick já garante que nada passa de 38 + `MOVE_TILES`.
+  - A margem do save não muda: anexo mais longe 40,0 (0,5), 39,5 (1) e 38,6 (2), dentro de
+    38 + 2 + 1,5. A pé, nada muda: cobertura 100/99/87% a 3 tiles/s e 95/88/67% a 6 tiles/s;
+    estresse a pé 2331–2436 por atualização (antes, 2335–2434).
+  - Custo aceito: trocar de desenho (período ou densidade) dirigindo tira o desenho velho a
+    20 alvos por atualização; o que fica pra trás o corte leva.
+  - Teste: `overlays_car_cost_stress` (0,5, 1 e 2 tiles por tick, teto 2500, margem em todo
+    tick, enche ao parar).
+  - **Trabalho Lua do esquecimento (review final da 0035).** O mesmo teste conta as chaves do
+    `seen` percorridas (`NOM_FogOverlays.seenVisits`). Voltas no `seen` em 220 ticks: antes 55,
+    110 e 220 (0,5, 1 e 2 tiles por tick, média de 345, 350 e 261 chaves por tick); depois 21, 21
+    e 20 (média de 130, 60 e 15). Trava: no máximo uma volta por atualização
+    (⌈ticks ÷ `UPDATE_TICKS`⌉ + 1) e até 5417 chaves numa volta. Cobertura, margem e chamadas
+    Java não mudaram.
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido
@@ -1622,6 +1715,107 @@ troca, no solo, além da sirene: a IA das variantes não rodava (Estalador não 
 avisava que caçava, Carpideira calma não parava), o laço da noite não reaplicava a velocidade
 re-rolada e a Carpideira não soltava depois do grito. O lint `tests/test_kahlua_compat.lua` (`api_no_is_remote_zombie`) falha se
 `isRemoteZombie` voltar em `mod/` ou `mod2/`, e os fakes de zumbi não têm o método.
+
+## 25. Lascas do Outro Mundo (sprint 0035)
+
+Lascas de tinta e cinza que sobem do chão e das paredes vestidos (`client/NOM_Flakes.lua`,
+regra em `shared/NOM_FlakeRules.lua`), desenhadas pelo overlay de tela da 0013 (§15.1), como as
+brasas do Eco. Bytecode do B42.21 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `isoToScreenX/Y(i, x, y, z)`: ponto do mundo → pixel da tela do jogador `i` | CONFIRMED | `client/ISUI/ISButtonPrompt.lua:176-177` |
+| É afim em x, y, z dentro do quadro: `(XToScreen(x + fjx, y + fjy, z, 0) − PlayerCamera.getOffX()) / zoom + IsoCamera.getScreenLeft(i)`, idem Y com `getOffY`/`getScreenTop`; `XToScreen = 32T(x − y)` (não lê z), `YToScreen = 16T(x + y) + 96T(0 − z)`. Projetar 4 pontos por quadro dá a base; cada lasca sai em Lua | EXISTS | `LuaManager$GlobalObject.isoToScreenX/Y(IFFF)` 0–60; `IsoUtils.XToScreen(FFFI)` 0–33, `YToScreen(FFFI)` 0–50. `fjx/fjy` = `PlayerCamera.fixJigglyModelsSquareX/Y` (campo, fixo no quadro) |
+| Devolve `float`: com x, y ~10⁴ tiles (~6·10⁵ px antes de tirar o offset) o erro é ~0,06 px. A base usa pontos a 16 tiles e divide | EXISTS | o mesmo bytecode (`freturn`, contas em `F`) |
+| `drawSubTexture(tex, subX, subY, subW, subH, x, y, w, h, a, r, g, b)` recorta a textura em **pixels dela** | CONFIRMED | `client/ISUI/ISUIElement.lua:1043-1052`; `client/ISUI/ISUISprite.lua:106-118`; `client/ISUI/ISLcdBar.lua:69-72` (recorte `índice × charW`, em pixels) |
+| `UIElement.DrawSubTextureRGBA`: o recorte é preso a `[0, getWidth/Height]`, dividido pelo tamanho e levado a `xStart..xEnd` / `yStart..yEnd` (a folga de potência de 2 da textura não atrapalha); sai cedo invisível, com `w`/`h` ≤ 0 ou `y` fora de `[−h, 4096]` | EXISTS | `UIElement.DrawSubTextureRGBA(Texture, 12×D)` 0–122 (saídas), 123–306 (recorte → UV) |
+| **Pegadinha:** sem `r`, o `drawSubTexture` vanilla chama `DrawSubTextureRGBA(tex, x, y, w, h, 1, 1, 1, a)`, sem o recorte: desenha o sheet inteiro na caixa. O mod passa a cor sempre | CONFIRMED | `client/ISUI/ISUIElement.lua:1046-1047` |
+| Não existe `math.random` no Kahlua: o `MathLib` registra `abs` … `tanh`, sem `random`; o `RandomLib` dá `newrandom()`, sem uso vanilla. O mod usa um Park–Miller próprio (`NOM_FlakeRules.rng`, semente `getTimestampMs()`) | EXISTS | `se.krka.kahlua.j2se.MathLib.<clinit>` (nomes), `se.krka.kahlua.stdlib.RandomLib`; `rg 'math.random\|newrandom' media/lua` vazio |
+| `drawTextureScaled` com cor, `getCore():getZoom(0)`, retângulo da tela, menu aberto | CONFIRMED | §15.1 e §16.6 |
+
+Custo medido no mundo falso (`tests/test_flakes.lua`, `flakes_budget`): até 160 lascas vivas, pior
+quadro ~175 idas ao Java (até 20 de base + 1 por lasca na tela). Sem névoa e sem lasca, 0.
+
+## 26. Sprite próprio em runtime: texturas do Outro Mundo (sprint 0035)
+
+Os PNG de `scripts/gen_tiles.py` (`media/textures/NOM/OutroMundo/`, lista em
+`shared/NOM_OwnSpriteList.lua`) viram sprites de runtime em `client/NOM_OwnSprites.lua` e o
+`client/NOM_FogOverlays.lua` anexa pelo nome, como os vanilla (ADR-017). Tabelas copiadas do
+spike (`docs/sprints/sprint-0035-silent-hill/spike-sprite-proprio.md` §1b, §2, §5, §6), bytecode
+do B42.21 instalado (`javap -c -p`).
+
+### 26.1 Registro (spike §1b)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoSprite`, `IsoSpriteInstance`, `IsoSpriteManager` e `PropertyContainer` são expostos ao Lua (métodos públicos chamáveis) | CONFIRMED | `LuaManager$Exposer.exposeAll` 989, 3012–3033; uso vanilla: `IsoSpriteManager.instance:getSprite(nome)` em `shared/Util/CustomTileProps.lua:320` |
+| `getSprite(nome)` (global do Lua) = `IsoSpriteManager.instance.getSprite(nome)`: se o nome está no `namedMap`, devolve; senão **`AddSprite(nome)`** | CONFIRMED | `LuaManager$GlobalObject.getSprite(String)` 0–7; `IsoSpriteManager.getSprite(String)` 0–28; uso vanilla do global: `server/ClientCommands.lua:195` |
+| `AddSprite(String)`: `new IsoSprite`, `LoadSingleTexture(nome)` e `namedMap.put(nome, sprite)`. **Não** põe no `intMap` e **não** chama `setName` | CONFIRMED | `IsoSpriteManager.AddSprite(String)` 0–26 |
+| `LoadSingleTexture(nome)` = `texture = Texture.getSharedTexture(nome)`, a mesma função do `getTexture(caminho)` do Lua (nil se o caminho não existe), que o mod já usa com `media/textures/NOM/...` (`NOM_Embers.lua:17`, `NOM_Flakes.lua:77`) | CONFIRMED | `IsoSprite.LoadSingleTexture` 0–16; `LuaManager$GlobalObject.getTexture(String)` 1 |
+| Sem animação, o desenho usa o campo `texture` | CONFIRMED | `IsoSprite.getTextureForFrame(I,IsoDirections,Z)` 22–46 |
+| ID do sprite novo: **20000000** (valor do construtor, igual pra todo sprite criado assim) | CONFIRMED | `IsoSprite.<init>(IsoSpriteManager)` 50–53 |
+| `addAttachedAnimSpriteByName(nome)` lê o `namedMap` (`IsoSprite.getSprite(manager, nome, 0)`): **acha o sprite de runtime** | CONFIRMED | `IsoSprite.getSprite(IsoSpriteManager,String,I)` 0–23; `IsoObject.addAttachedAnimSpriteByName` (§16.6) |
+| `setName(String)` é público e só grava o campo `name` (o que `getParentSprite():getName()` lê) | CONFIRMED | `IsoSprite.setName` 0–5; `javap -p IsoSprite` (`getName()`, `setName(String)`, `getProperties()`) |
+| Flags no sprite pelo Lua: `sprite:getProperties():set(IsoFlagType.X)`; `IsoFlagType` tem `FloorOverlay`, `WallOverlay`, `attachedN` e `attachedW` | CONFIRMED | `shared/Util/CustomTileProps.lua:333-338`; `PropertyContainer.set(IsoFlagType)` público; `javap -p IsoFlagType`; uso vanilla de `IsoFlagType.attachedW/N` em `ISDestroyStuffAction.lua:166,171` e de `WallOverlay` em `ISMoveableSpriteProps.lua:157` |
+| O `namedMap` é esvaziado a cada carga de mundo (`IsoSpriteManager.Dispose` antes dos tiledefs): o sprite de runtime tem de ser recriado por jogo | CONFIRMED | `IsoWorld.init` 2182–2185 |
+| Mexer em sprite no `OnGameStart` é o que o vanilla faz | CONFIRMED | `shared/Util/CustomTileProps.lua:318-341` |
+
+**Como o mod usa** (`NOM_OwnSprites.ensure`): pra cada nome da lista, `getTexture(nome)` (nil:
+pula e loga uma vez, nunca cria sprite vazio), `getSprite(nome)`, `setName(nome)` (**obrigatório**)
+e as flags do lado (`F`: `FloorOverlay`; `W`/`N`: `WallOverlay` + `attachedW`/`attachedN`).
+Roda no `OnGameStart` e, preguiçoso, no primeiro `update` com névoa da sessão; depois disso volta
+sem ir ao Java. Custo: ~280 chamadas uma vez por sessão (50 sprites), medido no mundo falso.
+
+### 26.2 Profundidade (spike §2)
+
+O anexo é desenhado com a profundidade **do sprite anexado**, não do objeto:
+`IsoObject.renderAttachedSprites` 438 → `IsoSprite.render(inst, obj, …)` → `renderCurrentAnim` 96 →
+`renderCurrentAnim_FBORender` 375 → **`IsoSprite.setupTileDepth(obj, …)`** com `this` = sprite anexado.
+Sem `depthTexture` próprio: `solidfloor`/`FloorOverlay` → `setupFloorDepth`; `WallOverlay` +
+`attachedN`/`attachedW` → depth da parede pai ou `setupWallDepth` do lado; sem flag →
+`getDefaultDepthTexture()` (genérica, errada pra decalque) (`IsoSprite.setupTileDepth` 0–781).
+
+| Pergunta | Resposta | Status |
+|---|---|---|
+| Anexo sem depth e sem flag renderiza certo? | **Não**: cai na profundidade genérica. | CONFIRMED (bytecode); efeito visual UNKNOWN |
+| Chão: como ter depth certo? | Flag `FloorOverlay` no sprite. É o que os decalques vanilla de chão têm (`d_streetcracks_1_*`, §16.5) | CONFIRMED |
+| Parede: como ter depth certo? | Flags `WallOverlay` + `attachedW` (ou `attachedN`): depth da parede pai ou `setupWallDepth`. É o que pichação vanilla tem (`newtiledefinitions.tiles.txt:162363`) | CONFIRMED |
+| Precisa de PNG de depth nosso? | Não. Reaproveita a do pai ou a do `setupWallDepth`/`setupFloorDepth`. | CONFIRMED |
+| Runtime | `sprite:getProperties():set(IsoFlagType.FloorOverlay)` ou `set(IsoFlagType.WallOverlay)` + `set(IsoFlagType.attachedW/N)` | CONFIRMED (API); UNKNOWN (visual no jogo) |
+
+A regra (`NOM_DressingRules.wall`) só põe sprite `W` em parede oeste e `N` em parede norte
+(`tests/test_dressing_rules.lua`, `dressing_rules_own_wall_side`; o fake acusa anexo de parede
+sem a flag do lado).
+
+### 26.3 Save: o nome que vaza (spike §5)
+
+`IsoObject.save` grava, por anexo, o **ID** do sprite (`IsoSpriteInstance.getID`), um byte de flags,
+`offX/offY/offZ`, `tintr/g/b` e às vezes o alfa (`IsoObject.save(ByteBuffer,Z)` 168–400: `getID` 184,
+tinta 229–249). Não grava o nome. No load (`IsoObject.load(ByteBuffer,I,Z)` 184–601), por anexo: lê
+o ID e chama `IsoSprite.getSprite(manager, id)`, que só olha o `intMap` e dá **`null` se o ID não
+está lá** (`IsoSprite.getSprite(IsoSpriteManager,I)` 0–81); com `null`, em debug loga
+`"discarding attached sprite because it has no tile properties"`, consome os bytes do registro e
+**não** adiciona nada (221–251, 508–510).
+
+| Caminho | Vazou e carregou **com** o mod | Vazou e carregou **sem** o mod |
+|---|---|---|
+| Tile pack (ID 1048576+…) | O anexo **volta** (ID no `intMap`): precisa da limpeza por prefixo no `LoadGridsquare` | Descartado no load. Mas se **outro** mod usar o mesmo número de tiledef, o ID vira o sprite dele |
+| Runtime (ID 20000000, o do mod) | **Descartado no load** (20000000 nunca entra no `intMap`): o vazamento se limpa sozinho | Descartado no load |
+
+CONFIRMED (bytecode). O "sem o mod" foi lido no código, não testado no jogo. Mesmo assim o
+`NOM_DressingRules.own` reconhece `media/textures/NOM/OutroMundo/` e o `LoadGridsquare` tira o que
+sobrar fora do registro (defesa, igual ao `floors_burnt_01_*`).
+
+### 26.4 Tinta por instância não existe (spike §6)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoSpriteInstance` tem `tintr/tintg/tintb` (campos públicos), gravados no save por anexo | CONFIRMED | `IsoObject.save` 229–249; `IsoObject.load` 382–426 |
+| Pelo Lua: só `getTintR/G/B`, `SetAlpha`, `SetTargetAlpha`, `setScale`. **Não há setter de tinta** | CONFIRMED | `javap -p IsoSpriteInstance` |
+| O Kahlua não escreve campo Java: o exposer só **lê** campo estático anotado (`Field.get` em `LuaJavaClassExposer.exposeStatics` 143–222); `getClassFieldVal` é só leitura. Nenhum Lua vanilla escreve `tintr` | CONFIRMED | `se.krka.kahlua.integration.expose.LuaJavaClassExposer`; `rg tintr media/lua` vazio |
+| `IsoSprite.setTintMod(ColorInfo)` existe, mas é do **sprite** (compartilhado): tingiria toda instância daquele sprite no mapa | CONFIRMED | `IsoSprite.setTintMod`; proibido pela ADR-017 |
+
+Por isso o visual novo vem de PNG nosso, não de sprite vanilla tingido.
 
 ## Abordagem recomendada por mecânica (resumo)
 

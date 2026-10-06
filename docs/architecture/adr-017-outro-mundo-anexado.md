@@ -6,6 +6,7 @@
 | Data | 2026-10-05 |
 | Substitui | o **como** da [ADR-015](adr-015-outro-mundo-sangrento.md) (decisões 3 e 4 e a emenda da 0021: `IsoMarker`, fantasma de parede, chão apagado debaixo de personagem, visibilidade por prédio). A regra pura (decisões 1, 2 e 5 sem o teto) continua |
 | Emenda | [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md): "nada no mapa" vira "nada no **save**" — o anexo é do objeto do mapa, mas só enquanto o jogo não grava |
+| Emendada por | [ADR-018](adr-018-sprite-proprio-em-runtime.md) (sprite próprio em runtime, sprint 0035; item 11) |
 
 ## Contexto
 
@@ -45,7 +46,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
      (15 FPS), o pior caso é 38 + 2 + 2 + 1 = 43. Evidência: pz-api-notes §16.6 (raio pela tela).
    - **Morte**: tudo sai no tick. **Teleporte**: cai no mesmo corte (tudo passa de 38). O salto
      de 8 tiles num tick (que tirava tudo) saiu: um engasgo de FPS no carro o disparava.
-   - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade).
+   - **Fim da névoa**: tudo sai em lotes de 80 por atualização (sem fade). Desde a sprint 0035,
+     em manchas (item 9).
    - **Hot save** (solo, sem evento): o chunk pode ser gravado com anexos do mod; isso só fica no
      disco se o jogo cair antes do próximo save daquele chunk (que sai limpo). Coberto pelo item 5.
    - Cliente de MP: o chunk nunca é gravado (`IsoChunk.Save` sai com `GameClient.client`) e o mod
@@ -92,6 +94,35 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
    por prédio e sombra de prédio (o anexo é cortado e apagado com o objeto), luz relida (o chunk tem
    a luz), fade (alfa do anexo não refaz o FBO; o anexo surge e some com o lote), teto e raio
    efetivo, `RenderGhostTileColor`.
+9. **Revelação em manchas (emenda da sprint 0035, transição descascando):**
+   - Quando a névoa abre ao vivo (a borda do `on` chega com a fuga correndo), cada square espera
+     `NOM_DressingRules.reveal` × 6 s reais antes de ser vestido. O que espera fica num pendente
+     barato, fora do lote de 80.
+   - No fim da névoa, cada alvo sai na vez dele pelo mesmo ruído, ao contrário, ao longo de 4 s.
+     Continua no lote de 80.
+   - Quem carrega o save com névoa, entra no MP no meio ou teleporta não espera.
+   - É só visual. O `OnSave`, a morte e o corte a 38 tiles continuam tirando na hora, no meio da
+     retirada também. O que espera ainda não foi anexado, então não tem nada pra vazar.
+10. **Borda ao andar (emenda da sprint 0035, Tarefa 5c):**
+    - A varredura não esquece o que já viu a cada 8 tiles andados, e o square já visto não gasta o
+      lote de 80. Andando a 3 tiles/s, o anel de 25–30 tiles fica 87% vestido (antes, 28%).
+    - A atualização (a cada 2 tiles andados) esquece o que passou do raio + 8; até o review final
+      da 0035 era o corte no tick. O "já visto" fica do tamanho da área do raio. O square que sai e volta é vestido de novo.
+    - Raio, folga e margem do save não mudam (pz-api-notes §16.6).
+11. **Sprite próprio e teto de custo do carro (emenda da sprint 0035):**
+    - Além dos vanilla, o Outro Mundo anexa sprites **do mod**, criados em runtime a partir de PNG
+      nosso em `media/textures/NOM/OutroMundo/`. Formato, `setName` obrigatório, descarte no load e
+      prefixo de limpeza: [ADR-018](adr-018-sprite-proprio-em-runtime.md). O item 5 ganha esse
+      prefixo como segundo dono do nome.
+    - **Margem por tick:** o corte duro a 38 tiles roda no tick em que o jogador passa de
+      `MOVE_TILES` (2) tiles desde o último corte. A cobertura além da tela foi medida e não feita:
+      com o carro a 2 tiles por tick, raio + folga tem de ficar ≤ 42, e o teste
+      `overlays_save_margin_invariant` trava `MAX_RADIUS` + `SLACK` + `MOVE_TILES` + 3 < 48.
+    - **Teto de custo do carro** (`LIGHT_DIV` = 4): no tick em que o corte tirou alguma coisa, a
+      atualização vai pro tick seguinte; a 2 tiles por tick, ela veste 20 squares em vez de 80, e
+      quem andou `MOVE_TILES` desde a atualização anterior tira 20 alvos em lote em vez de 80. O
+      corte continua inteiro, sem orçamento. Pior tick no estresse (parede N e W em todo square):
+      de ~3900 pra ~2250 chamadas ao Java; o teste cobra 2500.
 
 ## Consequências
 
@@ -107,7 +138,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
   nome e a mesma instância do pool global.
 - Ação que guarda o alvo fora dos campos da tabela da ação (só coordenadas, tabela aninhada) não
   segura o square; na marreta de canto no solo, a parede nova levaria os anexos do mod pro save.
-- Sem fade: o desenho surge e some em anéis, lote a lote (~1,5 s pra encher ou esvaziar).
+- Sem fade: o desenho surge e some em anéis, lote a lote (~1,5 s pra encher ou esvaziar). Na
+  abertura e no fim da névoa (0035), em manchas, ao longo de 6 s e 4 s.
 - Só o andar do jogador; só o jogador 0 na tela dividida (os outros veem o mesmo mapa).
 - Remover a trepadeira do mod com a ação vanilla "remover trepadeira" funciona, e ela volta
   (o rodízio põe de novo o que falta): o Outro Mundo cresce de novo.

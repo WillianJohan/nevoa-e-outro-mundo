@@ -7,6 +7,7 @@ local FORBIDDEN = {
     { "table%.unpack", "table.unpack não existe no Lua 5.1; use unpack" },
     { "[^%w_]goto%s", "goto não existe no Lua 5.1" },
     { "[^/%-]//[^/]", "// (divisão inteira) não existe no Lua 5.1" },
+    { "math%.random", "math.random não existe no Kahlua; use NOM_FlakeRules.rng ou ZombRand" },
 }
 
 -- % do Kahlua trunca (KahluaThread.primitiveMath: a - (double)(int)(a/b)*b): com
@@ -33,6 +34,15 @@ local function percentProblem(line)
     return nil
 end
 
+-- O que o lint diz da linha (o comentário sai antes), ou nil.
+local function missingBuiltin(line)
+    local code = line:gsub("%-%-.*$", "")
+    for _, rule in ipairs(FORBIDDEN) do
+        if code:find(rule[1]) then return rule[2] end
+    end
+    return nil
+end
+
 local function luaFiles()
     local out = {}
     local p = io.popen("find mod mod2 -name '*.lua'")
@@ -48,15 +58,17 @@ return {
             local n = 0
             for line in io.lines(path) do
                 n = n + 1
-                local code = line:gsub("%-%-.*$", "")
-                for _, rule in ipairs(FORBIDDEN) do
-                    if code:find(rule[1]) then
-                        bad[#bad + 1] = path .. ":" .. n .. ": " .. rule[2]
-                    end
-                end
+                local why = missingBuiltin(line)
+                if why then bad[#bad + 1] = path .. ":" .. n .. ": " .. why end
             end
         end
         assert(#bad == 0, "\n  " .. table.concat(bad, "\n  "))
+    end,
+    -- review final da 0035: math.random não existe no Kahlua
+    kahlua_lint_catches_math_random = function()
+        assert(missingBuiltin("    local r = math.random(1, 6)"), "math.random no código")
+        assert(not missingBuiltin("    local r = rng() -- nada de math.random aqui"), "comentário")
+        assert(not missingBuiltin("    local r = ZombRand(6)"))
     end,
     -- review da 0017: o lint pega os dois casos que quebraram no jogo, e deixa passar o resto
     kahlua_percent_lint_catches_known_bugs = function()

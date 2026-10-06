@@ -20,6 +20,10 @@
 -- Bloom (sprint 0018, ADR-016): a opção do jogador vai na fração do marcador do gradiente
 -- (NOM_ScreenFxRules.channel). Com bloom > 0 o canal fica tomado também fora da névoa
 -- (sem nada da névoa nele), e solta pro forrageamento do mesmo jeito.
+--
+-- Tontura (sprint 0035, ADR-013 emenda): vai na parte inteira do darkness (VarInfo.y), com o
+-- pulso do grito no resto. Toma o canal sozinha (como o bloom) enquanto dura; depois o darkness
+-- volta a ser só o pulso, ou o canal solta zerado.
 if isServer() then return end
 
 require "NOM_Config"
@@ -84,8 +88,10 @@ end
 
 -- A névoa do canal é a que se vê (NOM_FogState.visible): sobe já na fuga, como a vinheta sem
 -- shader. As camadas do NOM_ScreenFx esperam a névoa de jogo.
+-- A tontura (sprint 0035) vai junto, pela opção do jogador e não pelo sandbox da vinheta.
 local function channelValues(now)
-    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sampleSeen(now), now, channelIntensity(), NOM_ScreenFxOptions.bloom())
+    return NOM_ScreenFxRules.channel(NOM_ScreenFx.sampleSeen(now), now, channelIntensity(), NOM_ScreenFxOptions.bloom(),
+        NOM_ScreenFx.dizzy(now))
 end
 
 local function write(pn, c)
@@ -118,7 +124,6 @@ end
 
 local function channelWanted(now)
     if NOM_ScreenFxOptions.bloom() > 0 then return true end
-    if channelIntensity() <= 0 then return false end
     local c = channelValues(now)
     return c.blur > 0 or c.darkness > 0
 end

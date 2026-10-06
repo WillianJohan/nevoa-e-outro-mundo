@@ -14,13 +14,14 @@
 --   fade de saída (FadeOut), e isShaderEnabled() = enabled ou fade em andamento;
 --   SearchModeFloat.setAll(v) grava atual e alvo. O fake roda o update todo tick.
 local W = dofile("tests/fog_world.lua")
+local A = dofile("tests/attached_world.lua")
 local FILE = "mod/42/media/lua/client/NOM_FogVignette.lua"
 
 local function setup(opts)
     opts = opts or {}
     local G = W.new(opts)
     G.reload({ "NOM_FogState", "NOM_FogVignette", "NOM_ScreenFx", "NOM_ScreenFxOptions", "NOM_ScreenFxRules",
-        "NOM_SemRosto", "NOM_Carpideira", "NOM_NightStats" })
+        "NOM_SemRosto", "NOM_Carpideira", "NOM_NightStats", "NOM_DressingRules" })
     PZAPI = nil
     NOM_ShaderMod = opts.shader
     require "NOM_FogState"
@@ -76,6 +77,13 @@ local function setup(opts)
             return G.managers[p]
         end,
     }
+    -- sprint 0035: a tontura liga no sinal da revelação do NOM_FogOverlays de verdade
+    _G.NOM_FogOverlays, package.loaded.NOM_FogOverlays = nil, nil
+    if opts.overlays then
+        A.install(G)
+        dofile("mod/42/media/lua/client/NOM_FogOverlays.lua")
+        package.loaded.NOM_FogOverlays = NOM_FogOverlays
+    end
     dofile(FILE)
     -- o jogo roda o updateOverlay do vanilla depois do nosso tick
     Events.OnTick.Add(function()
@@ -90,6 +98,13 @@ local function setup(opts)
     end)
     G.p = G.player({ x = 100, y = 100 })
     return G
+end
+
+-- a névoa abre ao vivo: a fuga corre quando ela liga (NOM_FogEvent.begin, comando fog no MP)
+local function liveOpen()
+    NOM_FogState.setRising(true)
+    NOM_FogState.set(true, 3)
+    NOM_FogState.setRising(false)
 end
 
 return {
@@ -339,5 +354,53 @@ return {
         local G = setup({ bloom = 2 })
         G.seconds(2)
         assert(G.override[0] ~= true and G.all[0] == nil)
+    end,
+
+    -- Sprint 0035: tontura no canal do shader --------------------------------------------
+    -- a parte inteira do darkness (VarInfo.y) carrega a tontura: floor(v / DIZZY_BASE) / STEPS
+
+    -- a névoa abre ao vivo: o canal leva a tontura ~5 s; depois, o darkness volta a ser só o pulso
+    vignette_channel_dizzy_on_reveal_then_zeroed = function()
+        local G = setup({ shader = true, overlays = true })
+        local R = NOM_ScreenFxRules
+        liveOpen()
+        G.seconds(R.DIZZY_RISE_MS / 1000 + 0.2)
+        assert(G.override[0] == true, "não tomou o canal")
+        assert(G.enabled[0] ~= true, "ligou o SearchMode com o shader")
+        local k = math.floor(G.all[0].darkness / R.DIZZY_BASE)
+        assert(k / R.DIZZY_STEPS > 0.9, "tontura no canal: " .. G.all[0].darkness)
+        G.seconds(R.DIZZY_MS / 1000)
+        assert(G.override[0] == true and G.all[0].blur > 0, "a névoa saiu do canal")
+        assert(G.all[0].darkness == 0, "a tontura não zerou: " .. G.all[0].darkness)
+    end,
+
+    -- a tontura não depende da vinheta do sandbox: toma o canal só por ela e solta zerado
+    vignette_channel_dizzy_without_sandbox_vignette = function()
+        local G = setup({ shader = true, overlays = true, sandbox = { FogVignette = false } })
+        local R = NOM_ScreenFxRules
+        liveOpen()
+        G.seconds(1)
+        assert(G.override[0] == true, "o sandbox da vinheta segurou a tontura")
+        assert(G.all[0].blur == 0 and G.all[0].darkness >= R.DIZZY_BASE, "canal: " .. G.all[0].darkness)
+        G.seconds(R.DIZZY_MS / 1000 + 1)
+        assert(G.override[0] == false and G.all[0].darkness == 0 and G.all[0].gradient == 0, "não soltou zerado")
+    end,
+
+    -- quem entra no meio, a opção desligada ou os efeitos de tela desligados: nada no canal
+    vignette_channel_no_dizzy = function()
+        local G = setup({ shader = true, overlays = true })
+        local R = NOM_ScreenFxRules
+        NOM_FogState.set(true, 3)
+        for _ = 1, R.DIZZY_MS / 160 do
+            G.tick(10)
+            assert(G.all[0] == nil or G.all[0].darkness < R.DIZZY_BASE, "tontura pra quem entrou no meio")
+        end
+        for _, off in ipairs({ "dizzy", "enabled" }) do
+            local G2 = setup({ shader = true, overlays = true, sandbox = { FogVignette = false } })
+            NOM_ScreenFxOptions[off] = function() return false end
+            liveOpen()
+            G2.seconds(1)
+            assert(G2.override[0] ~= true and G2.all[0] == nil, off .. " desligado e o canal levou a tontura")
+        end
     end,
 }

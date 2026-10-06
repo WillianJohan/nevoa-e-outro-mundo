@@ -18,6 +18,11 @@
 // da opção do jogador (0..2); o canal fica tomado também fora da névoa quando há bloom.
 // Bloom de uma passada: o claro da cena num anel em volta, somado por cima, mais forte e
 // com o limiar mais baixo na névoa, avermelhado na vermelha. Curto (uma passada só).
+// Sprint 0035 (ADR-013, emenda): tontura de ~5 s quando o Outro Mundo se espalha, na parte
+// inteira do VarInfo.y: VarInfo.y = pulso (0..2) + NOM_DIZZY_BASE·round(tontura·NOM_DIZZY_STEPS).
+// A cena ondula devagar, desdobra numa imagem dupla leve e turva. Não passa pelo DrunkFactor (a
+// bebedeira do jogador é estado de jogo). O timer anda em passos inteiros (~15 por segundo com o
+// FPS travado em 60 ou mais, WeatherShader.startRenderThread): a fase é lenta pra não pular.
 //
 // Limite: o jogo compila este arquivo uma vez por sessão, na primeira carga de
 // mundo (spike do shader). Ligou ou desligou o mod: reinicie o jogo.
@@ -40,6 +45,8 @@ in vec2 vUV;
 
 const float NOM_MARKER = 13.0;
 const float NOM_BLOOM_SCALE = 0.25;
+const float NOM_DIZZY_BASE = 4.0;
+const float NOM_DIZZY_STEPS = 256.0;
 const vec3 NOM_REC709 = vec3(0.2126, 0.7152, 0.0722);
 const float NOM_TAU = 6.2831853;
 
@@ -170,12 +177,23 @@ void main()
     float fog = ours ? clamp(SearchMode.x, 0.0, 2.0) : 0.0;
     float hiss = ours ? clamp(SearchMode.y, 0.0, 2.0) : 0.0;
     float red = ours ? clamp(ParamInfo.w, 0.0, 2.0) : 0.0;
-    float pulse = ours ? clamp(VarInfo.y, 0.0, 2.0) : 0.0;
+    float dark = ours ? max(VarInfo.y, 0.0) : 0.0;
+    float dizzyStep = floor(dark / NOM_DIZZY_BASE);
+    float pulse = clamp(dark - dizzyStep * NOM_DIZZY_BASE, 0.0, 2.0);
+    float dizzy = clamp(dizzyStep / NOM_DIZZY_STEPS, 0.0, 1.0);
 
     // distorção: faixas de 3 px que escorregam com o chiado; onda lenta na névoa
     float band = floor(gl_FragCoord.y / 3.0);
     float slip = (nomHash(vec2(band, frame)) - 0.5) * step(0.93, nomHash(vec2(band * 0.37, floor(frame * 0.5))));
     uv.x += slip * 0.006 * hiss + sin(uv.y * 23.0 + clock * 1.7) * 0.0012 * fog;
+
+    // tontura: ondas largas e lentas que cruzam a tela e um balanço da cena inteira
+    if (dizzy > 0.0) {
+        float phase = timer * 0.12;
+        vec2 wave = vec2(sin(uv.y * 6.0 + phase), cos(uv.x * 4.5 + phase * 0.8));
+        vec2 sway = vec2(sin(phase * 0.55), cos(phase * 0.43));
+        uv += (wave * 0.006 + sway * 0.004) * dizzy;
+    }
 
     // bêbado: a cena balança devagar, mais forte com o zoom de perto
     if (0.0 < DrunkFactor) {
@@ -199,6 +217,13 @@ void main()
     }
     if (0.0 < BlurFactor) {
         col = nomSoft(col, uv, BlurFactor * smoothstep(0.12, 0.42, nomEdge(vUV)));
+    }
+    // tontura: imagem dupla leve, que anda em volta, e turva
+    if (dizzy > 0.0) {
+        float phase = timer * 0.12;
+        vec2 ghost = vec2(cos(phase * 0.7), sin(phase * 0.9)) * 0.01 * dizzy;
+        col = mix(col, nomSample(uv + ghost), 0.35 * dizzy);
+        col = nomSoft(col, uv, 0.6 * dizzy);
     }
 
     float grain = nomHash(gl_FragCoord.xy + vec2(frame * 17.0, frame * 31.0)) - 0.5;

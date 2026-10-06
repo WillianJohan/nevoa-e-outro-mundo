@@ -4,6 +4,8 @@
     "UI_NOM_ScreenFx_tooltip": "Grão de filme, vinheta que respira, linhas de chiado com o Sem-rosto perto e um pulso vermelho quando uma Carpideira grita. Só na sua tela.",
     "UI_NOM_ScreenFxIntensity": "Intensidade dos efeitos de tela",
     "UI_NOM_ScreenFxIntensity_tooltip": "0 desliga os efeitos, 1 é o padrão, 2 é o dobro.",
+    "UI_NOM_Dizzy": "Tontura na transição",
+    "UI_NOM_Dizzy_tooltip": "Quando o Outro Mundo começa a se espalhar, a tela ondula e turva por uns 5 segundos (sem o mod do Shader, a vinheta pulsa e a tela escurece). Tontura na tela incomoda algumas pessoas: desligue se te fizer mal. Sem os efeitos de tela, não tem.",
     "UI_NOM_FogOverlayDensity": "Sangue e erosão na névoa",
     "UI_NOM_FogOverlayDensity_tooltip": "Quanto sangue, sujeira, rachadura e erosão a névoa espalha no chão e nas paredes em volta de você. 0 desliga, 1 é o padrão, 2 é o dobro. A névoa vermelha é sempre mais pesada.",
     "UI_NOM_Dissolve": "Monstros queimam ao surgir e sumir",
@@ -47,5 +49,16 @@
     "UI_NOM_Debug_StatusFog": "Névoa",
     "UI_NOM_Debug_StatusRed": "Vermelha",
     "UI_NOM_Debug_StatusHour": "Hora",
-    "UI_NOM_Debug_StatusMonsters": "Monstros aqui"
+    "UI_NOM_Debug_StatusMonsters": "Monstros aqui",
+    "UI_NOM_Debug_SetFog": "Sirene branca",
+    "UI_NOM_Debug_SetFogNow": "Branca já",
+    "UI_NOM_Debug_SetRedFog": "Sirene vermelha",
+    "UI_NOM_Debug_SetRedFogNow": "Vermelha já",
+    "UI_NOM_Debug_SetBlackFog": "Preta",
+    "UI_NOM_Debug_GetZombie": "Puxar zumbi",
+    "UI_NOM_Debug_UndoVariant": "Desfaz variante",
+    "UI_NOM_Debug_GodMode": "Modo deus",
+    "UI_NOM_Debug_Wind": "Vento (liga/desliga)",
+    "UI_NOM_Debug_Status": "Status no console",
+    "UI_NOM_Debug_OwnSprites": "Texturas próprias no console"
 }

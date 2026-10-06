@@ -7,10 +7,18 @@
 -- sangue, pichação ou mensagem). Sem API do jogo, testável com ./run-tests.sh. Quem anexa:
 -- client/NOM_FogOverlays.lua (ADR-017).
 --
--- Nada é guardado: a resposta é função do square, do período de névoa e da
--- densidade (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
+-- Silent Hill (sprint 0035, Tarefa 4b), com as texturas nossas (shared/NOM_OwnSpriteList.lua):
+-- * branca: o chão ganha manchas de metal (grade, chapa, ferrugem, tinta lascada) por cima do
+--   queimado e do mato; a parede descasca (Tinta, Descasca) e enferruja, quase sem sangue;
+-- * vermelha: o chão de antes, com ferrugem em manchas no lugar da rachadura; a parede mantém
+--   o sangue mandando e ganha ferrugem;
+-- * sangue no chão, em nenhuma.
+--
+-- Nada é guardado: a resposta é função do square, do período de névoa, da densidade e da cor
+-- (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
 require "NOM_VariantRules"
 require "NOM_Math"
+require "NOM_OwnSpriteList"
 
 NOM_DressingRules = {
     -- Raio em tiles do jogador: o canto da tela mais longe + MARGIN, entre MIN e MAX (sprint
@@ -43,9 +51,23 @@ NOM_DressingRules = {
     PLANTS = 0.35,
     PLANTS_MAX = 0.45,
     PLANTS_CELL = 4,
-    -- O prefixo que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*: ADR-017). Um
-    -- anexo com ele que não é nosso agora é vazado de uma sessão que caiu: sai no LoadGridsquare.
-    OWN_PREFIX = "floors_burnt_01_",
+    -- Metal no chão (branca, sprint 0035): manchas pelo ruído numa rede de METAL_CELL tiles; o
+    -- tipo é um só em cada painel de METAL_PANEL tiles (grade aqui, chapa ali).
+    METAL = 0.4,
+    METAL_MAX = 0.45,
+    METAL_CELL = 5,
+    METAL_PANEL = 4,
+    -- Ferrugem no chão (vermelha): manchas, no lugar da rachadura.
+    RUST = 0.25,
+    RUST_MAX = 0.35,
+    RUST_CELL = 4,
+    -- Parede que descasca: Descasca (buraco quase do tile todo) em vez de Tinta, nessa fração.
+    PEEL = 0.35,
+    -- Os prefixos que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*, ADR-017, nem
+    -- as texturas nossas). Um anexo com eles que não é nosso agora é vazado de uma sessão que
+    -- caiu: sai no LoadGridsquare. O nosso de runtime nem chega lá (ID 20000000: o load
+    -- descarta, spike-sprite-proprio §5); a limpeza custa nada e vale se ele virar tile pack.
+    OWN_PREFIXES = { "floors_burnt_01_", NOM_OwnSpriteList.DIR },
     WALL = 0.75,       -- chance de cada parede de fora ter algo
     -- Dentro (casa destruída): a 1ª camada quase sempre, a 2ª e a 3ª menos, sem repetir tipo.
     WALL_IN = 1,
@@ -57,6 +79,13 @@ NOM_DressingRules = {
     -- O tipo e o desenho do trecho não dependem de dentro/fora; a chance de aparecer, sim.
     RUN_SLOT = 6,
     RUN = { graffiti = { outside = 0.45, inside = 0.35 }, messages = { outside = 0.15, inside = 0.6 } },
+    -- Transição descascando (sprint 0035): o atraso de revelação de cada square vem de um ruído
+    -- numa rede de REVEAL_CELL tiles, esticado de [REVEAL_LO, REVEAL_HI] pra 0..1 (o ruído de
+    -- valor fica quase todo no meio), com REVEAL_JITTER por square (borda irregular).
+    REVEAL_CELL = 6,
+    REVEAL_LO = 0.25,
+    REVEAL_HI = 0.75,
+    REVEAL_JITTER = 0.12,
 }
 
 local R = NOM_DressingRules
@@ -135,20 +164,53 @@ for _, s in pairs(R.SETS) do
     end
 end
 
+-- Texturas nossas (sprint 0035): o nome é o caminho do PNG (names[i]), na ordem da lista. O
+-- lado do set é o do sprite (a flag que o client/NOM_OwnSprites.lua põe e o recorte do PNG).
+local OWN_SETS = {
+    grateFloor = { "F", "Grade" }, plateFloor = { "F", "Chapa" }, rustFloor = { "F", "Ferrugem" },
+    paintFloor = { "F", "Tinta" },
+    paintWallW = { "W", "Tinta" }, paintWallN = { "N", "Tinta" },
+    peelWallW = { "W", "Descasca" }, peelWallN = { "N", "Descasca" },
+    rustWallW = { "W", "Ferrugem" }, rustWallN = { "N", "Ferrugem" },
+}
+for setName, k in pairs(OWN_SETS) do
+    local names = {}
+    for _, s in ipairs(NOM_OwnSpriteList.SPRITES) do
+        if s.side == k[1] and s.kind == k[2] then names[#names + 1] = s.name end
+    end
+    R.SETS[setName] = { wall = k[1] ~= "F" and k[1] or nil, own = true, names = names, idx = every(1, 1, #names) }
+end
+
 -- Nome do sprite de uma camada { set, índice }.
 function R.name(layer)
-    return R.SETS[layer[1]].prefix .. layer[2]
+    local s = R.SETS[layer[1]]
+    if s.names then return s.names[layer[2]] end
+    return s.prefix .. layer[2]
 end
 
--- O nome é do prefixo que só o mod anexa?
+-- O nome é de um prefixo que só o mod anexa?
 function R.own(name)
-    return type(name) == "string" and name:sub(1, #R.OWN_PREFIX) == R.OWN_PREFIX
+    if type(name) ~= "string" then return false end
+    for _, p in ipairs(R.OWN_PREFIXES) do
+        if name:sub(1, #p) == p then return true end
+    end
+    return false
 end
 
--- Faixas do sorteio da parede, por tipo (somam 1). Fora, sangue manda; dentro ("apagadas,
--- acabadas, sujas", Johan, sprint 0034), sujeira e rachadura.
-local WALL_KINDS = { { "blood", 0.45 }, { "grime", 0.25 }, { "cracks", 0.15 }, { "vines", 0.15 } }
-local WALL_KINDS_IN = { { "grime", 0.4 }, { "cracks", 0.3 }, { "blood", 0.3 } }
+-- Faixas do sorteio da parede, por tipo e cor (somam 1). paint: tinta descascando (Tinta ou
+-- Descasca); rust: ferrugem escorrendo. Fora, na vermelha o sangue manda; na branca, o Silent
+-- Hill (0,6), com um pouco de sangue. Dentro ("apagadas, acabadas, sujas", Johan, sprint
+-- 0034): sujeira e rachadura, e na branca a tinta que descasca.
+local WALL_KINDS = {
+    white = { { "paint", 0.35 }, { "rust", 0.25 }, { "blood", 0.1 }, { "grime", 0.1 }, { "cracks", 0.05 }, { "vines", 0.15 } },
+    red = { { "blood", 0.4 }, { "rust", 0.2 }, { "grime", 0.15 }, { "cracks", 0.1 }, { "vines", 0.15 } },
+}
+local WALL_KINDS_IN = {
+    white = { { "paint", 0.45 }, { "rust", 0.2 }, { "grime", 0.2 }, { "cracks", 0.15 } },
+    red = { { "grime", 0.35 }, { "cracks", 0.25 }, { "blood", 0.25 }, { "rust", 0.15 } },
+}
+-- Metal no chão da branca, por painel: a grade manda.
+local METAL_KINDS = { { "grate", 0.4 }, { "rust", 0.25 }, { "plate", 0.2 }, { "paint", 0.15 } }
 
 local function u(id, period, salt)
     return V.hash(id, period or 0, salt) / V.Q
@@ -215,6 +277,15 @@ function R.grimeNoise(x, y, z, period)
     return noise(x, y, z, period, R.GRIME_CELL, 54)
 end
 
+-- Atraso de revelação do square (0..1): a erosão abre em manchas, do miolo pra borda
+-- (client/NOM_FogOverlays.lua, × REVEAL_MS ao abrir; ao contrário, × UNREVEAL_MS ao fechar).
+function R.reveal(x, y, z, period)
+    local n = (noise(x, y, z, period, R.REVEAL_CELL, 70) - R.REVEAL_LO) / (R.REVEAL_HI - R.REVEAL_LO)
+    local j = R.REVEAL_JITTER
+    local v = n * (1 - j) + u(sqId(x, y, z), period, 71) * j
+    return math.max(0, math.min(1, v))
+end
+
 -- Sprite de sujeira do square: a classe (x + 2y) mod 5 nunca é a de um vizinho de lado
 -- (±1, ±2), e cada classe tem os seus sprites: dois vizinhos nunca repetem o sprite.
 local function grimePick(x, y, id, period)
@@ -245,30 +316,43 @@ local function ground(x, y, z, id, period, d, outside)
     return pick(set, id, period, 65)
 end
 
--- Camadas do chão do square, de baixo pra cima (queimado ou mato, depois rachadura; até
--- MAX_LAYERS), e a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o
--- square é de fora (sem telhado).
-function R.floor(x, y, z, period, d, outside)
-    if not d or d <= 0 then return nil end
-    local id = sqId(x, y, z)
-    local out = {}
-    out[1] = ground(x, y, z, id, period, d, outside)
-    -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
-    local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
-        and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
-    if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
-    if grime then out.grime = grimePick(x, y, id, period) end
-    if #out == 0 and not grime then return nil end
-    return out
-end
-
--- Tipo do sorteio da parede, pelas faixas de kinds.
-local function wallKind(id, period, salt, kinds)
+-- Tipo do sorteio, pelas faixas de kinds.
+local function band(id, period, salt, kinds)
     local roll, acc = u(id, period, salt), 0
     for _, k in ipairs(kinds) do
         acc = acc + k[2]
         if roll < acc or k == kinds[#kinds] then return k[1] end
     end
+end
+
+-- Metal da branca na mancha (o tipo é o do painel, o desenho é do square), ou nil.
+local function metal(x, y, z, id, period, d)
+    if not patch(x, y, z, period, d, R.METAL, R.METAL_MAX, R.METAL_CELL, 140) then return nil end
+    local panel = sqId(math.floor(x / R.METAL_PANEL), math.floor(y / R.METAL_PANEL), z)
+    return pick(band(panel, period, 141, METAL_KINDS) .. "Floor", id, period, 142)
+end
+
+-- Camadas do chão do square, de baixo pra cima (até MAX_LAYERS), e a sujeira à parte em
+-- out.grime (anexo próprio, mais leve), ou nil. outside: o square é de fora (sem telhado). red:
+-- névoa vermelha. Embaixo: na branca o metal tem a vez (sem rachadura de rua por cima), senão
+-- queimado (dentro) ou mato (fora). Em cima: rachadura; na vermelha, ferrugem na mancha dela.
+function R.floor(x, y, z, period, d, outside, red)
+    if not d or d <= 0 then return nil end
+    local id = sqId(x, y, z)
+    local out = {}
+    local plate = not red and metal(x, y, z, id, period, d)
+    out[1] = plate or ground(x, y, z, id, period, d, outside)
+    -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
+    local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
+        and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
+    if red and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143) then
+        out[#out + 1] = pick("rustFloor", id, period, 144)
+    elseif not plate and u(id, period, 52) < chance(R.CRACKS, d) then
+        out[#out + 1] = pick("cracksFloor", id, period, 62)
+    end
+    if grime then out.grime = grimePick(x, y, id, period) end
+    if #out == 0 and not grime then return nil end
+    return out
 end
 
 -- Peça de pichação ou mensagem da parede, ou nil. Parede N: a fileira anda em x (a peça k em
@@ -290,33 +374,44 @@ local function writing(x, y, z, period, d, north, outside)
     return { set, run[k + 1] }
 end
 
--- Dentro, de baixo pra cima.
-local INSIDE_KINDS = { "cracks", "grime", "blood" }
+-- Dentro, de baixo pra cima: a tinta que descasca é a pele da parede, a ferrugem escorre por
+-- cima dela, depois rachadura, sujeira e sangue. Na branca, sem sangue dentro.
+local INSIDE_KINDS = { white = { "paint", "rust", "cracks", "grime" }, red = { "rust", "cracks", "grime", "blood" } }
+
+-- Set da camada de parede do tipo no lado: a tinta descascando é Tinta ou Descasca.
+local function wallSet(kind, side, id, period, salt)
+    if kind == "paint" and u(id, period, salt) < R.PEEL then kind = "peel" end
+    return kind .. "Wall" .. side
+end
 
 -- Camadas da parede norte (north = true) ou oeste do square, de baixo pra cima, ou nil. A face
--- que se vê é a do square dono da parede (outside: ele é de fora). Fora: uma camada, a peça de
--- pichação do trecho ou o sorteio. Dentro: o sorteio, mais até duas de outro tipo, e a peça de
--- pichação/mensagem em cima, até WALL_LAYERS.
-function R.wall(x, y, z, period, d, north, outside)
+-- que se vê é a do square dono da parede (outside: ele é de fora). red: névoa vermelha. Fora:
+-- uma camada, a peça de pichação do trecho ou o sorteio. Dentro: o sorteio, mais até duas de
+-- outro tipo, e a peça de pichação/mensagem em cima, até WALL_LAYERS.
+function R.wall(x, y, z, period, d, north, outside, red)
     if not d or d <= 0 then return nil end
+    local tone = red and "red" or "white"
     local id = sqId(x, y, z)
     local salt = north and 70 or 80
     local side = north and "N" or "W"
+    local peel = north and 170 or 171
     local write = writing(x, y, z, period, d, north, outside)
     if outside then
         if write then return { write } end
         if u(id, period, salt) >= chance(R.WALL, d) then return nil end
-        return { pick(wallKind(id, period, salt + 1, WALL_KINDS) .. "Wall" .. side, id, period, salt + 2) }
+        local kind = band(id, period, salt + 1, WALL_KINDS[tone])
+        return { pick(wallSet(kind, side, id, period, peel), id, period, salt + 2) }
     end
+    local kinds = INSIDE_KINDS[tone]
     local has, n = {}, 0
     if u(id, period, salt) < chance(R.WALL_IN, d) then
-        has[wallKind(id, period, salt + 1, WALL_KINDS_IN)] = true
+        has[band(id, period, salt + 1, WALL_KINDS_IN[tone])] = true
         n = 1
         local room = R.WALL_LAYERS - (write and 1 or 0)
         for k, base in ipairs({ R.WALL_IN_2, R.WALL_IN_3 }) do
             if n >= room or u(id, period, salt + 2 + k) >= chance(base, d) then break end
             local rest = {}
-            for _, kind in ipairs(INSIDE_KINDS) do
+            for _, kind in ipairs(kinds) do
                 if not has[kind] then rest[#rest + 1] = kind end
             end
             has[rest[math.floor(u(id, period, salt + 4 + k) * #rest) + 1]] = true
@@ -324,8 +419,9 @@ function R.wall(x, y, z, period, d, north, outside)
         end
     end
     local out = {}
-    for i, kind in ipairs(INSIDE_KINDS) do
-        if has[kind] then out[#out + 1] = pick(kind .. "Wall" .. side, id, period, salt + 6 + i) end
+    local pickSalt = north and 150 or 160
+    for i, kind in ipairs(kinds) do
+        if has[kind] then out[#out + 1] = pick(wallSet(kind, side, id, period, peel), id, period, pickSalt + i) end
     end
     if write then out[#out + 1] = write end
     if #out == 0 then return nil end

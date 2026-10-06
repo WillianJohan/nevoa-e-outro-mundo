@@ -31,6 +31,19 @@ NOM_ScreenFxRules = {
     STATIC_SUBTLE = 0.14,
     STATIC_SETTLE_MS = 4000,
     STATIC_FADE_MS = 3000,
+    -- Tontura (sprint 0035), na revelação ao vivo do Outro Mundo: sobe em DIZZY_RISE_MS, segura
+    -- DIZZY_HOLD_MS e desce até DIZZY_MS reais. Sem o shader, a vinheta pulsa (DIZZY_VIGNETTE,
+    -- um ciclo a cada DIZZY_PULSE_MS) e a tela escurece (DIZZY_DARK); com ele, o canal.
+    DIZZY_MS = 5000,
+    DIZZY_RISE_MS = 600,
+    DIZZY_HOLD_MS = 1400,
+    DIZZY_PULSE_MS = 1100,
+    DIZZY_VIGNETTE = 0.35,
+    DIZZY_DARK = 0.18,
+    -- No canal a tontura vai na parte inteira do darkness (VarInfo.y): pulso (0..2) +
+    -- DIZZY_BASE · round(tontura · DIZZY_STEPS). Iguais aos NOM_DIZZY_* do screen.frag.
+    DIZZY_BASE = 4,
+    DIZZY_STEPS = 256,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
     TEXTURES = {
         grain = {
@@ -121,25 +134,47 @@ local function breath(now)
     return 0.5 + 0.5 * math.sin(2 * math.pi * NOM_Math.mod(now, R.BREATH_MS) / R.BREATH_MS)
 end
 
+local function smooth(t)
+    return t * t * (3 - 2 * t)
+end
+
+-- Tontura (0..1) t ms depois da revelação ao vivo; nil ou fora da janela: 0.
+function R.dizzy(t)
+    if t == nil or t <= 0 or t >= R.DIZZY_MS then return 0 end
+    if t < R.DIZZY_RISE_MS then return smooth(t / R.DIZZY_RISE_MS) end
+    local fall = R.DIZZY_RISE_MS + R.DIZZY_HOLD_MS
+    if t <= fall then return 1 end
+    return 1 - smooth((t - fall) / (R.DIZZY_MS - fall))
+end
+
+-- A tontura pela intensidade dos efeitos (0..2): reduz, nunca passa da curva.
+function R.dizzyLevel(t, i)
+    return R.dizzy(t) * clamp(i or 1, 0, 1)
+end
+
 -- Alfas das camadas (0..1), a cor da vinheta (preta; vermelha escura na vermelha) e a da
--- estática da névoa (sr, sg, sb). i: intensidade da opção do jogador (0..2).
-function R.layers(s, now, i)
+-- estática da névoa (sr, sg, sb). i: intensidade da opção do jogador (0..2). dz: tontura
+-- (R.dizzyLevel, 0 com o shader, que a faz no canal): a vinheta pulsa e a tela escurece.
+function R.layers(s, now, i, dz)
     i = clamp(i or 1, 0, 2)
+    dz = clamp(dz or 0, 0, 1)
     local f, r = s.fog, s.red
     local sr, sg, sb = R.staticColor(s.staticKind)
+    local pulse = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, R.DIZZY_PULSE_MS) / R.DIZZY_PULSE_MS)
     return {
         grain = clamp(f * (0.09 + 0.05 * r) * i, 0, 1),
-        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r) * i, 0, 1),
+        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
         vr = 0.42 * r, vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
         fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
         sr = sr, sg = sg, sb = sb,
+        dark = dz * R.DIZZY_DARK,
     }
 end
 
 function R.visible(l)
-    return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0 or l.fogStatic > 0
+    return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0 or l.fogStatic > 0 or l.dark > 0
 end
 
 function R.grainFrame(now)
@@ -152,13 +187,16 @@ end
 -- blur → SearchMode.x = névoa, radius → SearchMode.y = chiado do Sem-rosto,
 -- desat → ParamInfo.w = vermelha, darkness → VarInfo.y = pulso; 0..2 pela intensidade.
 -- bloom (sprint 0018): a opção do jogador, 0..2, na fração do gradiente; não depende de i.
-function R.channel(s, now, i, bloom)
+-- dz (sprint 0035): a tontura (R.dizzyLevel), na parte inteira do darkness; o pulso fica no
+-- resto, preso em 2 (o shader prende igual), longe de DIZZY_BASE. Não depende de i (o sandbox).
+function R.channel(s, now, i, bloom, dz)
     i = clamp(i or 1, 0, 2)
+    local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i, 0, 2)
     return {
         blur = s.fog * i,
         radius = s.static * s.fog * i,
         desat = s.red * i,
-        darkness = R.flash(now, s.flashAt, s.flashStrength) * i,
+        darkness = pulse + R.DIZZY_BASE * math.floor(clamp(dz or 0, 0, 1) * R.DIZZY_STEPS + 0.5),
         gradient = R.MARKER + clamp(bloom or 0, 0, 2) * R.BLOOM_SCALE,
     }
 end

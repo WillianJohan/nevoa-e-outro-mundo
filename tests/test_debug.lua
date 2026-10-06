@@ -911,6 +911,25 @@ return {
         for _, h in ipairs(NOM.HELP) do all[#all + 1] = h[2] end
         assert(table.concat(all, "\n"):find("1 estalador", 1, true), "help sem a numeração do turnZombie")
     end) end,
+    -- sprint 0035, Tarefa 4b: quantos sprites próprios do Outro Mundo estão registrados (e quais
+    -- PNG faltam); registra de novo se o mundo mudou (o ensure é barato na mesma sessão)
+    nom_own_sprites_reports_count = function() run(function()
+        local G = setup()
+        local ensured = 0
+        NOM_OwnSprites = {
+            ensure = function() ensured = ensured + 1; return 48 end,
+            total = function() return 50 end,
+            missing = function() return { "media/textures/NOM/OutroMundo/a.png", "media/textures/NOM/OutroMundo/b.png" } end,
+        }
+        NOM.ownSprites()
+        NOM_OwnSprites = nil
+        assert(ensured == 1, "não chamou o ensure")
+        assert(has(G.printed, "^%[NOM%] debug sprites próprios: 48 de 50"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "sem textura: media/textures/NOM/OutroMundo/b%.png"), table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.ownSprites()
+        assert(has(G.printed, "^%[NOM%] debug sprites próprios: NOM_OwnSprites não carregou"), table.concat(G.printed, "\n"))
+    end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()
         local n = 0

@@ -3,7 +3,9 @@
 -- linhas de chiado com o Sem-rosto perto e um pulso vermelho quando uma Carpideira
 -- grita perto. A estática da névoa (sprint 0034), na cor dela, vem antes: 3 s antes da
 -- sirene (presságio), e fica sutil na subida e na névoa, sem as outras camadas antes da
--- hora. Quanto de cada um: shared/NOM_ScreenFxRules.lua; opções do jogador:
+-- hora. Na revelação ao vivo do Outro Mundo (sprint 0035), ~5 s de tontura: a vinheta pulsa e
+-- a tela escurece um pouco (com o mod do shader, a imagem ondula e turva pelo canal).
+-- Quanto de cada um: shared/NOM_ScreenFxRules.lua; opções do jogador:
 -- client/NOM_ScreenFxOptions.lua. ADR-013.
 --
 -- Como desenha por cima do mundo e por baixo do HUD sem pegar clique (bytecode 42.21):
@@ -52,6 +54,7 @@ local R = NOM_ScreenFxRules
 local textures = {}
 local lastMs
 local loggedOmen -- omenAt do presságio cuja estática já foi pro log (debug)
+local loggedDizzy -- lastRevealAt da tontura que já foi pro log (debug)
 
 -- getTexture devolve nil se não achar (ISSleepingUI.lua:14-15): a camada some.
 -- Guarda só o que achou.
@@ -94,8 +97,25 @@ function S.sampleSeen(now)
         flashStrength = s.flashStrength }
 end
 
+-- Tontura (sprint 0035, 0..1): ~5 s desde a borda ao vivo da revelação do Outro Mundo
+-- (NOM_FogOverlays.lastRevealAt, nil pra quem entrou no meio); a névoa que acaba antes não a
+-- corta. Segue a opção própria e a intensidade dos efeitos, não o sandbox do Outro Mundo. Lido
+-- no quadro, só Lua: sem o NOM_FogOverlays carregado, não há tontura. Quem desenha: as camadas
+-- abaixo, ou o shader pelo canal (NOM_FogVignette).
+function S.dizzy(now)
+    local at = NOM_FogOverlays and NOM_FogOverlays.lastRevealAt()
+    if not at or not NOM_ScreenFxOptions.dizzy() then return 0 end
+    local v = R.dizzyLevel(now - at, NOM_ScreenFxOptions.intensity())
+    if v > 0 and getDebug() and loggedDizzy ~= at then
+        loggedDizzy = at
+        print("[NOM] tela: tontura (shader=" .. tostring(NOM_ShaderMod == true) .. ")")
+    end
+    return v
+end
+
+-- com o mod do shader a tontura é dele (ondula e turva), pelo canal
 local function frame(now)
-    return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity())
+    return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity(), NOM_ShaderMod and 0 or S.dizzy(now))
 end
 
 local function layers(el, now)
@@ -139,14 +159,26 @@ local function layers(el, now)
         el:drawTextureScaled(ln, x, y - jump, w, h * 1.25, l.lines, 0.85, 0.85, 0.85)
     end
     local f = tex(T.white)
+    if f and l.dark > 0 then el:drawTextureScaled(f, x, y, w, h, l.dark, 0, 0, 0) end -- tontura
     if f and l.flash > 0 then el:drawTextureScaled(f, x, y, w, h, l.flash, 0.6, 0.02, 0.02) end
 end
 
--- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco).
+-- As camadas da névoa e, por cima delas, os desenhos extras (as brasas do Eco). Cada extra em
+-- pcall (o do Kahlua pega Throwable, pz-api-notes §2.1): o que dá erro sai da lista e vai pro
+-- log uma vez; o overlay e os outros seguem.
 local function draw(el)
     local now = getTimestampMs()
     layers(el, now)
-    for i = 1, #S.extra do S.extra[i](el, now) end
+    local i = 1
+    while i <= #S.extra do
+        local ok, err = pcall(S.extra[i], el, now)
+        if ok then
+            i = i + 1
+        else
+            table.remove(S.extra, i)
+            print("[NOM] tela: desenho extra com erro, desligado: " .. tostring(err))
+        end
+    end
 end
 
 local function updateStatic()
