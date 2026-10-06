@@ -16,6 +16,7 @@ Antes de tudo, leia **[docs/HANDOFF.md](docs/HANDOFF.md)**: estado atual, o que 
 - **Toda chamada de API precisa de evidência**: arquivo e linha do Lua vanilla, ou bytecode. Veja `docs/architecture/pz-api-notes.md` antes. Fake de teste modela o jogo de verdade, nunca é stub bonzinho.
 - **Texto pro jogador** sempre por chave de tradução PTBR + EN (`media/lua/shared/Translate/`).
 - Comentários e docs em português BR com acento.
+- **Todo comando de debug (`NOM.*` em `client/NOM_Console.lua`) também ganha botão no `NOM.panel()`** (`client/NOM_DebugPanel.lua`). Decisão do Johan, 2026-10-06.
 
 ## Comandos
 
