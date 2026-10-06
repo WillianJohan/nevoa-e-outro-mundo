@@ -28,6 +28,10 @@ return {
         assert(R.GRACE_MS == 30000)
         assert(R.SIREN_MS == nil, "sobrou a constante velha")
     end,
+    -- sprint 0034: o presságio (estática na tela) vem 3 s reais antes da sirene
+    fog_event_rules_presage_is_3_seconds = function()
+        assert(R.PRESAGE_MS == 3000)
+    end,
     -- 65% subindo em linha reta até 85% no dia 60, fixo depois; sem curva, o sandbox
     fog_event_rules_day_chance_curve = function()
         local c = cfg({ dailyChance = 65, maxDailyChance = 85, escalation = true })

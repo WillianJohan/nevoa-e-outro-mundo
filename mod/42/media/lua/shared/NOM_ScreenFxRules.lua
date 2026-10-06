@@ -4,6 +4,8 @@
 -- canal pro shader opcional (mod NevoaEOutroMundo_Shader) sai de R.channel.
 require "NOM_AtmosphereRules"
 require "NOM_Math"
+require "NOM_Rules"
+require "NOM_FogEventRules"
 
 NOM_ScreenFxRules = {
     FADE_MS = 4000,        -- tempo real do nada à névoa cheia na tela (e de volta)
@@ -20,6 +22,14 @@ NOM_ScreenFxRules = {
     -- Sprint 0018: o bloom do jogador (0..2) vai na fração do marcador, 13 + bloom·escala
     -- (até 13,5: nunca chega no próximo inteiro). Igual ao NOM_BLOOM_SCALE do screen.frag.
     BLOOM_SCALE = 0.25,
+    -- Estática da névoa (sprint 0034), alfa base antes da intensidade: o presságio sobe de
+    -- START a PEAK em PRESAGE_MS (t²); da sirene, desce a SUBTLE em SETTLE_MS e fica na
+    -- subida e na névoa; no fim (ou cancelada), cai a 0 em FADE_MS. Ajustáveis no teste do Johan.
+    STATIC_START = 0.03,
+    STATIC_PEAK = 0.22,
+    STATIC_SUBTLE = 0.05,
+    STATIC_SETTLE_MS = 4000,
+    STATIC_FADE_MS = 3000,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
     TEXTURES = {
         grain = {
@@ -29,6 +39,8 @@ NOM_ScreenFxRules = {
         vignette = "media/textures/NOM/ScreenFx/NOM_Vignette.png",
         lines = "media/textures/NOM/ScreenFx/NOM_Lines.png",
         white = "media/textures/NOM/ScreenFx/NOM_White.png",
+        -- chiado em tons de cinza, tingido pela cor da névoa (sprint 0034)
+        static = "media/textures/NOM/ScreenFx/NOM_NevoaEstatica.png",
     },
 }
 
@@ -39,8 +51,46 @@ local function clamp(v, lo, hi)
 end
 
 -- static: volume do rádio do Sem-rosto (0..1); flashAt/flashStrength: último grito.
+-- fogStatic/staticKind: estática da névoa (R.stepStatic); staticFadeAt/From: o fade do fim.
 function R.new()
-    return { fog = 0, red = 0, static = 0, flashAt = nil, flashStrength = 0 }
+    return { fog = 0, red = 0, static = 0, flashAt = nil, flashStrength = 0, fogStatic = 0, staticKind = "white" }
+end
+
+-- Alfa base da estática da névoa (0..1), sem o fade do fim. w = { omenAt, sirenAt, visible }
+-- (NOM_FogState): o pico depois da sirene só vem com presságio; quem entra na fuga ou na
+-- névoa, ou o debug com skip, fica no sutil.
+function R.staticLevel(w, now)
+    if w.omenAt and not w.sirenAt then
+        local t = clamp((now - w.omenAt) / NOM_FogEventRules.PRESAGE_MS, 0, 1)
+        return R.STATIC_START + (R.STATIC_PEAK - R.STATIC_START) * t * t
+    end
+    if not w.visible then return 0 end
+    if w.omenAt then
+        local t = clamp((now - w.sirenAt) / R.STATIC_SETTLE_MS, 0, 1)
+        return R.STATIC_PEAK + (R.STATIC_SUBTLE - R.STATIC_PEAK) * t
+    end
+    return R.STATIC_SUBTLE
+end
+
+-- Segue R.staticLevel; quando ele vai a 0, desce do nível em que estava até 0 em
+-- STATIC_FADE_MS, com a cor da névoa que acabou. w.kind: "white" ou "red".
+function R.stepStatic(s, w, now)
+    local level = R.staticLevel(w, now)
+    if level > 0 then
+        s.fogStatic, s.staticKind, s.staticFadeAt = level, w.kind or "white", nil
+    elseif s.fogStatic > 0 then
+        if not s.staticFadeAt then s.staticFadeAt, s.staticFadeFrom = now, s.fogStatic end
+        local t = (now - s.staticFadeAt) / R.STATIC_FADE_MS
+        s.fogStatic = t >= 1 and 0 or s.staticFadeFrom * (1 - math.max(t, 0))
+    end
+    return s
+end
+
+-- RGB da estática pelo tipo da névoa (o alfa da cor do clima não entra). Ponto único: a
+-- preta entra aqui na 0038.
+function R.staticColor(kind)
+    local c = kind == "red" and NOM_Rules.RED_FOG_COLOR or NOM_Rules.FOG_COLOR
+    return c[1], c[2], c[3]
 end
 
 -- want = { fog = bool, red = bool }: aproxima fog e red dos alvos em FADE_MS.
@@ -70,22 +120,25 @@ local function breath(now)
     return 0.5 + 0.5 * math.sin(2 * math.pi * NOM_Math.mod(now, R.BREATH_MS) / R.BREATH_MS)
 end
 
--- Alfas das camadas (0..1) e a cor da vinheta (preta; vermelha escura na vermelha).
--- i: intensidade da opção do jogador (0..2).
+-- Alfas das camadas (0..1), a cor da vinheta (preta; vermelha escura na vermelha) e a da
+-- estática da névoa (sr, sg, sb). i: intensidade da opção do jogador (0..2).
 function R.layers(s, now, i)
     i = clamp(i or 1, 0, 2)
     local f, r = s.fog, s.red
+    local sr, sg, sb = R.staticColor(s.staticKind)
     return {
         grain = clamp(f * (0.09 + 0.05 * r) * i, 0, 1),
         vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r) * i, 0, 1),
         vr = 0.42 * r, vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
+        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
+        sr = sr, sg = sg, sb = sb,
     }
 end
 
 function R.visible(l)
-    return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0
+    return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0 or l.fogStatic > 0
 end
 
 function R.grainFrame(now)

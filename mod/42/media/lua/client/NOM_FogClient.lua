@@ -57,12 +57,14 @@ Events.OnServerCommand.Add(function(module, command, args)
             NOM_FogState.setRising(false)
             NOM_SirenFreeze.stop()
         end
+    elseif command == "presage" then -- 3 s antes da sirene: estática na tela (NOM_ScreenFx)
+        NOM_FogState.setOmen(type(args) == "table" and args.red == true)
     elseif command == "siren" then -- evento de névoa: começa a fuga de 30 s (NOM_FogEvent)
         local red = type(args) == "table" and args.red == true
         NOM_Siren.play(red)
         NOM_FogState.setRising(true, red)
         NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.GRACE_MS)
-    elseif command == "sirenStop" then -- sirene cancelada (NOM_FogEvent.stop)
+    elseif command == "sirenStop" then -- presságio ou sirene cancelada (NOM_FogEvent.stop)
         NOM_FogState.setRising(false)
         NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then

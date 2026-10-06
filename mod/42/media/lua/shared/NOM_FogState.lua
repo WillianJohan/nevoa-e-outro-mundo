@@ -5,9 +5,17 @@
 -- rising/risingRed (sprint 0034): a névoa visual subindo na fuga, antes da névoa de jogo.
 -- Quem liga: no solo o server/NOM_FogEvent.lua, no MP o NOM_FogClient (siren, sirenStop,
 -- fog). Só o visual e o som de ambiente leem visible(); a regra de jogo segue on.
-NOM_FogState = { on = false, period = nil, red = false, rising = false, risingRed = false }
+-- omenAt/omenRed/sirenAt (sprint 0034): marcas de getTimestampMs da estática na tela
+-- (shared/NOM_ScreenFxRules.staticLevel): o presságio, 3 s antes da sirene, e a sirene (a
+-- subida que liga). A subida que desliga (névoa aberta, cancelada) e o fim limpam.
+NOM_FogState = { on = false, period = nil, red = false, rising = false, risingRed = false,
+    omenAt = nil, omenRed = false, sirenAt = nil }
 
 local listeners = {}
+
+local function clearMarks()
+    NOM_FogState.omenAt, NOM_FogState.omenRed, NOM_FogState.sirenAt = nil, false, nil
+end
 
 -- fn(on) só na borda.
 function NOM_FogState.onChange(fn)
@@ -22,13 +30,23 @@ function NOM_FogState.set(on, period, red)
     NOM_FogState.period = period
     NOM_FogState.red = on == true and red == true
     if was == on then return end
+    if not on then clearMarks() end
     for _, fn in ipairs(listeners) do fn(on) end
 end
 
 -- Não é borda de névoa: quem ouve onChange (regra de jogo) não fica sabendo.
+-- getTimestampMs: CONFIRMED server/ISObjectClickHandler.lua:352.
 function NOM_FogState.setRising(on, red)
+    local was = NOM_FogState.rising
     NOM_FogState.rising = on == true
     NOM_FogState.risingRed = NOM_FogState.rising and red == true
+    if NOM_FogState.rising and not was then NOM_FogState.sirenAt = getTimestampMs() end
+    if not NOM_FogState.rising then clearMarks() end
+end
+
+-- O presságio: a cor é a que a sirene vai tocar.
+function NOM_FogState.setOmen(red)
+    NOM_FogState.omenAt, NOM_FogState.omenRed, NOM_FogState.sirenAt = getTimestampMs(), red == true, nil
 end
 
 function NOM_FogState.visible()

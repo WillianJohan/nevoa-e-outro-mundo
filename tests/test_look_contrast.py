@@ -148,8 +148,35 @@ def test_textures_contrast():
     assert not bad, "\n  ".join(bad)
 
 
+# Estática da névoa na tela (sprint 0034): o contrário dos monstros. É um chiado fino que
+# cobre a tela em mosaico, tingido pela cor da névoa no desenho: só tons de cinza, sem forma
+# grande que se veja de longe (far baixo) e sem emenda entre um ladrilho e outro.
+SCREEN_STATIC = "NOM/ScreenFx/NOM_NevoaEstatica.png"
+
+
+def seam_ratio(a, axis):
+    """Diferença média na emenda (última → primeira linha/coluna) sobre a de dentro."""
+    d = np.abs(np.diff(a, axis=axis)).mean()
+    first, last = np.take(a, 0, axis=axis), np.take(a, -1, axis=axis)
+    return float(np.abs(first - last).mean() / max(d, 1e-6))
+
+
+def test_screen_static_gray_fine_tiles():
+    a = np.asarray(Image.open(os.path.join(TEX, SCREEN_STATIC)).convert("RGBA"), np.float32) / 255
+    rgb, alpha = a[..., :3], a[..., 3]
+    assert np.all(rgb[..., 0] == rgb[..., 1]) and np.all(rgb[..., 1] == rgb[..., 2]), "estática com cor"
+    assert float(rgb[..., 0].std()) > 0.1, "estática sem tons (cinza chapado)"
+    assert 0.15 < float(alpha.mean()) < 0.6, "alfa médio %.3f" % alpha.mean()
+    _, _, far = metrics(Image.fromarray((rgb[..., 0] * alpha * 255).astype(np.uint8), "L"))
+    assert far < 0.05, "far %.3f: tem forma grande, não é chiado fino" % far
+    for axis in (0, 1):
+        r = seam_ratio(alpha * rgb[..., 0], axis)
+        assert 0.6 < r < 1.4, "emenda no mosaico (eixo %d): %.2f" % (axis, r)
+
+
 def main():
-    tests = [test_every_look_texture_has_limits, test_contrast_catches_wool, test_contrast_catches_cow_and_lattice, test_textures_contrast]
+    tests = [test_every_look_texture_has_limits, test_contrast_catches_wool, test_contrast_catches_cow_and_lattice,
+             test_textures_contrast, test_screen_static_gray_fine_tiles]
     fail = 0
     for t in tests:
         try:

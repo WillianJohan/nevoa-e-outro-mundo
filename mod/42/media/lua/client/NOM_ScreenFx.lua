@@ -1,7 +1,9 @@
 -- Efeitos de tela da névoa (sprint 0013), só no jogo de quem vê (solo e cliente de
 -- MP): grão de filme, vinheta que respira (vermelha e mais forte na névoa vermelha),
 -- linhas de chiado com o Sem-rosto perto e um pulso vermelho quando uma Carpideira
--- grita perto. Quanto de cada um: shared/NOM_ScreenFxRules.lua; opções do jogador:
+-- grita perto. A estática da névoa (sprint 0034), na cor dela, vem antes: 3 s antes da
+-- sirene (presságio), e fica sutil na subida e na névoa, sem as outras camadas antes da
+-- hora. Quanto de cada um: shared/NOM_ScreenFxRules.lua; opções do jogador:
 -- client/NOM_ScreenFxOptions.lua. ADR-013.
 --
 -- Como desenha por cima do mundo e por baixo do HUD sem pegar clique (bytecode 42.21):
@@ -33,6 +35,7 @@ NOM_ScreenFx = {
     UPDATE_TICKS = 10,   -- distância do Sem-rosto (como o rádio, NOM_FogSound)
     MAX_STEP_MS = 1000,  -- o primeiro quadro depois de uma pausa não pula o fade inteiro
     GRAIN_JITTER = 64,   -- o grão anda até 64 px por quadro (a repetição dos ladrilhos some)
+    STATIC_JITTER = 128, -- a estática da névoa (sprint 0034), na textura de 256 px
     -- fog/red (0..1, com fade), static (volume do rádio), flashAt/flashStrength (grito)
     state = NOM_ScreenFxRules.new(),
     ui = nil,
@@ -64,11 +67,18 @@ end
 
 -- Avança o fade até agora e devolve o estado. Quem chama: o desenho (todo quadro) e
 -- o canal do shader (NOM_FogVignette, todo tick); a segunda chamada no mesmo quadro
--- anda ~0.
+-- anda ~0. A estática da névoa (sprint 0034) segue o presságio e a subida também, fora
+-- do Outro Mundo; a cor é a da névoa que se vê, ou a do presságio antes dela.
 function S.sample(now)
     local dt = lastMs and math.max(0, math.min(now - lastMs, S.MAX_STEP_MS)) or 0
     lastMs = now
-    return R.step(S.state, { fog = NOM_FogState.on, red = NOM_FogState.red }, dt)
+    local F = NOM_FogState
+    local visible = F.visible()
+    local red
+    if visible then red = F.visibleRed() else red = F.omenRed end
+    R.stepStatic(S.state, { omenAt = F.omenAt, sirenAt = F.sirenAt, visible = visible,
+        kind = red and "red" or "white" }, now)
+    return R.step(S.state, { fog = F.on, red = F.red }, dt)
 end
 
 local function frame(now)
@@ -96,6 +106,13 @@ local function layers(el, now)
             local ox, oy = NOM_Math.mod(t * 7, S.GRAIN_JITTER), NOM_Math.mod(t * 13, S.GRAIN_JITTER)
             el:drawTextureTiled(g, x - ox, y - oy, w + ox, h + oy, 1, 1, 1, l.grain)
         end
+    end
+    -- estática da névoa: o mosaico anda a cada quadro, como o grão, pra chiar
+    local st = tex(T.static)
+    if st and l.fogStatic > 0 then
+        local t = NOM_Math.mod(now, 100000)
+        local ox, oy = NOM_Math.mod(t * 11, S.STATIC_JITTER), NOM_Math.mod(t * 17, S.STATIC_JITTER)
+        el:drawTextureTiled(st, x - ox, y - oy, w + ox, h + oy, l.sr, l.sg, l.sb, l.fogStatic)
     end
     local v = tex(T.vignette)
     if v and l.vignette > 0 then el:drawTextureScaled(v, x, y, w, h, l.vignette, l.vr, l.vg, l.vb) end

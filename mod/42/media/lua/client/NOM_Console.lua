@@ -89,8 +89,9 @@ function NOM.panel()
 end
 
 -- Névoa branca de verdade (sprint 0033): um pedido só, o servidor decide
--- (NOM_FogEvent.force). Toca a sirene (com o congelamento), a névoa sobe e abre 30 s depois;
--- skip abre já. Com névoa aberta ou sirene contando, fecha e recomeça na cor pedida.
+-- (NOM_FogEvent.force). Presságio de 3 s (estática na tela), sirene (com o congelamento), a
+-- névoa sobe e abre 30 s depois; skip abre já, sem presságio. Com névoa aberta ou sirene
+-- contando, fecha e recomeça na cor pedida.
 function NOM.setFog(skip)
     NOM_Debug.send({ op = "setFog", red = false, skip = skip })
 end
@@ -167,8 +168,8 @@ function NOM.wind(on)
 end
 
 NOM.HELP = {
-    { "NOM.setFog(skip)", "névoa sempre branca: sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
-    { "NOM.setRedFog(skip)", "névoa sempre vermelha: sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
+    { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
     { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },

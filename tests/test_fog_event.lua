@@ -45,11 +45,16 @@ end
 
 local function fogMD(G) return G.globalMD.NevoaEOutroMundo.fog end
 
--- Vai até a hora da sirene agendada (a que o servidor sorteou) e a deixa tocar.
+-- Os 3 s reais do presságio (sprint 0034), com folga de alguns ticks.
+local function presage(G) G.seconds(NOM_FogEventRules.PRESAGE_MS / 1000 + 0.05) end
+
+-- Vai até a hora da sirene agendada (a que o servidor sorteou), passa pelo presságio e a
+-- deixa tocar.
 local function toSiren(G)
     local n = fogMD(G).next
     assert(n ~= nil, "sem sirene agendada")
     G.at(n)
+    presage(G)
 end
 
 return {
@@ -63,6 +68,8 @@ return {
         assert(G.played("NOM_Siren") == 0, "sirene cedo")
         assert(NOM_World.rising == false, "subida antes da sirene")
         G.at(want)
+        assert(G.played("NOM_Siren") == 0, "sirene sem o presságio")
+        presage(G)
         assert(G.played("NOM_Siren") == 1, "sirene não tocou")
         assert(G.playing("NOM_Siren")[1].volume == 1)
         assert(NOM_World.fog == false and NOM_FogState.on == false, "névoa de jogo junto com a sirene")
@@ -135,8 +142,11 @@ return {
         toSiren(G)
         G.seconds(31)
         assert(NOM_FogEvent.force(true))
+        presage(G)
         assert(NOM_World.fog == false and NOM_World.rising == true and NOM_World.risingRed == true)
         assert(NOM_FogEvent.force(false))
+        assert(NOM_World.rising == false, "o presságio da névoa forçada já subiu")
+        presage(G)
         assert(NOM_World.rising == true and NOM_World.risingRed == false, "a subida não seguiu a cor nova")
     end,
     -- NOM_Debug.redFog durante a contagem: a névoa que vem segue o pedido, e a subida também
@@ -246,6 +256,8 @@ return {
         toSiren(G)
         G.seconds(8)
         local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours })
+        assert(G2.played("NOM_Siren") == 0 and NOM_FogState.omenAt ~= nil, "a recarga não voltou ao presságio")
+        presage(G2)
         assert(G2.played("NOM_Siren") == 1, "sem sirene depois da recarga")
         assert(NOM_World.rising == true and NOM_FogState.rising == true, "a recarga não religou a subida")
         G2.seconds(29.9)
@@ -310,6 +322,7 @@ return {
         local G = setup({ globalMD = md, hours = 100, sandbox = { FogDailyChance = 0, FogMaxDaysWithout = 99 } })
         assert(md.NevoaEOutroMundo.fog.next == 110, "reagendou a sirene do save antigo")
         G.at(110)
+        presage(G)
         assert(G.played("NOM_Siren") == 1)
         G.seconds(46)
         assert(NOM_World.fog and NOM_FogState.period == 5)
@@ -325,6 +338,7 @@ return {
         local n = fogMD(G).next
         assert(n ~= nil and NOM_FogEventRules.dayOf(n) == 6, "a garantia não agendou o 3º dia: " .. tostring(n))
         G.at(n)
+        presage(G)
         assert(G.played("NOM_Siren") == 1, "sem sirene no 3º dia")
     end,
     -- cliente que entra no meio do evento pergunta e recebe o estado
@@ -614,8 +628,10 @@ return {
     fog_event_force_white_beats_red_chance = function()
         local G = setup({ sandbox = { RedFogChance = 100 } })
         assert(NOM_FogEvent.force(false))
+        assert(NOM_FogEvent.status().presageMs == NOM_FogEventRules.PRESAGE_MS, "sem o presságio")
+        presage(G)
         assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "sirene vermelha com branco forçado")
-        assert(NOM_FogEvent.status().sirenMs == NOM_FogEventRules.GRACE_MS, "sem a contagem de 30 s")
+        assert(NOM_FogEvent.status().sirenMs > NOM_FogEventRules.GRACE_MS - 200, "sem a contagem de 30 s")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == false and fogMD(G).red == false, "saiu vermelha")
         -- o forçado vale só pra esse evento: o seguinte sorteia (100% vermelha)
@@ -628,6 +644,7 @@ return {
     fog_event_force_red_beats_white_chance = function()
         local G = setup({ sandbox = { RedFogChance = 0 } })
         assert(NOM_FogEvent.force(true))
+        presage(G)
         assert(G.played("NOM_SirenRed") == 1 and G.played("NOM_Siren") == 0)
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == true)
@@ -677,9 +694,12 @@ return {
         G.sentServer = {}
         assert(NOM_FogEvent.force(true))
         assert(#G.commands(G.sentServer, "sirenStop") == 1, "não cancelou a sirene que contava")
+        local omen = G.commands(G.sentServer, "presage")
+        assert(#omen == 1 and omen[1].args.red == true, "presságio sem a cor pedida")
+        presage(G)
         local siren = G.commands(G.sentServer, "siren")
         assert(#siren == 1 and siren[1].args.red == true, "nova sirene sem a cor pedida")
-        assert(NOM_FogEvent.status().sirenMs == NOM_FogEventRules.GRACE_MS, "contagem não recomeçou")
+        assert(NOM_FogEvent.status().sirenMs > NOM_FogEventRules.GRACE_MS - 200, "contagem não recomeçou")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == true)
     end,
@@ -743,6 +763,7 @@ return {
         local G = setup({ globalMD = md, hours = 100,
             sandbox = { FogEscalation = true, RedFogGraceDays = 7, RedFogChance = 100 } })
         G.advance(10)
+        presage(G)
         assert(G.played("NOM_SirenRed") == 1, "veterano caiu na carência")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == true)
@@ -781,6 +802,7 @@ return {
             assert(G.played("NOM_SirenRed") == 1 and fogMD(G).red == true, "não salvou na sirene")
             G.seconds(10)
             local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours, sandbox = sb })
+            presage(G2)
             assert(G2.played("NOM_SirenRed") == 1 and G2.played("NOM_Siren") == 0, "recarga tocou a sirene errada")
             assert(NOM_FogEvent.status().sirenRed == true)
             G2.seconds(46)
@@ -800,8 +822,9 @@ return {
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == false)
     end,
-    -- review da 0019: o log da sirene diz a chance sorteada; na recarga durante a sirene a
-    -- cor salva é reaproveitada e a chance sai "-" (não houve sorteio)
+    -- review da 0019: o log diz a chance sorteada; na recarga durante a sirene a cor salva é
+    -- reaproveitada e a chance sai "-" (não houve sorteio). Sprint 0034: quem decide a cor e
+    -- loga a chance é o presságio.
     fog_event_siren_log_reused_colour = function()
         local realPrint, lines = print, {}
         print = function(m) lines[#lines + 1] = m end
@@ -815,11 +838,112 @@ return {
         assert(ok, err)
         local sirens = {}
         for _, l in ipairs(lines) do
-            if l:find("nevoa sirene", 1, true) then sirens[#sirens + 1] = l end
+            if l:find("nevoa presagio", 1, true) then sirens[#sirens + 1] = l end
         end
         assert(sirens[1] and sirens[1]:find("vermelha=true", 1, true) and sirens[1]:find("chance=100.00", 1, true),
-            "primeira sirene: " .. tostring(sirens[1]))
+            "primeiro presságio: " .. tostring(sirens[1]))
         assert(#sirens == 2 and sirens[2]:find("vermelha=true", 1, true) and sirens[2]:find("chance=-", 1, true),
-            "sirene da recarga: " .. tostring(sirens[2]))
+            "presságio da recarga: " .. tostring(sirens[2]))
+    end,
+    -- Presságio (sprint 0034, estática na tela) -----------------------------------------
+
+    -- a hora sorteada abre o presságio: a cor é decidida, quem vê ganha omenAt, e a sirene
+    -- (com a subida) só toca 3 s REAIS depois
+    fog_event_presage_3s_before_siren = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.at(fogMD(G).next)
+        assert(G.played("NOM_SirenRed") == 0 and NOM_World.rising == false, "sirene sem presságio")
+        assert(NOM_FogState.omenAt == G.now and NOM_FogState.omenRed == true, "quem vê não ganhou o presságio")
+        assert(fogMD(G).red == true, "a cor não foi decidida no presságio")
+        assert(NOM_FogEvent.status().presageMs == NOM_FogEventRules.PRESAGE_MS)
+        assert(NOM_FogEvent.status().sirenMs ~= nil, "o presságio não conta como sirene pendente (toggle do debug)")
+        assert(NOM_FogEvent.status().sirenRed == true)
+        G.climate(3) -- o R.update segue dando "siren": um presságio só
+        G.seconds(2.9)
+        assert(G.played("NOM_SirenRed") == 0, "sirene antes dos 3 s")
+        G.seconds(0.2)
+        assert(G.played("NOM_SirenRed") == 1 and NOM_World.rising == true and NOM_World.risingRed == true)
+        assert(NOM_FogState.sirenAt ~= nil and NOM_FogState.omenAt ~= nil, "a sirene perdeu o presságio")
+        assert(NOM_FogEvent.status().presageMs == nil)
+        assert(#G.sentServer == 0, "solo mandou comando")
+    end,
+    -- dedicado: o presságio vai por comando (com a cor) e o estado de quem vê fica com o cliente
+    fog_event_presage_dedicated_sends_command = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 100 } })
+        G.at(fogMD(G).next)
+        local omen = G.commands(G.sentServer, "presage")
+        assert(#omen == 1 and omen[1].player == nil and omen[1].args.red == true, "sem presage")
+        assert(#G.commands(G.sentServer, "siren") == 0, "siren junto com o presságio")
+        assert(NOM_FogState.omenAt == nil, "dedicado mexeu no estado de quem vê")
+        presage(G)
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].args.red == true)
+        assert(#G.commands(G.sentServer, "presage") == 1)
+    end,
+    -- a pausa (velocidade 0 / servidor vazio) segura o presságio, como a fuga
+    fog_event_presage_paused_holds = function()
+        local G = setup()
+        G.at(fogMD(G).next)
+        G.paused = true
+        G.seconds(20)
+        assert(G.played("NOM_Siren") == 0, "a pausa consumiu o presságio")
+        G.paused = false
+        G.seconds(2.9)
+        assert(G.played("NOM_Siren") == 0)
+        G.seconds(0.2)
+        assert(G.played("NOM_Siren") == 1)
+    end,
+    -- stop no presságio cancela como a sirene: sem sirene, sem névoa, pendente do dia some
+    fog_event_stop_during_presage_cancels = function()
+        local G = setup()
+        G.at(fogMD(G).next)
+        assert(NOM_FogEvent.stop(), "não cancelou o presságio")
+        assert(NOM_FogState.omenAt == nil, "o presságio ficou em quem vê")
+        assert(fogMD(G).next == nil and fogMD(G).red == nil)
+        G.climate(3)
+        G.seconds(40)
+        assert(G.played("NOM_Siren") == 0 and NOM_World.fog == false and NOM_World.rising == false)
+        assert(not NOM_FogEvent.stop(), "cancelou duas vezes")
+        -- dedicado: avisa os clientes (sirenStop)
+        local D = setup({ server = true, player = false })
+        D.at(fogMD(D).next)
+        assert(NOM_FogEvent.stop())
+        assert(#D.commands(D.sentServer, "sirenStop") == 1, "dedicado não mandou sirenStop")
+        D.seconds(40)
+        assert(#D.commands(D.sentServer, "siren") == 0)
+    end,
+    -- force sem skip passa pelo presságio (pra testar no debug); com skip vai direto
+    fog_event_force_goes_through_presage = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        assert(NOM_FogEvent.force(true))
+        assert(G.played("NOM_SirenRed") == 0 and NOM_FogState.omenAt ~= nil and NOM_FogState.omenRed == true)
+        presage(G)
+        assert(G.played("NOM_SirenRed") == 1)
+        assert(NOM_FogEvent.force(false, true))
+        assert(G.played("NOM_Siren") == 1, "skip passou pelo presságio")
+        assert(NOM_FogState.omenAt == nil, "skip ficou com o presságio da anterior")
+    end,
+    -- o presságio só existe em memória: recarregar no meio dele volta ao presságio pelo
+    -- R.update (o next segue no passado), com a mesma cor
+    fog_event_reload_during_presage_restarts_it = function()
+        local G = setup({ sandbox = { RedFogChance = 100 } })
+        G.at(fogMD(G).next)
+        G.seconds(1)
+        local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours, sandbox = { RedFogChance = 0 } })
+        assert(G2.played("NOM_SirenRed") == 0 and NOM_FogState.omenAt == G2.now, "a recarga não voltou ao presságio")
+        assert(NOM_FogState.omenRed == true, "a recarga trocou a cor")
+        presage(G2)
+        assert(G2.played("NOM_SirenRed") == 1)
+    end,
+    -- quem entra no MP durante o presságio recebe o presságio (não a sirene antes da hora)
+    fog_event_mp_join_during_presage = function()
+        local G = setup({ server = true, player = false })
+        G.at(fogMD(G).next)
+        G.sentServer = {}
+        local who = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        local omen = G.commands(G.sentServer, "presage")
+        assert(#omen == 1 and omen[1].player == who and omen[1].args.red == false, "entrou sem o presságio")
+        assert(#G.commands(G.sentServer, "siren") == 0, "sirene antes da hora pra quem entrou")
     end,
 }

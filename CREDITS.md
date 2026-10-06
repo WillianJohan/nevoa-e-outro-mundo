@@ -73,6 +73,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_White.png` | 8×8 | branco opaco, tingido de vermelho no pulso do grito da Carpideira |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_NevoaEstatica.png` | 256×256 | estática da névoa na tela: chiado fino em tons de cinza, em mosaico, tingido pela cor da névoa (sprint 0034) |
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 

@@ -127,6 +127,7 @@ return {
     -- quem vê (shared/NOM_FogState): visible() é a névoa ou a subida; visibleRed() a cor de
     -- quem estiver valendo
     fog_state_visible_helpers = function()
+        getTimestampMs = function() return 0 end -- a subida marca a hora da sirene
         NOM_FogState = nil
         package.loaded["NOM_FogState"] = nil
         require "NOM_FogState"
@@ -149,6 +150,7 @@ return {
     end,
     -- a subida não é borda de névoa: quem ouve NOM_FogState.onChange (fog on) não dispara
     fog_state_rising_does_not_fire_on_change = function()
+        getTimestampMs = function() return 0 end
         NOM_FogState = nil
         package.loaded["NOM_FogState"] = nil
         require "NOM_FogState"
@@ -157,5 +159,39 @@ return {
         NOM_FogState.setRising(true, true)
         NOM_FogState.setRising(false)
         assert(n == 0, "a subida disparou o onChange da névoa")
+    end,
+    -- sprint 0034, estática: o presságio guarda omenAt e a cor; a sirene (subida que liga)
+    -- guarda sirenAt; a subida que desliga (névoa aberta, sirenStop) e o fim limpam
+    fog_state_omen_and_siren_marks = function()
+        local now = 1000
+        getTimestampMs = function() return now end
+        NOM_FogState = nil
+        package.loaded["NOM_FogState"] = nil
+        require "NOM_FogState"
+        local S = NOM_FogState
+        assert(S.omenAt == nil and S.sirenAt == nil and S.omenRed == false)
+        S.setOmen(true)
+        assert(S.omenAt == 1000 and S.omenRed == true and S.sirenAt == nil)
+        assert(S.visible() == false, "o presságio subiu a névoa")
+        now = 4000
+        S.setRising(true, true)
+        assert(S.sirenAt == 4000 and S.omenAt == 1000)
+        now = 9000
+        S.setRising(true, false) -- setRed na contagem: não é sirene nova
+        assert(S.sirenAt == 4000, "a cor nova recomeçou a sirene")
+        S.set(true, 1, true)
+        S.setRising(false)
+        assert(S.omenAt == nil and S.sirenAt == nil and S.omenRed == false, "a névoa aberta não limpou")
+        -- cancelada no presságio (sirenStop: setRising(false) sem subida)
+        S.set(false, 1)
+        S.setOmen(false)
+        S.setRising(false)
+        assert(S.omenAt == nil, "o sirenStop não limpou o presságio")
+        -- o fim da névoa limpa
+        S.setOmen(true)
+        S.set(true, 2)
+        S.set(false, 2)
+        assert(S.omenAt == nil and S.sirenAt == nil, "o fim não limpou")
+        getTimestampMs = nil
     end,
 }

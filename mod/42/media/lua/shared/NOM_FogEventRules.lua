@@ -18,6 +18,8 @@ local R = NOM_FogEventRules
 -- Fuga (sprint 0034): da sirene até os bichos, em ms reais. A névoa visual sobe nesse tempo
 -- (NOM_World.rising); o som da sirene dura 15 s e não conta aqui.
 R.GRACE_MS = 30000
+-- Presságio (sprint 0034): a estática na tela começa 3 s reais antes da sirene. Só em memória.
+R.PRESAGE_MS = 3000
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 

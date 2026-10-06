@@ -103,6 +103,24 @@ return {
         G.server("fog", { on = false, period = 1, red = false })
         assert(NOM_FogState.rising == true, "fog off desceu a subida")
     end,
+    -- sprint 0034, estática: o presságio liga o presságio de quem vê (com a cor), sem subir a
+    -- névoa nem tocar a sirene; a sirene depois marca a hora dela
+    fog_client_presage_sets_omen = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("presage", { red = true })
+        assert(NOM_FogState.omenAt == G.now and NOM_FogState.omenRed == true, "o presságio não ligou")
+        assert(NOM_FogState.rising == false and G.played("NOM_SirenRed") == 0 and not NOM_SirenFreeze.active)
+        G.fire("OnServerCommand", "OutroMod", "presage", { red = false })
+        assert(NOM_FogState.omenRed == true, "comando de outro módulo")
+        G.seconds(3)
+        G.server("siren", { red = true, dir = 0 })
+        assert(NOM_FogState.sirenAt == G.now and NOM_FogState.omenAt ~= nil)
+        G.server("sirenStop", {})
+        assert(NOM_FogState.omenAt == nil and NOM_FogState.sirenAt == nil, "sirenStop não limpou")
+        G.server("presage", nil) -- servidor antigo / sem argumentos: branca
+        assert(NOM_FogState.omenAt ~= nil and NOM_FogState.omenRed == false)
+    end,
     fog_client_asks_state_on_join = function()
         local G = setup()
         local p = {}
