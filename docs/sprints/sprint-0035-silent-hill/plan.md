@@ -141,7 +141,7 @@ Segue o caminho do spike.
 Dividida em duas: **4a** gera as texturas e a lista; **4b** liga na erosão (`NOM_OwnSprites.ensure`, `NOM_DressingRules`, `OWN_PREFIX`, fake do `getSprite`).
 
 - [x] **4a:** testes que falham, gerar as texturas e a lista, `./run-tests.sh` verde, commit.
-- [ ] **4b:** testes que falham, integrar na erosão, `./run-tests.sh` verde, commit.
+- [x] **4b:** testes que falham, integrar na erosão, `./run-tests.sh` verde, commit.
 
 **4a feita (2026-10-06).** O que saiu e o que foi decidido:
 - **Script novo** `scripts/gen_tiles.py` (não o `gen_textures.py`): rodar de novo não sorteia nenhuma outra textura do mod. Semente fixa, gerador por textura; duas rodadas dão os mesmos bytes.
@@ -164,6 +164,29 @@ Dividida em duas: **4a** gera as texturas e a lista; **4b** liga na erosão (`NO
   - saturação média até 0,39 (Ferrugem do chão); halo até 0,003.
 - **Prévia:** `python3 scripts/gen_tiles.py --preview` monta `/tmp/om_tiles_preview.png`: um quarto 5×5 com paredes W e N sobre chão e parede neutros, em escala de jogo e ampliado 2×, e a folha de todas as texturas.
 - **Pra ver no jogo (4b):** a nitidez no zoom 0,5 a 2,5; se a grade com alfa 0,6 fica escura demais em piso escuro; e se o escorrido de ferrugem (3–14% da parede) aparece de longe.
+
+**4b feita (2026-10-06).** O que saiu e o que foi decidido:
+- **Registro:** `client/NOM_OwnSprites.lua` (`ensure`, `total`, `missing`). Por sprite: `getTexture` (nil: pula e loga uma vez), `getSprite`, `setName` e as flags do lado. Roda no `OnGameStart` e, preguiçoso, no primeiro `update` com névoa da sessão; o `OnMainMenuEnter` marca pra registrar de novo (o `namedMap` zera por mundo). Evidência na pz-api-notes §26.
+- **Custo:** ~280 chamadas ao Java uma vez por sessão. O enchimento em regime ficou igual (1942 por atualização antes e depois; casa 2250 → 2240); o `[budget]` mostra ~2100 porque no mundo falso o registro cai na primeira atualização (ninguém dispara o `OnGameStart`).
+- **Regra (`NOM_DressingRules`), agora com a cor** (`floor`/`wall` recebem `red`; o `NOM_FogOverlays` passa `NOM_FogState.red` e troca de cor redesenha, pelo `gen`):
+  - **Branca, chão:** manchas de metal pelo ruído (`METAL` 0,4, até 0,45, rede de 5 tiles) e um tipo só por painel de 4×4 tiles: Grade 0,4, Ferrugem 0,25, Chapa 0,2, Tinta 0,15. Onde tem metal não vai rachadura de rua. Medido com densidade 1: 79% dos squares vestidos, ~34% com metal (Grade 13%, Ferrugem 9%, Chapa 7%, Tinta 5%).
+  - **Branca, parede de fora:** tinta 0,35 (Tinta ou, em 35%, Descasca), ferrugem 0,25, trepadeira 0,15, sangue 0,1, sujeira 0,1, rachadura 0,05.
+  - **Branca, parede de dentro:** tinta 0,45, ferrugem 0,2, sujeira 0,2, rachadura 0,15 (camadas: tinta, ferrugem, rachadura, sujeira).
+  - **Vermelha, chão:** o de antes (queimado, sujeira, rachadura), mais manchas de Ferrugem (`RUST` 0,25, até 0,35, rede de 4 tiles) por cima. Nada de Grade, Chapa ou Tinta, e nada de sangue no chão (as duas cores).
+  - **Vermelha, parede de fora:** sangue 0,4, ferrugem 0,2, sujeira 0,15, rachadura 0,1, trepadeira 0,15.
+  - **Vermelha, parede de dentro:** sujeira 0,35, rachadura 0,25, sangue 0,25, ferrugem 0,15 (camadas: ferrugem, rachadura, sujeira, sangue).
+  - Lado: sprite `W` só em parede oeste, `N` só em parede norte; o canto ganha os dois. `MAX_LAYERS` e `WALL_LAYERS` iguais.
+- **Preta:** não existe estado de névoa preta ainda (sprint 0038; `NOM.setBlackFog` só avisa). A regra recebe só `red`; sem ele, é branca. Sugestão pra 0038: Descasca e Ferrugem escuras, sem Grade e sem sangue.
+- **Limpeza:** `OWN_PREFIXES = { "floors_burnt_01_", NOM_OwnSpriteList.DIR }`; o `D.own` e o `LoadGridsquare` reconhecem `media/textures/NOM/OutroMundo/`. O anexo vazado já é descartado no load (ID 20000000), isso é defesa.
+- **Debug:** `NOM.ownSprites()` diz quantos de 50 estão registrados e quais PNG faltam; botão "Texturas próprias no console" no `NOM.panel()`.
+- **Fake fiel** (`tests/attached_world.lua`): `getSprite` de nome novo cria sprite sem nome e sem flag (ID 20000000, sem textura se o PNG não existe), o `addAttachedAnimSpriteByName` só acha o que está no `namedMap`, o `getTexture` dá nil pra caminho que não existe, e o load descarta o anexo de runtime. Testes novos: `tests/test_own_sprites.lua`; em `test_dressing_rules.lua`, `test_fog_overlays.lua`, `test_debug.lua` e `test_debug_panel.lua` (setName esquecido, lado errado, textura faltando, branca sem Silent Hill, sangue no chão, prefixo, troca de cor, registro uma vez).
+- **Só o jogo responde** (roteiro do Johan):
+  - Grade e Ferrugem do chão por baixo do jogador e do zumbi (`FloorOverlay`), sem passar por cima;
+  - Tinta e Descasca na parede W, N e de canto, com e sem recorte (cutaway);
+  - nitidez no zoom 0,5 a 2,5, e se a grade com alfa 0,6 fica escura demais em piso escuro;
+  - a primeira névoa logo depois de carregar (textura carregada assíncrona pode sair vazia no primeiro quadro);
+  - sair e voltar pro save com névoa: nada vazou (nem nome vanilla, nem textura nossa);
+  - se o peso do metal (~1/3 do chão vestido) e da tinta na parede está bom de olho.
 
 ---
 

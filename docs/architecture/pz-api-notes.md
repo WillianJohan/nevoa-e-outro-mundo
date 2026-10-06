@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034; §25: sprint 0035) |
+| Data | 2026-10-04 (§11, §12, §13, §14, §15, §16, §17, §18: 2026-10-05; §16.5: sprint 0021; §17.5: sprint 0022; §16.6: sprint 0023, raio pela tela na 0034; §25 e §26: sprint 0035) |
 | Fonte | Lua vanilla em `media/lua`, scripts em `media/scripts`, bytecode de `projectzomboid.jar` |
 
 > **Kahlua ≠ luajit (visto no jogo, 2026-10-05):** `next()` é `nil` no Kahlua
@@ -1726,6 +1726,87 @@ brasas do Eco. Bytecode do B42.21 instalado (`javap -c -p`).
 
 Custo medido no mundo falso (`tests/test_flakes.lua`, `flakes_budget`): até 160 lascas vivas, pior
 quadro ~175 idas ao Java (até 20 de base + 1 por lasca na tela). Sem névoa e sem lasca, 0.
+
+## 26. Sprite próprio em runtime: texturas do Outro Mundo (sprint 0035)
+
+Os PNG de `scripts/gen_tiles.py` (`media/textures/NOM/OutroMundo/`, lista em
+`shared/NOM_OwnSpriteList.lua`) viram sprites de runtime em `client/NOM_OwnSprites.lua` e o
+`client/NOM_FogOverlays.lua` anexa pelo nome, como os vanilla (ADR-017). Tabelas copiadas do
+spike (`docs/sprints/sprint-0035-silent-hill/spike-sprite-proprio.md` §1b, §2, §5, §6), bytecode
+do B42.21 instalado (`javap -c -p`).
+
+### 26.1 Registro (spike §1b)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoSprite`, `IsoSpriteInstance`, `IsoSpriteManager` e `PropertyContainer` são expostos ao Lua (métodos públicos chamáveis) | CONFIRMED | `LuaManager$Exposer.exposeAll` 989, 3012–3033; uso vanilla: `IsoSpriteManager.instance:getSprite(nome)` em `shared/Util/CustomTileProps.lua:320` |
+| `getSprite(nome)` (global do Lua) = `IsoSpriteManager.instance.getSprite(nome)`: se o nome está no `namedMap`, devolve; senão **`AddSprite(nome)`** | CONFIRMED | `LuaManager$GlobalObject.getSprite(String)` 0–7; `IsoSpriteManager.getSprite(String)` 0–28; uso vanilla do global: `server/ClientCommands.lua:195` |
+| `AddSprite(String)`: `new IsoSprite`, `LoadSingleTexture(nome)` e `namedMap.put(nome, sprite)`. **Não** põe no `intMap` e **não** chama `setName` | CONFIRMED | `IsoSpriteManager.AddSprite(String)` 0–26 |
+| `LoadSingleTexture(nome)` = `texture = Texture.getSharedTexture(nome)`, a mesma função do `getTexture(caminho)` do Lua (nil se o caminho não existe), que o mod já usa com `media/textures/NOM/...` (`NOM_Embers.lua:17`, `NOM_Flakes.lua:77`) | CONFIRMED | `IsoSprite.LoadSingleTexture` 0–16; `LuaManager$GlobalObject.getTexture(String)` 1 |
+| Sem animação, o desenho usa o campo `texture` | CONFIRMED | `IsoSprite.getTextureForFrame(I,IsoDirections,Z)` 22–46 |
+| ID do sprite novo: **20000000** (valor do construtor, igual pra todo sprite criado assim) | CONFIRMED | `IsoSprite.<init>(IsoSpriteManager)` 50–53 |
+| `addAttachedAnimSpriteByName(nome)` lê o `namedMap` (`IsoSprite.getSprite(manager, nome, 0)`): **acha o sprite de runtime** | CONFIRMED | `IsoSprite.getSprite(IsoSpriteManager,String,I)` 0–23; `IsoObject.addAttachedAnimSpriteByName` (§16.6) |
+| `setName(String)` é público e só grava o campo `name` (o que `getParentSprite():getName()` lê) | CONFIRMED | `IsoSprite.setName` 0–5; `javap -p IsoSprite` (`getName()`, `setName(String)`, `getProperties()`) |
+| Flags no sprite pelo Lua: `sprite:getProperties():set(IsoFlagType.X)`; `IsoFlagType` tem `FloorOverlay`, `WallOverlay`, `attachedN` e `attachedW` | CONFIRMED | `shared/Util/CustomTileProps.lua:333-338`; `PropertyContainer.set(IsoFlagType)` público; `javap -p IsoFlagType`; uso vanilla de `IsoFlagType.attachedW/N` em `ISDestroyStuffAction.lua:166,171` e de `WallOverlay` em `ISMoveableSpriteProps.lua:157` |
+| O `namedMap` é esvaziado a cada carga de mundo (`IsoSpriteManager.Dispose` antes dos tiledefs): o sprite de runtime tem de ser recriado por jogo | CONFIRMED | `IsoWorld.init` 2182–2185 |
+| Mexer em sprite no `OnGameStart` é o que o vanilla faz | CONFIRMED | `shared/Util/CustomTileProps.lua:318-341` |
+
+**Como o mod usa** (`NOM_OwnSprites.ensure`): pra cada nome da lista, `getTexture(nome)` (nil:
+pula e loga uma vez, nunca cria sprite vazio), `getSprite(nome)`, `setName(nome)` (**obrigatório**)
+e as flags do lado (`F`: `FloorOverlay`; `W`/`N`: `WallOverlay` + `attachedW`/`attachedN`).
+Roda no `OnGameStart` e, preguiçoso, no primeiro `update` com névoa da sessão; depois disso volta
+sem ir ao Java. Custo: ~280 chamadas uma vez por sessão (50 sprites), medido no mundo falso.
+
+### 26.2 Profundidade (spike §2)
+
+O anexo é desenhado com a profundidade **do sprite anexado**, não do objeto:
+`IsoObject.renderAttachedSprites` 438 → `IsoSprite.render(inst, obj, …)` → `renderCurrentAnim` 96 →
+`renderCurrentAnim_FBORender` 375 → **`IsoSprite.setupTileDepth(obj, …)`** com `this` = sprite anexado.
+Sem `depthTexture` próprio: `solidfloor`/`FloorOverlay` → `setupFloorDepth`; `WallOverlay` +
+`attachedN`/`attachedW` → depth da parede pai ou `setupWallDepth` do lado; sem flag →
+`getDefaultDepthTexture()` (genérica, errada pra decalque) (`IsoSprite.setupTileDepth` 0–781).
+
+| Pergunta | Resposta | Status |
+|---|---|---|
+| Anexo sem depth e sem flag renderiza certo? | **Não**: cai na profundidade genérica. | CONFIRMED (bytecode); efeito visual UNKNOWN |
+| Chão: como ter depth certo? | Flag `FloorOverlay` no sprite. É o que os decalques vanilla de chão têm (`d_streetcracks_1_*`, §16.5) | CONFIRMED |
+| Parede: como ter depth certo? | Flags `WallOverlay` + `attachedW` (ou `attachedN`): depth da parede pai ou `setupWallDepth`. É o que pichação vanilla tem (`newtiledefinitions.tiles.txt:162363`) | CONFIRMED |
+| Precisa de PNG de depth nosso? | Não. Reaproveita a do pai ou a do `setupWallDepth`/`setupFloorDepth`. | CONFIRMED |
+| Runtime | `sprite:getProperties():set(IsoFlagType.FloorOverlay)` ou `set(IsoFlagType.WallOverlay)` + `set(IsoFlagType.attachedW/N)` | CONFIRMED (API); UNKNOWN (visual no jogo) |
+
+A regra (`NOM_DressingRules.wall`) só põe sprite `W` em parede oeste e `N` em parede norte
+(`tests/test_dressing_rules.lua`, `dressing_rules_own_wall_side`; o fake acusa anexo de parede
+sem a flag do lado).
+
+### 26.3 Save: o nome que vaza (spike §5)
+
+`IsoObject.save` grava, por anexo, o **ID** do sprite (`IsoSpriteInstance.getID`), um byte de flags,
+`offX/offY/offZ`, `tintr/g/b` e às vezes o alfa (`IsoObject.save(ByteBuffer,Z)` 168–400: `getID` 184,
+tinta 229–249). Não grava o nome. No load (`IsoObject.load(ByteBuffer,I,Z)` 184–601), por anexo: lê
+o ID e chama `IsoSprite.getSprite(manager, id)`, que só olha o `intMap` e dá **`null` se o ID não
+está lá** (`IsoSprite.getSprite(IsoSpriteManager,I)` 0–81); com `null`, em debug loga
+`"discarding attached sprite because it has no tile properties"`, consome os bytes do registro e
+**não** adiciona nada (221–251, 508–510).
+
+| Caminho | Vazou e carregou **com** o mod | Vazou e carregou **sem** o mod |
+|---|---|---|
+| Tile pack (ID 1048576+…) | O anexo **volta** (ID no `intMap`): precisa da limpeza por prefixo no `LoadGridsquare` | Descartado no load. Mas se **outro** mod usar o mesmo número de tiledef, o ID vira o sprite dele |
+| Runtime (ID 20000000, o do mod) | **Descartado no load** (20000000 nunca entra no `intMap`): o vazamento se limpa sozinho | Descartado no load |
+
+CONFIRMED (bytecode). O "sem o mod" foi lido no código, não testado no jogo. Mesmo assim o
+`NOM_DressingRules.own` reconhece `media/textures/NOM/OutroMundo/` e o `LoadGridsquare` tira o que
+sobrar fora do registro (defesa, igual ao `floors_burnt_01_*`).
+
+### 26.4 Tinta por instância não existe (spike §6)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoSpriteInstance` tem `tintr/tintg/tintb` (campos públicos), gravados no save por anexo | CONFIRMED | `IsoObject.save` 229–249; `IsoObject.load` 382–426 |
+| Pelo Lua: só `getTintR/G/B`, `SetAlpha`, `SetTargetAlpha`, `setScale`. **Não há setter de tinta** | CONFIRMED | `javap -p IsoSpriteInstance` |
+| O Kahlua não escreve campo Java: o exposer só **lê** campo estático anotado (`Field.get` em `LuaJavaClassExposer.exposeStatics` 143–222); `getClassFieldVal` é só leitura. Nenhum Lua vanilla escreve `tintr` | CONFIRMED | `se.krka.kahlua.integration.expose.LuaJavaClassExposer`; `rg tintr media/lua` vazio |
+| `IsoSprite.setTintMod(ColorInfo)` existe, mas é do **sprite** (compartilhado): tingiria toda instância daquele sprite no mapa | CONFIRMED | `IsoSprite.setTintMod`; proibido pela ADR-017 |
+
+Por isso o visual novo vem de PNG nosso, não de sprite vanilla tingido.
 
 ## Abordagem recomendada por mecânica (resumo)
 
