@@ -21,15 +21,7 @@ De tempos em tempos, numa hora qualquer, uma sirene toca no mapa inteiro. Trinta
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
 
 [h2]Sandbox[/h2]
-Página própria, "Névoa e Outro Mundo". Todo sistema tem liga/desliga e números (padrão entre parênteses):
-[list]
-[*]Clima sombrio (ligado), intensidade (1.0); névoa a cada (2) dias em média, mais rara no começo do save e mais seguida com os dias (ligado), durando de (3) a (6) horas; sem névoa vermelha nos primeiros (7) dias
-[*]Noite: mais rápidos (ligado, x1.5), sentidos (ligado, x1.5), caça (ligada, a cada 90 min, 25 tiles)
-[*]Estaladores (5%), Corredores (3%, grito de 40 tiles), Sem-rosto (3%), Carpideiras (3%, acorda a 4 tiles, grito de 50), por névoa
-[*]Ecos (até 20 por jogador, 30 tiles)
-[*]Névoa: som ambiente, sangue e ferrugem, vinheta (tudo ligado, vinheta 1.0)
-[/list]
-Presets "Leve" e "Pesadelo" documentados no GitHub; salve como preset seu do sandbox.
+Página própria, "Névoa e Outro Mundo": liga/desliga e números pra cada sistema (frequência e duração da névoa, névoa vermelha, força da noite, chance de cada monstro, Ecos, efeitos de tela). Presets "Leve" e "Pesadelo" no GitHub.
 
 [h2]Multiplayer[/h2]
 Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide noite, névoa, variantes e Ecos; som, vinheta e manchas são locais de cada jogador e não vão pra rede nem pro save. No servidor, coloque o mod em Mods e WorkshopItems; os clientes baixam sozinhos.
@@ -41,11 +33,12 @@ Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide 
 [*]Tirar o mod de um save em andamento não quebra o save.
 [/list]
 
-[h2]Limites conhecidos[/h2]
+[h2]Mods opcionais neste item[/h2]
 [list]
-[*]Segundo mod opcional neste item, [b]Shader[/b]: aberração cromática, grão e distorção na névoa. Não com ShadowZ; reinicie o jogo depois de ligar ou desligar.
-[*]A atmosfera da névoa (som, manchas, tela) segue só o primeiro jogador na tela dividida.
+[*][b]Shader[/b]: aberração cromática, grão e distorção na névoa. Não com ShadowZ; reinicie o jogo depois de ligar ou desligar.
+[*][b]Volumétrica[/b] (experimental): névoa em volume de verdade, que contorna casas, árvores e carros, sobe contra as paredes e se abre em volta de quem anda nela. Só visual, só no cliente. Precisa do [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853]ZombieBuddy[/url], instalado como a página dele explica (opção de inicialização); sem ele, fica a névoa normal.
 [/list]
+A atmosfera da névoa (som, manchas, tela) segue só o primeiro jogador na tela dividida.
 
 Código, documentação de design e bugs: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
 Todos os sons e imagens são originais, gerados por scripts do repositório. Licença MIT.
