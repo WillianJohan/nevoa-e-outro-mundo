@@ -104,6 +104,14 @@ local function setup(opts)
     getSpecificPlayer = function(i) G.java = G.java + 1; return sp(i) end
     dofile("mod/42/media/lua/client/NOM_FogOverlays.lua")
     package.loaded.NOM_FogOverlays = NOM_FogOverlays -- o dofile não registra: o require carregaria de novo
+    -- A ordem do pairs no registro muda a cada processo no luajit (e não é contrato no Kahlua):
+    -- as fontes vão em ordem fixa, pro mesmo sorteio dar sempre as mesmas lascas no mesmo lugar.
+    local targets = NOM_FogOverlays.targets
+    NOM_FogOverlays.targets = function()
+        local out = targets()
+        table.sort(out, function(a, b) return a.k < b.k end)
+        return out
+    end
     dofile(FILE)
     G.p = G.player({ x = 100, y = 100 })
     G.pc = calls({ G.p })
@@ -157,11 +165,11 @@ return {
 
     -- o recorte é sempre uma célula inteira do sheet (quadro × formato), dentro do PNG
     flakes_sub_rect_is_a_cell = function()
-        SHEET_W, SHEET_H = png("mod/42/" .. NOM_FlakeRules.TEXTURES.lasca)
         local G = setup()
+        SHEET_W, SHEET_H = png("mod/42/" .. R().TEXTURES.lasca)
         NOM_FogState.set(true, 3)
         local cells = {}
-        for _ = 1, 120 do
+        for _ = 1, 240 do
             G.frame(1)
             for _, d in ipairs(G.draws) do
                 if d.kind == "sub" then
@@ -175,7 +183,7 @@ return {
         end
         local n = 0
         for _ in pairs(cells) do n = n + 1 end
-        assert(n >= 8, "poucas células usadas: " .. n)
+        assert(n >= R().FRAMES * R().SHAPES / 2, "poucas células usadas: " .. n)
     end,
 
     -- na subida da fuga (rising) não; só com a névoa de jogo
