@@ -43,8 +43,9 @@ A branca é o dia a dia, a vermelha é o pico, a preta é rara e temida (a pior,
   - branca: o resto.
   - A curva só mexe na chance do dia, não na proporção dos tipos.
 - **Duração:** depende do tipo, com mínimo e máximo de cada um no sandbox.
-- **Saves antigos:** a sirene que já estava agendada continua valendo; o sorteio diário começa
-  no dia seguinte.
+- **Saves antigos:** a sirene que já estava agendada continua valendo se cair no dia de hoje;
+  agendada pra depois, é descartada e o dia segue o sorteio (senão a garantia do 3º dia
+  ficava travada; review final da 0033).
 
 **Sandbox (novas ou revistas):**
 
