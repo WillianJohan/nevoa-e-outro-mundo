@@ -389,7 +389,9 @@ function W.new(opts)
     -- batentes: as do sprite de porta/janela somam nas propriedades do square
     -- (ISBuildIsoEntity.lua:195-198); G.flags[k] = { DoorWallN = true, ... }
     IsoFlagType = { water = "water", DoorWallN = "DoorWallN", DoorWallW = "DoorWallW", WindowN = "WindowN",
-        WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW" }
+        WindowW = "WindowW", windowN = "windowN", windowW = "windowW", doorN = "doorN", doorW = "doorW",
+        -- flags do sprite próprio (sprint 0035; enum IsoFlagType do bytecode)
+        FloorOverlay = "FloorOverlay", WallOverlay = "WallOverlay", attachedN = "attachedN", attachedW = "attachedW" }
     -- LuaManager$GlobalObject.getOnlinePlayers 0–30: servidor = GameServer.getPlayers, cliente
     -- = GameClient.getPlayers (o IDToPlayerMap: os locais e os remotos que ele conhece), solo =
     -- ArrayList vazia

@@ -22,11 +22,11 @@ local function set(list)
 end
 
 -- squares vestidos e anexos no chão (camadas mais a sujeira) num quarteirão
-local function sweep(R, period, d, size)
+local function sweep(R, period, d, size, red)
     local n, layers = 0, 0
     for x = 1000, 1000 + size - 1 do
         for y = 2000, 2000 + size - 1 do
-            local f = R.floor(x, y, 0, period, d)
+            local f = R.floor(x, y, 0, period, d, nil, red)
             if f then
                 n = n + 1
                 layers = layers + #f + (f.grime and 1 or 0)
@@ -42,27 +42,35 @@ local AUDIT = dofile("tests/floor_sprites.lua")
 -- Paredes (scripts/audit_wall_sprites.py, sprint 0034): left, lo, hi, depth, attached.
 local WALLS = dofile("tests/wall_sprites.lua")
 
--- tipo da camada de parede: "blood", "grime", "cracks", "vines" ou "writing" (pichação e mensagem)
+-- tipo da camada de parede: "paint" (tinta descascando: Tinta ou Descasca), "rust", "blood",
+-- "grime", "cracks", "vines" ou "writing" (pichação e mensagem)
 local function wallKind(layer)
     local k = layer[1]:match("^(%l+)Wall[NW]$")
     if k == "graffiti" or k == "messages" then return "writing" end
+    if k == "peel" then return "paint" end
     return k
 end
 
-local ORDER = { cracks = 1, grime = 2, vines = 2, blood = 3, writing = 4 }
+-- de baixo pra cima: a tinta que descasca é a pele da parede, a ferrugem escorre por cima dela
+local ORDER = { paint = 0, rust = 0.5, cracks = 1, grime = 2, vines = 2, blood = 3, writing = 4 }
 
 -- paredes de um quarteirão, dentro ou fora: { [x,y,lado] = camadas }
-local function wallsOf(R, outside, d, per, size)
+local function wallsOf(R, outside, d, per, size, red)
     local out = {}
     for x = 0, (size or 60) - 1 do
         for y = 0, (size or 60) - 1 do
             for _, north in ipairs({ true, false }) do
                 out[(3000 + x) .. "," .. (5000 + y) .. "," .. (north and "N" or "W")] =
-                    R.wall(3000 + x, 5000 + y, 0, per or 5, d or 1, north, outside) or false
+                    R.wall(3000 + x, 5000 + y, 0, per or 5, d or 1, north, outside, red) or false
             end
         end
     end
     return out
+end
+
+-- Silent Hill (sprint 0035): as camadas com textura nossa
+local function isOwnSet(R, name)
+    return R.SETS[name].own == true
 end
 
 -- o run e a posição de uma peça de pichação/mensagem no set
@@ -74,10 +82,11 @@ local function runOf(R, layer)
     end
 end
 
+-- os sprites do pack no chão (os nossos têm auditoria própria: tests/test_om_tiles.py)
 local function floorNames(R)
     local out = {}
     for setName, s in pairs(R.SETS) do
-        if not s.wall then
+        if not s.wall and not s.own then
             for _, i in ipairs(s.idx) do out[#out + 1] = { set = setName, name = s.prefix .. i } end
         end
     end
@@ -89,11 +98,11 @@ local function isPlant(name)
 end
 
 -- conta camadas por set num quarteirão, dentro ou fora
-local function kinds(R, outside, d)
+local function kinds(R, outside, d, red)
     local n = {}
     for x = 0, 59 do
         for y = 0, 59 do
-            local f = R.floor(4000 + x, 4000 + y, 0, 5, d or 1, outside)
+            local f = R.floor(4000 + x, 4000 + y, 0, 5, d or 1, outside, red)
             for _, l in ipairs(f or {}) do n[l[1]] = (n[l[1]] or 0) + 1 end
         end
     end
@@ -133,21 +142,27 @@ return {
         local R = load()
         for setName, s in pairs(R.SETS) do
             if not s.wall then
-                assert(not setName:find("^blood") and not s.prefix:find("blood"), "set de sangue no chão: " .. setName)
+                assert(not setName:find("^blood"), "set de sangue no chão: " .. setName)
+                for _, i in ipairs(s.idx) do
+                    assert(not R.name({ setName, i }):lower():find("blood"), "sprite de sangue no chão: " .. R.name({ setName, i }))
+                end
             end
         end
-        local ds = { 0.3, 1, 2, R.density(1, true), R.density(2, true) }
+        -- branca e vermelha (sprint 0035: a vermelha ganhou ferrugem no chão, sangue não)
+        local cases = { { 0.3, false }, { 1, false }, { 2, false }, { R.density(1, true), true }, { R.density(2, true), true },
+            { 1, true } }
         for _, outside in ipairs({ false, true }) do
-            for _, d in ipairs(ds) do
+            for _, c in ipairs(cases) do
+                local d, red = c[1], c[2]
                 for _, per in ipairs({ 1, 7 }) do
                     for x = 0, 39 do
                         for y = 0, 39 do
-                            local f = R.floor(2500 + x, 3500 + y, 0, per, d, outside)
+                            local f = R.floor(2500 + x, 3500 + y, 0, per, d, outside, red)
                             local all = {}
                             for _, l in ipairs(f or {}) do all[#all + 1] = l end
                             if f and f.grime then all[#all + 1] = f.grime end
                             for _, l in ipairs(all) do
-                                assert(not l[1]:find("^blood") and not R.name(l):find("blood"),
+                                assert(not l[1]:find("^blood") and not R.name(l):lower():find("blood"),
                                     "sangue no chão: " .. R.name(l) .. " d=" .. d)
                             end
                         end
@@ -169,7 +184,9 @@ return {
 
     -- o queimado vem em manchas (não tile a tile): troca queimado/limpo entre vizinhos bem menor
     -- que a de um sorteio por tile; o miolo cheio fica dentro da mancha (quase todo tile cheio
-    -- tem vizinho queimado dos 4 lados: o ruído anda até ~0,3 por tile, o corte não garante 100%)
+    -- tem vizinho queimado dos 4 lados: o ruído anda até ~0,3 por tile, o corte não garante 100%).
+    -- Na vermelha, que mantém o chão de antes (sprint 0035: na branca a mancha de metal tem a vez
+    -- e recorta o queimado)
     dressing_rules_burnt_patches = function()
         local R = load()
         for _, d in ipairs({ 1, 1.6, 2, 3.2 }) do
@@ -177,7 +194,7 @@ return {
             for x = 0, 89 do
                 for y = 0, 89 do
                     local k = x .. "," .. y
-                    for _, l in ipairs(R.floor(6000 + x, 6000 + y, 0, 4, d, false) or {}) do
+                    for _, l in ipairs(R.floor(6000 + x, 6000 + y, 0, 4, d, false, true) or {}) do
                         if l[1]:find("^burnt") then has[k] = true end
                         if l[1] == "burntFloorF" then full[k] = true end
                     end
@@ -213,21 +230,30 @@ return {
         end
     end,
 
-    -- o nome só do mod (ninguém no vanilla anexa floors_burnt_01_*, ADR-017): R.own diz
-    -- exatamente os nomes dos sets de queimado; nenhum outro set usa o prefixo
-    dressing_rules_own_prefix_only_burnt = function()
+    -- o nome só do mod (ninguém no vanilla anexa floors_burnt_01_*, ADR-017, nem as texturas
+    -- nossas de media/textures/NOM/OutroMundo/, sprint 0035): R.own diz exatamente os nomes dos
+    -- sets de queimado e dos sets próprios; o LoadGridsquare limpa por ele
+    dressing_rules_own_prefix_burnt_and_own_sprites = function()
         local R = load()
-        local burnt = 0
+        local burnt, own = 0, 0
         for setName, s in pairs(R.SETS) do
             for _, i in ipairs(s.idx) do
                 local name = R.name({ setName, i })
-                assert(name == s.prefix .. i)
-                assert(R.own(name) == (setName:find("^burnt") ~= nil), "dono errado: " .. name)
-                if R.own(name) then burnt = burnt + 1 end
+                if s.own then
+                    assert(name:sub(1, #NOM_OwnSpriteList.DIR) == NOM_OwnSpriteList.DIR, "nome próprio fora da pasta: " .. name)
+                else
+                    assert(name == s.prefix .. i)
+                end
+                local mine = setName:find("^burnt") ~= nil or s.own == true
+                assert(R.own(name) == mine, "dono errado: " .. name)
+                if setName:find("^burnt") then burnt = burnt + 1 end
+                if s.own then own = own + 1 end
             end
         end
         assert(burnt >= 20, "poucos queimados: " .. burnt)
+        assert(own == #NOM_OwnSpriteList.SPRITES, "sprites próprios nos sets: " .. own .. " de " .. #NOM_OwnSpriteList.SPRITES)
         assert(not R.own("overlay_blood_floor_01_3") and not R.own("blends_natural_01_5") and not R.own(nil))
+        assert(not R.own("media/textures/NOM/NOM_Lascas.png"), "a pasta de fora não é do Outro Mundo")
     end,
 
     -- trepadeira é de parede de fora (erosão vanilla: WallVines só em parede externa)
@@ -420,7 +446,7 @@ return {
         assert(R.density(0, true) == 0 and R.density(-3, false) == 0)
         assert(R.density(9, false) == R.density(2, false), "densidade fora da faixa")
         local normal = select(2, sweep(R, 5, R.density(1, false), 50))
-        local red = select(2, sweep(R, 5, R.density(1, true), 50))
+        local red = select(2, sweep(R, 5, R.density(1, true), 50, true))
         assert(red > normal * 1.2, "vermelha não é mais densa: " .. red .. " vs " .. normal)
         assert(sweep(R, 5, 0, 30) == 0, "densidade 0 com mancha")
         for x = 0, 30 do assert(R.wall(x, 0, 0, 5, 0, true) == nil) end
@@ -536,7 +562,7 @@ return {
         local R = load()
         local n = 0
         for name, s in pairs(R.SETS) do
-            if s.wall then
+            if s.wall and not s.own then -- os nossos: dressing_rules_own_sets_match_list
                 for _, i in ipairs(s.idx) do
                     local a = WALLS[s.prefix .. i]
                     assert(a, "sprite fora do pack: " .. s.prefix .. i)
@@ -655,48 +681,61 @@ return {
     dressing_rules_inside_walls_ruined = function()
         local R = load()
         assert(R.WALL_LAYERS and R.WALL_LAYERS >= 2 and R.WALL_LAYERS <= 3)
-        local walls, dressed, layers, three, n = 0, 0, 0, 0, {}
-        for _, ls in pairs(wallsOf(R, false, 1)) do
-            walls = walls + 1
-            if ls then
-                dressed = dressed + 1
-                layers = layers + #ls
-                if #ls == 3 then three = three + 1 end
-                assert(#ls <= R.WALL_LAYERS, "camadas demais: " .. #ls)
-                local kinds, last = {}, 0
-                for _, l in ipairs(ls) do
-                    local k = wallKind(l)
-                    assert(k ~= "vines", "trepadeira dentro")
-                    assert(not kinds[k], "tipo repetido na parede: " .. k)
-                    kinds[k] = true
-                    n[k] = (n[k] or 0) + 1
-                    assert(ORDER[k] > last, "ordem das camadas: " .. k)
-                    last = ORDER[k]
+        for _, red in ipairs({ false, true }) do
+            local walls, dressed, layers, three, n = 0, 0, 0, 0, {}
+            for _, ls in pairs(wallsOf(R, false, 1, nil, nil, red)) do
+                walls = walls + 1
+                if ls then
+                    dressed = dressed + 1
+                    layers = layers + #ls
+                    if #ls == 3 then three = three + 1 end
+                    assert(#ls <= R.WALL_LAYERS, "camadas demais: " .. #ls)
+                    local kinds, last = {}, -1
+                    for _, l in ipairs(ls) do
+                        local k = wallKind(l)
+                        assert(k ~= "vines", "trepadeira dentro")
+                        assert(not kinds[k], "tipo repetido na parede: " .. k)
+                        kinds[k] = true
+                        n[k] = (n[k] or 0) + 1
+                        assert(ORDER[k] > last, "ordem das camadas: " .. k)
+                        last = ORDER[k]
+                    end
                 end
             end
+            local tone = red and "vermelha" or "branca"
+            assert(dressed / walls >= 0.9, tone .. ": parede de dentro limpa: " .. dressed / walls)
+            assert(layers / dressed >= 1.6, tone .. ": camadas por parede de dentro: " .. layers / dressed)
+            assert(three / walls >= 0.1, tone .. ": pouca parede com 3 camadas: " .. three / walls)
+            -- "apagadas, acabadas, sujas" (Johan): dentro, a sujeira não fica atrás do sangue
+            assert((n.grime or 0) >= (n.blood or 0), tone .. ": sujeira " .. (n.grime or 0) .. ", sangue " .. (n.blood or 0))
         end
-        assert(dressed / walls >= 0.9, "parede de dentro limpa: " .. dressed / walls)
-        assert(layers / dressed >= 1.6, "camadas por parede de dentro: " .. layers / dressed)
-        assert(three / walls >= 0.1, "pouca parede com 3 camadas: " .. three / walls)
-        -- "apagadas, acabadas, sujas" (Johan): dentro, a sujeira não fica atrás do sangue
-        assert((n.grime or 0) >= (n.blood or 0), "dentro: sujeira " .. (n.grime or 0) .. ", sangue " .. (n.blood or 0))
     end,
 
-    -- fora: uma camada por lado, como antes; sangue continua mandando, pichação entra
+    -- fora: uma camada por lado, como antes, pichação entra. Na vermelha o sangue continua
+    -- mandando; na branca (sprint 0035) manda o Silent Hill: tinta descascando e ferrugem
     dressing_rules_outside_walls_one_layer = function()
         local R = load()
-        local n = {}
-        for _, ls in pairs(wallsOf(R, true, 1)) do
-            if ls then
-                assert(#ls == 1, "parede de fora com " .. #ls .. " camadas")
-                local k = wallKind(ls[1])
-                n[k] = (n[k] or 0) + 1
+        for _, red in ipairs({ false, true }) do
+            local n, total = {}, 0
+            for _, ls in pairs(wallsOf(R, true, 1, nil, nil, red)) do
+                if ls then
+                    assert(#ls == 1, "parede de fora com " .. #ls .. " camadas")
+                    local k = wallKind(ls[1])
+                    n[k] = (n[k] or 0) + 1
+                    total = total + 1
+                end
             end
-        end
-        local writing = n.writing or 0
-        assert(writing > 150, "pouca pichação fora: " .. writing)
-        for k, v in pairs(n) do
-            if k ~= "blood" then assert((n.blood or 0) > v, "sangue não manda fora: blood " .. (n.blood or 0) .. ", " .. k .. " " .. v) end
+            local writing = n.writing or 0
+            assert(writing > 150, "pouca pichação fora: " .. writing)
+            if red then
+                for k, v in pairs(n) do
+                    if k ~= "blood" then assert((n.blood or 0) > v, "sangue não manda fora: blood " .. (n.blood or 0) .. ", " .. k .. " " .. v) end
+                end
+            else
+                local sh = (n.paint or 0) + (n.rust or 0)
+                assert(sh > total * 0.45, "branca sem Silent Hill fora: " .. sh .. " de " .. total)
+                assert((n.blood or 0) < (n.paint or 0) and (n.blood or 0) < (n.rust or 0), "sangue manda na branca")
+            end
         end
     end,
 
@@ -806,5 +845,209 @@ return {
         for x = 0, 59, 7 do
             for y = 0, 59, 7 do assert(R.reveal(700 + x, 900 + y, 0, 3) == first[x .. "," .. y], "mudou sem mudar a entrada") end
         end
+    end,
+
+    -- sprint 0035, Tarefa 4b: os sets próprios saem da lista gerada (shared/NOM_OwnSpriteList,
+    -- scripts/gen_tiles.py). Cada nome está na lista, no lado do set (chão em set de chão, W em
+    -- parede W, N em parede N: a flag do sprite e o recorte do PNG são desse lado), e todo PNG da
+    -- lista está em algum set
+    dressing_rules_own_sets_match_list = function()
+        local R = load()
+        local L = NOM_OwnSpriteList
+        local byName, used = {}, {}
+        for _, s in ipairs(L.SPRITES) do byName[s.name] = s end
+        local kinds = {}
+        for setName, s in pairs(R.SETS) do
+            if s.own then
+                assert(#s.idx >= 4, "set próprio pequeno: " .. setName)
+                local kind
+                for _, i in ipairs(s.idx) do
+                    local name = R.name({ setName, i })
+                    local e = byName[name]
+                    assert(e, "nome fora da lista: " .. tostring(name))
+                    assert(e.side == (s.wall or "F"), name .. " (lado " .. e.side .. ") no set " .. setName)
+                    assert(kind == nil or e.kind == kind, "set misturado: " .. setName)
+                    kind = e.kind
+                    assert(not used[name], "nome em dois sets: " .. name)
+                    used[name] = true
+                end
+                kinds[setName] = kind
+            end
+        end
+        for _, s in ipairs(L.SPRITES) do assert(used[s.name], "PNG sem set: " .. s.name) end
+        assert(kinds.grateFloor == "Grade" and kinds.plateFloor == "Chapa" and kinds.rustFloor == "Ferrugem"
+            and kinds.paintFloor == "Tinta", "sets de chão")
+        for _, side in ipairs({ "W", "N" }) do
+            assert(kinds["paintWall" .. side] == "Tinta" and kinds["peelWall" .. side] == "Descasca"
+                and kinds["rustWall" .. side] == "Ferrugem", "sets de parede " .. side)
+        end
+    end,
+
+    -- a parede só ganha sprite próprio do lado dela, nas duas cores, dentro e fora (sprite W na
+    -- parede N cai fora da face e com a profundidade da outra parede)
+    dressing_rules_own_wall_side = function()
+        local R = load()
+        local byName = {}
+        for _, s in ipairs(NOM_OwnSpriteList.SPRITES) do byName[s.name] = s end
+        local own = 0
+        for _, red in ipairs({ false, true }) do
+            for _, outside in ipairs({ false, true }) do
+                for key, ls in pairs(wallsOf(R, outside, 1.5, 4, 40, red)) do
+                    local side = key:sub(-1)
+                    for _, l in ipairs(ls or {}) do
+                        local e = byName[R.name(l)]
+                        if e then
+                            own = own + 1
+                            assert(e.side == side, R.name(l) .. " na parede " .. side)
+                        end
+                    end
+                end
+            end
+        end
+        assert(own > 1000, "pouco sprite próprio em parede: " .. own)
+    end,
+
+    -- "mais Silent Hill" (Johan, 06/10): na branca o chão ganha manchas de metal (grade, chapa,
+    -- ferrugem, tinta lascada), dentro e fora; a grade é a mais comum; as paredes de dentro
+    -- descascam e enferrujam
+    dressing_rules_white_favors_silent_hill = function()
+        local R = load()
+        for _, outside in ipairs({ false, true }) do
+            local n, metal, by = 0, 0, {}
+            for x = 0, 79 do
+                for y = 0, 79 do
+                    n = n + 1
+                    local f = R.floor(11000 + x, 12000 + y, 0, 5, 1, outside, false)
+                    local any = false
+                    for _, l in ipairs(f or {}) do
+                        if isOwnSet(R, l[1]) then
+                            any = true
+                            by[l[1]] = (by[l[1]] or 0) + 1
+                        end
+                    end
+                    if any then metal = metal + 1 end
+                end
+            end
+            local where = outside and "fora" or "dentro"
+            assert(metal / n >= 0.25 and metal / n <= 0.6, where .. ": metal no chão " .. metal / n)
+            for _, s in ipairs({ "grateFloor", "plateFloor", "rustFloor", "paintFloor" }) do
+                assert((by[s] or 0) > 50, where .. ": pouco " .. s .. " (" .. (by[s] or 0) .. ")")
+            end
+            for k, v in pairs(by) do
+                if k ~= "grateFloor" then assert(by.grateFloor > v, where .. ": grade não é a mais comum (" .. k .. ")") end
+            end
+        end
+        local walls, sh = 0, 0
+        for _, ls in pairs(wallsOf(R, false, 1, 6, 60, false)) do
+            if ls then
+                walls = walls + 1
+                for _, l in ipairs(ls) do
+                    if isOwnSet(R, l[1]) then
+                        sh = sh + 1
+                        break
+                    end
+                end
+            end
+        end
+        assert(sh / walls >= 0.6, "branca: parede de dentro sem Silent Hill " .. sh / walls)
+    end,
+
+    -- o metal vem em manchas (o chão inteiro de grade leria como textura repetida) e, dentro da
+    -- mancha, em painéis do mesmo tipo
+    dressing_rules_metal_patches = function()
+        local R = load()
+        local has, kind, n, tot = {}, {}, 0, 0
+        for x = 0, 89 do
+            for y = 0, 89 do
+                local k = x .. "," .. y
+                for _, l in ipairs(R.floor(13000 + x, 9000 + y, 0, 3, 1, false, false) or {}) do
+                    if isOwnSet(R, l[1]) then
+                        has[k], kind[k] = true, l[1]
+                    end
+                end
+                if has[k] then n = n + 1 end
+                tot = tot + 1
+            end
+        end
+        local p = n / tot
+        local flips, pairs_, same, both = 0, 0, 0, 0
+        for x = 0, 88 do
+            for y = 0, 88 do
+                for _, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+                    local a, b = x .. "," .. y, (x + o[1]) .. "," .. (y + o[2])
+                    pairs_ = pairs_ + 1
+                    if (has[a] or false) ~= (has[b] or false) then flips = flips + 1 end
+                    if has[a] and has[b] then
+                        both = both + 1
+                        if kind[a] == kind[b] then same = same + 1 end
+                    end
+                end
+            end
+        end
+        assert(flips / pairs_ / (2 * p * (1 - p)) < 0.6, "metal tile a tile")
+        assert(same / both > 0.6, "vizinhos de metal com tipo trocado demais: " .. same / both)
+    end,
+
+    -- vermelha: o sangue de parede fica (manda fora), a parede ganha ferrugem, o chão ganha
+    -- ferrugem em manchas; sem grade, chapa nem tinta (isso é da branca) e sem sangue no chão
+    dressing_rules_red_keeps_wall_blood_gains_rust = function()
+        local R = load()
+        local d = R.density(1, true)
+        local floorRust, other = 0, 0
+        for x = 0, 79 do
+            for y = 0, 79 do
+                for _, outside in ipairs({ false, true }) do
+                    for _, l in ipairs(R.floor(14000 + x, 3000 + y, 0, 5, d, outside, true) or {}) do
+                        if l[1] == "rustFloor" then floorRust = floorRust + 1 elseif isOwnSet(R, l[1]) then other = other + 1 end
+                    end
+                end
+            end
+        end
+        assert(floorRust > 300, "vermelha sem ferrugem no chão: " .. floorRust)
+        assert(other == 0, "metal da branca na vermelha: " .. other)
+        local blood, rust = 0, 0
+        for _, outside in ipairs({ false, true }) do
+            for _, ls in pairs(wallsOf(R, outside, d, 5, 60, true)) do
+                for _, l in ipairs(ls or {}) do
+                    if wallKind(l) == "blood" then blood = blood + 1 end
+                    if wallKind(l) == "rust" then rust = rust + 1 end
+                end
+            end
+        end
+        assert(blood > 1000, "vermelha sem sangue de parede: " .. blood)
+        assert(rust > 400 and rust < blood, "ferrugem na parede vermelha: " .. rust .. " (sangue " .. blood .. ")")
+    end,
+
+    -- a cor entra no sorteio sem tirar o determinismo: mesma entrada, mesma resposta, nas duas
+    -- cores; branca e vermelha dão desenhos diferentes no mesmo square
+    dressing_rules_tone_deterministic = function()
+        local R = load()
+        local function key(ls)
+            if not ls then return "-" end
+            local t = {}
+            for _, l in ipairs(ls) do t[#t + 1] = l[1] .. l[2] end
+            return table.concat(t, ";")
+        end
+        local first, diff = {}, 0
+        for x = 0, 29 do
+            for y = 0, 29 do
+                for _, red in ipairs({ false, true }) do
+                    first[x .. "," .. y .. tostring(red)] = key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false, red))
+                        .. "|" .. key(R.wall(1500 + x, 1600 + y, 0, 3, 1, x % 2 == 0, false, red))
+                end
+            end
+        end
+        R = load()
+        for x = 0, 29 do
+            for y = 0, 29 do
+                for _, red in ipairs({ false, true }) do
+                    local k = key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false, red))
+                        .. "|" .. key(R.wall(1500 + x, 1600 + y, 0, 3, 1, x % 2 == 0, false, red))
+                    assert(k == first[x .. "," .. y .. tostring(red)], "mudou sem mudar a entrada")
+                end
+                if first[x .. "," .. y .. "false"] ~= first[x .. "," .. y .. "true"] then diff = diff + 1 end
+            end
+        end
+        assert(diff > 450, "branca e vermelha quase iguais: " .. diff)
     end,
 }

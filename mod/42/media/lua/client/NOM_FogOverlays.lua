@@ -26,8 +26,10 @@
 --   chunk pode sair antes dele, com o passo do tick a mais. Com 2 tiles por tick (carro a
 --   ~30 tiles/s com 15 FPS): 38 + 2 + 2 + 1 (square inteiro) = 43 < 48. Aguenta até ~6 tiles
 --   num tick; acima disso, só o teleporte, que já tinha esse risco.
--- * LoadGridsquare: floors_burnt_01_* anexado (ninguém no vanilla anexa) que não é nosso é
---   vazado de uma sessão que caiu depois de um hot save: sai. Nome vanilla vazado fica (ADR-017).
+-- * LoadGridsquare: floors_burnt_01_* ou textura nossa anexados (ninguém no vanilla anexa,
+--   D.own) que não são do registro são vazados de uma sessão que caiu depois de um hot save:
+--   saem. Nome vanilla vazado fica (ADR-017). A textura nossa é sprite de runtime (ID 20000000):
+--   o load já a descarta (pz-api-notes §26).
 -- * A ação do jogador em curso segura o square do alvo limpo (pá, marreta, móvel).
 -- * Nada pela rede: nenhum transmit*. No cliente de MP o chunk nem é gravado
 --   (IsoChunk.Save sai com GameClient.client).
@@ -36,12 +38,17 @@
 -- cada square espera o atraso dele (D.reveal × REVEAL_MS) e solta lascas ao ser vestido
 -- (NOM_Flakes.burst); no fim da névoa os alvos saem pelo mesmo ruído, ao contrário, ao longo de
 -- UNREVEAL_MS. Só visual: o OnSave, a morte e o corte de MAX_RADIUS + SLACK tiram na hora.
+--
+-- Silent Hill (sprint 0035, Tarefa 4b): a regra depende da cor (D.floor/D.wall com red) e usa
+-- texturas nossas, sprites de runtime que o client/NOM_OwnSprites.lua registra; o ensure roda
+-- antes do primeiro anexo da sessão (depois disso, só Lua).
 if isServer() then return end
 
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_DressingRules"
 require "NOM_ScreenFxOptions"
+require "NOM_OwnSprites"
 
 NOM_FogOverlays = {
     UPDATE_TICKS = 10,
@@ -99,6 +106,7 @@ local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
 local cursor, gen, cutX, cutY
 local updX, updY -- a posição na atualização anterior (LIGHT_DIV)
 local density, pendingD, pendingAt
+local red        -- a cor do desenho em vigor (névoa vermelha)
 local verifyKeys, verifyAt
 local radius
 -- Transição (sprint 0035). revealAt: a borda ao vivo, enquanto a janela está aberta;
@@ -115,6 +123,7 @@ local function forget()
     cursor, gen, cutX, cutY = 1, nil, nil, nil
     updX, updY = nil, nil
     density, pendingD, pendingAt = nil, nil, nil
+    red = false
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
     revealAt, revealSince, pend, pendAt, unrevealAt, tickX, tickY = nil, nil, {}, 0, nil, nil, nil
@@ -323,7 +332,7 @@ local function dress(cell, x, y, z, sk, per, d, rv)
     local outside = sq:isOutside()
     local props
     if not reg[sk .. "F"] then
-        local f = D.floor(x, y, z, per, d, outside)
+        local f = D.floor(x, y, z, per, d, outside, red)
         if f then
             props = sq:getProperties()
             local obj = not props:has(IsoFlagType.water) and sq:getFloor() or nil
@@ -340,7 +349,7 @@ local function dress(cell, x, y, z, sk, per, d, rv)
     for _, s in ipairs(SIDES) do
         local side, north = s[1], s[2]
         if not reg[sk .. side] then
-            local w = D.wall(x, y, z, per, d, north, outside)
+            local w = D.wall(x, y, z, per, d, north, outside, red)
             if w then
                 local obj = sq:getWall(north)
                 props = props or (obj and sq:getProperties())
@@ -565,10 +574,12 @@ local function update(busy)
     local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
     local per = NOM_FogState.period or 0
     if on then
+        NOM_OwnSprites.ensure()
         radius = screenRadius(p, px, py)
-        local g = per .. ":" .. d
+        local r = NOM_FogState.red == true
+        local g = per .. ":" .. d .. (r and ":r" or "")
         if g ~= gen then -- outro desenho: o velho sai no prune
-            gen = g
+            gen, red = g, r
             reseen()
         end
         hold(p)
@@ -628,7 +639,7 @@ local function mine(e, obj, inst)
     return false
 end
 
--- Chunk carregado do disco: tira floors_burnt_01_* anexado que não é do registro (vazado).
+-- Chunk carregado do disco: tira o que só o mod anexa (D.own) e não é do registro (vazado).
 Events.LoadGridsquare.Add(function(sq)
     local sk = sq:getX() .. "," .. sq:getY() .. "," .. sq:getZ()
     local removed = 0

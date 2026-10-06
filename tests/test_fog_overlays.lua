@@ -37,14 +37,14 @@ end
 local function expect(G, x, y, z, kind)
     local sq = G.square(x, y, z)
     local outside = sq:isOutside()
-    local per, d = NOM_FogState.period or 0, density()
+    local per, d, red = NOM_FogState.period or 0, density(), NOM_FogState.red
     local out = {}
     if kind == "F" then
-        local f = D().floor(x, y, z, per, d, outside)
+        local f = D().floor(x, y, z, per, d, outside, red)
         for _, l in ipairs(f or {}) do out[#out + 1] = D().name(l) end
         if f and f.grime then out[#out + 1] = D().name(f.grime) end
     else
-        for _, l in ipairs(D().wall(x, y, z, per, d, kind == "N", outside) or {}) do out[#out + 1] = D().name(l) end
+        for _, l in ipairs(D().wall(x, y, z, per, d, kind == "N", outside, red) or {}) do out[#out + 1] = D().name(l) end
     end
     return table.concat(out, "|")
 end
@@ -396,7 +396,7 @@ return {
         for _, o in pairs(G.objs) do
             for _, n in ipairs(G.attachedNames(o, "mod")) do
                 local inside = o.x >= 100 and o.x <= 115 and o.y >= 85 and o.y <= 115
-                if D().own(n) then
+                if n:find("^floors_burnt_01_") then
                     assert(inside, "queimado fora: " .. o.x .. "," .. o.y)
                     burnt = burnt + 1
                 end
@@ -1243,5 +1243,169 @@ return {
         G.seconds((O().REVEAL_MS + O().REVEAL_TAIL_MS) / 1000 + 6)
         assert(not O().revealing())
         laidOut(G, O().radius())
+    end,
+
+    -- SILENT HILL (sprint 0035, Tarefa 4b) ----------------------------------------------------
+
+    -- na branca o Outro Mundo ganha as texturas nossas (sprites de runtime registrados pelo
+    -- NOM_OwnSprites antes do primeiro anexo): cada uma no objeto do lado dela, com a flag do
+    -- lado (profundidade, spike §2) e com textura; o resto do desenho é o que a regra pede
+    overlays_white_fog_own_sprites = function()
+        local G = setup({ density = 1 })
+        walls(G, 90, 90, 20)
+        for x = 90, 99 do for y = 90, 109 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+        NOM_FogState.set(true, 3)
+        G.seconds(5)
+        laidOut(G, D().MIN_RADIUS)
+        local own = { F = 0, N = 0, W = 0 }
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                if n:sub(1, #NOM_OwnSpriteList.DIR) == NOM_OwnSpriteList.DIR then
+                    own[o.kind] = own[o.kind] + 1
+                    assert(n:find("_" .. o.kind .. "_%d+%.png$"), n .. " no objeto " .. o.kind)
+                end
+            end
+        end
+        assert(own.F > 100 and own.N > 30 and own.W > 30, "pouco Silent Hill: " .. own.F .. "/" .. own.N .. "/" .. own.W)
+        assert(#G.badFlags == 0, "sprite sem a flag do lado: " .. table.concat(G.badFlags, ", "))
+        assert(#G.emptyAttached == 0, "sprite vazio anexado: " .. table.concat(G.emptyAttached, ", "))
+    end,
+
+    -- o sprite próprio sai antes do save como o vanilla do mod (o registro acha a instância pelo
+    -- nome: depende do setName) e volta depois; no fim da névoa, tudo sai
+    overlays_own_sprites_out_before_save = function()
+        local G = setup({ density = 2 })
+        walls(G, 96, 96, 8)
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        local function own()
+            local n = 0
+            for _, o in pairs(G.objs) do
+                for _, name in ipairs(G.attachedNames(o, "mod")) do
+                    if D().own(name) and not name:find("^floors_burnt") then n = n + 1 end
+                end
+            end
+            return n
+        end
+        local before = own()
+        assert(before > 100, "pouco sprite próprio: " .. before)
+        assert(G.saveSnapshot().ours == 0, "o save gravaria anexo do mod")
+        G.seconds(3)
+        assert(own() == before, "não voltou igual: " .. own() .. " de " .. before)
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(G.ours() == 0, "sobrou: " .. G.ours())
+    end,
+
+    -- o mundo falso pega o setName esquecido (spike §7, risco alto): sem nome o
+    -- getParentSprite():getName() é nil, o mod não acha o que pôs e o save grava. Com o
+    -- NOM_OwnSprites certo, o teste de cima dá 0
+    overlays_fake_catches_missing_set_name = function()
+        local G = setup({ density = 2 })
+        G.ignoreSetName = true
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        assert(G.saveSnapshot().ours > 0, "o fake não mede o setName esquecido")
+    end,
+
+    -- PNG que falta: o sprite não é criado (nada de sprite vazio no namedMap) e o nome não
+    -- entra; o resto do Silent Hill sai normal e limpa igual
+    overlays_own_missing_texture_skipped = function()
+        local G = setup({ density = 2 })
+        for _, s in ipairs(NOM_OwnSpriteList.SPRITES) do
+            if s.kind == "Grade" then G.missingTex[s.name] = true end
+        end
+        NOM_FogState.set(true, 3)
+        G.seconds(4)
+        local other = 0
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                assert(not n:find("_Grade_"), "anexou sem textura: " .. n)
+                if n:sub(1, #NOM_OwnSpriteList.DIR) == NOM_OwnSpriteList.DIR then other = other + 1 end
+            end
+        end
+        assert(other > 50, "o resto não saiu: " .. other)
+        assert(#G.emptyAttached == 0, "sprite vazio: " .. table.concat(G.emptyAttached, ", "))
+        for name in pairs(G.sprites) do assert(not name:find("_Grade_"), "sprite vazio no namedMap: " .. name) end
+        assert(G.saveSnapshot().ours == 0)
+        NOM_FogState.set(false)
+        G.seconds(5)
+        assert(G.ours() == 0)
+    end,
+
+    -- vazou pro save (crash depois de hot save): o anexo próprio tem ID 20000000, fora do
+    -- intMap, e o load o descarta (spike §5). Um anexo próprio que o registro não conhece sai no
+    -- LoadGridsquare pelo prefixo (D.own), como o floors_burnt_01_*
+    overlays_own_leak_gone_on_load = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.set(true, 3)
+        G.seconds(1)
+        local name = NOM_OwnSpriteList.SPRITES[1].name
+        G.loadSquare(300, 300, 0, { F = { name }, vanillaF = { "blends_natural_01_1" } })
+        assert(G.discarded == 1, "o load não descartou o ID 20000000")
+        assert(mods(G, G.objs["300,300,0F"]) == "")
+        assert(table.concat(G.attachedNames(G.objs["300,300,0F"], "vanilla"), "|") == "blends_natural_01_1")
+        local o = G.floorOf(301, 300, 0)
+        o:addAttachedAnimSpriteByName(name)
+        assert(mods(G, o) == name, "o fake não anexou (teste não mede)")
+        G.fire("LoadGridsquare", G.square(301, 300, 0))
+        assert(mods(G, o) == "", "o LoadGridsquare não limpou o prefixo próprio")
+        assert(table.concat(G.attachedNames(o, "vanilla"), "|") ~= "", "tirou o vanilla")
+    end,
+
+    -- vermelha: sangue na parede, ferrugem na parede e no chão; sem a grade, a chapa e a tinta
+    -- da branca e sem sangue no chão
+    overlays_red_fog_blood_walls_and_rust = function()
+        local G = setup({ density = 1 })
+        walls(G, 90, 90, 20)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(5)
+        laidOut(G, D().MIN_RADIUS)
+        local blood, rustWall, rustFloor = 0, 0, 0
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                if o.kind == "F" then
+                    assert(not n:lower():find("blood"), "sangue no chão: " .. n)
+                    assert(not n:find("_Grade_") and not n:find("_Chapa_") and not n:find("_Tinta_"), "metal da branca: " .. n)
+                    if n:find("_Ferrugem_F_") then rustFloor = rustFloor + 1 end
+                else
+                    if n:find("blood") then blood = blood + 1 end
+                    if n:find("_Ferrugem_") then rustWall = rustWall + 1 end
+                end
+            end
+        end
+        assert(blood > 30 and rustWall > 10 and rustFloor > 30, "sangue " .. blood .. ", ferrugem " .. rustWall .. "/" .. rustFloor)
+        assert(#G.badFlags == 0, table.concat(G.badFlags, ", "))
+    end,
+
+    -- a cor muda no meio (debug setRedFog com a névoa aberta): outro desenho, mesmo com a mesma
+    -- densidade; o velho sai, o novo é o que a regra pede pra vermelha
+    overlays_color_change_redraws = function()
+        local G = setup({ density = 1 })
+        D().density = function() return 1 end
+        NOM_FogState.set(true, 3)
+        G.seconds(5)
+        laidOut(G, D().MIN_RADIUS)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(8)
+        assert(laidOut(G, D().MIN_RADIUS) > 300, "não redesenhou na vermelha")
+    end,
+
+    -- o registro roda uma vez por sessão, antes do primeiro anexo; não por tick nem por névoa
+    overlays_own_sprites_registered_once = function()
+        local G = setup({ density = 1 })
+        local calls, gs = 0, getSprite
+        getSprite = function(n)
+            calls = calls + 1
+            return gs(n)
+        end
+        NOM_FogState.set(true, 3)
+        G.seconds(6)
+        NOM_FogState.set(false)
+        G.seconds(5)
+        NOM_FogState.set(true, 4)
+        G.seconds(4)
+        getSprite = gs
+        assert(calls == #NOM_OwnSpriteList.SPRITES, "getSprite " .. calls .. " vezes")
     end,
 }

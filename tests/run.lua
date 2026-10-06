@@ -48,6 +48,7 @@ local FILES = {
     "tests/test_devices.lua",
     "tests/test_fog_vignette.lua",
     "tests/test_dressing_rules.lua",
+    "tests/test_own_sprites.lua",
     "tests/test_fog_overlays.lua",
     "tests/test_flake_rules.lua",
     "tests/test_flakes.lua",
