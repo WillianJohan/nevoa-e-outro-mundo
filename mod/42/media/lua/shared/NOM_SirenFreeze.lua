@@ -25,6 +25,12 @@ function F.start(dirDeg, durationMs)
     untilMs = getTimestampMs() + (durationMs or 0) + F.SAFETY_MS
 end
 
+-- Solo: quem conta a sirene (server/NOM_FogEvent.lua) renova o prazo a cada tick com o
+-- que falta, então a pausa, que segura a contagem, também segura o prazo.
+function F.extend(durationMs)
+    if F.active then untilMs = getTimestampMs() + durationMs + F.SAFETY_MS end
+end
+
 -- Solta quem este processo congelou. Carpideira parada pela regra dela fica parada.
 function F.stop()
     for z in pairs(F.frozen) do

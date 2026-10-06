@@ -178,6 +178,23 @@ return {
         G.seconds(0.2)
         assert(NOM_World.fog == true)
     end,
+    -- review final da 0033 (I1): no solo a pausa segura a contagem e também o prazo de
+    -- segurança do congelamento; pausar mais que SAFETY_MS não solta os zumbis antes da névoa
+    fog_event_solo_pause_keeps_freeze = function()
+        local G = setup()
+        local a = G.zombie({ x = 10, y = 10 })
+        toSiren(G)
+        G.tick(1)
+        assert(a.useless == true)
+        G.paused = true
+        G.seconds(20)
+        G.paused = false
+        G.seconds(44.8)
+        assert(NOM_World.fog == false, "névoa antes dos 45 s")
+        assert(a.useless == true and NOM_SirenFreeze.active, "a pausa soltou os zumbis antes da névoa")
+        G.seconds(0.3)
+        assert(NOM_World.fog == true and a.useless == false and not NOM_SirenFreeze.active, "a névoa não soltou")
+    end,
     -- sono / fast-forward / admin pulando 30 dias: um evento só, um período só
     fog_event_no_compounding_after_long_skip = function()
         local G = setup()

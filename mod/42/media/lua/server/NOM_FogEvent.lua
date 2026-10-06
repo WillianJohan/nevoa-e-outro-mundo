@@ -203,6 +203,7 @@ Events.OnTick.Add(function()
     local t = getTimestampMs()
     countdown = R.countdown(countdown, t - lastMs, isGamePaused())
     lastMs = t
+    if not isServer() then NOM_SirenFreeze.extend(countdown) end
     if countdown <= 0 then begin() end
 end)
 
