@@ -2,17 +2,19 @@
 -- clima: a agenda é por dia (sprint 0033, shared/NOM_FogEventRules: o dia sorteia se tem
 -- névoa e a que horas, pode ter uma segunda depois da folga, e o terceiro dia sem névoa
 -- tem com certeza). Na hora sorteada a sirene toca em todo jogador (com a direção de onde
--- ela "vem", pro congelamento) e, 15 s reais depois, a névoa começa e dura o que o tipo
+-- ela "vem", pro congelamento) e começa a fuga (sprint 0034): a névoa visual sobe na hora
+-- (NOM_World.rising) e, 30 s reais depois, a névoa de jogo começa e dura o que o tipo
 -- manda (branca ou vermelha, em horas de jogo). Depois do fim vem a calmaria
 -- (NOM_World.calm). O estado mora no ModData global (data.fog: night = período, inNight,
 -- next, endAt, red, seed, bornAt, day, lastEnd, calmUntil...) e sobrevive a
--- salvar/carregar; a contagem da sirene só existe em memória: recarregar no meio dela toca
--- a sirene de novo (a mesma cor, red já salvo) e recomeça os 15 s (o next segue no passado).
+-- salvar/carregar; a contagem da fuga só existe em memória: recarregar no meio dela toca
+-- a sirene de novo (a mesma cor, red já salvo) e recomeça os 30 s (o next segue no passado).
 -- A flag vai pro NOM_World (setFog), e dele pros consumidores (NOM_Fog avisa os
 -- clientes com o período). O canal de névoa do clima é do NOM_ClimateLook.
 if isClient() then return end
 
 require "NOM_World"
+require "NOM_FogState"
 require "NOM_Config"
 require "NOM_FogEventRules"
 require "NOM_Siren"
@@ -64,6 +66,13 @@ local function cfg() return R.config(NOM_Config.get) end
 
 local function hours(v) return v and string.format("%.2f", v) or "-" end
 
+-- A subida da fuga no mundo (o clima do servidor) e, no solo, em quem vê. No dedicado o
+-- cliente liga a dele pelos comandos siren/sirenStop/fog (client/NOM_FogClient.lua).
+local function rise(on, red)
+    NOM_World.setRising(on, red)
+    if not isServer() then NOM_FogState.setRising(on, red) end
+end
+
 function NOM_FogEvent.period()
     return state().night or 0
 end
@@ -86,18 +95,19 @@ local function decideRed()
     return NOM_VariantRules.redFog((s.night or 0) + 1, vc, s.seed), vc.redFogChance
 end
 
--- Toca a sirene e começa a contagem. skip: a névoa começa no próximo tick (debug).
--- Recusa se o evento já está aberto ou a sirene já tocou.
+-- Toca a sirene, sobe a névoa visual e começa a fuga. skip: a névoa começa no próximo
+-- tick (debug). Recusa se o evento já está aberto ou a sirene já tocou.
 -- A cor fica no data.fog.red: se já estava salva (recarga durante a sirene), vale ela.
 function NOM_FogEvent.siren(skip)
     local s = state()
     if s.inNight or countdown then return false end
-    countdown, lastMs = skip and 0 or R.SIREN_MS, getTimestampMs()
+    countdown, lastMs = skip and 0 or R.GRACE_MS, getTimestampMs()
     local chance = "-" -- cor salva reaproveitada (recarga): não houve sorteio
     if s.red == nil or forcedRed ~= nil then
         local red, c = decideRed()
         s.red, chance = red, hours(c)
     end
+    rise(true, s.red)
     -- a direção é do período que a sirene anuncia (o próximo): pura da semente e do número,
     -- igual em toda máquina (a recarga durante a contagem repete a mesma)
     local dir = R.sirenDir(s.seed, (s.night or 0) + 1)
@@ -108,7 +118,7 @@ function NOM_FogEvent.siren(skip)
         NOM_Siren.play(s.red)
         NOM_SirenFreeze.start(dir, countdown)
     end
-    -- inteiro: "contagem=15000"; dias e chance da vermelha com 2 casas
+    -- inteiro: "contagem=30000"; dias e chance da vermelha com 2 casas
     debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
         " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance .. " dir=" .. hours(dir))
     return true
@@ -124,6 +134,7 @@ function NOM_FogEvent.stop()
     if not state().inNight then
         if was then
             R.cancel(state())
+            rise(false)
             if isServer() then
                 sendServerCommand(MODULE, "sirenStop", {})
             else
@@ -154,6 +165,7 @@ function NOM_FogEvent.setRed(on)
     forcedRed = on and true or nil
     if countdown then
         s.red = on == true
+        rise(true, s.red)
         return true
     end
     if on then return NOM_FogEvent.siren(false) end
@@ -175,11 +187,15 @@ end
 local function begin()
     countdown = nil
     forcedRed = nil
-    if not isServer() then NOM_SirenFreeze.stop() end -- a sirene acabou: os zumbis soltam antes da névoa
-    if not R.start(state(), now(), cfg(), rand, state().red) then return end
+    if not isServer() then NOM_SirenFreeze.stop() end -- a fuga acabou: os zumbis soltam antes da névoa
+    if not R.start(state(), now(), cfg(), rand, state().red) then
+        rise(false)
+        return
+    end
     NOM_World.setCalm(false) -- R.start zerou a calmaria; o clima só relê no minuto seguinte
     debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. " vermelha=" .. tostring(state().red))
     NOM_World.setFog(true, state().red)
+    rise(false) -- depois do setFog: no solo quem vê já está com on e não pisca
 end
 
 -- Uma vez por minuto de jogo. Também acerta a flag na primeira leitura depois

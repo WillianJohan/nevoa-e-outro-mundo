@@ -104,4 +104,58 @@ return {
         NOM_World.setCalm(nil)
         assert(NOM_World.calm == false)
     end,
+    -- sprint 0034: a névoa sobe na sirene (rising), sem abrir a névoa de jogo; risingRed só
+    -- com rising; borda "rising" só quando muda
+    world_rising_flag_edges = function()
+        load(12)
+        local seen = {}
+        NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
+        assert(NOM_World.rising == false and NOM_World.risingRed == false)
+        NOM_World.setRising(false, true)
+        assert(NOM_World.risingRed == false, "vermelha sem subida")
+        NOM_World.setRising(true, true)
+        NOM_World.setRising(true, true)
+        assert(NOM_World.rising == true and NOM_World.risingRed == true)
+        assert(NOM_World.fog == false, "a subida abriu a névoa de jogo")
+        NOM_World.setRising(1)
+        assert(NOM_World.rising == false and NOM_World.risingRed == false, "só true liga")
+        NOM_World.setRising(true)
+        assert(NOM_World.risingRed == false)
+        NOM_World.setRising(false)
+        assert(table.concat(seen, ",") == "rising=true,rising=false,rising=true,rising=false", table.concat(seen, ","))
+    end,
+    -- quem vê (shared/NOM_FogState): visible() é a névoa ou a subida; visibleRed() a cor de
+    -- quem estiver valendo
+    fog_state_visible_helpers = function()
+        NOM_FogState = nil
+        package.loaded["NOM_FogState"] = nil
+        require "NOM_FogState"
+        local S = NOM_FogState
+        assert(S.visible() == false and S.visibleRed() == false)
+        S.setRising(true, true)
+        assert(S.rising == true and S.risingRed == true and S.on == false)
+        assert(S.visible() == true and S.visibleRed() == true)
+        S.setRising(false, true)
+        assert(S.risingRed == false and S.visible() == false and S.visibleRed() == false)
+        S.setRising(true)
+        assert(S.visible() == true and S.visibleRed() == false)
+        S.set(true, 1, false)
+        S.setRising(false)
+        assert(S.visible() == true and S.visibleRed() == false)
+        S.set(true, 1, true)
+        assert(S.visibleRed() == true)
+        S.set(false, 1)
+        assert(S.visible() == false and S.visibleRed() == false)
+    end,
+    -- a subida não é borda de névoa: quem ouve NOM_FogState.onChange (fog on) não dispara
+    fog_state_rising_does_not_fire_on_change = function()
+        NOM_FogState = nil
+        package.loaded["NOM_FogState"] = nil
+        require "NOM_FogState"
+        local n = 0
+        NOM_FogState.onChange(function() n = n + 1 end)
+        NOM_FogState.setRising(true, true)
+        NOM_FogState.setRising(false)
+        assert(n == 0, "a subida disparou o onChange da névoa")
+    end,
 }

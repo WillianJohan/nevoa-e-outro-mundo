@@ -23,8 +23,10 @@ local function cfg(over)
 end
 
 return {
-    fog_event_rules_siren_is_15_seconds = function()
-        assert(R.SIREN_MS == 15000)
+    -- sprint 0034: a contagem é a fuga de 30 s (o som da sirene dura 15 s e não conta)
+    fog_event_rules_grace_is_30_seconds = function()
+        assert(R.GRACE_MS == 30000)
+        assert(R.SIREN_MS == nil, "sobrou a constante velha")
     end,
     -- 65% subindo em linha reta até 85% no dia 60, fixo depois; sem curva, o sandbox
     fog_event_rules_day_chance_curve = function()
@@ -179,10 +181,10 @@ return {
         assert(s.inNight == false and s.night == 4)
     end,
     fog_event_rules_countdown_pauses_and_caps = function()
-        assert(R.countdown(R.SIREN_MS, 16, false) == R.SIREN_MS - 16)
-        assert(R.countdown(R.SIREN_MS, 16, true) == R.SIREN_MS, "pausado contou")
-        assert(R.countdown(R.SIREN_MS, 10000, false) == R.SIREN_MS - R.MAX_STEP_MS, "travada comeu a sirene")
-        assert(R.countdown(R.SIREN_MS, -5, false) == R.SIREN_MS, "relógio voltou")
+        assert(R.countdown(R.GRACE_MS, 16, false) == R.GRACE_MS - 16)
+        assert(R.countdown(R.GRACE_MS, 16, true) == R.GRACE_MS, "pausado contou")
+        assert(R.countdown(R.GRACE_MS, 10000, false) == R.GRACE_MS - R.MAX_STEP_MS, "travada comeu a sirene")
+        assert(R.countdown(R.GRACE_MS, -5, false) == R.GRACE_MS, "relógio voltou")
     end,
     fog_event_rules_config_reads_sandbox = function()
         local t = { FogDailyChance = 65, FogMaxDailyChance = 85, FogEscalationDays = 60, FogEscalation = true,

@@ -415,6 +415,48 @@ return {
         env.run(1)
         assert(env.floats[5].final == 0, "não voltou a 0")
     end,
+    -- sprint 0034: a névoa sobe já na sirene (rising), sem a névoa de jogo; os 30 s de fuga
+    -- (~12 minutos de jogo) deixam ela no meio da rampa, e a névoa aberta segue sem degrau
+    look_rising_ramps_fog_before_event = function()
+        local env = setup({ tod = 12, fog = 0, K = 10 })
+        env.run(5)
+        NOM_World.setRising(true)
+        env.run(12)
+        local mid = env.floats[5].final
+        assert(mid > 0.4 * DENSITY and mid < 0.8 * DENSITY, "subida na fuga: " .. mid)
+        assert(NOM_World.fog == false)
+        local d0 = env.floats[9].final
+        assert(d0 < 0.5 - 1e-3, "sem escuridão na subida: " .. d0)
+        NOM_World.setFog(true)
+        NOM_World.setRising(false)
+        env.run(1)
+        assert(env.floats[5].final > mid, "degrau na abertura: " .. mid .. " → " .. env.floats[5].final)
+        env.run(10)
+        assert(near(env.floats[5].final, DENSITY), "não completou: " .. env.floats[5].final)
+    end,
+    -- sirene cancelada: a subida desce como a névoa
+    look_rising_cancelled_ramps_down = function()
+        local env = setup({ tod = 12, fog = 0, K = 10 })
+        NOM_World.setRising(true)
+        env.run(20)
+        assert(near(env.floats[5].final, DENSITY))
+        NOM_World.setRising(false)
+        env.run(19)
+        assert(env.floats[5].final > 0, "cortou seco")
+        env.run(1)
+        assert(env.floats[5].final == 0, "não desceu")
+    end,
+    -- sirene vermelha: a cor da névoa vai pro vermelho já na subida
+    look_rising_red_paints_fog = function()
+        local env = setup({ tod = 12, K = 10 })
+        NOM_World.setRising(true, true)
+        env.run(40)
+        assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "subida vermelha branca: " .. fmtColor(env.fogColor.final.ext))
+        local env2 = setup({ tod = 12, K = 10 })
+        NOM_World.setRising(true)
+        env2.run(40)
+        for _, c in ipairs(env2.calls) do assert(c:sub(1, 8) ~= "fogColor", "subida branca mexeu na cor: " .. c) end
+    end,
     -- com chuva, FogCycle "sem névoa" ou névoa eterna, a do evento é a que fica
     look_event_fog_wins_over_overrides = function()
         for _, sb in ipairs({ { fogCycle = 2 }, { fogCycle = 4 }, { climateCycle = 6 }, { weather = true } }) do

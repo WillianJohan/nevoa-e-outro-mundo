@@ -175,3 +175,13 @@ recarga e o resto continuam valendo.
 ## Emenda de 2026-10-06 — sprint 0034: sirene 15 s
 
 Sirene reduzida pra 15 s (decisão do Johan, 2026-10-06, sprint 0034): `R.SIREN_MS = 15 000`. O cliente MP usa a mesma constante (`NOM_FogEventRules.SIREN_MS`), não literal solto.
+
+## Emenda de 2026-10-06 — sprint 0034: a névoa sobe na sirene, 30 s de fuga
+
+Decisão do Johan: "quando a sirene toca, já começa a névoa... o tempo de 30/45 segundos é o tempo pro jogador se movimentar antes dos bichos começarem". Isto substitui a emenda acima no que é contagem:
+
+- A contagem passa a ser a **fuga**: `R.SIREN_MS` virou `R.GRACE_MS = 30 000`. O som da sirene dura 15 s e não conta. O congelamento dura a fuga (`NOM_SirenFreeze.start(dir, R.GRACE_MS)` no solo e no cliente).
+- **Flag nova `NOM_World.rising`/`risingRed`** (`setRising`, borda `"rising"`): liga na sirene (inclusive na recarga, que toca de novo, e no `setRed` com a contagem correndo), desliga no `begin()` (depois do `setFog`) e no cancelamento. `NOM_World.fog` continua abrindo só no `begin()`, então a regra de jogo não muda.
+- **Clima:** `eventRamp` e `fogRamp` seguem `fog or rising`; `redRamp`, `(fog and red) or (rising and risingRed)`. A rampa de 20 minutos de jogo fica: os 30 s reais (~12 min de jogo) deixam a névoa pelo meio quando os bichos soltam.
+- **Quem vê:** `NOM_FogState.rising`/`risingRed`, `setRising` (não dispara `onChange`), `visible()` e `visibleRed()`. No solo quem liga é o `NOM_FogEvent`; no MP, o `NOM_FogClient` (`siren` liga, `fog {on=true}` e `sirenStop` desligam; `fog {on=false}` não, porque quem entra na fuga recebe `fog` e depois `siren`).
+- **Seguem `visible()`:** a vinheta (`NOM_FogVignette`, sem o mod do shader) e o drone e o metal do `NOM_FogSound`. **Seguem `on` (esperam a fuga):** o rádio do Sem-rosto, o Outro Mundo (`NOM_FogOverlays`), os efeitos de tela (`NOM_ScreenFx`, que também alimenta o canal do shader) e toda a regra de jogo.

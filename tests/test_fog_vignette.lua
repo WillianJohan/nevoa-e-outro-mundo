@@ -147,6 +147,16 @@ return {
         G2.seconds(1)
         assert(G2.enabled[0] == true)
     end,
+    -- sprint 0034: a vinheta escurece já na subida da sirene e sai se ela for cancelada
+    vignette_on_while_rising = function()
+        local G = setup()
+        NOM_FogState.setRising(true)
+        G.seconds(2)
+        assert(G.enabled[0] == true and G.managers[G.p].isOverride == true, "vinheta sem a subida")
+        NOM_FogState.setRising(false)
+        G.seconds(1)
+        assert(G.managers[G.p].isOverride == false and G.enabled[0] == false, "vinheta ficou depois da subida")
+    end,
     vignette_off_toggle = function()
         for _, sb in ipairs({ { FogVignette = false }, { FogVignetteIntensity = 0 } }) do
             local G = setup({ sandbox = sb })

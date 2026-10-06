@@ -895,7 +895,7 @@ return {
         NOM.wind(true)
         assert(has(G.printed, "^%[NOM%] debug vento precisa do mod Volumétrica %(mod3%)"), table.concat(G.printed, "\n"))
     end) end,
-    nom_help_has_new_commands_on_top_and_15s = function() run(function()
+    nom_help_has_new_commands_on_top_and_30s = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind" }
@@ -904,7 +904,9 @@ return {
         end
         local fogLine
         for _, h in ipairs(NOM.HELP) do if h[1]:find("^NOM%.fog%(") then fogLine = h[2] end end
-        assert(fogLine:find("15 s") and not fogLine:find("30 s"), fogLine)
+        assert(fogLine:find("sobe", 1, true) and fogLine:find("30 s", 1, true) and not fogLine:find("15 s", 1, true), fogLine)
+        local setFogLine = NOM.HELP[1][2]
+        assert(setFogLine:find("sobe", 1, true) and setFogLine:find("30 s", 1, true), setFogLine)
         local all = {}
         for _, h in ipairs(NOM.HELP) do all[#all + 1] = h[2] end
         assert(table.concat(all, "\n"):find("1 estalador", 1, true), "help sem a numeração do turnZombie")

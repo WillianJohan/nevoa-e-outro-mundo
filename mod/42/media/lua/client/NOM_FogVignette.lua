@@ -157,7 +157,7 @@ end
 local function update()
     if NOM_ShaderMod then return updateChannel() end
     local intensity = NOM_Config.get("FogVignetteIntensity")
-    local on = NOM_FogState.on and NOM_Config.get("FogVignette") and intensity > 0
+    local on = NOM_FogState.visible() and NOM_Config.get("FogVignette") and intensity > 0
     local seen = {}
     for i = 0, getNumActivePlayers() - 1 do
         local p = getSpecificPlayer(i)

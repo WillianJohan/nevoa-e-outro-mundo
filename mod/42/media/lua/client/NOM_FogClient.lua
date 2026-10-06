@@ -51,12 +51,19 @@ Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "fog" then
         NOM_FogState.set(args.on == true, args.period, args.red == true)
-        -- a névoa abre: a sirene acabou (o servidor não manda sirenStop nesse caso)
-        if args.on == true then NOM_SirenFreeze.stop() end
-    elseif command == "siren" then -- evento de névoa: 15 s reais antes (NOM_FogEvent)
-        NOM_Siren.play(type(args) == "table" and args.red == true)
-        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.SIREN_MS)
+        -- a névoa abre: a fuga acabou (o servidor não manda sirenStop nesse caso). O fog off
+        -- não desce a subida: quem entra na fuga recebe fog (off) e depois siren.
+        if args.on == true then
+            NOM_FogState.setRising(false)
+            NOM_SirenFreeze.stop()
+        end
+    elseif command == "siren" then -- evento de névoa: começa a fuga de 30 s (NOM_FogEvent)
+        local red = type(args) == "table" and args.red == true
+        NOM_Siren.play(red)
+        NOM_FogState.setRising(true, red)
+        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.GRACE_MS)
     elseif command == "sirenStop" then -- sirene cancelada (NOM_FogEvent.stop)
+        NOM_FogState.setRising(false)
         NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este

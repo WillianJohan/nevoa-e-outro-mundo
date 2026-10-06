@@ -72,9 +72,36 @@ return {
         G.server("siren", nil)
         G.tick(1)
         assert(mine.useless == true and math.abs(mine.faced.x - (mine.x + NOM_SirenFreeze.FAR)) < 1e-6)
-        G.now = G.now + NOM_FogEventRules.SIREN_MS + NOM_SirenFreeze.SAFETY_MS + 1000
+        G.now = G.now + NOM_FogEventRules.GRACE_MS + NOM_SirenFreeze.SAFETY_MS + 1000
         G.tick(1)
         assert(mine.useless == false, "sem sirenStop nem fog, ficou congelado")
+    end,
+    -- sprint 0034: a sirene sobe a névoa de quem vê (com a cor dela); a névoa aberta e o
+    -- cancelamento descem a subida. A névoa de jogo (on) só vem no fog.
+    fog_client_siren_raises_fog = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("siren", { red = true, dir = 0 })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == true, "a sirene não subiu a névoa")
+        assert(NOM_FogState.on == false, "a sirene abriu a névoa de jogo")
+        G.server("fog", { on = true, period = 2, red = true })
+        assert(NOM_FogState.rising == false and NOM_FogState.on == true and NOM_FogState.visibleRed() == true)
+        G.server("siren", { red = false, dir = 0 })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false)
+        G.server("sirenStop", {})
+        assert(NOM_FogState.rising == false, "sirenStop não desceu a subida")
+        G.server("siren", nil)
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false, "sirene sem argumentos")
+    end,
+    -- quem entra na fuga recebe fog (off) e depois siren (server/NOM_Fog.lua, fogState): sobe
+    fog_client_join_during_grace_rises = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("fog", { on = false, period = 1, red = false })
+        G.server("siren", { red = true, dir = 10 })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == true, "entrou na fuga sem a subida")
+        G.server("fog", { on = false, period = 1, red = false })
+        assert(NOM_FogState.rising == true, "fog off desceu a subida")
     end,
     fog_client_asks_state_on_join = function()
         local G = setup()

@@ -250,6 +250,13 @@ return {
         assert(G.java <= 1, "chamadas Java fora da névoa: " .. G.java)
     end,
 
+    -- sprint 0034: os efeitos de tela esperam a fuga; a subida da sirene não desenha nada
+    screenfx_nothing_while_rising = function()
+        local G = setup()
+        NOM_FogState.setRising(true, true)
+        G.frame(60)
+        assert(#mine(G.frameDraws()) == 0, "desenhou na fuga")
+    end,
     screenfx_fog_draws_grain_and_vignette = function()
         local G = setup()
         local tex = T()

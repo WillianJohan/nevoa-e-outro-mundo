@@ -136,6 +136,15 @@ return {
         assert(fl > 300 and wl == wallsDressed, "count: " .. fl .. "/" .. wl)
     end,
 
+    -- sprint 0034: o Outro Mundo espera o fim da fuga (decisão do Johan); a subida da sirene
+    -- não anexa nada
+    overlays_wait_for_grace = function()
+        local G = setup({ density = 1 })
+        NOM_FogState.period = 3
+        NOM_FogState.setRising(true, true)
+        G.seconds(5)
+        assert(G.ours() == 0, "Outro Mundo na fuga: " .. G.ours())
+    end,
     -- review focus: o anexo vanilla (blend em todo piso, trepadeira de erosão na parede, sujeira
     -- do mapa) sobrevive a todo caminho: sair do raio, voltar, ação, save, densidade, fim da névoa
     overlays_vanilla_attachments_survive_every_path = function()

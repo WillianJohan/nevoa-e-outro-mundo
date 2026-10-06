@@ -81,8 +81,9 @@ local function onTick()
         drone.vol, static.vol = 0, 0
         return
     end
+    -- drone e metal já na subida da fuga (sprint 0034); o rádio espera o Sem-rosto
     local fog = NOM_FogState.on
-    local ambience = fog and NOM_Config.get("FogAmbience")
+    local ambience = NOM_FogState.visible() and NOM_Config.get("FogAmbience")
     -- approach anda 1 por fadeMs: escala pra o fade inteiro levar FADE_MS
     update(drone, p, S.DRONE, ambience and S.DRONE_MAX or 0, dt, S.FADE_MS / S.DRONE_MAX)
     metal(p, now, ambience)

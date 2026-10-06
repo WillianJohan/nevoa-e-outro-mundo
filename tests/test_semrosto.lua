@@ -106,6 +106,16 @@ return {
         assert(#G.reports == 1, "sumiu depois da névoa")
         assert(NOM_SemRosto.nearest(p) == nil, "rádio ainda acha Sem-rosto")
     end,
+    -- sprint 0034: na subida da sirene (fuga) ainda não existe Sem-rosto
+    semrosto_not_while_rising = function()
+        local G = setup({ fog = false })
+        NOM_FogState.period = PERIOD
+        local p = G.player({ x = 100, y = 100, face = 0 })
+        G.zombie({ x = 112, y = 100, id = G.SEM })
+        NOM_FogState.setRising(true, true)
+        G.tick(NOM_SemRosto.SCAN_TICKS * 3)
+        assert(#G.reports == 0 and NOM_SemRosto.nearest(p) == nil, "Sem-rosto na fuga")
+    end,
     semrosto_eco_never = function()
         local G = setup()
         G.player({ x = 100, y = 100, face = 0 })

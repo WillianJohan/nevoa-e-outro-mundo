@@ -15,7 +15,9 @@ require "NOM_VariantRules"
 NOM_FogEventRules = {}
 local R = NOM_FogEventRules
 
-R.SIREN_MS = 15000    -- a sirene toca 15 s reais antes da névoa (sprint 0034; era 45 na 0033)
+-- Fuga (sprint 0034): da sirene até os bichos, em ms reais. A névoa visual sobe nesse tempo
+-- (NOM_World.rising); o som da sirene dura 15 s e não conta aqui.
+R.GRACE_MS = 30000
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 

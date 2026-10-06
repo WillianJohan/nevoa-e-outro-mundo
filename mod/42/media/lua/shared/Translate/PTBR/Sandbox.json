@@ -5,7 +5,7 @@
     "Sandbox_NevoaEOutroMundo.DarkIntensity": "Intensidade do clima sombrio",
     "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 desliga o efeito, 1 é o padrão, 2 é o dobro.",
     "Sandbox_NevoaEOutroMundo.FogDailyChance": "Névoa: chance por dia (%%)",
-    "Sandbox_NevoaEOutroMundo.FogDailyChance_tooltip": "Todo dia, à meia-noite, sorteia se o dia terá névoa. Ela chega numa hora qualquer, anunciada por uma sirene 15 segundos antes. Fora do evento não existe névoa.",
+    "Sandbox_NevoaEOutroMundo.FogDailyChance_tooltip": "Todo dia, à meia-noite, sorteia se o dia terá névoa. Ela chega numa hora qualquer, anunciada por uma sirene; a névoa começa a subir na hora e, 30 segundos depois, os monstros acordam. Fora do evento não existe névoa.",
     "Sandbox_NevoaEOutroMundo.FogEscalation": "Névoa: tensão que cresce com os dias",
     "Sandbox_NevoaEOutroMundo.FogEscalation_tooltip": "Ligada: a chance do dia sobe em linha reta até a chance máxima, no dia da curva. A névoa vermelha não segue a curva.",
     "Sandbox_NevoaEOutroMundo.FogMaxDailyChance": "Névoa: chance máxima por dia (%%)",
