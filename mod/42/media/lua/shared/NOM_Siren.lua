@@ -8,6 +8,9 @@
 --   (nome, nil) o Kahlua escolhe o overload do IsoGridSquare, que dá NPE em square.x
 --   (FMODSoundEmitter 1208–1235; visto no console.txt); o de 3 argumentos cai no do
 --   IsoObject com nil (1245–1250), e a posição é a do getFreeEmitter;
+-- * afinar: setPitch(id, fator) logo depois de tocar (FMODSoundEmitter.setPitch 0–112, local).
+--   Ele afina TODO som do emitter, não só o do id: vale porque o getFreeEmitter devolve um
+--   emitter vazio e a sirene é o único som nele;
 -- * parar: stopSoundLocal(id) no emitter guardado, nunca stopAll (o emitter é do pool e,
 --   depois que a sirene acaba, pode estar tocando o som de outro sistema).
 -- A sirene acaba sozinha (one-shot); o stop é pro cancelamento (sirenStop).
@@ -16,15 +19,17 @@ require "NOM_SirenSpotsRules"
 NOM_Siren = {}
 
 local playing = {} -- { e = emitter, id }
-local pending = {} -- { at = ms reais, x, y, z, sound }
+local pending = {} -- { at = ms reais, x, y, z, sound, pitch }
 local ticking = false
 
-local function start(x, y, z, sound)
+local function start(x, y, z, sound, pitch)
     local e = getWorld():getFreeEmitter(x, y, z)
     local id = e:playSoundImpl(sound, false, nil)
+    e:setPitch(id, pitch)
     playing[#playing + 1] = { e = e, id = id }
     if getDebug() then
-        print(string.format("[NOM] sirene tocando som=%s x=%d y=%d id=%s", sound, math.floor(x), math.floor(y), tostring(id)))
+        print(string.format("[NOM] sirene tocando som=%s x=%d y=%d tom=%.3f id=%s", sound, math.floor(x), math.floor(y),
+            pitch, tostring(id)))
     end
 end
 
@@ -34,7 +39,7 @@ local function tick()
     local now = getTimestampMs()
     local left = {}
     for _, s in ipairs(pending) do
-        if now >= s.at then start(s.x, s.y, s.z, s.sound) else left[#left + 1] = s end
+        if now >= s.at then start(s.x, s.y, s.z, s.sound, s.pitch) else left[#left + 1] = s end
     end
     pending = left
 end
@@ -64,9 +69,9 @@ function NOM_Siren.play(red)
     local spots = NOM_SirenSpotsRules.spots(p:getX(), p:getY(), red and "red" or "white", rand)
     for _, s in ipairs(spots) do
         if s.delayMs <= 0 then
-            start(s.x, s.y, z, s.sound)
+            start(s.x, s.y, z, s.sound, s.pitch)
         else
-            pending[#pending + 1] = { at = now + s.delayMs, x = s.x, y = s.y, z = z, sound = s.sound }
+            pending[#pending + 1] = { at = now + s.delayMs, x = s.x, y = s.y, z = z, sound = s.sound, pitch = s.pitch }
         end
     end
     return #spots

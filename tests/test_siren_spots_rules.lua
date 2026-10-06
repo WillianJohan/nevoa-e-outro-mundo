@@ -40,6 +40,8 @@ local function check(spots, px, py, kind)
         assert(d >= R.DIST_MIN - 1e-6 and d <= R.DIST_MAX + 1e-6, "sirene a " .. d .. " tiles")
         assert(s.near == nil, "ainda tem sirene perto")
         assert(has(sounds, s.sound), kind .. " com som de outra névoa: " .. s.sound)
+        assert(type(s.pitch) == "number" and s.pitch >= R.PITCH_MIN - 1e-9 and s.pitch <= R.PITCH_MAX + 1e-9,
+            "afinação " .. tostring(s.pitch))
         assert(not seen[s.sound], "repetiu no coro: " .. s.sound)
         seen[s.sound] = true
         if i == 1 then
@@ -66,6 +68,28 @@ return {
         assert(R.MIN_GAP_DEG >= 40 and R.COUNT * R.MIN_GAP_DEG <= 360, "folga " .. R.MIN_GAP_DEG)
         assert(R.DELAY_MAX_MS <= 4000 and R.DELAY_MIN_GAP_MS > 0, "atrasos")
         assert(R.NEAR_MIN == nil and R.FAR_MIN == nil, "o conceito perto/longe saiu")
+        -- afinação por sirene: sutil, menos de um semitom (5,9%) pra cada lado do arquivo
+        assert(R.PITCH_MIN < 1 and R.PITCH_MAX > 1, "a faixa tem que conter o tom do arquivo")
+        assert(R.PITCH_MIN >= 0.94 and R.PITCH_MAX <= 1.06, "faixa " .. R.PITCH_MIN .. "–" .. R.PITCH_MAX)
+    end,
+    -- cada sirene do coro com afinação própria, nos dois sentidos, cobrindo a faixa
+    siren_spots_pitch_varies = function()
+        local rand = lcg(13)
+        local lo, hi, below, above, flat = math.huge, -math.huge, 0, 0, 0
+        for _ = 1, 300 do
+            local s = R.spots(0, 0, "white", rand)
+            local same = true
+            for i, x in ipairs(s) do
+                lo, hi = math.min(lo, x.pitch), math.max(hi, x.pitch)
+                if x.pitch < 1 then below = below + 1 else above = above + 1 end
+                if i > 1 and x.pitch ~= s[1].pitch then same = false end
+            end
+            if same then flat = flat + 1 end
+        end
+        local span = R.PITCH_MAX - R.PITCH_MIN
+        assert(lo < R.PITCH_MIN + 0.05 * span and hi > R.PITCH_MAX - 0.05 * span, "faixa não coberta: " .. lo .. "–" .. hi)
+        assert(below > 500 and above > 500, "afinação pendendo pra um lado: " .. below .. " abaixo, " .. above .. " acima")
+        assert(flat == 0, "coro com as 5 na mesma afinação")
     end,
     siren_spots_ranges_angles_delays = function()
         local rand = lcg(7)
@@ -84,9 +108,9 @@ return {
             end
         end
     end,
-    -- as listas oficiais (sprint 0034, tarefa 3): cada névoa com as suas, sem misturar
+    -- as listas oficiais (sprint 0034, tarefa 3, com as 9 da V9): cada névoa com as suas, sem misturar
     siren_spots_official_lists = function()
-        local counts = { white = 6, red = 6, black = 10 }
+        local counts = { white = 9, red = 9, black = 13 }
         local prefix = { white = "NOM_SirenWhite", red = "NOM_SirenRed", black = "NOM_SirenBlack" }
         local all = {}
         for kind, n in pairs(counts) do

@@ -2,7 +2,8 @@
 -- que atraso. Todas longe, de 150 a 500 tiles ("não quero que fique gritando no ouvido do
 -- jogador", Johan, 2026-10-06), de lados diferentes (pelo menos 40° entre vizinhas) e
 -- desencontradas: a primeira entra na hora e cada uma das outras na sua janela de 1 s, até 4 s,
--- pelo menos 0,3 s depois da anterior. Puro, sem API do jogo; quem toca é o shared/NOM_Siren.lua.
+-- pelo menos 0,3 s depois da anterior. Cada uma toca com afinação própria (pitch), pra duas do
+-- coro nunca soarem como o mesmo aparelho. Puro, sem API do jogo; quem toca é o shared/NOM_Siren.lua.
 -- O sorteio é local: dois jogadores não precisam ouvir as mesmas posições.
 require "NOM_Math"
 
@@ -11,15 +12,22 @@ NOM_SirenSpotsRules = {
     DIST_MIN = 150, DIST_MAX = 500,
     MIN_GAP_DEG = 40,
     DELAY_MAX_MS = 4000, DELAY_MIN_GAP_MS = 300,
+    -- Fator de afinação (o FMOD muda tom e velocidade juntos): ±5% é ±84 cents, menos de um
+    -- semitom, então o aglomerado de segundas menores da branca (V9) continua aglomerado, sem
+    -- virar uníssono nem outra nota; é a variação de rotação de um motor de sirene pro outro.
+    -- A duração muda no máximo 5% (11,8 s vira 11,2 a 12,4 s).
+    PITCH_MIN = 0.95, PITCH_MAX = 1.05,
     -- Ponto único dos sons por tipo de névoa (gerados em scripts/gen_sounds.py, OFICIAIS). Tipo
     -- sem lista usa a branca. A vermelha é o aviso da névoa vermelha (ADR-010): as listas não se
     -- misturam. A preta só toca a partir da sprint 0038.
     SOUNDS = {
         white = { "NOM_SirenWhite1", "NOM_SirenWhite2", "NOM_SirenWhite3", "NOM_SirenWhite4", "NOM_SirenWhite5",
-            "NOM_SirenWhite6" },
-        red = { "NOM_SirenRed1", "NOM_SirenRed2", "NOM_SirenRed3", "NOM_SirenRed4", "NOM_SirenRed5", "NOM_SirenRed6" },
+            "NOM_SirenWhite6", "NOM_SirenWhite7", "NOM_SirenWhite8", "NOM_SirenWhite9" },
+        red = { "NOM_SirenRed1", "NOM_SirenRed2", "NOM_SirenRed3", "NOM_SirenRed4", "NOM_SirenRed5", "NOM_SirenRed6",
+            "NOM_SirenRed7", "NOM_SirenRed8", "NOM_SirenRed9" },
         black = { "NOM_SirenBlack1", "NOM_SirenBlack2", "NOM_SirenBlack3", "NOM_SirenBlack4", "NOM_SirenBlack5",
-            "NOM_SirenBlack6", "NOM_SirenBlack7", "NOM_SirenBlack8", "NOM_SirenBlack9", "NOM_SirenBlack10" },
+            "NOM_SirenBlack6", "NOM_SirenBlack7", "NOM_SirenBlack8", "NOM_SirenBlack9", "NOM_SirenBlack10",
+            "NOM_SirenBlack11", "NOM_SirenBlack12", "NOM_SirenBlack13" },
     },
 }
 local R = NOM_SirenSpotsRules
@@ -78,8 +86,10 @@ function R.spots(px, py, kind, rand)
     local out = {}
     for k, i in ipairs(shuffled(R.COUNT, rand)) do
         local a, dist = math.rad(deg[i]), lerp(R.DIST_MIN, R.DIST_MAX, rand())
+        local sound = pick(sounds, used, rand)
+        local delayMs = delay(k, rand)
         out[k] = { x = px + math.cos(a) * dist, y = py + math.sin(a) * dist, deg = NOM_Math.mod(deg[i], 360),
-            dist = dist, sound = pick(sounds, used, rand), delayMs = delay(k, rand) }
+            dist = dist, sound = sound, delayMs = delayMs, pitch = lerp(R.PITCH_MIN, R.PITCH_MAX, rand()) }
     end
     return out
 end

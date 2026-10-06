@@ -1522,10 +1522,10 @@ sirenes por jogador local, todas de 150 a 500 tiles (tarefa 3, pedido do Johan e
 "não quero que fique gritando no ouvido do jogador"), pelo menos 40° entre vizinhas, a
 primeira na hora e as outras 4 cada uma na sua janela (0,3–1, 1,3–2, 2,3–3 e 3,3–4 s, então
 pelo menos 0,3 s entre duas), em ordem de direção embaralhada; o som de cada uma sai da lista
-da névoa sem repetir no coro.
+da névoa sem repetir no coro, com afinação sorteada por sirene (`pitch`, 0,95 a 1,05).
 Cada uma num emitter do mundo, parado onde foi posto, com a mesma técnica da §22
-(`getFreeEmitter` + `playSoundImpl`, parada por `stopSoundLocal(id)` no `sirenStop` e no
-cancelamento do solo). O congelamento (§21) vira cada zumbi pro jogador vivo mais perto.
+(`getFreeEmitter` + `playSoundImpl`, afinada por `setPitch(id, fator)` e parada por
+`stopSoundLocal(id)` no `sirenStop` e no cancelamento do solo). O congelamento (§21) vira cada zumbi pro jogador vivo mais perto.
 Bytecode do B42 instalado.
 
 | Fato | Status | Evidência |
@@ -1535,9 +1535,18 @@ Bytecode do B42 instalado.
 | Square do emitter fora da célula carregada (a 150–500 tiles, quase sempre) só pula a oclusão: o som toca | CONFIRMED (bytecode) | `FileSound.tick` 909–936 (`getGridSquare` nulo → salta pro fim, 1533) |
 | Sem modo de rolloff explícito: inverso do FMOD, ganho `distanceMin / d` entre `distanceMin` e `distanceMax`, e constante depois (não zera) | LIKELY | §22 / `api-aparelhos.md` §5; `FMOD_System_Set3DSettings(1, 1, 1)` |
 | `getOnlinePlayers()`: servidor = `GameServer.getPlayers`, cliente = `GameClient.getPlayers` (o `IDToPlayerMap`: os jogadores que o cliente conhece), solo = `ArrayList` vazia | CONFIRMED | uso vanilla no cliente `client/Chat/ISChat.lua:560`; bytecode `LuaManager$GlobalObject.getOnlinePlayers` 0–30, `GameClient.getPlayers` 0–42 |
+| `emitter:setPitch(id, fator)` existe no `FMODSoundEmitter` (classe exposta ao Lua), com um overload só: `setPitch(long, float)`, a mesma conversão do id que o `setVolume(long, float)` já usa | EXISTS | `javap fmod.fmod.FMODSoundEmitter` (o pacote é `fmod.fmod`, não `zombie.audio`); abstrato em `zombie.audio.BaseSoundEmitter`; `LuaManager$Exposer` 163–165 (`setExposed(FMODSoundEmitter)`). Nenhum uso no Lua vanilla |
+| `setPitch` é **local**: só grava `Sound.pitch` e, se o id bate, escreve no `DebugLog` ("Set pitch for ToStart/Instance", uma linha no console por sirene). Nenhum pacote | CONFIRMED (bytecode) | `FMODSoundEmitter.setPitch` 0–112: dois laços (`toStart` 3–53, `instances` 59–109), `putfield Sound.pitch` 47 e 103 |
+| Pegadinha: o id **não filtra**: o `lcmp` (35 e 91) só decide o log; o `putfield` vale pra todo som do emitter. Com o emitter do pool vazio e só a sirene nele, afina só ela | CONFIRMED (bytecode) | `FMODSoundEmitter.setPitch` 36 `ifne 44` e 92 `ifne 100` pulam só o `DebugLog.log` |
+| Funciona em som de arquivo (`clip { file = ... }`): o `addSound` copia o `pitch` do clip (padrão 1,0) pro `FileSound`, e o `FileSound.tick` passa o campo pro canal no início e em todo tick, mesmo com o square fora da célula carregada | CONFIRMED (bytecode) | `FMODSoundEmitter.addSound` 410–416 (`GameSoundClip.pitch` → `FileSound.pitch`); `GameSoundClip.<init>` 9–11 (1,0); `FileSound.tick` 179–187 e 1747–1755 (`FMOD_Channel_SetPitch`), 936 `ifnull 1533` segue até 1755 sem `return`. O `EventSound` (FMOD Studio) não lê o campo |
+| O FMOD muda tom e velocidade juntos (fator 1,05 = +84 cents e 5% mais curto) | LIKELY | semântica de `FMOD_Channel_SetPitch` (multiplicador da frequência de reprodução) |
 
-Decisão (audibilidade, tarefa 3): as 22 sirenes oficiais (`NOM_SirenWhite1`–`6`,
-`NOM_SirenRed1`–`6`, `NOM_SirenBlack1`–`10`) são declaradas com `distanceMin` 50 e
+Alternativa descartada: o campo `pitch` do clip no script de som (`GameSoundScript` 176–192 →
+`GameSoundClip.pitch`) é fixo por som; afinação por sirene exigiria variantes declaradas
+(5 tons × 31 sons), e o `setPitch` em tempo de execução faz o mesmo sem nenhuma.
+
+Decisão (audibilidade, tarefa 3): as 31 sirenes oficiais (`NOM_SirenWhite1`–`9`,
+`NOM_SirenRed1`–`9`, `NOM_SirenBlack1`–`13`) são declaradas com `distanceMin` 50 e
 `distanceMax` 500. Com o rolloff inverso, uma sirene sai a −9,5 dB em 150 tiles e −20 dB em
 500 (queda de 10,5 dB na faixa, que é o que separa "perto" de "longe" no coro), e o
 `distanceMax` em 500 faz a queda valer até o fim da faixa. Os arquivos têm RMS ~ −12 dBFS
@@ -1559,6 +1568,7 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
 | o FMOD não virtualiza (corta) canal baixo com muitos sons tocando (5 sirenes + drone + aparelhos) | ouvir na cidade, com a névoa subindo |
 | o pan do FMOD a 150–500 tiles dá direção clara (o emitter está fora da célula carregada) | ouvir girando a câmera |
 | o `IDToPlayerMap` do cliente traz a posição atual dos jogadores longe dele | MP com dois jogadores |
+| a afinação de 0,95 a 1,05 se ouve como aparelhos diferentes, sem soar desafinado nem "fita acelerada" | ouvir o coro; com `-debug`, o `tom=` de cada sirene sai no console |
 
 ## Abordagem recomendada por mecânica (resumo)
 
@@ -1627,8 +1637,8 @@ Sem jogador nesse raio, o zumbi congela e fica virado como estava.
     `getZomboidRadio():getDevices()`? O som some com a distância e para a 20 tiles? O rádio de
     carro toca no carro? Volume e frequência agradam? (§22)
 18. Sirenes posicionais (sprint 0034): as 5 vêm de lados diferentes, desencontradas, sem
-    gritar no ouvido? A de 500 tiles ainda se ouve? Os zumbis congelados olham pro jogador e
-    acompanham quando ele anda? (§23)
+    gritar no ouvido? A de 500 tiles ainda se ouve? A afinação por sirene soa natural? Os
+    zumbis congelados olham pro jogador e acompanham quando ele anda? (§23)
 19. Outro Mundo na tela toda (sprint 0034, §16.6): no zoom mais longe o desenho chega nas
     bordas da tela? O FPS aguenta ~2800 squares com anexo? De carro, a borda que entra enche a
     tempo? Dormir e sair do jogo com o zoom longe, voltar: nada sobrando

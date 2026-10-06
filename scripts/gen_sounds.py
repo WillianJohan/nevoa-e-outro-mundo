@@ -19,7 +19,8 @@ from nom_synth import (alto_falante, bandpass, bipe, canal_am, chiado_radio, cre
                        estalo, estatica, highpass, lowpass, lowpass_ctrl, motivo, norm, nsamp, peak, peaking,
                        phase_of, put, quase_voz, ramp_out, respiracao, reverb_wet, rms, sirene_invertida,
                        smooth_noise, smoothstep, tsec, window, zumbido_rede)
-from sirenes import v1 as sv1, v2 as sv2, v3 as sv3, v4 as sv4, v5 as sv5, v6 as sv6, v7 as sv7, v8 as sv8
+from sirenes import (v1 as sv1, v2 as sv2, v3 as sv3, v4 as sv4, v5 as sv5, v6 as sv6, v7 as sv7, v8 as sv8,
+                     v9 as sv9)
 
 RATE = 44100
 SEED = 4004
@@ -589,7 +590,9 @@ ECO_TAPS = ((0.31, 0.45, 2800), (0.56, 0.34, 2200), (0.84, 0.25, 1700), (1.13, 0
 ECO_CAUDA = 0.35  # reverb distante (rt60 2,6 s, escuro), com a energia do sinal seco vezes isto
 
 # nome do som -> (módulo em scripts/sirenes, sirene do protótipo). A branca_engolida da v7 é a
-# da v5 byte a byte: entra uma vez só, senão o coro poderia tocar a mesma duas vezes.
+# da v5 byte a byte: entra uma vez só, senão o coro poderia tocar a mesma duas vezes. A semente
+# do eco vem da posição na lista: som novo entra no fim, senão os já gerados mudam. As da v9
+# partem da versão seca do protótipo (a do jogo já tinha distância e cidade).
 OFICIAIS = [
     ("NOM_SirenWhite1", sv8, "branca_a"), ("NOM_SirenWhite2", sv5, "branca_engolida"),
     ("NOM_SirenWhite3", sv3, "branca_radio"), ("NOM_SirenWhite4", sv2, "branca_a_fita_limpa"),
@@ -602,6 +605,9 @@ OFICIAIS = [
     ("NOM_SirenBlack5", sv4, "preta_b_apagao"), ("NOM_SirenBlack6", sv4, "preta_c_brasa"),
     ("NOM_SirenBlack7", sv3, "preta_c_brasa"), ("NOM_SirenBlack8", sv3, "preta_b_apagao"),
     ("NOM_SirenBlack9", sv2, "preta_fita"), ("NOM_SirenBlack10", sv1, "preta_c_silencio"),
+    ("NOM_SirenWhite7", sv9, "branca_1"), ("NOM_SirenWhite8", sv9, "branca_2"), ("NOM_SirenWhite9", sv9, "branca_3"),
+    ("NOM_SirenRed7", sv9, "vermelha_1"), ("NOM_SirenRed8", sv9, "vermelha_2"), ("NOM_SirenRed9", sv9, "vermelha_3"),
+    ("NOM_SirenBlack11", sv9, "preta_1"), ("NOM_SirenBlack12", sv9, "preta_2"), ("NOM_SirenBlack13", sv9, "preta_3"),
 ]
 
 

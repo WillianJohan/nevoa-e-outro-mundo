@@ -122,6 +122,39 @@ module Base
         }
     }
 
+    sound NOM_SirenWhite7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenWhite9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenWhite9.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
     sound NOM_SirenRed1
     {
         category = World,
@@ -183,6 +216,39 @@ module Base
         clip
         {
             file = media/sound/NOM_SirenRed6.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed7.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed8
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed8.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenRed9
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenRed9.ogg,
             distanceMin = 50,
             distanceMax = 500,
         }
@@ -293,6 +359,39 @@ module Base
         clip
         {
             file = media/sound/NOM_SirenBlack10.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack11
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack11.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack12
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack12.ogg,
+            distanceMin = 50,
+            distanceMax = 500,
+        }
+    }
+
+    sound NOM_SirenBlack13
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_SirenBlack13.ogg,
             distanceMin = 50,
             distanceMax = 500,
         }

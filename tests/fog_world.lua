@@ -162,8 +162,8 @@ function W.new(opts)
             end
             assert(obj == nil, "playSoundImpl com objeto")
             local id = #G.sounds + 1
-            G.sounds[id] = { name = name, volume = 1, playing = true, emitter = self, at = { x = self.x, y = self.y, z = self.z },
-                vehicle = self.vehicle, startedAt = G.now }
+            G.sounds[id] = { name = name, volume = 1, pitch = 1, playing = true, emitter = self,
+                at = { x = self.x, y = self.y, z = self.z }, vehicle = self.vehicle, startedAt = G.now }
             self.claimed = G.ticks
             return id
         end
@@ -173,6 +173,14 @@ function W.new(opts)
         end
         function e:setVolume(id, v)
             if G.sounds[id] and G.sounds[id].emitter == self then G.sounds[id].volume = v end
+        end
+        -- FMODSoundEmitter.setPitch(long, float), 0–112: o id só decide o DebugLog; a afinação vai
+        -- pra TODO som do emitter (toStart e instances). Local, sem pacote.
+        function e:setPitch(id, pitch)
+            assert(type(id) == "number" and type(pitch) == "number", "setPitch(long, float)")
+            for _, s in pairs(G.sounds) do
+                if s.emitter == self and s.playing then s.pitch = pitch end
+            end
         end
         e.playSound = function() error("emitter:playSound manda pacote no cliente de MP", 2) end
         e.stopSound = function() error("emitter:stopSound manda sendStopSound", 2) end

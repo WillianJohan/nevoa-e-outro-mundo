@@ -121,11 +121,13 @@ Depende da escolha do Johan pra vermelha. Vem dos protótipos em `.superpowers/s
 - 23 protótipos aprovados como oficiais (7 brancos, 6 vermelhos, 10 pretos); a `branca_engolida` da v7 é a mesma da v5, então ficam 22 sons.
 - 10 a 12 s com fim natural, em vez de 15 s; eco de cidade embutido no arquivo.
 - 5 sirenes por jogador, todas a 150–500 tiles, em direções diferentes e desencontradas; o perto/longe da Tarefa 7 sai.
+- Depois, as 9 da V9 (3 por névoa, feitas pro coro) também viraram oficiais: 31 sons.
+- Cada sirene do coro toca com afinação levemente diferente.
 
 **Como ficou:**
-- Síntese dos protótipos em `scripts/sirenes/` (v1 a v8, idêntica ao protótipo a 15 s; a v1 refeita pra caber em 10,6 s). O `gen_sounds.py` corta no fim útil, encurta pra 10,6 s sem mudar o tom (WSOLA nosso), aplica a distância (passa-baixa de 4 kHz, 5 reflexões de 0,31 a 1,47 s, cauda de reverb) e termina num fade: 11,8 s cada.
-- Sons `NOM_SirenWhite1`–`6`, `NOM_SirenRed1`–`6` e `NOM_SirenBlack1`–`10` (a preta só toca na 0038), `distanceMin` 50 e `distanceMax` 500 (conta na [pz-api-notes §23](../../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)). Saíram `NOM_Siren`, `NOM_SirenRed`, `NOM_SirenFar` e `NOM_SirenRedFar`.
-- `NOM_SirenSpotsRules`: `COUNT` 5, 150–500 tiles, pelo menos 40° entre vizinhas pra qualquer sorteio, a primeira em 0 e as outras em janelas até 4 s, sons sem repetir no coro.
+- Síntese dos protótipos em `scripts/sirenes/` (v1 a v8, idêntica ao protótipo a 15 s; a v1 refeita pra caber em 10,6 s; a v9 idêntica à versão seca do protótipo, de 10,4 a 10,8 s). O `gen_sounds.py` corta no fim útil, encurta pra 10,6 s sem mudar o tom (WSOLA nosso), aplica a distância (passa-baixa de 4 kHz, 5 reflexões de 0,31 a 1,47 s, cauda de reverb) e termina num fade: 11,8 s cada.
+- Sons `NOM_SirenWhite1`–`9`, `NOM_SirenRed1`–`9` e `NOM_SirenBlack1`–`13` (a preta só toca na 0038; os 7–9 e 11–13 são da V9), `distanceMin` 50 e `distanceMax` 500 (conta na [pz-api-notes §23](../../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)). Saíram `NOM_Siren`, `NOM_SirenRed`, `NOM_SirenFar` e `NOM_SirenRedFar`.
+- `NOM_SirenSpotsRules`: `COUNT` 5, 150–500 tiles, pelo menos 40° entre vizinhas pra qualquer sorteio, a primeira em 0 e as outras em janelas até 4 s, sons sem repetir no coro, e afinação sorteada por sirene entre 0,95 e 1,05 (`pitch`, aplicado pelo `NOM_Siren` com `emitter:setPitch`; evidência na §23).
 
 ---
 

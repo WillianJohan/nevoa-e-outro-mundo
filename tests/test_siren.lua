@@ -64,6 +64,40 @@ return {
             assert(de >= SR.DIST_MIN - 1e-6, "o emitter andou com o jogador")
         end
     end,
+    -- cada sirene do coro com a afinação que a regra sorteou pra ela, aplicada no emitter dela
+    siren_applies_pitch_per_siren = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local seq = 0
+        ZombRand = function(n) -- sorteio que anda: com o ZombRand fixo as 5 teriam a mesma afinação
+            seq = seq + 1
+            return math.floor(NOM_Math.mod(seq * 7919, 10000) / 10000 * n)
+        end
+        local SR = NOM_SirenSpotsRules
+        local spots
+        local orig = SR.spots
+        SR.spots = function(...)
+            spots = orig(...)
+            return spots
+        end
+        local ok, err = pcall(function()
+            NOM_Siren.play(false)
+            allIn(G)
+        end)
+        SR.spots = orig
+        assert(ok, err)
+        local want = {}
+        for _, s in ipairs(spots) do want[s.sound] = s.pitch end
+        local all, seen = sirens(G), {}
+        assert(#all == SR.COUNT, "sirenes: " .. #all)
+        for _, s in ipairs(all) do
+            assert(math.abs(s.pitch - want[s.name]) < 1e-9, s.name .. " com afinação " .. s.pitch .. ", sorteada " .. want[s.name])
+            seen[s.pitch] = true
+        end
+        local n = 0
+        for _ in pairs(seen) do n = n + 1 end
+        assert(n > 1, "as 5 com a mesma afinação")
+    end,
     siren_red_uses_red_sounds = function()
         local G = setup()
         G.player({ x = 0, y = 0 })
