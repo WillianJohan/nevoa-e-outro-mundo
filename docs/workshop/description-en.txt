@@ -10,7 +10,7 @@ Horror for Build 42, inspired by The Last of Us and Silent Hill. [b]The night br
 [/list]
 
 [h2]Fog[/h2]
-Every few days, at any hour, an air-raid siren wails across the whole map. Thirty seconds later the fog rolls in, by day or by night, for 3 to 6 hours: the world darkens and loses color, a low drone replaces the ambience, blood and decay take floors and walls, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
+Almost every day, at any hour, an air-raid siren wails across the whole map and the zombies stop where they stand. Forty-five seconds later the fog rolls in, by day or by night, for 3 to 5 hours (the red one, 4 to 6): the world darkens and loses color, a low drone replaces the ambience, blood and decay take floors and walls, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
 [list]
 [*][b]Clickers[/b]: blind, guided only by sound, clicking as a warning. Crouch, stay quiet and walk right past.
 [*][b]Runners[/b]: sprinters that scream when they spot you and call the zombies around. They start the horde.
