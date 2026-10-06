@@ -54,6 +54,13 @@ NOM_FogOverlays = {
     -- não pode depender do FPS (conta na pz-api-notes §16.6).
     SLACK = 8,
     MOVE_TILES = 2,
+    -- O corte de um anel cheio custa ~1650 chamadas Java (estresse: parede N e W em todo square)
+    -- e a atualização inteira, ~2300: juntos, ~3900 num tick. No tick em que o corte tirou alguma
+    -- coisa a atualização vai pro seguinte; se ele também cortou (carro a 2 tiles por tick), ela
+    -- veste SCAN_BUDGET ÷ LIGHT_DIV (de carro ninguém repara na borda). Quem andou MOVE_TILES
+    -- desde a atualização anterior tira em lote STRIP_BUDGET ÷ LIGHT_DIV: o que saiu da tela o
+    -- corte leva de qualquer jeito. O corte fica inteiro (pz-api-notes §16.6).
+    LIGHT_DIV = 4,
     VERIFY_BUDGET = 20,  -- alvos conferidos por atualização (a lista mexida por baixo: põe de novo)
     DENSITY_MS = 1000,   -- densidade nova só vale parada esse tempo (o slider anda de 0,1 em 0,1)
     -- Transição descascando (sprint 0035): na borda ao vivo, cada square espera
@@ -90,6 +97,7 @@ local reg, nFloor, nWall
 local seen, nSeen
 local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
 local cursor, gen, cutX, cutY
+local updX, updY -- a posição na atualização anterior (LIGHT_DIV)
 local density, pendingD, pendingAt
 local verifyKeys, verifyAt
 local radius
@@ -105,6 +113,7 @@ local function forget()
     reg, nFloor, nWall = {}, 0, 0
     seen, nSeen, held = {}, 0, {}
     cursor, gen, cutX, cutY = 1, nil, nil, nil
+    updX, updY = nil, nil
     density, pendingD, pendingAt = nil, nil, nil
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
@@ -244,6 +253,7 @@ local function stripWhere(want)
         if want(e) then out[#out + 1] = e end
     end
     for _, e in ipairs(out) do strip(e) end
+    return #out
 end
 
 function O.stripAll()
@@ -378,10 +388,11 @@ end
 -- Um lote da varredura: mais perto primeiro (D.OFFSETS), em volta contínua até o raio (o anel
 -- novo de quem anda, o square que perdeu o anexo); o square já decidido custa só a chave, fora
 -- do SCAN_BUDGET. Revelando, o square cuja vez não chegou vai pro pendente (só Lua, fora dele).
-local function scan(px, py, pz, per, d, now)
+local function scan(px, py, pz, per, d, now, light)
     local cell = getCell()
     local n = D.WITHIN[radius]
     local budget, looks = O.SCAN_BUDGET, O.SCAN_BUDGET * O.LOOK_MULT
+    if light then budget = math.floor(budget / O.LIGHT_DIV) end
     local el = revealAt and now - revealAt
     if el then budget = drain(cell, px, py, pz, per, d, el, budget) end
     while budget > 0 and looks > 0 do
@@ -415,30 +426,28 @@ local function hardR2()
 end
 
 -- Além de MAX_RADIUS + SLACK, na hora, sem lote. Só Lua até achar o que sai. O "já visto"
--- esquece o longe junto.
+-- esquece o longe junto. Devolve quantos alvos saíram.
 local function cut(px, py)
     local hard = hardR2()
-    stripWhere(function(e)
+    local n = stripWhere(function(e)
         local dx, dy = e.x - px, e.y - py
         return dx * dx + dy * dy > hard
     end)
     forgetFar(px, py)
+    return n
 end
 
--- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote; além de
--- MAX_RADIUS + SLACK, na hora. Na retirada (fim da névoa), cada alvo só na vez dele.
-local function prune(on, px, py, pz, now)
-    local hard = hardR2()
+-- Fora do raio, de outro andar, de outro desenho ou sem névoa: sai, em lote (light: ÷ LIGHT_DIV).
+-- O que passou de MAX_RADIUS + SLACK é do corte no tick (aqui, só mais um no lote). Na
+-- retirada (fim da névoa), cada alvo só na vez dele.
+local function prune(on, px, py, pz, now, light)
     local r2, n, out = radius * radius, 0, 0
+    local cap = light and math.floor(O.STRIP_BUDGET / O.LIGHT_DIV) or O.STRIP_BUDGET
     local el = not on and unrevealAt and now - unrevealAt
     stripWhere(function(e)
+        if n >= cap then return false end
         local dx, dy = e.x - px, e.y - py
         local d2 = dx * dx + dy * dy
-        if d2 > hard then
-            n = n + 1
-            return true
-        end
-        if n >= O.STRIP_BUDGET then return false end
         local go
         if on then
             go = e.gen ~= gen or e.z ~= pz or d2 > r2
@@ -531,12 +540,18 @@ local function hold(p)
     held = now
 end
 
-local function update()
+-- busy: o corte deste tick tirou alguma coisa (vestir ÷ LIGHT_DIV). Andou MOVE_TILES desde a
+-- última atualização (carro): retirada ÷ LIGHT_DIV.
+local function update(busy)
     local p = getSpecificPlayer(0) -- getPlayer() é o jogador em foco na tela dividida
     if not p or p:isDead() then
         if nFloor + nWall > 0 then O.stripAll() end
         return
     end
+    local fx, fy = p:getX(), p:getY()
+    local mx, my = fx - (updX or fx), fy - (updY or fy)
+    local moving = mx * mx + my * my >= O.MOVE_TILES * O.MOVE_TILES
+    updX, updY = fx, fy
     local now = getTimestampMs()
     if revealAt and now - revealAt >= O.REVEAL_MS + O.REVEAL_TAIL_MS then endReveal() end
     if unrevealAt and now - unrevealAt >= O.UNREVEAL_MS then unrevealAt = nil end
@@ -558,21 +573,23 @@ local function update()
         end
         hold(p)
     end
-    prune(on, px, py, pz, now)
+    prune(on, px, py, pz, now, moving)
     if not on then return end
     verify()
-    scan(px, py, pz, per, d, now)
+    scan(px, py, pz, per, d, now, busy)
 end
 
 -- Todo tick: a morte (no solo o jogo salva logo depois) tira tudo na hora; andou MOVE_TILES
 -- desde o último corte (carro com qualquer FPS, teleporte), o que passou de MAX_RADIUS + SLACK
 -- sai na hora. O teleporte não tem caso próprio: o lugar novo está longe e tudo passa do corte.
 -- Na janela da revelação, um tick que anda mais que o corte (nenhum carro faz isso) é teleporte:
--- o lugar novo sai sem atraso.
+-- o lugar novo sai sem atraso. A atualização não cai no tick em que o corte tirou alguma coisa
+-- (LIGHT_DIV).
 local ticks = 0
 Events.OnTick.Add(function()
     local p = getSpecificPlayer(0)
     local any = nFloor + nWall > 0
+    local cutNow = false
     if p and (any or revealAt or nSeen > 0) then
         if p:isDead() then
             if any then O.stripAll() end
@@ -584,15 +601,15 @@ Events.OnTick.Add(function()
             end
             local dx, dy = x - (cutX or x), y - (cutY or y)
             if (any or nSeen > 0) and (not cutX or dx * dx + dy * dy >= O.MOVE_TILES * O.MOVE_TILES) then
-                cut(math.floor(x), math.floor(y))
+                cutNow = cut(math.floor(x), math.floor(y)) > 0
                 cutX, cutY = x, y
             end
         end
     end
     ticks = ticks + 1
-    if ticks < O.UPDATE_TICKS then return end
+    if ticks < O.UPDATE_TICKS or (cutNow and ticks == O.UPDATE_TICKS) then return end
     ticks = 0
-    update()
+    update(cutNow)
 end)
 
 -- Antes do IsoCell.save gravar os chunks (GameWindow.save: OnSave 302, IsoCell.save 364).

@@ -1383,6 +1383,37 @@ agora é o canto da tela do jogador 0 mais longe dele, no chão do andar dele, +
     esquecimento, 33212 squares em 520 tiles sem piso; com ele, até 3234),
     `overlays_leave_and_return_redressed`, `overlays_walking_cost_stress` e
     `overlays_reveal_walking_far`.
+- **Teto de custo do carro na área densa (sprint 0035, Tarefa 5c): feito.** Estresse (parede N
+  e W em todo square, densidade 3,2, zoom 2,5, raio 30), saindo do disco cheio, 220 ticks. O
+  maior de cada parte num tick (uma rodada; a ordem do `pairs` varia: o pior tick, em 12
+  rodadas, fica em 2005–2050 a 0,5 tile/tick, 1992–2059 a 1 e 2216–2284 a 2):
+
+  | Carro | Corte duro | Retirada em lote | Conferência | Vestir | Pior tick |
+  |---|---|---|---|---|---|
+  | Antes, 0,5 tile/tick | 1581 | 1086 | 100 | 1872 | 3751 |
+  | Antes, 1 tile/tick | 1598 | 455 | 86 | 1878 | 3898 |
+  | Antes, 2 tiles/tick | 1628 | 431 | 80 | 1864 | 3851 |
+  | Depois, 0,5 tile/tick | 1657 | 140 | 112 | 1865 | 2081 |
+  | Depois, 1 tile/tick | 1646 | 137 | 106 | 1860 | 2088 |
+  | Depois, 2 tiles/tick | 1650 | 116 | 64 | 1892 (446 no tick do corte) | 2248 |
+
+  - O pior tick de antes era o corte de um anel cheio (~1600, os primeiros ~30 ticks) somado à
+    atualização inteira no mesmo tick. A 0,5 tile por tick, a retirada em lote também tirava sem
+    lote o que passava de 38 entre dois cortes.
+  - **O corte sozinho fica em ~1650**, abaixo de 2500: ele continua inteiro, sem lote.
+  - No tick em que o corte tirou alguma coisa, a atualização vai pro tick seguinte. A 0,5 e a
+    1 tile por tick ela nunca cai em cima do corte. A 2 tiles por tick (corte em todo tick) ela
+    roda com o lote de vestir ÷ `LIGHT_DIV` (4): 20 squares, ~450 chamadas.
+  - Quem andou `MOVE_TILES` desde a atualização anterior (≥ 0,2 tile por tick) tira em lote
+    `STRIP_BUDGET` ÷ 4 = 20 alvos. O que passou de 38 entra nesse lote como qualquer alvo fora do
+    raio: o corte no tick já garante que nada passa de 38 + `MOVE_TILES`.
+  - A margem do save não muda: anexo mais longe 40,0 (0,5), 39,5 (1) e 38,6 (2), dentro de
+    38 + 2 + 1,5. A pé, nada muda: cobertura 100/99/87% a 3 tiles/s e 95/88/67% a 6 tiles/s;
+    estresse a pé 2331–2436 por atualização (antes, 2335–2434).
+  - Custo aceito: trocar de desenho (período ou densidade) dirigindo tira o desenho velho a
+    20 alvos por atualização; o que fica pra trás o corte leva.
+  - Teste: `overlays_car_cost_stress` (0,5, 1 e 2 tiles por tick, teto 2500, margem em todo
+    tick, enche ao parar).
 - **UNKNOWN (roteiro da 0034):** o custo no jogo de ~2800 squares com anexo (invalidação de nível
   de chunk, FBO) no zoom longe; a câmera do jogo anda atrás do `tOffX` (`PlayerCamera.update`) e o
   carro adianta (`deferedX/Y`): o raio é dos cantos de verdade, mas no zoom longe em carro rápido

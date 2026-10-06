@@ -1197,6 +1197,43 @@ return {
         assert(foot <= 2500, "a pé: " .. foot)
     end,
 
+    -- de carro na área densa (parede N e W em todo square), saindo do disco cheio: nenhum tick
+    -- passa de 2500 chamadas Java (o corte duro de um anel cheio já custa ~1600; a atualização
+    -- não cai em cima dele com o lote inteiro), e a margem do save vale em todo tick. A 0,5 tile
+    -- por tick o corte roda a cada 4 ticks; a 1, a cada 2; a 2, em todo tick. Parado, enche
+    overlays_car_cost_stress = function()
+        for _, step in ipairs({ 0.5, 1, 2 }) do
+            local ticks = 220
+            local G = setup({ density = 2, zoom = 2.5 })
+            for x = 55, 100 + math.ceil(step * ticks) + 45 do
+                for y = 55, 145 do
+                    G.obj(x, y, 0, "N")
+                    G.obj(x, y, 0, "W")
+                end
+            end
+            NOM_FogState.set(true, 3, true)
+            G.seconds(8)
+            assert(farthest(G, G.p.x, G.p.y) > D().MAX_RADIUS - 2, "não encheu até o raio (teste não mede)")
+            local limit = D().MAX_RADIUS + O().SLACK + O().MOVE_TILES + 1.5
+            local cost, worst = 0, 0
+            for _ = 1, ticks do
+                G.p.x = G.p.x + step
+                local j = G.java + G.sqCalls
+                G.tick(1)
+                cost = math.max(cost, G.java + G.sqCalls - j)
+                local f = farthest(G, G.p.x, G.p.y)
+                worst = math.max(worst, f)
+                assert(f <= limit, "carro a " .. step .. " tiles/tick: anexo a " .. f .. " tiles")
+                assert(f + step < 48, "carro a " .. step .. " tiles/tick: o tick seguinte grava anexo a " .. (f + step))
+            end
+            print(string.format("[budget] estresse de carro a %.1f tiles/tick: até %d chamadas Java por tick, anexo mais longe %.1f tiles",
+                step, cost, worst))
+            assert(cost <= 2500, "carro a " .. step .. " tiles/tick: " .. cost .. " chamadas Java num tick")
+            G.seconds(8)
+            assert(laidOut(G, O().radius() - 1) > 1500, "carro a " .. step .. " tiles/tick: parou e não encheu")
+        end
+    end,
+
     -- revelação andando pra longe: o pendente que ficou pra trás (esquecido no corte) não duplica
     -- nem trava; no fim, o lugar novo vestido como pede a regra
     overlays_reveal_walking_far = function()

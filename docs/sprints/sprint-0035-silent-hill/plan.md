@@ -269,6 +269,31 @@ Medição (zoom 2,5, raio 30, campo aberto, densidade 3,2; média de 10 amostras
 - **Memória do `seen`** depois de 520 tiles a pé (teto: o disco de raio 30 + 8 + 2 + 1,5, 5417 squares): com piso, até 2821 em linha e em círculo; sem piso (nada a vestir, só o corte esquece), até 3234. Sem o esquecimento seriam 33212.
 - **Testes novos:** `overlays_walking_covers_screen_edge`, `overlays_seen_memory_bounded`, `overlays_leave_and_return_redressed` (sai do raio e volta, a 25 e a 60 tiles), `overlays_walking_cost_stress` e `overlays_reveal_walking_far`. A `overlays_save_margin_invariant` não mudou; nada passa do corte duro em nenhuma atualização andando.
 
+- [x] **Teto de custo do carro na área densa** (2026-10-06). Teste que falha (`overlays_car_cost_stress`: 3888 a 0,5 tile/tick), implementar, `./run-tests.sh` verde, commit.
+
+Estresse (parede N e W em todo square, densidade 3,2, zoom 2,5, raio 30), saindo do disco cheio, 220 ticks. Maior de cada parte num tick, em chamadas Java (uma rodada; a ordem do `pairs` varia, a faixa do pior tick em 12 rodadas vem embaixo):
+
+| Carro | Corte duro | Retirada em lote | Conferência | Vestir | Pior tick |
+|---|---|---|---|---|---|
+| Antes, 0,5 tile/tick | 1581 | 1086 | 100 | 1872 | 3751 |
+| Antes, 1 tile/tick | 1598 | 455 | 86 | 1878 | 3898 |
+| Antes, 2 tiles/tick | 1628 | 431 | 80 | 1864 | 3851 |
+| Depois, 0,5 tile/tick | 1657 | 140 | 112 | 1865 | 2081 |
+| Depois, 1 tile/tick | 1646 | 137 | 106 | 1860 | 2088 |
+| Depois, 2 tiles/tick | 1650 | 116 | 64 | 1892 (446 no tick do corte) | 2248 |
+
+- **Onde ia o custo:** nos primeiros ~30 ticks, o corte de um anel cheio custa ~1600. A atualização inteira (~2300) caía no mesmo tick. A 0,5 tile/tick, a retirada em lote também tirava, sem lote, o que passava de 38 entre dois cortes (até 1086).
+- **O corte sozinho fica em ~1650**, abaixo da meta: continua inteiro, sem orçamento.
+- **O que mudou** (`LIGHT_DIV` = 4):
+  - no tick em que o corte tirou alguma coisa, a atualização vai pro tick seguinte. A 0,5 e a 1 tile/tick ela nunca cai em cima do corte;
+  - a 2 tiles/tick o corte roda em todo tick, e a atualização veste 20 squares em vez de 80;
+  - quem andou `MOVE_TILES` desde a atualização anterior tira 20 alvos em lote em vez de 80;
+  - o que passou de 38 deixou de ter saída própria no lote: é do corte no tick, que já garante "nada além de 38 + 2".
+- **Teto alcançado** (pior tick em 12 rodadas): 2005–2050 a 0,5 tile/tick, 1992–2059 a 1, 2216–2284 a 2. O teste cobra 2500.
+- **Margem do save:** anexo mais longe 40,0 / 39,5 / 38,6 tiles, dentro de 38 + 2 + 1,5. A `overlays_save_margin_invariant` não mudou.
+- **A pé, nada muda:** cobertura 100/99/87% (3 tiles/s) e 95/88/67% (6 tiles/s); estresse a pé 2331–2436 por atualização (antes, 2335–2434).
+- **Custo aceito:** trocar de desenho dirigindo tira o desenho velho a 20 alvos por atualização.
+
 ---
 
 ### Tarefa 6: docs
