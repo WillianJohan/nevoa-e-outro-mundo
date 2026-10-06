@@ -33,7 +33,8 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
     - **Garantia:** `FogMaxDaysWithout` (2) dias seguidos sem névoa e o seguinte tem névoa com certeza.
     - **Determinismo:** o sorteio usa o número do dia e a semente do mundo (`NOM_VariantRules.hash`).
       Salvar e carregar não muda nada.
-    - **Save antigo:** a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia.
+    - **Save antigo:** a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia se cair
+      até o fim dele; marcada pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
   - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **45 segundos
     reais** antes da névoa. Com o jogo pausado a contagem para. No sono e no
     fast-forward continua 45 s reais (muitas horas de jogo, se for o caso). Cada névoa sorteia uma

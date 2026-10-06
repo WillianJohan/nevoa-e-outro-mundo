@@ -24,7 +24,8 @@ vento aleatório no mod3.
   - chance de 65%, subindo em linha reta até 85% no dia 60 (`FogEscalation`);
   - segunda névoa no mesmo dia: 15%, só depois de 6 h sem névoa e começando antes da meia-noite;
   - garantia: 2 dias seguidos sem névoa e o terceiro tem com certeza;
-  - saves antigos: a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia;
+  - saves antigos: a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia se cair até
+    o fim dele; marcada pra depois, sai, e o dia sorteia com a garantia (review final, I3);
   - vermelha: 20%, a partir do dia 7, e **sem** a subida até o dobro da 0019 (a curva agora é só da
     chance do dia);
   - duração por tipo: branca 3–5 h, vermelha 4–6 h.
@@ -45,7 +46,11 @@ vento aleatório no mod3.
     `setTarget(nil)`, `faceLocationF`), e ignora o jogador, mesmo se apanhar;
   - no solo é o próprio processo; no MP, o cliente dono (comandos `siren`, `fog`, `sirenStop`);
   - a névoa começando solta todos de uma vez. Se o comando se perder, o cliente solta sozinho 15 s depois
-    do fim da sirene;
+    do fim da sirene; no solo a contagem renova esse prazo a cada tick, então pausar não solta ninguém
+    antes da névoa;
+  - o fim da sirene também solta zumbi local que chegou `useless` na troca de posse (MP) sem ter passado
+    pelo lote daqui; o `useless` do próprio jogo (outfit "Useless", modo Tutorial) não é congelado nem
+    solto;
   - objeto de zumbi reaproveitado que estava congelado é solto no `OnZombieCreate`; a Carpideira parada
     continua parada;
   - o `unstick` da `NOM_VariantAI` não solta quem está congelado.
@@ -82,9 +87,9 @@ reinicia a sirene se preciso e zera a calmaria.
 - [ ] A vermelha dura mais que a branca — roteiro, passo 8
 - [ ] O console mostra uma sirene por dia na maioria dos dias, e a garantia no terceiro — roteiro, passo 9
 - [ ] O zumbi congelado **mantém a direção** do `faceLocationF` — UNKNOWN, roteiro, passo 2 (abaixo)
-- [ ] O foco de vento sopra a névoa no mod3 — roteiro, passo 10
+- [ ] O foco de vento sopra a névoa no mod3 — roteiro, passo 11
 - [x] Regras puras, sandbox, servidor, calmaria, congelamento, debug e mod3 — testes verdes
-  (`./run-tests.sh`: 782 testes Lua, 4 de contraste, 29 de build, os do mod3 em Python e Java);
+  (`./run-tests.sh`: 791 testes Lua, 4 de contraste, 29 de build, os do mod3 em Python e Java);
   **não** confirma o comportamento no jogo
 
 Marcar cada item sem evidência não vale: ao marcar, escrever como foi confirmado.
@@ -100,6 +105,9 @@ vento). Acompanhe o servidor com
    com `dir=` em graus no fim da linha.
 2. **Todos parados, virados pro mesmo lado.** Durante a sirene, todo zumbi à vista para em pé e olha pra
    uma direção só, e ignora você. Bata num deles: ele não pode reagir.
+   - Comece a sirene com um zumbi perseguindo você. Pela pz-api-notes §13.2, a caminhada em andamento
+     segue até a última posição vista mesmo `useless`: anote quantos tiles ele anda antes de parar. Se
+     incomodar, vai pra 0034 junto do UNKNOWN abaixo.
    - **UNKNOWN a conferir** (pz-api-notes §21): o zumbi `useless` parado mantém a direção do
      `faceLocationF` entre as passadas do módulo (lote de 20 por tick), ou volta a girar sozinho no idle?
      Olhe com atenção os zumbis parados por uns 20 s: se um ficar rodando ou olhando pra outro lado, anote
@@ -124,7 +132,9 @@ vento). Acompanhe o servidor com
    `[NOM] nevoa proxima=`. Esperado: uma sirene por dia na maioria dos dias, uma segunda de vez em quando
    (depois de uma folga de pelo menos 6 h) e nunca 3 dias seguidos sem névoa.
 10. **Ferramentas do teste.**
-    - `NOM.getZombie()`: o zumbi vivo mais perto aparece em cima de você.
+    - `NOM.getZombie()`: o zumbi vivo mais perto aparece em cima de você. No dedicado quem move é o
+      cliente dono do zumbi, mesmo sem `-debug` (o servidor já conferiu a permissão de quem pediu); zumbi
+      sem ID de rede responde `zumbi sem ID de rede`.
     - Com névoa aberta (`NOM.setFog(true)`), `NOM.turnZombie(1)` a `(4)` transformam o mais perto em
       Estalador, Corredor, Sem-rosto e Carpideira; `NOM.turnZombie(0)` desfaz. Sem névoa o comando avisa.
     - `NOM.godMode(true)`: invulnerável, invisível e zumbis não atacam; `NOM.godMode(false)` desliga.
@@ -162,6 +172,19 @@ vento). Acompanhe o servidor com
   jogador troca de andar, a grade é recriada e o foco continua valendo no andar novo. É um teste, não foi
   tratado.
 
+## Limitações conhecidas
+
+- **Névoa que vira o dia conta o dia da sirene como sem névoa** (review final, M2). Se a sirene toca no
+  fim do dia D e a névoa só abre no D+1, o `planDay(D+1)` roda antes do `R.start`: o D fica com
+  `hadFog=false` e o `daysWithout` sobe, e o D+1 não sorteia o dele, porque a pendente vale por ele. O
+  mesmo acontece com save anterior à 0033 carregado no meio de um evento (`day == nil`) e com a folga
+  empurrando o `next` pra depois da meia-noite (só com sandbox extremo). Efeito: a garantia pode
+  disparar um dia antes do previsto. É raro e benigno; fica assim.
+- **Posse que chega depois do fim da sirene** (MP). O fim da sirene solta quem chegou `useless` antes
+  dele, mas um zumbi cuja posse chega com o `useless` do dono antigo **depois** do `fog {on=true}` deste
+  cliente fica parado até o chunk descarregar (o `useless` não é salvo). A janela é estreita; conferir no
+  teste do dedicado.
+
 ## Aprendizados
 
 - O `resetForReuse` do zumbi não limpa o `useless`: um objeto reaproveitado nasceria congelado. O
@@ -171,6 +194,15 @@ vento). Acompanhe o servidor com
   clima do minuto seguinte. `force` e `begin` zeram a flag na hora.
 - `Flow` (mod3) importa classes do jogo e do LWJGL e não compila no teste Java puro: a lógica que se
   testa fica em classe própria (`WindSource`, como `Wind`).
+
+## Limitações conhecidas
+
+- **Névoa que abre depois da meia-noite não conta pro dia da sirene** (review final, M2). Se a sirene toca
+  perto do fim do dia D e a névoa abre já no D+1, o `planDay(D+1)` roda antes do `R.start`: o D fica
+  como dia sem névoa e o `daysWithout` sobe, e o D+1 usa a pendente como a névoa dele. O mesmo vale pra
+  save anterior à 0033 carregado no meio de um evento (`day` vazio) e pra folga que empurra o `next` pra
+  depois da meia-noite (só com sandbox extremo). Efeito: a garantia pode disparar um dia antes do
+  previsto. É raro e benigno; aceito sem correção.
 
 ## Pendências que a próxima sprint herda
 

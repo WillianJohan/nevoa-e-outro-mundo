@@ -130,7 +130,8 @@ recarga e o resto continuam valendo.
    - **Segunda névoa:** `FogSecondChance` (15%), começando antes da meia-noite e a `FogMinGapHours` (6 h)
      do fim da anterior. Nenhuma névoa começa antes dessa folga do fim da anterior (a folga empurra o
      `next`).
-   - **Save antigo:** `data.fog.next` já agendado vale como a névoa do dia (sem sorteio novo).
+   - **Save antigo:** `data.fog.next` já agendado vale como a névoa do dia (sem sorteio novo) se cair até
+     o fim do dia; marcado pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
    - `FogEventEveryDays` e `R.everyDays`/`R.gap` saem.
 2. **Duração por cor:** branca `FogMinHours`–`FogMaxHours` (3–5), vermelha `RedFogMinHours`–`RedFogMaxHours`
    (4–6). A vermelha é `RedFogChance` (20%) fixa depois da carência; a subida até o dobro da 0019 saiu.
@@ -141,9 +142,13 @@ recarga e o resto continuam valendo.
    O servidor decide e avisa a direção; quem simula o zumbi aplica, igual aos stats da noite
    ([ADR-005](adr-005-quem-simula-aplica.md)): no solo o próprio processo, no MP o cliente dono
    (`siren`, `fog`, `sirenStop`). Cada zumbi fica `setUseless(true)`, sem alvo e com `faceLocationF` pra
-   direção; quando a névoa abre, o `begin()` solta todos (antes do `R.start`, pra uma recusa não deixar
-   ninguém preso); cancelar a sirene (`R.cancel`, que agora também limpa `red`) manda `sirenStop`. O
-   cliente tem rede de segurança: solta sozinho 15 s depois do fim previsto da sirene.
+   direção. Quando a névoa abre, quem solta é quem congelou: no solo, o `begin()` (antes do `R.start`, pra
+   uma recusa não deixar ninguém preso); no dedicado, cada cliente ao receber `fog {on=true}` (o servidor
+   não manda `sirenStop` nesse caso). Cancelar a sirene (`R.cancel`, que agora também limpa `red`) manda
+   `sirenStop`. O cliente tem rede de segurança: solta sozinho 15 s depois do fim previsto da sirene (no
+   solo, a contagem renova esse prazo a cada tick, e a pausa não o vence). O fim também solta o zumbi
+   local que herdou o `useless` na troca de posse; o `useless` do próprio jogo (outfit "Useless", modo
+   Tutorial) não é tocado nem no começo nem no fim.
 5. **Calmaria:** `R.stop` grava `calmUntil = fim + FogCalmHours`; `R.calm` vira a flag `NOM_World.calm`
    (`setCalm`, a cada `OnClimateTick`, e na hora no `stop()` de debug). `NOM_NightRules.wanted` recebe
    `calm` e dá ao zumbi comum um degrau a menos de velocidade, visão e audição (`dull`); a calmaria vence
@@ -161,7 +166,7 @@ recarga e o resto continuam valendo.
 | Calmaria como multiplicador de velocidade | O jogo só tem degraus (`doZombieSpeed`); o mesmo caminho da noite aproveita os testes e o dono |
 
 **Consequências:**
-- Mudar o sandbox no meio do save vale a partir do próximo dia planejado; o `next` já salvo não muda.
+- Mudar o sandbox no meio do save vale a partir do próximo dia planejado; o `next` já salvo pro dia não muda.
 - Sono e fast-forward longos planejam o dia em que se acorda e contam os dias perdidos como sem névoa
   (a garantia pode forçar a seguinte); nada se acumula.
 - UNKNOWN registrado: se o zumbi `useless` parado mantém a direção do `faceLocationF` entre as passadas
