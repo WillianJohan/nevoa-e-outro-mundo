@@ -78,6 +78,7 @@ return {
         G.seconds(29.9)
         assert(NOM_World.fog == false and NOM_FogState.on == false, "bichos antes de 30 s")
         assert(NOM_World.rising == true)
+        assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenFar") == 2, "não tocou as 3 sirenes")
         G.seconds(0.2)
         assert(NOM_World.fog == true and NOM_FogState.on == true and NOM_FogState.period == 1)
         assert(NOM_World.rising == false and NOM_FogState.rising == false, "a subida ficou com a névoa aberta")
@@ -180,20 +181,16 @@ return {
         local fog = G.commands(G.sentServer, "fog")
         assert(#fog == 1 and fog[1].args.on == true and fog[1].args.period == 1)
     end,
-    -- a sirene leva a direção do período que vem (a mesma em toda máquina) e a cor
-    fog_event_siren_sends_dir = function()
+    -- a sirene leva só a cor: as posições são sorteadas no cliente, em volta de cada jogador
+    fog_event_siren_sends_color_only = function()
         local G = setup({ server = true, player = false })
-        local period = NOM_FogEvent.period()
         toSiren(G)
         local siren = G.commands(G.sentServer, "siren")
         assert(#siren == 1)
-        local want = NOM_FogEventRules.sirenDir(fogMD(G).seed, period + 1)
-        assert(siren[1].args.dir == want, "dir: " .. tostring(siren[1].args.dir) .. " esperado " .. want)
-        assert(siren[1].args.dir >= 0 and siren[1].args.dir < 360)
         assert(siren[1].args.red == false, "red: " .. tostring(siren[1].args.red))
-        assert(NOM_FogEvent.status().sirenDir == want, "status sem a direção")
-        G.seconds(30.1)
-        assert(NOM_FogEvent.status().sirenDir == nil, "direção depois da sirene")
+        assert(siren[1].args.dir == nil, "a sirene ainda manda direção")
+        assert(NOM_FogEvent.status().sirenDir == nil and fogMD(G).sirenDir == nil, "direção no status ou no save")
+        assert(#G.pool == 0, "o servidor dedicado tocou sirene")
     end,
     -- a sirene toca uma vez, por mais minutos que passem na contagem
     fog_event_siren_once_while_counting = function()
@@ -374,10 +371,12 @@ return {
         toSiren(G)
         assert(G.played("NOM_Siren") == 1)
         assert(NOM_FogEvent.stop(), "não cancelou")
+        assert(#G.playing("NOM_Siren") == 0, "cancelar deixou a sirene tocando")
         G.climate()
         G.seconds(46)
         assert(NOM_World.fog == false, "névoa veio depois de cancelar")
         assert(G.played("NOM_Siren") == 1, "sirene tocou de novo: " .. G.played("NOM_Siren"))
+        assert(G.played("NOM_SirenFar") == 0, "a sirene atrasada entrou depois de cancelar")
         assert(fogMD(G).next == nil and fogMD(G).night == nil)
     end,
     -- dedicado: cancelar a sirene avisa todo mundo (o congelamento para) e não toca de novo
@@ -402,17 +401,16 @@ return {
         assert(NOM_FogEvent.stop())
         assert(#G2.commands(G2.sentServer, "sirenStop") == 0)
     end,
-    -- solo: o congelamento (shared/NOM_SirenFreeze) começa com a sirene, vira pra direção
-    -- dela e solta quando ela é cancelada ou a névoa abre
+    -- solo: o congelamento (shared/NOM_SirenFreeze) começa com a sirene, vira o zumbi pro
+    -- jogador e solta quando ela é cancelada ou a névoa abre
     fog_event_solo_siren_freezes = function()
         local G = setup()
         local a = G.zombie({ x = 10, y = 10 })
         toSiren(G)
         G.tick(1)
         assert(NOM_SirenFreeze.active and a.useless == true, "a sirene não congelou")
-        local dir = math.rad(NOM_FogEventRules.sirenDir(fogMD(G).seed, 1))
-        assert(math.abs(a.faced.x - (a.x + NOM_SirenFreeze.FAR * math.cos(dir))) < 1e-6, "virou pra outra direção")
-        assert(math.abs(a.faced.y - (a.y + NOM_SirenFreeze.FAR * math.sin(dir))) < 1e-6)
+        local p = G.players[1]
+        assert(a.faced and a.faced.x == p.x and a.faced.y == p.y, "não virou pro jogador")
         assert(NOM_FogEvent.stop())
         assert(a.useless == false and not NOM_SirenFreeze.active, "cancelar não soltou")
         G.at(G.world.hours + 24)
@@ -431,7 +429,7 @@ return {
         assert(not NOM_SirenFreeze.active and not a.useless)
         assert(#G.handlers.OnTick == 1, "o servidor registrou o tick do congelamento")
     end,
-    -- review 2: quem entra no MP durante a contagem ouve a sirene (com a direção)
+    -- review 2: quem entra no MP durante a contagem ouve a sirene (com a cor)
     fog_event_mp_join_during_siren_hears_it = function()
         local G = setup({ server = true, player = false })
         toSiren(G)
@@ -441,8 +439,7 @@ return {
         G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
         local siren = G.commands(G.sentServer, "siren")
         assert(#siren == 1 and siren[1].player == who, "entrou na contagem sem sirene")
-        assert(siren[1].args.dir == NOM_FogEventRules.sirenDir(fogMD(G).seed, 1), "sirene atrasada sem a direção")
-        assert(siren[1].args.red == false)
+        assert(siren[1].args.red == false and siren[1].args.dir == nil)
         G.seconds(36)
         G.sentServer = {}
         G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})

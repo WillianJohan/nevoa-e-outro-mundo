@@ -821,6 +821,9 @@ no dedicado manda `sendServerCommand(MODULE, "sirenStop", {})` (mesma forma do `
 sem API nova); no solo o servidor chama `NOM_SirenFreeze.start/stop` direto. Cliente que
 não conhece um comando o ignora (`client/NOM_FogClient.lua`: cadeia de `if` sem `else`).
 
+Sprint 0034: a sirene deixa de ser chapada no jogador. São 3 por jogador, em emitters do
+mundo (§23); o `dir` e o `NOM_FogEventRules.sirenDir` saíram, e o comando leva só `{ red }`.
+
 ## 12. Névoa vermelha (sprint 0010)
 
 **Verificado na sprint 0010** (bytecode do `projectzomboid.jar` instalado, 42.21).
@@ -1394,7 +1397,7 @@ Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para 
 ## 21. Sirene que congela (sprint 0033)
 
 `shared/NOM_SirenFreeze.lua`: durante os 15 s da sirene, todo zumbi que este processo
-simula fica parado, virado pra direção dela. No solo é o próprio processo
+simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mais perto, §23). No solo é o próprio processo
 (`server/NOM_FogEvent.lua`); no MP, o cliente dono (`client/NOM_FogClient.lua`, comandos
 `siren`, `fog` e `sirenStop`). Não há API nova além do `faceLocationF`.
 
@@ -1447,6 +1450,40 @@ chega ao cliente pelo Lua (`sendPlaySound` do servidor), então só o da Carpide
 | tamanho da lista numa cidade, e se os aparelhos das casas a ~15 tiles estão nela no cliente de MP | `getZomboidRadio():getDevices():size()` no console |
 | atenuação real com `distanceMin` 2 e `distanceMax` 18; oclusão atrás de parede | ouvir no jogo |
 | `stopSoundLocal(id)` para mesmo o som de um emitter do pool que já se afastou | ouvir no jogo |
+
+## 23. Sirenes posicionais (sprint 0034)
+
+`shared/NOM_Siren.lua` (posições em `shared/NOM_SirenSpotsRules.lua`): 3 sirenes por jogador
+local, uma a 40–80 tiles (`near`) e duas a 80–200 (`far`, com a distância embutida no
+arquivo), pelo menos 60° entre elas, as longe entrando 0,4 a 2,5 s depois. Cada uma num
+emitter do mundo, parado onde foi posto, com a mesma técnica da §22 (`getFreeEmitter` +
+`playSoundImpl`, parada por `stopSoundLocal(id)` no `sirenStop` e no cancelamento do solo).
+O congelamento (§21) vira cada zumbi pro jogador vivo mais perto. Bytecode do B42 instalado.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| O jogo não corta som de arquivo 3D por distância: nada em `FMODSoundEmitter.addSound` (chamado pelo `playClip`) nem no `FileSound.tick` compara a distância do ouvinte com o `distanceMax`; o `tick` só posiciona (`Set3DAttributes`, z × 3), passa `Set3DMinMaxDistance(distanceMin, distanceMax)` e a oclusão | CONFIRMED (bytecode) | `FMODSoundEmitter.addSound` 259–487 (ramo `file`); `FMODSoundEmitter$FileSound.tick` 52–264 (`Set3DAttributes`), 353–386 (`Set3DLevel` só abaixo de 2 tiles do ouvinte), 893–908 (`Set3DMinMaxDistance`) |
+| O pool do `IsoWorld` faz `tick` em todo emitter em uso, sem filtro de distância, e só devolve o vazio | CONFIRMED (bytecode) | `IsoWorld` 8930–8990 (`currentEmitters` → `freeEmitters` quando `isEmpty`) |
+| Square do emitter fora da célula carregada (a 200 tiles, quase sempre) só pula a oclusão: o som toca | CONFIRMED (bytecode) | `FileSound.tick` 909–936 (`getGridSquare` nulo → salta pro fim, 1533) |
+| Sem modo de rolloff explícito: inverso do FMOD, ganho `distanceMin / d` entre `distanceMin` e `distanceMax`, e constante depois (não zera) | LIKELY | §22 / `api-aparelhos.md` §5; `FMOD_System_Set3DSettings(1, 1, 1)` |
+| `getOnlinePlayers()`: servidor = `GameServer.getPlayers`, cliente = `GameClient.getPlayers` (o `IDToPlayerMap`: os jogadores que o cliente conhece), solo = `ArrayList` vazia | CONFIRMED | uso vanilla no cliente `client/Chat/ISChat.lua:560`; bytecode `LuaManager$GlobalObject.getOnlinePlayers` 0–30, `GameClient.getPlayers` 0–42 |
+
+Decisão (audibilidade): com `distanceMin` 20 e `distanceMax` 220 e o rolloff inverso, a perto
+sai de −6 dB (40 tiles) a −12 dB (80), e as longe de −12 dB (80) a −20 dB (200), contra 0 dB
+da sirene chapada antiga. Como o jogo não corta, **o emitter fica na posição sorteada**, sem
+aproximar. O arquivo `...Far` traz só o timbre da distância (passa-baixa e reverb, no
+`scripts/gen_sounds.py`) e sai quase no nível da perto (RMS ~ −9,8 contra ~ −7 dBFS), pra a
+queda de volume não contar duas vezes.
+
+Jogadores do congelamento: os locais (`getNumActivePlayers` + `getSpecificPlayer`) e, no
+cliente de MP, os do `getOnlinePlayers()`; o mais perto até `NOM_SirenFreeze.RANGE` (100 tiles).
+Sem jogador nesse raio, o zumbi congela e fica virado como estava.
+
+| UNKNOWN | — |
+|---|---|
+| a 200 tiles a sirene longe ainda se ouve? a perto não fica alta demais a 40? | ouvir no jogo |
+| o FMOD não virtualiza (corta) canal baixo com muitos sons tocando | ouvir na cidade, com a névoa subindo |
+| o `IDToPlayerMap` do cliente traz a posição atual dos jogadores longe dele | MP com dois jogadores |
 
 ## Abordagem recomendada por mecânica (resumo)
 
@@ -1514,3 +1551,6 @@ chega ao cliente pelo Lua (`sendPlaySound` do servidor), então só o da Carpide
 17. Aparelhos do Outro Mundo (sprint 0034): a TV e o rádio das casas perto estão na
     `getZomboidRadio():getDevices()`? O som some com a distância e para a 20 tiles? O rádio de
     carro toca no carro? Volume e frequência agradam? (§22)
+18. Sirenes posicionais (sprint 0034): as 3 vêm de lados diferentes e a perto se destaca? A
+    longe se ouve a 200 tiles? Os zumbis congelados olham pro jogador e acompanham quando ele
+    anda? (§23)

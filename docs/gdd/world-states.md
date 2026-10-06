@@ -37,10 +37,12 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
       até o fim dele; marcada pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
   - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **15 segundos
     reais** antes da névoa. Com o jogo pausado a contagem para. No sono e no
-    fast-forward continua 15 s reais (muitas horas de jogo, se for o caso). Cada névoa sorteia uma
-    **direção** de onde a sirene "vem" (pura da semente e do número da névoa). Durante a sirene
-    todo zumbi para virado pra essa direção e ignora o jogador; quando a névoa começa, todos voltam
-    de uma vez (`NOM_SirenFreeze`, [pz-api-notes §21](../architecture/pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
+    fast-forward continua 15 s reais (muitas horas de jogo, se for o caso). A sirene vem de
+    **posições** no mapa (sprint 0034): cada jogador ouve 3, sorteadas em volta dele, uma a 40–80
+    tiles e duas a 80–200, de lados diferentes e em coro desencontrado
+    ([pz-api-notes §23](../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)). Durante a
+    sirene todo zumbi para virado pro jogador vivo mais perto e ignora o jogador; quando a névoa
+    começa, todos voltam de uma vez (`NOM_SirenFreeze`, [pz-api-notes §21](../architecture/pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
   - **Duração:** depende da cor, em horas de jogo: branca entre `FogMinHours` (3) e `FogMaxHours` (5);
     vermelha entre `RedFogMinHours` (4) e `RedFogMaxHours` (6). A névoa entra e sai em ~20 minutos de jogo.
   - **Calmaria:** quando a névoa acaba, por `FogCalmHours` (2 h de jogo) vale a flag `calm`. O zumbi

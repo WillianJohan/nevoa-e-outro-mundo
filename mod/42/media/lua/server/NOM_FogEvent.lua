@@ -2,8 +2,8 @@
 -- clima: a agenda é por dia (sprint 0033, shared/NOM_FogEventRules: o dia sorteia se tem
 -- névoa e a que horas, pode ter uma segunda depois da folga, e o terceiro dia sem névoa
 -- tem com certeza). Na hora sorteada vem o presságio (sprint 0034): a cor é decidida e a
--- tela de quem vê ganha estática por 3 s reais. Depois a sirene toca em todo jogador (com a
--- direção de onde ela "vem", pro congelamento) e começa a fuga: a névoa visual sobe na hora
+-- tela de quem vê ganha estática por 3 s reais. Depois a sirene toca em todo jogador (cada
+-- um sorteia as posições dela em volta de si) e começa a fuga: a névoa visual sobe na hora
 -- (NOM_World.rising) e, 30 s reais depois, a névoa de jogo começa e dura o que o tipo
 -- manda (branca ou vermelha, em horas de jogo). Depois do fim vem a calmaria
 -- (NOM_World.calm). O estado mora no ModData global (data.fog: night = período, inNight,
@@ -80,13 +80,13 @@ function NOM_FogEvent.period()
     return state().night or 0
 end
 
--- { next, endAt, sirenMs, sirenRed, sirenDir, presageMs } pro status do debug e pra quem entra
--- na contagem. O presságio conta como sirene pendente (sirenMs até a névoa), pros toggles.
+-- { next, endAt, sirenMs, sirenRed, presageMs } pro status do debug e pra quem entra na
+-- contagem. O presságio conta como sirene pendente (sirenMs até a névoa), pros toggles.
 function NOM_FogEvent.status()
     local s = state()
     local pending = countdown or (omenLeft and omenLeft + R.GRACE_MS)
     return { next = s.next, endAt = s.endAt, sirenMs = pending, sirenRed = pending and s.red == true,
-        sirenDir = countdown and s.sirenDir or nil, presageMs = omenLeft }
+        presageMs = omenLeft }
 end
 
 -- O vermelho é do período que a sirene anuncia (o próximo): sorteio puro do número e da
@@ -136,19 +136,15 @@ function NOM_FogEvent.siren(skip)
     countdown, lastMs = skip and 0 or R.GRACE_MS, getTimestampMs()
     local chance = decideColor(s)
     rise(true, s.red)
-    -- a direção é do período que a sirene anuncia (o próximo): pura da semente e do número,
-    -- igual em toda máquina (a recarga durante a contagem repete a mesma)
-    local dir = R.sirenDir(s.seed, (s.night or 0) + 1)
-    s.sirenDir = dir
     if isServer() then
-        sendServerCommand(MODULE, "siren", { red = s.red, dir = dir })
+        sendServerCommand(MODULE, "siren", { red = s.red })
     else
         NOM_Siren.play(s.red)
-        NOM_SirenFreeze.start(dir, countdown)
+        NOM_SirenFreeze.start(countdown)
     end
     -- inteiro: "contagem=30000"; dias e chance da vermelha com 2 casas
     debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
-        " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance .. " dir=" .. hours(dir))
+        " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
     return true
 end
 
@@ -166,6 +162,7 @@ function NOM_FogEvent.stop()
             if isServer() then
                 sendServerCommand(MODULE, "sirenStop", {})
             else
+                NOM_Siren.stop()
                 NOM_SirenFreeze.stop()
             end
         end

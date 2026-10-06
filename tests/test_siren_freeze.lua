@@ -1,5 +1,5 @@
 -- shared/NOM_SirenFreeze.lua contra o mundo falso (tests/fog_world.lua): a sirene congela
--- os zumbis que este processo simula, virados pra direção dela, e o fim solta.
+-- os zumbis que este processo simula, virados pro jogador vivo mais próximo, e o fim solta.
 local W = dofile("tests/fog_world.lua")
 require "NOM_FogEventRules"
 local GRACE_MS = NOM_FogEventRules.GRACE_MS
@@ -12,23 +12,71 @@ local function setup(opts)
     return G
 end
 
+local function facing(z, p)
+    return z.faced ~= nil and math.abs(z.faced.x - p.x) < 1e-6 and math.abs(z.faced.y - p.y) < 1e-6
+end
+
 return {
-    siren_freeze_holds_local_zombies_facing_dir = function()
+    siren_freeze_holds_local_zombies_facing_player = function()
         local G = setup()
+        local p = G.player({ x = 30, y = 10 })
         local a = G.zombie({ x = 10, y = 10 })
         local b = G.zombie({ x = 20, y = 20, remote = true })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         for _ = 1, 3 do NOM_SirenFreeze.tick() end
         assert(a.useless == true and a.target == nil and NOM_SirenFreeze.frozen[a])
-        assert(math.abs(a.faced.x - (a.x + NOM_SirenFreeze.FAR)) < 1e-6 and math.abs(a.faced.y - a.y) < 1e-6, "direção 0° = +x")
-        assert(not b.useless and not NOM_SirenFreeze.frozen[b], "cópia remota é do dono")
+        assert(facing(a, p), "não virou pro jogador")
+        assert(not b.useless and not NOM_SirenFreeze.frozen[b] and b.faced == nil, "cópia remota é do dono")
     end,
-    siren_freeze_direction_90_is_plus_y = function()
+    -- solo com tela dividida: cada zumbi olha pro jogador vivo mais perto dele
+    siren_freeze_each_zombie_faces_nearest = function()
         local G = setup()
-        local a = G.zombie({ x = 3, y = 4 })
-        NOM_SirenFreeze.start(90, GRACE_MS)
+        local p1 = G.player({ x = 0, y = 0 })
+        local p2 = G.player({ x = 100, y = 0 })
+        local dead = G.player({ x = 52, y = 0 })
+        dead.dead = true
+        local a = G.zombie({ x = 40, y = 5 })
+        local b = G.zombie({ x = 60, y = -5 })
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
-        assert(math.abs(a.faced.x - a.x) < 1e-6 and math.abs(a.faced.y - (a.y + NOM_SirenFreeze.FAR)) < 1e-6)
+        assert(facing(a, p1), "a não olhou pro jogador 1")
+        assert(facing(b, p2), "b não olhou pro jogador 2")
+    end,
+    -- o giro é refeito a cada passada do lote: acompanha o jogador andando
+    siren_freeze_turn_follows_player = function()
+        local G = setup()
+        local p = G.player({ x = 10, y = 0 })
+        local a = G.zombie({ x = 0, y = 0 })
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(facing(a, p))
+        p.x, p.y = -20.5, 15.5
+        NOM_SirenFreeze.tick()
+        assert(facing(a, p), "o giro não acompanhou o jogador")
+    end,
+    -- MP: o cliente dono olha também os jogadores que conhece pelo getOnlinePlayers()
+    siren_freeze_client_sees_remote_players = function()
+        local G = setup({ client = true })
+        G.player({ x = 0, y = 0 })
+        local other = G.player({ x = 50, y = 0, remote = true })
+        local a = G.zombie({ x = 45, y = 0 })
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(facing(a, other), "não olhou pro jogador do outro cliente")
+    end,
+    -- sem jogador vivo por perto: congela e fica como está
+    siren_freeze_no_player_near_keeps_facing = function()
+        local G = setup()
+        local z = G.zombie({ x = 1, y = 1 })
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(z.useless == true and z.faced == nil, "sem jogador e virou")
+        local H = setup()
+        H.player({ x = 0, y = 0 })
+        local far = H.zombie({ x = NOM_SirenFreeze.RANGE + 10, y = 0 })
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(far.useless == true and far.faced == nil, "virou pra jogador longe demais")
     end,
     siren_freeze_drops_target_of_chasing_zombie = function()
         local G = setup()
@@ -36,7 +84,7 @@ return {
         local a = G.zombie({ x = 5, y = 5 })
         a:spotted(p, true)
         assert(a.target == p)
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         assert(a.target == nil and a:isUseless())
         a:spotted(p, true) -- o jogo tenta de novo: useless não pega alvo
@@ -45,7 +93,7 @@ return {
     siren_freeze_stop_releases = function()
         local G = setup()
         local a = G.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(90, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         NOM_SirenFreeze.stop()
         assert(a.useless == false and next(NOM_SirenFreeze.frozen) == nil and not NOM_SirenFreeze.active)
@@ -55,7 +103,7 @@ return {
     siren_freeze_keeps_still_carpideira = function()
         local G = setup()
         local a = G.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         NOM_Carpideira.still[a] = true
         NOM_SirenFreeze.stop()
@@ -64,7 +112,7 @@ return {
     siren_freeze_safety_timeout = function()
         local G = setup()
         local a = G.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         G.now = G.now + GRACE_MS + NOM_SirenFreeze.SAFETY_MS + 1
         NOM_SirenFreeze.tick()
@@ -81,7 +129,7 @@ return {
         local G = setup()
         local zs = {}
         for i = 1, NOM_SirenFreeze.BATCH * 2 + 5 do zs[i] = G.zombie({ x = i, y = 0 }) end
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         local n = 0
         for _, z in ipairs(zs) do if z.useless then n = n + 1 end end
@@ -95,7 +143,7 @@ return {
         local G = setup()
         NOM_SirenFreeze.install()
         local a = G.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         G.tick(1)
         assert(a.useless)
         local late = G.zombie({ x = 9, y = 9 })
@@ -112,11 +160,11 @@ return {
         local G = setup()
         NOM_SirenFreeze.install()
         local a = G.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         assert(a.useless)
         NOM_SirenFreeze.stop()
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         G.fire("OnZombieCreate", a)
         assert(a.useless == false and not NOM_SirenFreeze.frozen[a], "objeto reaproveitado ficou useless")
@@ -130,7 +178,7 @@ return {
         local still = G.zombie({ x = 2, y = 2 })
         local game = G.zombie({ x = 3, y = 3, outfit = "Useless" })
         local remote = G.zombie({ x = 4, y = 4, remote = true })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         for _, z in ipairs({ inherited, still, game, remote }) do z.useless = true end
         NOM_Carpideira.still[still] = true
         NOM_SirenFreeze.stop()
@@ -152,7 +200,7 @@ return {
         local G = setup({ gameMode = "Tutorial" })
         local z = G.zombie({ x = 1, y = 1 })
         z.useless = true
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.stop()
         assert(z.useless == true, "soltou zumbi do tutorial")
     end,
@@ -162,14 +210,14 @@ return {
         local G = setup()
         local game = G.zombie({ x = 1, y = 1, outfit = "Useless" })
         game.useless = true
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         assert(not NOM_SirenFreeze.frozen[game] and game.faced == nil, "congelou o useless do jogo")
         NOM_SirenFreeze.stop()
         assert(game.useless == true)
         local T = setup({ gameMode = "Tutorial" })
         local z = T.zombie({ x = 1, y = 1 })
-        NOM_SirenFreeze.start(0, GRACE_MS)
+        NOM_SirenFreeze.start(GRACE_MS)
         NOM_SirenFreeze.tick()
         assert(not z.useless and not NOM_SirenFreeze.frozen[z], "congelou no tutorial")
     end,

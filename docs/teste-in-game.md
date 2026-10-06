@@ -74,7 +74,7 @@ Roteiro completo dos comandos da 0033: [sprint 0033](sprints/sprint-0033-ritmo-n
 | `NOM_Debug.status()` | estado do mod | `[NOM] debug local …` e `[NOM] debug servidor …` |
 | `NOM_Debug.night(true)` / `(false)` / `()` | força noite / dia / devolve pro relógio | `[NOM] debug noite forcada=true`; vale no próximo minuto de jogo |
 | `NOM_Debug.fog(true)` / `(true, true)` / `(false)` | evento de névoa: sirene e névoa 15 s reais depois / névoa na hora / termina (sprint 0009, 15 s desde a 0033) | `[NOM] debug nevoa sirene=true`, depois `[NOM] nevoa evento inicio periodo=N fim=…`; `[NOM] debug nevoa fim=true` |
-| `NOM_Debug.redFog(true)` / `(false)` | névoa vermelha: com névoa aberta vira na hora; sem, sirene vermelha e névoa vermelha 15 s depois / desfaz (sprint 0010) | `[NOM] debug nevoa vermelha=true`, `[NOM] nevoa sirene contagem=15000 vermelha=true … dir=…` |
+| `NOM_Debug.redFog(true)` / `(false)` | névoa vermelha: com névoa aberta vira na hora; sem, sirene vermelha e névoa vermelha 15 s depois / desfaz (sprint 0010) | `[NOM] debug nevoa vermelha=true`, `[NOM] nevoa sirene contagem=15000 vermelha=true …` |
 | `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`, `"carpideira"`; `()` desfaz). Vale pelo `persistentOutfitID`: outro zumbi com o mesmo ID (gêmeo, raro) vira junto. Some quando o jogo reinicia (carregar o save de novo) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
 | `NOM_Debug.spawnEco()` | um Eco nos pés do jogador (só à noite) | `[NOM] debug eco spawn=true` |
 

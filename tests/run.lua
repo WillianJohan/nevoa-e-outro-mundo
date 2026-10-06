@@ -39,6 +39,8 @@ local FILES = {
     "tests/test_semrosto.lua",
     "tests/test_fog.lua",
     "tests/test_fog_event.lua",
+    "tests/test_siren_spots_rules.lua",
+    "tests/test_siren.lua",
     "tests/test_siren_freeze.lua",
     "tests/test_fog_client.lua",
     "tests/test_fog_sound.lua",

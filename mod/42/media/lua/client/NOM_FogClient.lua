@@ -82,9 +82,10 @@ Events.OnServerCommand.Add(function(module, command, args)
         NOM_Siren.play(red)
         NOM_FogState.setRising(true, red)
         arm()
-        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.GRACE_MS)
+        NOM_SirenFreeze.start(NOM_FogEventRules.GRACE_MS)
     elseif command == "sirenStop" then -- presságio ou sirene cancelada (NOM_FogEvent.stop)
         dropRising()
+        NOM_Siren.stop()
         NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este

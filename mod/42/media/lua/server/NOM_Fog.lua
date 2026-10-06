@@ -45,7 +45,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     if ev.presageMs then
         sendServerCommand(player, MODULE, "presage", { red = ev.sirenRed })
     elseif ev.sirenMs then
-        sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed, dir = ev.sirenDir })
+        sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed })
     end
 end)
 

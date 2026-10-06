@@ -175,10 +175,6 @@ return {
         local c = cfg({ escalation = true })
         assert(R.redChance(20, c, 6.99) == 0 and R.redChance(20, c, 7) == 20 and R.redChance(20, c, 90) == 20)
     end,
-    fog_event_rules_siren_dir = function()
-        local d = R.sirenDir(SEED, 3)
-        assert(d >= 0 and d < 360 and d == R.sirenDir(SEED, 3) and d ~= R.sirenDir(SEED, 4))
-    end,
     fog_event_rules_closes_stale_0008_save = function()
         local s = { night = 4, inNight = true, seed = SEED, bornAt = 0 }
         R.update(s, 100, cfg(), seq(0))

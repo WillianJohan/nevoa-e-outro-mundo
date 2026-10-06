@@ -34,7 +34,6 @@ R.DAY_SALT = 15485863
 R.HOUR_SALT = 32452843
 R.SECOND_SALT = 49979687
 R.SECOND_HOUR_SALT = 67867967
-R.DIR_SALT = 86028121
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
@@ -180,11 +179,6 @@ end
 function R.redChance(chance, cfg, d)
     if d < (cfg.redGraceDays or 0) then return 0 end
     return chance
-end
-
--- De onde a sirene "vem" no período: graus em [0, 360), igual em toda máquina.
-function R.sirenDir(seed, period)
-    return R.frac(seed, period, R.DIR_SALT) * 360
 end
 
 -- Contagem regressiva da sirene em ms reais: parada com o jogo pausado, e um

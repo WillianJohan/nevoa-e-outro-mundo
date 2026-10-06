@@ -185,3 +185,12 @@ Decisão do Johan: "quando a sirene toca, já começa a névoa... o tempo de 30/
 - **Clima:** `eventRamp` e `fogRamp` seguem `fog or rising`; `redRamp`, `(fog and red) or (rising and risingRed)`. A rampa de 20 minutos de jogo fica: os 30 s reais (~12 min de jogo) deixam a névoa pelo meio quando os bichos soltam.
 - **Quem vê:** `NOM_FogState.rising`/`risingRed`, `setRising` (não dispara `onChange`), `visible()` e `visibleRed()`. No solo quem liga é o `NOM_FogEvent`; no MP, o `NOM_FogClient` (`siren` liga, `fog {on=true}` e `sirenStop` desligam; `fog {on=false}` não, porque quem entra na fuga recebe `fog` e depois `siren`).
 - **Seguem `visible()`:** a vinheta (`NOM_FogVignette`, sem o mod do shader) e o drone e o metal do `NOM_FogSound`. **Seguem `on` (esperam a fuga):** o rádio do Sem-rosto, o Outro Mundo (`NOM_FogOverlays`), os efeitos de tela (`NOM_ScreenFx`, que também alimenta o canal do shader) e toda a regra de jogo.
+
+## Emenda de 2026-10-06 — sprint 0034: sirenes posicionais
+
+Decisão do Johan: "se a gente tiver múltiplas sirenes no mapa, o som não é mais 2D chapado, ele vem de alguma posição... podem vir longe, podem vir perto, mas sempre num range do jogador". Isto substitui a direção da decisão 3 da emenda da 0033:
+
+- **Sem direção única:** `R.sirenDir`, `R.DIR_SALT`, `data.fog.sirenDir` e o `dir` do comando saem. O `siren` leva só `{ red }` (também no `fogState` de quem entra na fuga).
+- **3 sirenes por jogador**, sorteadas no jogo de quem ouve (`shared/NOM_SirenSpotsRules.lua`, aleatório local, sem rede): uma a 40–80 tiles e duas a 80–200, pelo menos 60° entre elas, as longe 0,4 a 2,5 s depois. Cada uma num emitter do mundo parado (`shared/NOM_Siren.lua`, [pz-api-notes §23](pz-api-notes.md#23-sirenes-posicionais-sprint-0034)); `sirenStop` e o cancelamento do solo param todas.
+- **Congelamento:** `NOM_SirenFreeze.start(durationMs)`; cada zumbi vira pro jogador vivo mais perto (até 100 tiles), refeito a cada passada do lote. No MP, o cliente dono olha os jogadores locais e os do `getOnlinePlayers()`.
+- **Sons:** ponto único `NOM_SirenSpotsRules.SOUNDS[tipo] = { near, far }`; a vermelha continua sendo só da névoa vermelha (ADR-010).

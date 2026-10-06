@@ -38,7 +38,8 @@ mod/
     lua/server/NOM_ClimateLook.lua  clima sombrio (OnClimateTick), só no servidor; dono do canal de névoa (ADR-009); log canal a canal em -debug (ADR-008)
     lua/shared/NOM_FogEventRules.lua   intervalo, duração e contagem da sirene do evento de névoa (puro)
     lua/server/NOM_FogEvent.lua     agenda o evento de névoa (ModData global), conta a sirene em tempo real, liga a flag
-    lua/shared/NOM_Siren.lua        toca a sirene (normal ou vermelha) no jogador local (solo e cliente)
+    lua/shared/NOM_Siren.lua        toca as 3 sirenes (normal ou vermelha) em volta do jogador local (solo e cliente)
+    lua/shared/NOM_SirenSpotsRules.lua  posições, sons e atrasos das 3 sirenes (puro)
     lua/server/NOM_Eco.lua          spawn, morte sem cadáver e amanhecer dos Ecos
     lua/client/NOM_EcoClient.lua    apaga o fantasma do Eco removido (só MP)
     lua/shared/NOM_NightRules.lua   degraus de velocidade/sentidos, perfil, caça (puro)
