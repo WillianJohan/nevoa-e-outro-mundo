@@ -177,8 +177,9 @@ end
 
 -- Debug (NOM_Debug.redFog). Evento aberto: vira (ou deixa de ser) vermelho na hora
 -- e os clientes recebem pelo NOM_Fog (borda "red"). Presságio ou contagem correndo: a névoa
--- que vem segue o pedido (a sirene que já tocou fica). Nada aberto: true toca a
--- sirene vermelha e começa um evento; false só desfaz o pedido.
+-- que vem segue o pedido (a sirene que já tocou fica) e a cor do presságio e da subida muda
+-- em quem vê (no dedicado, pelo comando sirenColor, que não toca a sirene de novo). Nada
+-- aberto: true começa um evento vermelho pelo presságio, como o force; false só desfaz o pedido.
 function NOM_FogEvent.setRed(on)
     local s = state()
     if s.inNight then
@@ -190,10 +191,15 @@ function NOM_FogEvent.setRed(on)
     forcedRed = on and true or nil
     if countdown or omenLeft then
         s.red = on == true
-        if countdown then rise(true, s.red) end
+        if countdown then NOM_World.setRising(true, s.red) end
+        if isServer() then
+            sendServerCommand(MODULE, "sirenColor", { red = s.red })
+        else
+            NOM_FogState.recolor(s.red)
+        end
         return true
     end
-    if on then return NOM_FogEvent.siren(false) end
+    if on then return presage() end
     return true
 end
 

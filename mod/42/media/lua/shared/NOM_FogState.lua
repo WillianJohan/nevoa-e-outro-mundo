@@ -49,6 +49,13 @@ function NOM_FogState.setOmen(red)
     NOM_FogState.omenAt, NOM_FogState.omenRed, NOM_FogState.sirenAt = getTimestampMs(), red == true, nil
 end
 
+-- A cor mudou no meio (debug, NOM_FogEvent.setRed): o presságio e a subida que já correm
+-- trocam de cor, sem recomeçar e sem ligar o que não corre.
+function NOM_FogState.recolor(red)
+    if NOM_FogState.omenAt then NOM_FogState.omenRed = red == true end
+    if NOM_FogState.rising then NOM_FogState.risingRed = red == true end
+end
+
 function NOM_FogState.visible()
     return NOM_FogState.on == true or NOM_FogState.rising
 end

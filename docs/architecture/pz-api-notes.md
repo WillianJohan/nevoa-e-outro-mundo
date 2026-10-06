@@ -825,6 +825,10 @@ não conhece um comando o ignora (`client/NOM_FogClient.lua`: cadeia de `if` sem
 
 Sprint 0034: a sirene deixa de ser chapada no jogador. São 3 por jogador, em emitters do
 mundo (§23); o `dir` e o `NOM_FogEventRules.sirenDir` saíram, e o comando leva só `{ red }`.
+Review final da 0034: o debug que troca a cor no meio do presságio ou da fuga (`NOM_FogEvent.setRed`)
+manda `sendServerCommand(MODULE, "sirenColor", { red })` (mesma forma, sem API nova); o cliente só
+troca a cor do presságio e da subida que já correm (`NOM_FogState.recolor`), sem tocar a sirene de
+novo.
 
 ## 12. Névoa vermelha (sprint 0010)
 

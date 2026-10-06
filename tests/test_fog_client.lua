@@ -150,6 +150,27 @@ return {
         G.server("presage", nil) -- servidor antigo / sem argumentos: branca
         assert(NOM_FogState.omenAt ~= nil and NOM_FogState.omenRed == false)
     end,
+    -- review final da 0034: o debug trocou a cor no meio do presságio ou da fuga (sirenColor):
+    -- a cor muda sem recomeçar nada, sem tocar a sirene de novo e sem ligar o que não corre
+    fog_client_siren_color_recolors = function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        G.server("sirenColor", { red = true })
+        assert(NOM_FogState.rising == false and NOM_FogState.omenAt == nil, "a cor ligou alguma coisa")
+        G.server("presage", { red = false })
+        local omenAt = NOM_FogState.omenAt
+        G.tick(5)
+        G.server("sirenColor", { red = true })
+        assert(NOM_FogState.omenRed == true and NOM_FogState.omenAt == omenAt, "o presságio não trocou de cor")
+        G.seconds(3)
+        G.server("siren", { red = true })
+        local sirenAt = NOM_FogState.sirenAt
+        G.tick(5)
+        G.server("sirenColor", { red = false })
+        assert(NOM_FogState.rising == true and NOM_FogState.risingRed == false, "a subida não trocou de cor")
+        assert(NOM_FogState.sirenAt == sirenAt, "a subida recomeçou")
+        assert(played(G, "red") == 1 and played(G, "white") == 0, "tocou a sirene de novo")
+    end,
     -- EXTRA da 0034: se o fog (on) ou o sirenStop se perder, a subida e o presságio não ficam
     -- pra sempre: depois de PRESAGE_MS + GRACE_MS + 15 s sem confirmação, desligam sozinhos
     fog_client_rising_safety_timeout = function()

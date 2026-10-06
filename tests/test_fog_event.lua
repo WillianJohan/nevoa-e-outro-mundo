@@ -601,6 +601,10 @@ return {
     fog_event_set_red_starts_red_event = function()
         local G = setup({ sandbox = { RedFogChance = 0 } })
         assert(NOM_FogEvent.setRed(true))
+        -- review final da 0034: passa pelo presságio, como o force
+        assert(NOM_FogEvent.status().presageMs == NOM_FogEventRules.PRESAGE_MS, "pulou o presságio")
+        assert(played(G, "red") == 0 and NOM_FogState.omenRed == true, "sirene antes do presságio")
+        presage(G)
         assert(played(G, "red") == 1, "sem sirene vermelha")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red and fogMD(G).red == true)
@@ -626,6 +630,38 @@ return {
         assert(NOM_FogEvent.setRed(false))
         assert(NOM_World.red == false and fogMD(G).red == false)
         assert(#G.commands(G.sentServer, "fog") == 2)
+    end,
+    -- review final da 0034: no dedicado a cor nova da sirene que já tocou (ou do presságio)
+    -- chega aos clientes por um comando leve, sem tocar a sirene de novo; no solo, direto em
+    -- quem vê
+    fog_event_set_red_mid_siren_tells_clients = function()
+        local G = setup({ server = true, player = false, sandbox = { RedFogChance = 0 } })
+        toSiren(G)
+        G.sentServer = {}
+        assert(NOM_FogEvent.setRed(true))
+        local c = G.commands(G.sentServer, "sirenColor")
+        assert(#c == 1 and c[1].player == nil and c[1].args.red == true, "os clientes não souberam da cor")
+        assert(#G.commands(G.sentServer, "siren") == 0, "tocou a sirene de novo")
+        assert(NOM_World.risingRed == true)
+        local H = setup({ server = true, player = false, sandbox = { RedFogChance = 0 } })
+        H.at(fogMD(H).next)
+        assert(NOM_FogEvent.status().presageMs, "sem presságio (teste não mede)")
+        H.sentServer = {}
+        assert(NOM_FogEvent.setRed(true))
+        c = H.commands(H.sentServer, "sirenColor")
+        assert(#c == 1 and c[1].args.red == true, "o presságio não trocou de cor nos clientes")
+        assert(#H.commands(H.sentServer, "presage") == 0 and #H.commands(H.sentServer, "siren") == 0)
+    end,
+    fog_event_set_red_mid_presage_solo_recolors = function()
+        local G = setup({ sandbox = { RedFogChance = 0 } })
+        G.at(fogMD(G).next)
+        assert(NOM_FogState.omenAt and NOM_FogState.omenRed == false)
+        local at = NOM_FogState.omenAt
+        G.tick(5)
+        assert(NOM_FogEvent.setRed(true))
+        assert(NOM_FogState.omenRed == true and NOM_FogState.omenAt == at, "o presságio não trocou de cor ou recomeçou")
+        presage(G)
+        assert(played(G, "red") == 1 and NOM_FogState.risingRed == true)
     end,
     -- durante a contagem: a névoa que vem segue o pedido
     fog_event_set_red_during_siren = function()
