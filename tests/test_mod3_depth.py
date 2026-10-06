@@ -201,4 +201,20 @@ assert re.search(r"HasTree\(\)\) f \|= FlowGrid\.F_TREE;", cell_fn), "mod3: árv
 assert re.search(r"getVehicleContainer\(\) != null\) f \|= FlowGrid\.F_LOW;", cell_fn), "mod3: carro tem que ser F_LOW"
 pile = volfog.split("float pileUp")[1].split("float rollTop")[0]
 assert "nomFlowFlags(" in pile, "mod3: o pileUp tem que olhar se há obstáculo à frente no vento"
+# Névoa com altura (sprint 0032): a cerca baixa (HoppableW/N, pz-api-notes §20) vira face aberta com
+# altura; o topo do rolo sobe a altura do carro; o debug 5 mostra a cerca.
+grid_src = (src / "FlowGrid.java").read_text()
+for jname, gname in [("T_FENCE_W", "FENCE_W"), ("T_FENCE_N", "FENCE_N")]:
+    jv = re.search(jname + r" = (\d+)", grid_src)
+    gv = re.search(r"const int NOM_FLOW_" + gname + r" = (\d+);", header)
+    assert jv and gv and jv.group(1) == gv.group(1), ("mod3: flag da cerca diverge", jname, gname)
+jv = re.search(r"H_LOW = ([\d.]+)f", grid_src)
+gv = re.search(r"const float NOM_FLOW_LOW_H = ([\d.]+);", header)
+assert jv and gv and float(jv.group(1)) == float(gv.group(1)), "mod3: H_LOW diverge de NOM_FLOW_LOW_H"
+assert "gLow" in roll and "NOM_FLOW_LOW_H" in roll and "gLow = nomFlowLow(" in volfog, \
+    "mod3: o topo do rolo não sobe em cima do carro (nomFlowLow)"
+assert "NOM_FLOW_FENCE_W" in volfog and "NOM_FLOW_FENCE_N" in volfog, "mod3: o debug 5 não mostra a cerca baixa"
+assert re.search(r"has\(IsoFlagType\.HoppableW\)", cell_fn) and re.search(r"has\(IsoFlagType\.HoppableN\)", cell_fn), \
+    "mod3: o Flow tem que ler a cerca baixa (HoppableW/N)"
+assert "setTileFenceW" in flow and "setTileFenceN" in flow, "mod3: a cerca tem que chegar na grade"
 print("mod3 contrato Java/GLSL ok")

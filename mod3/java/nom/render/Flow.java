@@ -19,6 +19,7 @@ import zombie.iso.IsoCamera;
 import zombie.iso.IsoCell;
 import zombie.iso.IsoGridSquare;
 import zombie.iso.IsoMovingObject;
+import zombie.iso.SpriteDetails.IsoFlagType;
 import zombie.iso.weather.ClimateManager;
 import zombie.vehicles.BaseVehicle;
 
@@ -53,6 +54,7 @@ final class Flow {
     static final int PARAM_ON = 4;         // NOMRender_setParam(4, 0) desliga, (4, 1) liga
     static final int UNIT = 6;
     static final int W_OPEN = 1 << 8, N_OPEN = 1 << 9;   // na máscara empilhada, junto das flags
+    static final int W_FENCE = 1 << 10, N_FENCE = 1 << 11; // cerca baixa na borda (aberta, com altura)
 
     private static final Wind gusts = new Wind((int) System.nanoTime() ^ 0x5bd1e995);
     static final float CALM_X = 0.35f, CALM_Y = 0.15f;   // tiles/s, com a simulação desligada
@@ -286,24 +288,27 @@ final class Flow {
     /**
      * Um square vira flags + as bordas oeste e norte. isBlockedTo = parede (collideN/W, sem janela),
      * janela fechada ou barricada, porta fechada ou barricada, escada (bytecode, ver o plan.md da 0024).
-     * Square não carregado é ar aberto.
+     * Cerca baixa (HoppableW/N, pz-api-notes §20) é a exceção: borda aberta com altura, a névoa passa
+     * por cima. Square não carregado é ar aberto.
      */
     private static void buildCell(IsoCell cell, Input in, int i, int j) {
         int x = x0 + i, y = y0 + j;
         IsoGridSquare sq = cell.getGridSquare(x, y, z);
         int f = 0;
-        boolean openW = true, openN = true;
+        boolean openW = true, openN = true, fenceW = false, fenceN = false;
         if (sq != null) {
             if (sq.isSolid()) f |= FlowGrid.F_SOLID;
             if (sq.HasTree()) f |= FlowGrid.F_TREE;
             if (!sq.isOutside()) f |= FlowGrid.F_INDOOR;
             if ((f & FlowGrid.F_SOLID) == 0 && sq.getVehicleContainer() != null) f |= FlowGrid.F_LOW;
+            fenceW = sq.has(IsoFlagType.HoppableW);
+            fenceN = sq.has(IsoFlagType.HoppableN);
             IsoGridSquare w = cell.getGridSquare(x - 1, y, z);
-            if (w != null && sq.isBlockedTo(w)) openW = false;
+            if (!fenceW && w != null && sq.isBlockedTo(w)) openW = false;
             IsoGridSquare n = cell.getGridSquare(x, y - 1, z);
-            if (n != null && sq.isBlockedTo(n)) openN = false;
+            if (!fenceN && n != null && sq.isBlockedTo(n)) openN = false;
         }
-        in.addMask(x, y, f | (openW ? W_OPEN : 0) | (openN ? N_OPEN : 0));
+        in.addMask(x, y, f | (openW ? W_OPEN : 0) | (openN ? N_OPEN : 0) | (fenceW ? W_FENCE : 0) | (fenceN ? N_FENCE : 0));
     }
 
     /**
@@ -427,6 +432,8 @@ final class Flow {
             grid.setTile(ti, tj, code & 0xff);
             grid.setTileOpenW(ti, tj, (code & W_OPEN) != 0);
             grid.setTileOpenN(ti, tj, (code & N_OPEN) != 0);
+            grid.setTileFenceW(ti, tj, (code & W_FENCE) != 0);
+            grid.setTileFenceN(ti, tj, (code & N_FENCE) != 0);
         }
         for (int s = 0; s < in.steps; s++) {
             long s0 = System.nanoTime();
