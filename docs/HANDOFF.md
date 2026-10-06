@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprint 0033 implementada pelo Cursor). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprint 0034 implementada pelo Cursor, na branch). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem) , 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura) e 0033 (ritmo novo, na branch `sprint/0033-ritmo-novo`, ainda fora da `main`) `em teste`**. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura) e 0033 (ritmo novo) `em teste`**. A **0034 (sons I: sirene e fuga)** está na branch `sprint/0034-sons`, ainda fora da `main`. O roadmap está em [sprints/README.md](sprints/README.md).
 - **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
-- 791 testes Lua (na branch da 0033), 4 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 897 testes Lua (na branch da 0034), 5 de contraste, os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -75,27 +75,35 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Estado atual: ritmo novo (sprint 0033)
+## Estado atual: sons I, sirene e fuga (sprint 0034)
 
-**Implementada na branch `sprint/0033-ritmo-novo`, aguardando o review final e o teste do Johan no jogo.** Só depois entra na `main`, com push e `scripts/dev-sync.sh`.
+**Implementada na branch `sprint/0034-sons`, com testes verdes, aguardando o code review final e o teste do Johan no jogo.** Só depois entra na `main`, com push e `scripts/dev-sync.sh`. Plano em [sprints/sprint-0034-sons/plan.md](sprints/sprint-0034-sons/plan.md); resumo, decisões e roteiro em [sprints/sprint-0034-sons/README.md](sprints/sprint-0034-sons/README.md). O mapa de tudo que vem é a spec [modelo novo](superpowers/specs/2026-10-06-modelo-novo-design.md).
 
-O Johan mudou o mindset da névoa: ela é frequente (quase todo dia) e o fim dela é uma folga pra explorar. O mapa de tudo que vem é a spec [modelo novo](superpowers/specs/2026-10-06-modelo-novo-design.md) (sprints 0033 a 0044); o plano e o roteiro da 0033 estão em [sprints/sprint-0033-ritmo-novo/README.md](sprints/sprint-0033-ritmo-novo/README.md).
-
-**O que a 0033 entrega:**
-- **Agenda por dia** (`shared/NOM_FogEventRules.lua`): 65% subindo até 85% no dia 60, segunda névoa de 15% depois de 6 h de folga, garantia no terceiro dia sem névoa, branca de 3–5 h e vermelha (20% depois do dia 7, sem a subida da 0019) de 4–6 h. Determinística pelo número do dia e pela semente. Sandbox: `FogEventEveryDays` saiu; entraram `FogDailyChance`, `FogMaxDailyChance`, `FogEscalationDays`, `FogSecondChance`, `FogMinGapHours`, `FogMaxDaysWithout`, `RedFogMinHours`, `RedFogMaxHours` e `FogCalmHours`.
-- **Sirene de 15 s com direção** (`server/NOM_FogEvent.lua`) e **congelamento** (`shared/NOM_SirenFreeze.lua`): todo zumbi para virado pra direção dela e ignora o jogador; a névoa começando solta todos. Quem simula aplica (ADR-005).
-- **Calmaria** (`NOM_World.calm`, `NOM_NightRules`/`NOM_NightStats`): 2 h de jogo depois da névoa, o zumbi comum um degrau mais lento e de sentidos reduzidos.
-- **Comandos de debug novos:** `NOM.setFog(skip)` (sempre branca), `NOM.setRedFog(skip)` (sempre vermelha), `NOM.setBlackFog()` (só avisa até a 0038), `NOM.setEndFog()`, `NOM.getZombie()`, `NOM.turnZombie(i)`, `NOM.godMode(on)` e `NOM.wind(on)`.
-- **mod3:** foco de vento aleatório de teste, `NOMRender_setParam(11, 1)` (`WindSource.java`).
-- **Docs:** GDD (`world-states.md`, `sandbox.md`, `Overview.md`) e emenda de 2026-10-06 na [ADR-009](architecture/adr-009-nevoa-evento-do-mod.md). Os presets Leve e Pesadelo da `sandbox.md` foram traduzidos sem jogar; o Johan ainda precisa confirmar.
+**O que a 0034 entrega:**
+- **Presságio:** 3 s antes da sirene, a tela ganha estática na cor da névoa (fraca no começo, forte no fim), que fica sutil a névoa toda; os aparelhos a até 25 tiles estouram em chiado.
+- **Coro de sirenes ao longe** (`shared/NOM_Siren.lua`, `shared/NOM_SirenSpotsRules.lua`): 5 por jogador, a 150–500 tiles, de lados diferentes, desencontradas em até 4 s, com afinação 0,95–1,05. 31 sons nossos de 11,8 s (9 brancas, 9 vermelhas e 13 pretas, que só tocam na 0038).
+- **Fuga de 30 s** (`R.GRACE_MS`): a névoa visual, a vinheta e o drone sobem na sirene (`NOM_World.rising`); bichos, Sem-rosto e Outro Mundo só no fim. Os zumbis congelados viram pro jogador vivo mais perto e acompanham ele andando.
+- **Correção do solo:** dono do zumbi é `isLocal()`, não `isRemoteZombie()` (no solo a sirene não congelava ninguém, e a IA das variantes não rodava) ([pz-api-notes §24](architecture/pz-api-notes.md#24-dono-do-zumbi-islocal-não-isremotezombie-sprint-0034)).
+- **Aparelhos do Outro Mundo** (`client/NOM_Devices.lua`): TV, rádio, caixa de som e carro "falam" na névoa, ligados ou não.
+- **Outro Mundo:** raio pela tela (15 a 30 tiles pelo zoom), casa destruída (paredes de dentro em até 3 camadas, pichações e mensagens inteiras) e **sem sangue no chão** (o de parede fica).
 
 **O que o Johan precisa conferir no jogo** (roteiro completo no README da sprint):
-- a sirene de 15 s, todo mundo parado e virado pro mesmo lado, e a volta junta quando a névoa começa;
-- **UNKNOWN (pz-api-notes §21):** o zumbi `useless` mantém a direção do `faceLocationF`, ou volta a girar sozinho entre as passadas do módulo (lote de 20 por tick)?
-- a calmaria de 2 h e a duração de cada cor;
-- o foco de vento no mod3 (precisa do `scripts/build-mod3.sh`; o jar é assinado e fica fora do git).
+- a estática antes da sirene; o coro de 5 vindo de lados diferentes; a névoa subindo nos 30 s de fuga;
+- no solo, o log `[NOM] sirene congelados=N ... pulados morto/remoto/jogo=0/0/0` (o `remoto` tem que ser 0) e os zumbis virados pra ele;
+- os aparelhos chiando no presságio e falando na névoa;
+- **UNKNOWNs:** audibilidade a 500 tiles e direção do som; FPS da erosão em tela toda no zoom longe; legibilidade das pichações; nível da estática; se o chão sem sangue ficou vazio demais.
 
-**Próximo passo:** a **0034 (sons)**, depois que o Johan ouvir as amostras do `scripts/gen_sounds.py` e escolher as sirenes (branca melhorada, vermelha bizarra com gritos, e um dos três conceitos da preta: fita morrendo, sirenes fora de fase ou quase silêncio). Não começar a 0034 antes da escolha. Quem pegar a 0034 também lê o resultado do UNKNOWN acima.
+## Em teste: ritmo novo (sprint 0033)
+
+Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%, segunda névoa, garantia no terceiro dia), duração por cor, calmaria de 2 h, comandos `NOM.setFog`/`setRedFog`/`setEndFog`/`getZombie`/`turnZombie`/`godMode`/`wind` e foco de vento no mod3. A sirene de 45 s com direção única da 0033 foi trocada pela 0034. Roteiro e pendências em [sprints/sprint-0033-ritmo-novo/README.md](sprints/sprint-0033-ritmo-novo/README.md). Os presets Leve e Pesadelo da `sandbox.md` foram traduzidos sem jogar; o Johan ainda precisa confirmar.
+
+## Próximo passo
+
+1. **Fechar a 0034:** code review final da entrega, testes verdes, merge na `main`, push e `scripts/dev-sync.sh`. O Johan testa no jogo pelo roteiro do README da sprint e reinicia o jogo depois do sync.
+2. **Fila nova, decidida pelo Johan em 06/10/2026** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
+   - **0035 — Outro Mundo estilo Silent Hill**: texturas procedurais nossas de tinta descascando, ferrugem e grade na erosão; partículas presas no mundo saindo do chão e das paredes; transição "descascando" no shader logo depois da sirene; mais a transição escondida e a tontura, que eram da 0036. Detalhes no item 3 da fila abaixo.
+   - **0036 — Equilíbrio:** visão de ~4 tiles e perambular, com medição de custo (era a 0035).
+   - **0037–0044:** sem mudança (sonar do Estalador, névoa preta I e II, vermelha nova, facelift).
 
 **Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)).
 
@@ -196,13 +204,15 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep -E "NOM-Re
    - desgaste vermelho-escuro em manchas;
    - luz fria e escura pelo clima e pelo shader;
    - esporos e cinza flutuando no overlay de tela. As partículas de clima vanilla não têm cor e mexem na neve.
-   - Atualização do Johan (06/10/2026): o visual do Outro Mundo passa a ser **mais Silent Hill** (ferrugem, tinta descascando, grade metálica, lascas subindo). O item 4 tem prioridade sobre este.
-4. **Outro Mundo estilo Silent Hill**, numa sprint própria logo depois de fechar a 0034 (decisão do Johan, 06/10/2026). Sangue no chão já foi tirado na 0034, porque parecia textura ruim de jogo antigo; o sangue de parede fica.
+   - Atualização do Johan (06/10/2026): o visual do Outro Mundo passa a ser **mais Silent Hill** (ferrugem, tinta descascando, grade metálica, lascas subindo). O item 3 (sprint 0035) tem prioridade sobre este; os tentáculos e a cinza continuam na 0040.
+3. **Sprint 0035 — Outro Mundo estilo Silent Hill**, logo depois de fechar a 0034 (decisão do Johan, 06/10/2026). Parte do Outro Mundo da 0034: raio pela tela, casa destruída e sangue no chão já tirado (parecia textura ruim de jogo antigo; o sangue de parede fica).
    - Texturas procedurais nossas (`scripts/gen_*.py`) anexadas no chão e nas paredes pela erosão: tinta descascando, ferrugem, grade. UNKNOWN: como registrar sprite próprio pro `addAttachedAnimSpriteByName` (tile pack nosso ou outra via). Conferir antes de prometer.
    - Partículas presas no mundo, saindo do chão e das paredes perto do jogador e subindo: lascas girando e cinza. Sprite sheet gerado em Python, algumas centenas por quadro.
    - Transição na chegada da névoa, logo depois da sirene: o shader dissolve a tela com ruído ("descascando") e uma leva de lascas voa pra cima.
+   - Transição escondida e tontura, que eram da 0036 ([spec §7](superpowers/specs/2026-10-06-modelo-novo-design.md#7-outro-mundo)): o mundo vira enquanto a névoa está densa demais pra ver e desvira no começo da descida; ~5 s de tontura por jogador, desligável em Opções > Mods.
    - Máscara por textura de tile só pelo mod3 (Java). É o mais arriscado e fica por último.
-5. ~~Mod3 de verdade~~: o spike provou que dá; ele já está em uso (ver acima). Depois da névoa fluida, as luzes da ponte (`IsoCell.getLamppostPositions`, `roomLights`, `lightInfo.torches`) abrem in-scattering e um bloom de verdade.
+   - Critério de desempenho: FPS, memória e tempo de save com o Outro Mundo cheio ([spec §11](superpowers/specs/2026-10-06-modelo-novo-design.md#11-testes-e-erros)).
+4. ~~Mod3 de verdade~~: o spike provou que dá; ele já está em uso (ver acima). Depois da névoa fluida, as luzes da ponte (`IsoCell.getLamppostPositions`, `roomLights`, `lightInfo.torches`) abrem in-scattering e um bloom de verdade.
 
 ## Decisões pendentes do Johan
 

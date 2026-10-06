@@ -16,7 +16,7 @@ NOM_FogEventRules = {}
 local R = NOM_FogEventRules
 
 -- Fuga (sprint 0034): da sirene até os bichos, em ms reais. A névoa visual sobe nesse tempo
--- (NOM_World.rising); o som da sirene dura 15 s e não conta aqui.
+-- (NOM_World.rising); os sons do coro duram ~12 s e não contam aqui.
 R.GRACE_MS = 30000
 -- Presságio (sprint 0034): a estática na tela começa 3 s reais antes da sirene. Só em memória.
 R.PRESAGE_MS = 3000

@@ -3,19 +3,21 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (noite), 0009 (névoa como evento), 0033 (ritmo novo) |
+| Sprints | 0001 (noite), 0009 (névoa como evento), 0033 (ritmo novo), 0034 (coro de sirenes e fuga) |
 
 ## O que é
 
-O servidor mantém três flags independentes:
+O servidor mantém quatro flags independentes:
 
 | flag | condição |
 |---|---|
 | `night` | hora do jogo entre o pôr e o nascer do sol |
 | `fog` | um evento de névoa do mod está aberto (sprint 0009) |
 | `calm` | calmaria depois da névoa (sprint 0033) |
+| `rising` | fuga: a sirene tocou e a névoa visual está subindo, mas o evento ainda não abriu (sprint 0034; `risingRed` diz se é a vermelha) |
 
-São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só existe com a névoa fechada).
+São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só existe com a névoa fechada;
+`rising` desliga quando `fog` liga). Toda regra de jogo lê `fog`; `rising` só mexe no que se vê e se ouve.
 
 ## Regras
 
@@ -35,15 +37,20 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
       Salvar e carregar não muda nada.
     - **Save antigo:** a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia se cair
       até o fim dele; marcada pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
-  - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **15 segundos
-    reais** antes da névoa. Com o jogo pausado a contagem para. No sono e no
-    fast-forward continua 15 s reais (muitas horas de jogo, se for o caso). A sirene vem de
-    **posições** no mapa (sprint 0034): cada jogador ouve 5, sorteadas em volta dele a 150–500
-    tiles, de lados diferentes e em coro desencontrado, cada uma com um som diferente da lista
-    da névoa (6 brancas, 6 vermelhas, 10 pretas)
-    ([pz-api-notes §23](../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)). Durante a
-    sirene todo zumbi para virado pro jogador vivo mais perto e ignora o jogador; quando a névoa
-    começa, todos voltam de uma vez (`NOM_SirenFreeze`, [pz-api-notes §21](../architecture/pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
+  - **Aviso (sprint 0034):** primeiro, 3 s reais de **presságio**: a tela de quem vê ganha estática
+    na cor da névoa e os aparelhos por perto estouram em chiado. Depois toca um **coro de sirenes ao
+    longe** pra todo jogador, em qualquer lugar: cada jogador ouve 5, sorteadas no jogo dele a
+    150–500 tiles, de lados diferentes (pelo menos 40° entre vizinhas), desencontradas em até 4 s, cada
+    uma com um som diferente da lista da névoa (9 brancas, 9 vermelhas; as 13 pretas só tocam na 0038)
+    e afinação própria entre 0,95 e 1,05. Cada som dura 11,8 s
+    ([pz-api-notes §23](../architecture/pz-api-notes.md#23-sirenes-posicionais-sprint-0034)).
+  - **Fuga (sprint 0034):** da sirene até os bichos são **30 segundos reais**, fixos. A névoa visual, a
+    escuridão, a vinheta e o drone já começam a subir na sirene; os zumbis soltos, os monstros, o
+    comportamento de névoa, o Sem-rosto, o Outro Mundo e os efeitos de tela só vêm no fim da fuga. Com
+    o jogo pausado a contagem para. No sono e no fast-forward continua 30 s reais (muitas horas de
+    jogo, se for o caso). Durante a fuga todo zumbi para virado pro jogador vivo mais perto dele,
+    acompanha esse jogador andando e o ignora; quando a névoa abre, todos voltam de uma vez
+    (`NOM_SirenFreeze`, [pz-api-notes §21](../architecture/pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
   - **Duração:** depende da cor, em horas de jogo: branca entre `FogMinHours` (3) e `FogMaxHours` (5);
     vermelha entre `RedFogMinHours` (4) e `RedFogMaxHours` (6). A névoa entra e sai em ~20 minutos de jogo.
   - **Calmaria:** quando a névoa acaba, por `FogCalmHours` (2 h de jogo) vale a flag `calm`. O zumbi
@@ -54,12 +61,13 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
     clima, chuva ou opção de névoa do sandbox. O painel de clima do admin ainda passa
     por cima (escolha de quem administra), mas não abre evento.
   - Salvar e carregar no meio do evento volta com névoa e o mesmo número; no meio da
-    sirene, ela toca de novo e os 15 s recomeçam.
+    fuga, a sirene toca de novo (coro novo) e os 30 s recomeçam.
 - Mudança de flag dispara um evento interno (`NOM_World.onChange(fn)`,
-  `fn("night"|"fog"|"calm", valor)` só na borda), consumido pelos outros sistemas no
+  `fn("night"|"fog"|"calm"|"rising", valor)` só na borda), consumido pelos outros sistemas no
   servidor. O Eco usa a borda de fim da noite. Os clientes recebem as flags
   por comando do servidor (`night` desde a sprint 0003, `fog` desde a 0005, `calm` desde a 0033), e
-  quem entra no meio pergunta o estado. A sirene vai por comando (`siren`).
+  quem entra no meio pergunta o estado. O presságio e a sirene vão por comando (`presage`, `siren`);
+  cada cliente sorteia as próprias posições do coro, sem rede.
 - Cada período (uma noite, uma névoa) tem um número próprio, contado pelo servidor
   e salvo com o mundo (o da névoa conta um por evento). O da **névoa** é a base do sorteio de todas as variantes
   (Estalador, Corredor, Sem-rosto, [monsters.md](monsters.md)); o da **noite** marca

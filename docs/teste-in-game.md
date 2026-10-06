@@ -60,21 +60,21 @@ Os `NOM_Debug.*` da tabela abaixo continuam iguais.
 | `NOM.variant("corredor")` / `NOM.eco()` / `NOM.status()` | os mesmos do `NOM_Debug` | idem |
 | `NOM.god()` / `NOM.noclip()` / `NOM.invisible()` | truques do jogador local (inverte; `true`/`false` fixa) | `[NOM] debug god=true` |
 | `NOM.panel()` ou **Insert** | abre e fecha o painel de botões (tecla em Opções > Mods > Névoa e Outro Mundo) | janela "Névoa e Outro Mundo: debug" |
-| `NOM.setFog()` / `(true)` | névoa **sempre branca**: sirene de 15 s (zumbis param) e névoa / névoa na hora; fecha o que estiver aberto ou contando (sprint 0033) | `[NOM] debug nevoa forcada branca=true` |
+| `NOM.setFog()` / `(true)` | névoa **sempre branca**: 3 s de estática, coro de sirenes, 30 s de fuga com a névoa subindo (zumbis param) e névoa / névoa na hora; fecha o que estiver aberto ou contando (sprints 0033 e 0034) | `[NOM] debug nevoa forcada branca=true` |
 | `NOM.setRedFog()` / `(true)` | o mesmo, **sempre vermelha** | `[NOM] debug nevoa forcada vermelha=true` |
 | `NOM.setBlackFog()` / `NOM.setEndFog()` | a preta só avisa (0038) / termina a névoa ou cancela a sirene | `[NOM] debug nevoa fim=…` |
 | `NOM.getZombie()` | puxa o zumbi vivo mais perto pra cima de você (no MP, o cliente dono move; zumbi sem ID de rede é recusado) | `[NOM] debug zumbi puxado x=… y=…` |
 | `NOM.turnZombie(i)` | o mais perto vira 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa) | `[NOM] debug variante id=… forcada=…` |
 | `NOM.godMode()` / `NOM.wind()` | deus + invisível + zumbis não atacam / foco de vento do mod3 (inverte; `true`/`false` fixa) | `[NOM] debug godMode=true` |
 
-Roteiro completo dos comandos da 0033: [sprint 0033](sprints/sprint-0033-ritmo-novo/README.md#roteiro-in-game).
+Roteiro completo dos comandos da 0033: [sprint 0033](sprints/sprint-0033-ritmo-novo/README.md#roteiro-in-game). Sirenes, fuga, estática e aparelhos: [sprint 0034](sprints/sprint-0034-sons/README.md#roteiro-de-teste-no-jogo).
 
 | Comando | Faz | Linha esperada |
 |---|---|---|
 | `NOM_Debug.status()` | estado do mod | `[NOM] debug local …` e `[NOM] debug servidor …` |
 | `NOM_Debug.night(true)` / `(false)` / `()` | força noite / dia / devolve pro relógio | `[NOM] debug noite forcada=true`; vale no próximo minuto de jogo |
-| `NOM_Debug.fog(true)` / `(true, true)` / `(false)` | evento de névoa: sirene e névoa 15 s reais depois / névoa na hora / termina (sprint 0009, 15 s desde a 0033) | `[NOM] debug nevoa sirene=true`, depois `[NOM] nevoa evento inicio periodo=N fim=…`; `[NOM] debug nevoa fim=true` |
-| `NOM_Debug.redFog(true)` / `(false)` | névoa vermelha: com névoa aberta vira na hora; sem, sirene vermelha e névoa vermelha 15 s depois / desfaz (sprint 0010) | `[NOM] debug nevoa vermelha=true`, `[NOM] nevoa sirene contagem=15000 vermelha=true …` |
+| `NOM_Debug.fog(true)` / `(true, true)` / `(false)` | evento de névoa: sirene (sem o presságio) e névoa 30 s reais depois / névoa na hora / termina (sprint 0009; 30 s de fuga desde a 0034) | `[NOM] debug nevoa sirene=true`, depois `[NOM] nevoa evento inicio periodo=N fim=…`; `[NOM] debug nevoa fim=true` |
+| `NOM_Debug.redFog(true)` / `(false)` | névoa vermelha: com névoa aberta vira na hora; sem, sirene vermelha e névoa vermelha 30 s depois / desfaz (sprint 0010) | `[NOM] debug nevoa vermelha=true`, `[NOM] nevoa sirene contagem=30000 vermelha=true …` |
 | `NOM_Debug.variant("estalador")` | zumbi vivo mais perto vira Estalador (`"corredor"`, `"semrosto"`, `"carpideira"`; `()` desfaz). Vale pelo `persistentOutfitID`: outro zumbi com o mesmo ID (gêmeo, raro) vira junto. Some quando o jogo reinicia (carregar o save de novo) | `[NOM] debug variante x=… y=… id=…` e `[NOM] debug variante id=… forcada=estalador` |
 | `NOM_Debug.spawnEco()` | um Eco nos pés do jogador (só à noite) | `[NOM] debug eco spawn=true` |
 

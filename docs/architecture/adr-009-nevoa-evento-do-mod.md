@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Substitui | o gatilho "névoa natural do clima" ([world-states.md](../gdd/world-states.md), sprint 0001) |
-| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`); [emenda da sprint 0033](#emenda-de-2026-10-06--sprint-0033-ritmo-novo) (agenda por dia, sirene de 45 s, congelamento, calmaria; **substitui o intervalo e a curva do intervalo**); [emenda da sprint 0034](#emenda-de-2026-10-06--sprint-0034-sirene-15-s) (sirene 15 s) |
+| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`); [emenda da sprint 0033](#emenda-de-2026-10-06--sprint-0033-ritmo-novo) (agenda por dia, sirene de 45 s, congelamento, calmaria; **substitui o intervalo e a curva do intervalo**); emendas da sprint 0034: [sirene 15 s](#emenda-de-2026-10-06--sprint-0034-sirene-15-s), [a névoa sobe na sirene e 30 s de fuga](#emenda-de-2026-10-06--sprint-0034-a-névoa-sobe-na-sirene-30-s-de-fuga) (**substitui a contagem da sirene**), [presságio](#emenda-de-2026-10-06--sprint-0034-presságio-de-3-s) e [coro de sirenes posicionais](#emenda-de-2026-10-06--sprint-0034-sirenes-posicionais) (**substitui a direção da 0033**) |
 | Emenda | [ADR-004](adr-004-clima-antes-de-shader.md) e [ADR-008](adr-008-noite-pela-luz-global.md) (o canal `FLOAT_FOG_INTENSITY` sai do look) |
 
 ## Contexto
@@ -135,9 +135,10 @@ recarga e o resto continuam valendo.
    - `FogEventEveryDays` e `R.everyDays`/`R.gap` saem.
 2. **Duração por cor:** branca `FogMinHours`–`FogMaxHours` (3–5), vermelha `RedFogMinHours`–`RedFogMaxHours`
    (4–6). A vermelha é `RedFogChance` (20%) fixa depois da carência; a subida até o dobro da 0019 saiu.
-3. **Sirene de 15 s** (`R.SIREN_MS = 15 000`, 45 s na 0033, 30 s antes) e **direção**: `R.sirenDir(seed, período)` em graus,
+3. **Sirene de 45 s** (`R.SIREN_MS = 45 000`, 30 s antes) e **direção**: `R.sirenDir(seed, período)` em graus,
    pura, igual em toda máquina; o comando `siren` leva `{ red, dir }` e o `fogState` de quem entra
-   também. A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 15 s.
+   também. A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 45 s.
+   (A 0034 trocou a contagem pela fuga de 30 s e a direção pelo coro de sirenes posicionais: emendas abaixo.)
 4. **Congelamento** (`shared/NOM_SirenFreeze.lua`, [pz-api-notes §21](pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
    O servidor decide e avisa a direção; quem simula o zumbi aplica, igual aos stats da noite
    ([ADR-005](adr-005-quem-simula-aplica.md)): no solo o próprio processo, no MP o cliente dono
@@ -176,21 +177,35 @@ recarga e o resto continuam valendo.
 
 Sirene reduzida pra 15 s (decisão do Johan, 2026-10-06, sprint 0034): `R.SIREN_MS = 15 000`. O cliente MP usa a mesma constante (`NOM_FogEventRules.SIREN_MS`), não literal solto.
 
+> Histórico: a emenda seguinte trocou a contagem pela fuga de 30 s (`R.GRACE_MS`), e os sons oficiais da sirene têm 11,8 s. `R.SIREN_MS` não existe mais.
+
 ## Emenda de 2026-10-06 — sprint 0034: a névoa sobe na sirene, 30 s de fuga
 
 Decisão do Johan: "quando a sirene toca, já começa a névoa... o tempo de 30/45 segundos é o tempo pro jogador se movimentar antes dos bichos começarem". Isto substitui a emenda acima no que é contagem:
 
-- A contagem passa a ser a **fuga**: `R.SIREN_MS` virou `R.GRACE_MS = 30 000`. O som da sirene dura 15 s e não conta. O congelamento dura a fuga (`NOM_SirenFreeze.start(dir, R.GRACE_MS)` no solo e no cliente).
+- A contagem passa a ser a **fuga**: `R.SIREN_MS` virou `R.GRACE_MS = 30 000`, fixa, sem sandbox (escolha do Johan). O som da sirene (11,8 s nos sons oficiais) não conta. O congelamento dura a fuga (`NOM_SirenFreeze.start(R.GRACE_MS)` no solo e no cliente; a direção saiu na emenda das sirenes posicionais).
+- A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 30 s: recarregar no meio da fuga toca a sirene de novo e recomeça os 30 s.
 - **Flag nova `NOM_World.rising`/`risingRed`** (`setRising`, borda `"rising"`): liga na sirene (inclusive na recarga, que toca de novo, e no `setRed` com a contagem correndo), desliga no `begin()` (depois do `setFog`) e no cancelamento. `NOM_World.fog` continua abrindo só no `begin()`, então a regra de jogo não muda.
 - **Clima:** `eventRamp` e `fogRamp` seguem `fog or rising`; `redRamp`, `(fog and red) or (rising and risingRed)`. A rampa de 20 minutos de jogo fica: os 30 s reais (~12 min de jogo) deixam a névoa pelo meio quando os bichos soltam.
 - **Quem vê:** `NOM_FogState.rising`/`risingRed`, `setRising` (não dispara `onChange`), `visible()` e `visibleRed()`. No solo quem liga é o `NOM_FogEvent`; no MP, o `NOM_FogClient` (`siren` liga, `fog {on=true}` e `sirenStop` desligam; `fog {on=false}` não, porque quem entra na fuga recebe `fog` e depois `siren`).
-- **Seguem `visible()`:** a vinheta (`NOM_FogVignette`, sem o mod do shader) e o drone e o metal do `NOM_FogSound`. **Seguem `on` (esperam a fuga):** o rádio do Sem-rosto, o Outro Mundo (`NOM_FogOverlays`), os efeitos de tela (`NOM_ScreenFx`, que também alimenta o canal do shader) e toda a regra de jogo.
+- **Seguem `visible()`:** a vinheta (`NOM_FogVignette`, sem o mod do shader), o drone e o metal do `NOM_FogSound` e a estática da tela (emenda seguinte). **Seguem `on` (esperam a fuga):** o rádio do Sem-rosto, o Outro Mundo (`NOM_FogOverlays`), as outras camadas dos efeitos de tela (`NOM_ScreenFx`, que também alimenta o canal do shader), os chamados dos aparelhos do Outro Mundo (o estouro do presságio é à parte, emenda seguinte) e toda a regra de jogo.
+- **MP:** se o `fog` ou o `sirenStop` se perder, o cliente desliga a subida sozinho depois de presságio + fuga + 15 s (`NOM_FogClient`).
+
+## Emenda de 2026-10-06 — sprint 0034: presságio de 3 s
+
+Pedido do Johan: 3 s antes da sirene a tela ganha estática, sutil no começo e com destaque no fim, na cor da névoa, e fica sutil a névoa toda.
+
+- Quando `R.update` devolve `"siren"`, o servidor não toca a sirene na hora: decide a cor (a sirene reaproveita a salva), avisa quem vê (dedicado: comando `presage { red }`; solo: `NOM_FogState.setOmen`) e conta `R.PRESAGE_MS = 3 000` reais com o mesmo `R.countdown` (para na pausa). No fim, `siren(false)`.
+- O presságio vive só na memória: recarregar no meio dele faz o próximo `R.update` devolver `"siren"` de novo. No `status()` conta como sirene pendente; `stop()` cancela como a sirene (`R.cancel` e `sirenStop`).
+- Debug: `force(red, skip)` sem skip passa pelo presságio; com skip, vai direto à sirene.
+- A curva da estática é regra pura (`NOM_ScreenFxRules.staticLevel`): 0,1 → 0,6 em 3 s (t²), 0,14 sutil 4 s depois da sirene, 0 em 3 s no fim. Os aparelhos a até 25 tiles estouram no presságio (`NOM_DeviceRules`). Quem entra no meio da névoa (MP) recebe só o nível sutil.
 
 ## Emenda de 2026-10-06 — sprint 0034: sirenes posicionais
 
 Decisão do Johan: "se a gente tiver múltiplas sirenes no mapa, o som não é mais 2D chapado, ele vem de alguma posição... podem vir longe, podem vir perto, mas sempre num range do jogador". Isto substitui a direção da decisão 3 da emenda da 0033:
 
 - **Sem direção única:** `R.sirenDir`, `R.DIR_SALT`, `data.fog.sirenDir` e o `dir` do comando saem. O `siren` leva só `{ red }` (também no `fogState` de quem entra na fuga).
-- **5 sirenes por jogador**, sorteadas no jogo de quem ouve (`shared/NOM_SirenSpotsRules.lua`, aleatório local, sem rede): todas a 150–500 tiles, pelo menos 40° entre vizinhas, a primeira na hora e as outras desencontradas até 4 s depois, cada uma com um som diferente da lista da névoa. Cada uma num emitter do mundo parado (`shared/NOM_Siren.lua`, [pz-api-notes §23](pz-api-notes.md#23-sirenes-posicionais-sprint-0034)); `sirenStop` e o cancelamento do solo param todas.
-- **Congelamento:** `NOM_SirenFreeze.start(durationMs)`; cada zumbi vira pro jogador vivo mais perto (até 100 tiles), refeito a cada passada do lote. No MP, o cliente dono olha os jogadores locais e os do `getOnlinePlayers()`.
-- **Sons:** ponto único `NOM_SirenSpotsRules.SOUNDS[tipo] = { near, far }`; a vermelha continua sendo só da névoa vermelha (ADR-010).
+- **Coro de 5 sirenes por jogador**, sorteadas no jogo de quem ouve (`shared/NOM_SirenSpotsRules.lua`, aleatório local, sem rede): todas a 150–500 tiles ("não quero que fique gritando no ouvido do jogador"; a primeira versão tinha 3, uma perto), pelo menos 40° entre vizinhas, a primeira na hora e as outras desencontradas até 4 s depois, cada uma com um som diferente da lista da névoa e afinação sorteada entre 0,95 e 1,05 (`emitter:setPitch`). Cada uma num emitter do mundo parado (`shared/NOM_Siren.lua`, `playSoundImpl(nome, false, nil)`, [pz-api-notes §23](pz-api-notes.md#23-sirenes-posicionais-sprint-0034)); `sirenStop` e o cancelamento do solo param todas.
+- **Audibilidade:** o jogo não corta som 3D por distância (bytecode, §23), então o emitter fica na posição sorteada. Os sons são declarados com `distanceMin` 50 e `distanceMax` 500, e a distância que o FMOD não faz (passa-baixa, reflexões de cidade, reverb) vem embutida no arquivo.
+- **Congelamento:** `NOM_SirenFreeze.start(durationMs)`; cada zumbi vira pro jogador vivo mais perto (até 100 tiles), refeito a cada passada do lote, e quem já andava tem o caminho cancelado. No MP, o cliente dono olha os jogadores locais e os do `getOnlinePlayers()`. O dono é `z:isLocal()`, não `not z:isRemoteZombie()`: no solo o `isRemoteZombie()` dá `true` pra todo zumbi, e com ele ninguém congelava ([pz-api-notes §24](pz-api-notes.md#24-dono-do-zumbi-islocal-não-isremotezombie-sprint-0034)).
+- **Sons:** 31, todos de 11,8 s, gerados pelo `scripts/gen_sounds.py`: `NOM_SirenWhite1`–`9`, `NOM_SirenRed1`–`9` e `NOM_SirenBlack1`–`13` (a preta só toca na 0038). Ponto único: `NOM_SirenSpotsRules.SOUNDS[tipo]`, uma lista por tipo; tipo sem lista usa a branca. A vermelha continua sendo só da névoa vermelha (ADR-010). Saíram `NOM_Siren`, `NOM_SirenRed` e as versões `...Far`.

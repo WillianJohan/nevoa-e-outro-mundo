@@ -1460,7 +1460,7 @@ Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para 
 
 ## 21. Sirene que congela (sprint 0033)
 
-`shared/NOM_SirenFreeze.lua`: durante os 15 s da sirene, todo zumbi que este processo
+`shared/NOM_SirenFreeze.lua`: durante os 30 s de fuga depois da sirene, todo zumbi que este processo
 simula fica parado, virado pra direção dela (sprint 0034: pro jogador vivo mais perto, §23). No solo é o próprio processo
 (`server/NOM_FogEvent.lua`); no MP, o cliente dono (`client/NOM_FogClient.lua`, comandos
 `siren`, `fog` e `sirenStop`). Não há API nova além do `faceLocationF`.

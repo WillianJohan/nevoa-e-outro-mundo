@@ -12,7 +12,7 @@ Monstro = zumbi com outfit/textura própria e comportamento via Lua. Sem modelo
 
 **Todo monstro, menos o Eco, só existe na névoa** (decisão do Johan, 05/10/2026):
 Estalador, Corredor, Sem-rosto e Carpideira aparecem com a névoa, de dia ou de
-noite, e somem com ela. A névoa é um evento do mod, ~1 a cada 3 dias no começo do save e mais frequente com os dias (sprint 0019), anunciado pela sirene
+noite, e somem com ela. A névoa é um evento do mod, sorteada quase todo dia (65% subindo até 85% no dia 60, sprint 0033), anunciado pelo coro de sirenes ao longe
 ([world-states.md](world-states.md)). A noite fica com a agressividade dos zumbis comuns
 ([night.md](night.md)) e o Eco.
 

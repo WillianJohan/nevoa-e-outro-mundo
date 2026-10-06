@@ -8,12 +8,13 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 - À noite, bem mais escura que a vanilla, os zumbis caçam, enxergam e ouvem mais longe.
 - Corpos de quem morreu antes do anoitecer soltam **Ecos**: almas fracas que somem
   com o sol. Queime ou enterre os mortos.
-- Quase todo dia, numa hora qualquer, uma sirene toca e os zumbis param; 15 segundos depois vem a névoa
-  (a branca dura de 3 a 5 horas, a vermelha de 4 a 6, de dia ou de noite): o mundo escurece, o rádio chia e o Outro Mundo
+- Quase todo dia, numa hora qualquer, a tela chia, sirenes tocam ao longe e os zumbis param; a névoa
+  começa a subir e, depois de 30 segundos de fuga, toma tudo (a branca dura de 3 a 5 horas, a vermelha
+  de 4 a 6, de dia ou de noite): o mundo escurece, rádios e TVs chiam sozinhos e o Outro Mundo
   aparece: Estaladores (cegos, guiados por som), Corredores (gritam e chamam a horda),
   o **Sem-rosto** — olhe pra ele e ele some. Pra reaparecer mais perto — e a
   **Carpideira**, parada, chorando baixinho, até alguém acordá-la.
-- Às vezes a sirene toca mais grave e rasgada: é a **névoa vermelha**, onde todo zumbi
+- Às vezes as sirenes tocam mais graves e rasgadas: é a **névoa vermelha**, onde todo zumbi
   é monstro.
 
 > Estado: **pronto pra publicar, esperando o teste in-game.** Sprints 0001–0019
@@ -32,12 +33,13 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Balanceamento, MP e performance | orçamento por sistema travado por teste, comandos de debug, presets documentados | 0006 |
 | Publicação | traduções EN/PT-BR auditadas, poster, ícone, página do Workshop, build da pasta de upload | 0007 |
 | Ajustes do 1º teste | noite escura pela luz global, monstros só na névoa (5/2/5), Eco só de quem morreu antes do anoitecer | 0008 |
-| Névoa como evento | sirene 15 s reais antes (os zumbis param virados pra ela), hora aleatória quase todo dia, branca 3–5 h e vermelha 4–6 h, calmaria de 2 h depois; névoa natural do jogo some | 0009, 0033 |
+| Névoa como evento | coro de 5 sirenes ao longe, depois 30 s reais de fuga com a névoa subindo e os zumbis parados virados pro jogador; hora aleatória quase todo dia, branca 3–5 h e vermelha 4–6 h, calmaria de 2 h depois; névoa natural do jogo some | 0009, 0033, 0034 |
+| Presságio e aparelhos | estática na tela 3 s antes da sirene e sutil na névoa, na cor dela; TV, rádio, caixa de som e rádio de carro chiam e "falam" na névoa, ligados ou não | 0034 |
 | Névoa vermelha | 10% das névoas: sirene própria, névoa e luz vermelhas, todo zumbi é monstro (1/4 de cada) | 0010 |
 | Carpideira | parada e soluçando na névoa; perto, lanterna ou tiro a acordam: grita (horda a 60 tiles) e caça quem a acordou | 0011 |
 | Visual dos monstros | cada monstro com pele e peça próprias na névoa (venda, boca rasgada, rosto de chiado, cabelo caído); Eco de cinza e fumaça; contraste cheio e formas grandes pra ler sob a névoa | 0012, 0014 |
 | Efeitos de tela | na névoa, grão de filme, vinheta que respira (vermelha na vermelha), chiado perto do Sem-rosto e pulso no grito da Carpideira; opção de cada jogador; shader opcional num segundo mod (sem ShadowZ) | 0013 |
-| Outro Mundo sangrento | na névoa, sangue escorrido nas paredes, sujeira e rachaduras no chão e nas paredes, chão queimado dentro, mato e trepadeira fora (mais na vermelha), colado no mundo como a erosão do jogo e embaixo dos personagens; só na tela, tirado antes de todo save; densidade de cada jogador | 0015, 0021, 0023 |
+| Outro Mundo sangrento | na névoa, sangue escorrido nas paredes, sujeira e rachaduras no chão e nas paredes, chão queimado dentro, mato e trepadeira fora (mais na vermelha), casas por dentro destruídas e pichadas, até a borda da tela; colado no mundo como a erosão do jogo e embaixo dos personagens; só na tela, tirado antes de todo save; densidade de cada jogador | 0015, 0021, 0023, 0034 |
 | Dissolve e bloom | a peça do monstro se forma e se desfaz queimando, o Eco queima até a cinza com brasas na morte; bloom no shader opcional, mais forte na névoa; opção de cada jogador | 0018 |
 | Balanceamento do PO e curva de tensão | defaults e presets novos (névoa 2 dias e 3–6 h, Eco 20/30, caça 90/25, monstros 5/3/3/3); a névoa começa a cada ~3 dias e aperta com os dias do save, sem vermelha na primeira semana e com o dobro dela no dia 90 | 0019 |
 
