@@ -19,9 +19,10 @@ R.SIREN_MS = 45000    -- a sirene toca 45 s reais antes da névoa (sprint 0033)
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 
--- Curva de tensão (sprint 0019, análise do PO): dias de jogo desde o bornAt.
--- Ponto neutro da curva: no dia 30 o intervalo é 1× e a vermelha 1× (e a carência,
--- até 60 dias no sandbox, já passou se for menor que 30).
+-- Dias de jogo desde o bornAt (sprint 0019): contam a subida da chance do dia
+-- (R.dayChance) e a carência da vermelha. Save veterano nasce NEUTRAL_DAYS atrás (R.born):
+-- a carência, até 60 dias no sandbox, já passou se for menor que 30, e a chance do dia
+-- começa no meio da subida (75% com o padrão, 65 → 85 em 60 dias).
 R.NEUTRAL_DAYS = 30
 
 -- Sais do sorteio do dia: cada um é um sorteio independente do mesmo dia.
