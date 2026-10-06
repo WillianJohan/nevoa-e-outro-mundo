@@ -80,4 +80,28 @@ return {
         assert(NOM_World.red == false)
         assert(table.concat(seen, ",") == "fog=true,red=false,red=true,fog=false", table.concat(seen, ","))
     end,
+    -- calmaria (sprint 0033): flag própria, avisa só na borda
+    world_calm_flag_edges = function()
+        load(12)
+        local seen = {}
+        NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
+        assert(NOM_World.calm == false, "calmaria começa desligada")
+        NOM_World.setCalm(false)
+        assert(#seen == 0, "avisou sem mudar")
+        NOM_World.setCalm(true)
+        NOM_World.setCalm(true)
+        assert(NOM_World.calm == true)
+        NOM_World.setCalm(false)
+        NOM_World.setCalm(false)
+        assert(NOM_World.calm == false)
+        assert(table.concat(seen, ",") == "calm=true,calm=false", table.concat(seen, ","))
+    end,
+    -- só true liga (nil e outros valores não): igual ao setFog
+    world_calm_only_true_turns_on = function()
+        load(12)
+        NOM_World.setCalm(1)
+        assert(NOM_World.calm == false)
+        NOM_World.setCalm(nil)
+        assert(NOM_World.calm == false)
+    end,
 }

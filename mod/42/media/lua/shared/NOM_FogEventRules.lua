@@ -159,9 +159,10 @@ function R.stop(state, now, cfg)
     state.wantSecond = false
 end
 
--- Sirene cancelada (debug): a pendente sai, o dia não ganha outra.
+-- Sirene cancelada (debug): a pendente sai, o dia não ganha outra, e a cor que ela
+-- tinha decidido some (a próxima sorteia de novo).
 function R.cancel(state)
-    state.next = nil
+    state.next, state.red = nil, nil
 end
 
 function R.calm(state, now)

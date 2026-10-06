@@ -151,8 +151,9 @@ return {
     fog_event_rules_cancel_clears_next = function()
         local s = { seed = SEED, bornAt = 0 }
         R.update(s, 240, cfg(), seq(0))
+        s.red = true -- a cor decidida na sirene cancelada também sai
         R.cancel(s)
-        assert(s.next == nil)
+        assert(s.next == nil and s.red == nil)
     end,
     -- vermelha: 0 antes da carência, a chance do sandbox depois (sem a subida da 0019)
     fog_event_rules_red_grace_only = function()

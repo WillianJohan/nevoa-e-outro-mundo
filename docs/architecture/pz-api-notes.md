@@ -815,6 +815,12 @@ e sem `master` (volume de efeitos). No MP o servidor manda `sendServerCommand(MO
 "siren", {})` e cada cliente toca a dele. UNKNOWN: se o emitter do jogador pausa o som
 com o jogo pausado (a contagem para de qualquer jeito).
 
+Sprint 0033: a sirene dura 45 s e o comando passa a levar `{ red, dir }` (`dir` = graus
+de onde ela "vem", `NOM_FogEventRules.sirenDir`, igual em toda máquina). Sirene cancelada
+no dedicado manda `sendServerCommand(MODULE, "sirenStop", {})` (mesma forma do `siren`,
+sem API nova); no solo o servidor chama `NOM_SirenFreeze.start/stop` direto. Cliente que
+não conhece um comando o ignora (`client/NOM_FogClient.lua`: cadeia de `if` sem `else`).
+
 ## 12. Névoa vermelha (sprint 0010)
 
 **Verificado na sprint 0010** (bytecode do `projectzomboid.jar` instalado, 42.21).

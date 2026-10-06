@@ -41,7 +41,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
     sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red })
     local ev = NOM_FogEvent.status()
-    if ev.sirenMs then sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed }) end
+    if ev.sirenMs then sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed, dir = ev.sirenDir }) end
 end)
 
 -- Sem-rosto ------------------------------------------------------------------
