@@ -82,12 +82,11 @@ máximo". Substitui as manchas esparsas da sprint 0005
 ([ADR-015](../architecture/adr-015-outro-mundo-sangrento.md); como, desde a sprint 0023:
 [ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).
 
-- **Chão, num raio de 15 tiles:** poças de sangue (até 3 camadas no miolo), rastros saindo delas
-  e respingos soltos, por cima de rachaduras; sujeira em manchas, mais leve que o sangue. Dentro de
-  casa, **chão queimado** em manchas (casa destruída: o miolo todo queimado, a borda só marcada);
-  fora, **mato e folha** rasteiros. Na densidade 1, ~85% dos squares mudam; qualquer enquadramento
-  de 7×7 tiles perto do jogador tem sangue. Calibrado pelo print do Johan na névoa vermelha ("ainda
-  não tá o outro mundo": grama verde e asfalto limpos no zoom de perto).
+- **Chão, num raio de 15 a 30 tiles (segue a tela):** rachaduras e sujeira em manchas, mais leve.
+  Dentro de casa, **chão queimado** em manchas (casa destruída: o miolo todo queimado, a borda só
+  marcada); fora, **mato e folha** rasteiros. **Sem sangue no chão** (sprint 0034: as poças e
+  rastros pareciam "jogo dos anos 2000 com textura ruim", decisão do Johan); o sangue fica nas
+  paredes. Na densidade 1, ~66% dos squares mudam (~83% na névoa vermelha).
 - **Paredes** (de volta na sprint 0023): sangue escorrido, sujeira e rachadura; trepadeira nas
   paredes de fora.
 - **Colado no mundo** (sprint 0023): o desenho vai preso ao chão e à parede de verdade, como a
@@ -108,8 +107,7 @@ máximo". Substitui as manchas esparsas da sprint 0005
   depois de gravar um pedaço do mapa em segundo plano).
 - Enquanto o jogador faz uma ação num lugar (cavar, marretar, pegar um móvel), aquele square fica
   limpo; volta quando a ação acaba.
-- Sprites vanilla por nome: `overlay_blood_floor_01_*`, `overlay_grime_floor_01_*`,
-  `d_streetcracks_1_*`, `floors_burnt_01_*`, `d_plants_1_*`, `d_floorleaves_1_*`; nas paredes
+- Sprites vanilla por nome: `overlay_grime_floor_01_*`, `d_streetcracks_1_*`, `floors_burnt_01_*`, `d_plants_1_*`, `d_floorleaves_1_*`; nas paredes
   `overlay_blood_wall_01_*`, `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`
   ([pz-api-notes §16](../architecture/pz-api-notes.md#16-outro-mundo-sangrento-sprint-0015)).
 - Limites: só o andar do jogador; montado pro jogador 0 na tela dividida.

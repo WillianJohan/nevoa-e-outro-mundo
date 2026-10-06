@@ -1,7 +1,8 @@
 -- Outro Mundo sangrento (sprint 0015; anexado ao piso e à parede desde a 0023): na névoa, o
--- chão e as paredes em volta do jogador ganham sangue, sujeira, rachadura, chão queimado
--- (dentro), mato e folha (fora), trepadeira e pichação (paredes de dentro empilhadas, sprint
--- 0034), só na tela de quem vê (solo e cliente de MP). O que vai em cada square:
+-- chão em volta do jogador ganha sujeira, rachadura, chão queimado (dentro), mato e folha (fora;
+-- sangue no chão saiu na sprint 0034), e as paredes, sangue, sujeira, rachadura, trepadeira e
+-- pichação (as de dentro empilhadas, sprint 0034), só na tela de quem vê (solo e cliente de MP).
+-- O que vai em cada square:
 -- shared/NOM_DressingRules.lua. ADR-017, pz-api-notes §16.6.
 --
 -- Como (bytecode B42.21): obj:addAttachedAnimSpriteByName(nome) no piso (sq:getFloor()) e na

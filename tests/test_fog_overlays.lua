@@ -209,8 +209,8 @@ return {
     overlays_same_name_vanilla_decal_survives = function()
         local G = setup({ density = 1 })
         NOM_FogState.set(true, 3)
-        local x, y, want = findFloor(G, function(w) return w:find("overlay_blood_floor") ~= nil end)
-        local name = want:match("(overlay_blood_floor_01_%d+)")
+        local x, y, want = findFloor(G, function(w) return w:find("d_streetcracks_1_") ~= nil end)
+        local name = want:match("(d_streetcracks_1_%d+)")
         local floor = G.floorOf(x, y, 0)
         G.vanillaAttach(floor, name)
         G.seconds(3)
@@ -496,13 +496,13 @@ return {
     -- resto sai normal
     overlays_missing_sprites = function()
         local G = setup({ density = 2 })
-        for i = 0, 46 do G.unknown["overlay_blood_floor_01_" .. i] = true end
+        for i = 0, 111 do G.unknown["d_streetcracks_1_" .. i] = true end
         NOM_FogState.set(true, 3, true)
         G.seconds(4)
         local any = 0
         for _, o in pairs(G.objs) do
             for _, n in ipairs(G.attachedNames(o, "mod")) do
-                assert(not n:find("^overlay_blood_floor"), "anexou nome sem sprite")
+                assert(not n:find("^d_streetcracks"), "anexou nome sem sprite")
                 any = any + 1
             end
         end
@@ -592,7 +592,7 @@ return {
             local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
             assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
             assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
-            -- ≤ 80 squares por lote: até 5 anexos no piso (MAX_LAYERS + sujeira) e WALL_LAYERS em cada parede
+            -- ≤ 80 squares por lote: MAX_LAYERS + sujeira no piso e WALL_LAYERS em cada parede
             assert(maxInv <= O().SCAN_BUDGET * (D().MAX_LAYERS + 1 + 2 * D().WALL_LAYERS), "invalidações por lote: " .. maxInv)
             print(string.format("[budget] outro mundo (zoom %.1f%s, raio %d, volta %d squares = %d atualizações): enchendo %d, parado %d chamadas, %d invalidações por atualização",
                 zoom, c.inside and ", casa" or "", O().radius(), D().WITHIN[O().radius()], laps, maxFill, maxIdle, maxInv))
@@ -685,7 +685,8 @@ return {
 
     -- crash depois de um hot save: o chunk volta do disco com anexos do mod. floors_burnt_01_*
     -- (ninguém no vanilla anexa) sai no LoadGridsquare, com e sem névoa; nome vanilla vazado fica
-    -- (indistinguível do mapa: custo aceito na ADR-017); o vanilla do square fica
+    -- (indistinguível do mapa: custo aceito na ADR-017), inclusive o sangue de chão de antes da
+    -- sprint 0034; o vanilla do square fica
     overlays_load_scrub_removes_own_prefix = function()
         local G = setup({ density = 1 })
         for _, fog in ipairs({ false, true }) do

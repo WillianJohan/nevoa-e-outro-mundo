@@ -67,6 +67,10 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 7. **Conteúdo:** chão queimado (`floors_burnt_01_*`, em manchas, cheio no miolo) só em square de
    dentro; mato e folha rasteiros só fora; trepadeira só em parede de square de fora. A
    regra pura continua por square e período (ADR-006): andar e voltar dá o mesmo desenho.
+   **Sem sangue no chão (emenda da sprint 0034):** o Johan testou e as poças e rastros pareciam
+   "jogo dos anos 2000 com textura ruim". Saem as poças, os rastros e o respingo; o chão fica com
+   queimado ou mato, rachadura e sujeira (`MAX_LAYERS` = 2, mais a sujeira à parte). O sangue fica
+   só na parede, dentro e fora. Na densidade 1 o chão vestido cai de ~82% pra ~66%.
    **Casa destruída (emenda da sprint 0034, pedido do Johan: "apagadas, acabadas, sujas,
    pichadas"):**
    - Parede de dentro: a 1ª camada quase sempre (`WALL_IN` 1, presa em 0,95; sorteio sujeira
@@ -90,8 +94,8 @@ for gravado vira parte do mapa daquele save, pra sempre. Evidência:
 
 - O Outro Mundo fica embaixo dos personagens, com a luz e o recorte do jogo; as paredes voltam.
 - **Custo do vazamento (se der errado):** um crash depois de um hot save deixa no mapa daquele save
-  os decalques vanilla do mod que estavam no chunk (sangue, sujeira, rachadura, trepadeira, sangue
-  de parede). Ficam pra sempre, iguais à erosão e ao sangue do mapa. O chão queimado vazado sai
+  os decalques vanilla do mod que estavam no chunk (sujeira, rachadura, trepadeira, sangue de
+  parede; até a sprint 0034, sangue de chão também). Ficam pra sempre, iguais à erosão e ao sangue do mapa. O chão queimado vazado sai
   sozinho no próximo carregamento. Janela: entre um hot save e o próximo save do mesmo chunk
   (sair do raio, sair do jogo, dormir).
 - **Instância reusada:** se o vanilla tirar uma instância do mod (vai pro pool) e anexar outra com o

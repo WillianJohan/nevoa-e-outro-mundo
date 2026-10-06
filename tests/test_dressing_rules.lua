@@ -21,21 +21,19 @@ local function set(list)
     return s
 end
 
+-- squares vestidos e anexos no chão (camadas mais a sujeira) num quarteirão
 local function sweep(R, period, d, size)
-    local n, layers, pools = 0, 0, 0
+    local n, layers = 0, 0
     for x = 1000, 1000 + size - 1 do
         for y = 2000, 2000 + size - 1 do
             local f = R.floor(x, y, 0, period, d)
             if f then
                 n = n + 1
-                layers = layers + #f
-                local blood = 0
-                for _, l in ipairs(f) do if l[1] == "bloodFloor" then blood = blood + 1 end end
-                if blood >= 3 then pools = pools + 1 end
+                layers = layers + #f + (f.grime and 1 or 0)
             end
         end
     end
-    return n, layers, pools
+    return n, layers
 end
 
 -- Medida do pack (scripts/audit_floor_sprites.py, sprints 0021 e 0023): por nome, inside, cov,
@@ -109,14 +107,14 @@ local function count(n, pattern)
 end
 
 return {
-    -- sprint 0023: o sprite vai anexado ao piso e sai na posição do piso. Decalque (sangue,
-    -- sujeira, rachadura, queimado) com o conteúdo deitado no diamante do chão (não flutua); mato
+    -- sprint 0023: o sprite vai anexado ao piso e sai na posição do piso. Decalque (sujeira,
+    -- rachadura, queimado) com o conteúdo deitado no diamante do chão (não flutua); mato
     -- e folha rasteiros (quase tudo no diamante e no máximo 8 px acima dele: o anexo do piso sai
     -- antes dos personagens e das paredes, um mato alto ficaria por baixo do que está atrás dele)
     dressing_rules_floor_pools_lie_on_floor = function()
         local R = load()
         local names = floorNames(R)
-        assert(#names > 150, "pool vazio demais: " .. #names)
+        assert(#names > 120, "pool vazio demais: " .. #names)
         for _, n in ipairs(names) do
             local a = AUDIT[n.name]
             assert(a, "sprite fora da auditoria: " .. n.name)
@@ -124,6 +122,37 @@ return {
                 assert(a.inside >= 0.8 and a.rise <= 8, "mato alto no chão: " .. n.name)
             else
                 assert(a.inside >= 0.95, "decalque fora do chão: " .. n.name)
+            end
+        end
+    end,
+
+    -- Johan, 06/10: o sangue no chão parecia textura ruim de jogo antigo e saiu. Nenhuma camada
+    -- de chão (nem a sujeira) é de sangue, dentro e fora, em qualquer densidade, inclusive na
+    -- névoa vermelha; o sangue fica só na parede
+    dressing_rules_no_blood_on_floor = function()
+        local R = load()
+        for setName, s in pairs(R.SETS) do
+            if not s.wall then
+                assert(not setName:find("^blood") and not s.prefix:find("blood"), "set de sangue no chão: " .. setName)
+            end
+        end
+        local ds = { 0.3, 1, 2, R.density(1, true), R.density(2, true) }
+        for _, outside in ipairs({ false, true }) do
+            for _, d in ipairs(ds) do
+                for _, per in ipairs({ 1, 7 }) do
+                    for x = 0, 39 do
+                        for y = 0, 39 do
+                            local f = R.floor(2500 + x, 3500 + y, 0, per, d, outside)
+                            local all = {}
+                            for _, l in ipairs(f or {}) do all[#all + 1] = l end
+                            if f and f.grime then all[#all + 1] = f.grime end
+                            for _, l in ipairs(all) do
+                                assert(not l[1]:find("^blood") and not R.name(l):find("blood"),
+                                    "sangue no chão: " .. R.name(l) .. " d=" .. d)
+                            end
+                        end
+                    end
+                end
             end
         end
     end,
@@ -334,39 +363,34 @@ return {
         assert(diff > 400, "período novo quase igual: " .. diff)
     end,
 
-    -- poças (3 camadas de sangue num square) e chão bem coberto na densidade 1
-    dressing_rules_pools_and_heavy_floor = function()
+    -- chão bem coberto na densidade 1 (sem o sangue, sprint 0034: medido ~66% vestido e ~1,3
+    -- anexo por square vestido)
+    dressing_rules_heavy_floor = function()
         local R = load()
-        local n, layers, pools = sweep(R, 7, 1, 60)
-        assert(pools >= 20, "poucas poças: " .. pools)
-        assert(n >= 3600 * 0.35, "chão vazio demais: " .. n)
-        assert(layers / n >= 1.3, "camadas por square: " .. layers / n)
+        local n, layers = sweep(R, 7, 1, 60)
+        assert(n >= 3600 * 0.55, "chão vazio demais: " .. n)
+        assert(layers / n >= 1.2, "anexos por square: " .. layers / n)
     end,
 
     -- calibração pelo print do Johan (05/10, névoa vermelha, ~7×7 tiles na tela, "ainda não
-    -- tá o outro mundo"): em qualquer enquadramento assim, quase todo chão muda e tem sangue
+    -- tá o outro mundo"): nenhum enquadramento assim fica limpo. Sem o sangue (sprint 0034) o
+    -- pior medido caiu pra ~0,35 na normal e ~0,7 na vermelha
     dressing_rules_visible_at_close_zoom = function()
         local R = load()
         for _, red in ipairs({ false, true }) do
             local d = R.density(1, red)
-            local worst, noBlood = 1, 0
+            local worst = 1
             for k = 0, 39 do
                 local cx, cy = 10700 + k * 37, 10200 + k * 53
-                local n, blood = 0, 0
+                local n = 0
                 for x = cx - 3, cx + 3 do
                     for y = cy - 3, cy + 3 do
-                        local f = R.floor(x, y, 0, 9, d)
-                        if f then
-                            n = n + 1
-                            for _, l in ipairs(f) do if l[1] == "bloodFloor" then blood = blood + 1 break end end
-                        end
+                        if R.floor(x, y, 0, 9, d) then n = n + 1 end
                     end
                 end
                 worst = math.min(worst, n / 49)
-                if blood < 3 then noBlood = noBlood + 1 end
             end
-            assert(worst >= (red and 0.8 or 0.6), "enquadramento limpo demais: " .. worst)
-            assert(noBlood <= (red and 2 or 8), "enquadramentos quase sem sangue: " .. noBlood)
+            assert(worst >= (red and 0.6 or 0.3), "enquadramento limpo demais: " .. worst)
         end
     end,
 
@@ -431,8 +455,7 @@ return {
         local function key(f)
             if not f then return "-" end
             local t = {}
-            -- só a erosão: ela sai direto do id do square (o sangue vem das células)
-            for _, l in ipairs(f) do if l[1] ~= "bloodFloor" then t[#t + 1] = l[1] .. l[2] end end
+            for _, l in ipairs(f) do t[#t + 1] = l[1] .. l[2] end
             return table.concat(t, ";")
         end
         -- { z1, z2, dy }: com um id que só soma z, (x, y, z1) e (x, y + dy, z2) colidiriam

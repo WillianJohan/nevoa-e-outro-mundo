@@ -63,7 +63,7 @@ mod/
     lua/client/NOM_FogClient.lua    cliente de MP: flag de névoa, sirene, avisa que viu, dono move
     lua/client/NOM_FogSound.lua     drone, metal e rádio chiando (só local)
     lua/client/NOM_FogVignette.lua  vinheta da névoa via SearchMode; com o mod do shader, o canal Lua → shader (só local)
-    lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão (queimado dentro, mato fora), sprite de parede N/W, poças e rastros (puro, sprints 0015 e 0023)
+    lua/shared/NOM_DressingRules.lua   o que cada square ganha na névoa: camadas de chão (queimado dentro, mato fora, rachadura, sujeira; sem sangue desde a 0034), camadas de parede N/W (puro, sprints 0015, 0023 e 0034)
     lua/client/NOM_FogOverlays.lua  Outro Mundo sangrento: anexado ao piso e à parede, tirado antes de todo save (só local; ADR-017)
     lua/shared/NOM_ScreenFxRules.lua   alfas das camadas da tela, fade, pulso do grito, canal do shader (puro)
     lua/client/NOM_ScreenFxOptions.lua opções de cliente dos efeitos de tela e da densidade do Outro Mundo (PZAPI.ModOptions), e a tecla do painel de debug

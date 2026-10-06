@@ -1,6 +1,7 @@
 -- Regras puras do Outro Mundo sangrento (sprint 0015, ajustes da 0021, anexado na 0023): o
 -- que cada square ganha na névoa. Chão: chão queimado (dentro) ou mato e folha (fora),
--- rachadura e sangue (poças e rastros), e sujeira em manchas à parte (mais leve). Parede de fora:
+-- rachadura, e sujeira em manchas à parte (mais leve); sem sangue (saiu na sprint 0034: parecia
+-- textura ruim de jogo antigo, Johan). Parede de fora:
 -- um sprite por lado (sangue, sujeira, rachadura, trepadeira ou pichação). Parede de dentro (casa
 -- destruída, sprint 0034): até WALL_LAYERS camadas de tipos diferentes (rachadura, sujeira,
 -- sangue, pichação ou mensagem). Sem API do jogo, testável com ./run-tests.sh. Quem anexa:
@@ -18,13 +19,8 @@ NOM_DressingRules = {
     MIN_RADIUS = 15,
     MAX_RADIUS = 30,
     MARGIN = 2,
-    MAX_LAYERS = 4,    -- camadas no piso (a sujeira, à parte)
+    MAX_LAYERS = 2,    -- camadas no piso: queimado ou mato, e rachadura (a sujeira, à parte)
     RED_MULT = 1.6,    -- névoa vermelha = o máximo
-    CELL = 7,          -- uma poça possível por célula de 7×7
-    -- Calibrado pro zoom do Johan (print de 05/10, névoa vermelha: ~6×6 tiles na tela e
-    -- "ainda não tá o outro mundo"): a mudança tem que se ver de relance perto do jogador.
-    POOL = 0.85,       -- chance de poça por célula, na densidade 1
-    BACKGROUND = 0.15, -- respingo solto por square
     CRACKS = 0.45,
     -- Sujeira (print 7: losango cheio por tile lia como xadrez): em manchas (ruído numa rede
     -- de GRIME_CELL tiles, recortado por um ruído fino de GRIME_FINE), sprite parcial que não
@@ -88,7 +84,6 @@ end
 -- sai antes de personagens e paredes). Medido por scripts/audit_floor_sprites.py
 -- (tests/floor_sprites.lua).
 R.SETS = {
-    bloodFloor = { prefix = "overlay_blood_floor_01_", idx = every(0, 1, 27) },
     -- sujeira: além disso, parcial (cobertura < 50%) e sem as faixas de borda de tile (sprint 0021)
     grimeFloor = { prefix = "overlay_grime_floor_01_", idx = { 12, 13, 14, 15, 17, 20, 22, 23, 26, 38, 88 } },
     cracksFloor = { prefix = "d_streetcracks_1_",
@@ -131,7 +126,6 @@ R.SETS = {
     messagesWallN = { wall = "N", prefix = "overlay_messages_wall_01_", runs = { { 11, 12, 13 }, { 19, 20, 21 },
         { 28, 29, 30, 31 } } },
 }
-for i = 32, 46 do R.SETS.bloodFloor.idx[#R.SETS.bloodFloor.idx + 1] = i end
 for _, s in pairs(R.SETS) do
     if s.runs then
         s.idx = {}
@@ -180,43 +174,18 @@ function R.density(option, red)
     return d * (red and R.RED_MULT or 1)
 end
 
--- Poça da célula (cx, cy): centro, raio e rastro (direção, tamanho); nil = sem poça.
-local function makePool(cx, cy, z, period, d)
-    local id = sqId(cx, cy, z) + 7
-    if u(id, period, 11) >= chance(R.POOL, d) then return false end
-    local c = R.CELL
-    local a = u(id, period, 14) * 2 * math.pi
-    return { x = (cx + u(id, period, 12)) * c, y = (cy + u(id, period, 13)) * c, r = 1.6 + 1.8 * u(id, period, 15),
-        dx = math.cos(a), dy = math.sin(a), len = 3 + 6 * u(id, period, 16) }
-end
-
--- Cada square olha 9 células (e 4 cantos da rede da sujeira): guardados por período e
--- densidade (o hash é o caro no Kahlua). Zera quando um dos dois muda; cresce com o
--- caminho andado numa névoa.
-local pools, corners, poolsPeriod, poolsD = {}, {}, nil, nil
-
-local function fresh(period, d)
-    if period ~= poolsPeriod or d ~= poolsD then pools, corners, poolsPeriod, poolsD = {}, {}, period, d end
-end
-
-local function pool(cx, cy, z, period, d)
-    fresh(period, d)
-    local k = sqId(cx, cy, z) -- chave numérica: nada de string por chamada
-    local p = pools[k]
-    if p == nil then
-        p = makePool(cx, cy, z, period, d)
-        pools[k] = p
-    end
-    return p or nil
-end
+-- Cada square olha os 4 cantos da rede de cada ruído: guardados por período (o hash é o caro
+-- no Kahlua). Zera quando o período muda; cresce com o caminho andado numa névoa.
+local corners, cornersPeriod = {}, nil
 
 local function corner(i, j, z, period, salt)
+    if period ~= cornersPeriod then corners, cornersPeriod = {}, period end
     local t = corners[salt]
     if not t then
         t = {}
         corners[salt] = t
     end
-    local k = sqId(i, j, z)
+    local k = sqId(i, j, z) -- chave numérica: nada de string por chamada
     local v = t[k]
     if v == nil then
         v = u(k + 3, period, salt)
@@ -256,35 +225,6 @@ local function grimePick(x, y, id, period)
     return { "grimeFloor", own[math.floor(u(id, period, 61) * #own) + 1] }
 end
 
--- Camadas de sangue do square pelas poças das 9 células em volta: 3 no miolo, 2 na
--- borda, 1 no rastro (com falhas). 0 = nada.
-local function bloodLevel(x, y, z, id, period, d)
-    local px, py = x + 0.5, y + 0.5
-    local cx, cy = math.floor(x / R.CELL), math.floor(y / R.CELL)
-    local level = 0
-    for i = cx - 1, cx + 1 do
-        for j = cy - 1, cy + 1 do
-            local p = pool(i, j, z, period, d)
-            if p then
-                local ox, oy = px - p.x, py - p.y
-                local dist = math.sqrt(ox * ox + oy * oy)
-                if dist <= p.r * 0.65 then return 3 end
-                if dist <= p.r then
-                    level = 2
-                elseif level == 0 then
-                    local t = ox * p.dx + oy * p.dy
-                    if t > 0 and t < p.len and math.abs(ox * p.dy - oy * p.dx) <= 1
-                        and u(id, period, 31) < 0.8 then
-                        level = 1
-                    end
-                end
-            end
-        end
-    end
-    if level == 0 and u(id, period, 32) < chance(R.BACKGROUND, d) then level = 1 end
-    return level
-end
-
 -- Mancha pelo ruído: quanto o ruído passa do corte (≥ 0), ou nil fora da mancha.
 local function patch(x, y, z, period, d, base, max, cell, salt)
     local over = noise(x, y, z, period, cell, salt) - (1 - math.min(max, base * d))
@@ -305,12 +245,11 @@ local function ground(x, y, z, id, period, d, outside)
     return pick(set, id, period, 65)
 end
 
--- Camadas do chão do square, de baixo pra cima (queimado ou mato, rachadura, depois sangue), e
--- a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o square é de fora
--- (sem telhado).
+-- Camadas do chão do square, de baixo pra cima (queimado ou mato, depois rachadura; até
+-- MAX_LAYERS), e a sujeira à parte em out.grime (anexo próprio, mais leve), ou nil. outside: o
+-- square é de fora (sem telhado).
 function R.floor(x, y, z, period, d, outside)
     if not d or d <= 0 then return nil end
-    fresh(period, d)
     local id = sqId(x, y, z)
     local out = {}
     out[1] = ground(x, y, z, id, period, d, outside)
@@ -318,9 +257,6 @@ function R.floor(x, y, z, period, d, outside)
     local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
         and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
     if u(id, period, 52) < chance(R.CRACKS, d) then out[#out + 1] = pick("cracksFloor", id, period, 62) end
-    local blood = bloodLevel(x, y, z, id, period, d)
-    while #out + blood > R.MAX_LAYERS do table.remove(out) end
-    for k = 1, blood do out[#out + 1] = pick("bloodFloor", id, period, 40 + k) end
     if grime then out.grime = grimePick(x, y, id, period) end
     if #out == 0 and not grime then return nil end
     return out

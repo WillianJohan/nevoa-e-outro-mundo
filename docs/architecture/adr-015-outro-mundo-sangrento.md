@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `accepted` — o **como** (decisões 3 e 4, emenda da 0021) foi substituído pela [ADR-017](adr-017-outro-mundo-anexado.md) na sprint 0023 |
+| Status | `accepted` — o **como** (decisões 3 e 4, emenda da 0021) foi substituído pela [ADR-017](adr-017-outro-mundo-anexado.md) na sprint 0023; o sangue no chão da decisão 1 (poças, rastros, respingo) saiu na sprint 0034 (ADR-017, item 7) |
 | Data | 2026-10-05 |
 | Emenda | [ADR-007](adr-007-sem-rosto-e-atmosfera-local.md) (os overlays da névoa deixam de ser "manchas aos poucos no chão" e viram o cenário inteiro, chão e paredes). Emendada em 2026-10-05, sprint 0021 ([abaixo](#emenda-de-2026-10-05--sprint-0021-o-que-o-jogo-mostrou)) |
 

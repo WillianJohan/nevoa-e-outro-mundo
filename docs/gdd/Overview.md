@@ -175,3 +175,8 @@ Só viram escopo por promoção explícita.
   facelift) está na spec e entra nas sprints 0034 a 0044. O rosto censurado do Sem-rosto, que era
   a 0033 antiga, virou parte do facelift ([world-states.md](world-states.md),
   [sandbox.md](sandbox.md), [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md#emenda-de-2026-10-06--sprint-0033-ritmo-novo)).
+- **2026-10-06** — **Sem sangue no chão do Outro Mundo** (sprint 0034), visto no jogo pelo Johan:
+  as poças e rastros ficaram "parecendo jogo dos anos 2000 com textura ruim". Saem do chão; fica o
+  resto (sangue de parede, sujeira, rachadura, mato e folha, chão queimado)
+  ([atmosphere.md](atmosphere.md#outro-mundo-sangrento-só-na-névoa),
+  [ADR-017](../architecture/adr-017-outro-mundo-anexado.md)).

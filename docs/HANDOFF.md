@@ -196,7 +196,13 @@ tail -F ~/.var/app/com.valvesoftware.Steam/Zomboid/console.txt | grep -E "NOM-Re
    - desgaste vermelho-escuro em manchas;
    - luz fria e escura pelo clima e pelo shader;
    - esporos e cinza flutuando no overlay de tela. As partículas de clima vanilla não têm cor e mexem na neve.
-3. ~~Mod3 de verdade~~: o spike provou que dá; ele já está em uso (ver acima). Depois da névoa fluida, as luzes da ponte (`IsoCell.getLamppostPositions`, `roomLights`, `lightInfo.torches`) abrem in-scattering e um bloom de verdade.
+   - Atualização do Johan (06/10/2026): o visual do Outro Mundo passa a ser **mais Silent Hill** (ferrugem, tinta descascando, grade metálica, lascas subindo). O item 4 tem prioridade sobre este.
+4. **Outro Mundo estilo Silent Hill**, numa sprint própria logo depois de fechar a 0034 (decisão do Johan, 06/10/2026). Sangue no chão já foi tirado na 0034, porque parecia textura ruim de jogo antigo; o sangue de parede fica.
+   - Texturas procedurais nossas (`scripts/gen_*.py`) anexadas no chão e nas paredes pela erosão: tinta descascando, ferrugem, grade. UNKNOWN: como registrar sprite próprio pro `addAttachedAnimSpriteByName` (tile pack nosso ou outra via). Conferir antes de prometer.
+   - Partículas presas no mundo, saindo do chão e das paredes perto do jogador e subindo: lascas girando e cinza. Sprite sheet gerado em Python, algumas centenas por quadro.
+   - Transição na chegada da névoa, logo depois da sirene: o shader dissolve a tela com ruído ("descascando") e uma leva de lascas voa pra cima.
+   - Máscara por textura de tile só pelo mod3 (Java). É o mais arriscado e fica por último.
+5. ~~Mod3 de verdade~~: o spike provou que dá; ele já está em uso (ver acima). Depois da névoa fluida, as luzes da ponte (`IsoCell.getLamppostPositions`, `roomLights`, `lightInfo.torches`) abrem in-scattering e um bloom de verdade.
 
 ## Decisões pendentes do Johan
 
