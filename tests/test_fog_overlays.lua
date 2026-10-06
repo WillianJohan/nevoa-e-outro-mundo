@@ -377,6 +377,27 @@ return {
         assert(mods(G, G.floorOf(105, 100, 0)) ~= "" or expect(G, 105, 100, 0, "F") == "", "o piso do square com batente também saiu")
     end,
 
+    -- review final da 0035: as fontes das lascas pedem só o andar e o raio delas; o registro
+    -- inteiro não é copiado a cada segundo
+    overlays_targets_filtered = function()
+        local G = setup({ density = 2, zoom = 2.5 })
+        walls(G, 70, 70, 60)
+        NOM_FogState.set(true, 3, true)
+        G.seconds(10)
+        local all, r = O().targets(), 14
+        local near = O().targets(100, 100, 0, r)
+        local want = 0
+        for _, e in ipairs(all) do
+            if e.z == 0 and (e.x - 100) ^ 2 + (e.y - 100) ^ 2 <= r * r then want = want + 1 end
+        end
+        assert(want > 300 and #all > 2 * want, "pouco pra medir: " .. want .. " de " .. #all)
+        assert(#near == want, "filtrou " .. #near .. ", pede " .. want)
+        for _, e in ipairs(near) do
+            assert(e.z == 0 and (e.x - 100) ^ 2 + (e.y - 100) ^ 2 <= r * r, "fora: " .. e.k)
+        end
+        assert(#O().targets(100, 100, 1, r) == 0, "outro andar")
+    end,
+
     -- a sujeira vai mais leve: a instância dela com alfa GRIME_ALPHA (e o alvo do alfa igual: o
     -- jogo não puxa de volta); o resto, 1
     overlays_grime_lighter = function()

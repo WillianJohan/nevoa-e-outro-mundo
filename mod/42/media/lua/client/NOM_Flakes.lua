@@ -89,7 +89,8 @@ end
 
 local function refresh(p, now)
     srcAt = now
-    src = R.sources(NOM_FogOverlays.targets(), math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()))
+    local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
+    src = R.sources(NOM_FogOverlays.targets(px, py, pz, R.RADIUS), px, py, pz)
 end
 
 local function draw(el, now)

@@ -219,10 +219,19 @@ function O.radius()
 end
 
 -- Os alvos vestidos agora ({ x, y, z, kind = "F"|"N"|"W" }, só leitura): as fontes das lascas
--- (client/NOM_Flakes.lua, sprint 0035). Só Lua.
-function O.targets()
+-- (client/NOM_Flakes.lua, sprint 0035). Com r, só os do andar pz a até r tiles de (px, py): a
+-- lista nova a cada segundo fica do tamanho do que as lascas usam, não do registro. Só Lua.
+function O.targets(px, py, pz, r)
     local out = {}
-    for _, e in pairs(reg) do out[#out + 1] = e end
+    if not r then
+        for _, e in pairs(reg) do out[#out + 1] = e end
+        return out
+    end
+    local r2 = r * r
+    for _, e in pairs(reg) do
+        local dx, dy = e.x - px, e.y - py
+        if e.z == pz and dx * dx + dy * dy <= r2 then out[#out + 1] = e end
+    end
     return out
 end
 

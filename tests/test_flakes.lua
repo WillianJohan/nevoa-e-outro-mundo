@@ -107,8 +107,10 @@ local function setup(opts)
     -- A ordem do pairs no registro muda a cada processo no luajit (e não é contrato no Kahlua):
     -- as fontes vão em ordem fixa, pro mesmo sorteio dar sempre as mesmas lascas no mesmo lugar.
     local targets = NOM_FogOverlays.targets
-    NOM_FogOverlays.targets = function()
-        local out = targets()
+    G.targetsAsked = {}
+    NOM_FogOverlays.targets = function(...)
+        G.targetsAsked[#G.targetsAsked + 1] = { ... }
+        local out = targets(...)
         table.sort(out, function(a, b) return a.k < b.k end)
         return out
     end
@@ -161,6 +163,19 @@ return {
             end
         end
         assert(sub > 0 and ash > 0, "lasca " .. sub .. " cinza " .. ash)
+    end,
+
+    -- review final da 0035: as fontes relidas a cada segundo pedem só o andar e o raio das
+    -- lascas, não a cópia do registro inteiro
+    flakes_sources_ask_only_their_radius = function()
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        G.secs(3)
+        assert(#G.targetsAsked >= 2, "fontes relidas " .. #G.targetsAsked .. " vezes")
+        for _, a in ipairs(G.targetsAsked) do
+            assert(a[1] == 100 and a[2] == 100 and a[3] == 0 and a[4] == R().RADIUS,
+                "pediu " .. table.concat({ tostring(a[1]), tostring(a[2]), tostring(a[3]), tostring(a[4]) }, ","))
+        end
     end,
 
     -- o recorte é sempre uma célula inteira do sheet (quadro × formato), dentro do PNG
