@@ -52,9 +52,9 @@ Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e pre
 
 ## Instalar
 
-**Jogador:** inscrever-se no item do Steam Workshop (link em breve, depois da
-publicação) e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
-Em servidor: `WorkshopItems=<ID>` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
+**Jogador:** inscrever-se no [item do Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207)
+e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
+Em servidor: `WorkshopItems=3814379207` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
 `Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
 
 **Dev:** cópia do repositório na pasta de mods (`mod/` e o shader opcional `mod2/`):
