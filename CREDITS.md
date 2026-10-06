@@ -120,6 +120,33 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 
+### Outro Mundo: decalques da erosão (sprint 0035)
+
+Gerados pelo script [`scripts/gen_tiles.py`](scripts/gen_tiles.py) (numpy + Pillow, semente fixa;
+rodar de novo dá os mesmos bytes e não mexe em nenhuma outra textura). Cada desenho é feito num
+plano (o chão visto de cima, a parede de frente) e mapeado pro losango do chão ou pra face
+isométrica da parede com sub-amostras (alfa antisserrilhado, o RGB transparente herda o dos
+vizinhos). Do jogo só a **geometria** do quadro 128×256, medida no spike
+([spike-sprite-proprio.md](docs/sprints/sprint-0035-silent-hill/spike-sprite-proprio.md) §3);
+nenhum pixel. A lista com lado e tipo vai em `mod/42/media/lua/shared/NOM_OwnSpriteList.lua`,
+escrita pelo mesmo script.
+
+| Arquivo | Tamanho | Uso |
+|---|---|---|
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Grade_F_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Grade_F_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Grade_F_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Grade_F_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Grade_F_05.png` | 128×256 | Outro Mundo (sprint 0035), chão: grade de piso industrial (quadrados, losangos ou barras) num quadro de cantoneira com parafusos, ferrugem e entulho; o vão é escuro com alfa parcial (o chão do jogo aparece apagado por baixo), a grade faz sombra; duas com o canto arrancado |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_F_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_F_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_F_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_F_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_F_05.png` | 128×256 | Outro Mundo (sprint 0035), chão: mancha de ferrugem no chão: auréola de óxido, marca de maré seca, miolo em escamas com trinca e farelo em volta |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Chapa_F_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Chapa_F_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Chapa_F_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Chapa_F_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Chapa_F_05.png` | 128×256 | Outro Mundo (sprint 0035), chão: chapa de aço rebitada (lisa escovada ou xadrez antiderrapante; uma ou duas), riscos, óleo seco, ferrugem na borda e nos rebites, canto amassado, sombra no chão |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_F_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_F_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_F_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_F_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_F_05.png` | 128×256 | Outro Mundo (sprint 0035), chão: película de tinta velha lascada no chão (creme, verde, amarelo industrial, cinza-azulado), craquelê, lascas com o avesso claro; o chão aparece nos buracos |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_W_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_W_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_W_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_W_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_W_05.png` | 128×256 | Outro Mundo (sprint 0035), parede oeste: tinta descolando em placas: demão velha de outra cor e reboco ou chapa enferrujada por baixo, borda levantada (avesso claro, sombra no buraco), sujeira, craquelê e água escorrendo; a tinta que fica é a parede do jogo (transparente) |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_W_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_W_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_W_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_W_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_W_05.png` | 128×256 | Outro Mundo (sprint 0035), parede oeste: escorridos de ferrugem em leque saindo de parafusos, de uma emenda rebitada ou do alto, e bolhas de ferrugem furando a tinta |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_W_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_W_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_W_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_W_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_W_05.png` | 128×256 | Outro Mundo (sprint 0035), parede oeste: a parede quase toda descascada (reboco, chapa rebitada enferrujada ou os dois), só ilhas da tinta do jogo |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_N_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_N_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_N_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_N_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Tinta_N_05.png` | 128×256 | Outro Mundo (sprint 0035), parede norte: tinta descolando em placas: demão velha de outra cor e reboco ou chapa enferrujada por baixo, borda levantada (avesso claro, sombra no buraco), sujeira, craquelê e água escorrendo; a tinta que fica é a parede do jogo (transparente) |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_N_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_N_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_N_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_N_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Ferrugem_N_05.png` | 128×256 | Outro Mundo (sprint 0035), parede norte: escorridos de ferrugem em leque saindo de parafusos, de uma emenda rebitada ou do alto, e bolhas de ferrugem furando a tinta |
+| `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_N_01.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_N_02.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_N_03.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_N_04.png`, `mod/42/media/textures/NOM/OutroMundo/NOM_OM_Descasca_N_05.png` | 128×256 | Outro Mundo (sprint 0035), parede norte: a parede quase toda descascada (reboco, chapa rebitada enferrujada ou os dois), só ilhas da tinta do jogo |
+
+Pra regerar: `python3 scripts/gen_tiles.py` (com `--preview`, só monta a prévia em
+`/tmp/om_tiles_preview.png`).
+
 ## Shader
 
 | Arquivo | O que é |

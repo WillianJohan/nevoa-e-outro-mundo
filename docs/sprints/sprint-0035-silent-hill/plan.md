@@ -138,7 +138,32 @@ Segue o caminho do spike.
 - O prefixo de limpeza (`OWN_PREFIX`) e o `LoadGridsquare` passam a reconhecer os nomes nossos.
 - Teste de auditoria das texturas novas (cobertura, lado da parede), como `tests/floor_sprites.lua` e `tests/wall_sprites.lua`.
 
-- [ ] Testes que falham, implementar, `./run-tests.sh` verde, commit.
+Dividida em duas: **4a** gera as texturas e a lista; **4b** liga na erosão (`NOM_OwnSprites.ensure`, `NOM_DressingRules`, `OWN_PREFIX`, fake do `getSprite`).
+
+- [x] **4a:** testes que falham, gerar as texturas e a lista, `./run-tests.sh` verde, commit.
+- [ ] **4b:** testes que falham, integrar na erosão, `./run-tests.sh` verde, commit.
+
+**4a feita (2026-10-06).** O que saiu e o que foi decidido:
+- **Script novo** `scripts/gen_tiles.py` (não o `gen_textures.py`): rodar de novo não sorteia nenhuma outra textura do mod. Semente fixa, gerador por textura; duas rodadas dão os mesmos bytes.
+- **50 PNG** em `mod/42/media/textures/NOM/OutroMundo/NOM_OM_<tipo>_<lado>_<nn>.png`, 5 variações por tipo e lado, RGBA 128×256, quadro inteiro (~1 MB no total):
+  - chão (`F`): `Grade`, `Ferrugem`, `Chapa`, `Tinta`;
+  - paredes (`W` e `N`): `Tinta`, `Ferrugem`, `Descasca`.
+- **Como é desenhado:** cada textura é feita num plano (o chão visto de cima, a parede de frente), em px de tela com 4 amostras por px, e mapeada pro losango ou pra face com 4×4 sub-amostras por pixel. Na parede a vertical continua vertical e a horizontal segue ±x/2. Luz do alto à esquerda da tela em tudo (sombra embaixo à direita). O RGB do pixel transparente é a média dos vizinhos pesada pelo alfa; o que sobra fica com a média do desenho (o mipmap não puxa preto).
+- **Decisões de desenho:**
+  - **Tinta na parede:** a tinta que fica é a **parede do jogo** (transparente). O decalque só tem o buraco, com uma demão velha de outra cor e, no fundo, reboco ou chapa enferrujada. Por cima, a borda: fio escuro, luz no lado da luz, lascas enroladas com o avesso claro e sombra no buraco. Em volta, sujeira salpicada, craquelê e água escorrendo. Serve em parede de qualquer cor; a tinta nossa por cima viraria adesivo onde a cor não bate.
+  - **Descasca:** o mesmo desenho com 68–80% do buraco: sobram ilhas da parede do jogo. As bordas verticais do tile guardam tinta, pra emenda com o vizinho não ser um corte reto.
+  - **Grade:** o vão é escuro com alfa ~0,6, então o chão do jogo aparece apagado por baixo. A grade faz sombra no vão e no chão em volta. Tem três desenhos: quadrados, losangos e barras. Duas variações têm o canto arrancado.
+  - **Ferrugem na parede:** escorridos paramétricos que afinam e apagam, com uma cortina lavada que abre em leque, saindo de parafusos, de uma emenda rebitada ou do alto. Ganharam bolhas de ferrugem em cacho. A mancha de óxido com contorno lia como adesivo e saiu.
+  - **Sem vermelho no chão:** a tinta vermelha-sangue virou amarelo industrial desbotado, pra não ser lida como o sangue que saiu na 0034.
+- **Lista:** `shared/NOM_OwnSpriteList.lua` (só dados, `DIR` + `SPRITES` com `name`, `side` e `kind`), escrita pelo script. O nome é o caminho completo, o mesmo do `getTexture`.
+- **Testes:**
+  - `tests/test_om_tiles.py`, no `run-tests.sh`: nomes e tipos por lado, 128×256 RGBA, nada fora da máscara do lado (geometria do spike reescrita no teste), cobertura parcial por tipo, Descasca cobrindo bem mais que Tinta, variações diferentes, saturação média < 0,42 com < 1% de laranja vivo, sem halo (o critério pega a borda preta), não chapado, a lista igual à do gerador e duas texturas regeradas iguais ao arquivo;
+  - `tests/test_own_sprite_list.lua`: a lista carrega num ambiente vazio (pura), bate com os PNG nos dois sentidos, 128×256 RGBA pelo cabeçalho, lado e tipo de acordo com o nome, 4 a 6 por tipo e lado.
+- **Medido:**
+  - cobertura do lado: Grade 0,72–0,77; Chapa 0,31–0,63; Ferrugem 0,23–0,32 (chão) e 0,03–0,14 (parede); Tinta 0,29–0,40 (chão) e 0,14–0,30 (parede); Descasca 0,83–0,89;
+  - saturação média até 0,39 (Ferrugem do chão); halo até 0,003.
+- **Prévia:** `python3 scripts/gen_tiles.py --preview` monta `/tmp/om_tiles_preview.png`: um quarto 5×5 com paredes W e N sobre chão e parede neutros, em escala de jogo e ampliado 2×, e a folha de todas as texturas.
+- **Pra ver no jogo (4b):** a nitidez no zoom 0,5 a 2,5; se a grade com alfa 0,6 fica escura demais em piso escuro; e se o escorrido de ferrugem (3–14% da parede) aparece de longe.
 
 ---
 

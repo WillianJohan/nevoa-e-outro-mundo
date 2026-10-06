@@ -39,7 +39,7 @@ return {
     end,
 
     credits_generators_exist = function()
-        for _, script in ipairs({ "scripts/gen_sounds.py", "scripts/gen_images.py", "scripts/gen_textures.py" }) do
+        for _, script in ipairs({ "scripts/gen_sounds.py", "scripts/gen_images.py", "scripts/gen_textures.py", "scripts/gen_tiles.py" }) do
             assert(io.open(script, "r"), "falta " .. script)
             assert(listed(script), "CREDITS.md não cita " .. script)
         end

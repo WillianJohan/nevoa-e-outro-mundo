@@ -58,6 +58,7 @@ local FILES = {
     "tests/test_debug_panel.lua",
     "tests/test_translations.lua",
     "tests/test_credits.lua",
+    "tests/test_own_sprite_list.lua",
     "tests/test_look_assets.lua",
     "tests/test_variant_look.lua",
 }
