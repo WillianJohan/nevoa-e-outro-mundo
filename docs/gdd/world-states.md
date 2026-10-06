@@ -35,9 +35,9 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
       Salvar e carregar não muda nada.
     - **Save antigo:** a sirene que já estava agendada (`data.fog.next`) vale como a névoa do dia se cair
       até o fim dele; marcada pra depois (o intervalo antigo ia a dias), sai, e o dia sorteia com a garantia.
-  - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **45 segundos
+  - **Aviso:** uma **sirene** toca pra todo jogador, em qualquer lugar, **15 segundos
     reais** antes da névoa. Com o jogo pausado a contagem para. No sono e no
-    fast-forward continua 45 s reais (muitas horas de jogo, se for o caso). Cada névoa sorteia uma
+    fast-forward continua 15 s reais (muitas horas de jogo, se for o caso). Cada névoa sorteia uma
     **direção** de onde a sirene "vem" (pura da semente e do número da névoa). Durante a sirene
     todo zumbi para virado pra essa direção e ignora o jogador; quando a névoa começa, todos voltam
     de uma vez (`NOM_SirenFreeze`, [pz-api-notes §21](../architecture/pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
@@ -51,7 +51,7 @@ São flags, não um enum: podem estar ativas ao mesmo tempo (a calmaria só exis
     clima, chuva ou opção de névoa do sandbox. O painel de clima do admin ainda passa
     por cima (escolha de quem administra), mas não abre evento.
   - Salvar e carregar no meio do evento volta com névoa e o mesmo número; no meio da
-    sirene, ela toca de novo e os 45 s recomeçam.
+    sirene, ela toca de novo e os 15 s recomeçam.
 - Mudança de flag dispara um evento interno (`NOM_World.onChange(fn)`,
   `fn("night"|"fog"|"calm", valor)` só na borda), consumido pelos outros sistemas no
   servidor. O Eco usa a borda de fim da noite. Os clientes recebem as flags

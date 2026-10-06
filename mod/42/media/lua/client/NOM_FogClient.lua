@@ -9,6 +9,7 @@ require "NOM_FogState"
 require "NOM_SemRosto"
 require "NOM_Siren"
 require "NOM_SirenFreeze"
+require "NOM_FogEventRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -52,9 +53,9 @@ Events.OnServerCommand.Add(function(module, command, args)
         NOM_FogState.set(args.on == true, args.period, args.red == true)
         -- a névoa abre: a sirene acabou (o servidor não manda sirenStop nesse caso)
         if args.on == true then NOM_SirenFreeze.stop() end
-    elseif command == "siren" then -- evento de névoa: 45 s reais antes (NOM_FogEvent)
+    elseif command == "siren" then -- evento de névoa: 15 s reais antes (NOM_FogEvent)
         NOM_Siren.play(type(args) == "table" and args.red == true)
-        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, 45000)
+        NOM_SirenFreeze.start(type(args) == "table" and args.dir or 0, NOM_FogEventRules.SIREN_MS)
     elseif command == "sirenStop" then -- sirene cancelada (NOM_FogEvent.stop)
         NOM_SirenFreeze.stop()
     elseif command == "semRostoMove" and args.id ~= -1 then

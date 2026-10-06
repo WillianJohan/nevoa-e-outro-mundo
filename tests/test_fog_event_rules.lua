@@ -23,8 +23,8 @@ local function cfg(over)
 end
 
 return {
-    fog_event_rules_siren_is_45_seconds = function()
-        assert(R.SIREN_MS == 45000)
+    fog_event_rules_siren_is_15_seconds = function()
+        assert(R.SIREN_MS == 15000)
     end,
     -- 65% subindo em linha reta até 85% no dia 60, fixo depois; sem curva, o sandbox
     fog_event_rules_day_chance_curve = function()
@@ -179,10 +179,10 @@ return {
         assert(s.inNight == false and s.night == 4)
     end,
     fog_event_rules_countdown_pauses_and_caps = function()
-        assert(R.countdown(45000, 16, false) == 44984)
-        assert(R.countdown(45000, 16, true) == 45000, "pausado contou")
-        assert(R.countdown(45000, 10000, false) == 45000 - R.MAX_STEP_MS, "travada comeu a sirene")
-        assert(R.countdown(45000, -5, false) == 45000, "relógio voltou")
+        assert(R.countdown(R.SIREN_MS, 16, false) == R.SIREN_MS - 16)
+        assert(R.countdown(R.SIREN_MS, 16, true) == R.SIREN_MS, "pausado contou")
+        assert(R.countdown(R.SIREN_MS, 10000, false) == R.SIREN_MS - R.MAX_STEP_MS, "travada comeu a sirene")
+        assert(R.countdown(R.SIREN_MS, -5, false) == R.SIREN_MS, "relógio voltou")
     end,
     fog_event_rules_config_reads_sandbox = function()
         local t = { FogDailyChance = 65, FogMaxDailyChance = 85, FogEscalationDays = 60, FogEscalation = true,

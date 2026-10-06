@@ -54,8 +54,8 @@ end
 
 return {
     -- agenda do dia (shared/NOM_FogEventRules): a sirene toca na hora sorteada do dia, a
-    -- névoa vem 45 s REAIS depois
-    fog_event_siren_45_real_seconds_before = function()
+    -- névoa vem 15 s REAIS depois
+    fog_event_siren_15_real_seconds_before = function()
         local G = setup()
         local want = NOM_FogEventRules.firstStart(fogMD(G).seed, NOM_FogEventRules.dayOf(100), 100)
         assert(fogMD(G).next == want, "próxima: " .. tostring(fogMD(G).next))
@@ -65,8 +65,8 @@ return {
         assert(G.played("NOM_Siren") == 1, "sirene não tocou")
         assert(G.playing("NOM_Siren")[1].volume == 1)
         assert(NOM_World.fog == false and NOM_FogState.on == false, "névoa junto com a sirene")
-        G.seconds(44.9)
-        assert(NOM_World.fog == false, "névoa antes de 45 s")
+        G.seconds(14.9)
+        assert(NOM_World.fog == false, "névoa antes de 15 s")
         G.seconds(0.2)
         assert(NOM_World.fog == true and NOM_FogState.on == true and NOM_FogState.period == 1)
         assert(fogMD(G).endAt == G.world.hours + 2, "duração") -- rand 0: FogMinHours
@@ -79,7 +79,7 @@ return {
         local siren = G.commands(G.sentServer, "siren")
         assert(#siren == 1 and siren[1].player == nil and siren[1].module == "NevoaEOutroMundo")
         assert(#G.commands(G.sentServer, "fog") == 0)
-        G.seconds(45.1)
+        G.seconds(15.1)
         local fog = G.commands(G.sentServer, "fog")
         assert(#fog == 1 and fog[1].args.on == true and fog[1].args.period == 1)
     end,
@@ -95,7 +95,7 @@ return {
         assert(siren[1].args.dir >= 0 and siren[1].args.dir < 360)
         assert(siren[1].args.red == false, "red: " .. tostring(siren[1].args.red))
         assert(NOM_FogEvent.status().sirenDir == want, "status sem a direção")
-        G.seconds(45.1)
+        G.seconds(15.1)
         assert(NOM_FogEvent.status().sirenDir == nil, "direção depois da sirene")
     end,
     -- a sirene toca uma vez, por mais minutos que passem na contagem
@@ -153,14 +153,14 @@ return {
         local G3 = setup({ globalMD = { NevoaEOutroMundo = { fog = { seed = seed } } } })
         assert(fogMD(G3).next == next1, "o sorteio não é puro do dia e da semente")
     end,
-    -- recarregar no meio da contagem: a sirene toca de novo e os 45 s recomeçam
+    -- recarregar no meio da contagem: a sirene toca de novo e os 15 s recomeçam
     fog_event_reload_during_siren_restarts = function()
         local G = setup()
         toSiren(G)
-        G.seconds(20)
+        G.seconds(8)
         local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours })
         assert(G2.played("NOM_Siren") == 1, "sem sirene depois da recarga")
-        G2.seconds(44.9)
+        G2.seconds(14.9)
         assert(NOM_World.fog == false, "contagem velha valeu")
         G2.seconds(0.2)
         assert(NOM_World.fog == true and fogMD(G2).night == 1)
@@ -173,7 +173,7 @@ return {
         G.seconds(60)
         assert(NOM_World.fog == false, "pausa consumiu a sirene")
         G.paused = false
-        G.seconds(44.9)
+        G.seconds(14.9)
         assert(NOM_World.fog == false)
         G.seconds(0.2)
         assert(NOM_World.fog == true)
@@ -189,8 +189,8 @@ return {
         G.paused = true
         G.seconds(20)
         G.paused = false
-        G.seconds(44.8)
-        assert(NOM_World.fog == false, "névoa antes dos 45 s")
+        G.seconds(14.8)
+        assert(NOM_World.fog == false, "névoa antes dos 15 s")
         assert(a.useless == true and NOM_SirenFreeze.active, "a pausa soltou os zumbis antes da névoa")
         G.seconds(0.3)
         assert(NOM_World.fog == true and a.useless == false and not NOM_SirenFreeze.active, "a névoa não soltou")
@@ -527,7 +527,7 @@ return {
         local G = setup({ sandbox = { RedFogChance = 100 } })
         assert(NOM_FogEvent.force(false))
         assert(G.played("NOM_Siren") == 1 and G.played("NOM_SirenRed") == 0, "sirene vermelha com branco forçado")
-        assert(NOM_FogEvent.status().sirenMs == 45000, "sem a contagem de 45 s")
+        assert(NOM_FogEvent.status().sirenMs == NOM_FogEventRules.SIREN_MS, "sem a contagem de 15 s")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == false and fogMD(G).red == false, "saiu vermelha")
         -- o forçado vale só pra esse evento: o seguinte sorteia (100% vermelha)
@@ -544,7 +544,7 @@ return {
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == true)
     end,
-    -- skip: a sirene toca e a névoa abre no próximo tick, sem a contagem de 45 s
+    -- skip: a sirene toca e a névoa abre no próximo tick, sem a contagem de 15 s
     fog_event_force_skip_opens_without_countdown = function()
         local G = setup({ sandbox = { RedFogChance = 0 } })
         assert(NOM_FogEvent.force(true, true))
@@ -591,7 +591,7 @@ return {
         assert(#G.commands(G.sentServer, "sirenStop") == 1, "não cancelou a sirene que contava")
         local siren = G.commands(G.sentServer, "siren")
         assert(#siren == 1 and siren[1].args.red == true, "nova sirene sem a cor pedida")
-        assert(NOM_FogEvent.status().sirenMs == 45000, "contagem não recomeçou")
+        assert(NOM_FogEvent.status().sirenMs == NOM_FogEventRules.SIREN_MS, "contagem não recomeçou")
         G.seconds(46)
         assert(NOM_World.fog and NOM_World.red == true)
     end,

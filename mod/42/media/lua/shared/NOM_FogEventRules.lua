@@ -15,7 +15,7 @@ require "NOM_VariantRules"
 NOM_FogEventRules = {}
 local R = NOM_FogEventRules
 
-R.SIREN_MS = 45000    -- a sirene toca 45 s reais antes da névoa (sprint 0033)
+R.SIREN_MS = 15000    -- a sirene toca 15 s reais antes da névoa (sprint 0034; era 45 na 0033)
 R.MAX_STEP_MS = 1000  -- um frame nunca desconta mais que isto (travada, volta da pausa)
 R.DENSITY = 0.85      -- névoa do evento cheia (canal FLOAT_FOG_INTENSITY, 0..1)
 

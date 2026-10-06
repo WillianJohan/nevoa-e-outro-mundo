@@ -2,12 +2,12 @@
 -- clima: a agenda é por dia (sprint 0033, shared/NOM_FogEventRules: o dia sorteia se tem
 -- névoa e a que horas, pode ter uma segunda depois da folga, e o terceiro dia sem névoa
 -- tem com certeza). Na hora sorteada a sirene toca em todo jogador (com a direção de onde
--- ela "vem", pro congelamento) e, 45 s reais depois, a névoa começa e dura o que o tipo
+-- ela "vem", pro congelamento) e, 15 s reais depois, a névoa começa e dura o que o tipo
 -- manda (branca ou vermelha, em horas de jogo). Depois do fim vem a calmaria
 -- (NOM_World.calm). O estado mora no ModData global (data.fog: night = período, inNight,
 -- next, endAt, red, seed, bornAt, day, lastEnd, calmUntil...) e sobrevive a
 -- salvar/carregar; a contagem da sirene só existe em memória: recarregar no meio dela toca
--- a sirene de novo (a mesma cor, red já salvo) e recomeça os 45 s (o next segue no passado).
+-- a sirene de novo (a mesma cor, red já salvo) e recomeça os 15 s (o next segue no passado).
 -- A flag vai pro NOM_World (setFog), e dele pros consumidores (NOM_Fog avisa os
 -- clientes com o período). O canal de névoa do clima é do NOM_ClimateLook.
 if isClient() then return end
@@ -108,7 +108,7 @@ function NOM_FogEvent.siren(skip)
         NOM_Siren.play(s.red)
         NOM_SirenFreeze.start(dir, countdown)
     end
-    -- inteiro: "contagem=45000"; dias e chance da vermelha com 2 casas
+    -- inteiro: "contagem=15000"; dias e chance da vermelha com 2 casas
     debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
         " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance .. " dir=" .. hours(dir))
     return true

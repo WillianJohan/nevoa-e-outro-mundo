@@ -5,7 +5,7 @@
     "Sandbox_NevoaEOutroMundo.DarkIntensity": "Dark climate intensity",
     "Sandbox_NevoaEOutroMundo.DarkIntensity_tooltip": "0 disables the effect, 1 is default, 2 is double.",
     "Sandbox_NevoaEOutroMundo.FogDailyChance": "Fog: daily chance (%%)",
-    "Sandbox_NevoaEOutroMundo.FogDailyChance_tooltip": "Every day at midnight the game rolls whether that day will have fog. It rolls in at any hour, announced by a siren 45 seconds before. Outside the event there is no fog at all.",
+    "Sandbox_NevoaEOutroMundo.FogDailyChance_tooltip": "Every day at midnight the game rolls whether that day will have fog. It rolls in at any hour, announced by a siren 15 seconds before. Outside the event there is no fog at all.",
     "Sandbox_NevoaEOutroMundo.FogEscalation": "Fog: tension that grows with the days",
     "Sandbox_NevoaEOutroMundo.FogEscalation_tooltip": "On: the daily chance rises in a straight line to the maximum chance on the curve day. Red fog does not follow the curve.",
     "Sandbox_NevoaEOutroMundo.FogMaxDailyChance": "Fog: maximum daily chance (%%)",

@@ -70,7 +70,7 @@ sai: a curva agora é só da chance do dia.
 
 ## 3. Sirene
 
-- Passa de 30 para **45 s reais**.
+- Passa de 30 para **45 s reais** (emenda sprint 0034: **15 s reais** — decisão do Johan, 2026-10-06).
 - Um som por tipo, inconfundível desde o primeiro segundo: o jogador decide na hora se corre pro
   abrigo ou pega a lanterna.
 - Os sons saem do `scripts/gen_sounds.py`. Antes da sprint 0034, o Johan ouve as amostras e escolhe:

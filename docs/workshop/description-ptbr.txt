@@ -10,7 +10,7 @@ Horror para o Build 42, inspirado em The Last of Us e Silent Hill. [b]A noite tr
 [/list]
 
 [h2]Névoa[/h2]
-Quase todo dia, numa hora qualquer, uma sirene toca no mapa inteiro e os zumbis param onde estão. Quarenta e cinco segundos depois a névoa chega, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, sangue e erosão tomam chão e paredes, as bordas da tela se fecham e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
+Quase todo dia, numa hora qualquer, uma sirene toca no mapa inteiro e os zumbis param onde estão. Quinze segundos depois a névoa chega, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, sangue e erosão tomam chão e paredes, as bordas da tela se fecham e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
 [list]
 [*][b]Estaladores[/b]: cegos, guiados só por som, estalam de aviso. Agachado e em silêncio, dá pra passar do lado.
 [*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.

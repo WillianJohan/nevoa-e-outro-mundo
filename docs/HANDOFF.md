@@ -83,14 +83,14 @@ O Johan mudou o mindset da névoa: ela é frequente (quase todo dia) e o fim del
 
 **O que a 0033 entrega:**
 - **Agenda por dia** (`shared/NOM_FogEventRules.lua`): 65% subindo até 85% no dia 60, segunda névoa de 15% depois de 6 h de folga, garantia no terceiro dia sem névoa, branca de 3–5 h e vermelha (20% depois do dia 7, sem a subida da 0019) de 4–6 h. Determinística pelo número do dia e pela semente. Sandbox: `FogEventEveryDays` saiu; entraram `FogDailyChance`, `FogMaxDailyChance`, `FogEscalationDays`, `FogSecondChance`, `FogMinGapHours`, `FogMaxDaysWithout`, `RedFogMinHours`, `RedFogMaxHours` e `FogCalmHours`.
-- **Sirene de 45 s com direção** (`server/NOM_FogEvent.lua`) e **congelamento** (`shared/NOM_SirenFreeze.lua`): todo zumbi para virado pra direção dela e ignora o jogador; a névoa começando solta todos. Quem simula aplica (ADR-005).
+- **Sirene de 15 s com direção** (`server/NOM_FogEvent.lua`) e **congelamento** (`shared/NOM_SirenFreeze.lua`): todo zumbi para virado pra direção dela e ignora o jogador; a névoa começando solta todos. Quem simula aplica (ADR-005).
 - **Calmaria** (`NOM_World.calm`, `NOM_NightRules`/`NOM_NightStats`): 2 h de jogo depois da névoa, o zumbi comum um degrau mais lento e de sentidos reduzidos.
 - **Comandos de debug novos:** `NOM.setFog(skip)` (sempre branca), `NOM.setRedFog(skip)` (sempre vermelha), `NOM.setBlackFog()` (só avisa até a 0038), `NOM.setEndFog()`, `NOM.getZombie()`, `NOM.turnZombie(i)`, `NOM.godMode(on)` e `NOM.wind(on)`.
 - **mod3:** foco de vento aleatório de teste, `NOMRender_setParam(11, 1)` (`WindSource.java`).
 - **Docs:** GDD (`world-states.md`, `sandbox.md`, `Overview.md`) e emenda de 2026-10-06 na [ADR-009](architecture/adr-009-nevoa-evento-do-mod.md). Os presets Leve e Pesadelo da `sandbox.md` foram traduzidos sem jogar; o Johan ainda precisa confirmar.
 
 **O que o Johan precisa conferir no jogo** (roteiro completo no README da sprint):
-- a sirene de 45 s, todo mundo parado e virado pro mesmo lado, e a volta junta quando a névoa começa;
+- a sirene de 15 s, todo mundo parado e virado pro mesmo lado, e a volta junta quando a névoa começa;
 - **UNKNOWN (pz-api-notes §21):** o zumbi `useless` mantém a direção do `faceLocationF`, ou volta a girar sozinho entre as passadas do módulo (lote de 20 por tick)?
 - a calmaria de 2 h e a duração de cada cor;
 - o foco de vento no mod3 (precisa do `scripts/build-mod3.sh`; o jar é assinado e fica fora do git).

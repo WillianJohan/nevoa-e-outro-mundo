@@ -1,5 +1,6 @@
 -- client/NOM_FogClient.lua: no MP a flag de névoa vem do servidor.
 local W = dofile("tests/fog_world.lua")
+require "NOM_FogEventRules"
 local FILE = "mod/42/media/lua/client/NOM_FogClient.lua"
 
 local function setup(opts)
@@ -71,7 +72,7 @@ return {
         G.server("siren", nil)
         G.tick(1)
         assert(mine.useless == true and math.abs(mine.faced.x - (mine.x + NOM_SirenFreeze.FAR)) < 1e-6)
-        G.now = G.now + 45000 + NOM_SirenFreeze.SAFETY_MS + 1000
+        G.now = G.now + NOM_FogEventRules.SIREN_MS + NOM_SirenFreeze.SAFETY_MS + 1000
         G.tick(1)
         assert(mine.useless == false, "sem sirenStop nem fog, ficou congelado")
     end,

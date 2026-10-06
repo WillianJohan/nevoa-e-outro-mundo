@@ -815,7 +815,7 @@ e sem `master` (volume de efeitos). No MP o servidor manda `sendServerCommand(MO
 "siren", {})` e cada cliente toca a dele. UNKNOWN: se o emitter do jogador pausa o som
 com o jogo pausado (a contagem para de qualquer jeito).
 
-Sprint 0033: a sirene dura 45 s e o comando passa a levar `{ red, dir }` (`dir` = graus
+Sprint 0033: a sirene dura 15 s e o comando passa a levar `{ red, dir }` (`dir` = graus
 de onde ela "vem", `NOM_FogEventRules.sirenDir`, igual em toda máquina). Sirene cancelada
 no dedicado manda `sendServerCommand(MODULE, "sirenStop", {})` (mesma forma do `siren`,
 sem API nova); no solo o servidor chama `NOM_SirenFreeze.start/stop` direto. Cliente que
@@ -1393,7 +1393,7 @@ Bytecode do B42.21 e Lua vanilla. A névoa passa por cima da cerca baixa e para 
 
 ## 21. Sirene que congela (sprint 0033)
 
-`shared/NOM_SirenFreeze.lua`: durante os 45 s da sirene, todo zumbi que este processo
+`shared/NOM_SirenFreeze.lua`: durante os 15 s da sirene, todo zumbi que este processo
 simula fica parado, virado pra direção dela. No solo é o próprio processo
 (`server/NOM_FogEvent.lua`); no MP, o cliente dono (`client/NOM_FogClient.lua`, comandos
 `siren`, `fog` e `sirenStop`). Não há API nova além do `faceLocationF`.

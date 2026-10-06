@@ -5,7 +5,7 @@
 | Status | `accepted` |
 | Data | 2026-10-05 |
 | Substitui | o gatilho "névoa natural do clima" ([world-states.md](../gdd/world-states.md), sprint 0001) |
-| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`); [emenda da sprint 0033](#emenda-de-2026-10-06--sprint-0033-ritmo-novo) (agenda por dia, sirene de 45 s, congelamento, calmaria; **substitui o intervalo e a curva do intervalo**) |
+| Emendada por | [ADR-010](adr-010-nevoa-vermelha.md) (névoa vermelha: `data.fog.red`, `red` no comando `fog` e na sirene, cor da névoa); [emenda da sprint 0019](#emenda-de-2026-10-05--sprint-0019-curva-de-tensão) (curva de tensão, `data.fog.bornAt`); [emenda da sprint 0033](#emenda-de-2026-10-06--sprint-0033-ritmo-novo) (agenda por dia, sirene de 45 s, congelamento, calmaria; **substitui o intervalo e a curva do intervalo**); [emenda da sprint 0034](#emenda-de-2026-10-06--sprint-0034-sirene-15-s) (sirene 15 s) |
 | Emenda | [ADR-004](adr-004-clima-antes-de-shader.md) e [ADR-008](adr-008-noite-pela-luz-global.md) (o canal `FLOAT_FOG_INTENSITY` sai do look) |
 
 ## Contexto
@@ -135,9 +135,9 @@ recarga e o resto continuam valendo.
    - `FogEventEveryDays` e `R.everyDays`/`R.gap` saem.
 2. **Duração por cor:** branca `FogMinHours`–`FogMaxHours` (3–5), vermelha `RedFogMinHours`–`RedFogMaxHours`
    (4–6). A vermelha é `RedFogChance` (20%) fixa depois da carência; a subida até o dobro da 0019 saiu.
-3. **Sirene de 45 s** (`R.SIREN_MS`, eram 30 000 ms) e **direção**: `R.sirenDir(seed, período)` em graus,
+3. **Sirene de 15 s** (`R.SIREN_MS = 15 000`, 45 s na 0033, 30 s antes) e **direção**: `R.sirenDir(seed, período)` em graus,
    pura, igual em toda máquina; o comando `siren` leva `{ red, dir }` e o `fogState` de quem entra
-   também. A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 45 s.
+   também. A contagem, a pausa e a recarga continuam como nas decisões 2 e 3 acima, só com 15 s.
 4. **Congelamento** (`shared/NOM_SirenFreeze.lua`, [pz-api-notes §21](pz-api-notes.md#21-sirene-que-congela-sprint-0033)).
    O servidor decide e avisa a direção; quem simula o zumbi aplica, igual aos stats da noite
    ([ADR-005](adr-005-quem-simula-aplica.md)): no solo o próprio processo, no MP o cliente dono
@@ -171,3 +171,7 @@ recarga e o resto continuam valendo.
   (a garantia pode forçar a seguinte); nada se acumula.
 - UNKNOWN registrado: se o zumbi `useless` parado mantém a direção do `faceLocationF` entre as passadas
   (conferir no jogo, [roteiro da 0033](../sprints/sprint-0033-ritmo-novo/README.md#roteiro-in-game)).
+
+## Emenda de 2026-10-06 — sprint 0034: sirene 15 s
+
+Sirene reduzida pra 15 s (decisão do Johan, 2026-10-06, sprint 0034): `R.SIREN_MS = 15 000`. O cliente MP usa a mesma constante (`NOM_FogEventRules.SIREN_MS`), não literal solto.

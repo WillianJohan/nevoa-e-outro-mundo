@@ -166,7 +166,7 @@ Só viram escopo por promoção explícita.
      no dia 60; segunda névoa de 15% depois de 6 h de folga; garantia no terceiro dia sem névoa.
   2. **Duração por tipo:** branca 3–5 h, vermelha 4–6 h. A vermelha é 20% (a partir do dia 7) e
      não sobe mais até o dobro no dia 90 (reverte parte da 0019).
-  3. **Sirene de 45 s** (era 30) com **todos os zumbis parados**, virados pra uma direção, e
+  3. **Sirene de 15 s** (45 na 0033, 30 antes) com **todos os zumbis parados**, virados pra uma direção, e
      voltando juntos quando a névoa começa.
   4. **Calmaria:** 2 h de jogo depois da névoa, com o zumbi comum um degrau mais lento e de
      sentidos reduzidos.

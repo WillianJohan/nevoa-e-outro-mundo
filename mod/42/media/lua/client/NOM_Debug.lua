@@ -1,11 +1,11 @@
 -- Comandos de console pro teste in-game (docs/teste-in-game.md), só com o jogo em
 -- -debug. Uso no console Lua do debug:
 --   NOM_Debug.night(true|false|nil)   noite forçada; nil devolve pro relógio
---   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene e névoa 45 s
+--   NOM_Debug.fog(true[, true])       começa um evento de névoa: sirene e névoa 15 s
 --                                     reais depois; com o 2º true, a névoa vem já
 --   NOM_Debug.fog(false)              termina o evento (ou cancela a sirene)
 --   NOM_Debug.redFog(true|false)      névoa vermelha: aberta vira na hora; senão, sirene
---                                     vermelha e evento 45 s depois; false desfaz
+--                                     vermelha e evento 15 s depois; false desfaz
 --   NOM_Debug.spawnEco()              um Eco nos pés do jogador (só à noite)
 --   NOM_Debug.variant("estalador")    zumbi mais perto vira Estalador ("corredor", "semrosto",
 --                                     "carpideira"; nil desfaz; só vale na névoa)
