@@ -21,21 +21,21 @@ que é mais baixo que ela; para o que é mais alto.
    limitado por face, **só nas faces com obstáculo baixo**. A pilha transborda e escorre do outro lado.
    *Mudou na execução:* em campo aberto a gravidade fechava os buracos que viajam com o vento (teste da
    0026), enchia o vácuo atrás do prédio (0,38 → 0,49 a 2 tiles) e subia o passo de 5,6 para 7,0 ms.
-5. **Carro com menos arrasto** no vento: a névoa por cima dele anda com o ar de cima.
+5. **Carro com menos arrasto** no vento (4 → 1/s): a névoa por cima dele anda com o ar de cima.
 6. **Shader:** o topo do rolo sobe a altura do carro onde há carro (`nomFlowLow`, interpolado). Debug 5
    mostra a cerca baixa em amarelo (`T_FENCE_W/N` na textura).
 
 ## TDD
 
-- [ ] Cerca baixa: a névoa passa (2 tiles atrás > 0,7) e o vento também; um muro do mesmo tamanho deixa vácuo.
-- [ ] Névoa rasa (abaixo da cerca) não passa parada e, com vento, empilha na frente; funda passa.
-- [ ] Carro: a névoa passa por cima (dentro > 0,3) e o outro lado enche.
-- [ ] Sem vento: névoa funda transborda a cerca pela gravidade, rasa fica; nunca negativa.
-- [ ] Domínio fechado com cercas, carros e árvores conserva massa.
-- [ ] Estável com bancos e vácuos (h → 0) e vento forte; densidade em [0, D_MAX].
-- [ ] O vácuo da 0031 (escolha do Johan) continua: atrás do prédio < 0,6 com `stillDecay`.
-- [ ] Custo do passo na escala 2 ≤ 6,3 ms.
-- [ ] Contrato: `NOM_FLOW_LOW_H` = `H_LOW`, `NOM_FLOW_FENCE_W/N` = `T_FENCE_W/N`, `Flow` lê `HoppableW/N`.
+- [x] Cerca baixa: a névoa passa (2 tiles atrás > 0,7) e o vento também; um muro do mesmo tamanho deixa vácuo.
+- [x] Névoa rasa (abaixo da cerca) não passa parada e, com vento, empilha na frente; funda passa.
+- [x] Carro: a névoa passa por cima (dentro > 0,3) e o outro lado enche.
+- [x] Sem vento: névoa funda transborda a cerca pela gravidade, rasa fica; nunca negativa.
+- [x] Domínio fechado com cercas, carros e árvores conserva massa.
+- [x] Estável com bancos e vácuos (h → 0) e vento forte; densidade em [0, D_MAX].
+- [x] O vácuo da 0031 (escolha do Johan) continua: atrás do prédio < 0,6 com `stillDecay`.
+- [x] Custo do passo na escala 2 ≤ 6,3 ms: medido 5,8–6,0 ms.
+- [x] Contrato: `NOM_FLOW_LOW_H` = `H_LOW`, `NOM_FLOW_FENCE_W/N` = `T_FENCE_W/N`, `Flow` lê `HoppableW/N`.
 
 ## Fora
 
