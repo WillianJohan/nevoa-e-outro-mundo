@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum), 0018 (dissolve), 0022 (brasa no corpo inteiro) |
+| Sprint | 0012 (monstros), 0013 (tela na névoa), 0014 (contraste dos monstros), 0016 (monstro sem roupa comum), 0018 (dissolve), 0022 (brasa no corpo inteiro), 0035 (Outro Mundo estilo Silent Hill) |
 | Decisão | Johan, 05/10/2026: cada monstro com visual próprio, feito de **texturas procedurais originais em modelos 3D vanilla** (máscaras, capuzes, véus, camadas no corpo), citados pelo nome. Sem modelo 3D novo (pode vir depois). "Não quero ser igual TLOU... quero me inspirar, então pode ser criativo." |
 
 ## Regra
@@ -160,6 +160,42 @@ Na névoa, o lugar em volta é o mesmo lugar, abandonado há décadas e onde alg
   Desde a sprint 0023 tudo vai colado no chão e na parede de verdade: embaixo dos pés, com a luz e o
   recorte do jogo.
 - **Vermelha é pior:** mais chão marcado, mais parede suja.
-- Só sprites vanilla pelo nome (nada copiado nem gerado), com a luz do lugar (desde a 0023 o breu
-  esconde de verdade; a lanterna revela). Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md),
+- Sprites vanilla pelo nome (nada copiado), com a luz do lugar (desde a 0023 o breu esconde de
+  verdade; a lanterna revela). Desde a 0035 também texturas próprias, geradas (seção seguinte).
+  Técnica: [ADR-015](../architecture/adr-015-outro-mundo-sangrento.md),
   [ADR-017](../architecture/adr-017-outro-mundo-anexado.md).
+
+## O Outro Mundo Silent Hill (sprint 0035)
+
+Decisão do Johan (06/10/2026): o Outro Mundo fica **mais Silent Hill**, com ferrugem, tinta
+descascando, grade metálica e lascas subindo. A inspiração é o ambiente (a pele do lugar
+descascando e mostrando metal por baixo); a regra de cima continua valendo pros monstros, sem
+enfermeira nem Pyramid Head.
+
+- **Texturas próprias:** 50 PNG gerados por `scripts/gen_tiles.py` (semente fixa), nada copiado nem
+  tirado do jogo. Chão: grade, ferrugem, chapa e tinta lascada. Parede (oeste e norte): tinta
+  descascando, descasca (quase toda a tinta caída) e ferrugem escorrida. Cinco variações de cada,
+  pra não repetir padrão à vista.
+- **A tinta que fica é a parede do jogo.** O decalque só tem o buraco: uma demão velha de outra cor
+  e, no fundo, reboco ou chapa enferrujada. Na borda, fio escuro, luz do lado da luz, lascas
+  enroladas com o avesso claro e sombra no buraco; em volta, sujeira salpicada, craquelê e água
+  escorrendo. Assim serve em parede de qualquer cor; uma tinta nossa por cima viraria adesivo onde a
+  cor não bate.
+- **Descasca:** o mesmo desenho com quase todo o buraco (68–80%), sobrando ilhas da parede do jogo.
+  As bordas verticais do tile guardam tinta, pra emenda com o vizinho não ser um corte reto.
+- **Grade:** o vão é escuro e meio transparente, então o chão do jogo aparece apagado por baixo; a
+  grade faz sombra no vão e em volta. Quadrados, losangos ou barras, às vezes com o canto arrancado.
+- **Ferrugem na parede:** escorridos que afinam e apagam, com uma cortina lavada abrindo em leque,
+  saindo de parafusos, de uma emenda rebitada ou do alto, com bolhas de ferrugem em cacho. Mancha de
+  óxido com contorno lia como adesivo e saiu.
+- **Luz do alto à esquerda da tela** em tudo, como o jogo; sombra embaixo à direita.
+- **Paleta dessaturada:** ferrugem marrom apagada, nada de laranja vivo (o laranja é da brasa).
+  **Nada vermelho no chão:** a tinta de chão é amarelo industrial desbotado, porque vermelho no chão
+  leria como o sangue que saiu na 0034.
+- **Lascas e cinza:** sprite sheet de 8 quadros de lasca girando (borda serrilhada, tinta velha, fio
+  claro falhado, verso ferrugem) e pontos de cinza, por `scripts/gen_textures.py`. A primeira versão
+  parecia adesivo e foi refeita mais orgânica.
+- **Pesos:** a branca favorece metal no chão e tinta descascando na parede; a vermelha mantém o
+  sangue de parede e ganha ferrugem; a preta fica pra 0038 ([atmosphere.md](atmosphere.md#outro-mundo-estilo-silent-hill-sprint-0035)).
+- Técnica: [ADR-018](../architecture/adr-018-sprite-proprio-em-runtime.md) (sprite criado em
+  runtime a partir do PNG). Nitidez no zoom longe e a grade em piso escuro ficam pro teste no jogo.

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento), 0023 (anexado ao chão e às paredes), 0034 (coro de sirenes, estática na tela, aparelhos, casa destruída, sem sangue no chão) |
+| Sprints | 0001 (clima), 0005 (som de névoa, overlays, vinheta), 0008 (noite pela luz global), 0009 (névoa como evento, sirene), 0010 (névoa vermelha), 0013 (efeitos de tela, shader opcional), 0015 (Outro Mundo sangrento), 0023 (anexado ao chão e às paredes), 0034 (coro de sirenes, estática na tela, aparelhos, casa destruída, sem sangue no chão), 0035 (Outro Mundo estilo Silent Hill: transição descascando, lascas subindo, tontura, texturas próprias) |
 
 Som, overlays e vinheta rodam no **cliente**: é o que se ouve e o que cada
 jogador vê sozinho. Nada disso vai pra rede nem pro save
@@ -120,9 +120,10 @@ máximo". Substitui as manchas esparsas da sprint 0005
 - **Névoa vermelha = o máximo:** 1,6× a densidade.
 - **Fixo por lugar:** o mesmo square tem o mesmo desenho a névoa inteira (e se o jogador voltar);
   outra névoa, outro desenho. Nada pisca enquanto se anda.
-- Enche em ~1,5 s quando a névoa chega, do mais perto pro mais longe, acompanha o jogador andando e
-  some do mesmo jeito quando ela baixa. Na morte, no teleporte e no save some na hora (e volta logo
-  depois do save).
+- Quando a névoa abre, **descasca** em manchas ao longo de ~6 s (sprint 0035) e recua do mesmo
+  jeito em ~4 s quando ela baixa (detalhe na seção seguinte). Acompanha o jogador andando até a
+  borda da tela. Quem carrega o save no meio da névoa vê o mundo já virado. Na morte, no teleporte
+  e no save some na hora (e volta logo depois do save).
 - **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
   (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.
 - **Locais e só visuais**, sem sincronizar: cada jogador vê o próprio pesadelo (em MP, cada um
@@ -135,10 +136,46 @@ máximo". Substitui as manchas esparsas da sprint 0005
   `overlay_blood_wall_01_*`, `overlay_grime_wall_01_*`, `d_wallcracks_1_*`, `f_wallvines_1_*`,
   `overlay_graffiti_wall_01_*`, `overlay_messages_wall_01_*`
   ([pz-api-notes §16](../architecture/pz-api-notes.md#16-outro-mundo-sangrento-sprint-0015)).
-- **Próximo visual** (decisão do Johan, 06/10/2026): o Outro Mundo fica mais **Silent Hill** (tinta
-  descascando, ferrugem, grade metálica, lascas subindo) na sprint 0035
-  ([spec](../superpowers/specs/2026-10-06-modelo-novo-design.md#7-outro-mundo)).
 - Limites: só o andar do jogador; montado pro jogador 0 na tela dividida.
+
+## Outro Mundo estilo Silent Hill (sprint 0035)
+
+Decisão do Johan (06/10/2026), entre Upside Down e Silent Hill: **mais Silent Hill**, "paredes
+descamando, partículas saindo do chão, das paredes"
+([spec](../superpowers/specs/2026-10-06-modelo-novo-design.md#7-outro-mundo),
+[sprint 0035](../sprints/sprint-0035-silent-hill/README.md)). O lugar continua o mesmo, mas a
+pele dele descasca e mostra metal enferrujado por baixo.
+
+- **Transição descascando:** quando a névoa abre de verdade (fim da fuga), a erosão não aparece de
+  uma vez. Cada lugar espera a vez dele pelo ruído e o Outro Mundo se espalha em manchas de uns 6
+  tiles ao longo de ~6 s, perto e longe ao mesmo tempo, com uma rajada de lascas onde abre. No fim
+  da névoa recua pro miolo das manchas em ~4 s. Quem carrega o save no meio, entra no MP no meio ou
+  teleporta vê o mundo já virado, sem transição.
+- **Lascas e cinza subindo:** pedaços de tinta velha (escura, borda clara ou ferrugem) e pontos de
+  cinza saem do chão e das paredes que a erosão vestiu, até 14 tiles do jogador; a parede solta mais
+  que o chão. Sobem devagar, derivam com um vento leve, giram e somem em 3 a 7 s. Até 160 de uma vez.
+  Na vermelha, mais escuras e avermelhadas. Seguem a densidade do Outro Mundo e a intensidade dos
+  efeitos de tela (com os efeitos desligados, não tem). Passam por cima de parede e personagem (sem
+  profundidade, como as brasas do Eco).
+- **Tontura:** junto com a transição, a tela ondula, desdobra numa imagem dupla leve e turva por
+  ~5 s (sem o mod do shader, a vinheta pulsa e a tela escurece um pouco). Opção do jogador
+  "Tontura na transição", **ligada por padrão**, dentro dos efeitos de tela; o slider de intensidade
+  reduz, mas não dobra. Quem entra no meio da névoa não tem tontura.
+- **Pesos por névoa:**
+  - **branca** favorece o metal e a tinta descascando: cerca de um terço do chão vestido vira
+    grade, ferrugem, chapa ou tinta lascada, em painéis de 4×4 tiles com um tipo só; na parede, a
+    tinta descascando é a camada mais comum, depois a ferrugem escorrida. Sangue de parede ainda
+    aparece, raro;
+  - **vermelha** mantém o sangue de parede como o mais comum e ganha ferrugem na parede e manchas de
+    ferrugem no chão (nada de grade, chapa nem tinta no chão);
+  - **nada de sangue no chão**, nas duas, nem tinta vermelha no chão (leria como sangue);
+  - **preta** fica pra sprint 0038 (sugestão: descasca e ferrugem escuras, sem grade e sem sangue).
+- **Até a borda da tela andando:** a erosão acompanha o jogador sem deixar um quadrado vestido em
+  volta. Mais longe que a tela não vai: a margem do save não deixa (decisão da sprint 0035).
+- Texturas próprias, geradas por script nosso (direção de arte em
+  [art-direction.md](art-direction.md#o-outro-mundo-silent-hill-sprint-0035); técnica na
+  [ADR-018](../architecture/adr-018-sprite-proprio-em-runtime.md)). Como o resto do Outro Mundo,
+  ficam coladas no chão e na parede, embaixo dos personagens, e nada fica no save.
 
 ## Vinheta (só na névoa)
 
@@ -170,6 +207,8 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
   única camada que aparece **antes** da névoa: começa 3 s antes da sirene (o presságio), fraca no
   começo e forte no fim; depois da sirene desce em ~4 s até um nível sutil, que fica a fuga e a névoa
   inteiras; no fim some em ~3 s. Segue a mesma opção e intensidade dos outros efeitos de tela.
+- **Tontura na transição** (sprint 0035): ~5 s de tela ondulando quando o Outro Mundo descasca, com
+  opção própria ligada por padrão (seção "Outro Mundo estilo Silent Hill").
 - **Opção do jogador, não do servidor:** Opções > Mods > "Névoa e Outro Mundo": liga/desliga e
   intensidade (1.0, 0–2). Cada um ajusta a própria tela.
 - **Fora da névoa, nada**, nem à noite, a não ser a estática do presságio e da fuga: a noite é
