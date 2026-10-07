@@ -9,12 +9,14 @@ require "NOM_FogState"
 require "NOM_SemRosto"
 require "NOM_Siren"
 require "NOM_SirenFreeze"
+require "NOM_TicaoFreeze"
 require "NOM_FogEventRules"
 
 local MODULE = "NevoaEOutroMundo"
 
 -- Sirene: o cliente dono congela os zumbis dele (shared/NOM_SirenFreeze, ADR-005).
 NOM_SirenFreeze.install()
+NOM_TicaoFreeze.install()
 
 -- Rede de segurança da subida e do presságio (sprint 0034), como o SAFETY_MS do
 -- congelamento: se o fog (on) ou o sirenStop se perder, o drone, a vinheta e a estática não
@@ -90,6 +92,10 @@ Events.OnServerCommand.Add(function(module, command, args)
         dropRising()
         NOM_Siren.stop()
         NOM_SirenFreeze.stop()
+    elseif command == "ticaoFrozen" then -- a luz congela o Tição (server/NOM_TicaoLight.lua, sprint 0038)
+        NOM_TicaoFreeze.applyIds(type(args) == "table" and args.ids or {})
+    elseif command == "torchFlicker" then -- a lanterna deste jogador pisca na preta
+        NOM_TicaoFreeze.flicker(getSpecificPlayer(0), type(args) == "table" and tonumber(args.ms) or 0)
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este
         -- cliente vir vai pra outro, mesmo que o sumiço tenha sido visto por outro cliente

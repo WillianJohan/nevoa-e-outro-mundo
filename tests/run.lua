@@ -13,6 +13,8 @@ local FILES = {
     "tests/test_eco_fx.lua",
     "tests/test_rules.lua",
     "tests/test_ticao_rules.lua",
+    "tests/test_light_rules.lua",
+    "tests/test_ticao_light.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",
     "tests/test_eco_rules.lua",

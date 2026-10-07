@@ -230,7 +230,33 @@ function W.new(opts)
         function p:getBuilding() return G.interior[key(math.floor(self.x), math.floor(self.y), math.floor(self.z))] end
         function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
         function p:getEmitter() return emitter end
-        function p:getActiveLightItem() if self.light then return { lit = true } end return nil end
+        -- Luz na mão (sprint 0038): o.light = true (HandTorch: cone, 15, 0,5) ou
+        -- { cone, distance, dot }. InventoryItem.isTorchCone/getLightDistance/getTorchDot (javap);
+        -- getActiveLightItem só devolve item aceso. setActivated é local (sem sync).
+        if o.light then
+            local l = type(o.light) == "table" and o.light or {}
+            local inv = {}
+            p.inventory = inv
+            local item = { lit = true, on = true, cone = l.cone ~= false, distance = l.distance or 15, dot = l.dot or 0.5 }
+            function item:isTorchCone() return self.cone end
+            function item:getLightDistance() return self.distance end
+            function item:getTorchDot() return self.dot end
+            function item:isActivated() return self.on end
+            function item:setActivated(b) self.on = b end
+            function item:getContainer() return inv end
+            p.item = item
+        end
+        function p:getInventory() return self.inventory end
+        function p:getActiveLightItem()
+            if self.item and self.item.on then return self.item end
+            return nil
+        end
+        -- IsoGameCharacter.getForwardDirectionX/Y()F (javap): a direção unitária pra onde olha
+        function p:getForwardDirectionX() return math.cos(self.face) end
+        function p:getForwardDirectionY() return math.sin(self.face) end
+        -- IsoGameCharacter.getVehicle(); BaseVehicle.getHeadlightsOn()Z (server/Vehicles/Vehicles.lua:565)
+        p.vehicle = o.vehicle
+        function p:getVehicle() return self.vehicle end
         function p:playSoundLocal(name)
             local id = #G.sounds + 1
             G.sounds[id] = { name = name, volume = 1, playing = true }

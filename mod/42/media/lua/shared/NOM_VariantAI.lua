@@ -9,6 +9,7 @@ require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_Carpideira"
 require "NOM_SirenFreeze"
+require "NOM_TicaoFreeze"
 require "NOM_VariantRules"
 require "NOM_Config"
 require "NOM_Math"
@@ -223,6 +224,7 @@ local function watch(z, since)
         watched[z] = nil
         return
     end
+    if NOM_TicaoFreeze.frozen[z] then return end
     local t = z:getTarget()
     if aimsUnseen(z, t) and z:isLocal() then blindCommon(z, t) end
 end
@@ -292,7 +294,7 @@ local function sweep()
         local z = list:get(NOM_Math.mod(cursor + k, size))
         local kind = NOM_NightStats.variants[z]
         if (kind == nil or kind == "ticao") and blinded[z] == nil and watched[z] == nil
-            and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
+            and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] and not NOM_TicaoFreeze.frozen[z] then
             local t = z:getTarget()
             if aimsUnseen(z, t) and z:isLocal() and not NOM_NightStats.isEco(z, z:getModData()) then blindCommon(z, t) end
         end
@@ -461,7 +463,8 @@ local function heldByMod(id)
 end
 
 local function unstick(z)
-    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or not z:isLocal() or not z:isUseless() then return end
+    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or NOM_TicaoFreeze.frozen[z] or not z:isLocal()
+        or not z:isUseless() then return end
     if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
     if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
 end
