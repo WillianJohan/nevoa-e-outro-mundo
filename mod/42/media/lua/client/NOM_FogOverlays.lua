@@ -41,7 +41,8 @@
 --
 -- Silent Hill (sprint 0035, Tarefa 4b): a regra depende da cor (D.floor/D.wall com red) e usa
 -- texturas nossas, sprites de runtime que o client/NOM_OwnSprites.lua registra; o ensure roda
--- antes do primeiro anexo da sessão (depois disso, só Lua).
+-- antes do primeiro anexo da sessão (depois disso, só Lua). Na preta (sprint 0039), o Outro
+-- Mundo queimado (D.floor/D.wall com black).
 if isServer() then return end
 
 require "NOM_Config"
@@ -107,7 +108,7 @@ local held       -- [sk] = true: square do alvo da ação em curso (fica limpo)
 local cursor, gen, cutX, cutY
 local updX, updY -- a posição na atualização anterior (LIGHT_DIV)
 local density, pendingD, pendingAt
-local red        -- a cor do desenho em vigor (névoa vermelha)
+local red, black -- a cor do desenho em vigor (névoa vermelha, preta)
 local verifyKeys, verifyAt
 local radius
 -- Transição (sprint 0035). revealAt: a borda ao vivo, enquanto a janela está aberta;
@@ -125,7 +126,7 @@ local function forget()
     cursor, gen, cutX, cutY = 1, nil, nil, nil
     updX, updY = nil, nil
     density, pendingD, pendingAt = nil, nil, nil
-    red = false
+    red, black = false, false
     verifyKeys, verifyAt = {}, 1
     radius = D.MIN_RADIUS
     revealAt, revealSince, pend, pendAt, unrevealAt, tickX, tickY = nil, nil, {}, 0, nil, nil, nil
@@ -359,13 +360,13 @@ local function dress(cell, x, y, z, sk, per, d, rv)
     local outside = sq:isOutside()
     local props
     if not reg[sk .. "F"] then
-        local f = D.floor(x, y, z, per, d, outside, red)
+        local f = D.floor(x, y, z, per, d, outside, red, false, black)
         if f then
             props = sq:getProperties()
             local obj = not props:has(IsoFlagType.water) and sq:getFloor() or nil
             if plain(obj) then
                 -- o nome do piso (uma ida ao Java) só quando a regra pôs metal, ferrugem ou tinta
-                if D.hasOwn(f) and D.natural(obj:getTextureName()) then
+                if not black and D.hasOwn(f) and D.natural(obj:getTextureName()) then
                     f = D.floor(x, y, z, per, d, outside, red, true)
                 end
                 if f then
@@ -382,7 +383,7 @@ local function dress(cell, x, y, z, sk, per, d, rv)
     for _, s in ipairs(SIDES) do
         local side, north = s[1], s[2]
         if not reg[sk .. side] then
-            local w = D.wall(x, y, z, per, d, north, outside, red)
+            local w = D.wall(x, y, z, per, d, north, outside, red, black)
             if w then
                 local obj = sq:getWall(north)
                 props = props or (obj and sq:getProperties())
@@ -597,7 +598,7 @@ local function update(busy)
     if unrevealAt and now - unrevealAt >= O.UNREVEAL_MS then unrevealAt = nil end
     puff = (revealAt or unrevealAt) and NOM_Flakes ~= nil and NOM_ScreenFxOptions.intensity() > 0 or false
     -- densidade em vigor: a nova só depois de parada DENSITY_MS (a primeira, na hora)
-    local raw = D.density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+    local raw = D.density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red, NOM_FogState.black)
     if raw ~= pendingD then pendingD, pendingAt = raw, now end
     if density == nil or (density ~= pendingD and now - pendingAt >= O.DENSITY_MS) then density = pendingD end
     local d = density
@@ -607,10 +608,10 @@ local function update(busy)
     if on then
         NOM_OwnSprites.ensure()
         radius = screenRadius(p, px, py)
-        local r = NOM_FogState.red == true
-        local g = per .. ":" .. d .. (r and ":r" or "")
+        local r, b = NOM_FogState.red == true, NOM_FogState.black == true
+        local g = per .. ":" .. d .. (b and ":b" or r and ":r" or "")
         if g ~= gen then -- outro desenho: o velho sai no prune
-            gen, red = g, r
+            gen, red, black = g, r, b
             reseen()
         end
         hold(p)

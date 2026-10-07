@@ -7,9 +7,9 @@ local ROOT = "mod/42/"
 local FILE = ROOT .. "media/lua/shared/NOM_OwnSpriteList.lua"
 local DIR = "media/textures/NOM/OutroMundo/"
 local KINDS = {
-    F = { Grade = true, Ferrugem = true, Chapa = true, Tinta = true },
-    W = { Tinta = true, Ferrugem = true, Descasca = true },
-    N = { Tinta = true, Ferrugem = true, Descasca = true },
+    F = { Grade = true, Ferrugem = true, Chapa = true, Tinta = true, Cinza = true, Brasa = true },
+    W = { Tinta = true, Ferrugem = true, Descasca = true, Fuligem = true },
+    N = { Tinta = true, Ferrugem = true, Descasca = true, Fuligem = true },
 }
 
 local function read(path)

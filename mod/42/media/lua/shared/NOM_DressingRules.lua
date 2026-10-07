@@ -14,6 +14,10 @@
 --   o sangue mandando e ganha ferrugem;
 -- * sangue no chão, em nenhuma.
 --
+-- Queimado (névoa preta, sprint 0039; "chão queimado, cinzas, brasas apagando"): o chão queima
+-- dentro e fora (fora no lugar do mato), sem metal, com cinza em manchas e brasa rara no miolo
+-- do queimado; a parede ganha fuligem, sujeira e rachadura. A preta vence a vermelha.
+--
 -- Nada é guardado: a resposta é função do square, do período de névoa, da densidade e da cor
 -- (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
 require "NOM_VariantRules"
@@ -72,6 +76,17 @@ NOM_DressingRules = {
     RUST_MAX = 0.35,
     RUST_CELL = 4,
     RUST_SPOT = 0.45,
+    -- Preta (sprint 0039): densidade × BLACK_MULT; o queimado com BURNT_BLACK (dentro e fora);
+    -- cinza em manchas (ASH_SPOT dos tiles da mancha); brasa só no miolo cheio do queimado, em
+    -- EMBER dos tiles.
+    BLACK_MULT = 1.4,
+    BURNT_BLACK = 0.45,
+    BURNT_BLACK_MAX = 0.5,
+    ASH = 0.3,
+    ASH_MAX = 0.4,
+    ASH_CELL = 3,
+    ASH_SPOT = 0.55,
+    EMBER = 0.12,
     -- Piso natural: o nome do sprite do piso começa com um destes (IsoGridSquare.hasNaturalFloor,
     -- bytecode do B42.21; pz-api-notes §16.7).
     NATURAL_PREFIXES = { "blends_natural_01", "floors_exterior_natural" },
@@ -186,6 +201,8 @@ local OWN_SETS = {
     paintWallW = { "W", "Tinta" }, paintWallN = { "N", "Tinta" },
     peelWallW = { "W", "Descasca" }, peelWallN = { "N", "Descasca" },
     rustWallW = { "W", "Ferrugem" }, rustWallN = { "N", "Ferrugem" },
+    ashFloor = { "F", "Cinza" }, emberFloor = { "F", "Brasa" },
+    sootWallW = { "W", "Fuligem" }, sootWallN = { "N", "Fuligem" },
 }
 for setName, k in pairs(OWN_SETS) do
     local names = {}
@@ -235,10 +252,12 @@ end
 local WALL_KINDS = {
     white = { { "paint", 0.35 }, { "rust", 0.25 }, { "blood", 0.1 }, { "grime", 0.1 }, { "cracks", 0.05 }, { "vines", 0.15 } },
     red = { { "blood", 0.4 }, { "rust", 0.2 }, { "grime", 0.15 }, { "cracks", 0.1 }, { "vines", 0.15 } },
+    black = { { "soot", 0.6 }, { "grime", 0.25 }, { "cracks", 0.15 } },
 }
 local WALL_KINDS_IN = {
     white = { { "paint", 0.45 }, { "rust", 0.2 }, { "grime", 0.2 }, { "cracks", 0.15 } },
     red = { { "grime", 0.35 }, { "cracks", 0.25 }, { "blood", 0.25 }, { "rust", 0.15 } },
+    black = { { "soot", 0.55 }, { "grime", 0.25 }, { "cracks", 0.2 } },
 }
 -- Metal no chão da branca: dentro, por painel (a grade manda); fora, por peça solta (bueiro,
 -- mancha de ferrugem), sem chapa.
@@ -263,10 +282,10 @@ local function chance(base, d)
     return math.min(0.95, base * d)
 end
 
--- Opção do jogador (0..2) e névoa vermelha → densidade (0..3.2).
-function R.density(option, red)
+-- Opção do jogador (0..2) e névoa vermelha ou preta → densidade (0..3.2).
+function R.density(option, red, black)
     local d = math.max(0, math.min(2, tonumber(option) or 0))
-    return d * (red and R.RED_MULT or 1)
+    return d * (black and R.BLACK_MULT or red and R.RED_MULT or 1)
 end
 
 -- Cada square olha os 4 cantos da rede de cada ruído: guardados por período (o hash é o caro
@@ -393,22 +412,47 @@ end
 -- textura nossa; com natural, só sai o que tinha textura nossa (o cliente só lê o nome do piso
 -- quando R.hasOwn). Embaixo: na branca o metal tem a vez (sem rachadura de rua por cima), senão
 -- queimado (dentro) ou mato (fora). Em cima: rachadura; na vermelha, ferrugem na mancha dela.
-function R.floor(x, y, z, period, d, outside, red, natural)
+-- Chão da preta: queimado embaixo, dentro e fora; em cima, brasa no miolo cheio do queimado,
+-- senão cinza na mancha dela, senão rachadura. Cinza e brasa servem em piso natural (chão
+-- queimado é chão queimado).
+local function burntFloor(x, y, z, id, period, d)
+    local out = {}
+    local over = patch(x, y, z, period, d, R.BURNT_BLACK, R.BURNT_BLACK_MAX, R.BURNT_CELL, 56)
+    if over then
+        local set = over >= R.BURNT_FULL and "burntFloorF" or over >= R.BURNT_MID and "burntFloorM" or "burntFloorS"
+        out[1] = pick(set, id, period, 65)
+    end
+    if over and over >= R.BURNT_FULL and u(id, period, 180) < R.EMBER then
+        out[#out + 1] = pick("emberFloor", id, period, 181)
+    elseif patch(x, y, z, period, d, R.ASH, R.ASH_MAX, R.ASH_CELL, 182) and u(id, period, 183) < R.ASH_SPOT then
+        out[#out + 1] = pick("ashFloor", id, period, 184)
+    elseif u(id, period, 52) < chance(R.CRACKS, d) then
+        out[#out + 1] = pick("cracksFloor", id, period, 62)
+    end
+    return out
+end
+
+function R.floor(x, y, z, period, d, outside, red, natural, black)
     if not d or d <= 0 then return nil end
     local id = sqId(x, y, z)
-    local out = {}
-    local plate = not red and not natural
-        and (outside and metalOut(x, y, z, id, period, d) or not outside and metalIn(x, y, z, id, period, d))
-    out[1] = plate or ground(x, y, z, id, period, d, outside)
+    local out
+    if black then
+        out = burntFloor(x, y, z, id, period, d)
+    else
+        out = {}
+        local plate = not red and not natural
+            and (outside and metalOut(x, y, z, id, period, d) or not outside and metalIn(x, y, z, id, period, d))
+        out[1] = plate or ground(x, y, z, id, period, d, outside)
+        if red and not natural and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143)
+            and u(id, period, 149) < R.RUST_SPOT then
+            out[#out + 1] = pick("rustFloor", id, period, 144)
+        elseif not plate and u(id, period, 52) < chance(R.CRACKS, d) then
+            out[#out + 1] = pick("cracksFloor", id, period, 62)
+        end
+    end
     -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
     local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
         and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
-    if red and not natural and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143)
-        and u(id, period, 149) < R.RUST_SPOT then
-        out[#out + 1] = pick("rustFloor", id, period, 144)
-    elseif not plate and u(id, period, 52) < chance(R.CRACKS, d) then
-        out[#out + 1] = pick("cracksFloor", id, period, 62)
-    end
     if grime then out.grime = grimePick(x, y, id, period) end
     if #out == 0 and not grime then return nil end
     return out
@@ -435,7 +479,8 @@ end
 
 -- Dentro, de baixo pra cima: a tinta que descasca é a pele da parede, a ferrugem escorre por
 -- cima dela, depois rachadura, sujeira e sangue. Na branca, sem sangue dentro.
-local INSIDE_KINDS = { white = { "paint", "rust", "cracks", "grime" }, red = { "rust", "cracks", "grime", "blood" } }
+local INSIDE_KINDS = { white = { "paint", "rust", "cracks", "grime" }, red = { "rust", "cracks", "grime", "blood" },
+    black = { "soot", "cracks", "grime" } }
 
 -- Set da camada de parede do tipo no lado: a tinta descascando é Tinta ou Descasca.
 local function wallSet(kind, side, id, period, salt)
@@ -444,12 +489,12 @@ local function wallSet(kind, side, id, period, salt)
 end
 
 -- Camadas da parede norte (north = true) ou oeste do square, de baixo pra cima, ou nil. A face
--- que se vê é a do square dono da parede (outside: ele é de fora). red: névoa vermelha. Fora:
--- uma camada, a peça de pichação do trecho ou o sorteio. Dentro: o sorteio, mais até duas de
--- outro tipo, e a peça de pichação/mensagem em cima, até WALL_LAYERS.
-function R.wall(x, y, z, period, d, north, outside, red)
+-- que se vê é a do square dono da parede (outside: ele é de fora). red: névoa vermelha; black:
+-- preta (vence a vermelha). Fora: uma camada, a peça de pichação do trecho ou o sorteio. Dentro:
+-- o sorteio, mais até duas de outro tipo, e a peça de pichação/mensagem em cima, até WALL_LAYERS.
+function R.wall(x, y, z, period, d, north, outside, red, black)
     if not d or d <= 0 then return nil end
-    local tone = red and "red" or "white"
+    local tone = black and "black" or red and "red" or "white"
     local id = sqId(x, y, z)
     local salt = north and 70 or 80
     local side = north and "N" or "W"
