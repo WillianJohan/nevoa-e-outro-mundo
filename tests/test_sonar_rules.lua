@@ -134,6 +134,8 @@ return {
         assert(f and f.id == 7 and f.pl == 3)
         assert(R.validFound({ id = 7 }) == nil and R.validFound({ id = -1, pl = 3 }) == nil)
         assert(R.validFound({ id = 7, pl = 0 / 0 }) == nil)
+        assert(R.validFound({ id = 7, pl = 3, pid = 99 }).pid == 99, "persistentOutfitID")
+        assert(R.validFound({ id = 7, pl = 3, pid = "x" }) == nil)
     end,
 
     -- visual: sobe rápido, segura na expansão e some em FADE_MS depois do fim

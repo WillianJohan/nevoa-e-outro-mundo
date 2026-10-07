@@ -115,7 +115,10 @@ function S.emit(z, x, y, zz, why, players)
     end
     local id = z and z:getOnlineID() or -1
     local ring = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
-    if z then ring.inside, ring.building = where(z) end -- onde o Estalador estalou
+    if z then
+        ring.pid = z:getPersistentOutfitID() -- conferido antes de aplicar (objeto reaproveitado)
+        ring.inside, ring.building = where(z) -- onde o Estalador estalou
+    end
     S.rings[#S.rings + 1] = ring
     S.emitted = S.emitted + 1
     if isServer() then
@@ -135,7 +138,7 @@ end
 
 -- O anel cruzou o jogador e (do read): confere e decide, uma vez por anel e jogador.
 local function check(ring, e)
-    if ring.hit[e.p] then return end
+    if ring.zombie == nil or ring.hit[e.p] then return end
     ring.hit[e.p] = true
     local dist = math.floor(math.sqrt((e.x - ring.x) ^ 2 + (e.y - ring.y) ^ 2) * 10 + 0.5) / 10
     local pIn, pBld = where(e.p)
@@ -153,9 +156,15 @@ local function check(ring, e)
         debugLog("passou agachado e parado dist=" .. dist)
         return
     end
+    -- o objeto do zumbi vai pro pool e volta como outro (resetForReuse): o anel deixa de achar
+    if ring.zombie:getPersistentOutfitID() ~= ring.pid then
+        ring.zombie = nil
+        debugLog("estalador reaproveitado no meio do anel, achado descartado")
+        return
+    end
     S.found = S.found + 1
     if isServer() then
-        sendServerCommand(MODULE, "sonarFound", { id = ring.id, pl = e.p:getOnlineID() })
+        sendServerCommand(MODULE, "sonarFound", { id = ring.id, pl = e.p:getOnlineID(), pid = ring.pid })
     else
         NOM_Sonar.found(ring.zombie, e.p)
     end

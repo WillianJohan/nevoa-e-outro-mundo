@@ -305,6 +305,36 @@ return {
         assert(e.target == p, "agachado andando passou")
     end,
 
+    -- objeto reaproveitado no meio do anel (review, item 6): o anel guarda o persistentOutfitID
+    -- do Estalador e confere antes de aplicar; no dedicado o achado leva o ID e o dono confere
+    sonar_reused_zombie_not_applied = function()
+        for _, server in ipairs({ false, true }) do
+            local G = setup({ server = server })
+            local e = G.zombie({ x = 100, y = 100, id = EST, onlineID = 77 })
+            G.player({ x = 106, y = 100, onlineID = 5 })
+            assert(G.untilRing(), "não estalou")
+            e.id = COMMON -- resetForReuse: outro zumbi no mesmo objeto
+            G.wait(NOM_SonarRules.DURATION_MS + 100)
+            assert(e.target == nil and NOM_SonarServer.found == 0, "aplicou no zumbi reaproveitado")
+            assert(#G.commands("sonarFound") == 0, "mandou o achado do zumbi reaproveitado")
+        end
+        local G = setup({ server = true })
+        G.zombie({ x = 100, y = 100, id = EST, onlineID = 77 })
+        G.player({ x = 104, y = 100, onlineID = 5 })
+        assert(G.untilRing())
+        G.wait(NOM_SonarRules.DURATION_MS + 100)
+        local f = G.commands("sonarFound")
+        assert(#f == 1 and f[1].args.pid == EST, "o achado não leva o persistentOutfitID")
+        local C = setup({ client = true })
+        local mine = C.zombie({ x = 100, y = 100, id = COMMON, onlineID = 77 }) -- o onlineID 77 é outro agora
+        C.player({ x = 104, y = 100, onlineID = 5 })
+        NOM_Sonar.command("sonarFound", { id = 77, pl = 5, pid = EST })
+        assert(mine.target == nil, "o dono aplicou num zumbi com outro persistentOutfitID")
+        mine.id = EST
+        NOM_Sonar.command("sonarFound", { id = 77, pl = 5, pid = EST })
+        assert(mine.target ~= nil, "com o mesmo ID, o dono não aplicou")
+    end,
+
     -- casa protege (decisão do Johan, 2026-10-06): em pé dentro de casa com o Estalador na rua
     -- (ou o contrário), o anel não acha; na mesma casa, acha; casas diferentes, não
     sonar_house_shelters = function()
@@ -499,7 +529,8 @@ return {
             worst = math.max(worst, G2.calls - before)
         end
         assert(NOM_SonarServer.found > 0, "o teste de custo não achou ninguém")
-        -- casa protege: +3 por cruzamento (getCurrentSquare, isOutside, getBuilding)
+        -- +3 por cruzamento (casa: getCurrentSquare, isOutside, getBuilding) e +1 por achado
+        -- (getPersistentOutfitID, objeto reaproveitado)
         assert(worst <= 90, "com anéis: pior tick " .. worst)
         local G3 = setup()
         for i = 1, 300 do G3.zombie({ x = 100 + i, y = 100, id = COMMON }) end

@@ -149,10 +149,12 @@ function R.valid(a)
     return { x = a.x, y = a.y, z = a.z, id = a.id or -1 }
 end
 
--- Mensagem "sonarFound": { id = onlineID do Estalador, pl = onlineID do jogador achado }.
+-- Mensagem "sonarFound": { id = onlineID do Estalador, pl = onlineID do jogador achado,
+-- pid = persistentOutfitID do Estalador (o dono confere: onlineID se reaproveita) }.
 function R.validFound(a)
     if type(a) ~= "table" or not finite(a.id) or not finite(a.pl) or a.id == -1 then return nil end
-    return { id = a.id, pl = a.pl }
+    if a.pid ~= nil and not finite(a.pid) then return nil end
+    return { id = a.id, pl = a.pl, pid = a.pid }
 end
 
 -- Alfa do desenho com age ms: sobe em 120 ms, segura na expansão, some em FADE_MS.

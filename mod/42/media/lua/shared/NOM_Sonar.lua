@@ -32,13 +32,14 @@ function NOM_Sonar.found(z, p)
     return NOM_VariantAI.sonarFound(z, p)
 end
 
--- Estalador local com esse onlineID (a mensagem vai a todos; só o dono aplica).
-local function localById(id)
+-- Estalador local com esse onlineID (a mensagem vai a todos; só o dono aplica). pid: o
+-- persistentOutfitID que o servidor viu (o onlineID se reaproveita pra outro zumbi).
+local function localById(id, pid)
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z:getOnlineID() == id then
-            if z:isLocal() then return z end
+            if z:isLocal() and (pid == nil or z:getPersistentOutfitID() == pid) then return z end
             return nil
         end
     end
@@ -66,7 +67,7 @@ function NOM_Sonar.command(command, args)
         if not m then return end
         local p = getPlayerByOnlineID(m.pl)
         if p == nil then return end
-        local z = localById(m.id)
+        local z = localById(m.id, m.pid)
         if z then NOM_Sonar.found(z, p) end
     end
 end
