@@ -1,0 +1,106 @@
+-- Sonar do Estalador (sprint 0037): a regra pura (shared/NOM_SonarRules.lua).
+require "NOM_SonarRules"
+local R = NOM_SonarRules
+
+local function near(a, b) return math.abs(a - b) < 1e-9 end
+
+return {
+    -- 8 tiles em 1,5 s reais, linear, preso em 8 depois
+    sonar_radius_in_time = function()
+        assert(R.RANGE == 8 and R.DURATION_MS == 1500)
+        assert(R.radius(0) == 0 and R.radius(-5) == 0)
+        assert(near(R.radius(750), 4))
+        assert(R.radius(1500) == 8 and R.radius(9000) == 8)
+        assert(not R.done(1499) and R.done(1500))
+    end,
+
+    -- o anel passa por quem está entre o raio do tick anterior e o de agora; no primeiro
+    -- tick (r0 nil), quem está no centro conta
+    sonar_crossed_between_ticks = function()
+        assert(R.crossed(0, nil, 0.1), "no centro, no primeiro tick")
+        assert(R.crossed(9, 2, 3) and not R.crossed(9, 3, 4), "d = 3 cruza em 2→3, não em 3→4")
+        assert(not R.crossed(4, 2.5, 3), "já tinha passado")
+        assert(not R.crossed(64.01, 7, 8), "fora do alcance")
+        assert(R.crossed(64, 7, 8), "na borda dos 8 tiles")
+    end,
+
+    -- em pé ou andando: achado; agachado e parado: passa
+    sonar_exposed_standing_or_moving = function()
+        assert(R.exposed(false, false), "em pé parado")
+        assert(R.exposed(false, true), "andando em pé")
+        assert(R.exposed(true, true), "agachado andando")
+        assert(not R.exposed(true, false), "agachado e parado passa")
+    end,
+
+    -- andando = deslocou pelo menos MOVE_EPS entre as amostras
+    sonar_moving_by_displacement = function()
+        assert(not R.moving(10, 10, 10, 10))
+        assert(not R.moving(10, 10, 10.05, 10.05), "jitter de rede")
+        assert(R.moving(10, 10, 10.2, 10))
+        assert(not R.moving(nil, nil, 10, 10), "sem amostra: parado")
+    end,
+
+    -- quem o anel cruza neste tick, só no mesmo andar (o anel não sobe escada)
+    sonar_sweep_same_floor = function()
+        local ring = { x = 100.5, y = 100.5, z = 0 }
+        local players = {
+            { x = 103.5, y = 100.5, z = 0 },    -- d = 3
+            { x = 103.5, y = 100.5, z = 1 },    -- outro andar
+            { x = 100.5, y = 106.5, z = 0.6 },  -- d = 6, escada no andar 0
+            { x = 110.5, y = 100.5, z = 0 },    -- d = 10, fora
+        }
+        local a = R.sweep(ring, 2, 4, players)
+        assert(#a == 1 and a[1] == 1, "tick 2→4: " .. #a)
+        local b = R.sweep(ring, 4, 8, players)
+        assert(#b == 1 and b[1] == 3)
+        assert(#R.sweep(ring, 8, 8, players) == 0, "parado em 8 não cruza ninguém de novo")
+    end,
+
+    -- em média 2 min de jogo: chance 1/CLICK_ODDS por minuto
+    sonar_click_odds = function()
+        assert(R.CLICK_ODDS == 2)
+        assert(R.clicks(0) and not R.clicks(1))
+    end,
+
+    -- só estala na rede com jogador perto, no mesmo andar
+    sonar_near_player = function()
+        local players = { { x = 0, y = 0, z = 0 }, { x = 30, y = 0, z = 1 } }
+        assert(R.near(10, 0, 0, players))
+        assert(not R.near(50, 0, 0, players), "longe de todos")
+        assert(not R.near(30, 0, 0, { players[2] }), "outro andar")
+    end,
+
+    -- a mensagem do servidor é conferida antes de desenhar
+    sonar_valid_message = function()
+        local m = R.valid({ x = 100.5, y = 200.5, z = 0, id = 7 })
+        assert(m and m.x == 100.5 and m.y == 200.5 and m.z == 0 and m.id == 7)
+        assert(R.valid({ x = 100, y = 200, z = -1 }).id == -1, "sem id: anel sem Estalador")
+        assert(R.valid(nil) == nil and R.valid("x") == nil)
+        assert(R.valid({ x = "1", y = 2, z = 0 }) == nil)
+        assert(R.valid({ x = 0 / 0, y = 2, z = 0 }) == nil, "NaN")
+        assert(R.valid({ x = 1 / 0, y = 2, z = 0 }) == nil, "infinito")
+        assert(R.valid({ x = 1, y = 2, z = 0.5 }) == nil, "andar quebrado")
+        assert(R.valid({ x = 1, y = 2, z = 99 }) == nil, "andar fora")
+        assert(R.valid({ x = -5, y = 2, z = 0 }) == nil, "fora do mapa")
+        assert(R.valid({ x = 1, y = 2, z = 0, id = "a" }) == nil)
+        local f = R.validFound({ id = 7, pl = 3 })
+        assert(f and f.id == 7 and f.pl == 3)
+        assert(R.validFound({ id = 7 }) == nil and R.validFound({ id = -1, pl = 3 }) == nil)
+        assert(R.validFound({ id = 7, pl = 0 / 0 }) == nil)
+    end,
+
+    -- visual: sobe rápido, segura na expansão e some em FADE_MS depois do fim
+    sonar_alpha_curve = function()
+        assert(R.alpha(0) == 0, "nasce invisível")
+        assert(near(R.alpha(750), R.ALPHA), "no meio, inteiro")
+        assert(R.alpha(R.DURATION_MS + R.FADE_MS / 2) < R.ALPHA)
+        assert(R.alpha(R.DURATION_MS + R.FADE_MS) == 0, "acabou")
+        assert(R.alpha(-1) == 0)
+        assert(R.ALPHA <= 0.4, "discreto")
+    end,
+
+    -- a janela anti-recegueira cobre o tempo de o Estalador chegar: 8 tiles a ~1 tile/s
+    sonar_found_window_covers_walk = function()
+        assert(R.FOUND_MS >= R.RANGE * 1000, "janela curta demais: " .. R.FOUND_MS)
+    end,
+}
