@@ -25,14 +25,27 @@ require "NOM_SemRosto"
 NOM_Wander = { last = nil }
 local R = NOM_WanderRules
 
--- Jogadores locais vivos (getSpecificPlayer: o mesmo do NOM_SirenFreeze).
+-- Jogadores vivos: os locais (getSpecificPlayer), que puxam grupo, e todos os conhecidos, que
+-- o destino respeita: no cliente de MP também os do getOnlinePlayers (o local vem repetido,
+-- não atrapalha); no solo a lista vem vazia (o mesmo do NOM_SirenFreeze, pz-api-notes §23).
 local function players()
-    local out = {}
+    local locals, all = {}, {}
+    local function pos(p) return { x = p:getX(), y = p:getY(), z = p:getZ() } end
     for i = 0, getNumActivePlayers() - 1 do
         local p = getSpecificPlayer(i)
-        if p and not p:isDead() then out[#out + 1] = { x = p:getX(), y = p:getY(), z = p:getZ() } end
+        if p and not p:isDead() then
+            locals[#locals + 1] = pos(p)
+            all[#all + 1] = locals[#locals]
+        end
     end
-    return out
+    if isClient() then
+        local list = getOnlinePlayers()
+        for i = 0, list:size() - 1 do
+            local p = list:get(i)
+            if p and not p:isDead() then all[#all + 1] = pos(p) end
+        end
+    end
+    return locals, all
 end
 
 local function nearAny(ps, x, y)
@@ -69,7 +82,7 @@ end
 -- sorteado da lista (cada onda olha outros), e manda os grupos andarem. Devolve o plano.
 function NOM_Wander.wave(seed)
     if not NOM_FogState.on or NOM_SirenFreeze.active or not NOM_Config.get("FogWander") then return nil end
-    local ps = players()
+    local ps, all = players()
     if #ps == 0 then return nil end
     local rand = R.rng(seed)
     local list = getCell():getZombieList()
@@ -87,7 +100,7 @@ function NOM_Wander.wave(seed)
             end
         end
     end
-    local plan = R.plan(ps, cands, rand, floorOk)
+    local plan = R.plan(ps, cands, rand, floorOk, all)
     for _, g in ipairs(plan) do objs[g.i]:pathToLocationF(g.x + 0.5, g.y + 0.5, g.z) end
     NOM_Wander.last = { groups = plan, candidates = #cands, players = #ps, size = size }
     if getDebug() then

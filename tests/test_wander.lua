@@ -25,6 +25,13 @@ local function setup(opts)
         G.players[#G.players + 1] = p
         return p
     end
+    -- jogador de outro cliente (só na lista online)
+    function G.remote(x, y, z)
+        local p = G.player(x, y, z)
+        table.remove(G.players)
+        G.remotes[#G.remotes + 1] = p
+        return p
+    end
     function G.zombie(o)
         local z = { x = o.x, y = o.y, z = o.z or 0, md = {}, target = o.target, useless = o.useless == true,
             remote = o.remote == true, dead = o.dead == true, moving = o.moving == true, outfit = o.outfit }
@@ -63,6 +70,17 @@ local function setup(opts)
     end
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end
+    -- getOnlinePlayers: no cliente, os jogadores que ele conhece (o local também); no solo,
+    -- lista vazia (pz-api-notes, NOM_SirenFreeze)
+    G.remotes = {}
+    getOnlinePlayers = function()
+        local all = {}
+        if isClient() then
+            for _, p in ipairs(G.players) do all[#all + 1] = p end
+            for _, p in ipairs(G.remotes) do all[#all + 1] = p end
+        end
+        return { size = function() return #all end, get = function(_, i) return all[i + 1] end }
+    end
     getCell = function()
         return {
             getZombieList = function()
@@ -191,6 +209,30 @@ return {
         end
         for seed = 1, 30 do NOM_Wander.wave(seed) end
         assert(#walkers(G) == 0, "foi pra água")
+    end,
+    -- review final da 0036: no cliente de MP o destino respeita o jogador de outro cliente
+    -- (getOnlinePlayers), e só o local puxa grupo
+    wander_respects_remote_player = function()
+        local G = setup({ client = true })
+        G.player(0, 0)
+        local other = G.remote(18, 0)
+        ring(G, 30)
+        local n = 0
+        for seed = 1, 60 do
+            for _, z in ipairs(G.zombies) do z.goal, z.moving = nil, false end
+            NOM_Wander.wave(seed)
+            for _, z in ipairs(walkers(G)) do
+                n = n + 1
+                local dx, dy = z.goal.x - other.x, z.goal.y - other.y
+                assert(math.sqrt(dx * dx + dy * dy) >= NOM_WanderRules.DEST_MIN, "destino em cima do jogador remoto")
+            end
+        end
+        assert(n > 0, "ninguém andou: teste não prova nada")
+        local G2 = setup({ client = true })
+        G2.remote(0, 0)
+        ring(G2, 20)
+        for seed = 1, 20 do NOM_Wander.wave(seed) end
+        assert(#walkers(G2) == 0, "o jogador remoto puxou grupo")
     end,
     -- cliente de MP: o Eco vem sem o modData do servidor, só com o outfit (NOM_NightStats.isEco)
     wander_skips_eco_by_outfit_on_mp = function()

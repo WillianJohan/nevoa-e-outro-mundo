@@ -58,10 +58,13 @@ local function near(p, z)
     return dd >= R.NEAR_MIN * R.NEAR_MIN and dd <= R.NEAR_MAX * R.NEAR_MAX
 end
 
--- players: { { x, y, z } }; zombies: candidatos { x, y, z } (parados, de quem aplica);
--- rand: R.rng(semente); ok(x, y, z): o chão aceita o destino (nil: aceita tudo).
+-- players: { { x, y, z } }, quem puxa grupo (os jogadores locais de quem aplica);
+-- zombies: candidatos { x, y, z } (parados, de quem aplica); rand: R.rng(semente);
+-- ok(x, y, z): o chão aceita o destino (nil: aceita tudo); everyone: todo jogador
+-- conhecido, que o destino e o caminho respeitam (nil: os mesmos de players).
 -- Devolve { { i = índice em zombies, x, y, z } }, destinos em tile inteiro.
-function R.plan(players, zombies, rand, ok)
+function R.plan(players, zombies, rand, ok, everyone)
+    everyone = everyone or players
     local out, used = {}, {}
     for _, p in ipairs(players or {}) do
         local cands = {}
@@ -86,7 +89,7 @@ function R.plan(players, zombies, rand, ok)
                 local a = rand() * 2 * math.pi
                 local leg = R.LEG_MIN + rand() * (R.LEG_MAX - R.LEG_MIN)
                 local x, y = math.floor(lead.x + math.cos(a) * leg), math.floor(lead.y + math.sin(a) * leg)
-                if fair(players, floor, lead.x, lead.y, x, y) and (ok == nil or ok(x, y, floor)) then
+                if fair(everyone, floor, lead.x, lead.y, x, y) and (ok == nil or ok(x, y, floor)) then
                     dx, dy = x, y
                     break
                 end
@@ -95,7 +98,7 @@ function R.plan(players, zombies, rand, ok)
                 for _, i in ipairs(group) do
                     local z = zombies[i]
                     local x, y = dx + math.floor(z.x - lead.x + 0.5), dy + math.floor(z.y - lead.y + 0.5)
-                    if i == li or (fair(players, floor, z.x, z.y, x, y) and (ok == nil or ok(x, y, floor))) then
+                    if i == li or (fair(everyone, floor, z.x, z.y, x, y) and (ok == nil or ok(x, y, floor))) then
                         used[i] = true
                         out[#out + 1] = { i = i, x = x, y = y, z = floor }
                     end

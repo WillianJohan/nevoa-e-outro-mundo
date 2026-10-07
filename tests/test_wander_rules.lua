@@ -117,6 +117,27 @@ return {
             end
         end
     end,
+    -- review final da 0036: o grupo sai só perto de quem puxa (os jogadores locais), mas o
+    -- destino e o caminho respeitam todo jogador conhecido (o de outro cliente também)
+    wander_respects_everyone_known = function()
+        local R = load()
+        local pullers = { { x = 0, y = 0, z = 0 } }
+        local other = { x = 18, y = 0, z = 0 }
+        local everyone = { pullers[1], other }
+        local n = 0
+        for seed = 1, 100 do
+            local zs = crowd(R, seed, 60, 0, 0)
+            for _, g in ipairs(R.plan(pullers, zs, R.rng(seed), nil, everyone)) do
+                n = n + 1
+                local z = zs[g.i]
+                assert(math.sqrt(d2(g.x, g.y, other.x, other.y)) >= R.DEST_MIN, "destino em cima do jogador de outro cliente")
+                assert(segDist(other.x, other.y, z.x, z.y, g.x, g.y) >= R.PASS_MIN - 0.05, "caminho passa no outro")
+            end
+        end
+        assert(n > 0, "ninguém saiu: teste não prova nada")
+        -- só o outro jogador, sem quem puxe: nenhum grupo
+        assert(#R.plan({}, crowd(R, 3, 60, 18, 0), R.rng(3), nil, { other }) == 0, "o jogador de outro cliente puxou grupo")
+    end,
     wander_is_deterministic = function()
         local R = load()
         local zs = crowd(R, 5, 50, 0, 0)
