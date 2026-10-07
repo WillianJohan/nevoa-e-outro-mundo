@@ -450,6 +450,15 @@ function W.new(opts)
         l.getRadius = c(function() return l.radius end)
         l.isActive = c(function() return l.on end)
         l.isHydroPowered = c(function() return l.hydro end)
+        -- Poste que pisca (sprint 0045, §34): luz de dentro de prédio tem getLocalToBuilding() e o
+        -- update() do jogo reescreve a cor dela; a de fora guarda o setR/G/B.
+        l.building = o.building
+        l.r, l.g, l.b = 1, 0.9, 0.7
+        l.getLocalToBuilding = function() return l.building end
+        l.getR, l.getG, l.getB = function() return l.r end, function() return l.g end, function() return l.b end
+        l.setR = function(_, v) l.r = v end
+        l.setG = function(_, v) l.g = v end
+        l.setB = function(_, v) l.b = v end
         G.lamps[#G.lamps + 1] = l
         return l
     end
