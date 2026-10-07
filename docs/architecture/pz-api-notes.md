@@ -2027,6 +2027,23 @@ jogo mostrou e por que o tiro não aparecia.
 | Chunk descarregado ou lâmpada tirada no meio do pisca (até ~3,7 s, a até 25 tiles do jogador) salva o poste preto no solo | UNKNOWN | improvável (o chunk a 25 tiles não descarrega em 3,7 s); se aparecer poste preto pra sempre, é isso |
 | A chuva da camada modded molha (poças, roupa) como a do jogo | UNKNOWN | testar no jogo, item 27 |
 
+## 35. Painel de debug desenhado e redimensionável (sprint 0046)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `ISCollapsableWindow:new` liga `resizable`; o `createChildren` põe as duas alças (`ISResizeWidget`) pela altura e largura de agora | EXISTS | `client/ISUI/ISCollapsableWindow.lua:26-49, 395`. O painel nasce 820×620 antes do `addToUIManager` |
+| `ISResizeWidget:resize` não passa de `target.minimumWidth/minimumHeight` e chama `target:setWidth/setHeight` | EXISTS | `client/ISUI/ISResizeWidget.lua:9-34`. O painel refaz o leiaute no `update` quando `width/height` mudam (não depende do `onResize` do Java) |
+| `ISCollapsableWindow:RestoreLayout` só apaga largura e altura do leiaute salvo quando a janela não redimensiona; o `SaveLayout` grava sempre | EXISTS | `client/ISUI/ISCollapsableWindow.lua:336-354`. O leiaute do painel antigo (440 de largura) volta com o `RegisterWindow`: o painel sobe pro mínimo depois |
+| `ISUIElement:instantiate` cria o objeto Java e chama `createChildren`; `addToUIManager` só instancia na primeira vez | EXISTS | `client/ISUI/ISUIElement.lua:993-1007, 1365-1371` |
+| `ISPanel:new` (`background`, `backgroundColor`, `borderColor`), `noBackground` | EXISTS | `client/ISUI/ISPanel.lua:9-12, 96-115` |
+| Desenho: `drawRect(x, y, w, h, a, r, g, b)`, `drawRectBorder` (mesma ordem), `drawText/drawTextRight/drawTextCentre(str, x, y, r, g, b, a, font)` | EXISTS | `client/ISUI/ISUIElement.lua:1191, 1219, 1280, 1293, 1306` |
+| Recorte: `setStencilRect(0, 0, w, h)` no `prerender` e `clearStencilRect` no `render` de um painel filho que rola | EXISTS | `client/ISUI/AdminPanel/ISStatisticsUI.lua:14-31`; `client/ISUI/ISUIElement.lua:459-475` |
+| Mouse local: `onMouseDown(x, y)`, `onMouseWheel(del)` (devolve `true` = consumido); `getMouseX/Y` descontam o `xScroll/yScroll` do Java | EXISTS | `client/ISUI/ISScrollingListBox.lua:347, 577`; `ISStatisticsUI.lua:19-25`; `ISUIElement.lua:339-346`. A lista rola em Lua (`yScroll` do Java fica 0) |
+| `getTextManager():MeasureStringX(fonte, texto)`, `getFontHeight(fonte)`; `UIFont.Small`, `UIFont.Medium` | EXISTS | `client/ISUI/ISButton.lua:233`; `client/ISUI/ISContextMenu.lua:1109` |
+| Som do clique de botão: `getSoundManager():playUISound("UIActivateButton")` | EXISTS | `client/ISUI/ISButton.lua:46, 521` |
+| O clique numa área vazia da janela (cabeçalho) começa a arrastar | EXISTS | `ISCollapsableWindow:onMouseDown` (`:270-280`): os painéis filhos devolvem `true` pra não arrastar a janela |
+| As alças, o recorte e a roda do mouse se comportam no jogo como no vanilla | UNKNOWN | testar no jogo, item 28 |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -2141,3 +2158,8 @@ jogo mostrou e por que o tiro não aparecia.
 27. Chuva (§34): `NOM.rain()` e uma névoa preta ou vermelha: começa a chover em rampa (~20 min de
     jogo), o chão molha, e para quando a névoa acaba? Desligado de novo, a próxima névoa chove só
     se o sorteio do período der (30%)?
+28. Painel de debug (sprint 0046, §35): a janela redimensiona pelas alças (canto e borda de
+    baixo) sem passar de 600×440, e reabre no tamanho que ficou? A lista rola com a roda e os
+    cartões não vazam por cima do cabeçalho nem das Respostas? O texto quebra certo na largura?
+    O clique acerta o botão desenhado (com a lista rolada também)? Clicar na lista não arrasta
+    a janela? As respostas do servidor (no MP, pelo `debugReply`) aparecem em Respostas?
