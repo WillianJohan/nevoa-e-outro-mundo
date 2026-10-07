@@ -169,9 +169,13 @@ pele dele descasca e mostra metal enferrujado por baixo.
     nenhum bloco cheio). Na parede, a tinta descascando é a camada mais comum, depois a ferrugem
     escorrida. Sangue de parede ainda aparece, raro;
   - **vermelha** mantém o sangue de parede como o mais comum e ganha ferrugem na parede e manchas
-    ralas de ferrugem no chão, fora da grama (nada de grade, chapa nem tinta no chão);
+    ralas de ferrugem no chão, fora da grama (nada de grade, chapa nem tinta no chão). Desde a
+    sprint 0040, **tentáculos pretos**: na parede, subindo do rodapé (fora e dentro de casa, por
+    cima do sangue); no chão, saindo de um buraco, peça solta como o metal da calçada, fora da
+    grama. E **cinza no ar**: pontos soltos flutuando devagar em volta do jogador, a meia altura;
   - **nada de sangue no chão**, nas duas, nem tinta vermelha no chão (leria como sangue);
-  - **preta** fica pra sprint 0038 (sugestão: descasca e ferrugem escuras, sem grade e sem sangue).
+  - **preta** (sprint 0039): o mundo queimado, com chão queimado dentro e fora, cinza, brasa
+    apagando e fuligem nas paredes.
 - **Até a borda da tela andando:** a erosão acompanha o jogador sem deixar um quadrado vestido em
   volta. Mais longe que a tela não vai: a margem do save não deixa (decisão da sprint 0035).
 - Texturas próprias, geradas por script nosso (direção de arte em

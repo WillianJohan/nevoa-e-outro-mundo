@@ -76,7 +76,16 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Em teste: névoa preta II (sprint 0039, na `staging`)
+## Em teste: vermelha nova (sprint 0040, branch empilhada)
+
+Tentáculos pretos na parede e no chão da vermelha e cinza flutuando no ar. Decisões e roteiro em
+[sprint-0040-vermelha-nova/README.md](sprints/sprint-0040-vermelha-nova/README.md). Pra mudar
+rápido: `NOM_DressingRules` (`TENTACLE*`, faixas `WALL_KINDS.red`) e `NOM_FlakeRules` (`AIR_*`).
+**Sem merge:** o review automático bloqueou merge/push/sync com o Johan fora, então as sprints
+estão empilhadas (`sprint/0039-nevoa-preta-ii` ← `sprint/0040-vermelha-nova` ← …); a última da
+pilha contém todas.
+
+## Em teste: névoa preta II (sprint 0039, branch `sprint/0039-nevoa-preta-ii`, sem merge)
 
 Luz fixa congela o Tição (poste, abajur, fogo, cômodo aceso), Outro Mundo queimado (cinza, brasa,
 fuligem) e, no mod3, a luz empurra a névoa preta (`NOMRender_setParam(12, 1)`, mandado sozinho pelo
