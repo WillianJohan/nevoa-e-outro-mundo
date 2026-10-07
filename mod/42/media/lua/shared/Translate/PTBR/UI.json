@@ -60,5 +60,7 @@
     "UI_NOM_Debug_GodMode": "Modo deus",
     "UI_NOM_Debug_Wind": "Vento (liga/desliga)",
     "UI_NOM_Debug_Status": "Status no console",
-    "UI_NOM_Debug_OwnSprites": "Texturas próprias no console"
+    "UI_NOM_Debug_OwnSprites": "Texturas próprias no console",
+    "UI_NOM_Debug_Wander": "Onda de perambular",
+    "UI_NOM_Debug_Blind": "Cegos da visão curta no console"
 }

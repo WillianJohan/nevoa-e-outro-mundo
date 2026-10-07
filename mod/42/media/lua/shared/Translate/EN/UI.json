@@ -60,5 +60,7 @@
     "UI_NOM_Debug_GodMode": "God mode",
     "UI_NOM_Debug_Wind": "Wind (toggle)",
     "UI_NOM_Debug_Status": "Status to console",
-    "UI_NOM_Debug_OwnSprites": "Own textures to console"
+    "UI_NOM_Debug_OwnSprites": "Own textures to console",
+    "UI_NOM_Debug_Wander": "Wander wave",
+    "UI_NOM_Debug_Blind": "Short-sight blind to console"
 }

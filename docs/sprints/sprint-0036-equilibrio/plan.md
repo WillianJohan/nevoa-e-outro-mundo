@@ -102,6 +102,11 @@ Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes 
 
 - `NOM.wander()` (força uma onda; o servidor decide) e `NOM.blind()` (contagem de cegos e vigiados neste processo), com botão no `NOM.panel()` e chaves PTBR + EN.
 
+**Feito** (2 testes em `tests/test_debug.lua`, o parse em `tests/test_debug_rules.lua`, botões em `tests/test_debug_panel.lua`):
+- `NOM.wander()` manda `op = "wander"` ao servidor (`ops.wander`), que recusa sem névoa aberta e responde `[NOM] debug perambular onda semente=N`.
+- `NOM.blind()` imprime `[NOM] debug visão curta ligada=... raio=... cegos=... vigiados=... estaladores=...` e a última onda aplicada neste processo (`[NOM] debug perambular última zumbis=... candidatos=... jogadores=... lista=...`).
+- Painel: linha nova com "Onda de perambular" e "Cegos da visão curta no console" (`UI_NOM_Debug_Wander`, `UI_NOM_Debug_Blind`).
+
 ### Tarefa 4: docs
 
 - Notas por tarefa aqui; pz-api-notes (seção nova); `README.md` com roteiro de teste no jogo; `docs/sprints/README.md`; HANDOFF.

@@ -2,7 +2,7 @@
 -- em -debug: força a noite (NOM_World.forced), começa e termina um evento de névoa
 -- (NOM_FogEvent), força a névoa vermelha, força a variante de um zumbi
 -- (NOM_VariantRules.forced), spawna um Eco, muda a hora, spawna zumbis comuns e
--- puxa um zumbi até o jogador, imprime o estado do mod. Quem chama
+-- puxa um zumbi até o jogador, solta uma onda de perambular, imprime o estado do mod. Quem chama
 -- é o client/NOM_Debug.lua pelo console Lua; roteiro em docs/teste-in-game.md.
 -- A noite forçada vive em memória até o servidor reiniciar, MAS ela e o evento de
 -- névoa avançam os contadores salvos de noites e de névoas (NOM_NightCount e
@@ -165,6 +165,14 @@ function ops.pull(player, a)
     if not z then return "zumbi não achado" end
     NOM_SemRosto.move(z, a.x, a.y, a.z)
     return "zumbi puxado x=" .. a.x .. " y=" .. a.y
+end
+
+-- Uma onda de perambular agora (sprint 0036; NOM_WanderServer, lido na hora: carrega depois
+-- deste arquivo). Só com a névoa aberta, como a de verdade.
+function ops.wander()
+    if not NOM_World.fog then return "perambular precisa de névoa aberta" end
+    if not NOM_WanderServer then return "perambular não carregou" end
+    return "perambular onda semente=" .. NOM_WanderServer.wave("debug")
 end
 
 function ops.status()

@@ -930,6 +930,37 @@ return {
         NOM.ownSprites()
         assert(has(G.printed, "^%[NOM%] debug sprites próprios: NOM_OwnSprites não carregou"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0036: uma onda de perambular agora; quem decide é o servidor (névoa aberta)
+    nom_wander_asks_server = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local waves = {}
+        NOM_WanderServer = { wave = function(why) waves[#waves + 1] = why; return 77 end }
+        NOM.wander()
+        assert(#waves == 0 and has(G.printed, "^%[NOM%] debug perambular precisa de névoa aberta"),
+            table.concat(G.printed, "\n"))
+        NOM_World.fog = true
+        G.printed = {}
+        NOM.wander()
+        NOM_WanderServer = nil
+        assert(#waves == 1 and waves[1] == "debug", "ondas: " .. #waves)
+        assert(has(G.printed, "^%[NOM%] debug perambular onda semente=77"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0036: cegos da visão curta e a última onda, neste processo (quem simula)
+    nom_blind_reports_counts = function() run(function()
+        local G = setup()
+        NOM_VariantAI = { counts = function() return { common = 5, estalador = 1, watched = 2, on = true } end }
+        NOM_Wander = { last = { groups = { 1, 2 }, candidates = 9, players = 1, size = 300 } }
+        NOM.blind()
+        NOM_VariantAI, NOM_Wander = nil, nil
+        assert(has(G.printed, "^%[NOM%] debug visão curta ligada=true raio=4 cegos=5 vigiados=2 estaladores=1"),
+            table.concat(G.printed, "\n"))
+        assert(has(G.printed, "^%[NOM%] debug perambular última zumbis=2 candidatos=9 jogadores=1 lista=300"),
+            table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.blind()
+        assert(has(G.printed, "^%[NOM%] debug visão curta: NOM_VariantAI não carregou"), table.concat(G.printed, "\n"))
+    end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()
         local n = 0

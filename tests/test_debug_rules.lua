@@ -20,6 +20,7 @@ return {
         assert(D.parse({ op = "variant", id = 5 }).kind == nil, "kind nil limpa")
         assert(D.parse({ op = "spawnEco" }).op == "spawnEco")
         assert(D.parse({ op = "status" }).op == "status")
+        assert(D.parse({ op = "wander" }).op == "wander")
     end,
     debug_rules_parse_rejects_garbage = function()
         assert(D.parse(nil) == nil)
