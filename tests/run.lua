@@ -35,6 +35,7 @@ local FILES = {
     "tests/test_sonar_fx.lua",
     "tests/test_mod3_sonar.lua",
     "tests/test_mod3_light.lua",
+    "tests/test_mod3_censor.lua",
     "tests/test_carpideira.lua",
     "tests/test_variants_client.lua",
     "tests/test_variants.lua",
