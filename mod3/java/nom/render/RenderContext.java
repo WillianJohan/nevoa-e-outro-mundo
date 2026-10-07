@@ -87,6 +87,20 @@ public final class RenderContext {
     public static boolean isActive() { return true; }
 
     /**
+     * Sonar do Estalador (sprint 0037, client/NOM_SonarFx.lua): anel em (x, y) no andar z que empurra
+     * a névoa fluida. true: o mod3 pegou; false: o Lua desenha o anel na tela. Nunca derruba o jogo.
+     */
+    @LuaMethod(name = "NOMRender_sonar", global = true)
+    public static boolean sonar(double x, double y, double z) {
+        try {
+            return Flow.addSonar((float) x, (float) y, (int) Math.floor(z));
+        } catch (Throwable t) {
+            log("sonar: erro, o anel vai pra tela: " + t);
+            return false;
+        }
+    }
+
+    /**
      * A névoa vanilla para antes da borda de baixo da tela (maxYOffset -5) e com zoom afastado vira
      * uma faixa limpa; a nossa cobre a tela toda, com véu de fundo. Se o passe morreu, a vanilla fica.
      */

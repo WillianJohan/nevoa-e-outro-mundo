@@ -362,6 +362,61 @@ public final class FlowGrid {
     // ---------- passo ----------
 
     /**
+     * Frente do sonar do Estalador (sprint 0037) que andou de r0 a r1 tiles em volta de (wx, wy)
+     * neste passo: leva Sonar.TAKE da névoa da faixa varrida pra logo à frente (Sonar.AHEAD tiles),
+     * sem criar nem sumir massa. A cada passo o monte anda com a frente e deixa o miolo ralo atrás.
+     * Interior não dá nem recebe, como no blast.
+     */
+    public void sonar(float wx, float wy, float r0, float r1) {
+        if (r1 <= r0) return;
+        float lx = (wx - x0) * scale, ly = (wy - y0) * scale, a = r0 * scale, b = r1 * scale;
+        float ahead = Sonar.AHEAD * scale, outer = b + ahead;
+        int i0 = Math.max(0, (int) Math.floor(lx - outer)), i1 = Math.min(n - 1, (int) Math.ceil(lx + outer));
+        int j0 = Math.max(0, (int) Math.floor(ly - outer)), j1 = Math.min(n - 1, (int) Math.ceil(ly + outer));
+        if (i0 > i1 || j0 > j1) return;
+        double taken = 0, aheadW = 0;
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) {
+                int c = j * n + i;
+                if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
+                float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                if (dist >= a && dist < b) {
+                    float t = d[c] * Sonar.TAKE;
+                    d[c] -= t;
+                    dn[c] = t;
+                    taken += t;
+                } else if (dist >= b && dist < outer) {
+                    aheadW += 1f - (dist - b) / ahead;
+                }
+            }
+        if (taken <= 0) return;
+        double left = taken;
+        if (aheadW > 0)
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++) {
+                    int c = j * n + i;
+                    if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
+                    float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                    if (dist < b || dist >= outer) continue;
+                    float put = (float) (taken * (1f - (dist - b) / ahead) / aheadW);
+                    put = Math.min(put, D_MAX - d[c]);
+                    if (put <= 0f) continue;
+                    d[c] += put;
+                    left -= put;
+                }
+        if (left > 1e-6) {                        // o que não coube na frente volta pra faixa
+            float back = (float) (left / taken);
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++) {
+                    int c = j * n + i;
+                    if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
+                    float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                    if (dist >= a && dist < b) d[c] += dn[c] * back;
+                }
+        }
+    }
+
+    /**
      * Tiro ou explosão em (wx, wy): a névoa do miolo (raio r) é empurrada pra um anel em volta, sem
      * criar nem sumir massa. Interior não recebe (a onda não atravessa parede de casa fechada).
      */

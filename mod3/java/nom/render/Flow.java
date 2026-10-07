@@ -85,6 +85,7 @@ final class Flow {
     private static HashSet<Long> soundsSeen = new HashSet<>(), soundsNow = new HashSet<>();
     private static final float[] blasts = new float[MAX_BLASTS * 3];  // x, y, raio
     private static int blastCount;
+    private static final Sonar sonar = new Sonar();   // anéis do sonar do Estalador (sprint 0037)
     private static long statFrames, statMaskNanos;
 
     /** O que a thread principal leu do jogo desde a última vez que a simulação pegou. */
@@ -99,6 +100,9 @@ final class Flow {
         int blastCount;
         final float[] winds = new float[MAX_PENDING_STEPS * 2];
         int steps;
+        // frente de cada anel do sonar em cada passo: x, y, r0, r1 (Sonar.bands)
+        final float[] sonars = new float[MAX_PENDING_STEPS * Sonar.MAX_RINGS * 4];
+        final int[] sonarCount = new int[MAX_PENDING_STEPS];
         float stillDecay;   // sorvedouro do ar parado: o vácuo atrás dos prédios (PARAM_VACUUM)
         boolean sourceOn;   // foco de vento ligado (PARAM_WIND_SOURCE); posição e sopro em coordenadas de mundo
         float sourceX, sourceY, sourceVX, sourceVY;
@@ -205,6 +209,7 @@ final class Flow {
                     maskRow = 0;
                     acc = 0f;
                     prev.clear();
+                    sonar.clear();
                     running = true;
                 } else if (nx0 != x0 || ny0 != y0) {
                     int dx = nx0 - x0, dy = ny0 - y0;
@@ -258,10 +263,13 @@ final class Flow {
                         if (in.steps < MAX_PENDING_STEPS) {
                             in.winds[in.steps * 2] = windX;
                             in.winds[in.steps * 2 + 1] = windY;
+                            in.sonarCount[in.steps] = sonar.bands(STEP, in.sonars, in.steps * Sonar.MAX_RINGS * 4);
                             in.steps++;
                             bankX += windX * STEP;      // a mesma conta do FogBanks.advance
                             bankY += windY * STEP;
                             if (++stepsSent % 600 == 0) logStats();
+                        } else {
+                            sonar.bands(STEP, null, 0);   // passo jogado fora: o anel anda igual
                         }
                         acc -= STEP;
                         steps++;
@@ -287,6 +295,18 @@ final class Flow {
         sourceVX = w.vx;
         sourceVY = w.vy;
         RenderContext.log(String.format("vento: foco em (%.1f,%.1f) soprando (%.2f,%.2f)", sourceX, sourceY, sourceVX, sourceVY));
+    }
+
+    /**
+     * Anel do sonar do Estalador (NOMRender_sonar, thread principal, a mesma do update). false: a
+     * tela desenha (fluido desligado ou morto, sem névoa, outro andar, perto da borda da grade, cheio).
+     */
+    static boolean addSonar(float wx, float wy, int wz) {
+        if (dead || !running || RenderContext.luaParams[PARAM_ON] < 0.5f || wz != z) return false;
+        if (ClimateManager.getInstance().getFogIntensity() < 0.05f) return false;
+        float reach = TILES / 2f - Sonar.RANGE - Sonar.AHEAD;
+        if (Math.abs(wx - camX) > reach || Math.abs(wy - camY) > reach) return false;
+        return sonar.add(wx, wy);
     }
 
     private static void die(String why, Throwable t) {
@@ -474,6 +494,8 @@ final class Flow {
             if (in.sourceOn) grid.impulse(in.sourceX, in.sourceY, in.sourceVX, in.sourceVY, SOURCE_RADIUS);
             if (s == 0)
                 for (int k = 0; k < in.blastCount; k++) grid.blast(in.blasts[k * 3], in.blasts[k * 3 + 1], in.blasts[k * 3 + 2]);
+            for (int k = 0, o = s * Sonar.MAX_RINGS * 4; k < in.sonarCount[s]; k++, o += 4)
+                grid.sonar(in.sonars[o], in.sonars[o + 1], in.sonars[o + 2], in.sonars[o + 3]);
             grid.step(STEP);
             statStepNanos += System.nanoTime() - s0;
             statSteps++;
