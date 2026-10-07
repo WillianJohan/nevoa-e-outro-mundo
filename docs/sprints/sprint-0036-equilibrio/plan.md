@@ -70,6 +70,14 @@ Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes 
 - Teste primeiro (`tests/test_variant_ai.lua`): zumbi comum com jogador a 8 tiles, quieto, não persegue; a 3 tiles persegue; correndo persegue; tiro (som) perto acorda; variantes iguais a antes; zumbi remoto intocado; névoa desligada intocado; orçamento por tick com 300 zumbis.
 - Constante do raio fácil de ajustar e opção de sandbox (`FogZombieVision`, 0 desliga), com chaves PTBR + EN.
 
+**Feito** (`shared/NOM_VariantAI.lua`, 13 testes novos `vision_*` e 3 ajustados em `tests/test_variant_ai.lua`):
+- **Quem:** todo zumbi sem mira própria: o comum e o Sem-rosto (que não tem IA de mira aqui). Estalador, Corredor e Carpideira ficam como estão; o Eco também (`modData.NOM_eco`). Na vermelha, onde todo zumbi é variante, só o Sem-rosto ganha a visão curta.
+- **"Quieto":** sem correr e sem sprint (andar e agachar contam como quieto a mais de 4 tiles), e sem barulho no pé dele nos últimos 180 ticks (~3 s). Barulho = `Events.OnWorldSound` a até 3 tiles do jogador (tiro, carro).
+- **Som:** o cego é surdo (`useless`), então todo `OnWorldSound` solta os cegos no raio do som. O som vive 16 atualizações (`WorldSound.init`), e quem é solto dentro disso ouve.
+- **Parar quem já vinha:** o rodízio pega o zumbi até uma volta depois do spot, às vezes já andando. O `useless` não para o `PathFindState`, então o `halt` da sirene entra junto (§21).
+- **Useless herdado:** na névoa, com a visão curta ligada, qualquer zumbi pode ter ficado cego. O `unstick` passa a soltar todo useless local que não é do jogo (antes: só ex-Carpideira e ex-Estalador). O de outro mod num zumbi comum também cai enquanto a névoa durar (aceito).
+- **Orçamento com o código de verdade** (`vision_budget_300_zombies`, mundo falso com 300 zumbis, 600 ticks): **61 chamadas por tick** parados (30 `get` + 30 `getTarget` + 1 `size`). Na multidão, **média de 129 e pior tick de 452**, contra 600 e 2700 da versão ingênua. Teto 2500.
+
 ### Tarefa 2: perambular
 
 - Regra pura `shared/NOM_WanderRules.lua` (luajit): intervalo, grupos de 1 a 3 entre zumbis parados perto de cada jogador, ponto aleatório na região que não passa perto do jogador, rng injetável, determinístico.

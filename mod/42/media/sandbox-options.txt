@@ -85,6 +85,16 @@ option NevoaEOutroMundo.FogCalmHours = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogCalmHours,
 }
 
+option NevoaEOutroMundo.FogZombieVision = {
+    type = integer, min = 0, max = 10, default = 4,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogZombieVision,
+}
+
+option NevoaEOutroMundo.FogWander = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogWander,
+}
+
 option NevoaEOutroMundo.EcoEnabled = {
     type = boolean, default = true,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EcoEnabled,

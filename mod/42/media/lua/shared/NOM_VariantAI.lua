@@ -11,6 +11,7 @@ require "NOM_Carpideira"
 require "NOM_SirenFreeze"
 require "NOM_VariantRules"
 require "NOM_Config"
+require "NOM_Math"
 
 NOM_VariantAI = {}
 
@@ -25,11 +26,33 @@ local CLICK_ODDS = 2
 -- que deixa o Estalador ouvir entre uma e outra.
 NOM_VariantAI.BLIND_FRAMES = 60
 
--- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates } }.
--- Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica. Exposta só pra
--- leitura: o rodízio do NOM_SirenFreeze não solta o Estalador cego.
+-- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates, common = visão
+-- curta } }. Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica.
+-- Exposta só pra leitura: o rodízio do NOM_SirenFreeze não solta o cego.
 NOM_VariantAI.blinded = {}
 local blinded = NOM_VariantAI.blinded
+
+-- Visão curta da névoa (sprint 0036, spec §5): o jogo prende o raio de visão do zumbi em
+-- 10–20 tiles (IsoZombie.updateVisionRadius, pz-api-notes §3.2), então a visão menor é a
+-- cegueira do Estalador em todo zumbi sem mira própria (o comum e o Sem-rosto): jogador de
+-- alvo, quieto e a mais de VISION_TILES fica fora. O raio de verdade vem do sandbox
+-- (FogZombieVision; 0 desliga); VISION_TILES é o padrão, ajustado no NOM_Config e no
+-- media/sandbox-options.txt. Medição na Tarefa 0 da sprint:
+-- perguntar pra todo zumbi todo frame passa do teto com a multidão; o rodízio no OnTick,
+-- VISION_BATCH por tick, custa ~1/7 e não toca no OnZombieUpdate do comum.
+-- CHECK_FRAMES: o cego comum confere a distância a cada tantos frames, não todo frame.
+-- WATCH_FRAMES: depois da janela, por quantos frames o zumbi é vigiado todo frame (o spot
+-- volta no frame seguinte; o rodízio levaria uma volta na lista).
+-- NOISE_TICKS: barulho no pé do jogador (OnWorldSound) o denuncia por esse tanto de ticks.
+NOM_VariantAI.VISION_TILES = NOM_Config.DEFAULTS.FogZombieVision
+NOM_VariantAI.VISION_BATCH = 30
+NOM_VariantAI.CHECK_FRAMES = 10
+NOM_VariantAI.WATCH_FRAMES = 30
+NOM_VariantAI.NOISE_TICKS = 180
+NOM_VariantAI.NOISE_NEAR = 3
+-- Recém-soltos da visão curta, vigiados todo frame: { [zumbi] = frames }.
+NOM_VariantAI.watched = {}
+local watched = NOM_VariantAI.watched
 
 -- Agachado e sem correr: o Estalador não tem como saber que o jogador está ali.
 local function silent(p)
@@ -73,6 +96,146 @@ local function estalador(z, md, blind)
     end
 end
 
+-- Visão curta ---------------------------------------------------------------------
+
+local tick, r2, cursor = 0, nil, 0
+-- Por jogador, uma vez por tick: { f = tick, x, y, quiet }. noisy[p] = até que tick.
+-- ponytail: chave é o objeto do jogador; quem sai fica até reiniciar (um por jogador).
+local seen, noisy = {}, {}
+
+-- Raio² da visão curta agora, ou nil (névoa fechada ou opção em 0).
+local function visionR2()
+    if not NOM_FogState.on then return nil end
+    local v = tonumber(NOM_Config.get("FogZombieVision")) or 0
+    if v <= 0 then return nil end
+    return v * v
+end
+
+local function about(p)
+    local c = seen[p]
+    if c == nil then
+        c = {}
+        seen[p] = c
+    end
+    if c.f ~= tick then
+        c.f, c.x, c.y = tick, p:getX(), p:getY()
+        c.quiet = not p:isRunning() and not p:isSprinting() and (noisy[p] or -1) < tick
+    end
+    return c
+end
+
+-- Jogador quieto e longe do zumbi.
+local function unseen(z, p)
+    local c = about(p)
+    if not c.quiet then return false end
+    local dx, dy = z:getX() - c.x, z:getY() - c.y
+    return dx * dx + dy * dy > r2
+end
+
+local function aimsUnseen(z, t)
+    return t ~= nil and instanceof(t, "IsoPlayer") and unseen(z, t)
+end
+
+-- O useless não interrompe quem já anda atrás do jogador (PathFindState.execute não o lê):
+-- o mesmo halt do NOM_SirenFreeze (pz-api-notes §21).
+local function halt(z)
+    z:getPathFindBehavior2():cancel()
+    z:setPath2(nil)
+    z:setVariable("bPathfind", false)
+    z:setVariable("bMoving", false)
+end
+
+local function blindCommon(z, p)
+    z:setTarget(nil)
+    z:setUseless(true)
+    halt(z)
+    watched[z] = nil
+    blinded[z] = { p = p, n = 0, common = true }
+end
+
+-- Cego comum, por frame: a cada CHECK_FRAMES confere se o jogador chegou perto ou fez
+-- barulho; no fim da janela solta (ouve de novo) e vigia.
+local function commonBlind(z, b)
+    if r2 == nil then return release(z) end
+    b.n = b.n + 1
+    local done = b.n >= NOM_VariantAI.BLIND_FRAMES
+    if not done and NOM_Math.mod(b.n, NOM_VariantAI.CHECK_FRAMES) ~= 0 then return end
+    if not done and unseen(z, b.p) then return end
+    release(z)
+    watched[z] = 0
+end
+
+-- Recém-solto: o spot volta no frame seguinte; se o jogador ainda está longe e quieto, fecha.
+local function watch(z, n)
+    if r2 == nil or n >= NOM_VariantAI.WATCH_FRAMES then
+        watched[z] = nil
+        return
+    end
+    watched[z] = n + 1
+    local t = z:getTarget()
+    if aimsUnseen(z, t) and z:isLocal() then blindCommon(z, t) end
+end
+
+-- O rodízio: até VISION_BATCH zumbis por tick, em volta na lista. Tabela Lua antes de
+-- qualquer chamada: variante com mira própria, cego, vigiado, Carpideira parada e
+-- congelado pela sirene não custam nada.
+local function sweep()
+    tick = tick + 1
+    r2 = visionR2()
+    if r2 == nil then return end
+    local list = getCell():getZombieList()
+    local size = list:size()
+    if size == 0 then return end
+    local n = math.min(NOM_VariantAI.VISION_BATCH, size)
+    for k = 0, n - 1 do
+        local z = list:get(NOM_Math.mod(cursor + k, size))
+        local kind = NOM_NightStats.variants[z]
+        if (kind == nil or kind == "semrosto") and blinded[z] == nil and watched[z] == nil
+            and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
+            local t = z:getTarget()
+            if aimsUnseen(z, t) and z:isLocal() and not z:getModData().NOM_eco then blindCommon(z, t) end
+        end
+    end
+    cursor = NOM_Math.mod(cursor + n, size)
+end
+
+-- Som: o cego é surdo (useless; RespondToSound 8–15). Events.OnWorldSound sai de todo
+-- addSound (WorldSoundManager$WorldSound.init 129), antes de o zumbi ouvir: o som vive 16
+-- atualizações (life, init 6–8). Solta o cego no raio (ouve e vai) e marca barulhento o
+-- jogador no ponto do som (tiro, carro): perto dele, a cegueira não fecha.
+local function heard(x, y, _, radius)
+    if r2 == nil or type(radius) ~= "number" then return end
+    local hit, rr = {}, radius * radius
+    for z, b in pairs(blinded) do
+        if b.common then
+            local dx, dy = z:getX() - x, z:getY() - y
+            if dx * dx + dy * dy <= rr then hit[#hit + 1] = z end
+        end
+    end
+    for _, z in ipairs(hit) do
+        release(z)
+        watched[z] = 0
+    end
+    local near = NOM_VariantAI.NOISE_NEAR * NOM_VariantAI.NOISE_NEAR
+    for p, c in pairs(seen) do
+        local dx, dy = c.x - x, c.y - y
+        if dx * dx + dy * dy <= near then
+            noisy[p] = tick + NOM_VariantAI.NOISE_TICKS
+            c.f = nil
+        end
+    end
+end
+
+-- Contagem pro debug (NOM.blind): cegos da visão curta, Estaladores cegos, vigiados.
+function NOM_VariantAI.counts()
+    local common, estalador, w = 0, 0, 0
+    for _, b in pairs(blinded) do
+        if b.common then common = common + 1 else estalador = estalador + 1 end
+    end
+    for _ in pairs(watched) do w = w + 1 end
+    return { common = common, estalador = estalador, watched = w, on = r2 ~= nil }
+end
+
 local function corredor(z, md, report)
     local t = z:getTarget()
     local player = t ~= nil and instanceof(t, "IsoPlayer")
@@ -81,10 +244,13 @@ local function corredor(z, md, report)
 end
 
 -- OnZombieUpdate roda por zumbi a cada frame: o zumbi comum sai na primeira
--- linha, com três consultas de tabela Lua e nenhuma chamada Java.
+-- linha, com quatro consultas de tabela Lua e nenhuma chamada Java. O cego e o vigiado
+-- da visão curta saem antes de qualquer outra chamada.
 local function onUpdate(z, report)
-    local kind, blind, still = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z]
-    if kind == nil and blind == nil and still == nil then return end
+    local kind, blind, still, w = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z], watched[z]
+    if kind == nil and blind == nil and still == nil and w == nil then return end
+    if blind ~= nil and blind.common then return commonBlind(z, blind) end
+    if w ~= nil then return watch(z, w) end
     local md = z:getModData()
     if kind ~= nil and md.NOM_variant ~= kind then -- objeto reaproveitado
         NOM_NightStats.variants[z] = nil
@@ -111,6 +277,7 @@ end
 -- ponytail: alerta até o zumbi ir pro virtual ou a névoa baixar; esfriar com o tempo se pedirem.
 local function onHit(z)
     if blinded[z] then release(z) end
+    watched[z] = nil
     if NOM_NightStats.variants[z] ~= "estalador" then return end
     z:getModData().NOM_alert = true
 end
@@ -132,6 +299,9 @@ end
 local HELD = { carpideira = true, estalador = true }
 
 local function heldByMod(id)
+    -- visão curta (sprint 0036): na névoa, qualquer zumbi pode ter ficado cego. O useless de
+    -- outro mod num zumbi comum também cai, só enquanto a névoa durar
+    if visionR2() ~= nil then return true end
     local period = NOM_FogState.period
     if not period then return false end
     local cfg = NOM_VariantRules.config(NOM_Config.get)
@@ -153,6 +323,7 @@ end
 -- herda a cegueira nem a parada. Morto também sai da tabela.
 local function forget(z)
     if blinded[z] then release(z) end
+    watched[z] = nil
     NOM_Carpideira.forget(z)
 end
 
@@ -186,6 +357,8 @@ function NOM_VariantAI.install(report)
     NOM_NightStats.unstick = unstick
     Events.OnZombieDead.Add(forget)
     Events.EveryOneMinute.Add(clicks)
+    Events.OnTick.Add(sweep)
+    Events.OnWorldSound.Add(heard)
 end
 
 return NOM_VariantAI

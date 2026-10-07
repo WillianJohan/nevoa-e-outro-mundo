@@ -54,12 +54,18 @@ local function setup(opts)
     local function fire(name, ...)
         for _, h in ipairs(handlers[name] or {}) do h(...) end
     end
+    G.pcalls, G.listCalls = 0, 0
     function G.player(o)
         local p = { class = "IsoPlayer", x = o.x, y = o.y, sneaking = o.sneaking or false,
             running = o.running or false, sprinting = o.sprinting or false, bitten = 0 }
-        function p:isSneaking() return self.sneaking end
-        function p:isRunning() return self.running end
-        function p:isSprinting() return self.sprinting end
+        local function def(name, fn)
+            p[name] = function(...) G.pcalls = G.pcalls + 1; return fn(...) end
+        end
+        def("isSneaking", function(self) return self.sneaking end)
+        def("isRunning", function(self) return self.running end)
+        def("isSprinting", function(self) return self.sprinting end)
+        def("getX", function(self) return self.x end)
+        def("getY", function(self) return self.y end)
         G.players[#G.players + 1] = p
         return p
     end
@@ -74,6 +80,18 @@ local function setup(opts)
             z.md.NOM_variant = o.variant
             NOM_NightStats.variants[z] = o.variant -- o que o NOM_NightStats faz no apply
         end
+        def("getX", function(self) return self.x end)
+        def("getY", function(self) return self.y end)
+        -- Andando (WalkTowardState/PathFindState): o useless não para (PathFindState.execute
+        -- não olha, bytecode). Para quando bPathfind e bMoving caem e o caminho some (fim do
+        -- execute 128–149), o mesmo modelo do tests/fog_world.lua.
+        z.vars = { bPathfind = false, bMoving = false }
+        def("setVariable", function(self, k, v) self.vars[k] = v end)
+        def("setPath2", function(self, p) self.path = p end)
+        def("getPathFindBehavior2", function(self)
+            return { cancel = function() self.pathCancelled = true end }
+        end)
+        def("isMoving", function(self) return self.vars.bMoving == true or self.vars.bPathfind == true end)
         def("hasModData", function(self) return next(self.md) ~= nil end)
         def("getModData", function(self) return self.md end)
         def("isLocal", function(self) return (not isClient() and not isServer()) or not self.remote end)
@@ -112,7 +130,24 @@ local function setup(opts)
         if a.x < tx then a.x = a.x + 1 elseif a.x > tx then a.x = a.x - 1 end
         if a.y < ty then a.y = a.y + 1 elseif a.y > ty then a.y = a.y - 1 end
     end
-    -- um frame do jogo, na ordem do bytecode
+    -- Som no mundo: WorldSound.init dispara OnWorldSound (129) e vive 16 atualizações
+    -- (life = 16, init 6–8); o zumbi ouve no updateInternal (RespondToSound, 1765–1788),
+    -- que volta cedo com ele useless (8–15). Quem ficou surdo enquanto o som vivia não ouve.
+    G.live = {}
+    local function hear(z)
+        if z.useless then return end
+        for _, s in ipairs(G.live) do
+            if dist(z, s) <= s.r then z.sound = { x = s.x, y = s.y } end
+        end
+    end
+    local function age()
+        for i = #G.live, 1, -1 do
+            local s = G.live[i]
+            s.life = s.life - 1
+            if s.life <= 0 then table.remove(G.live, i) end
+        end
+    end
+    -- um frame do jogo, na ordem do bytecode; o OnTick no fim
     function G.frame(n)
         for _ = 1, n or 1 do
             for _, z in ipairs(G.zombies) do
@@ -127,26 +162,32 @@ local function setup(opts)
                 if not z.remote then
                     if z.bonusSpotTime > 0 and z.spottedLast then spotted(z, z.spottedLast, true) end
                     z.bonusSpotTime = math.max(0, z.bonusSpotTime - 1)
+                    hear(z)
                     local t = z.target
                     if t and dist(z, t) <= 1 then
                         t.bitten = t.bitten + 1
                     elseif t then
                         step(z, t.x, t.y)
-                    elseif z.lastSeen then -- WalkTowardState até chegar, depois acaba
+                        z.vars.bMoving = true
+                    elseif z.lastSeen and z.vars.bMoving then -- WalkTowardState em andamento, até chegar
                         step(z, z.lastSeen.x, z.lastSeen.y)
-                        if z.x == z.lastSeen.x and z.y == z.lastSeen.y then z.lastSeen = nil end
+                        if z.x == z.lastSeen.x and z.y == z.lastSeen.y then
+                            z.lastSeen, z.vars.bMoving = nil, false
+                        end
                     elseif z.sound then
                         step(z, z.sound.x, z.sound.y)
                     end
                 end
             end
+            age()
+            fire("OnTick")
         end
     end
-    -- RespondToSound volta cedo com o zumbi useless
-    function G.sound(x, y)
-        for _, z in ipairs(G.zombies) do
-            if not z.useless then z.sound = { x = x, y = y } end
-        end
+    -- addSound(fonte, x, y, z, raio, volume); raio nil: alcança todo mundo
+    function G.sound(x, y, r, source)
+        r = r or 1000
+        fire("OnWorldSound", x, y, 0, r, r, source)
+        G.live[#G.live + 1] = { x = x, y = y, r = r, life = 16 }
     end
     function G.hit(z, p) fire("OnHitZombie", z, p, nil, nil) end
     function G.minutes(n) for _ = 1, n do fire("EveryOneMinute") end end
@@ -160,11 +201,12 @@ local function setup(opts)
     getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
     isServer = function() return false end
     getDebug = function() return false end
-    SandboxVars = {}
+    SandboxVars = { NevoaEOutroMundo = opts.sandbox }
     getCell = function()
         return {
             getZombieList = function()
-                return { size = function() return #G.zombies end, get = function(_, i) return G.zombies[i + 1] end }
+                return { size = function() G.listCalls = G.listCalls + 1; return #G.zombies end,
+                    get = function(_, i) G.listCalls = G.listCalls + 1; return G.zombies[i + 1] end }
             end,
         }
     end
@@ -253,10 +295,11 @@ return {
         G.frame(3)
         assert(#G.reports == 2, "não avisou o novo alvo")
     end,
+    -- dentro da visão curta (sprint 0036) o comum é o de sempre
     ai_common_zombie_untouched = function()
         local G = setup()
         local z = G.zombie({ x = 0, y = 0 })
-        G.player({ x = 5, y = 0, sneaking = true })
+        G.player({ x = 3, y = 0, sneaking = true })
         G.frame(5)
         assert(#G.reports == 0 and z.target ~= nil and next(z.md) == nil, "mexeu em zumbi comum")
     end,
@@ -436,7 +479,9 @@ return {
         local function sum(list) local n = 0 for _, z in ipairs(list) do n = n + z.calls end return n end
         assert(sum(by.estalador) <= 100 * 10 * 4, "Estalador: " .. sum(by.estalador))
         assert(sum(by.corredor) <= 100 * 10 * 3, "Corredor: " .. sum(by.corredor))
-        assert(sum(by.none) == 0, "Sem-rosto/comum: " .. sum(by.none))
+        -- comum: só o rodízio da visão curta (sprint 0036), 1 chamada (getTarget) por zumbi
+        -- do lote, VISION_BATCH por tick
+        assert(sum(by.none) <= 10 * NOM_VariantAI.VISION_BATCH, "comum: " .. sum(by.none))
         -- Carpideira calma (sprint 0011): 2 por frame (getModData, isLocal) e, no
         -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
         assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
@@ -444,6 +489,13 @@ return {
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)
         assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0 and sum(by.carpideira) == 0)
+        -- Sem-rosto na vermelha: sem IA aqui, mas com a visão curta (sprint 0036): só o lote
+        local G2 = setup()
+        NOM_FogState.set(true, 1, true)
+        local sr = {}
+        for i = 1, 300 do sr[i] = G2.zombie({ x = 100 + i, y = 100, variant = "semrosto" }) end
+        G2.frame(10)
+        assert(sum(sr) <= 10 * (NOM_VariantAI.VISION_BATCH + 300 * 2), "Sem-rosto: " .. sum(sr))
     end,
 
     -- Carpideira (sprint 0011): calma, fica parada; jogador em pé à vista (fora do raio
@@ -583,8 +635,9 @@ return {
         local z = G.zombie({ x = 0, y = 0, useless = true, id = id })
         NOM_NightStats.unstick(z)
         assert(not z.useless, "não soltou a Carpideira da névoa anterior")
-        -- e uma de dois períodos atrás não
-        local G2 = setup()
+        -- e uma de dois períodos atrás não (com a visão curta desligada: ligada, na névoa
+        -- qualquer useless herdado cai, vision_inherited_blind_released_in_fog)
+        local G2 = setup({ sandbox = { FogZombieVision = 0 } })
         NOM_FogState.set(true, 4)
         local old = G2.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 3, 4 }) })
         NOM_NightStats.unstick(old)
@@ -609,5 +662,171 @@ return {
         NOM_NightStats.unstick(z)
         G.reuse(z)
         assert(z.useless, "mexeu no zumbi do tutorial")
+    end,
+
+    -- Visão curta na névoa (sprint 0036, spec §5) -------------------------------------
+    -- critério: jogador quieto (andando, sem correr) a 8 tiles não é perseguido; o zumbi
+    -- não chega a 4 tiles dele. Controle: com a opção em 0 (desligada), morde.
+    vision_common_ignores_quiet_far_player = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 8, y = 0 })
+        for _ = 1, 30 do
+            G.frame(10)
+            assert(math.abs(z.x - p.x) > NOM_VariantAI.VISION_TILES, "chegou perto: x=" .. z.x)
+        end
+        assert(p.bitten == 0 and z.target == nil, "perseguiu jogador quieto a 8 tiles")
+        assert(NOM_VariantAI.blinded[z] or NOM_VariantAI.watched[z], "nem cego nem vigiado")
+        local G2 = setup({ sandbox = { FogZombieVision = 0 } })
+        G2.zombie({ x = 0, y = 0 })
+        local p2 = G2.player({ x = 8, y = 0 })
+        G2.frame(30)
+        assert(p2.bitten > 0, "o fake não persegue: teste não prova nada")
+    end,
+    vision_common_sees_within_radius = function()
+        local G = setup()
+        G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 3, y = 0, sneaking = true })
+        G.frame(30)
+        assert(p.bitten > 0, "não viu a 3 tiles")
+    end,
+    -- correr ou disparar é barulho: persegue de longe
+    vision_common_chases_noisy_player = function()
+        for _, o in ipairs({ { running = true }, { sprinting = true } }) do
+            local G = setup()
+            G.zombie({ x = 0, y = 0 })
+            o.x, o.y = 8, 0
+            local p = G.player(o)
+            G.frame(30)
+            assert(p.bitten > 0, "ignorou jogador correndo")
+        end
+    end,
+    -- cego no meio da janela, o jogador chega a 3 tiles: a cegueira cai e ele é visto
+    vision_player_walking_in_is_seen = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(20)
+        assert(z.useless, "não cegou")
+        p.x = z.x + 3
+        G.frame(40)
+        assert(p.bitten > 0, "não viu quem chegou perto")
+    end,
+    -- som acorda: o cego é surdo (useless), então o som perto dele solta; barulho no pé
+    -- do jogador o denuncia e o zumbi persegue
+    vision_noise_next_to_player_wakes = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(20)
+        assert(z.useless, "não cegou")
+        G.sound(p.x, p.y, 20, p)
+        G.frame(30)
+        assert(p.bitten > 0, "tiro do lado do jogador não acordou o zumbi")
+    end,
+    -- som longe do cego (fora do raio) não solta
+    vision_far_noise_keeps_blind = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(20)
+        G.sound(60, 60, 10)
+        G.frame(1)
+        assert(z.useless and p.bitten == 0, "som longe soltou")
+    end,
+    -- variantes mantêm o comportamento: o Corredor persegue e avisa
+    vision_corredor_unchanged = function()
+        local G = setup()
+        local c = G.zombie({ x = 0, y = 0, variant = "corredor" })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(30)
+        assert(p.bitten > 0 and #G.reports == 1 and G.reports[1] == c, "Corredor mudou")
+        assert(NOM_VariantAI.blinded[c] == nil)
+    end,
+    -- o Sem-rosto não tem IA de mira própria: ganha a visão curta
+    vision_semrosto_short_sight = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "semrosto" })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(120)
+        assert(p.bitten == 0 and math.abs(z.x - p.x) > NOM_VariantAI.VISION_TILES, "Sem-rosto viu de longe")
+    end,
+    -- Eco (noite) fica de fora: alma do mod, comportamento dele
+    vision_eco_untouched = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        z.md.NOM_eco = true
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(30)
+        assert(p.bitten > 0, "cegou o Eco")
+    end,
+    -- só o dono decide; sem névoa, nada
+    vision_remote_and_no_fog_untouched = function()
+        local G = setup({ client = true })
+        local z = G.zombie({ x = 0, y = 0, remote = true })
+        local p = G.player({ x = 8, y = 0 })
+        z.target = p
+        G.frame(30)
+        assert(z.target == p and not z.useless, "mexeu na cópia remota")
+        local G2 = setup({ fog = false })
+        G2.zombie({ x = 0, y = 0 })
+        local p2 = G2.player({ x = 8, y = 0 })
+        G2.frame(30)
+        assert(p2.bitten > 0, "cegou sem névoa")
+    end,
+    -- a névoa baixa com o zumbi cego: solta na hora
+    vision_fog_end_releases = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        G.player({ x = 8, y = 0 })
+        G.frame(20)
+        assert(z.useless)
+        NOM_FogState.set(false, 1)
+        G.frame(2)
+        assert(not z.useless and NOM_VariantAI.blinded[z] == nil, "ficou cego depois da névoa")
+    end,
+    -- posse que muda no meio da janela: o novo dono herda o useless (pacote, §3.2). Com a
+    -- visão curta, qualquer zumbi pode ter ficado cego: na névoa, o unstick solta
+    vision_inherited_blind_released_in_fog = function()
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
+        NOM_NightStats.unstick(z)
+        assert(not z.useless, "herdado da visão curta ficou parado")
+        -- o do jogo (outfit de debug) fica
+        local dbg = G.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor(nil, nil, { 2, 3 }) })
+        NOM_NightStats.unstick(dbg)
+        assert(dbg.useless)
+    end,
+    -- orçamento (critério de aceite): 300 zumbis. Parados (sem alvo): só o lote, ~1
+    -- chamada por zumbi do lote. Multidão (os 300 com o jogador de alvo a 6–10 tiles,
+    -- o pior caso): o pior tick fica longe do teto de 2500 por atualização
+    vision_budget_300_zombies = function()
+        local function total(G)
+            local n = G.pcalls + G.listCalls
+            for _, z in ipairs(G.zombies) do n = n + z.calls end
+            return n
+        end
+        local G = setup()
+        for i = 1, 300 do G.zombie({ x = 100 + i, y = 100 }) end
+        G.frame(1)
+        local before = total(G)
+        G.frame(600)
+        local idle = (total(G) - before) / 600
+        assert(idle <= NOM_VariantAI.VISION_BATCH * 2 + 2, "parados: " .. idle .. " por tick")
+        local G2 = setup()
+        G2.player({ x = 0, y = 0 })
+        for i = 1, 300 do G2.zombie({ x = 6 + i % 5, y = i % 9 - 4 }) end
+        local worst, sum, last = 0, 0, total(G2)
+        for _ = 1, 600 do
+            G2.frame(1)
+            local now = total(G2)
+            worst = math.max(worst, now - last)
+            sum = sum + now - last
+            last = now
+        end
+        NOM_VariantAI.lastBudget = { idle = idle, avg = sum / 600, worst = worst }
+        assert(worst <= 1000, "multidão, pior tick: " .. worst)
+        assert(sum / 600 <= 300, "multidão, média: " .. sum / 600)
     end,
 }
