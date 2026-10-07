@@ -14,6 +14,7 @@ local FILES = {
     "tests/test_rules.lua",
     "tests/test_ticao_rules.lua",
     "tests/test_light_rules.lua",
+    "tests/test_flicker_rules.lua",
     "tests/test_ticao_light.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",
