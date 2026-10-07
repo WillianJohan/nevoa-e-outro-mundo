@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprint 0035 implementada pelo Cursor, na branch, pronta pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprint 0035 na `main` desde o merge `e73202b`, sincronizada e pronta pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)** está na branch `sprint/0035-silent-hill`, pronta pro teste no jogo; o merge na `main` vem logo em seguida. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)** está na `main` desde o merge `e73202b` (`em teste`), sincronizada pro jogo. O roadmap está em [sprints/README.md](sprints/README.md).
 - **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
-- 1004 testes Lua (na branch da 0035), 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 1014 testes Lua, 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -77,7 +77,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 
 ## Estado atual: Outro Mundo estilo Silent Hill (sprint 0035)
 
-**Implementada na branch `sprint/0035-silent-hill`, com testes verdes e pronta pro teste do Johan no jogo.** O code review final roda em paralelo; depois dele vêm o merge na `main`, o push e o `scripts/dev-sync.sh`. Plano em [sprints/sprint-0035-silent-hill/plan.md](sprints/sprint-0035-silent-hill/plan.md); resumo, decisões e roteiro em [sprints/sprint-0035-silent-hill/README.md](sprints/sprint-0035-silent-hill/README.md).
+**Na `main` desde o merge `e73202b`, sincronizada e pronta pro teste do Johan no jogo.** O code review final não achou nada crítico; os 7 achados (o maior: o esquecimento da memória da varredura saiu do tick do carro) foram corrigidos antes do merge (seção "Code review final" do plano). Plano em [sprints/sprint-0035-silent-hill/plan.md](sprints/sprint-0035-silent-hill/plan.md); resumo, decisões e roteiro em [sprints/sprint-0035-silent-hill/README.md](sprints/sprint-0035-silent-hill/README.md).
 
 **O que a 0035 entrega:**
 - **Transição descascando:** quando a névoa abre ao vivo, a erosão se espalha em manchas ao longo de 6 s e recua do mesmo jeito em 4 s no fim. Quem carrega o save ou entra no meio vê o mundo já virado.
@@ -129,8 +129,8 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 ## Próximo passo
 
-1. **Fechar a 0035:** code review final da entrega, testes verdes, merge na `main`, push e `scripts/dev-sync.sh`. O Johan testa no jogo pelo [roteiro do README da sprint](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e reinicia o jogo depois do sync.
-2. **Sprint 0036 — Equilíbrio:** visão de ~4 tiles e vaguear (perambular), com medição de custo. Branch `sprint/0036-equilibrio` saindo da `main` depois do merge da 0035.
+1. **Testar a 0035 no jogo:** o Johan reinicia o jogo e segue o [roteiro do README da sprint](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo), incluindo as pendências da 0034.
+2. **Sprint 0036 — Equilíbrio:** visão de ~4 tiles e vaguear (perambular), com medição de custo. Branch `sprint/0036-equilibrio` saindo da `main`.
 3. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
    - **0037** — sonar do Estalador;
    - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
