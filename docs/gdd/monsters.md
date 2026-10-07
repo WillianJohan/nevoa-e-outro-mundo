@@ -74,13 +74,18 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
   do jogo), visão a pior; a velocidade é a do jogo de dia e a da noite à noite.
 - Agarrão letal rápido: **pendente** — o jogo não tem dano por zumbi nem evento
   no golpe do zumbi (ver Pendências da [sprint 0004](../sprints/sprint-0004-estalador-corredor/README.md)).
-- Estalo audível, em média a cada 2 minutos de jogo, que serve de aviso.
+- Estalo audível que serve de aviso: cada Estalador estala num intervalo aleatório de 5 a
+  30 segundos reais, sorteado a cada estalo (não estalam juntos; o tamanho do dia não muda o
+  ritmo; a pausa não conta).
 - **Sonar** (sprint 0037): cada estalo solta um anel que corre 8 tiles em 1,5 s. Se o anel
   passa por um jogador no mesmo andar **em pé ou andando**, o Estalador o acha, mesmo cego, e
-  não volta a ser cegado por 10 s: dá tempo de ele chegar. **Agachado e parado**, o anel
-  passa. Agachado andando não basta. Quem decide é o servidor; o anel aparece na névoa fluida
-  (mod Volumétrica) como uma onda que empurra a névoa pra fora, ou, sem ela, como um anel
-  discreto no chão, na cor da névoa. Estalo e anel são os mesmos pra todos no MP.
+  não volta a ser cegado por 10 s de jogo (a pausa não conta): dá tempo de ele chegar.
+  **Agachado e parado**, o anel passa. Agachado andando não basta. **Casa protege**: com um
+  dentro de casa e o outro na rua (ou em casas diferentes), o anel não acha; na mesma casa,
+  acha. Quem decide é o servidor; o anel aparece na névoa fluida (mod Volumétrica) como uma
+  onda que empurra a névoa pra fora e para nas paredes, ou, sem ela, como um anel discreto no
+  chão, na cor da névoa. Estalo e anel são os mesmos pra todos no MP, e só chegam a quem está
+  a até 40 tiles.
 - Visual: olhos tapados por atadura manchada e arame enferrujado, pele de porcelana rachada.
 - Quando a névoa baixa, volta a ser zumbi comum.
 

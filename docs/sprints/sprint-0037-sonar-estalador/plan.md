@@ -103,3 +103,28 @@ Teste primeiro (`tests/test_sonar_rules.lua`):
 - **`./run-tests.sh` verde:** Lua 1104/1104 (três vezes), contraste 9, Outro Mundo 11, mod3
   (profundidade, contrato, núcleo Java com 6 do sonar, shaders) e build 29. O jar do mod3 foi
   recompilado e assinado (`scripts/build-mod3.sh`).
+
+## Code review final
+
+Duas decisões do Johan (2026-10-06) e 11 achados do review, cada um com teste que falha antes.
+
+| # | Achado | Correção | Commit |
+|---|---|---|---|
+| 4 | Ritmo (decisão): o estalo era chance 1/2 por minuto de jogo, todos no mesmo tick e preso ao tamanho do dia | cada Estalador estala num intervalo aleatório de 5 a 30 s reais, sorteado a cada estalo; relógio do `OnTick` que para na pausa; lista lida a cada 1 s (`sonar_click_rhythm_*`) | `0f73fd1` |
+| 7 | Quem anda na direção do anel pulava a frente entre dois ticks | o cruzamento usa a posição do tick anterior; cada anel acha cada jogador uma vez (`sonar_runner_never_jumps_front`). Junto com o 4: o ritmo novo tirou a sorte de fase do teste do agachado andando e o expôs | `0f73fd1` |
+| 1 | Teto de 8 anéis: o mais velho saía depois de anunciado e não achava ninguém | sai só anel que já não alcança jogador (além de `REACH` = 17 tiles), o mais longe; senão o novo não nasce nem é anunciado (`sonar_cap_*`, com 10 Estaladores) | `97260d5` |
+| 2 | O cliente aceitava anel de qualquer lugar do mapa | o servidor manda `sonar` só a quem está a até 40 tiles (`sendServerCommand(jogador, ...)`); o cliente descarta anel longe de todo jogador local | `db0ccc4` |
+| 3 | Casa protege (decisão) | `sq:isOutside()` e `sq:getBuilding()` do Estalador (no estalo) e do jogador (no cruzamento): um dentro e o outro fora, ou casas diferentes, não acha (`sonar_house_shelters`) | `48c8869` |
+| 6 | Objeto do zumbi reaproveitado no meio do anel | o anel guarda o `persistentOutfitID` e confere antes de aplicar; o `sonarFound` leva o `pid` e o dono confere | `917369d` |
+| 5 | Useless herdado na troca de posse engolia o `spotted` | `sonarFound` solta o useless que não é do jogo nem da sirene | `c0a4031` |
+| 10 | A janela de 10 s vencia com o jogo pausado | `found[z].left` desconta pelo `NOM_FogEventRules.countdown` (parado na pausa); teste no dono e no servidor solo | `52a86f8` |
+| 8 | A névoa do sonar era depositada em todo o anel à frente e saltava parede | cada célula leva a névoa na própria direção radial e para em face fechada, sólido e interior; massa conservada (`FlowSonarTest.noneBehindWall`); jar recompilado | `2db6fd8` |
+| 11 | O contrato Lua ↔ Java só comparava constantes | `tests/sonar_curve.csv`, lido pelos dois testes (raio em t) | `e3591b2` |
+| 9 | Custo comparado errado no pz-api-notes | o passo na escala 2 é ~5,6 ms; o sonar, ~3 % dele | docs |
+
+- **Limite documentado:** o `Flow` roda no máximo 2 passos de 0,05 s por quadro; abaixo de 10 FPS a
+  onda na névoa fluida atrasa (quem acha é o servidor, só o desenho atrasa).
+- **Pausa sem anel** é conferida só na amostra (a cada 250 ms): o ritmo tem precisão de ~0,25 s.
+- **`./run-tests.sh` verde depois do review:** Lua 1120/1120 (três vezes), contraste 9, Outro Mundo
+  11, mod3 (profundidade, contrato, núcleo Java com 8 do sonar, shaders) e build 29. Jar do mod3
+  recompilado e assinado.

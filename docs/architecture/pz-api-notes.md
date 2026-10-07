@@ -1900,17 +1900,25 @@ simula aplica (`shared/NOM_Sonar.lua`, `NOM_VariantAI.sonarFound`), quem renderi
 | Círculo de raio r no chão isométrico vira elipse 2:1 na tela; a ponta da direita é (x + r/√2, y − r/√2) | CONFIRMED | `IsoUtils.XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96Tz` (§25): o máximo de x − y no círculo é r√2 e o de x + y também, com metade do peso em y |
 | `NOMRender_sonar(x, y, z)` (mod3): `@LuaMethod(global = true)` como os outros, devolve boolean, `catch (Throwable)` devolve false | CONFIRMED | o mesmo caminho do `NOMRender_setParam` (registro no `Main.java`); contrato em `tests/test_mod3_sonar.lua` |
 | O mod3 recusa o anel sem névoa visível: `ClimateManager.getInstance().getFogIntensity() < 0.05` | CONFIRMED | já lido no `RenderContext.onWorldEnd` (`f.fogIntensity`); uso vanilla `shared/Fishing/Bobber.lua:94` |
-| Na névoa fluida o anel move densidade (como o `blast`), não velocidade | decisão | a projeção de pressão do `FlowGrid.step` apaga velocidade radial pra fora (divergência); a frente leva `Sonar.TAKE` (50 %) da faixa varrida pra 1 tile à frente, sem criar massa (`FlowSonarTest`) |
+| Na névoa fluida o anel move densidade (como o `blast`), não velocidade | decisão | a projeção de pressão do `FlowGrid.step` apaga velocidade radial pra fora (divergência); cada célula da faixa varrida leva `Sonar.TAKE` (50 %) da névoa dela pra frente na própria direção radial, até meio tile depois da frente, sem criar massa (`FlowSonarTest`) |
+| A frente da névoa fluida para em parede: face fechada (`openU`/`openV`, a máscara de parede, porta e janela que o `Flow` monta), sólido e interior | decisão (review final) | `FlowGrid.sonarPass`/`sonarTarget`; `FlowSonarTest.noneBehindWall` (o lado de trás de uma parede comprida começa vazio e continua vazio) |
+| Casa protege: interior pelo square, `o:getCurrentSquare()`, `sq:isOutside()`, `sq:getBuilding()` | CONFIRMED (bytecode + vanilla) | `IsoGridSquare.isOutside()Z` 0–10 lê a flag `IsoFlagType.exterior` das propriedades do square; `IsoGridSquare.getBuilding()` 0–15 = `getRoom()` e `IsoRoom.getBuilding()`, ou `null` sem sala; `getCurrentSquare()` em `IsoMovingObject` (`javap -p`). Vanilla: `shared/RadioCom/ISRadioInteractions.lua:185` (`source:isOutside() ~= plrsquare:isOutside()`: o rádio não chega de dentro pra fora), `client/ISUI/ISWorldObjectContextMenu.lua:1679` (`getBuilding() ~=` entre square e jogador); no servidor, `getCurrentSquare():isOutside()` já roda no `server/NOM_Night.lua:89`. Regra: um dentro e o outro fora, ou prédios diferentes, o anel não acha (`NOM_SonarRules.sheltered`); sem square, não protege |
+| O anel vai só a quem está perto: `sendServerCommand(jogador, MODULE, "sonar", args)` | CONFIRMED | §7 (`server/ClientCommands.lua:477`); já usado no `server/NOM_Fog.lua:43`. O `sonarFound` continua indo a todos (o dono do Estalador pode ser qualquer cliente) e leva o `persistentOutfitID` (`pid`), que o dono confere (o `onlineID` se reaproveita) |
+| Ritmo do estalo e janela do achado em tempo real que para na pausa | CONFIRMED | `getTimestampMs()` + `isGamePaused()` (§11.2). Servidor: `S.clock` soma o tempo do `OnTick` (no máximo 250 ms por tick) e joga fora o acumulado com o jogo pausado (conferido a cada amostra, 250 ms). Dono: `NOM_VariantAI.found[z].left` desconta pelo `NOM_FogEventRules.countdown` (parado na pausa, no máximo 1 s por tick), como as sirenes atrasadas |
+| Abaixo de 10 FPS a frente do mod3 anda mais devagar que o anel do servidor | limitação | `Flow` roda no máximo 2 passos de 0,05 s por quadro (`while (acc >= STEP && steps < 2)`) e joga fora o resto: abaixo de 10 FPS a simulação (e a onda na névoa) fica atrás do tempo real. Quem acha é o servidor, então só o desenho atrasa |
 
 Custo medido (mundo falso e teste Java):
 
-- servidor, `sonar_budget`: com névoa e sem anel, 2,36 chamadas por tick (a amostra de posição a cada
-  250 ms); 8 anéis e 4 jogadores, pior tick 58; o minuto de jogo com 303 zumbis, 634 (sorteio pelo ID
-  persistente, sem tocar no zumbi que não é Estalador além disso). Sem névoa e sem anel: 0;
+- servidor, `sonar_budget`: com névoa e sem anel, 2,37 chamadas por tick (a amostra de posição a cada
+  250 ms); 8 anéis e 4 jogadores, pior tick 79 (+3 por cruzamento pela casa, +1 por achado pelo
+  `persistentOutfitID`); a passada na lista (a cada 1 s) com 303 zumbis, 624 num tick, média de
+  11,3 por tick (sorteio pelo ID persistente, sem tocar no zumbi que não é Estalador além disso).
+  Sem névoa e sem anel: 0;
 - tela, `sonar_fx_budget`: 0 por quadro sem anel; 6 de base + 4 por anel (3 projeções e 1 desenho):
   10 com 1 anel, 38 com 8;
 - mod3, `FlowSonarTest.cost`: 8 anéis no fim (maior faixa) num passo da grade de 128 tiles na escala 2:
-  ~0,18 ms na thread da simulação (o passo inteiro é ~1 ms).
+  ~0,15 ms na thread da simulação, ~3 % do passo inteiro da grade nessa escala (~5,6 ms,
+  `FlowScaleTest`).
 
 ## Abordagem recomendada por mecânica (resumo)
 
@@ -1999,4 +2007,6 @@ Custo medido (mundo falso e teste Java):
     pra 0,1 tile em 250 ms contar como andando, sem contar o jogador parado como andando? O anel na
     tela cai no chão certo com zoom e em andar de cima? A frente na névoa fluida do mod3 se vê, e
     lê como onda? O Estalador achado anda mesmo até o jogador agachado antes de a janela de 10 s
-    acabar?
+    acabar? No dedicado, o square do jogador remoto (`getCurrentSquare()`) acompanha ele entrar e
+    sair de casa, e varanda ou garagem sem sala (`isOutside` falso, `getBuilding` nil) protege como
+    o esperado?
