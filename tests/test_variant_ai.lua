@@ -57,7 +57,7 @@ local function setup(opts)
     G.pcalls, G.listCalls = 0, 0
     function G.player(o)
         local p = { class = "IsoPlayer", x = o.x, y = o.y, sneaking = o.sneaking or false,
-            running = o.running or false, sprinting = o.sprinting or false, bitten = 0 }
+            running = o.running or false, sprinting = o.sprinting or false, bitten = 0, remote = o.remote == true }
         local function def(name, fn)
             p[name] = function(...) G.pcalls = G.pcalls + 1; return fn(...) end
         end
@@ -133,11 +133,16 @@ local function setup(opts)
     -- Som no mundo: WorldSound.init dispara OnWorldSound (129) e vive 16 atualizações
     -- (life = 16, init 6–8); o zumbi ouve no updateInternal (RespondToSound, 1765–1788),
     -- que volta cedo com ele useless (8–15). Quem ficou surdo enquanto o som vivia não ouve.
+    -- Ouvir é andar até o som pelo PathFindState (bPathfind); o halt (bPathfind falso,
+    -- caminho cancelado) para a caminhada, e ela só volta se ele ouvir de novo.
     G.live = {}
     local function hear(z)
         if z.useless then return end
         for _, s in ipairs(G.live) do
-            if dist(z, s) <= s.r then z.sound = { x = s.x, y = s.y } end
+            if dist(z, s) <= s.r then
+                z.sound = { x = s.x, y = s.y }
+                z.vars.bPathfind = true
+            end
         end
     end
     local function age()
@@ -174,8 +179,11 @@ local function setup(opts)
                         if z.x == z.lastSeen.x and z.y == z.lastSeen.y then
                             z.lastSeen, z.vars.bMoving = nil, false
                         end
-                    elseif z.sound then
+                    elseif z.sound and z.vars.bPathfind then
                         step(z, z.sound.x, z.sound.y)
+                        if z.x == z.sound.x and z.y == z.sound.y then
+                            z.sound, z.vars.bPathfind = nil, false
+                        end
                     end
                 end
             end
@@ -196,6 +204,16 @@ local function setup(opts)
 
     instanceof = function(o, cls) return o.class == cls end
     ZombRand = function(n) return G.rand % n end
+    -- getNumActivePlayers/getSpecificPlayer: só os jogadores locais (NOM_SirenFreeze)
+    local function locals()
+        local out = {}
+        for _, p in ipairs(G.players) do
+            if not p.remote then out[#out + 1] = p end
+        end
+        return out
+    end
+    getNumActivePlayers = function() return #locals() end
+    getSpecificPlayer = function(i) return locals()[i + 1] end
     isClient = function() return opts.client == true end
     -- getCore():getGameMode() == "Tutorial": shared/TimedActions/ISGrabCorpseAction.lua:140
     getCore = function() return { getGameMode = function() return opts.gameMode or "Sandbox" end } end
@@ -733,6 +751,53 @@ return {
         G.sound(60, 60, 10)
         G.frame(1)
         assert(z.useless and p.bitten == 0, "som longe soltou")
+    end,
+    -- review final da 0036: o tiro puxa. O zumbi a 30 tiles ouve, anda até o som, vê o
+    -- jogador a 10 tiles e não pode ser cegado no caminho. Com a fonte (o jogador) ou sem
+    -- ela (o jogador local no ponto do som, pela posição de agora).
+    vision_shot_30_tiles_zombie_arrives = function()
+        for _, withSource in ipairs({ true, false }) do
+            local G = setup()
+            local z = G.zombie({ x = 30, y = 0 })
+            local p = G.player({ x = 0, y = 0 })
+            G.frame(5)
+            assert(z.x == 30 and not z.useless, "o fake ouviu ou viu sem som")
+            G.sound(p.x, p.y, 40, withSource and p or nil)
+            G.frame(150)
+            assert(p.bitten > 0, "tiro a 30 tiles não trouxe o zumbi (fonte=" .. tostring(withSource) .. "): x=" .. z.x)
+        end
+    end,
+    -- a janela do barulho cresce com o raio (tempo de chegada) e vale pra quem está no raio
+    -- do som; quem não ouviu continua com a visão curta
+    vision_shot_window_and_reach = function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        G.frame(1)
+        G.sound(0, 0, 40, p)
+        G.frame(NOM_VariantAI.NOISE_TICKS + 300)
+        G.zombie({ x = 8, y = 0 }) -- chegou agora, dentro do raio do tiro
+        G.frame(30)
+        assert(p.bitten > 0, "a janela do tiro acabou antes de o zumbi chegar")
+        local G2 = setup()
+        local p2 = G2.player({ x = 0, y = 0 })
+        G2.frame(1)
+        G2.sound(0, 0, 12, p2)
+        p2.x = 20 -- atirou e saiu andando
+        local far = G2.zombie({ x = 29, y = 0 }) -- longe do tiro: não ouviu
+        G2.frame(60)
+        assert(p2.bitten == 0 and math.abs(far.x - p2.x) > NOM_VariantAI.VISION_TILES, "quem não ouviu o tiro viu de longe")
+    end,
+    -- passo é som do jogador (IsoPlayer.DoFootstepSound: raio ~7 andando de sapato, fonte o
+    -- jogador): não denuncia, senão andar deixaria de ser quieto. Raio 9 alcança o cego (solta)
+    vision_footstep_is_quiet = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0 })
+        local p = G.player({ x = 8, y = 0 })
+        for _ = 1, 20 do
+            G.sound(p.x, p.y, 9, p)
+            G.frame(10)
+        end
+        assert(p.bitten == 0 and math.abs(z.x - p.x) > NOM_VariantAI.VISION_TILES, "passo denunciou: x=" .. z.x)
     end,
     -- variantes mantêm o comportamento: o Corredor persegue e avisa
     vision_corredor_unchanged = function()

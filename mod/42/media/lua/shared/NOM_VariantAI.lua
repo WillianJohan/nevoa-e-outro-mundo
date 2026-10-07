@@ -43,12 +43,20 @@ local blinded = NOM_VariantAI.blinded
 -- CHECK_FRAMES: o cego comum confere a distância a cada tantos frames, não todo frame.
 -- WATCH_FRAMES: depois da janela, por quantos frames o zumbi é vigiado todo frame (o spot
 -- volta no frame seguinte; o rodízio levaria uma volta na lista).
--- NOISE_TICKS: barulho no pé do jogador (OnWorldSound) o denuncia por esse tanto de ticks.
+-- Barulho (OnWorldSound) do jogador, ou no pé dele (a até NOISE_NEAR tiles): quem está no
+-- raio do som não fica cego pra ele por raio × NOISE_PER_TILE ticks (o tempo de chegada de
+-- um zumbi lento, ~0,5 tile/s a 60 FPS), entre NOISE_TICKS e NOISE_MAX. Som com raio abaixo
+-- de NOISE_MIN_RADIUS não denuncia: o passo andando de sapato na rua tem raio ~7
+-- (IsoPlayer.DoFootstepSound(F), bytecode 0–296: ceil(volume × 1,4 × 10), "walk" = 0,5),
+-- e andar conta como quieto. Correr (raio ~19) já denuncia pelo isRunning.
 NOM_VariantAI.VISION_TILES = NOM_Config.DEFAULTS.FogZombieVision
 NOM_VariantAI.VISION_BATCH = 30
 NOM_VariantAI.CHECK_FRAMES = 10
 NOM_VariantAI.WATCH_FRAMES = 30
 NOM_VariantAI.NOISE_TICKS = 180
+NOM_VariantAI.NOISE_PER_TILE = 120
+NOM_VariantAI.NOISE_MAX = 7200
+NOM_VariantAI.NOISE_MIN_RADIUS = 10
 NOM_VariantAI.NOISE_NEAR = 3
 NOM_VariantAI.LOG_TICKS = 300 -- no -debug, a contagem no console (~5 s a 60 FPS)
 -- Recém-soltos da visão curta, vigiados todo frame: { [zumbi] = frames }.
@@ -100,7 +108,8 @@ end
 -- Visão curta ---------------------------------------------------------------------
 
 local tick, r2, cursor = 0, nil, 0
--- Por jogador, uma vez por tick: { f = tick, x, y, quiet }. noisy[p] = até que tick.
+-- Por jogador, uma vez por tick: { f = tick, x, y, quiet }. noisy[p] = { t = até que tick,
+-- x, y = ponto do som, rr = raio² }: o último barulho que denuncia o jogador.
 -- ponytail: chave é o objeto do jogador; quem sai fica até reiniciar (um por jogador).
 local seen, noisy = {}, {}
 
@@ -120,16 +129,25 @@ local function about(p)
     end
     if c.f ~= tick then
         c.f, c.x, c.y = tick, p:getX(), p:getY()
-        c.quiet = not p:isRunning() and not p:isSprinting() and (noisy[p] or -1) < tick
+        c.quiet = not p:isRunning() and not p:isSprinting()
     end
     return c
 end
 
--- Jogador quieto e longe do zumbi.
+-- Posição do zumbi lida no último unseen (o blindCommon guarda: o cego fica parado).
+local ux, uy = 0, 0
+
+-- Jogador quieto e longe do zumbi, e o zumbi fora do raio do último barulho dele.
 local function unseen(z, p)
     local c = about(p)
     if not c.quiet then return false end
-    local dx, dy = z:getX() - c.x, z:getY() - c.y
+    ux, uy = z:getX(), z:getY()
+    local n = noisy[p]
+    if n ~= nil and n.t >= tick then
+        local nx, ny = ux - n.x, uy - n.y
+        if nx * nx + ny * ny <= n.rr then return false end
+    end
+    local dx, dy = ux - c.x, uy - c.y
     return dx * dx + dy * dy > r2
 end
 
@@ -205,11 +223,28 @@ local function sweep()
     end
 end
 
--- Som: o cego é surdo (useless; RespondToSound 8–15). Events.OnWorldSound sai de todo
--- addSound (WorldSoundManager$WorldSound.init 129), antes de o zumbi ouvir: o som vive 16
--- atualizações (life, init 6–8). Solta o cego no raio (ouve e vai) e marca barulhento o
--- jogador no ponto do som (tiro, carro): perto dele, a cegueira não fecha.
-local function heard(x, y, _, radius)
+-- Barulho do jogador p no ponto (x, y): quem está no raio não fica cego pra ele até o fim
+-- da janela. O som maior fica até vencer; um igual ou maior toma o lugar.
+local function mark(p, x, y, radius)
+    local n = noisy[p]
+    if n == nil then
+        n = {}
+        noisy[p] = n
+    end
+    local rr = radius * radius
+    if n.t ~= nil and n.t >= tick and rr < n.rr then return end
+    local span = math.floor(radius * NOM_VariantAI.NOISE_PER_TILE)
+    n.t = tick + math.max(NOM_VariantAI.NOISE_TICKS, math.min(NOM_VariantAI.NOISE_MAX, span))
+    n.x, n.y, n.rr = x, y, rr
+end
+
+-- Som: o cego é surdo (useless; RespondToSound 8–15). Events.OnWorldSound(x, y, z, raio,
+-- volume, fonte) sai de todo addSound (WorldSoundManager$WorldSound.init 129), antes de o
+-- zumbi ouvir: o som vive 16 atualizações (life, init 6–8). Solta o cego no raio (ouve e
+-- vai) e, se o som denuncia (raio ≥ NOISE_MIN_RADIUS), marca barulhento a fonte, se for
+-- jogador (como o server/NOM_Variants.lua no barulho que acorda a Carpideira), e o jogador
+-- local que está no ponto do som agora (carro, som sem fonte).
+local function heard(x, y, _, radius, _, source)
     if r2 == nil or type(radius) ~= "number" then return end
     local hit, rr = {}, radius * radius
     for z, b in pairs(blinded) do
@@ -222,12 +257,15 @@ local function heard(x, y, _, radius)
         release(z)
         watched[z] = 0
     end
+    if radius < NOM_VariantAI.NOISE_MIN_RADIUS then return end
+    if source ~= nil and instanceof(source, "IsoPlayer") then mark(source, x, y, radius) end
     local near = NOM_VariantAI.NOISE_NEAR * NOM_VariantAI.NOISE_NEAR
-    for p, c in pairs(seen) do
-        local dx, dy = c.x - x, c.y - y
-        if dx * dx + dy * dy <= near then
-            noisy[p] = tick + NOM_VariantAI.NOISE_TICKS
-            c.f = nil
+    for i = 0, getNumActivePlayers() - 1 do
+        local p = getSpecificPlayer(i)
+        if p ~= nil and p ~= source then
+            local c = about(p)
+            local dx, dy = c.x - x, c.y - y
+            if dx * dx + dy * dy <= near then mark(p, x, y, radius) end
         end
     end
 end
