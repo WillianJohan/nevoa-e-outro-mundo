@@ -83,7 +83,7 @@ end
 local function rate()
     local F = NOM_FogState
     if not F.on or not NOM_Config.get("FogOverlays") then return 0 end
-    local d = NOM_DressingRules.density(NOM_ScreenFxOptions.overlayDensity(), F.red)
+    local d = NOM_DressingRules.density(NOM_ScreenFxOptions.overlayDensity(), F.red, F.black)
     return R.rate(d, NOM_ScreenFxOptions.intensity())
 end
 

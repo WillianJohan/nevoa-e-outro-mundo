@@ -285,6 +285,18 @@ return {
         assert(high <= R().MAX)
     end,
 
+    -- review da 0039: a preta veste o Outro Mundo ×1,4 e as lascas acompanham
+    flakes_black_denser = function()
+        local function alive(black)
+            local G = setup()
+            NOM_FogState.set(true, 3, false, black)
+            G.secs(6)
+            return F().count()
+        end
+        local white, black = alive(false), alive(true)
+        assert(black > white * 1.2, "branca " .. white .. " preta " .. black)
+    end,
+
     -- sem névoa e sem lasca, o desenho não vai ao Java
     flakes_off_costs_nothing = function()
         local G = setup()
