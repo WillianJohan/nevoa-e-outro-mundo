@@ -25,6 +25,9 @@ local function setup(client)
     C.waves = {}
     NOM_Wander = { wave = function(seed) C.waves[#C.waves + 1] = seed end }
     package.loaded["NOM_Wander"] = NOM_Wander
+    C.sonar = {}
+    NOM_Sonar = { command = function(command, args) C.sonar[#C.sonar + 1] = { command = command, args = args } end }
+    package.loaded["NOM_Sonar"] = NOM_Sonar
     C.players = {}
     getPlayerByOnlineID = function(id) return C.players[id] end
     getCell = function()
@@ -54,6 +57,15 @@ return {
         C.server("wander", { seed = 77 })
         C.server("wander", { seed = "x" })
         assert(#C.waves == 1 and C.waves[1] == 77, "ondas: " .. #C.waves)
+    end,
+    -- sonar (sprint 0037): o anel e o achado vão pro NOM_Sonar, que confere a mensagem
+    variants_client_routes_sonar = function()
+        local C = setup(true)
+        C.server("sonar", { x = 1, y = 2, z = 0, id = 3 })
+        C.server("sonarFound", { id = 3, pl = 4 })
+        C.server("wander", { seed = 1 })
+        assert(#C.sonar == 2 and C.sonar[1].command == "sonar" and C.sonar[2].command == "sonarFound")
+        assert(C.sonar[2].args.pl == 4)
     end,
     variants_client_inert_outside_mp = function()
         local C = setup(false)

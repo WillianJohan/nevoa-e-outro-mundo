@@ -177,6 +177,12 @@ function ops.wander()
     return "perambular onda semente=" .. NOM_WanderServer.wave("debug")
 end
 
+-- Um estalo do sonar agora (sprint 0037; NOM_SonarServer, lido na hora como o perambular).
+function ops.sonar(player)
+    if not NOM_SonarServer then return "sonar não carregou" end
+    return NOM_SonarServer.force(player)
+end
+
 function ops.status()
     local w, f, ev = NOM_World, NOM_World.forced, NOM_FogEvent.status()
     return NOM_DebugRules.line("[NOM] debug servidor", {

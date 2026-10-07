@@ -228,6 +228,7 @@ local function setup(opts)
     end
     G.now = 0
     getTimestampMs = function() return G.now end -- CONFIRMED server/ISObjectClickHandler.lua:352
+    isGamePaused = function() return G.paused == true end -- pz-api-notes §11.2
     getNumActivePlayers = function() return #locals() end
     getSpecificPlayer = function(i) return locals()[i + 1] end
     isClient = function() return opts.client == true end
@@ -357,25 +358,6 @@ return {
         G.minutes(10)
         assert(p.bitten > 0 and #G.reports == 0 and #e.sounds == 0)
     end,
-    -- estalo de aviso: só Estalador, vivo, em toda cópia local (inclusive remota)
-    ai_click_only_estalador = function()
-        local G = setup()
-        local e = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true })
-        local c = G.zombie({ x = 0, y = 5, variant = "corredor" })
-        local n = G.zombie({ x = 0, y = 9 })
-        local dead = G.zombie({ x = 0, y = 7, variant = "estalador" })
-        dead.dead = true
-        G.minutes(4)
-        assert(#e.sounds == 4 and e.sounds[1] == NOM_VariantAI.CLICK_SOUND)
-        assert(#c.sounds == 0 and #n.sounds == 0 and #dead.sounds == 0)
-    end,
-    -- o sorteio por minuto separa os estalos (senão todos estalam juntos, metrônomo)
-    ai_click_is_spread = function()
-        local G = setup({ rand = 1 })
-        local e = G.zombie({ x = 0, y = 0, variant = "estalador" })
-        G.minutes(4)
-        assert(#e.sounds == 0)
-    end,
     -- a cegueira é uma janela curta: levantou, ele acha; foi embora, ele volta a ouvir
     ai_estalador_releases_when_player_makes_noise = function()
         local G = setup()
@@ -474,18 +456,116 @@ return {
         end
         assert(z.calls == before, "chamadas Java no zumbi comum: " .. (z.calls - before))
     end,
-    -- o estalo é tocado em toda cópia de todo cliente: tem que ser local, senão
-    -- cada cliente manda PlaySound e os outros ouvem o estalo N vezes
-    ai_click_is_local_on_mp_client = function()
-        local G = setup({ client = true })
-        local e = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true })
-        G.minutes(3)
-        assert(#e.netSounds == 0, "estalo foi pra rede")
-        assert(#e.sounds == 3 and e.sounds[1] == NOM_VariantAI.CLICK_SOUND)
+    -- sonar (sprint 0037): achado em pé, o jogador se agacha logo depois; na janela o
+    -- Estalador não é cegado de novo e chega até ele
+    ai_sonar_found_hunts_through_crouch = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 6, y = 0 })
+        assert(NOM_VariantAI.sonarFound(z, p) == true)
+        assert(z.target == p, "não achou")
+        p.sneaking = true
+        G.frame(30)
+        assert(p.bitten > 0, "agachou e o Estalador cegou de novo dentro da janela")
+        -- controle: sem o sonar, o mesmo jogador agachado passa
+        local G2 = setup()
+        G2.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p2 = G2.player({ x = 6, y = 0, sneaking = true })
+        G2.frame(30)
+        assert(p2.bitten == 0, "o fake não cega: teste não prova nada")
     end,
-
-    -- orçamento: o estalo (1/min à noite) não chama nada no zumbi comum
-    ai_click_touches_only_estaladores = function()
+    -- passou a janela, a cegueira volta
+    ai_sonar_window_expires = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 30, y = 0, sneaking = true })
+        NOM_VariantAI.sonarFound(z, p)
+        G.frame(2)
+        assert(not z.useless and z.target == p, "dentro da janela")
+        for _ = 1, NOM_SonarRules.FOUND_MS / 500 - 1 do
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        assert(not z.useless and z.target == p, "venceu antes da hora")
+        G.now = G.now + 500
+        G.frame(2)
+        assert(z.useless and z.target == nil, "a cegueira não voltou depois da janela")
+        assert(NOM_VariantAI.found[z] == nil)
+    end,
+    -- pausa não conta (review, item 10): a janela é tempo real que para com isGamePaused
+    ai_sonar_window_pauses = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 30, y = 0, sneaking = true })
+        NOM_VariantAI.sonarFound(z, p)
+        G.frame(2)
+        G.paused = true
+        for _ = 1, 40 do -- 20 s pausado
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        G.paused = false
+        G.frame(1)
+        assert(not z.useless and z.target == p, "a janela venceu com o jogo pausado")
+        for _ = 1, NOM_SonarRules.FOUND_MS / 500 + 1 do
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        assert(z.useless and NOM_VariantAI.found[z] == nil, "a janela não venceu depois da pausa")
+    end,
+    -- já cego por um agachado: o anel achou outro jogador (em pé); solta e mira nele
+    ai_sonar_found_releases_blind = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        G.player({ x = 1, y = 0, sneaking = true })
+        G.frame(3)
+        assert(z.useless, "não cegou")
+        local q = G.player({ x = 7, y = 0 })
+        assert(NOM_VariantAI.sonarFound(z, q))
+        assert(not z.useless and z.target == q)
+    end,
+    -- useless que este dono não marcou (herdado na troca de posse, review item 5): o achado
+    -- solta antes do spotted, senão o spottedNew zera o alvo (191–208). O useless do próprio
+    -- jogo (outfit "Useless") e o congelado da sirene ficam.
+    ai_sonar_found_clears_inherited_useless = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true })
+        local p = G.player({ x = 6, y = 0 })
+        assert(NOM_VariantAI.sonarFound(z, p))
+        assert(not z.useless and z.target == p, "o useless herdado engoliu o spotted")
+        local g = G.zombie({ x = 0, y = 3, variant = "estalador", useless = true, outfit = "DebugUseless" })
+        NOM_VariantAI.sonarFound(g, p)
+        assert(g.useless, "desligou o useless do próprio jogo")
+        local f = G.zombie({ x = 0, y = 5, variant = "estalador", useless = true })
+        NOM_SirenFreeze.frozen[f] = true
+        NOM_VariantAI.sonarFound(f, p)
+        NOM_SirenFreeze.frozen[f] = nil
+        assert(f.useless, "soltou o congelado da sirene")
+    end,
+    -- só o dono aplica; cópia remota e morto não mudam
+    ai_sonar_found_only_owner = function()
+        local G = setup({ client = true })
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", remote = true })
+        local p = G.player({ x = 5, y = 0 })
+        assert(NOM_VariantAI.sonarFound(z, p) == false and z.target == nil and NOM_VariantAI.found[z] == nil)
+        local d = G.zombie({ x = 0, y = 3, variant = "estalador" })
+        d.dead = true
+        assert(NOM_VariantAI.sonarFound(d, p) == false)
+    end,
+    -- objeto reaproveitado e fim da névoa esquecem a janela
+    ai_sonar_found_forgotten = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 5, y = 0 })
+        NOM_VariantAI.sonarFound(z, p)
+        G.reuse(z)
+        assert(NOM_VariantAI.found[z] == nil, "reaproveitado herdou a janela")
+        NOM_VariantAI.sonarFound(z, p)
+        NOM_FogState.set(false, 1)
+        assert(NOM_VariantAI.found[z] == nil, "a janela passou do fim da névoa")
+    end,
+    -- o estalo saiu daqui (é o sonar do servidor): o minuto não toca nada nem chama o zumbi
+    ai_no_local_click = function()
         local G = setup()
         local zs = {}
         for i = 1, 300 do zs[i] = G.zombie({ x = i, y = 0 }) end
@@ -493,8 +573,7 @@ return {
         G.minutes(10)
         local n = 0
         for _, z in ipairs(zs) do n = n + z.calls end
-        assert(n == 0, "estalo chamou zumbi comum: " .. n)
-        assert(#e.sounds == 10, "Estalador não estalou")
+        assert(n == 0 and e.calls == 0 and #e.sounds == 0, "o minuto ainda mexe no zumbi")
     end,
     -- orçamento da névoa vermelha (review): ninguém é comum. Por frame, sem alvo:
     -- Estalador 4 chamadas (getModData, isLocal, isUseless, getTarget), Corredor
@@ -519,10 +598,10 @@ return {
         -- Carpideira calma (sprint 0011): 2 por frame (getModData, isLocal) e, no
         -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
         assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
-        -- estalo: 1/min, só nos Estaladores, ≤ 3 chamadas cada (getModData, isDead, playSoundLocal)
+        -- o estalo é do servidor (sprint 0037): o minuto não chama ninguém aqui
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)
-        assert(sum(by.estalador) <= 100 * 3 and sum(by.corredor) == 0 and sum(by.none) == 0 and sum(by.carpideira) == 0)
+        assert(sum(by.estalador) == 0 and sum(by.corredor) == 0 and sum(by.none) == 0 and sum(by.carpideira) == 0)
         -- Sem-rosto na vermelha: sem IA aqui, mas com a visão curta (sprint 0036): só o lote
         local G2 = setup()
         NOM_FogState.set(true, 1, true)

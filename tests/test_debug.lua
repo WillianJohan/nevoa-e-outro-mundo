@@ -959,6 +959,21 @@ return {
         assert(#waves == 0, "mandou onda com o perambular desligado")
         assert(has(G.printed, "^%[NOM%] debug perambular desligado na opção FogWander"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0037: um estalo do sonar agora; quem decide é o servidor (o Estalador mais perto
+    -- de quem pediu, ou o anel no próprio jogador)
+    nom_sonar_asks_server = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        local asked = {}
+        NOM_SonarServer = { force = function(who) asked[#asked + 1] = who; return "sonar estalador x=3 y=4 dist=5" end }
+        NOM.sonar()
+        NOM_SonarServer = nil
+        assert(#asked == 1 and asked[1] == p, "não pediu pelo jogador")
+        assert(has(G.printed, "^%[NOM%] debug sonar estalador x=3 y=4 dist=5"), table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.sonar()
+        assert(has(G.printed, "^%[NOM%] debug sonar não carregou"), table.concat(G.printed, "\n"))
+    end) end,
     -- sprint 0036: cegos da visão curta e a última onda, neste processo (quem simula)
     nom_blind_reports_counts = function() run(function()
         local G = setup()

@@ -184,6 +184,10 @@ end
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
 function NOM.wander() NOM_Debug.send({ op = "wander" }) end
 
+-- Sonar do Estalador (sprint 0037): um estalo agora. O servidor escolhe o Estalador mais perto
+-- de você (na névoa, até 60 tiles) ou solta o anel nos seus pés; o anel faz o resto.
+function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
+
 -- Visão curta (sprint 0036): cegos e vigiados neste processo, que é quem simula os zumbis
 -- dele (no solo, todos), e a última onda de perambular que ele aplicou.
 function NOM.blind()
@@ -225,6 +229,7 @@ NOM.HELP = {
     { "NOM.status()", "estado do mod, local e do servidor" },
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
+    { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },

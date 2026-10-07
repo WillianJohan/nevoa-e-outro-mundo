@@ -1,6 +1,6 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo; 0037, sonar do Estalador, pronta na branch, sem merge). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
@@ -75,6 +75,16 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em andamento: sonar do Estalador (sprint 0037)
+
+Na branch `sprint/0037-sonar-estalador`, **sem merge nem push**; o code review final foi corrigido (seção "Code review final" do plano: ritmo de 5–30 s reais, casa protege, teto de anéis sem anúncio perdido, anel só pra quem está perto, frente do mod3 parando em parede); falta o merge e o teste do Johan no jogo. Plano em [sprints/sprint-0037-sonar-estalador/plan.md](sprints/sprint-0037-sonar-estalador/plan.md); decisões, custos e roteiro em [sprints/sprint-0037-sonar-estalador/README.md](sprints/sprint-0037-sonar-estalador/README.md).
+
+- **Sonar:** cada estalo solta um anel de 8 tiles em 1,5 s. Em pé ou andando, o Estalador acha o jogador mesmo cego e não volta a cegar por 10 s; agachado e parado, o anel passa (`shared/NOM_SonarRules.lua`).
+- **O servidor decide** (`server/NOM_SonarServer.lua`): o estalo saiu do `NOM_VariantAI`, onde cada cliente sorteava o seu. "Agachado" é o `isSneaking` (vem no pacote do jogador) e "andando" é lido pela posição a cada 250 ms. O dono do Estalador aplica (`NOM_VariantAI.sonarFound`).
+- **Visual:** com o mod3, a frente empurra a névoa fluida (`Sonar.java`, `FlowGrid.sonar`, `NOMRender_sonar`). Sem ele, um anel discreto no chão (`client/NOM_SonarFx.lua`, textura `NOM_SonarAnel.png`). **O jar do mod3 foi recompilado.**
+- **Debug:** `NOM.sonar()`, com o botão "Sonar do Estalador agora" no painel.
+- **Testes na branch:** 1120 Lua e 8 Java do sonar no núcleo do mod3, `./run-tests.sh` verde.
+
 ## Em teste: Equilíbrio (sprint 0036)
 
 Na `main` e sincronizada; falta o teste do Johan no jogo. O code review final achou 6 problemas importantes (o pior: o tiro deixava de puxar o zumbi até o jogador) e 7 menores, todos corrigidos antes do merge (seção "Code review final" do plano). Plano com a medição em [sprints/sprint-0036-equilibrio/plan.md](sprints/sprint-0036-equilibrio/plan.md); resumo, decisões e roteiro em [sprints/sprint-0036-equilibrio/README.md](sprints/sprint-0036-equilibrio/README.md).
@@ -140,7 +150,7 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 1. **Testar a 0035 e a 0036 no jogo:** o Johan reinicia o jogo e segue os roteiros da [0035](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e da [0036](sprints/sprint-0036-equilibrio/README.md). Já confirmado no jogo em 2026-10-06: o congelamento da sirene depois da troca pra `isLocal` (97 de 97 parados), as paredes Silent Hill ("ficaram top"). O chão estranho (metal em bloco na calçada, ferrugem em grade na grama) foi corrigido no hotfix `7149d87`: falta o Johan conferir.
 2. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
-   - **0037** — sonar do Estalador;
+   - **0037** — sonar do Estalador (feito na branch com o review final corrigido, falta o merge);
    - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
    - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
    - **0040** — vermelha nova: tentáculos e cinza no ar;

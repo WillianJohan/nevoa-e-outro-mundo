@@ -117,6 +117,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/ScreenFx/NOM_NevoaEstatica.png` | 256×256 | estática da névoa na tela: chiado fino em tons de cinza, em mosaico, tingido pela cor da névoa (sprint 0034) |
 | `mod/42/media/textures/NOM/NOM_Lascas.png` | 256×128 | lascas de tinta do Outro Mundo (sprint 0035): sprite sheet de 8 quadros de giro × 4 formatos, contorno serrilhado e lascado, tinta velha suja com craquelê e fio de borda clara falhado, ferrugem marrom escamando, verso ferrugem, de perfil mais escura, fundo transparente; tingidas pela cor da névoa no desenho |
 | `mod/42/media/textures/NOM/NOM_Cinza.png` | 16×16 | cinza do Outro Mundo (sprint 0035): floco torto, claro e macio em tons de cinza, tingido pela cor da névoa |
+| `mod/42/media/textures/NOM/ScreenFx/NOM_SonarAnel.png` | 256×256 | anel do sonar do Estalador (sprint 0037): frente branca fina com rastro macio pra dentro e falhas suaves, fundo transparente; achatado 2:1 no chão e tingido pela cor da névoa no desenho |
 
 Pra regerar: `python3 scripts/gen_textures.py`.
 
