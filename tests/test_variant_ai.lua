@@ -951,4 +951,38 @@ return {
         assert(worst <= 1000, "multidão, pior tick: " .. worst)
         assert(sum / 600 <= 300, "multidão, média: " .. sum / 600)
     end,
+    -- review final da 0036: o som (OnWorldSound) não pode custar chamadas por cego. 200 cegos
+    -- e um som por tick longe deles (passo, tiro de outro lado): o heard fica em Lua, com o
+    -- x, y que o cego guardou ao parar
+    vision_budget_sound_per_tick_200_blind = function()
+        local function total(G)
+            local n = G.pcalls + G.listCalls
+            for _, z in ipairs(G.zombies) do n = n + z.calls end
+            return n
+        end
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        -- o fake anda 1 tile por frame: pra montar a cena, um rodízio que pega todos no 1º tick
+        for i = 1, 220 do G.zombie({ x = 6 + i % 5, y = i % 9 - 4 }) end
+        local batch = NOM_VariantAI.VISION_BATCH
+        NOM_VariantAI.VISION_BATCH = 220
+        G.frame(1)
+        NOM_VariantAI.VISION_BATCH = batch
+        G.frame(20)
+        local inSound, blind, worst = 0, 0, 0
+        for _ = 1, 300 do
+            local c = NOM_VariantAI.counts()
+            blind = blind + c.common
+            local before = total(G)
+            G.sound(500, 500, 12)
+            local cost = total(G) - before
+            inSound, worst = inSound + cost, math.max(worst, cost)
+            G.frame(1)
+        end
+        blind = blind / 300
+        print(string.format("[budget] visão curta: som por tick com %.0f cegos em média: %.1f chamadas por som, pior %d",
+            blind, inSound / 300, worst))
+        assert(blind >= 180, "poucos cegos pro teste: " .. blind)
+        assert(worst <= 8, "som com " .. blind .. " cegos: pior " .. worst .. " chamadas")
+    end,
 }

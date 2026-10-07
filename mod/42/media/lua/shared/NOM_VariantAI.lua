@@ -164,22 +164,27 @@ local function halt(z)
     z:setVariable("bMoving", false)
 end
 
+-- Logo depois de um unseen verdadeiro pra z: x, y são os dele (ux, uy). Parado pelo halt, o
+-- cego fica ali, e o som (heard) confere a distância sem chamar o Java.
 local function blindCommon(z, p)
     z:setTarget(nil)
     z:setUseless(true)
     halt(z)
     watched[z] = nil
-    blinded[z] = { p = p, n = 0, common = true }
+    blinded[z] = { p = p, n = 0, common = true, x = ux, y = uy }
 end
 
 -- Cego comum, por frame: a cada CHECK_FRAMES confere se o jogador chegou perto ou fez
--- barulho; no fim da janela solta (ouve de novo) e vigia.
+-- barulho (e atualiza o x, y guardado); no fim da janela solta (ouve de novo) e vigia.
 local function commonBlind(z, b)
     if r2 == nil then return release(z) end
     b.n = b.n + 1
     local done = b.n >= NOM_VariantAI.BLIND_FRAMES
     if not done and NOM_Math.mod(b.n, NOM_VariantAI.CHECK_FRAMES) ~= 0 then return end
-    if not done and unseen(z, b.p) then return end
+    if not done and unseen(z, b.p) then
+        b.x, b.y = ux, uy
+        return
+    end
     release(z)
     watched[z] = 0
 end
@@ -243,17 +248,25 @@ end
 -- zumbi ouvir: o som vive 16 atualizações (life, init 6–8). Solta o cego no raio (ouve e
 -- vai) e, se o som denuncia (raio ≥ NOISE_MIN_RADIUS), marca barulhento a fonte, se for
 -- jogador (como o server/NOM_Variants.lua no barulho que acorda a Carpideira), e o jogador
--- local que está no ponto do som agora (carro, som sem fonte).
+-- local que está no ponto do som agora (carro, som sem fonte). Custo: o laço nos cegos é só
+-- Lua (o x, y que cada um guardou) e a lista dos soltos é reaproveitada (soltar mexe em
+-- blinded, e mexer na tabela no meio do pairs não é seguro no Kahlua, NOM_SemRosto.reserve).
+local hits = {}
 local function heard(x, y, _, radius, _, source)
     if r2 == nil or type(radius) ~= "number" then return end
-    local hit, rr = {}, radius * radius
+    local rr, n = radius * radius, 0
     for z, b in pairs(blinded) do
         if b.common then
-            local dx, dy = z:getX() - x, z:getY() - y
-            if dx * dx + dy * dy <= rr then hit[#hit + 1] = z end
+            local dx, dy = b.x - x, b.y - y
+            if dx * dx + dy * dy <= rr then
+                n = n + 1
+                hits[n] = z
+            end
         end
     end
-    for _, z in ipairs(hit) do
+    for i = 1, n do
+        local z = hits[i]
+        hits[i] = nil
         release(z)
         watched[z] = 0
     end
