@@ -342,12 +342,20 @@ end
 -- Chamado pela passada do NOM_NightStats e no OnZombieCreate.
 local HELD = { carpideira = true, estalador = true }
 
+-- Visão curta no cliente de MP: a posse pode chegar com o useless logo depois que a névoa
+-- fecha. Por AFTER_FOG_MS reais (getTimestampMs, como o SWEEP_MS do NOM_SirenFreeze) a
+-- soltura ampla segue. afterFogUntil: marcado no fim da névoa (install).
+NOM_VariantAI.AFTER_FOG_MS = 10000
+local afterFogUntil = nil
+
 local function heldByMod(id)
     -- visão curta (sprint 0036): no cliente de MP, na névoa, qualquer zumbi pode ter chegado
     -- cego pela troca de posse. O useless de outro mod num zumbi comum também cai, só enquanto
-    -- a névoa durar. No solo não há posse pra trocar (o cego daqui está em blinded, e o
-    -- reaproveitado passa pelo forget): o de outro mod e o do debug ficam
-    if isClient() and visionR2() ~= nil then return true end
+    -- a névoa durar (e AFTER_FOG_MS depois). No solo não há posse pra trocar (o cego daqui
+    -- está em blinded, e o reaproveitado passa pelo forget): o de outro mod e o do debug ficam
+    if isClient() and (visionR2() ~= nil or (afterFogUntil ~= nil and getTimestampMs() <= afterFogUntil)) then
+        return true
+    end
     local period = NOM_FogState.period
     if not period then return false end
     local cfg = NOM_VariantRules.config(NOM_Config.get)
@@ -405,6 +413,12 @@ function NOM_VariantAI.install(report)
     Events.EveryOneMinute.Add(clicks)
     Events.OnTick.Add(sweep)
     Events.OnWorldSound.Add(heard)
+    NOM_FogState.onChange(function(on)
+        afterFogUntil = nil
+        if not on and isClient() and (tonumber(NOM_Config.get("FogZombieVision")) or 0) > 0 then
+            afterFogUntil = getTimestampMs() + NOM_VariantAI.AFTER_FOG_MS
+        end
+    end)
 end
 
 return NOM_VariantAI

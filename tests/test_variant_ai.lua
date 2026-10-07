@@ -212,6 +212,8 @@ local function setup(opts)
         end
         return out
     end
+    G.now = 0
+    getTimestampMs = function() return G.now end -- CONFIRMED server/ISObjectClickHandler.lua:352
     getNumActivePlayers = function() return #locals() end
     getSpecificPlayer = function(i) return locals()[i + 1] end
     isClient = function() return opts.client == true end
@@ -870,6 +872,28 @@ return {
         local dbg = G.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor(nil, nil, { 2, 3 }) })
         NOM_NightStats.unstick(dbg)
         assert(dbg.useless)
+    end,
+    -- review final da 0036: no MP, a posse chega com o useless logo depois que a névoa fecha
+    -- (o dono antigo cegou, o novo ainda não tinha passado pela passada). Por AFTER_FOG_MS
+    -- reais depois do fim, a soltura ampla segue; depois, não. No solo e com a visão
+    -- desligada, nada de janela.
+    vision_mp_inherited_released_after_fog = function()
+        local function case(opts, dt)
+            local G = setup(opts)
+            NOM_FogState.set(true, 3)
+            NOM_FogState.set(false, 3)
+            local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
+            G.now = dt
+            NOM_NightStats.unstick(z)
+            return z.useless
+        end
+        setup()
+        local W = NOM_VariantAI.AFTER_FOG_MS
+        assert(type(W) == "number", "sem AFTER_FOG_MS")
+        assert(case({ client = true }, W - 1) == false, "cego herdado ficou preso depois da névoa")
+        assert(case({ client = true }, W + 1) == true, "soltou depois da janela")
+        assert(case({}, 1) == true, "janela no solo")
+        assert(case({ client = true, sandbox = { FogZombieVision = 0 } }, 1) == true, "janela com a visão desligada")
     end,
     -- review final da 0036: no solo não há posse pra trocar; o useless de outro mod (ou do
     -- menu de debug) num zumbi comum fica, mesmo na névoa com a visão curta
