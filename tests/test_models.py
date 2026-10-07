@@ -40,8 +40,9 @@ PIECES = {
     "CorredorBoca": "NOM_CorredorBoca3D",
     "SemRostoEstatica": "NOM_SemRostoEstatica",
     "CarpideiraCabelo": "NOM_CarpideiraCabelo3D",
+    "TicaoCrosta": "NOM_TicaoCrosta3D",
 }
-MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D")
+MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D", "NOM_TicaoCrosta3D")
 MAX_VERTS = 2500     # a peça tem ~20 px de tela (o HeadBandage vanilla tem 52 vértices)
 
 # Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a cabeça na altura dos
@@ -319,6 +320,61 @@ SKULL = {   # crânio: o elipsoide que a touca de banho e a máscara de hóquei 
 }
 
 
+def part_groups(m, part):
+    """strand → índices dos vértices daquela parte (cada brasa, lasca ou fumaça tem o seu)."""
+    out = {}
+    for f, p, k in zip(m.faces, m.parts, m.strand):
+        if p == part:
+            out.setdefault(k, set()).update(f)
+    return {k: sorted(v) for k, v in out.items()}
+
+
+def test_ticao_crust_covers_head():
+    g = generator()
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("TicaoCrosta", sex)
+        for p in HEAD_POINTS[sex]:
+            for d in np.eye(3):
+                for sgn in (1, -1):
+                    q = np.array(p, float) + sgn * SHELL_MARGIN * d
+                    assert inside_mesh(verts, faces, q), "%s: ponto da cabeça %s fora da crosta" % (sex, tuple(q))
+        m = g.build("TicaoCrosta", sex)
+        v = np.array(m.verts)
+        crust = v[sorted({q for f, p in zip(m.faces, m.parts) if p == "crust" for q in f})]
+        h, s = HELMET[sex], 0.03
+        assert crust[:, 0].min() > h["x"][0] - s and crust[:, 0].max() < h["x"][1] + s, "%s: crosta alta demais" % sex
+        assert np.abs(crust[:, 1]).max() < h["y"] + s, "%s: crosta larga demais" % sex
+        assert crust[:, 2].min() > h["z"][0] - s and crust[:, 2].max() < h["z"][1] + s, "%s: crosta funda demais" % sex
+
+
+def test_ticao_eyes_smoke_shards():
+    """Duas brasas nos olhos, na frente; fumaça subindo do alto; lascas de carvão no alto e atrás,
+    longe do rosto (o rosto é carvão liso com os dois olhos acesos)."""
+    g = generator()
+    for sex in SEXES:
+        m = g.build("TicaoCrosta", sex)
+        v = np.array(m.verts)
+        gg, nose = GOGGLES[sex], NOSE_Z[sex]
+        eyes = [v[i].mean(axis=0) for i in part_groups(m, "ember").values()]
+        assert len(eyes) == 2, "%s: %d olhos" % (sex, len(eyes))
+        assert sorted(np.sign([e[1] for e in eyes])) == [-1, 1], "%s: olhos do mesmo lado" % sex
+        for e in eyes:
+            assert gg["x"][0] <= e[0] <= gg["x"][1], "%s: olho fora da altura dos olhos %.3f" % (sex, e[0])
+            assert 0.018 <= abs(e[1]) <= 0.045 and e[2] > nose - 0.01, "%s: olho fora do lugar %s" % (sex, e)
+        smoke = part_groups(m, "smoke")
+        assert len(smoke) >= 3, "%s: %d fumaças" % (sex, len(smoke))
+        for idx in smoke.values():
+            w = v[idx]
+            assert w[:, 0].max() >= HELMET[sex]["x"][1] + 0.06, "%s: fumaça não sobe" % sex
+            assert w[:, 0].min() >= HELMET[sex]["x"][1] - 0.04, "%s: fumaça sai baixo" % sex
+            assert np.abs(w[:, 1]).max() <= 0.10 and np.abs(w[:, 2]).max() <= 0.10, "%s: fumaça longe" % sex
+        shards = part_groups(m, "shard")
+        assert len(shards) >= 10, "%s: %d lascas" % (sex, len(shards))
+        for idx in shards.values():
+            b = v[idx].mean(axis=0)
+            assert b[2] < 0.03 or b[0] > 0.14, "%s: lasca no rosto %s" % (sex, b)
+
+
 def test_cabelo_close_to_head():
     """Cabelo é cabelo, não peruca de palhaço: rente ao crânio em cima (perto do capacete
     fechado) e, embaixo, abrindo no máximo uns centímetros pra fora."""
@@ -380,6 +436,8 @@ def bright(c): return luminance(c) > 0.6
 def dark(c): return luminance(c) < 0.12
 def red(c): return (c[:, 0] > 2 * c[:, 1]) & (c[:, 0] > 60) & (luminance(c) < 0.4)
 def cloth(c): return np.ones(len(c), bool)
+def ember(c): return (c[:, 0] > 170) & (c[:, 0] > 1.3 * c[:, 1]) & (c[:, 1] > c[:, 2])
+def smoke(c): return (luminance(c) > 0.55) & (c.max(axis=1) - c.min(axis=1) < 40)
 
 
 def not_rust(c):
@@ -393,6 +451,7 @@ COLOURS = {
     "CorredorBoca": {"teeth": bright, "cavity": dark, "tear": dark, "lips": red},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
+    "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},
 }
 
 
@@ -412,6 +471,7 @@ def test_parts_land_on_colours():
         assert set(m.parts) == seen, "%s: parte sem regra de cor %s" % (name, set(m.parts) - seen)
     # o critério pega a cor errada
     assert not dark(np.array([[236.0, 228, 206]])).any() and not bright(np.array([[20.0, 6, 6]])).any()
+    assert not ember(np.array([[120.0, 120, 120]])).any() and not smoke(np.array([[240.0, 120, 30]])).any()
 
 
 def test_generator_deterministic():
@@ -427,7 +487,8 @@ def test_generator_deterministic():
 
 def main():
     tests = [test_format, test_winding_like_vanilla, test_closed, test_outward, test_venda_fits_head,
-             test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face, test_textures_mirrored,
+             test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face,
+             test_ticao_crust_covers_head, test_ticao_eyes_smoke_shards, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]
     fail = 0
     for t in tests:

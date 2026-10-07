@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import gen_models as g  # noqa: E402
 
 SIZE = 320
-SCALE = 1100           # pixels por metro (cabeça inteira e as pontas do cabelo)
+SCALE = 1100           # pixels por metro (main enquadra cada peça)
 CENTRE = 0.045         # altura (x da cabeça) no meio da tela
 LIGHT = np.array([0.6, 0.3, 0.75])
 # vistas: (nome, rotação em volta de X pela cabeça, inclinação) — câmera olha pra −Z da vista
@@ -107,6 +107,10 @@ def main():
         path = os.path.join(g.MEDIA, "textures", "NOM", mesh.texture + ".png")
         tex = np.asarray(Image.open(path).convert("RGB"), np.float32)
         meshes = [(head(g.HEADS[sex]), (150, 146, 140)), (mesh, None)]
+        global SCALE, CENTRE                       # enquadra a peça e a cabeça, sem passar de 1100 px/m
+        x = np.concatenate([np.array(mesh.verts)[:, 0], [-0.04, 0.20]])
+        SCALE = min(1100.0, 0.88 * SIZE / (x.max() - x.min()))
+        CENTRE = (x.max() + x.min()) / 2
         for col, (_, yaw, tilt) in enumerate(VIEWS):
             sheet.paste(render(meshes, tex, yaw, tilt), (col * SIZE, row * SIZE))
     sheet.save(out)

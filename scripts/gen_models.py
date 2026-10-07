@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gera os modelos 3D próprios do mod (sprints 0041–0042), procedurais e originais.
+"""Gera os modelos 3D próprios do mod (sprints 0041–0043), procedurais e originais.
 
 Peças estáticas presas ao osso da cabeça (m_Static, m_AttachBone Bip01_Head), um modelo por
 sexo (NOM_M_/NOM_F_<peça>.x):
@@ -11,12 +11,16 @@ sexo (NOM_M_/NOM_F_<peça>.x):
                     chiado é a de scripts/gen_textures.py)
   CarpideiraCabelo  cortina de mechas pretas caindo da cabeça, densa na frente do rosto, três
                     mechas brancas (0042)
+  TicaoCrosta       crosta de carvão em placas na cabeça inteira, dois olhos de brasa, lascas
+                    no alto e atrás, três fitas de fumaça subindo (0043, a versão por script do
+                    teste de IA)
 
 Saída (mod/42/media/):
   models_X/Static/Clothes/NOM_M_<peça>.x, NOM_F_<peça>.x   .x texto (DirectX), sem templates
   textures/NOM/NOM_EstaladorVenda3D.png    128  pano (espelhado), ferrugem do arame no meio
   textures/NOM/NOM_CorredorBoca3D.png      128  dente, lábio, buraco no meio (espelhado)
   textures/NOM/NOM_CarpideiraCabelo3D.png  128  piche com fios, mecha branca no meio (espelhado)
+  textures/NOM/NOM_TicaoCrosta3D.png       128  carvão rachado em brasa, fumaça, brasa no meio (espelhado)
 
 Medido nos .x vanilla, só números (pz-api-notes §32):
 - quadro do osso da cabeça em metros: X sobe pela cabeça, Y de orelha a orelha, Z pra
@@ -105,6 +109,16 @@ HAIR = {
 STRANDS = 36
 STREAKS = (-0.28, 0.06, 0.34)   # ângulos das três mechas brancas (0 = meio da testa)
 HAIR_V, STREAK_V = (0.05, 0.30), (0.42, 0.58)
+
+
+# Crosta do Tição: a casca do Sem-rosto um pouco mais grossa, em placas de alturas diferentes
+CRUST_GAP = 0.010
+CRUST_PLATES = 22      # direções-semente das placas (esfera de Fibonacci)
+CRUST_LUMP = 0.005     # quanto a placa mais alta sobe
+CRUST_V, SMOKE_V, EMBER_V = (0.02, 0.34), (0.37, 0.43), 0.5
+SHARD_V = 0.035        # faixa de carvão liso (sem rachadura) no alto da textura
+SHARDS = 14
+WISPS = ((0.22, -2.1), (0.30, 0.5), (0.18, 2.5))   # (ângulo do alto, ângulo em volta) de cada fumaça
 
 
 def hash01(*k):
@@ -433,30 +447,37 @@ def tooth(mesh, p, d, length, base):
     mesh.add_shell(ring + [p + d * length], uvs, [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]], "teeth", flat=True)
 
 
-def semrosto(sex):
-    """Casca lisa em volta da cabeça inteira: superelipsoide (mais caixa na vertical pra cobrir o
-    queixo), frente e nuca com raios próprios. Sem nariz, olho nem boca."""
+def head_shell(sex, gap):
+    """Superelipsoide em volta da cabeça inteira (mais caixa na vertical pra cobrir o queixo),
+    frente e nuca com raios próprios. Devolve o ponto em (ângulo do alto, ângulo em volta)."""
     f = FACES[sex]
     bottom = f["chin"][0] - SHELL_CHIN
-    top = f["top"] + SHELL_GAP
+    top = f["top"] + gap
     cx, rx = (top + bottom) / 2, (top - bottom) / 2
-    ry = f["side"] + SHELL_GAP
-    rz_front, rz_back = f["nose"] + SHELL_GAP + 0.005, -f["back"] + SHELL_GAP
+    ry = f["side"] + gap
+    rz_front, rz_back = f["nose"] + gap + 0.005, -f["back"] + gap
     e = 2 / SHELL_POW
-    m = Mesh("NOM_SemRostoEstatica")
-    verts, uvs, faces = [np.array([top, 0.0, 0.0])], [(0.5, 0.0)], []
+
+    def point(th, ps):
+        c, s = math.cos(th), math.sin(th)
+        rad = abs(s) ** e
+        rz = rz_front if math.cos(ps) > 0 else rz_back
+        return np.array([cx + rx * math.copysign(abs(c) ** e, c), ry * rad * math.sin(ps), rz * rad * math.cos(ps)])
+    return point, top, bottom, cx
+
+
+def shell_grid(sex, gap, v_band=(0.0, 1.0)):
+    """Grade da casca: polo em cima, SHELL_LAT−1 anéis com a costura repetida, polo embaixo."""
+    point, top, bottom, cx = head_shell(sex, gap)
+    v0, dv = v_band[0], v_band[1] - v_band[0]
+    verts, uvs, faces = [np.array([top, 0.0, 0.0])], [(0.5, v0)], []
     for i in range(1, SHELL_LAT):
         th = math.pi * i / SHELL_LAT
-        c, s = math.cos(th), math.sin(th)
-        x = cx + rx * math.copysign(abs(c) ** e, c)
-        rad = abs(s) ** e
         for j in range(SHELL_LON + 1):
-            ps = 2 * math.pi * j / SHELL_LON
-            rz = rz_front if math.cos(ps) > 0 else rz_back
-            verts.append(np.array([x, ry * rad * math.sin(ps), rz * rad * math.cos(ps)]))
-            uvs.append((j / SHELL_LON, i / SHELL_LAT))
+            verts.append(point(th, 2 * math.pi * j / SHELL_LON))
+            uvs.append((j / SHELL_LON, v0 + dv * i / SHELL_LAT))
     verts.append(np.array([bottom, 0.0, 0.0]))
-    uvs.append((0.5, 1.0))
+    uvs.append((0.5, v0 + dv))
     last, w = len(verts) - 1, SHELL_LON + 1
     row = lambda i: 1 + (i - 1) * w
     for j in range(SHELL_LON):
@@ -466,7 +487,99 @@ def semrosto(sex):
         for j in range(SHELL_LON):
             p0, p1, q0, q1 = row(i) + j, row(i) + j + 1, row(i + 1) + j, row(i + 1) + j + 1
             faces += [[p0, q0, q1], [p0, q1, p1]]
+    return verts, uvs, faces, cx
+
+
+def semrosto(sex):
+    """Casca lisa em volta da cabeça inteira. Sem nariz, olho nem boca."""
+    m = Mesh("NOM_SemRostoEstatica")
+    verts, uvs, faces, _ = shell_grid(sex, SHELL_GAP)
     m.add_shell(verts, uvs, faces, "shell")
+    return m
+
+
+def fibonacci(n):
+    g = math.pi * (3 - math.sqrt(5))
+    return [np.array([1 - 2 * (k + 0.5) / n, math.sqrt(1 - (1 - 2 * (k + 0.5) / n) ** 2) * math.cos(g * k),
+                      math.sqrt(1 - (1 - 2 * (k + 0.5) / n) ** 2) * math.sin(g * k)]) for k in range(n)]
+
+
+def blob(mesh, c, r, part, strand, uv, lat=5, lon=8):
+    """Elipsoide fechado pequeno (olho de brasa)."""
+    verts, faces = [c + [r[0], 0, 0]], []
+    for i in range(1, lat):
+        th = math.pi * i / lat
+        for j in range(lon):
+            ps = 2 * math.pi * j / lon
+            verts.append(c + [r[0] * math.cos(th), r[1] * math.sin(th) * math.sin(ps), r[2] * math.sin(th) * math.cos(ps)])
+    verts.append(c - [r[0], 0, 0])
+    last = len(verts) - 1
+    row = lambda i: 1 + (i - 1) * lon
+    for j in range(lon):
+        k = (j + 1) % lon
+        faces.append([0, row(1) + j, row(1) + k])
+        faces.append([last, row(lat - 1) + k, row(lat - 1) + j])
+    for i in range(1, lat - 1):
+        for j in range(lon):
+            k = (j + 1) % lon
+            faces += [[row(i) + j, row(i + 1) + j, row(i + 1) + k], [row(i) + j, row(i + 1) + k, row(i) + k]]
+    mesh.add_shell(verts, [uv] * len(verts), faces, part, strand=strand)
+
+
+def crosta(sex):
+    """Crosta de carvão do Tição: a casca em placas (cada vértice sobe a altura da placa mais
+    perto), dois olhos de brasa saindo da frente, lascas no alto e atrás, fumaça subindo."""
+    m = Mesh("NOM_TicaoCrosta3D")
+    verts, uvs, faces, cx = shell_grid(sex, CRUST_GAP, CRUST_V)
+    seeds = fibonacci(CRUST_PLATES)
+    centre = np.array([cx, 0.0, 0.0])
+    for k, p in enumerate(verts):
+        d = unit(p - centre)
+        plate = max(range(CRUST_PLATES), key=lambda q: d @ seeds[q])
+        verts[k] = p + d * CRUST_LUMP * hash01(plate, 11)
+    m.add_shell(verts, uvs, faces, "crust")
+    point, top, _, _ = head_shell(sex, CRUST_GAP)
+    eye_x = HEADS[sex]["front"]                       # altura dos olhos (centro da venda na frente)
+    for k, side in enumerate((-1, 1)):
+        y = 0.030 * side
+        ps = math.asin(y / (FACES[sex]["side"] + CRUST_GAP))
+        z = point(math.pi / 2, ps)[2] * 0.97
+        blob(m, np.array([eye_x, y, z]), (0.009, 0.014, 0.006), "ember", k, (0.5, EMBER_V))
+    for k in range(SHARDS):
+        if k < 4:
+            th, ps = 0.12 + 0.2 * hash01(k, 21), 2 * math.pi * hash01(k, 22)
+        else:
+            th, ps = 0.3 + 0.9 * hash01(k, 21), math.pi * (0.6 + 0.8 * hash01(k, 22))
+        base = point(th, ps)
+        d = unit(unit(base - centre) + [0.35, 0, 0])
+        e1 = unit(np.cross(d, [0.0, 0.0, 1.0]) if abs(d[2]) < 0.9 else np.cross(d, [0.0, 1.0, 0.0]))
+        e2 = np.cross(d, e1)
+        b, length = 0.005 + 0.002 * hash01(k, 23), 0.018 + 0.012 * hash01(k, 24)
+        ring = [base + b * (math.cos(t) * e1 + math.sin(t) * e2) for t in (0, 2.0944, 4.1888)]
+        m.add_shell(ring + [base + d * length], [(0.5, SHARD_V)] * 4,
+                    [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 0, 3]], "shard", flat=True, strand=k)
+    for k, (th0, ps0) in enumerate(WISPS):
+        start = point(th0, ps0)
+        rise = 0.09 + 0.03 * hash01(k, 31)
+        phase = 6.28 * hash01(k, 32)
+        pts = []
+        for i in range(11):
+            t = i / 10
+            pts.append(np.array([start[0] - 0.004 + rise * t,
+                                 start[1] * (1 - 0.4 * t) + 0.016 * t * math.cos(phase + 5 * t),
+                                 start[2] * (1 - 0.4 * t) + 0.016 * t * math.sin(phase + 5 * t)]))
+        n = len(pts)
+        side = unit(np.array([0.0, math.cos(ps0 + phase), -math.sin(ps0 + phase)]))
+        frames, prof = [], []
+        for i in range(n):
+            tan = unit(pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)])
+            bb = unit(side - (side @ tan) * tan)
+            frames.append((np.cross(tan, bb), bb))
+            w = 0.003 + 0.007 * i / (n - 1)
+            prof.append([(0.0008, w), (-0.0008, w), (-0.0008, -w), (0.0008, -w)])
+        uv_of = lambda u, j, pa, pb, i: (u, SMOKE_V[0] + (SMOKE_V[1] - SMOKE_V[0]) * (0.5 + 0.5 * math.copysign(1, pb)))
+        v, uv, fc = sweep(pts, frames, prof, uv_of, closed=False)
+        m.add_shell(v, uv, fc, "smoke", flat=True, strand=k)   # fita fina torcida: normal suave vira
     return m
 
 
@@ -529,6 +642,7 @@ BUILDERS = {
     "CorredorBoca": boca,
     "SemRostoEstatica": semrosto,
     "CarpideiraCabelo": cabelo,
+    "TicaoCrosta": crosta,
 }
 
 
@@ -655,10 +769,44 @@ def cabelo_texture(size=128):
     return mirrored(rgb, size)
 
 
+def crosta_texture(size=128):
+    """Carvão em placas com rachaduras de brasa (Voronoi que fecha em u, a crosta dá a volta na
+    cabeça), uma faixa de carvão liso no alto (lascas e polo), a fumaça clara e a brasa no meio."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    v = y / size
+    rgb = np.zeros((size, size, 3), np.float32)
+    v0, dv = CRUST_V[0] * size, (CRUST_V[1] - CRUST_V[0]) * size
+    cells = [((c + 0.2 + 0.6 * hash01(c, r, 41)) * size / 7, v0 + (r + 0.2 + 0.6 * hash01(c, r, 42)) * dv / 3)
+             for c in range(7) for r in range(3)]      # grade com tremida: duas sementes nunca encostam
+    d1 = np.full((size, size), 1e9, np.float32)
+    d2 = np.full((size, size), 1e9, np.float32)
+    for cxp, cyp in cells:
+        dx = np.abs(x - cxp)
+        dx = np.minimum(dx, size - dx)
+        d = np.sqrt(dx ** 2 + ((y - cyp) * 2.2) ** 2)
+        d2 = np.where(d < d1, d1, np.minimum(d2, d))
+        d1 = np.minimum(d1, d)
+    edge = d2 - d1
+    shade = 0.8 + 0.2 * np.sin(x * 0.37 + 2 * np.sin(y * 0.23))
+    rgb[:] = np.asarray((24, 18, 15), np.float32) * shade[..., None]
+    crust = (v >= CRUST_V[0] + 0.03) & (v < CRUST_V[1] + 0.015)
+    glow = crust & (edge < 1.6)
+    core = crust & (edge < 0.7)
+    rgb[glow] = (110, 26, 8)
+    rgb[core] = (236, 96, 22)
+    smoke = (v >= CRUST_V[1] + 0.015) & (v < 0.46)
+    puff = 0.5 + 0.5 * np.sin(x * 0.21 + 3 * np.sin(y * 0.4))
+    rgb[smoke] = (np.asarray((176, 174, 170), np.float32)[None, :] + (puff[smoke] * 40)[..., None])
+    ember = v >= 0.46
+    rgb[ember] = (np.asarray((255, 186, 84), np.float32)[None, :] - (puff[ember] * 14)[..., None])
+    return mirrored(rgb, size)
+
+
 TEXTURES = {
     "NOM_EstaladorVenda3D": venda_texture,
     "NOM_CorredorBoca3D": boca_texture,
     "NOM_CarpideiraCabelo3D": cabelo_texture,
+    "NOM_TicaoCrosta3D": crosta_texture,
 }
 
 
