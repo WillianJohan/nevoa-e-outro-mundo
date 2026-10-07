@@ -1,8 +1,11 @@
 -- Sonar do Estalador (sprint 0037, spec §6), lado do servidor (ADR-002/005): decide o estalo,
 -- anda o anel e decide quem ele achou, igual pra todos.
--- * Estalo: no EveryOneMinute, com a névoa aberta (NOM_World.fog), cada Estalador vivo (o
---   sorteio pelo persistentOutfitID, como o grito do Corredor no server/NOM_Variants.lua)
---   estala com chance 1/CLICK_ODDS se há jogador a até SEND_RANGE no andar dele.
+-- * Estalo: com a névoa aberta (NOM_World.fog), cada Estalador vivo (o sorteio pelo
+--   persistentOutfitID, como o grito do Corredor no server/NOM_Variants.lua) estala a cada
+--   R.gap(ZombRand(GAP_ROLL)) ms (5 a 30 s), sorteado de novo a cada estalo, se há jogador a
+--   até SEND_RANGE no andar dele. O relógio (S.clock) é o tempo real do OnTick que para na
+--   pausa (isGamePaused): não depende do tamanho do dia. A lista de zumbis é lida a cada
+--   SCAN_MS (acha Estalador novo, tira quem saiu); a agenda é conferida a cada SAMPLE_MS.
 -- * Anel: anda no OnTick em tempo real (getTimestampMs, parado com isGamePaused), RANGE tiles
 --   em DURATION_MS. Quem ele cruza no mesmo andar é conferido: em pé (isSneaking falso) ou
 --   andando (posição amostrada a cada SAMPLE_MS) é achado; agachado e parado, passa.
@@ -28,24 +31,38 @@ local MAX_STEP_MS = 250 -- um engasgo não pula o anel inteiro
 local R = NOM_SonarRules
 
 -- rings: { x, y, z, age, r = raio do tick anterior (nil antes do primeiro), zombie, id }.
-NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0 }
+-- next[z] = { at = S.clock do próximo estalo, pid = persistentOutfitID, seen = passada }.
+NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, clock = 0, next = {} }
 local S = NOM_SonarServer
--- samples[p] = { x0, y0 = amostra anterior, x1, y1 = a última }. ponytail: chave é o objeto
--- do jogador; quem sai fica até reiniciar (um por jogador), como o NOM_Variants.
+-- samples[p] = { x0, y0 = amostra anterior, x1, y1 = a última, lx, ly = posição do último tick
+-- lido (o anel não é pulado entre ticks) }. ponytail: chave é o objeto do jogador; quem sai
+-- fica até reiniciar (um por jogador), como o NOM_Variants.
 local samples = {}
-local lastMs, sampledAt
+local lastMs, sampledAt, scannedAt
+local pending, scans = 0, 0 -- ms ainda não somados ao relógio; passadas na lista
+local scratch = {} -- mexer na tabela no meio do pairs não é seguro no Kahlua (NOM_VariantAI)
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] sonar " .. msg) end
 end
 
--- Jogadores vivos com a posição deste tick: { p, x, y, z }.
+-- Jogadores vivos com a posição deste tick e a do último tick lido: { p, x, y, z, px, py }.
 local function read()
     local out = {}
     for _, p in ipairs(NOM_Players.all()) do
-        if not p:isDead() then out[#out + 1] = { p = p, x = p:getX(), y = p:getY(), z = p:getZ() } end
+        if not p:isDead() then
+            local s = samples[p]
+            out[#out + 1] = { p = p, x = p:getX(), y = p:getY(), z = p:getZ(), px = s and s.lx, py = s and s.ly }
+        end
     end
     return out
+end
+
+local function remember(players)
+    for _, e in ipairs(players) do
+        local s = samples[e.p]
+        if s ~= nil then s.lx, s.ly = e.x, e.y end
+    end
 end
 
 local function sample(players)
@@ -63,7 +80,7 @@ end
 function S.emit(z, x, y, zz, why)
     if #S.rings >= R.MAX_RINGS then table.remove(S.rings, 1) end
     local id = z and z:getOnlineID() or -1
-    S.rings[#S.rings + 1] = { x = x, y = y, z = zz, age = 0, zombie = z, id = id }
+    S.rings[#S.rings + 1] = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
     S.emitted = S.emitted + 1
     if isServer() then
         sendServerCommand(MODULE, "sonar", { x = x, y = y, z = zz, id = id })
@@ -74,8 +91,10 @@ function S.emit(z, x, y, zz, why)
         " estalador=" .. tostring(z ~= nil))
 end
 
--- O anel cruzou o jogador e (do read): confere e decide.
+-- O anel cruzou o jogador e (do read): confere e decide, uma vez por anel e jogador.
 local function check(ring, e)
+    if ring.hit[e.p] then return end
+    ring.hit[e.p] = true
     local sneaking = e.p:isSneaking()
     local s = samples[e.p]
     local moving = s ~= nil and R.moving(s.x0, s.y0, e.x, e.y)
@@ -109,26 +128,6 @@ local function advance(players, dt)
     end
 end
 
-function S.tick()
-    local n = #S.rings
-    if n == 0 and not NOM_World.fog then
-        lastMs, sampledAt = nil, nil
-        return
-    end
-    local now = getTimestampMs()
-    local dt = lastMs and math.max(0, math.min(now - lastMs, MAX_STEP_MS)) or 0
-    lastMs = now
-    local due = NOM_World.fog and (sampledAt == nil or now - sampledAt >= R.SAMPLE_MS)
-    if n == 0 and not due then return end
-    if isGamePaused() then return end
-    local players = read()
-    if due then
-        sampledAt = now
-        sample(players)
-    end
-    if n > 0 then advance(players, dt) end
-end
-
 local function isEco(z)
     return z:getModData().NOM_eco == true or z:getOutfitName() == ECO_OUTFIT
 end
@@ -137,21 +136,99 @@ local function estaladorCfg()
     return NOM_VariantRules.config(NOM_Config.get), NOM_Fog.period(), NOM_World.red
 end
 
--- Custo: 2 chamadas por zumbi (get, getPersistentOutfitID); o resto só no Estalador sorteado.
-function S.minute()
-    if not NOM_World.fog then return end
-    local players = read()
-    if #players == 0 then return end
+local function schedule(e) e.at = S.clock + R.gap(ZombRand(R.GAP_ROLL)) end
+
+-- Passada na lista: Estalador vivo novo entra na agenda com o primeiro intervalo sorteado
+-- (cada um o seu: não estalam juntos); quem saiu da lista, morreu ou virou Eco sai.
+-- Custo: 2 chamadas por zumbi (get, getPersistentOutfitID) e 3 por Estalador.
+local function scan()
+    scans = scans + 1
     local cfg, period, red = estaladorCfg()
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if NOM_VariantRules.variant(z:getPersistentOutfitID(), period, cfg, red) == "estalador"
-            and R.clicks(ZombRand(R.CLICK_ODDS)) and not z:isDead() then
-            local x, y, zz = z:getX(), z:getY(), math.floor(z:getZ())
-            if R.near(x, y, zz, players) and not isEco(z) then S.emit(z, x, y, zz, "tempo") end
+        local pid = z:getPersistentOutfitID()
+        if NOM_VariantRules.variant(pid, period, cfg, red) == "estalador" and not z:isDead() and not isEco(z) then
+            local e = S.next[z]
+            if e == nil or e.pid ~= pid then -- novo, ou objeto reaproveitado pra outro zumbi
+                e = { pid = pid }
+                schedule(e)
+                S.next[z] = e
+            end
+            e.seen = scans
         end
     end
+    local n = 0
+    for z, e in pairs(S.next) do
+        if e.seen ~= scans then
+            n = n + 1
+            scratch[n] = z
+        end
+    end
+    for i = 1, n do
+        S.next[scratch[i]] = nil
+        scratch[i] = nil
+    end
+end
+
+-- Quem venceu o intervalo estala (se ainda há jogador perto) e sorteia o próximo.
+local function clicks(players)
+    local n = 0
+    for z, e in pairs(S.next) do
+        if S.clock >= e.at then
+            n = n + 1
+            scratch[n] = z
+        end
+    end
+    for i = 1, n do
+        local z = scratch[i]
+        scratch[i] = nil
+        schedule(S.next[z])
+        if not z:isDead() then
+            local x, y, zz = z:getX(), z:getY(), math.floor(z:getZ())
+            if R.near(x, y, zz, players) then S.emit(z, x, y, zz, "tempo") end
+        end
+    end
+end
+
+-- O relógio soma o tempo real dos ticks (no máximo MAX_STEP_MS cada); com o jogo pausado o
+-- que se acumulou desde a última conferência é jogado fora. Sem anel, a pausa é conferida só
+-- na amostra (a cada SAMPLE_MS): até 250 ms de pausa podem entrar no relógio.
+function S.tick()
+    local n = #S.rings
+    if n == 0 and not NOM_World.fog then
+        if lastMs ~= nil then
+            lastMs, sampledAt, scannedAt, pending = nil, nil, nil, 0
+            S.next = {}
+        end
+        return
+    end
+    local now = getTimestampMs()
+    local dt = lastMs and math.max(0, math.min(now - lastMs, MAX_STEP_MS)) or 0
+    lastMs = now
+    pending = pending + dt
+    local due = NOM_World.fog and (sampledAt == nil or now - sampledAt >= R.SAMPLE_MS)
+    if n == 0 and not due then return end
+    if isGamePaused() then
+        pending = 0
+        return
+    end
+    S.clock = S.clock + pending
+    pending = 0
+    local players = read()
+    if due then
+        sampledAt = now
+        sample(players)
+        if #players > 0 then
+            if scannedAt == nil or S.clock - scannedAt >= R.SCAN_MS then
+                scannedAt = S.clock
+                scan()
+            end
+            clicks(players)
+        end
+    end
+    if #S.rings > 0 then advance(players, dt) end
+    remember(players)
 end
 
 -- NOM.sonar() (debug): o estalo do Estalador vivo mais perto de p (mesmo andar, até
@@ -174,6 +251,7 @@ function S.force(p)
         end
     end
     if best then
+        if S.next[best] then schedule(S.next[best]) end -- não estala de novo logo depois
         S.emit(best, best:getX(), best:getY(), pz, "debug")
         return "sonar estalador x=" .. math.floor(best:getX()) .. " y=" .. math.floor(best:getY()) ..
             " dist=" .. math.floor(math.sqrt(bestD) + 0.5)
@@ -182,7 +260,6 @@ function S.force(p)
     return "sonar anel no jogador (sem Estalador a até " .. R.DEBUG_REACH .. " tiles)"
 end
 
-Events.EveryOneMinute.Add(S.minute)
 Events.OnTick.Add(S.tick)
 
 return NOM_SonarServer

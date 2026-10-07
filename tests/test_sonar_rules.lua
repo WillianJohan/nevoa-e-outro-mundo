@@ -24,6 +24,18 @@ return {
         assert(R.crossed(64, 7, 8), "na borda dos 8 tiles")
     end,
 
+    -- quem anda na direção do anel não pula a frente entre dois ticks: estava fora do raio
+    -- anterior (p2, posição do tick anterior) e agora está dentro do novo: cruzou
+    sonar_crossed_uses_previous_position = function()
+        assert(not R.crossed(2.9 ^ 2, 3, 3.1), "sem a posição anterior, pulou a frente")
+        assert(R.crossed(2.9 ^ 2, 3, 3.1, 3.05 ^ 2), "cruzou a frente andando pra dentro")
+        assert(not R.crossed(2.9 ^ 2, 3, 3.1, 2.95 ^ 2), "já estava dentro")
+        assert(not R.crossed(3.5 ^ 2, 3, 3.1, 3.6 ^ 2), "ainda fora")
+        local ring = { x = 0, y = 0, z = 0 }
+        local a = R.sweep(ring, 3, 3.1, { { x = 2.9, y = 0, z = 0, px = 3.05, py = 0 } })
+        assert(#a == 1, "o sweep não usa a posição anterior")
+    end,
+
     -- em pé ou andando: achado; agachado e parado: passa
     sonar_exposed_standing_or_moving = function()
         assert(R.exposed(false, false), "em pé parado")
@@ -56,10 +68,15 @@ return {
         assert(#R.sweep(ring, 8, 8, players) == 0, "parado em 8 não cruza ninguém de novo")
     end,
 
-    -- em média 2 min de jogo: chance 1/CLICK_ODDS por minuto
-    sonar_click_odds = function()
-        assert(R.CLICK_ODDS == 2)
-        assert(R.clicks(0) and not R.clicks(1))
+    -- ritmo (decisão do Johan, 2026-10-06): intervalo aleatório de 5 a 30 s reais, sorteado a
+    -- cada estalo; roll = ZombRand(GAP_ROLL), inteiro em [0, GAP_ROLL)
+    sonar_click_gap = function()
+        assert(R.GAP_MIN_MS == 5000 and R.GAP_MAX_MS == 30000)
+        assert(R.GAP_ROLL == R.GAP_MAX_MS - R.GAP_MIN_MS + 1)
+        assert(R.gap(0) == 5000 and R.gap(R.GAP_ROLL - 1) == 30000)
+        assert(R.gap(12345) == 17345)
+        assert(R.gap(-3) == 5000 and R.gap(99999) == 30000, "sorteio fora da faixa é preso")
+        assert(R.CLICK_ODDS == nil and R.clicks == nil, "o sorteio por minuto de jogo saiu")
     end,
 
     -- só estala na rede com jogador perto, no mesmo andar

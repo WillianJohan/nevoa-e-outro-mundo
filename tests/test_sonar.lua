@@ -81,7 +81,11 @@ local function setup(opts)
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }
-    ZombRand = function(n) return G.rand % n end
+    -- G.rolls: sorteios em ordem (um por chamada); acabou, G.rand
+    ZombRand = function(n)
+        if G.rolls and #G.rolls > 0 then return table.remove(G.rolls, 1) % n end
+        return G.rand % n
+    end
     getTimestampMs = function() G.calls = G.calls + 1; return G.now end
     isGamePaused = function() G.calls = G.calls + 1; return G.paused == true end
     getNumActivePlayers = function() G.calls = G.calls + 1; return opts.server and 0 or #G.players end
@@ -144,6 +148,17 @@ local function setup(opts)
         end
     end
     function G.minute() G.fire("EveryOneMinute") end
+    -- anda ms reais em ticks de 16 ms
+    function G.wait(ms) G.tick(math.ceil(ms / 16)) end
+    -- anda até o próximo estalo (no máximo max ms); devolve os ms que levou ou nil
+    function G.untilRing(max)
+        local before = NOM_SonarServer.emitted
+        for k = 1, math.ceil((max or 32000) / 16) do
+            G.tick(1)
+            if NOM_SonarServer.emitted > before then return k * 16 end
+        end
+        return nil
+    end
     function G.commands(name)
         local out = {}
         for _, c in ipairs(G.sent) do if c.command == name then out[#out + 1] = c end end
@@ -157,42 +172,88 @@ local COMMON = idFor(false)
 
 return {
     -- estalo com jogador perto: toca no ponto (solo) e o anel nasce
-    sonar_minute_emits_for_estalador = function()
+    sonar_click_emits_for_estalador = function()
         local G = setup()
         local e = G.zombie({ x = 100, y = 100, id = EST })
         G.zombie({ x = 101, y = 100, id = COMMON })
         G.player({ x = 105, y = 100 })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         assert(#G.sounds == 1 and G.sounds[1].name == NOM_Sonar.CLICK_SOUND, "estalo: " .. #G.sounds)
         assert(G.sounds[1].x == e.x and G.sounds[1].y == e.y)
         assert(#G.rings == 1 and #NOM_SonarServer.rings == 1)
         assert(#G.sent == 0, "solo não manda comando")
     end,
 
-    -- sorteio, jogador longe, Eco, morto e fim da névoa: nada
-    sonar_minute_skips = function()
-        local G = setup({ rand = 1 })
-        G.zombie({ x = 100, y = 100, id = EST })
-        G.player({ x = 105, y = 100 })
-        G.minute()
-        assert(#G.rings == 0, "sorteio 1 de 2 estalou")
+    -- jogador longe, Eco, morto e fim da névoa: nada
+    sonar_click_skips = function()
         local G2 = setup()
         G2.zombie({ x = 100, y = 100, id = EST })
         G2.player({ x = 100 + NOM_SonarRules.SEND_RANGE + 2, y = 100 })
-        G2.minute()
-        assert(#G2.rings == 0, "estalou sem ninguém perto")
+        assert(not G2.untilRing(40000), "estalou sem ninguém perto")
         local G3 = setup()
         G3.zombie({ x = 100, y = 100, id = EST, eco = true })
         local dead = G3.zombie({ x = 100, y = 102, id = EST })
         dead.dead = true
         G3.player({ x = 105, y = 100 })
-        G3.minute()
-        assert(#G3.rings == 0, "Eco ou morto estalou")
+        assert(not G3.untilRing(40000), "Eco ou morto estalou")
         local G4 = setup({ fog = false })
         G4.zombie({ x = 100, y = 100, id = EST })
         G4.player({ x = 105, y = 100 })
-        G4.minute()
-        assert(#G4.rings == 0, "estalou sem névoa")
+        assert(not G4.untilRing(40000), "estalou sem névoa")
+    end,
+
+    -- ritmo (decisão do Johan, 2026-10-06): cada Estalador estala num intervalo aleatório de
+    -- GAP_MIN_MS a GAP_MAX_MS reais, sorteado de novo a cada estalo. Não depende do minuto de
+    -- jogo (tamanho do dia): o EveryOneMinute não estala nada.
+    sonar_click_rhythm_real_time = function()
+        local R = NOM_SonarRules
+        local G = setup() -- ZombRand 0: o intervalo mínimo
+        G.zombie({ x = 100, y = 100, id = EST })
+        G.player({ x = 105, y = 100 })
+        for _ = 1, 30 do G.minute() end
+        assert(NOM_SonarServer.emitted == 0, "o minuto de jogo estalou")
+        local first = G.untilRing()
+        assert(first and first >= R.GAP_MIN_MS and first <= R.GAP_MIN_MS + R.SCAN_MS + 300, "primeiro: " .. tostring(first))
+        local second = G.untilRing()
+        assert(second and math.abs(second - R.GAP_MIN_MS) <= 300, "segundo: " .. tostring(second))
+        local G2 = setup({ rand = R.GAP_ROLL - 1 }) -- o máximo
+        G2.zombie({ x = 100, y = 100, id = EST })
+        G2.player({ x = 105, y = 100 })
+        assert(not G2.untilRing(R.GAP_MAX_MS - 500), "estalou antes do intervalo")
+        assert(G2.untilRing(R.SCAN_MS + 1000), "não estalou no fim do intervalo")
+    end,
+
+    -- cada Estalador sorteia o seu: dois no mesmo lugar não estalam juntos
+    sonar_click_rhythm_per_estalador = function()
+        local G = setup()
+        G.rolls = { 0, 20000 } -- o primeiro sorteado: 5 s; o segundo: 25 s
+        G.rand = 25000 -- daqui pra frente, 30 s
+        local a = G.zombie({ x = 100, y = 100, id = EST })
+        local b = G.zombie({ x = 100, y = 104, id = EST })
+        G.player({ x = 105, y = 100 })
+        assert(G.untilRing())
+        assert(#G.sounds == 1 and G.sounds[1].y == a.y, "o primeiro não foi o de 5 s")
+        local t = G.untilRing()
+        assert(#G.sounds == 2 and G.sounds[2].y == b.y, "o segundo não foi o de 25 s")
+        assert(t and t >= 19000 and t <= 21000, "o de 25 s veio em " .. tostring(t))
+    end,
+
+    -- pausa não conta: o intervalo espera o jogo voltar
+    sonar_click_rhythm_pause = function()
+        local R = NOM_SonarRules
+        local G = setup()
+        G.zombie({ x = 100, y = 100, id = EST })
+        G.player({ x = 105, y = 100 })
+        G.untilRing()
+        G.wait(2000)
+        G.paused = true
+        G.wait(20000)
+        assert(NOM_SonarServer.emitted == 1, "estalou com o jogo pausado")
+        G.paused = false
+        local t = G.untilRing()
+        -- a pausa é conferida na amostra (SAMPLE_MS) e a agenda também: ~2 amostras de folga
+        assert(t and t >= R.GAP_MIN_MS - 2000 - 2 * R.SAMPLE_MS and t <= R.GAP_MIN_MS - 2000 + 2 * R.SAMPLE_MS,
+            "depois da pausa: " .. tostring(t))
     end,
 
     -- a regra: em pé é achado quando o anel chega; agachado e parado, passa
@@ -200,7 +261,7 @@ return {
         local G = setup()
         local e = G.zombie({ x = 100, y = 100, id = EST })
         local stand = G.player({ x = 105, y = 100 })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         G.tick(10) -- 160 ms: o anel está em ~0,85 tile
         assert(e.target == nil, "achou antes do anel chegar")
         G.tick(120)
@@ -211,7 +272,7 @@ return {
         local e2 = G2.zombie({ x = 100, y = 100, id = EST })
         G2.player({ x = 105, y = 100, sneaking = true })
         G2.tick(40) -- amostras de posição antes do estalo
-        G2.minute()
+        assert(G2.untilRing(), "não estalou")
         G2.tick(120)
         assert(e2.target == nil, "agachado e parado foi achado")
         assert(NOM_SonarServer.passed == 1)
@@ -222,12 +283,30 @@ return {
         local G = setup()
         local e = G.zombie({ x = 100, y = 100, id = EST })
         local p = G.player({ x = 106, y = 100, sneaking = true })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         for _ = 1, 120 do
             p.x = p.x - 0.02 -- ~1,2 tile/s, agachado andando na direção do anel
             G.tick(1)
         end
         assert(e.target == p, "agachado andando passou")
+    end,
+
+    -- correndo na direção do anel, em qualquer fase do tick, ninguém pula a frente (a posição
+    -- do tick anterior conta); e o mesmo anel acha cada jogador uma vez só
+    sonar_runner_never_jumps_front = function()
+        for k = 0, 9 do
+            local G = setup()
+            local e = G.zombie({ x = 100, y = 100, id = EST })
+            local p = G.player({ x = 106, y = 100 })
+            p.x = p.x + k * 0.013
+            assert(G.untilRing(), "não estalou")
+            for _ = 1, 100 do
+                p.x = p.x - 0.1 -- ~6 tiles/s, mais que o anel anda num tick
+                G.tick(1)
+            end
+            assert(e.target == p, "pulou a frente na fase " .. k)
+            assert(NOM_SonarServer.found == 1, "achado " .. NOM_SonarServer.found .. " vezes na fase " .. k)
+        end
     end,
 
     -- fora dos 8 tiles e em outro andar: o anel não chega
@@ -236,7 +315,7 @@ return {
         local e = G.zombie({ x = 100, y = 100, id = EST })
         G.player({ x = 109, y = 100 })
         G.player({ x = 103, y = 100, z = 1 })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         G.tick(150)
         assert(e.target == nil, "achou fora do alcance ou em outro andar")
     end,
@@ -246,7 +325,7 @@ return {
         local G = setup({ server = true })
         local e = G.zombie({ x = 100, y = 100, id = EST, onlineID = 77 })
         local p = G.player({ x = 104, y = 100, onlineID = 5 })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         local s = G.commands("sonar")
         assert(#s == 1 and s[1].player == nil, "sonar: " .. #s)
         assert(s[1].args.x == e.x and s[1].args.y == e.y and s[1].args.z == 0 and s[1].args.id == 77)
@@ -282,7 +361,7 @@ return {
         NOM_Sonar.onRing(function() error("bum") end)
         G.zombie({ x = 100, y = 100, id = EST })
         G.player({ x = 104, y = 100 })
-        G.minute()
+        assert(G.untilRing(), "não estalou")
         assert(#G.sounds == 1 and #NOM_SonarServer.rings == 1)
     end,
 
@@ -338,10 +417,17 @@ return {
         for i = 1, 3 do G3.zombie({ x = 100, y = 100 + i, id = EST }) end
         G3.player({ x = 100, y = 100 })
         G3.calls = 0
-        G3.minute()
-        local minute = G3.calls
-        assert(minute <= 303 * 2 + 3 * 8 + 10, "minuto com 303 zumbis: " .. minute)
-        print(string.format("[budget] sonar: névoa sem anel %.2f chamadas/tick; %d anéis e 4 jogadores pior tick %d; minuto com 303 zumbis %d",
-            idle, NOM_SonarRules.MAX_RINGS, worst, minute))
+        local scan = 0
+        for _ = 1, 250 do -- 4 s: 4 passadas na lista (SCAN_MS), nenhum estalo ainda
+            local before = G3.calls
+            G3.tick(1)
+            scan = math.max(scan, G3.calls - before)
+        end
+        local avg = G3.calls / 250
+        assert(NOM_SonarServer.emitted == 0, "estalou antes do intervalo")
+        assert(scan <= 303 * 2 + 3 * 8 + 10, "passada com 303 zumbis: " .. scan)
+        assert(avg <= 303 * 2 / (NOM_SonarRules.SCAN_MS / 16) + 4, "média com 303 zumbis: " .. avg)
+        print(string.format("[budget] sonar: névoa sem anel %.2f chamadas/tick; %d anéis e 4 jogadores pior tick %d; passada com 303 zumbis %d (média %.1f/tick)",
+            idle, NOM_SonarRules.MAX_RINGS, worst, scan, avg))
     end,
 }

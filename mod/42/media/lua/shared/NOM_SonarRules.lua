@@ -11,7 +11,12 @@ NOM_SonarRules = {
     -- Depois de achar, o Estalador não é cegado de novo por FOUND_MS reais: dá tempo de ele
     -- andar os 8 tiles (~1 tile/s) mesmo que o jogador se agache logo depois do anel.
     FOUND_MS = 10000,
-    CLICK_ODDS = 2,        -- chance 1/2 por minuto de jogo: um estalo a cada 2 min em média
+    -- Ritmo (decisão do Johan, 2026-10-06): cada Estalador estala num intervalo aleatório de
+    -- GAP_MIN_MS a GAP_MAX_MS reais, sorteado de novo a cada estalo. Tempo real que para na
+    -- pausa: não depende do tamanho do dia.
+    GAP_MIN_MS = 5000,
+    GAP_MAX_MS = 30000,
+    SCAN_MS = 1000,        -- a lista de zumbis é lida a cada isso (acha Estalador novo, tira quem saiu)
     SEND_RANGE = 40,       -- só estala com jogador a até isso (o som chega a 25, o anel a 8)
     SAMPLE_MS = 250,       -- amostra de posição dos jogadores (o "andando")
     MOVE_EPS = 0.1,        -- tiles entre amostras: ≥ 0,2 tile/s é andar
@@ -36,11 +41,15 @@ end
 
 function R.done(age) return age >= R.DURATION_MS end
 
--- d2 = distância² ao centro. O anel cruzou neste tick se a frente foi de r0 a r1 e passou
--- por d. r0 nil: primeiro tick (o centro conta).
-function R.crossed(d2, r0, r1)
+-- d2 = distância² ao centro agora; p2 = a do tick anterior (nil: sem posição anterior). O anel
+-- cruzou neste tick se a frente foi de r0 a r1 e o jogador, que estava fora do raio r0, agora
+-- está dentro de r1: quem anda na direção do anel não pula a frente entre dois ticks. r0 nil:
+-- primeiro tick (o centro conta).
+function R.crossed(d2, r0, r1, p2)
     if d2 > r1 * r1 then return false end
-    return r0 == nil or d2 > r0 * r0
+    if r0 == nil then return true end
+    local rr = r0 * r0
+    return d2 > rr or (p2 ~= nil and p2 > rr)
 end
 
 -- Em pé ou andando: achado. Agachado e parado: o anel passa.
@@ -55,7 +64,8 @@ function R.moving(x0, y0, x1, y1)
     return dx * dx + dy * dy >= R.MOVE_EPS * R.MOVE_EPS
 end
 
--- Índices dos jogadores ({ x, y, z }) que o anel cruzou ao ir de r0 a r1, no andar dele.
+-- Índices dos jogadores ({ x, y, z, px, py = posição do tick anterior ou nil }) que o anel
+-- cruzou ao ir de r0 a r1, no andar dele.
 function R.sweep(ring, r0, r1, players)
     local out = {}
     if r0 ~= nil and r1 <= r0 then return out end
@@ -63,14 +73,23 @@ function R.sweep(ring, r0, r1, players)
     for i, p in ipairs(players) do
         if math.floor(p.z) == floor then
             local dx, dy = p.x - ring.x, p.y - ring.y
-            if R.crossed(dx * dx + dy * dy, r0, r1) then out[#out + 1] = i end
+            local p2
+            if p.px ~= nil and p.py ~= nil then
+                local qx, qy = p.px - ring.x, p.py - ring.y
+                p2 = qx * qx + qy * qy
+            end
+            if R.crossed(dx * dx + dy * dy, r0, r1, p2) then out[#out + 1] = i end
         end
     end
     return out
 end
 
--- roll = ZombRand(CLICK_ODDS).
-function R.clicks(roll) return roll == 0 end
+R.GAP_ROLL = R.GAP_MAX_MS - R.GAP_MIN_MS + 1
+
+-- Intervalo até o próximo estalo, em ms. roll = ZombRand(GAP_ROLL).
+function R.gap(roll)
+    return R.GAP_MIN_MS + math.max(0, math.min(roll, R.GAP_ROLL - 1))
+end
 
 -- Algum jogador ({ x, y, z }) a até SEND_RANGE do ponto, no mesmo andar.
 function R.near(x, y, z, players)
