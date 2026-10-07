@@ -368,13 +368,7 @@ public final class RenderContext {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, depthFbo);
             glBlitFramebuffer(vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3],
                               vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            // cor da cena pro borrado do rosto censurado: só com quadrado na tela (o blit custa ~0,1 ms)
-            if (f.censorCount > 0) {
-                ensureSceneTarget(f.depthW, f.depthH);
-                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sceneFbo);
-                glBlitFramebuffer(vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3],
-                                  vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            }
+            if (f.censorCount > 0) copyScene(f, vp);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDraw);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, prevRead);
 
@@ -486,6 +480,26 @@ public final class RenderContext {
         depthTexW = w;
         depthTexH = h;
         log("depth target " + w + "x" + h);
+    }
+
+    private static boolean sceneFailed;
+
+    /**
+     * Cor da cena pro borrado do rosto censurado, só com quadrado na tela (o blit custa ~0,1 ms). Erro aqui
+     * desliga só o quadrado, de vez (o FBO pode ter ficado pela metade); a névoa segue.
+     */
+    private static void copyScene(Frame f, int[] vp) {
+        if (sceneFailed) { f.censorCount = 0; return; }
+        try {
+            ensureSceneTarget(f.depthW, f.depthH);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sceneFbo);
+            glBlitFramebuffer(vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3],
+                              vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        } catch (Throwable t) {
+            f.censorCount = 0;
+            sceneFailed = true;
+            log("rosto censurado: cópia da cor falhou, quadrado desligado: " + t);
+        }
     }
 
     /** Textura RGBA8 do tamanho da de profundidade, pra cópia da cor da cena (rosto censurado). */

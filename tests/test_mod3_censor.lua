@@ -51,6 +51,10 @@ return {
         assert(not body:find("fail(", 1, true), "erro do quadrado desliga o mod3 inteiro")
         assert(body:find("getAlpha(playerIndex)", 1, true), "sem o alfa do zumbi pro jogador (mostraria atrás da vista)")
         assert(ctx:find("if %(f%.censorCount > 0%)"), "cópia da cor sem a guarda do quadrado na tela")
+        local copy = assert(ctx:match("private static void copyScene%((.-)\n    }\n"), "copyScene")
+        assert(copy:find("catch %(Throwable"), "cópia da cor sem catch (Throwable): FBO incompleto desligaria a névoa")
+        assert(not copy:find("fail(", 1, true), "erro na cópia da cor desliga o mod3 inteiro")
+        assert(copy:find("f.censorCount = 0", 1, true), "erro na cópia da cor não pula o passe do quadrado")
         assert(read("tests/test_mod3_flow.sh"):find("CensorTest", 1, true), "teste Java fora do script")
     end,
 }

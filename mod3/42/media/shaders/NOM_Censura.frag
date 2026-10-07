@@ -13,8 +13,10 @@ float censorHash(vec3 p) {
     return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
+// preso no retângulo deste jogador: fora dele a cópia tem a tela do outro jogador ou lixo
 vec3 sceneAt(vec2 iso) {
-    return texture(uScene, nomIsoToFrag(iso) / uDepthSize).rgb;
+    vec2 p = clamp(nomIsoToFrag(iso), uViewport.xy + 0.5, uViewport.xy + uViewport.zw - 0.5);
+    return texture(uScene, p / uDepthSize).rgb;
 }
 
 void main() {
@@ -35,7 +37,7 @@ void main() {
         float o = 0.25 * block;
         vec3 blur = 0.25 * (sceneAt(mid + vec2(-o, -o)) + sceneAt(mid + vec2(o, -o))
                           + sceneAt(mid + vec2(-o, o)) + sceneAt(mid + vec2(o, o)));
-        float n = censorHash(vec3(cell, floor(uTime * FPS)));
+        float n = censorHash(vec3(cell, mod(floor(uTime * FPS), 256.0)));   // sin com argumento grande perde precisão
         float scan = 0.8 + 0.2 * step(0.5, fract((iso.y - head.y) / block + uTime * 2.0));
         vec3 col = mix(blur, vec3(n) * scan, STATIC);
         float a = c.w * (1.0 - smoothstep(0.94, 1.0, m));

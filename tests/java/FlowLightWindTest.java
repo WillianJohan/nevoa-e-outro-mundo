@@ -45,7 +45,7 @@ public class FlowLightWindTest {
         float last = 0, prevR = 0;
         for (int k = 0; k < n; k++) {
             int o = k * LightWind.FLOATS;
-            check(out[o] + out[o + 4] <= 6f + LightWind.BEAM_R_MAX, "passou do alcance da luz: " + out[o]);
+            check(out[o] <= 6f, "passou do alcance da luz: " + out[o]);
             check(out[o] > last, "pontos fora de ordem");
             check(out[o + 4] >= prevR && out[o + 4] >= LightWind.BEAM_R0 && out[o + 4] <= LightWind.BEAM_R_MAX,
                     "raio: " + out[o + 4]);
