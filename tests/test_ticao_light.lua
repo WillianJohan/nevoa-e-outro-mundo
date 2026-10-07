@@ -203,8 +203,8 @@ return {
         G.seconds(3)
         assert(byDark.useless == true, "o gerador não acendeu o poste")
         dark.on = false
-        G.seconds(3)
-        assert(byDark.useless == false, "poste apagado segurou")
+        G.seconds(1)
+        assert(byDark.useless == false, "poste apagado segurou até a próxima volta")
     end,
     -- cômodo aceso congela quem está dentro; interruptor desligado ou sem força, não
     ticao_light_lit_room = function()
@@ -225,6 +225,17 @@ return {
         G.gridPower = false
         G.tick(60)
         assert(not inside.useless, "cômodo sem força congelou")
+    end,
+    -- cômodo aceso longe de todo jogador (> FIXED_NEAR) não congela: nada de lista com o mundo inteiro
+    ticao_light_lit_room_far = function()
+        local G = setup()
+        G.player({ x = 0, y = 0, face = math.pi })
+        G.gridPower = true
+        G.room({ x0 = 100, y0 = 100, x1 = 104, y1 = 104 })
+        local far = G.zombie({ x = 102, y = 102 })
+        black(true)
+        G.tick(30)
+        assert(not far.useless, "cômodo aceso longe dos jogadores congelou")
     end,
     -- custo da luz fixa: 200 postes no mapa, poucas chamadas por tick; o cômodo vai uma vez por leitura
     ticao_light_fixed_budget = function()

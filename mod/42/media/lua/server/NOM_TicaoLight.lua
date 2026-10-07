@@ -75,6 +75,7 @@ local function scanFixed(now)
                 local l = R.fixed(s:getRadius(), true, hydro, hydro and powered(getCell():getGridSquare(x, y, z)))
                 if l then
                     l.x, l.y, l.z = x + 0.5, y + 0.5, z
+                    l.src = s
                     scanNext[#scanNext + 1] = l
                 end
             end
@@ -137,15 +138,19 @@ local function gather(now)
             end
         end
     end
-    for _, l in ipairs(fixed) do out[#out + 1] = l end
+    -- a volta leva segundos: o poste que apagou no meio sai já (1 chamada por luz perto a cada SWEEP_MS)
+    for _, l in ipairs(fixed) do
+        if l.src:isActive() then out[#out + 1] = l end
+    end
     return out
 end
 
--- Fatia do rodízio: com luz, 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e
--- morto. Fora de toda luz, o cômodo dele (square e cômodo; o interruptor, uma vez por leitura).
+-- Fatia do rodízio: 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e morto. Fora
+-- de toda luz e a até FIXED_NEAR de um jogador, o cômodo dele (square e cômodo; o interruptor, uma
+-- vez por leitura).
 local function check(z, now)
+    local zx, zy = z:getX(), z:getY()
     if #lights > 0 then
-        local zx, zy = z:getX(), z:getY()
         local zz
         for _, l in ipairs(lights) do
             local dx, dy = zx - l.x, zy - l.y
@@ -160,6 +165,7 @@ local function check(z, now)
             end
         end
     end
+    if not nearPlayer(zx, zy) then return end
     local sq = z:getCurrentSquare()
     local room = sq and sq:getRoom()
     if room ~= nil and litRoom(room) and not z:isDead() then
