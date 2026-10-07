@@ -1,17 +1,16 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) está pronta na branch `sprint/0045-luz-e-tempestade`, sem merge: espera o Johan** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) está na `staging` com push e sync: espera o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Esperando o Johan: sprint 0045 (luz que pisca e tempestade)
+## Em teste no jogo: sprint 0045 (luz que pisca e tempestade)
 
 Pedido do Johan depois do teste da pilha: a lanterna pisca de verdade, postes piscam, tempestade com
 relâmpago na preta e na vermelha (a branca fica como está). Escolhas dele: alguns postes perto piscam
 na preta e na vermelha; o clarão congela o Tição; chuva em 30% das névoas.
 [README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md).
 
-**Pra aprovar, nesta ordem:**
-1. merge `--no-ff` de `sprint/0045-luz-e-tempestade` na `staging` e push;
-2. `scripts/dev-sync.sh` e reiniciar o jogo (o mod3 não mudou: sem `build-mod3.sh`).
+Merge `--no-ff` na `staging` (9d86bb3), push e `dev-sync.sh` feitos em 2026-10-07, aprovados pelo Johan.
+O mod3 não mudou. Reiniciar o jogo antes de testar.
 
 **Roteiro no jogo:** o do [README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md#roteiro-de-teste-no-jogo)
 e os UNKNOWNs 25, 26 e 27 do [pz-api-notes](architecture/pz-api-notes.md#testes-in-game-prioritários-unknowns)

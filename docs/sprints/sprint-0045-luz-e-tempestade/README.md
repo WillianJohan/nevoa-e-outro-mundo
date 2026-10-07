@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` |
+| Status | `em teste` (na `staging`) |
 | Branch | `sprint/0045-luz-e-tempestade` (saiu da `staging`) |
 | Origem | teste do Johan no jogo em 2026-10-07: "a lanterna não ficou piscando… os postes ficaram acesos… colocar tempestade, relâmpago, na preta e na vermelha. A branca está perfeita" |
 | Plano | [plan.md](plan.md) |
