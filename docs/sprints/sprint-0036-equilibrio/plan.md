@@ -111,4 +111,6 @@ Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes 
 
 - Notas por tarefa aqui; pz-api-notes (seção nova); `README.md` com roteiro de teste no jogo; `docs/sprints/README.md`; HANDOFF.
 
+**Testes (2026-10-06):** `./run-tests.sh` verde: 1048 testes Lua (eram 1014; a suíte Lua rodou 3 vezes seguidas, sem falha de ordem do `pairs`), 9 de contraste, 11 do Outro Mundo, os do mod3 e 29 de build.
+
 **Feito:** [pz-api-notes §27](../../architecture/pz-api-notes.md#27-visão-curta-e-perambular-na-névoa-sprint-0036) (APIs novas, linhas no resumo por mecânica, UNKNOWN 20), [README.md](README.md) com decisões e roteiro, linha da 0036 em `docs/sprints/README.md`, seção "Em andamento" no HANDOFF.
