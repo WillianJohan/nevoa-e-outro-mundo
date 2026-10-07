@@ -1933,6 +1933,24 @@ jogo mostrou e por que o tiro não aparecia.
 | Clareira: até 8 (`uClears`), abre em 0,15 s, fecha em 4 s (tempo da simulação, para na pausa), miolo limpo até meio raio e borda até o raio; multiplica a densidade inteira (véu, rolos, fluido) | decisão | `Blasts.java`, `nomClearing` no `NOM_RenderContext.glsl`; `FlowBlastTest` |
 | Raio do sopro e da clareira: som × 0,25, entre 5 e 12 tiles (pistola 10, som 20 → 5); os dois sons do mesmo tiro viram uma clareira só | decisão | `Blasts.radius`, `Blasts.add`; antes era som/10 entre 2,5 e 9 |
 
+## 30. Névoa preta: escuridão, Tição e luz (sprint 0038)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `ClimateManager.FLOAT_DESATURATION = 0`, `FLOAT_NIGHT_STRENGTH = 2`, `FLOAT_AMBIENT = 9`, `FLOAT_DAYLIGHT_STRENGTH = 11` | EXISTS | `javap -constants zombie.iso.weather.ClimateManager` |
+| O slider "Darkness" do admin escreve luz do dia = 1 − v e noite = v na camada modded | CONFIRMED (Lua vanilla) | `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:235-244, 362-364`; a preta usa os mesmos dois canais pela camada modded (`server/NOM_ClimateLook.lua`, `NOM_Rules.blacken`) |
+| `IsoPlayer.getActiveLightItem()` devolve o item aceso na mão ou preso; o liga/desliga é sincronizado pelo vanilla, então o servidor vê | EXISTS | javap `IsoPlayer`; `client/ISUI/ISInventoryPaneContextMenu.lua:2880-2884` (`setActivated` + `syncItemActivated`); já usado no `server/NOM_Night.lua` |
+| `InventoryItem.isTorchCone()Z`, `getLightDistance()I`, `getTorchDot()F`, `isActivated()Z`, `setActivated(Z)V`, `getContainer()` | EXISTS | javap `zombie.inventory.InventoryItem`; `getContainer() == getInventory()`: `shared/TimedActions/ISEquipHeavyItem.lua:56` |
+| `setActivated` é local: o vanilla manda o `syncItemActivated` à parte | CONFIRMED (Lua vanilla) | `ISInventoryPaneContextMenu.lua:2882-2883`; o piscar da lanterna apaga só no dono, sem pacote |
+| Lanternas vanilla: HandTorch 15 / cone / 0,5; Torch 25 / 0,66; PenLight 11 / 0,75; lampiões 15 (elétrico 10) sem cone; isqueiro 5 sem cone | EXISTS | `media/scripts/generated/items/drainable.txt` (HandTorch 979–992, Torch 1058–1071, PenLight 1084–1094, Lantern_* 1123–1376, Lighter 712–725) |
+| `TorchDot` tratado como o cosseno do meio ângulo do cone | decisão | 0,5 = 60° pra cada lado, coerente com a lanterna larga do jogo; `NOM_LightRules.lit` |
+| `IsoGameCharacter.getForwardDirectionX()F` / `getForwardDirectionY()F` | EXISTS | javap `zombie.characters.IsoGameCharacter` |
+| `IsoGameCharacter.getVehicle()`, `BaseVehicle.getHeadlightsOn()Z` | EXISTS | javap; `server/Vehicles/Vehicles.lua:565` |
+| Direção do carro sem `Vector3f` no Lua: o farol vira um raio de 8 tiles em volta do carro | decisão (conservadora) | `BaseVehicle.getForwardVector(Vector3f)` pede um `org.joml.Vector3f`; a 0039 decide se vale |
+| Luz fixa (cômodo aceso, poste) não congela o Tição na 0038 | decisão | a varredura de squares acesos fica pra 0039, junto com a luz que empurra a névoa do mod3 |
+| Congelar = `setUseless(true)` + `setTarget(nil)` + halt, no dono (`z:isLocal()`); a lista vai por `onlineID` | EXISTS | o mesmo da sirene (§3.2, §21, §24); `IsoZombie.getOnlineID()` (javap, já usado no Eco) |
+| Com a direção do jogador remoto no servidor dedicado, o facho segue quem gira | UNKNOWN | testar no MP: girar com a lanterna e ver o Tição soltar e outro congelar |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

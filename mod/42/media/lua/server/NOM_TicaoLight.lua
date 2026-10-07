@@ -174,6 +174,9 @@ function T.tick()
     end
 end
 
+-- Luzes da última leitura (gancho da 0039: a névoa preta do mod3 empurrada pela luz).
+function T.lights() return lights end
+
 -- Pro debug: congelados agora (no servidor).
 function T.count()
     local n, now = 0, getTimestampMs()

@@ -75,6 +75,14 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: névoa preta I (sprint 0038, na `staging`)
+
+Noite fechada mesmo de dia, todo zumbi vira Tição, a luz congela e a lanterna pisca. Resumo, decisões
+tomadas na ausência do Johan e roteiro em [sprint-0038-nevoa-preta/README.md](sprints/sprint-0038-nevoa-preta/README.md).
+Pra mudar rápido: `NOM_TicaoRules` (velocidade, caça, visão), `NOM_LightRules` (raios, piscar).
+Fica pra 0039: luz fixa congelando, farol com direção, a névoa preta do mod3 empurrada pela luz
+(`NOM_TicaoLight.lights()` é o gancho) e o Outro Mundo queimado.
+
 ## Em andamento: NOM: Noise of Mist (mini-sprint 0037b)
 
 Na branch `sprint/0037b-noise-of-mist`, **sem merge, push nem sync**; `./run-tests.sh` verde. Plano em [sprints/sprint-0037b-noise-of-mist/plan.md](sprints/sprint-0037b-noise-of-mist/plan.md); mapa de IDs, saves antigos e roteiro em [sprints/sprint-0037b-noise-of-mist/README.md](sprints/sprint-0037b-noise-of-mist/README.md).
