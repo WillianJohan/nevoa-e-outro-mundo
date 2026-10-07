@@ -79,6 +79,17 @@ return {
         assert(R.CLICK_ODDS == nil and R.clicks == nil, "o sorteio por minuto de jogo saiu")
     end,
 
+    -- teto de anéis: anel cujo jogador mais perto (mesmo andar) está além de REACH não acha
+    -- ninguém (nem quem corre na direção dele: a frente chega em RANGE em DURATION_MS)
+    sonar_reach_for_cap = function()
+        assert(R.REACH >= R.RANGE + R.DURATION_MS / 1000 * 5.3, "REACH curto pra quem corre: " .. R.REACH)
+        assert(R.REACH < R.SEND_RANGE, "REACH tem que deixar anel anunciado de fora")
+        local players = { { x = 0, y = 0, z = 0 }, { x = 3, y = 0, z = 1 } }
+        assert(R.nearest2(10, 0, 0, players) == 100)
+        assert(R.nearest2(3, 0, 1, players) == 0, "outro andar")
+        assert(R.nearest2(3, 0, 2, players) == math.huge, "ninguém no andar")
+    end,
+
     -- só estala na rede com jogador perto, no mesmo andar
     sonar_near_player = function()
         local players = { { x = 0, y = 0, z = 0 }, { x = 30, y = 0, z = 1 } }

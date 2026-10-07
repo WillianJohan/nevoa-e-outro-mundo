@@ -21,6 +21,9 @@ NOM_SonarRules = {
     SAMPLE_MS = 250,       -- amostra de posição dos jogadores (o "andando")
     MOVE_EPS = 0.1,        -- tiles entre amostras: ≥ 0,2 tile/s é andar
     MAX_RINGS = 8,         -- anéis vivos ao mesmo tempo (servidor, tela e mod3)
+    -- Anel sem jogador a até REACH (mesmo andar) não acha ninguém, nem quem corre (~6 tiles/s)
+    -- na direção dele: é o que sai quando lota (NOM_SonarServer.emit)
+    REACH = 17,
     DEBUG_REACH = 60,      -- NOM.sonar(): Estalador a até isso de quem pede
     MAX_COORD = 100000,    -- coordenada de tile aceita na mensagem
     MIN_FLOOR = -32, MAX_FLOOR = 32,
@@ -101,6 +104,19 @@ function R.near(x, y, z, players)
         end
     end
     return false
+end
+
+-- Distância² do ponto ao jogador mais perto no mesmo andar (math.huge sem ninguém).
+function R.nearest2(x, y, z, players)
+    local floor, best = math.floor(z), math.huge
+    for _, p in ipairs(players) do
+        if math.floor(p.z) == floor then
+            local dx, dy = p.x - x, p.y - y
+            local d = dx * dx + dy * dy
+            if d < best then best = d end
+        end
+    end
+    return best
 end
 
 local function finite(v)

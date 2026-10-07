@@ -32,7 +32,7 @@ local R = NOM_SonarRules
 
 -- rings: { x, y, z, age, r = raio do tick anterior (nil antes do primeiro), zombie, id }.
 -- next[z] = { at = S.clock do próximo estalo, pid = persistentOutfitID, seen = passada }.
-NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, clock = 0, next = {} }
+NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, dropped = 0, clock = 0, next = {} }
 local S = NOM_SonarServer
 -- samples[p] = { x0, y0 = amostra anterior, x1, y1 = a última, lx, ly = posição do último tick
 -- lido (o anel não é pulado entre ticks) }. ponytail: chave é o objeto do jogador; quem sai
@@ -76,9 +76,30 @@ local function sample(players)
     end
 end
 
+-- Lotado (MAX_RINGS): sai o anel vivo mais longe de todo jogador, se ele já não alcança
+-- ninguém (além de REACH) e está mais longe que o novo; senão o novo não nasce. Anel anunciado
+-- é sempre simulado até o fim. Devolve se o novo cabe.
+local function room(x, y, zz, players)
+    if #S.rings < R.MAX_RINGS then return true end
+    players = players or read()
+    local worst, worstD = nil, R.REACH * R.REACH
+    for i, ring in ipairs(S.rings) do
+        local d = R.nearest2(ring.x, ring.y, ring.z, players)
+        if d > worstD then worst, worstD = i, d end
+    end
+    if worst == nil or R.nearest2(x, y, zz, players) >= worstD then return false end
+    table.remove(S.rings, worst)
+    return true
+end
+
 -- Um anel agora em (x, y, z). z: o Estalador (nil: anel de debug, só visual). why: log.
-function S.emit(z, x, y, zz, why)
-    if #S.rings >= R.MAX_RINGS then table.remove(S.rings, 1) end
+-- players: o read() deste tick (nil: lê). Devolve false se lotado (nada é anunciado).
+function S.emit(z, x, y, zz, why, players)
+    if not room(x, y, zz, players) then
+        S.dropped = S.dropped + 1
+        debugLog("lotado, estalo descartado por=" .. tostring(why) .. " x=" .. math.floor(x) .. " y=" .. math.floor(y))
+        return false
+    end
     local id = z and z:getOnlineID() or -1
     S.rings[#S.rings + 1] = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
     S.emitted = S.emitted + 1
@@ -89,6 +110,7 @@ function S.emit(z, x, y, zz, why)
     end
     debugLog("estalo por=" .. tostring(why) .. " x=" .. math.floor(x) .. " y=" .. math.floor(y) .. " z=" .. zz ..
         " estalador=" .. tostring(z ~= nil))
+    return true
 end
 
 -- O anel cruzou o jogador e (do read): confere e decide, uma vez por anel e jogador.
@@ -186,7 +208,7 @@ local function clicks(players)
         schedule(S.next[z])
         if not z:isDead() then
             local x, y, zz = z:getX(), z:getY(), math.floor(z:getZ())
-            if R.near(x, y, zz, players) then S.emit(z, x, y, zz, "tempo") end
+            if R.near(x, y, zz, players) then S.emit(z, x, y, zz, "tempo", players) end
         end
     end
 end
@@ -252,11 +274,11 @@ function S.force(p)
     end
     if best then
         if S.next[best] then schedule(S.next[best]) end -- não estala de novo logo depois
-        S.emit(best, best:getX(), best:getY(), pz, "debug")
+        if not S.emit(best, best:getX(), best:getY(), pz, "debug") then return "sonar lotado (" .. R.MAX_RINGS .. " anéis)" end
         return "sonar estalador x=" .. math.floor(best:getX()) .. " y=" .. math.floor(best:getY()) ..
             " dist=" .. math.floor(math.sqrt(bestD) + 0.5)
     end
-    S.emit(nil, px, py, pz, "debug")
+    if not S.emit(nil, px, py, pz, "debug") then return "sonar lotado (" .. R.MAX_RINGS .. " anéis)" end
     return "sonar anel no jogador (sem Estalador a até " .. R.DEBUG_REACH .. " tiles)"
 end
 

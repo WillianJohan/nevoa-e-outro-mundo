@@ -206,7 +206,7 @@ return {
     -- GAP_MIN_MS a GAP_MAX_MS reais, sorteado de novo a cada estalo. Não depende do minuto de
     -- jogo (tamanho do dia): o EveryOneMinute não estala nada.
     sonar_click_rhythm_real_time = function()
-        local R = NOM_SonarRules
+        local R = require "NOM_SonarRules"
         local G = setup() -- ZombRand 0: o intervalo mínimo
         G.zombie({ x = 100, y = 100, id = EST })
         G.player({ x = 105, y = 100 })
@@ -240,7 +240,7 @@ return {
 
     -- pausa não conta: o intervalo espera o jogo voltar
     sonar_click_rhythm_pause = function()
-        local R = NOM_SonarRules
+        local R = require "NOM_SonarRules"
         local G = setup()
         G.zombie({ x = 100, y = 100, id = EST })
         G.player({ x = 105, y = 100 })
@@ -307,6 +307,52 @@ return {
             assert(e.target == p, "pulou a frente na fase " .. k)
             assert(NOM_SonarServer.found == 1, "achado " .. NOM_SonarServer.found .. " vezes na fase " .. k)
         end
+    end,
+
+    -- teto de anéis (review, item 1): com mais de MAX_RINGS estalando juntos perto do jogador,
+    -- o que não cabe não é anunciado (nem som, nem anel, nem comando); todo anel anunciado é
+    -- simulado até o fim e acha o jogador
+    sonar_cap_never_announces_dropped = function()
+        local R = require "NOM_SonarRules"
+        for _, server in ipairs({ false, true }) do
+            local G = setup({ server = server })
+            for i = 1, R.MAX_RINGS + 2 do G.zombie({ x = 100 + (i % 3), y = 100 + i * 0.3, id = EST, onlineID = 50 + i }) end
+            G.player({ x = 104, y = 102, onlineID = 5 })
+            assert(G.untilRing(), "não estalou")
+            assert(#NOM_SonarServer.rings == R.MAX_RINGS, "anéis vivos: " .. #NOM_SonarServer.rings)
+            local announced = server and #G.commands("sonar") or #G.rings
+            assert(announced == R.MAX_RINGS, "anunciados: " .. announced)
+            assert(NOM_SonarServer.dropped == 2, "descartados: " .. tostring(NOM_SonarServer.dropped))
+            G.wait(R.DURATION_MS + 100)
+            local found = server and #G.commands("sonarFound") or NOM_SonarServer.found
+            assert(found == R.MAX_RINGS, "anel anunciado que não achou ninguém: " .. found)
+        end
+    end,
+
+    -- lotado com anéis que já não alcançam ninguém (longe de todo jogador): o mais longe sai
+    -- pro anel perto, que acha o jogador
+    sonar_cap_evicts_farthest_unreachable = function()
+        local R = require "NOM_SonarRules"
+        local G = setup()
+        G.rolls = {}
+        for i = 1, R.MAX_RINGS do
+            G.zombie({ x = 100 + R.REACH + i, y = 100, id = EST })
+            G.rolls[i] = 0
+        end
+        local near = G.zombie({ x = 100, y = 104, id = EST })
+        G.rolls[R.MAX_RINGS + 1] = 600 -- estala logo depois dos longes
+        G.rand = R.GAP_ROLL - 1
+        local p = G.player({ x = 100, y = 100 })
+        assert(G.untilRing())
+        G.wait(300)
+        assert(#NOM_SonarServer.rings == R.MAX_RINGS)
+        local far = 0
+        for _, ring in ipairs(NOM_SonarServer.rings) do far = math.max(far, ring.x) end
+        assert(G.untilRing(1500), "o perto não estalou")
+        assert(#G.rings == R.MAX_RINGS + 1 and NOM_SonarServer.dropped == 0)
+        for _, ring in ipairs(NOM_SonarServer.rings) do assert(ring.x ~= far, "o mais longe ficou") end
+        G.wait(R.DURATION_MS)
+        assert(near.target == p, "o anel perto não achou")
     end,
 
     -- fora dos 8 tiles e em outro andar: o anel não chega
