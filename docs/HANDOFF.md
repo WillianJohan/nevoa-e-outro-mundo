@@ -61,6 +61,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
 | `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
 | `NOMRender_setParam(12, 1)` / `(12, 0)` | névoa preta: a luz (lanterna, farol, lampião, poste) empurra a névoa. O Lua manda sozinho na borda da preta (sprint 0039) |
+| `NOMRender_setParam(13, s)` | rosto censurado do Sem-rosto: 0 desliga, 1 tamanho normal (padrão), 1,5 maior (sprint 0044) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -75,6 +76,15 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 4. **O advice é inlinado dentro da classe do jogo.** Todo método do mod3 chamado do `@Patch` precisa ser `public`, senão dá `IllegalAccessError` e o jogo crasha. Há um teste pra isso em `tests/test_mod3_depth.py`.
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
+
+## Em teste: rosto censurado do Sem-rosto (sprint 0044, branch empilhada)
+
+Com o mod3, a cabeça do Sem-rosto ganha um quadrado de censura de TV: a cena atrás em mosaico,
+chiando e com linhas de varredura. O passe `NOM_Censura` roda antes da névoa (a névoa cobre o
+quadrado), some atrás de parede e com o zumbi fora da vista. Só há custo com Sem-rosto na tela
+(até 4 a 20 tiles). Desligar: `NOMRender_setParam(13, 0)`. **Falta ver no jogo** (item 24 da lista
+de UNKNOWNs, [pz-api-notes §33](architecture/pz-api-notes.md)).
+[README](sprints/sprint-0044-rosto-censurado/README.md).
 
 ## Em teste: Tição com crosta 3D; teste de IA esperando decisão (sprint 0043, branch empilhada)
 
