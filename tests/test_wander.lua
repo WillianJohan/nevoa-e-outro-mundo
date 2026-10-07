@@ -34,7 +34,8 @@ local function setup(opts)
     end
     function G.zombie(o)
         local z = { x = o.x, y = o.y, z = o.z or 0, md = {}, target = o.target, useless = o.useless == true,
-            remote = o.remote == true, dead = o.dead == true, moving = o.moving == true, outfit = o.outfit }
+            remote = o.remote == true, dead = o.dead == true, moving = o.moving == true, outfit = o.outfit,
+            id = o.id or 0, fakeDead = o.fakeDead == true, sitting = o.sitting == true }
         local function def(name, fn)
             z[name] = function(...) G.calls = G.calls + 1; return fn(...) end
         end
@@ -48,6 +49,9 @@ local function setup(opts)
         def("isMoving", function(self) return self.moving end)
         def("getModData", function(self) return self.md end)
         def("getOutfitName", function(self) return self.outfit end)
+        def("hasModData", function(self) return next(self.md) ~= nil end)
+        -- ID 0: zumbi sem outfit, nunca variante (NOM_VariantRules.variant)
+        def("getPersistentOutfitID", function(self) return self.id end)
         def("pathToLocationF", function(self, x, y, zz)
             self.goal = { x = x, y = y, z = zz }
             self.moving = true
@@ -168,13 +172,21 @@ return {
         eco.md.NOM_eco = true
         busy[#busy + 1] = eco
         local ruled = {}
-        for i = 1, 6 do ruled[i] = G.zombie({ x = 12, y = i - 3 }) end
+        for i = 1, 5 do ruled[i] = G.zombie({ x = 12, y = i - 3 }) end
         NOM_NightStats.variants[ruled[1]] = "corredor"
         NOM_VariantAI.blinded[ruled[2]] = { common = true, n = 0 }
         NOM_VariantAI.watched[ruled[3]] = 0
         NOM_Carpideira.still[ruled[4]] = true
         NOM_SirenFreeze.frozen[ruled[5]] = true
-        NOM_NightStats.variants[ruled[6]] = "semrosto"
+        -- Sem-rosto de verdade: o ID sorteia no período, fora de variants (review final da 0036)
+        local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+        for seed = 1, 5000 do
+            local id = 11 * 65536 + seed
+            if NOM_VariantRules.semRosto(id, 1, c) then
+                busy[#busy + 1] = G.zombie({ x = 11, y = #busy - 3, id = id })
+                if #busy >= 9 then break end
+            end
+        end
         local before = G.calls
         for seed = 1, 60 do NOM_Wander.wave(seed) end
         for _, z in ipairs(busy) do assert(z.goal == nil, "andou quem estava ocupado") end

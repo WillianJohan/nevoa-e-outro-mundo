@@ -47,6 +47,20 @@ local function idFor(want, period, avoid)
     error("nenhum ID")
 end
 
+-- n IDs que são Sem-rosto no período (sandbox padrão), normal ou vermelha. O NOM_NightStats
+-- não põe o Sem-rosto em variants (kind vira nil antes do apply): é zumbi comum ali.
+local function semRostoIds(n, period, red)
+    require "NOM_Config"
+    local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
+    local out = {}
+    for seed = 1, 200000 do
+        local id = 11 * 65536 + seed
+        if NOM_VariantRules.semRosto(id, period, c, red) then out[#out + 1] = id end
+        if #out == n then return out end
+    end
+    error("poucos IDs de Sem-rosto")
+end
+
 local function setup(opts)
     opts = opts or {}
     local G = { zombies = {}, players = {}, reports = {}, rand = opts.rand or 0 }
@@ -512,8 +526,8 @@ return {
         -- Sem-rosto na vermelha: sem IA aqui, mas com a visão curta (sprint 0036): só o lote
         local G2 = setup()
         NOM_FogState.set(true, 1, true)
-        local sr = {}
-        for i = 1, 300 do sr[i] = G2.zombie({ x = 100 + i, y = 100, variant = "semrosto" }) end
+        local sr, ids = {}, semRostoIds(300, 1, true)
+        for i = 1, 300 do sr[i] = G2.zombie({ x = 100 + i, y = 100, id = ids[i] }) end
         G2.frame(10)
         assert(sum(sr) <= 10 * (NOM_VariantAI.VISION_BATCH + 300 * 2), "Sem-rosto: " .. sum(sr))
     end,
@@ -810,10 +824,12 @@ return {
         assert(p.bitten > 0 and #G.reports == 1 and G.reports[1] == c, "Corredor mudou")
         assert(NOM_VariantAI.blinded[c] == nil)
     end,
-    -- o Sem-rosto não tem IA de mira própria: ganha a visão curta
+    -- o Sem-rosto não tem IA de mira própria: ganha a visão curta. Estado real: o ID sorteia
+    -- Sem-rosto no período e o NOM_NightStats não o põe em variants (review final da 0036)
     vision_semrosto_short_sight = function()
         local G = setup()
-        local z = G.zombie({ x = 0, y = 0, variant = "semrosto" })
+        local z = G.zombie({ x = 0, y = 0, id = semRostoIds(1, 1)[1] })
+        assert(NOM_NightStats.variants[z] == nil)
         local p = G.player({ x = 8, y = 0 })
         G.frame(120)
         assert(p.bitten == 0 and math.abs(z.x - p.x) > NOM_VariantAI.VISION_TILES, "Sem-rosto viu de longe")

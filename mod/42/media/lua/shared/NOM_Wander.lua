@@ -9,7 +9,7 @@
 -- põe o destino no PathFindBehavior2 e o pathToAux (0–274) liga bPathfind ou bMoving
 -- sozinho. Uso vanilla no zumbi: client/DebugUIs/DebugContextMenu.lua:640 (pathToLocation,
 -- a versão de tile inteiro do mesmo caminho, IsoGameCharacter.pathToLocation 0–28).
--- Fora: variantes (comportamento delas), Ecos, cegos e vigiados da visão curta, Carpideira
+-- Fora: variantes (comportamento delas), Sem-rostos, Ecos, cegos e vigiados da visão curta, Carpideira
 -- parada, congelados da sirene e todo useless; sem névoa, com a sirene ou com a opção
 -- FogWander desligada, não sai onda.
 require "NOM_WanderRules"
@@ -21,6 +21,7 @@ require "NOM_Carpideira"
 require "NOM_SirenFreeze"
 require "NOM_VariantAI"
 require "NOM_SemRosto"
+require "NOM_VariantRules"
 
 NOM_Wander = { last = nil }
 local R = NOM_WanderRules
@@ -62,15 +63,18 @@ local function ruled(z)
         or NOM_Carpideira.still[z] ~= nil or NOM_SirenFreeze.frozen[z] ~= nil
 end
 
--- Parado e livre: sem alvo, perto de algum jogador, local, vivo, sem useless, sem andar e
--- não Eco. Custo: get + getTarget + getX/getY em quem passa da tabela; o resto só nos perto.
-local function idle(z, ps)
+-- Parado e livre: sem alvo, perto de algum jogador, local, vivo, sem useless, sem andar,
+-- não Eco e não Sem-rosto (o NOM_NightStats não o põe em variants: só o sorteio pelo ID diz;
+-- decisão do Johan: o Sem-rosto não perambula). Custo: get + getTarget + getX/getY em quem
+-- passa da tabela; o resto só nos perto.
+local function idle(z, ps, cfg)
     if z:getTarget() ~= nil then return nil end
     local x, y = z:getX(), z:getY()
     if not nearAny(ps, x, y) then return nil end
     if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or NOM_NightStats.isEco(z, z:getModData()) then
         return nil
     end
+    if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red) then return nil end
     return { x = x, y = y, z = z:getZ() }
 end
 
@@ -85,6 +89,7 @@ function NOM_Wander.wave(seed)
     local ps, all = players()
     if #ps == 0 then return nil end
     local rand = R.rng(seed)
+    local cfg = NOM_VariantRules.config(NOM_Config.get)
     local list = getCell():getZombieList()
     local size = list:size()
     local cands, objs = {}, {}
@@ -93,7 +98,7 @@ function NOM_Wander.wave(seed)
         if #cands >= R.SCAN_MAX then break end
         local z = list:get(NOM_Math.mod(start + k, size))
         if not ruled(z) then
-            local c = idle(z, ps)
+            local c = idle(z, ps, cfg)
             if c then
                 cands[#cands + 1] = c
                 objs[#cands] = z

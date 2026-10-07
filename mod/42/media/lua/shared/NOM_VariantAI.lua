@@ -202,7 +202,9 @@ end
 
 -- O rodízio: até VISION_BATCH zumbis por tick, em volta na lista. Tabela Lua antes de
 -- qualquer chamada: variante com mira própria, cego, vigiado, Carpideira parada e
--- congelado pela sirene não custam nada.
+-- congelado pela sirene não custam nada. O Sem-rosto entra como o comum: o NOM_NightStats
+-- não o põe em variants (kind vira nil antes do apply), e ele tem visão curta (decisão do
+-- Johan); perguntar o NOM_SemRosto.isSemRosto custaria uma chamada por zumbi do lote.
 local function sweep()
     tick = tick + 1
     r2 = visionR2()
@@ -213,8 +215,7 @@ local function sweep()
     local n = math.min(NOM_VariantAI.VISION_BATCH, size)
     for k = 0, n - 1 do
         local z = list:get(NOM_Math.mod(cursor + k, size))
-        local kind = NOM_NightStats.variants[z]
-        if (kind == nil or kind == "semrosto") and blinded[z] == nil and watched[z] == nil
+        if NOM_NightStats.variants[z] == nil and blinded[z] == nil and watched[z] == nil
             and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
             local t = z:getTarget()
             if aimsUnseen(z, t) and z:isLocal() and not NOM_NightStats.isEco(z, z:getModData()) then blindCommon(z, t) end
