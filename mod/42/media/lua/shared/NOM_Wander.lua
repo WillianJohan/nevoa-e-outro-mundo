@@ -63,15 +63,17 @@ local function ruled(z)
         or NOM_Carpideira.still[z] ~= nil or NOM_SirenFreeze.frozen[z] ~= nil
 end
 
--- Parado e livre: sem alvo, perto de algum jogador, local, vivo, sem useless, sem andar,
--- não Eco e não Sem-rosto (o NOM_NightStats não o põe em variants: só o sorteio pelo ID diz;
--- decisão do Johan: o Sem-rosto não perambula). Custo: get + getTarget + getX/getY em quem
--- passa da tabela; o resto só nos perto.
+-- Parado e livre: sem alvo, perto de algum jogador, local, vivo, sem useless, sem andar, nem
+-- fingindo de morto nem sentado no chão (isFakeDead/isSitOnGround, os do log do
+-- NOM_NightStats), não Eco e não Sem-rosto (o NOM_NightStats não o põe em variants: só o
+-- sorteio pelo ID diz; decisão do Johan: o Sem-rosto não perambula). Custo: get + getTarget
+-- + getX/getY em quem passa da tabela; o resto só nos perto.
 local function idle(z, ps, cfg)
     if z:getTarget() ~= nil then return nil end
     local x, y = z:getX(), z:getY()
     if not nearAny(ps, x, y) then return nil end
-    if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or NOM_NightStats.isEco(z, z:getModData()) then
+    if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or z:isFakeDead() or z:isSitOnGround()
+        or NOM_NightStats.isEco(z, z:getModData()) then
         return nil
     end
     if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red) then return nil end

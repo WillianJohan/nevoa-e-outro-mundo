@@ -50,6 +50,8 @@ local function setup(opts)
         def("getModData", function(self) return self.md end)
         def("getOutfitName", function(self) return self.outfit end)
         def("hasModData", function(self) return next(self.md) ~= nil end)
+        def("isFakeDead", function(self) return self.fakeDead end)
+        def("isSitOnGround", function(self) return self.sitting end)
         -- ID 0: zumbi sem outfit, nunca variante (NOM_VariantRules.variant)
         def("getPersistentOutfitID", function(self) return self.id end)
         def("pathToLocationF", function(self, x, y, zz)
@@ -193,6 +195,16 @@ return {
         for _, z in ipairs(ruled) do assert(z.goal == nil, "andou quem tem regra") end
         -- os com regra não custam nada: só o get da lista
         assert(G.calls > before)
+    end,
+    -- review final da 0036: deitado fingindo de morto e sentado no chão ficam onde estão
+    -- (z:isFakeDead(), z:isSitOnGround(): NOM_NightStats, log do -debug)
+    wander_skips_fake_dead_and_sitting = function()
+        local G = setup()
+        G.player(0, 0)
+        ring(G, 10, { fakeDead = true })
+        ring(G, 10, { sitting = true })
+        for seed = 1, 40 do NOM_Wander.wave(seed) end
+        assert(#walkers(G) == 0, "levantou quem fingia de morto ou estava sentado")
     end,
     -- sem névoa, na sirene ou com a opção desligada, nada
     wander_needs_fog_and_option = function()
