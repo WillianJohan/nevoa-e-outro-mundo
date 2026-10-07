@@ -14,6 +14,7 @@ require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
 require "NOM_DebugRules"
+require "NOM_DebugLog"
 require "NOM_NightCount"
 require "NOM_Fog"
 require "NOM_FogEvent"
@@ -31,7 +32,7 @@ local function allowed(player)
     if not getDebug() or player == nil then return false end
     if not isServer() then return true end
     if player:getRole():hasCapability(Capability.UseDebugContextMenu) then return true end
-    print("[NOM] debug negado: sem permissão de debug")
+    NOM_DebugLog.say("[NOM] debug negado: sem permissão de debug")
     return false
 end
 
@@ -233,7 +234,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     if not a then return end
     local msg = ops[a.op](player, a)
     if a.op ~= "status" then msg = "[NOM] debug " .. msg end
-    print(msg)
+    NOM_DebugLog.say(msg)
     if isServer() then sendServerCommand(player, MODULE, "debugReply", { msg = msg }) end
 end)
 
