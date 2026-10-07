@@ -1,7 +1,9 @@
 # Créditos
 
 **Nada de terceiros.** Todo arquivo de som, imagem e textura do mod é original, gerado por
-script deste repositório; o resto do que o mod mostra é conteúdo vanilla do Project
+script deste repositório, menos a **arte de lançamento, que é do Johan** (pôster, preview, ícone
+e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)) e só é redimensionada e
+tingida por script; o resto do que o mod mostra é conteúdo vanilla do Project
 Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum
 código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
 [MIT](LICENSE), a mesma do mod.
@@ -73,21 +75,29 @@ são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
 
 ## Imagens
 
-Geradas pelo script [`scripts/gen_images.py`](scripts/gen_images.py) (numpy + Pillow,
-semente fixa): névoa em camadas de ruído suavizado, um poste e uma figura sem rosto,
-desenhados por código. Nenhuma captura de tela do jogo. O texto usa a fonte embutida do
-Pillow (Aileron Regular, de dotcolon.net, domínio público CC0); o acento do "É" é
-desenhado à mão porque a fonte embutida não tem o caractere.
+**Arte de lançamento: Johan** (sprint 0037b, [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)).
+Exceção à regra de tudo gerado por script, por decisão dele (AGENTS.md, 2026-10-06). As fontes
+ficam reduzidas em `docs/art/`; o script [`scripts/gen_images.py`](scripts/gen_images.py)
+(numpy + Pillow) só redimensiona, separa as cores e tinge. Nenhuma captura de tela do jogo,
+nada de outro mod.
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
+| `docs/art/NOM_Post.png` | 768×768 | fonte do pôster oficial: a parede descascando com "NOISE OF MIST" |
+| `docs/art/NOM_Preview_Cinza.png` | 768×768 | fonte da preview oficial do Workshop (cinza) |
+| `docs/art/NOM_Preview_Vermelha.png` | 768×768 | fonte do pôster de staging (vermelha) |
+| `docs/art/NOM_Icon.png` | 768×768 | fonte do ícone: "NOM" enferrujado na névoa |
+| `docs/art/NOM_Banner.png` | 1280×720 | banner do README e da descrição do Workshop |
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
-| `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`): o "N" na névoa |
-| `docs/workshop/preview.png` | 256×256 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
-| `mod2/42/poster.png` | 512×512 | painel do mod opcional do shader: o pôster com as cores separadas e "SHADER" |
-| `mod2/42/icon.png` | 64×64 | ícone do mod opcional do shader: o "N" com as cores separadas |
+| `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`) |
+| `docs/workshop/preview.png` | 512×512 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
+| `mod2/42/poster.png`, `mod3/42/poster.png` | 512×512 | painel dos mods opcionais (shader e volumétrica): o pôster com as cores separadas |
+| `mod2/42/icon.png`, `mod3/42/icon.png` | 64×64 | ícone dos mods opcionais: o ícone com as cores separadas |
+| `docs/art/staging/poster.png` | 512×512 | pôster do mod de staging (a preview vermelha), aplicado só na cópia do `scripts/dev-sync.sh` |
+| `docs/art/staging/icon.png` | 64×64 | ícone do mod de staging: o oficial avermelhado, aplicado só na cópia do `scripts/dev-sync.sh` |
 
-Pra regerar: `python3 scripts/gen_images.py`.
+Pra regerar: `python3 scripts/gen_images.py` (com arte nova do Johan:
+`python3 scripts/gen_images.py --importar ~/Downloads`, que reduz os originais pra `docs/art/`).
 
 ## Texturas
 

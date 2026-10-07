@@ -1,5 +1,5 @@
 #version 330
-// Névoa e Outro Mundo — Shader (mod NevoaEOutroMundo_Shader, sprint 0013).
+// NOM: Noise of Mist — Shader (mod NoiseOfMist_Shader, sprint 0013).
 //
 // Substitui o pós-processo de tela do jogo (programa "screen", WeatherShader).
 // Código original deste repositório, licença MIT. Do jogo vem só a interface: os

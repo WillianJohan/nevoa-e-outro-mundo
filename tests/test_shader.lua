@@ -1,4 +1,4 @@
--- Mod do shader (mod2/, id NevoaEOutroMundo_Shader, sprint 0013): screen.frag original
+-- Mod do shader (mod2/, id NoiseOfMist_Shader, sprint 0013): screen.frag original
 -- com a interface que o jogo espera, sem texto do vanilla, e o mod.info.
 --
 -- Interface (bytecode WeatherShader do 42.21): onCompileSuccess busca a posição destes
@@ -150,8 +150,8 @@ return {
 
     shader_modinfo = function()
         local info = assert(read("mod2/42/mod.info"), "falta mod2/42/mod.info")
-        assert(info:find("\nid=NevoaEOutroMundo_Shader\n", 1, true))
-        assert(info:find("\nrequire=NevoaEOutroMundo\n", 1, true), "sem require do mod principal")
+        assert(info:find("\nid=NoiseOfMist_Shader\n", 1, true))
+        assert(info:find("\nrequire=NoiseOfMist\n", 1, true), "sem require do mod principal")
         -- ShadowZ também troca o screen.frag; id "ShadowZ". B42: "\\<id>", e o
         -- readModInfoAux tira a barra e separa por vírgula (bytecode 384–412)
         assert(info:find("\nincompatible=\\ShadowZ\n", 1, true), "sem incompatible=\\ShadowZ")

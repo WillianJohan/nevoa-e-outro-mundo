@@ -211,4 +211,20 @@ return {
             end
         end)
     end,
+
+    -- sprint 0037b: o nome exibido é "NOM: Noise of Mist"; as chaves (Sandbox_NevoaEOutroMundo etc.) ficam
+    translations_new_mod_name = function()
+        local OLD = { "Névoa e Outro Mundo", "Fog and Otherworld" }
+        local files = lines("find " .. DIR .. " mod2/42/media/lua/shared/Translate -name '*.json'")
+        for _, path in ipairs(files) do
+            for k, v in pairs(parse(path)) do
+                for _, old in ipairs(OLD) do assert(not v:find(old, 1, true), path .. ": nome antigo em " .. k) end
+            end
+        end
+        for _, lang in ipairs(LANGS) do
+            assert(parse(DIR .. lang .. "/Sandbox.json").Sandbox_NevoaEOutroMundo == "NOM: Noise of Mist", lang)
+            assert(parse(DIR .. lang .. "/UI.json").UI_NOM_Options == "NOM: Noise of Mist", lang)
+            assert(parse(DIR .. lang .. "/UI.json").UI_NOM_Debug_Title == "NOM: debug", lang)
+        end
+    end,
 }
