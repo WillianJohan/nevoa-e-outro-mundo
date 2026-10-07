@@ -9,6 +9,7 @@ if isServer() or not getDebug() then return end
 
 require "NOM_Debug"
 require "NOM_DebugRules"
+require "NOM_DebugLog"
 require "NOM_Math"
 require "NOM_NightStats"
 require "NOM_FogState"
@@ -44,7 +45,7 @@ end
 -- passou hoje é a de amanhã (server/NOM_DebugServer.lua).
 function NOM.time(hour)
     if type(hour) ~= "number" or hour ~= hour or hour == math.huge or hour == -math.huge then
-        print("[NOM] debug uso: NOM.time(hora), ex.: NOM.time(22)")
+        NOM_DebugLog.say("[NOM] debug uso: NOM.time(hora), ex.: NOM.time(22)")
         return
     end
     NOM_Debug.send({ op = "time", hour = NOM_Math.mod(hour, 24) })
@@ -56,7 +57,7 @@ function NOM.spawn(n, outfit)
     if not p then return end
     local count = NOM_DebugRules.clampSpawn(n == nil and 1 or n)
     if not count then
-        print("[NOM] debug uso: NOM.spawn(quantos, outfit), ex.: NOM.spawn(5)")
+        NOM_DebugLog.say("[NOM] debug uso: NOM.spawn(quantos, outfit), ex.: NOM.spawn(5)")
         return
     end
     local a = p:getForwardDirection():getDirection() -- radianos (FishingRod.lua:286)
@@ -77,7 +78,7 @@ local function cheat(name, getter, setter)
         if on == nil then on = not p[getter](p) end
         p[setter](p, on == true)
         sendPlayerExtraInfo(p)
-        print("[NOM] debug " .. name .. "=" .. tostring(on == true))
+        NOM_DebugLog.say("[NOM] debug " .. name .. "=" .. tostring(on == true))
     end
 end
 
@@ -117,7 +118,7 @@ function NOM.getZombie()
     if not p then return end
     local z = NOM_Debug.nearest(p)
     if not z then
-        print("[NOM] debug nenhum zumbi perto")
+        NOM_DebugLog.say("[NOM] debug nenhum zumbi perto")
         return
     end
     NOM_Debug.send({ op = "pull", id = z:getOnlineID(),
@@ -131,11 +132,11 @@ function NOM.turnZombie(i)
     if type(i) ~= "number" or i ~= math.floor(i) or i < 0 or i > #kinds then
         local list = {}
         for n, k in ipairs(kinds) do list[#list + 1] = n .. " " .. k end
-        print("[NOM] debug uso: NOM.turnZombie(i), 0 desfaz, " .. table.concat(list, ", "))
+        NOM_DebugLog.say("[NOM] debug uso: NOM.turnZombie(i), 0 desfaz, " .. table.concat(list, ", "))
         return
     end
     if i > 0 and not NOM_FogState.on then
-        print("[NOM] debug variante só aparece com névoa (NOM.setFog(true))")
+        NOM_DebugLog.say("[NOM] debug variante só aparece com névoa (NOM.setFog(true))")
     end
     NOM_Debug.variant(i > 0 and kinds[i] or nil)
 end
@@ -151,7 +152,7 @@ function NOM.godMode(on)
     p:setInvisible(on)
     p:setZombiesDontAttack(on)
     sendPlayerExtraInfo(p)
-    print("[NOM] debug godMode=" .. tostring(on))
+    NOM_DebugLog.say("[NOM] debug godMode=" .. tostring(on))
 end
 
 -- Foco de vento do mod Volumétrica (tarefa 8 da sprint 0033): parâmetro 11 do mod3.
@@ -159,25 +160,25 @@ end
 local windOn = false
 function NOM.wind(on)
     if NOMRender_setParam == nil then
-        print("[NOM] debug vento precisa do mod Volumétrica (mod3)")
+        NOM_DebugLog.say("[NOM] debug vento precisa do mod Volumétrica (mod3)")
         return
     end
     if on == nil then on = not windOn end
     windOn = on == true
     NOMRender_setParam(11, windOn and 1 or 0)
-    print("[NOM] debug vento=" .. tostring(windOn))
+    NOM_DebugLog.say("[NOM] debug vento=" .. tostring(windOn))
 end
 
 -- Texturas próprias do Outro Mundo (sprint 0035): registra se o mundo mudou (o ensure é barato
 -- na mesma sessão) e diz quantas estão registradas e quais PNG faltam.
 function NOM.ownSprites()
     if not NOM_OwnSprites then
-        print("[NOM] debug sprites próprios: NOM_OwnSprites não carregou")
+        NOM_DebugLog.say("[NOM] debug sprites próprios: NOM_OwnSprites não carregou")
         return
     end
     local n = NOM_OwnSprites.ensure()
-    print("[NOM] debug sprites próprios: " .. n .. " de " .. NOM_OwnSprites.total() .. " registrados")
-    for _, m in ipairs(NOM_OwnSprites.missing()) do print("[NOM] debug sem textura: " .. m) end
+    NOM_DebugLog.say("[NOM] debug sprites próprios: " .. n .. " de " .. NOM_OwnSprites.total() .. " registrados")
+    for _, m in ipairs(NOM_OwnSprites.missing()) do NOM_DebugLog.say("[NOM] debug sem textura: " .. m) end
 end
 
 -- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
@@ -205,24 +206,24 @@ function NOM.ticao()
     end
     local frozen = NOM_TicaoFreeze and NOM_TicaoFreeze.count() or 0
     local fixed = NOM_TicaoLight and NOM_TicaoLight.fixedCount() or "-"
-    print("[NOM] debug ticao preta=" .. tostring(NOM_FogState.black == true) .. " ticoes=" .. n .. " congelados=" .. frozen
+    NOM_DebugLog.say("[NOM] debug ticao preta=" .. tostring(NOM_FogState.black == true) .. " ticoes=" .. n .. " congelados=" .. frozen
         .. " luzes_fixas=" .. fixed)
 end
 
 function NOM.blind()
     if not NOM_VariantAI then
-        print("[NOM] debug visão curta: NOM_VariantAI não carregou")
+        NOM_DebugLog.say("[NOM] debug visão curta: NOM_VariantAI não carregou")
         return
     end
     local c = NOM_VariantAI.counts()
-    print("[NOM] debug visão curta ligada=" .. tostring(c.on) .. " raio=" .. tostring(NOM_Config.get("FogZombieVision")) ..
+    NOM_DebugLog.say("[NOM] debug visão curta ligada=" .. tostring(c.on) .. " raio=" .. tostring(NOM_Config.get("FogZombieVision")) ..
         " cegos=" .. c.common .. " vigiados=" .. c.watched .. " estaladores=" .. c.estalador)
     local w = NOM_Wander and NOM_Wander.last
     if w then
-        print("[NOM] debug perambular última zumbis=" .. #w.groups .. " candidatos=" .. w.candidates ..
+        NOM_DebugLog.say("[NOM] debug perambular última zumbis=" .. #w.groups .. " candidatos=" .. w.candidates ..
             " jogadores=" .. w.players .. " lista=" .. w.size)
     else
-        print("[NOM] debug perambular: nenhuma onda neste processo ainda")
+        NOM_DebugLog.say("[NOM] debug perambular: nenhuma onda neste processo ainda")
     end
 end
 

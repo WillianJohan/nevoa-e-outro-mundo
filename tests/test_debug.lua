@@ -194,6 +194,8 @@ local function setup(opts)
     for _, m in ipairs({ "NOM_Fog", "NOM_FogEvent", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
         package.loaded[m] = _G[m]
     end
+    NOM_DebugLog = nil
+    package.loaded["NOM_DebugLog"] = nil
     require "NOM_World"
     if opts.loadServer ~= false then dofile("mod/42/media/lua/server/NOM_DebugServer.lua") end
     if opts.loadClient ~= false then
@@ -979,6 +981,29 @@ return {
         G.printed = {}
         NOM.sonar()
         assert(has(G.printed, "^%[NOM%] debug sonar não carregou"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0046: as respostas do debug ficam no NOM_DebugLog pro painel: a do servidor no solo
+    -- (mesmo processo), a do MP (debugReply) e as do próprio console
+    debug_log_collects_replies = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local saved = NOM_Storm
+        NOM_Storm = { force = function() return 7, 8 end }
+        NOM.thunder()
+        NOM_Storm = saved
+        local function last() local l = NOM_DebugLog.lines(); return l[#l] and l[#l].text end
+        assert(last() == "relâmpago em x=7 y=8", "resposta do servidor no solo: " .. tostring(last()))
+        NOM.time()
+        assert(last():find("^uso: NOM.time"), "aviso do console: " .. tostring(last()))
+        assert(has(G.printed, "^%[NOM%] debug uso: NOM.time"), "parou de imprimir")
+    end) end,
+    debug_log_collects_mp_reply = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 0, y = 0 })
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugReply", { msg = "[NOM] debug poste piscou em x=1 y=2 z=0" })
+        local l = NOM_DebugLog.lines()
+        assert(l[#l] and l[#l].text == "poste piscou em x=1 y=2 z=0", "resposta do MP fora do registro")
+        assert(has(G.printed, "^%[NOM%] debug poste piscou"), "parou de imprimir")
     end) end,
     -- sprint 0045: relâmpago já perto de quem pediu; quem dispara é o servidor
     nom_thunder_asks_server = function() run(function()
