@@ -88,15 +88,17 @@ return {
         local G = setup()
         G.player({ x = 0, y = 0 })
         for i = 1, 6 do G.lamp({ x = i, y = 0 }) end
+        local every = NOM_FlickerRules.LAMP_CHECK_MS
         NOM_FlickerRules.LAMP_CHECK_MS = 100 -- sorteio a cada 100 ms: sem o teto, 7 juntos
         fog(true, false)
         local peak = 0
         for _ = 1, 200 do
             G.tick(1)
             local n = 0
-            for k, u in pairs(NOM_LampFlicker.off) do if u > G.now then n = n + 1 end end
+            for _, u in pairs(NOM_LampFlicker.off) do if u > G.now then n = n + 1 end end
             if n > peak then peak = n end
         end
+        NOM_FlickerRules.LAMP_CHECK_MS = every -- o próximo arquivo de teste não herda os 100 ms
         assert(peak == NOM_FlickerRules.LAMP_MAX, "teto: " .. peak)
     end,
     -- dedicado: o servidor só manda (pra todos) a posição e o padrão; a cor de lá não muda

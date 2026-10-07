@@ -1,54 +1,32 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-07. A `staging` tem até a 0038 (névoa preta I) e a 0037b (renomeação), sincronizadas. **As sprints 0039 a 0044 estão prontas numa pilha de branches, sem merge, push nem sync: esperam o Johan** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) está pronta na branch `sprint/0045-luz-e-tempestade`, sem merge: espera o Johan** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Esperando o Johan: pilha 0039–0044 (feita com ele fora, 2026-10-06/07)
+## Esperando o Johan: sprint 0045 (luz que pisca e tempestade)
 
-O Johan pediu pra seguir o plano até o fim e só avisar depois do code review final. O review automático
-bloqueia merge, push e sync com ele fora, então cada sprint saiu da anterior:
-
-`sprint/0039-nevoa-preta-ii` ← `0040-vermelha-nova` ← `0041-facelift-spike` ← `0042-facelift-monstros`
-← `0043-ticao-ia` ← **`sprint/0044-rosto-censurado`** (a última contém todas).
+Pedido do Johan depois do teste da pilha: a lanterna pisca de verdade, postes piscam, tempestade com
+relâmpago na preta e na vermelha (a branca fica como está). Escolhas dele: alguns postes perto piscam
+na preta e na vermelha; o clarão congela o Tição; chuva em 30% das névoas.
+[README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md).
 
 **Pra aprovar, nesta ordem:**
-1. merge de `sprint/0044-rosto-censurado` na `staging` (fast-forward: a pilha saiu da `staging`) e push;
-2. `scripts/build-mod3.sh` (o mod3 mudou na 0039 e na 0044; ele já rodou uma vez na 0044, só pra
-   provar que compila; o jar fica fora do git e o do jogo não mudou);
-3. `scripts/dev-sync.sh` e reiniciar o jogo;
-4. apagar a worktree velha `../nom-hotfix-tiro` (branch `hotfix/tiro-nevoa`, já na `staging` como 0037c):
-   `git worktree remove --force ../nom-hotfix-tiro`. O que sobrou sem commit lá (`FlowBlastTest.java` e
-   uma linha do `test_mod3_flow.sh`) é rascunho velho do "buraco"; a versão da clareira, mais nova, já
-   está commitada.
+1. merge `--no-ff` de `sprint/0045-luz-e-tempestade` na `staging` e push;
+2. `scripts/dev-sync.sh` e reiniciar o jogo (o mod3 não mudou: sem `build-mod3.sh`).
+
+**Roteiro no jogo:** o do [README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md#roteiro-de-teste-no-jogo)
+e os UNKNOWNs 25, 26 e 27 do [pz-api-notes](architecture/pz-api-notes.md#testes-in-game-prioritários-unknowns)
+(o clarão aparece no escuro da preta? a cor 0 apaga o poste? a chuva molha?).
+
+**Ficou do teste da pilha:** na segunda névoa preta alguns zumbis ficaram parados e outros caçaram.
+Não é bug: na primeira o Johan estava com `NOM.invisible()` ligado (log); o Tição caça a cada 20 min
+e só a luz congela.
 
 **Decisão pendente do Johan:** o teste de IA 3D no Tição ([ADR-020](architecture/adr-020-modelos-3d-por-ia.md),
 proposta). O Hunyuan3D-2 não pode ir pro Workshop; o Stable Fast 3D pode, mas o download pede a conta
 dele no Hugging Face. Nada de IA entrou no repo.
 
-**Decisões tomadas em nome do Johan** (todas fáceis de voltar; o "como voltar" está no README de cada uma):
-
-| Sprint | Decisão |
-|---|---|
-| [0039](sprints/sprint-0039-nevoa-preta-ii/README.md) | Cômodo aceso congela o Tição (até 40 tiles de um jogador); poste preso em 8 tiles, vela fora; brasa parada; a preta vence a vermelha no Outro Mundo; cinza e brasa vão na grama; a luz empurra a névoa preta a 2,5 tiles/s; farol com direção só no mod3 |
-| [0040](sprints/sprint-0040-vermelha-nova/README.md) | Tentáculo fora da grama e parado; cinza no ar só na vermelha; teto de custo do Outro Mundo de 2500 pra 2600 chamadas; luz fria pelo clima ficou de fora |
-| [0041](sprints/sprint-0041-facelift-spike/README.md) | Modelos em Python puro (sem Blender); mesmo item, outro modelo (voltar = 3 linhas por XML); arame grosso de propósito; `.x` sem templates; textura espelhada em v |
-| [0042](sprints/sprint-0042-facelift-monstros/README.md) | Sem-rosto `nohairnobeard`; **Carpideira de `Group02` pra `nohair`** (as mechas são o cabelo); Corredor `nobeard`; casca e mechas rígidas (andam com a cabeça) |
-| [0043](sprints/sprint-0043-ticao-ia/README.md) | A crosta de carvão substitui o véu do Eco no Tição; olho laranja claro; fumaça como fita fixa; teste de IA não rodou |
-| [0044](sprints/sprint-0044-rosto-censurado/README.md) | Quadrado de 9 px iso por escala de tile, mosaico de 3 px, 60% chiado; cabeça em z + 0,52; até 4 quadrados a 20 tiles; sem som |
-
-**Code review final da pilha** (dois revisores, Lua do jogo e mod3/modelos). Nada crítico. Corrigido:
-- **modelos:** tampas das pontas abertas (mechas, boca, nó da venda, fumaça) e lascas do Tição saíam
-  viradas pra dentro; os testes não pegavam. `test_models.py` ganhou o teste de aresta orientada;
-- **Tição:** cômodo aceso congelava zumbis no mundo carregado inteiro (lista grande pros clientes a cada
-  250 ms). Agora só a até 40 tiles de um jogador; poste apagado solta na hora, sem esperar a volta;
-- **mod3:** erro na cópia da cor desligaria a névoa junto (agora só o quadrado); borrado preso no
-  retângulo do jogador; chiado sem perder precisão; um teste Java que não testava o alcance.
-
-Aceito sem mudar: a borda de cor no meio da névoa (só no debug) leva até ~2,5 s pra mandar o param 12
-pro mod3.
-
-**Roteiro no jogo:** o de cada README (0039 a 0044) e os UNKNOWNs 22, 23 e 24 do
-[pz-api-notes](architecture/pz-api-notes.md#testes-in-game-prioritários-unknowns) (os `.x` carregam? as peças
-assentam? o quadrado fica na cabeça?). Se uma peça 3D sumir, o `console.txt` mostra `Model not found`.
+**Decisões da pilha 0039–0044** (feitas com o Johan fora, todas fáceis de voltar; o "como voltar" está no
+README de cada uma): ver o [índice das sprints](sprints/README.md) e o README de cada sprint.
 
 ## Estado da `main`
 
