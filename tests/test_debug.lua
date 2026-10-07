@@ -946,6 +946,19 @@ return {
         assert(#waves == 1 and waves[1] == "debug", "ondas: " .. #waves)
         assert(has(G.printed, "^%[NOM%] debug perambular onda semente=77"), table.concat(G.printed, "\n"))
     end) end,
+    -- review final da 0036: com a opção FogWander desligada, a onda não sai; diz por quê
+    nom_wander_refuses_when_option_off = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local waves = {}
+        NOM_WanderServer = { wave = function(why) waves[#waves + 1] = why; return 77 end }
+        NOM_World.fog = true
+        SandboxVars.NevoaEOutroMundo = { FogWander = false }
+        NOM.wander()
+        NOM_WanderServer = nil
+        assert(#waves == 0, "mandou onda com o perambular desligado")
+        assert(has(G.printed, "^%[NOM%] debug perambular desligado na opção FogWander"), table.concat(G.printed, "\n"))
+    end) end,
     -- sprint 0036: cegos da visão curta e a última onda, neste processo (quem simula)
     nom_blind_reports_counts = function() run(function()
         local G = setup()
