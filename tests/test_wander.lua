@@ -266,26 +266,53 @@ return {
         for seed = 1, 40 do NOM_Wander.wave(seed) end
         assert(#walkers(G) == 0, "Eco perambulou no cliente de MP")
     end,
-    -- custo da onda com 300 zumbis: abaixo do teto de 2500 por atualização, mesmo com
-    -- todos perto e parados (para em SCAN_MAX candidatos)
+    -- custo da onda com 300 zumbis (review final da 0036): fatiada em ticks de até ~600
+    -- chamadas, terminando em no máximo 3 ticks. Perto (para em SCAN_MAX candidatos), longe
+    -- (a lista inteira) e misturado (o pior: muitos olhados e muitos candidatos)
     wander_wave_cost_300 = function()
-        for _, near in ipairs({ true, false }) do
+        local report = {}
+        for _, kind in ipairs({ "perto", "longe", "misturado" }) do
             local G = setup()
             G.player(0, 0)
             for i = 1, 300 do
+                local near = kind == "perto" or (kind == "misturado" and i % 4 == 0)
                 local r = near and 8 + (i % 20) or 50 + (i % 20)
                 G.zombie({ x = r, y = (i % 11) - 5 })
             end
-            local worst = 0
+            local worst, ticks, total = 0, 0, 0
             for seed = 1, 20 do
                 for _, z in ipairs(G.zombies) do z.goal, z.moving = nil, false end
                 local before = G.calls
                 NOM_Wander.wave(seed)
+                local n = 1
                 worst = math.max(worst, G.calls - before)
+                total = total + G.calls - before
+                while NOM_Wander.pending() do
+                    before = G.calls
+                    G.fire("OnTick")
+                    n = n + 1
+                    worst = math.max(worst, G.calls - before)
+                    total = total + G.calls - before
+                    assert(n <= 3, kind .. ": a onda passou de 3 ticks")
+                end
+                ticks = math.max(ticks, n)
             end
-            -- medido na sprint: 404 perto (para em SCAN_MAX), 1201 longe (a lista inteira)
-            assert(worst <= 4 * 300 + 8 * NOM_WanderRules.SCAN_MAX, (near and "perto" or "longe") .. ": " .. worst)
+            report[#report + 1] = string.format("%s pior tick %d, %d ticks, %.0f por onda", kind, worst, ticks, total / 20)
+            assert(worst <= 650, kind .. ": pior tick " .. worst)
         end
+        print("[budget] perambular (300 zumbis): " .. table.concat(report, "; "))
+    end,
+    -- a onda fatiada não termina sem névoa: a névoa que fecha no meio cancela
+    wander_sliced_wave_stops_without_fog = function()
+        local G = setup()
+        G.player(0, 0)
+        for i = 1, 300 do G.zombie({ x = 50 + (i % 20), y = (i % 11) - 5 }) end
+        ring(G, 10)
+        NOM_Wander.wave(7)
+        assert(NOM_Wander.pending(), "300 zumbis longe deviam fatiar a onda")
+        NOM_FogState.set(false, 1)
+        for _ = 1, 5 do G.fire("OnTick") end
+        assert(not NOM_Wander.pending() and #walkers(G) == 0, "a onda seguiu sem névoa")
     end,
     -- servidor: a cada gap minutos com névoa, uma onda; no solo aplica aqui, no dedicado manda
     wander_server_solo_applies = function()
