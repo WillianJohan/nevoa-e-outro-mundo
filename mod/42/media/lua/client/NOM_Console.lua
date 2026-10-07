@@ -13,6 +13,7 @@ require "NOM_Math"
 require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_VariantRules"
+require "NOM_Config"
 
 NOM = {}
 
@@ -179,6 +180,29 @@ function NOM.ownSprites()
     for _, m in ipairs(NOM_OwnSprites.missing()) do print("[NOM] debug sem textura: " .. m) end
 end
 
+-- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
+-- manda os grupos andarem; com -debug, o log diz quantos saíram.
+function NOM.wander() NOM_Debug.send({ op = "wander" }) end
+
+-- Visão curta (sprint 0036): cegos e vigiados neste processo, que é quem simula os zumbis
+-- dele (no solo, todos), e a última onda de perambular que ele aplicou.
+function NOM.blind()
+    if not NOM_VariantAI then
+        print("[NOM] debug visão curta: NOM_VariantAI não carregou")
+        return
+    end
+    local c = NOM_VariantAI.counts()
+    print("[NOM] debug visão curta ligada=" .. tostring(c.on) .. " raio=" .. tostring(NOM_Config.get("FogZombieVision")) ..
+        " cegos=" .. c.common .. " vigiados=" .. c.watched .. " estaladores=" .. c.estalador)
+    local w = NOM_Wander and NOM_Wander.last
+    if w then
+        print("[NOM] debug perambular última zumbis=" .. #w.groups .. " candidatos=" .. w.candidates ..
+            " jogadores=" .. w.players .. " lista=" .. w.size)
+    else
+        print("[NOM] debug perambular: nenhuma onda neste processo ainda")
+    end
+end
+
 NOM.HELP = {
     { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
@@ -200,6 +224,8 @@ NOM.HELP = {
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },
     { "NOM.status()", "estado do mod, local e do servidor" },
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
+    { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
+    { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },
 }

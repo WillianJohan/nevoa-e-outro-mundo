@@ -50,6 +50,21 @@ return {
         NOM_SirenFreeze.stop()
         for _, z in ipairs(zs) do assert(z.useless == false, "solo: não soltou") end
     end,
+    -- review final da 0036: o cego da visão curta ou do Estalador (NOM_VariantAI.blinded) já
+    -- está parado pela regra dele; a sirene não o pega, senão o stop soltaria o useless dele
+    siren_freeze_hold_skips_blinded = function()
+        local G = setup()
+        require "NOM_VariantAI"
+        G.player({ x = 30, y = 10 })
+        local z = G.zombie({ x = 5, y = 5 })
+        z.useless = true
+        NOM_VariantAI.blinded[z] = { p = G.players[1], n = 0, common = true, x = 5, y = 5, t = 0 }
+        NOM_SirenFreeze.start(GRACE_MS)
+        NOM_SirenFreeze.tick()
+        assert(not NOM_SirenFreeze.frozen[z] and z.faced == nil, "a sirene pegou o cego")
+        NOM_SirenFreeze.stop()
+        assert(z.useless == true, "o stop soltou o cego")
+    end,
     -- MP: a cópia remota (dono é outro cliente) não é tocada
     siren_freeze_holds_local_zombies_facing_player = function()
         local G = setup({ client = true })

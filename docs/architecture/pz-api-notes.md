@@ -1848,6 +1848,40 @@ sobrar fora do registro (defesa, igual ao `floors_burnt_01_*`).
 
 Por isso o visual novo vem de PNG nosso, não de sprite vanilla tingido.
 
+## 27. Visão curta e perambular na névoa (sprint 0036)
+
+Visão de ~4 tiles (`shared/NOM_VariantAI.lua`) e perambular (`shared/NOM_WanderRules.lua`,
+`shared/NOM_Wander.lua`, `server/NOM_WanderServer.lua`). Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| O raio de visão do zumbi fica preso em 10–20 tiles: a visão menor não sai do sandbox nem do degrau | EXISTS | `IsoZombie.updateVisionRadius` (§3.2); por isso a cegueira do Estalador em rodízio |
+| `setUseless(true)` + `setTarget(nil)` desfaz a mira e mata o spot forçado; o zumbi fica surdo enquanto useless | CONFIRMED | §3.2 (`spottedNew` 191–208, `RespondToSound` 8–15) |
+| O useless não para quem já anda: o mesmo `halt` da sirene (`getPathFindBehavior2():cancel()`, `setPath2(nil)`, `setVariable("bPathfind"/"bMoving", false)`) | EXISTS | §21 |
+| `Events.OnWorldSound(x, y, z, raio, volume, fonte)` sai de todo `addSound`, no `WorldSound.init`, antes de os zumbis ouvirem | EXISTS | `WorldSoundManager$WorldSound.init(Object, IIIII, FF, S)` 129 (`"OnWorldSound"`); já usado no servidor (§13) |
+| O som vive 16 atualizações; o zumbi ouve no próprio update | EXISTS | `WorldSound.init` 6–8 (`life = 16`); `IsoZombie.updateInternal` 1765–1788 chama `RespondToSound` quando `timeSinceSeenFlesh > 240` e `timeSinceRespondToSound > 5` |
+| Quem viu carne há menos de 240 (unidades de 30 FPS, ~8 s) não responde a som | EXISTS | o mesmo trecho do `updateInternal`. Consequência: o cego que acabou de ver o jogador ignora uma garrafa jogada longe, como no vanilla |
+| `z:pathToLocationF(x, y, z)` manda o zumbi andar até o ponto | EXISTS | `IsoZombie.pathToLocationF(FFF)` 0–47 (recusa só com `allowRepathDelay > 0` em quem já está em `PathFindState`/`WalkTowardState`/`WalkTowardNetworkState`); `IsoGameCharacter.pathToLocationF` 0–17 (`PathFindBehavior2.pathToLocationF` + `pathToAux`); `pathToAux` 0–274 (linha livre no mesmo andar a ≤ 30 tiles Manhattan: `bPathfind` falso e `setMoving(true)`; senão `bPathfind` verdadeiro) |
+| Uso vanilla do mesmo caminho em zumbi | CONFIRMED | `client/DebugUIs/DebugContextMenu.lua:640` (`selectedZombie:pathToLocation(x, y, z)`; `IsoGameCharacter.pathToLocation(III)` 0–28 é a versão de tile inteiro, que soma 0,5) |
+| `z:isMoving()` como "parado" | EXISTS | §21 (`IsoGameCharacter.isMoving()Z`); o `pathToAux` liga o `setMoving` |
+| Destino: `getCell():getGridSquare(x, y, z)` + `NOM_SemRosto.floorOk` (carregado, `isFree(false)`, sem água) | CONFIRMED | §3.4 |
+| No MP só o dono anda o zumbi: a posição vai no pacote dele | EXISTS | §3.4 (`NetworkZombiePacker.applyZombie`) |
+| `ZombRand(n)`, `EveryOneMinute`, `sendServerCommand` sem jogador (todos) | CONFIRMED | `server/ClientCommands.lua:120`; §7 |
+| O 6º argumento do `OnWorldSound` é a fonte do `addSound`: o próprio jogador no passo e no tiro dele | EXISTS | `WorldSoundManager.addSound(Object, …)` passa a fonte ao `WorldSound.init` (§13); `IsoPlayer.DoFootstepSound(F)` 257–292 chama `addSound(this, x, y, z, raio, raio, …)`; uso no mod: `server/NOM_Variants.lua:123` (`instanceof(source, "IsoPlayer")`) |
+| O passo do jogador é som de mundo: raio `ceil(volume × 1,4 × 10)` (×0,6 Graceful, ×1,2 Clumsy, ×0,5 descalço, × Lightfoot, × (2 − Nimble), × furtividade agachado; metade dentro de casa), com chance 1/2 andando | EXISTS | `IsoPlayer.DoFootstepSound(F)` 0–296; volume por passo em `DoFootstepSound(String)` 0–248: `sneak_walk` 0,2, `walk` e `sneak_run` 0,5, `strafe` 0,3 (0,2 agachado), `run` 1,3, `sprint` 1,8. Andando de sapato na rua: raio ~7. Por isso a visão curta só deixa o som denunciar com raio ≥ 10 (`NOISE_MIN_RADIUS`) |
+| `z:isFakeDead()` e `z:isSitOnGround()` (o perambular deixa quem finge de morto e quem está sentado) | EXISTS | `IsoZombie.isFakeDead()Z` (`javap`; uso vanilla no zumbi `client/DebugUIs/DebugContextMenu.lua:560`); `IsoGameCharacter.isSitOnGround()Z` 0–4 (campo `sitOnGround`; uso vanilla no jogador `client/ISUI/ISWorldObjectContextMenu.lua:1490`) |
+| Jogadores de outros clientes no destino do perambular: `getOnlinePlayers()` no cliente de MP (vazio no solo) | CONFIRMED | §23 (`client/Chat/ISChat.lua:560`; `LuaManager$GlobalObject.getOnlinePlayers` 0–30) |
+| Sem-rosto fora do perambular: `NOM_SemRosto.isSemRosto(z, período, cfg, vermelha)` (sorteio pelo `getPersistentOutfitID`; o `NOM_NightStats` não o põe em `variants`) | CONFIRMED | §3 (ID persistente, ADR-006); `shared/NOM_SemRosto.lua` |
+| Janela depois da névoa no MP (`AFTER_FOG_MS`) em tempo real: `getTimestampMs()` | CONFIRMED | `server/ISObjectClickHandler.lua:352`; o mesmo do `SWEEP_MS` da sirene (§21) |
+
+Custo medido no mundo falso (Tarefa 0 e testes da sprint): a cegueira em todo zumbi, todo frame,
+custaria 600 chamadas por frame com 300 zumbis parados e 2700 com a multidão. Em rodízio de 30 por tick
+(`vision_budget_300_zombies`): 61 parados; multidão com média de 129 e pior tick de 452. O som com
+~216 cegos (`vision_budget_sound_per_tick_200_blind`, um som por tick): 4 chamadas por som (eram 437:
+duas por cego; o cego guarda onde parou). A onda de perambular (`wander_wave_cost_300`), fatiada em
+ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick 602) com todos longe,
+1046 em 2 ticks (pior 604) misturado; uma vez a cada 4–8 minutos de jogo.
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1874,6 +1908,8 @@ Por isso o visual novo vem de PNG nosso, não de sprite vanilla tingido.
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
 | Barulho do jogador no servidor | `Events.OnWorldSound` (todo `addSound`, inclusive o de cliente refeito no servidor) (§13) | — |
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
+| Visão menor que 10 tiles | cegueira em rodízio no dono (`useless` + `halt`), solta por som (`OnWorldSound`); som com raio ≥ 10 denuncia o jogador pra quem está no raio (§27) | piso de 10 tiles com o pior degrau |
+| Zumbi andar até um ponto | `z:pathToLocationF(x, y, z)` no dono (§27) | `addSound` no ponto (puxa todos em volta) |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 | Efeito de tela | `ISUIElement` de 1×1 px, `backMost`, sem consumir mouse, desenhando no retângulo do jogador 0 (§15) | — |
 | Canal Lua → shader | floats do `SearchMode` com override e sem `enabled`, marcador no gradiente (§15.4) | `DesaturationVal` (ambíguo) |
@@ -1921,3 +1957,9 @@ Por isso o visual novo vem de PNG nosso, não de sprite vanilla tingido.
     bordas da tela? O FPS aguenta ~2800 squares com anexo? De carro, a borda que entra enche a
     tempo? Dormir e sair do jogo com o zoom longe, voltar: nada sobrando
     (`[NOM] outro mundo: N alvos limpos pro save` no console com `-debug`)
+20. Visão curta e perambular (sprint 0036, §27): o `halt` para o zumbi cego que já vinha andando
+    atrás do jogador? O `OnWorldSound` dispara no cliente de MP dono do zumbi (no solo, sim)? O
+    `pathToLocationF` anda o zumbi parado até o ponto, e no MP a cópia dos outros acompanha?
+    No MP, `isRunning()`/`isSprinting()` do jogador de outro cliente (a cópia remota que o dono
+    do zumbi vê) acompanham o que ele faz? Se vierem sempre falsos, quem corre perto do zumbi de
+    outro cliente conta como quieto pra ele.
