@@ -497,6 +497,24 @@ return {
         assert(NOM_VariantAI.sonarFound(z, q))
         assert(not z.useless and z.target == q)
     end,
+    -- useless que este dono não marcou (herdado na troca de posse, review item 5): o achado
+    -- solta antes do spotted, senão o spottedNew zera o alvo (191–208). O useless do próprio
+    -- jogo (outfit "Useless") e o congelado da sirene ficam.
+    ai_sonar_found_clears_inherited_useless = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador", useless = true })
+        local p = G.player({ x = 6, y = 0 })
+        assert(NOM_VariantAI.sonarFound(z, p))
+        assert(not z.useless and z.target == p, "o useless herdado engoliu o spotted")
+        local g = G.zombie({ x = 0, y = 3, variant = "estalador", useless = true, outfit = "DebugUseless" })
+        NOM_VariantAI.sonarFound(g, p)
+        assert(g.useless, "desligou o useless do próprio jogo")
+        local f = G.zombie({ x = 0, y = 5, variant = "estalador", useless = true })
+        NOM_SirenFreeze.frozen[f] = true
+        NOM_VariantAI.sonarFound(f, p)
+        NOM_SirenFreeze.frozen[f] = nil
+        assert(f.useless, "soltou o congelado da sirene")
+    end,
     -- só o dono aplica; cópia remota e morto não mudam
     ai_sonar_found_only_owner = function()
         local G = setup({ client = true })

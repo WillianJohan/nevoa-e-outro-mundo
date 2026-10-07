@@ -458,12 +458,15 @@ end
 -- O anel do sonar passou pelo jogador p em pé ou andando (o servidor decidiu, sprint 0037):
 -- no dono, o Estalador z solta a cegueira e acha p pelo mesmo spot forçado do grito da
 -- Carpideira (spotted(p, true) → spottedNew com chance 1 000 000, 1114–1120; só vale sem
--- useless, 191–208: solta antes). Por FOUND_MS reais o estalador() não o cega de novo.
+-- useless, 191–208: solta antes). O useless que este dono não marcou (herdado na troca de
+-- posse, como no estalador()) também sai; fica o do próprio jogo (gameUseless) e o congelado
+-- da sirene. Por FOUND_MS reais o estalador() não o cega de novo.
 -- Devolve se aplicou (só o dono aplica, pz-api-notes §24).
 function NOM_VariantAI.sonarFound(z, p)
     if z == nil or p == nil or not z:isLocal() or z:isDead() then return false end
     if blinded[z] then release(z) end
     watched[z] = nil
+    if z:isUseless() and not NOM_SirenFreeze.frozen[z] and not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
     found[z] = getTimestampMs() + NOM_SonarRules.FOUND_MS
     z:spotted(p, true)
     if getDebug() then print("[NOM] sonar estalador achou o jogador (alvo=" .. tostring(z:getTarget() == p) .. ")") end
