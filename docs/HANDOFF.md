@@ -76,6 +76,16 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: facelift, spike (sprint 0041, branch empilhada)
+
+A venda do Estalador virou peça 3D nossa: faixa com volume, dois arames farpados com farpas e o nó
+atrás, um modelo por sexo. `scripts/gen_models.py` (Python puro, sem Blender) escreve o `.x` texto
+e a textura; `scripts/preview_models.py` mostra sem o jogo. O caminho (nome curto
+`static\clothes\NOM_…` → `media/models_x/…x` no mod) está provado por bytecode
+([pz-api-notes §32](architecture/pz-api-notes.md)). **Falta ver no jogo** se o `.x` carrega; se
+não, a peça some sem quebrar nada. Voltar pra venda pintada: três linhas por XML
+([README](sprints/sprint-0041-facelift-spike/README.md)).
+
 ## Em teste: vermelha nova (sprint 0040, branch empilhada)
 
 Tentáculos pretos na parede e no chão da vermelha e cinza flutuando no ar. Decisões e roteiro em

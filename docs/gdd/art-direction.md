@@ -51,9 +51,9 @@
 
 ## Os monstros
 
-| Monstro | Pele | Peça (modelo vanilla) | Cor que lê de longe |
+| Monstro | Pele | Peça (modelo vanilla, ou nosso desde a 0041) | Cor que lê de longe |
 |---|---|---|---|
-| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura: faixas horizontais branco-sujas com frestas escuras, dois arames farpados ferrugem-escuros enrolados de lado a lado e uma mancha de sangue seco (óculos de esqui, `Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
+| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura **em 3D** (sprint 0041, modelo nosso de `scripts/gen_models.py`): faixa com volume em volta dos olhos, três voltas branco-sujas com frestas escuras, sangue seco em cada olho, dois arames farpados ferrugem-escuros enrolados por cima com farpas, nó atrás com as duas pontas caindo. Até a 0040 era a mesma ideia pintada nos óculos de esqui (`Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
 | Corredor | cinza de cinza clara, veias grossas roxo-pretas | boca rasgada: vermelho escuro saturado, um rasgo preto de lado a lado com dentes brancos grandes e escorridos pretos (máscara cirúrgica, `Hat_SurgicalMask`) | cinza com veias + boca vermelha e preta |
 | Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, a cabeça inteira (balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
 | Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche com três mechas brancas, caindo no rosto (véu de noiva, `Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
