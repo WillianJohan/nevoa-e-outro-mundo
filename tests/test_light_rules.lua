@@ -65,4 +65,22 @@ return {
         assert(R.flicker(0, 0) == R.FLICKER_MIN_MS and R.flicker(0, 1) == R.FLICKER_MAX_MS)
         assert(R.HOLD_MS < R.FLICKER_MIN_MS, "o Tição solto pelo flicker voltaria a congelar antes da luz voltar")
     end,
+    -- luz fixa (sprint 0039): acesa, com força e raio de pelo menos FIXED_MIN; raio preso em FIXED_MAX
+    light_rules_fixed = function()
+        local l = R.fixed(6, true, false, false)
+        assert(l.kind == "radius" and l.range == 6, "poste a pilha/fogo")
+        assert(R.fixed(20, true, true, true).range == R.FIXED_MAX, "raio grande não prendeu")
+        assert(R.fixed(6, false, false, true) == nil, "apagada congelou")
+        assert(R.fixed(6, true, true, false) == nil, "da rede sem força congelou")
+        assert(R.fixed(R.FIXED_MIN - 1, true, false, true) == nil, "vela congelou")
+    end,
+    -- interruptor: ligado, com lâmpada, e bateria com carga ou rede/gerador
+    light_rules_switch_lit = function()
+        assert(R.switchLit(true, true, false, 0, true))
+        assert(not R.switchLit(true, true, false, 0, false), "sem força")
+        assert(not R.switchLit(false, true, false, 0, true), "desligado")
+        assert(not R.switchLit(true, false, false, 0, true), "sem lâmpada")
+        assert(R.switchLit(true, true, true, 0.5, false), "bateria com carga")
+        assert(not R.switchLit(true, true, true, 0, true), "bateria vazia na rede")
+    end,
 }

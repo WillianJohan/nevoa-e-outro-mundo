@@ -183,6 +183,67 @@ return {
         G.tick(math.floor(NOM_LightRules.FLICKER_MAX_MS / 16) + 2)
         assert(p.item.on == false, "acendeu a lanterna guardada")
     end,
+    -- luz fixa (sprint 0039): poste aceso perto congela em volta; poste da rede sem força, longe
+    -- dos jogadores ou apagado, não; a força voltando (gerador) acende
+    ticao_light_lamppost = function()
+        local G = setup()
+        G.player({ x = 0, y = 0, face = 0 })
+        G.lamp({ x = 10, y = 10, radius = 6 })
+        local dark = G.lamp({ x = -10, y = 10, radius = 6, hydro = true })
+        G.lamp({ x = 200, y = 0, radius = 6 })
+        local near = G.zombie({ x = 12, y = 10 })
+        local byDark = G.zombie({ x = -12, y = 10 })
+        local far = G.zombie({ x = 202, y = 0 })
+        black(true)
+        G.seconds(3)
+        assert(near.useless == true, "o poste aceso não congelou")
+        assert(not byDark.useless, "poste sem força congelou")
+        assert(not far.useless, "poste longe dos jogadores congelou")
+        G.generator["-10,10,0"] = true
+        G.seconds(3)
+        assert(byDark.useless == true, "o gerador não acendeu o poste")
+        dark.on = false
+        G.seconds(3)
+        assert(byDark.useless == false, "poste apagado segurou")
+    end,
+    -- cômodo aceso congela quem está dentro; interruptor desligado ou sem força, não
+    ticao_light_lit_room = function()
+        local G = setup()
+        G.player({ x = 0, y = 0, face = math.pi })
+        G.gridPower = true
+        local room = G.room({ x0 = 5, y0 = 5, x1 = 9, y1 = 9 })
+        local inside = G.zombie({ x = 7, y = 7 })
+        local outside = G.zombie({ x = 12, y = 7 })
+        black(true)
+        G.tick(30)
+        assert(inside.useless == true, "cômodo aceso não congelou")
+        assert(not outside.useless, "congelou fora do cômodo")
+        room.switch.on = false
+        G.tick(60)
+        assert(inside.useless == false, "interruptor desligado segurou")
+        room.switch.on = true
+        G.gridPower = false
+        G.tick(60)
+        assert(not inside.useless, "cômodo sem força congelou")
+    end,
+    -- custo da luz fixa: 200 postes no mapa, poucas chamadas por tick; o cômodo vai uma vez por leitura
+    ticao_light_fixed_budget = function()
+        local G = setup()
+        G.player({ x = 0, y = 0, face = 0 })
+        G.gridPower = true
+        for i = 1, 200 do G.lamp({ x = (i * 11) % 300 - 150, y = (i * 17) % 300 - 150, radius = 6 }) end
+        G.room({ x0 = -20, y0 = -20, x1 = 20, y1 = 20 })
+        for i = 1, 100 do G.zombie({ x = (i * 7) % 40 - 20, y = (i * 13) % 40 - 20 }) end
+        black(true)
+        G.seconds(3)
+        G.lampCalls, G.roomCalls = 0, 0
+        G.seconds(4)
+        local ticks = math.floor(4 * 1000 / 16 + 0.5)
+        local per = G.lampCalls / ticks
+        print(string.format("[budget] luz fixa (200 postes): %.1f chamadas no poste por tick", per))
+        assert(per < 20, "varredura de postes cara: " .. per)
+        assert(G.roomCalls <= 4000 / NOM_LightRules.SWEEP_MS + 1, "cômodo lido a cada zumbi: " .. G.roomCalls)
+    end,
     -- custo: 300 zumbis, 4 jogadores com lanterna; chamadas no zumbi por tick (60 FPS) abaixo de 200
     ticao_light_budget = function()
         local G = setup()
@@ -190,7 +251,8 @@ return {
         local calls = 0
         for i = 1, 300 do
             local z = G.zombie({ x = (i * 7) % 160, y = (i * 13) % 60 - 30 })
-            for _, m in ipairs({ "getX", "getY", "getZ", "isDead", "getOnlineID", "isLocal", "setUseless" }) do
+            for _, m in ipairs({ "getX", "getY", "getZ", "isDead", "getOnlineID", "isLocal", "setUseless",
+                "getCurrentSquare" }) do
                 local f = z[m]
                 z[m] = function(...) calls = calls + 1 return f(...) end
             end

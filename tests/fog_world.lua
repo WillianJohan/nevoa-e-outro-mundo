@@ -103,6 +103,10 @@ function W.new(opts)
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             isOutside = function() return G.interior[k] == nil and not G.roofed[k] end,
             getBuilding = function() return G.interior[k] end,
+            -- luz fixa (sprint 0039): rede (hasGridPower), gerador (haveElectricity) e cômodo
+            hasGridPower = function() return G.gridPower == true end,
+            haveElectricity = function() return G.generator[k] == true end,
+            getRoom = function() return G.rooms[k] end,
             getFloor = function() return G.floorOf and G.floorOf(x, y, z) or nil end,
             getWall = function(_, north) return G.wallOf and G.wallOf(x, y, z, north) or nil end,
             isCanSee = function(_, pn)
@@ -432,7 +436,38 @@ function W.new(opts)
         return {
             getGridSquare = function(_, x, y, z) return G.square(x, y, z) end,
             getZombieList = function() return jlist(G.zombies) end,
+            getLamppostPositions = function() G.lampListCalls = G.lampListCalls + 1 return jlist(G.lamps) end,
         }
+    end
+    -- Luz fixa (sprint 0039): IsoLightSource da lista de postes (getX/Y/Z, getRadius, isActive,
+    -- isHydroPowered; javap) e cômodo com interruptor (IsoRoom.getLightSwitches, IsoLightSwitch
+    -- isActivated/hasLightBulb/getUseBattery/getHasBattery/getPower/getSquare). G.lampCalls conta.
+    G.lamps, G.rooms, G.generator, G.lampCalls, G.lampListCalls = {}, {}, {}, 0, 0
+    function G.lamp(o)
+        local l = { x = o.x, y = o.y, z = o.z or 0, radius = o.radius or 8, on = o.on ~= false, hydro = o.hydro == true }
+        local function c(f) return function() G.lampCalls = G.lampCalls + 1 return f() end end
+        l.getX, l.getY, l.getZ = c(function() return l.x end), c(function() return l.y end), c(function() return l.z end)
+        l.getRadius = c(function() return l.radius end)
+        l.isActive = c(function() return l.on end)
+        l.isHydroPowered = c(function() return l.hydro end)
+        G.lamps[#G.lamps + 1] = l
+        return l
+    end
+    -- Cômodo retangular x0..x1, y0..y1 no andar z, com um interruptor.
+    function G.room(o)
+        local sw = { on = o.on ~= false, bulb = o.bulb ~= false, battery = o.battery == true, charge = o.charge or 0 }
+        sw.isActivated = function() return sw.on end
+        sw.hasLightBulb = function() return sw.bulb end
+        sw.getUseBattery = function() return sw.battery end
+        sw.getHasBattery = function() return sw.charge > 0 end
+        sw.getPower = function() return sw.charge end
+        sw.getSquare = function() return G.square(o.x0, o.y0, o.z or 0) end
+        local room = { switch = sw }
+        room.getLightSwitches = function() G.roomCalls = (G.roomCalls or 0) + 1 return jlist({ sw }) end
+        for x = o.x0, o.x1 do
+            for y = o.y0, o.y1 do G.rooms[key(x, y, o.z or 0)] = room end
+        end
+        return room
     end
     addZombiesInOutfit = function(x, y, z, n, outfit, female)
         local zz = G.zombie({ x = x, y = y, z = z, id = G.nextID, outfit = outfit, onlineID = G.nextID })

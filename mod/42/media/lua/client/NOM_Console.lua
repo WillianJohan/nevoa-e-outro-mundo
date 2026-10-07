@@ -191,13 +191,16 @@ function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
 -- Visão curta (sprint 0036): cegos e vigiados neste processo, que é quem simula os zumbis
 -- dele (no solo, todos), e a última onda de perambular que ele aplicou.
 -- Tição (sprint 0038): a preta neste processo, quantos Tições ele simula e quantos a luz congela.
+-- Luzes fixas perto (sprint 0039): só onde o servidor roda (solo); no cliente de MP, "-".
 function NOM.ticao()
     local n = 0
     for _, k in pairs(NOM_NightStats and NOM_NightStats.variants or {}) do
         if k == "ticao" then n = n + 1 end
     end
     local frozen = NOM_TicaoFreeze and NOM_TicaoFreeze.count() or 0
-    print("[NOM] debug ticao preta=" .. tostring(NOM_FogState.black == true) .. " ticoes=" .. n .. " congelados=" .. frozen)
+    local fixed = NOM_TicaoLight and NOM_TicaoLight.fixedCount() or "-"
+    print("[NOM] debug ticao preta=" .. tostring(NOM_FogState.black == true) .. " ticoes=" .. n .. " congelados=" .. frozen
+        .. " luzes_fixas=" .. fixed)
 end
 
 function NOM.blind()

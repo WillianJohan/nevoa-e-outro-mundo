@@ -998,13 +998,17 @@ return {
     -- sprint 0038: Tições e congelados pela luz neste processo
     nom_ticao_reports_counts = function() run(function()
         local G = setup()
-        local oldNS, oldTF, oldFS = NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black
+        local oldNS, oldTF, oldFS, oldTL = NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black, NOM_TicaoLight
         NOM_NightStats = { variants = { a = "ticao", b = "ticao", c = "estalador" } }
         NOM_TicaoFreeze = { count = function() return 1 end }
         NOM_FogState.black = true
+        NOM_TicaoLight = nil
         NOM.ticao()
-        NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black = oldNS, oldTF, oldFS
-        assert(has(G.printed, "^%[NOM%] debug ticao preta=true ticoes=2 congelados=1"), table.concat(G.printed, "\n"))
+        NOM_TicaoLight = { fixedCount = function() return 3 end }
+        NOM.ticao()
+        NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black, NOM_TicaoLight = oldNS, oldTF, oldFS, oldTL
+        assert(has(G.printed, "^%[NOM%] debug ticao preta=true ticoes=2 congelados=1 luzes_fixas=%-$"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "luzes_fixas=3$"), table.concat(G.printed, "\n"))
     end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()

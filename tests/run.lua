@@ -74,8 +74,10 @@ local FILES = {
 }
 
 local pass, fail = 0, 0
+-- luajit tests/run.lua [trecho]: só os arquivos com o trecho no nome
+local only = arg and arg[1]
 for _, file in ipairs(FILES) do
-    local tests = dofile(file)
+    local tests = (not only or file:find(only, 1, true)) and dofile(file) or {}
     for name, fn in pairs(tests) do
         NOM_ShaderMod = nil -- flag do mod do shader (mod2): só quem testa liga
         local ok, err = pcall(fn)

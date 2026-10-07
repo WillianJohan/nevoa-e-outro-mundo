@@ -8,7 +8,12 @@
 -- vanilla sincroniza o liga/desliga: client/ISUI/ISInventoryPaneContextMenu.lua:2883, já usado no
 -- server/NOM_Night.lua), InventoryItem.isTorchCone()Z, getLightDistance()I, getTorchDot()F,
 -- IsoGameCharacter.getForwardDirectionX()/Y()F, getVehicle(), BaseVehicle.getHeadlightsOn()Z
--- (server/Vehicles/Vehicles.lua:565). Luz fixa (cômodo aceso, poste) fica pra 0039.
+-- (server/Vehicles/Vehicles.lua:565).
+--
+-- Luz fixa (sprint 0039, pz-api-notes §31): a lista de postes (IsoCell.getLamppostPositions, com
+-- poste, abajur e fogo) é varrida em fatias (NOM_LightRules.FIXED_BATCH por tick) e entra nas
+-- luzes; o zumbi fora de toda luz confere o cômodo dele (getCurrentSquare():getRoom(), o
+-- interruptor aceso), com a resposta guardada por cômodo a cada leitura.
 --
 -- A lanterna pisca (tarefa 5): a cada FLICKER_CHECK_MS, cada lanterna acesa sorteia; a que
 -- apaga não congela ninguém nesse tempo e os Tições que ela segurava soltam na hora. O apagar é
@@ -29,15 +34,85 @@ NOM_TicaoLight = { untilMs = {}, by = {}, flickerUntil = {} }
 local T = NOM_TicaoLight
 local lights, cursor, lastMs, nextGather, nextSend, nextFlicker = {}, 0, nil, 0, 0, nil
 local sentEmpty = true
+-- luz fixa: a última volta completa (fixed), a em curso (scanList a partir de scanAt, juntando em
+-- scanNext), as posições dos jogadores da última leitura e o cômodo aceso [room] = bool
+local fixed, scanList, scanAt, scanNext, nextScan, near = {}, nil, 0, {}, 0, {}
+local roomLit = {}
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] ticao luz " .. msg) end
 end
 
--- Luzes acesas agora, com o jogador dono. Lanterna em flicker não conta.
+local function powered(sq)
+    return sq ~= nil and (sq:hasGridPower() or sq:haveElectricity())
+end
+
+local function nearPlayer(x, y)
+    local r2 = R.FIXED_NEAR * R.FIXED_NEAR
+    for _, p in ipairs(near) do
+        local dx, dy = x - p[1], y - p[2]
+        if dx * dx + dy * dy <= r2 then return true end
+    end
+    return false
+end
+
+-- Uma fatia da lista de postes; a lista é relida de tamanho a cada fatia (o jogo tira e põe).
+local function scanFixed(now)
+    if scanList == nil then
+        if now < nextScan then return end
+        nextScan = now + R.FIXED_EVERY_MS
+        scanList, scanAt, scanNext = getCell():getLamppostPositions(), 0, {}
+    end
+    local size = scanList:size()
+    local stop = math.min(size, scanAt + R.FIXED_BATCH)
+    for i = scanAt, stop - 1 do
+        local s = scanList:get(i)
+        if s ~= nil and s:isActive() then
+            local x, y = s:getX(), s:getY()
+            if nearPlayer(x, y) then
+                local z = s:getZ()
+                local hydro = s:isHydroPowered()
+                local l = R.fixed(s:getRadius(), true, hydro, hydro and powered(getCell():getGridSquare(x, y, z)))
+                if l then
+                    l.x, l.y, l.z = x + 0.5, y + 0.5, z
+                    scanNext[#scanNext + 1] = l
+                end
+            end
+        end
+    end
+    scanAt = stop
+    if scanAt >= size then fixed, scanList = scanNext, nil end
+end
+
+local function switchOn(sw)
+    if not sw:isActivated() or not sw:hasLightBulb() then return false end
+    local battery = sw:getUseBattery()
+    local charge = battery and sw:getHasBattery() and sw:getPower() or 0
+    return R.switchLit(true, true, battery, charge, not battery and powered(sw:getSquare()))
+end
+
+local function litRoom(room)
+    local v = roomLit[room]
+    if v == nil then
+        v = false
+        local list = room:getLightSwitches()
+        for i = 0, list:size() - 1 do
+            if switchOn(list:get(i)) then
+                v = true
+                break
+            end
+        end
+        roomLit[room] = v
+    end
+    return v
+end
+
+-- Luzes acesas agora, com o jogador dono (a fixa, sem dono). Lanterna em flicker não conta.
 local function gather(now)
     local out = {}
+    near, roomLit = {}, {}
     for _, p in ipairs(NOM_Players.all()) do
+        if not p:isDead() then near[#near + 1] = { p:getX(), p:getY() } end
         if not p:isDead() and not ((T.flickerUntil[p] or 0) > now) then
             local v = p:getVehicle()
             local l
@@ -62,24 +137,34 @@ local function gather(now)
             end
         end
     end
+    for _, l in ipairs(fixed) do out[#out + 1] = l end
     return out
 end
 
--- Fatia do rodízio: 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e morto.
+-- Fatia do rodízio: com luz, 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e
+-- morto. Fora de toda luz, o cômodo dele (square e cômodo; o interruptor, uma vez por leitura).
 local function check(z, now)
-    local zx, zy = z:getX(), z:getY()
-    local zz
-    for _, l in ipairs(lights) do
-        local dx, dy = zx - l.x, zy - l.y
-        local reach = l.range + R.BODY
-        if dx * dx + dy * dy <= reach * reach then
-            zz = zz or z:getZ()
-            if R.lit(l, zx, zy, zz) and not z:isDead() then
-                T.untilMs[z] = now + R.HOLD_MS
-                T.by[z] = l.owner
-                return
+    if #lights > 0 then
+        local zx, zy = z:getX(), z:getY()
+        local zz
+        for _, l in ipairs(lights) do
+            local dx, dy = zx - l.x, zy - l.y
+            local reach = l.range + R.BODY
+            if dx * dx + dy * dy <= reach * reach then
+                zz = zz or z:getZ()
+                if R.lit(l, zx, zy, zz) and not z:isDead() then
+                    T.untilMs[z] = now + R.HOLD_MS
+                    T.by[z] = l.owner
+                    return
+                end
             end
         end
+    end
+    local sq = z:getCurrentSquare()
+    local room = sq and sq:getRoom()
+    if room ~= nil and litRoom(room) and not z:isDead() then
+        T.untilMs[z] = now + R.HOLD_MS
+        T.by[z] = nil
     end
 end
 
@@ -139,6 +224,7 @@ end
 local function stop()
     T.untilMs, T.by, T.flickerUntil = {}, {}, {}
     lights, lastMs, nextFlicker = {}, nil, nil
+    fixed, scanList, nextScan, near, roomLit = {}, nil, 0, {}, {}
     send({})
 end
 
@@ -161,21 +247,17 @@ function T.tick()
         lights = gather(now)
         nextGather = now + R.SWEEP_MS
     end
-    if #lights > 0 then
-        local list = getCell():getZombieList()
-        local size = list:size()
-        local n = R.batch(size, dt)
-        for k = 0, n - 1 do check(list:get(NOM_Math.mod(cursor + k, size)), now) end
-        cursor = size > 0 and NOM_Math.mod(cursor + n, size) or 0
-    end
+    scanFixed(now)
+    local list = getCell():getZombieList()
+    local size = list:size()
+    local n = R.batch(size, dt)
+    for k = 0, n - 1 do check(list:get(NOM_Math.mod(cursor + k, size)), now) end
+    cursor = size > 0 and NOM_Math.mod(cursor + n, size) or 0
     if now >= nextSend then
         nextSend = now + R.SWEEP_MS
         send(frozenList(now))
     end
 end
-
--- Luzes da última leitura (gancho da 0039: a névoa preta do mod3 empurrada pela luz).
-function T.lights() return lights end
 
 -- Pro debug: congelados agora (no servidor).
 function T.count()
@@ -183,6 +265,9 @@ function T.count()
     for _, u in pairs(T.untilMs) do if u > now then n = n + 1 end end
     return n
 end
+
+-- Pro debug: luzes fixas acesas perto dos jogadores na última volta.
+function T.fixedCount() return #fixed end
 
 local function forget(z)
     T.untilMs[z] = nil
