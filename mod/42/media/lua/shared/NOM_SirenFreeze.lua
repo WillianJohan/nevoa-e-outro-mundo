@@ -119,7 +119,10 @@ end
 
 local skipped = { dead = 0, remote = 0, game = 0 } -- só pro log do -debug
 
+-- O cego do NOM_VariantAI (visão curta ou Estalador) já está parado pela regra dele: congelar
+-- faria o stop soltar o useless no meio da janela. Quando ela fecha, a passada seguinte pega.
 local function hold(z, ps)
+    if blind(z) then return end
     if z:isDead() then skipped.dead = skipped.dead + 1 return end
     if not z:isLocal() then skipped.remote = skipped.remote + 1 return end
     if gameOwns(z) then skipped.game = skipped.game + 1 return end
