@@ -17,10 +17,11 @@
   - O Tição solta durante a janela inteira.
   - Quem mexe na lanterna no meio (desliga, guarda) fica com ela como deixou.
 - **Postes piscam na névoa preta e na vermelha:**
-  - a cada 2 s, com 30% de chance, um poste aceso de fora a até 25 tiles de um jogador gagueja
+  - a cada 2 s, com 30% de chance, um poste da rede aceso de fora a até 25 tiles de um jogador gagueja
     (4 a 9 piscadas, às vezes um escuro de 0,4 a 1,2 s) e volta na mesma cor;
   - no máximo 2 piscando juntos;
-  - luz de dentro de casa não pisca (o jogo reescreve a cor dela);
+  - luz de dentro de casa, fogo e lampião não piscam (o jogo reescreve a cor deles);
+  - no solo, salvar no meio do pisca devolve a cor antes (o save grava a cor da luz);
   - na preta, o poste piscando não congela o Tição e solta na hora quem ele segurava.
 - **Tempestade na preta e na vermelha** (a branca fica como está):
   - um relâmpago a cada 8 a 30 s, longe de um jogador sorteado (40 a 900 tiles), com clarão e trovão;
@@ -28,7 +29,8 @@
   - nenhum raio cai: sem fogo nem dano;
   - **na preta, o clarão congela os Tições perto dos jogadores por 1 s**;
   - **chuva em 30% das névoas pretas e vermelhas**, fixa por névoa (a mesma névoa não liga e
-    desliga), entrando em rampa de 20 minutos de jogo;
+    desliga) e pela semente do mundo (cada save chove em névoas diferentes), entrando em rampa de
+    20 minutos de jogo;
   - a chuva só soma: chuva do jogo mais forte fica como está. No frio pode virar neve.
 - **Debug, com botão no `NOM.panel()`:**
   - `NOM.thunder()`: relâmpago agora;
@@ -79,8 +81,26 @@
 
 ## Code review (fim da entrega)
 
-- **Achado e corrigido:** o teste do teto de postes mudava o intervalo do sorteio e não devolvia,
-  o que podia vazar pros arquivos de teste seguintes.
+Um revisor independente mais a minha leitura. Achado e corrigido:
+
+- **Crítico, só no solo:** o save grava a cor da luz do poste, então salvar no meio do pisca deixaria
+  o poste preto pra sempre. Agora a cor volta no `OnSave` (bytecode na §34). O resto (chunk
+  descarregado no meio) ficou como UNKNOWN, improvável.
+- **O poste piscando seguia congelando o Tição** por até ~0,75 s, porque a luz velha ficava na
+  leitura até a próxima volta. Agora o `check()` pula o poste na hora. O teste exige soltar em até
+  uma volta (antes passava por sorte).
+- **O sorteio quase nunca achava poste perto:** olhava 12 entradas seguidas da lista da célula
+  inteira. Agora:
+  - uma volta em fatias (40 por tick) guarda os postes perto;
+  - o `NOM.flickerLamp()` varre a lista toda;
+  - um teste com 500 postes longe cobre isso.
+- **Fogo e lampião entravam no sorteio:** piscavam sem se ver (o jogo reescreve a cor deles), mas
+  paravam de congelar o Tição. Agora só poste da rede (`isHydroPowered`).
+- **O clarão encurtava o congelamento do cômodo aceso:** o cômodo agora vem antes do clarão. Um teste
+  em 16 fases do rodízio pegou o buraco.
+- **Chuva sem a semente do mundo:** todo save chovia nas mesmas névoas. Agora sorteia como a preta.
+- **Testes que vazavam estado global:** o teto de postes não devolvia o intervalo, e os de debug não
+  devolviam `NOM_Storm` e `NOM_LampFlicker`.
 
 ## Roteiro de teste no jogo
 
