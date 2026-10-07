@@ -26,7 +26,7 @@ Fora (0039): a névoa preta do mod3 empurrada pela luz e o Outro Mundo queimado.
 As do `AGENTS.md`:
 - Kahlua (sem `next`, `//`, `goto`, operador de bit, `table.unpack`, `math.random`; `%` trunca: `NOM_Math.mod`);
 - o servidor decide e quem simula aplica (ADR-002/005); dono do zumbi é `z:isLocal()` (pz-api-notes §24);
-- evidência de API (pz-api-notes §29, nova); fakes fiéis; textos PTBR + EN; PT-BR com acento;
+- evidência de API (pz-api-notes §30, nova); fakes fiéis; textos PTBR + EN; PT-BR com acento;
 - todo comando `NOM.*` com botão no `NOM.panel()`.
 
 ## Ordem
@@ -39,7 +39,7 @@ As do `AGENTS.md`:
 | 4 | A luz congela: regra pura da luz, servidor confere, dono congela; custo medido | 3 |
 | 5 | Lanterna pisca: servidor sorteia, todos apagam o visual, o Tição solta | 4 |
 | 6 | Debug: `NOM.setBlackFog(skip)` de verdade, `NOM.ticao()`, botões | 1, 4 |
-| 7 | Docs: pz-api-notes §29, README com roteiro, `docs/sprints/README.md`, HANDOFF | todas |
+| 7 | Docs: pz-api-notes §30, README com roteiro, `docs/sprints/README.md`, HANDOFF | todas |
 | 8 | `./run-tests.sh` verde e code review próprio do diff | todas |
 
 ---
@@ -100,7 +100,7 @@ Teste primeiro (`tests/test_light_rules.lua`, `tests/test_ticao_light.lua`, `tes
 
 ### Tarefa 7: docs
 
-- `docs/architecture/pz-api-notes.md` §29 (luz no servidor: lanterna, direção do jogador, farol, luzes fixas, escuridão do clima, piscar);
+- `docs/architecture/pz-api-notes.md` §30 (luz no servidor: lanterna, direção do jogador, farol, luzes fixas, escuridão do clima, piscar);
 - `docs/sprints/sprint-0038-nevoa-preta/README.md` com roteiro de teste no jogo e decisões;
 - `docs/sprints/README.md` e `docs/HANDOFF.md`.
 
