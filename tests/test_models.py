@@ -319,6 +319,21 @@ SKULL = {   # crânio: o elipsoide que a touca de banho e a máscara de hóquei 
 }
 
 
+def test_cabelo_close_to_head():
+    """Cabelo é cabelo, não peruca de palhaço: rente ao crânio em cima (perto do capacete
+    fechado) e, embaixo, abrindo no máximo uns centímetros pra fora."""
+    for sex in SEXES:
+        verts = load("CarpideiraCabelo", sex)[0]
+        h = HELMET[sex]
+        assert verts[:, 0].max() <= h["x"][1] + 0.02, "%s: cabelo sobe %.3f" % (sex, verts[:, 0].max())
+        top = verts[verts[:, 0] > 0.10]
+        assert np.abs(top[:, 1]).max() <= h["y"] + 0.015, "%s: lado do alto %.3f" % (sex, np.abs(top[:, 1]).max())
+        assert top[:, 2].min() >= h["z"][0] - 0.02 and top[:, 2].max() <= h["z"][1] + 0.02, "%s: alto fundo demais" % sex
+        assert np.abs(verts[:, 1]).max() <= h["y"] + 0.05, "%s: lados abrem %.3f" % (sex, np.abs(verts[:, 1]).max())
+        assert verts[:, 2].min() >= h["z"][0] - 0.05, "%s: nuca abre %.3f" % (sex, verts[:, 2].min())
+        assert verts[:, 2].max() <= h["z"][1] + 0.04, "%s: frente abre %.3f" % (sex, verts[:, 2].max())
+
+
 def test_cabelo_hides_face():
     g = generator()
     for sex in SEXES:
@@ -412,7 +427,7 @@ def test_generator_deterministic():
 
 def main():
     tests = [test_format, test_winding_like_vanilla, test_closed, test_outward, test_venda_fits_head,
-             test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_hides_face, test_textures_mirrored,
+             test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]
     fail = 0
     for t in tests:

@@ -483,7 +483,7 @@ def cabelo(sex):
     white = {min(range(STRANDS), key=lambda k: abs(angles[k] - a)) for a in STREAKS}
     for k, psi in enumerate(angles):
         front = abs(psi) < math.pi / 3
-        layer = 1 + (0.02 + 0.03 * hash01(k, 3)) / 0.09
+        layer = 1 + (0.002 + 0.004 * hash01(k, 3)) / 0.09   # 2 a 6 mm acima do HAIR, em camadas
         th0 = 0.12 + 0.12 * hash01(k, 4)
         crown = []
         for i in range(5):
