@@ -72,6 +72,7 @@ P.ROWS = {
         { "UI_NOM_Debug_OwnSprites", function() NOM.ownSprites() end } },
     { { "UI_NOM_Debug_Wander", function() NOM.wander() end },
         { "UI_NOM_Debug_Blind", function() NOM.blind() end },
+        { "UI_NOM_Debug_Ticao", function() NOM.ticao() end },
         { "UI_NOM_Debug_Sonar", function() NOM.sonar() end } },
 }
 
