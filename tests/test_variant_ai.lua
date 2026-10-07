@@ -825,6 +825,14 @@ return {
         G.frame(30)
         assert(p.bitten > 0, "cegou o Eco")
     end,
+    -- cliente de MP: o modData do servidor não chega, o outfit sim (NOM_NightStats.isEco)
+    vision_eco_mp_by_outfit = function()
+        local G = setup({ client = true })
+        G.zombie({ x = 0, y = 0, outfit = "NOM_Eco" })
+        local p = G.player({ x = 8, y = 0 })
+        G.frame(30)
+        assert(p.bitten > 0, "cegou o Eco no cliente de MP")
+    end,
     -- só o dono decide; sem névoa, nada
     vision_remote_and_no_fog_untouched = function()
         local G = setup({ client = true })

@@ -27,7 +27,7 @@ local function setup(opts)
     end
     function G.zombie(o)
         local z = { x = o.x, y = o.y, z = o.z or 0, md = {}, target = o.target, useless = o.useless == true,
-            remote = o.remote == true, dead = o.dead == true, moving = o.moving == true }
+            remote = o.remote == true, dead = o.dead == true, moving = o.moving == true, outfit = o.outfit }
         local function def(name, fn)
             z[name] = function(...) G.calls = G.calls + 1; return fn(...) end
         end
@@ -40,6 +40,7 @@ local function setup(opts)
         def("isUseless", function(self) return self.useless end)
         def("isMoving", function(self) return self.moving end)
         def("getModData", function(self) return self.md end)
+        def("getOutfitName", function(self) return self.outfit end)
         def("pathToLocationF", function(self, x, y, zz)
             self.goal = { x = x, y = y, z = zz }
             self.moving = true
@@ -190,6 +191,14 @@ return {
         end
         for seed = 1, 30 do NOM_Wander.wave(seed) end
         assert(#walkers(G) == 0, "foi pra água")
+    end,
+    -- cliente de MP: o Eco vem sem o modData do servidor, só com o outfit (NOM_NightStats.isEco)
+    wander_skips_eco_by_outfit_on_mp = function()
+        local G = setup({ client = true })
+        G.player(0, 0)
+        ring(G, 20, { outfit = "NOM_Eco" })
+        for seed = 1, 40 do NOM_Wander.wave(seed) end
+        assert(#walkers(G) == 0, "Eco perambulou no cliente de MP")
     end,
     -- custo da onda com 300 zumbis: abaixo do teto de 2500 por atualização, mesmo com
     -- todos perto e parados (para em SCAN_MAX candidatos)

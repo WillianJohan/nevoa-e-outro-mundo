@@ -212,7 +212,7 @@ local function sweep()
         if (kind == nil or kind == "semrosto") and blinded[z] == nil and watched[z] == nil
             and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
             local t = z:getTarget()
-            if aimsUnseen(z, t) and z:isLocal() and not z:getModData().NOM_eco then blindCommon(z, t) end
+            if aimsUnseen(z, t) and z:isLocal() and not NOM_NightStats.isEco(z, z:getModData()) then blindCommon(z, t) end
         end
     end
     cursor = NOM_Math.mod(cursor + n, size)

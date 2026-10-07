@@ -91,10 +91,11 @@ local function withLore(values, fn)
 end
 
 -- Solo: marca do server/NOM_Eco.lua. Cliente de MP: o modData do servidor não
--- chega, o outfit sim.
+-- chega, o outfit sim. Também usado pela visão curta e pelo perambular.
 local function isEco(z, md)
     return md.NOM_eco == true or z:getOutfitName() == ECO_OUTFIT
 end
+NOM_NightStats.isEco = isEco
 
 -- inactive: fase inativa do ActiveOnly. A velocidade fica com o jogo:
 -- doZombieSpeed(t) ignora o inactive com t ≠ -1 (determineZombieSpeed) e acordaria

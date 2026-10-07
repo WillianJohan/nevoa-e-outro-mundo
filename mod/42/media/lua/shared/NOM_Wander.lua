@@ -55,7 +55,9 @@ local function idle(z, ps)
     if z:getTarget() ~= nil then return nil end
     local x, y = z:getX(), z:getY()
     if not nearAny(ps, x, y) then return nil end
-    if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or z:getModData().NOM_eco then return nil end
+    if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or NOM_NightStats.isEco(z, z:getModData()) then
+        return nil
+    end
     return { x = x, y = y, z = z:getZ() }
 end
 
