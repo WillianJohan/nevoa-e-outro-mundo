@@ -371,9 +371,12 @@ return {
         local G = setup({ server = true })
         local e = G.zombie({ x = 100, y = 100, id = EST, onlineID = 77 })
         local p = G.player({ x = 104, y = 100, onlineID = 5 })
+        local up = G.player({ x = 102, y = 100, z = 1, onlineID = 6 }) -- outro andar: ouve o estalo
+        G.player({ x = 100 + NOM_SonarRules.SEND_RANGE + 5, y = 100, onlineID = 7 }) -- longe
         assert(G.untilRing(), "não estalou")
+        -- só pra quem está a até SEND_RANGE (review, item 2): sendServerCommand(jogador, ...)
         local s = G.commands("sonar")
-        assert(#s == 1 and s[1].player == nil, "sonar: " .. #s)
+        assert(#s == 2 and s[1].player == p and s[2].player == up, "sonar: " .. #s)
         assert(s[1].args.x == e.x and s[1].args.y == e.y and s[1].args.z == 0 and s[1].args.id == 77)
         assert(#G.sounds == 0 and #G.rings == 0, "o dedicado tocou ou desenhou")
         G.tick(150)
@@ -393,6 +396,9 @@ return {
         NOM_Sonar.command("sonar", { x = "a", y = 1, z = 0 })
         NOM_Sonar.command("sonar", { x = 1, y = 1, z = 0.5 })
         assert(#G.rings == 1, "mensagem inválida desenhou")
+        -- anel do outro lado do mapa (review, item 2): nem som, nem desenho, nem mod3
+        NOM_Sonar.command("sonar", { x = 104.5 + NOM_SonarRules.SEND_RANGE + 1, y = 100.5, z = 0, id = 77 })
+        assert(#G.rings == 1 and #G.sounds == 1, "anel longe de todo jogador local tocou ou desenhou")
         NOM_Sonar.command("sonarFound", { id = 77, pl = 5 })
         assert(mine.target == p, "o dono não aplicou")
         NOM_Sonar.command("sonarFound", { id = 78, pl = 5 })

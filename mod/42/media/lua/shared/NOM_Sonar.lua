@@ -1,7 +1,8 @@
 -- Sonar do Estalador (sprint 0037), o lado de quem toca, desenha e aplica. Quem decide é o
 -- server/NOM_SonarServer.lua: no solo ele chama ring/found direto; no dedicado manda
--- "sonar" { x, y, z, id } e "sonarFound" { id, pl } a todos, e o cliente passa por command
--- (client/NOM_VariantsClient.lua), que confere a mensagem antes (NOM_SonarRules.valid).
+-- "sonar" { x, y, z, id } a quem está perto e "sonarFound" { id, pl } a todos, e o cliente
+-- passa por command (client/NOM_VariantsClient.lua), que confere a mensagem antes
+-- (NOM_SonarRules.valid) e descarta anel longe de todo jogador local.
 require "NOM_SonarRules"
 require "NOM_VariantAI"
 
@@ -44,12 +45,22 @@ local function localById(id)
     return nil
 end
 
+-- Algum jogador local (getNumActivePlayers/getSpecificPlayer, como o NOM_VariantAI) a até
+-- SEND_RANGE do anel. O servidor já manda só pra quem está perto; isto segura o resto.
+local function heard(x, y)
+    for i = 0, getNumActivePlayers() - 1 do
+        local p = getSpecificPlayer(i)
+        if p ~= nil and R.hears(x, y, p:getX(), p:getY()) then return true end
+    end
+    return false
+end
+
 -- Comando do servidor no cliente de MP. getPlayerByOnlineID: client/ServerCommands.lua:10
 -- (nil se este cliente não conhece o jogador).
 function NOM_Sonar.command(command, args)
     if command == "sonar" then
         local m = R.valid(args)
-        if m then NOM_Sonar.ring(m.x, m.y, m.z) end
+        if m and heard(m.x, m.y) then NOM_Sonar.ring(m.x, m.y, m.z) end
     elseif command == "sonarFound" then
         local m = R.validFound(args)
         if not m then return end

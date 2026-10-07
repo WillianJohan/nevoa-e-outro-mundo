@@ -13,8 +13,9 @@
 --   .getBooleanVariables 5–12 / setBooleanVariables 2–8, NetworkPlayerAI.parse(PlayerPacket)
 --   221–224); a posição também (Prediction.position).
 -- * Quem aplica: no solo este processo (NOM_Sonar.ring e NOM_Sonar.found direto); no
---   dedicado "sonar" { x, y, z, id } e "sonarFound" { id, pl } vão a todos os clientes e o
---   dono do Estalador aplica (shared/NOM_Sonar.lua).
+--   dedicado "sonar" { x, y, z, id } vai só a quem está a até SEND_RANGE, e "sonarFound"
+--   { id, pl } a todos (o dono do Estalador pode ser qualquer cliente), e o dono aplica
+--   (shared/NOM_Sonar.lua).
 if isClient() then return end
 
 require "NOM_World"
@@ -104,7 +105,12 @@ function S.emit(z, x, y, zz, why, players)
     S.rings[#S.rings + 1] = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
     S.emitted = S.emitted + 1
     if isServer() then
-        sendServerCommand(MODULE, "sonar", { x = x, y = y, z = zz, id = id })
+        -- só a quem está perto: sendServerCommand(jogador, módulo, comando, args)
+        -- (server/ClientCommands.lua:477, pz-api-notes §7)
+        local args = { x = x, y = y, z = zz, id = id }
+        for _, e in ipairs(players or read()) do
+            if R.hears(x, y, e.x, e.y) then sendServerCommand(e.p, MODULE, "sonar", args) end
+        end
     else
         NOM_Sonar.ring(x, y, zz)
     end

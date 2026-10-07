@@ -90,6 +90,12 @@ return {
         assert(R.nearest2(3, 0, 2, players) == math.huge, "ninguém no andar")
     end,
 
+    -- o anel vai só a quem está a até SEND_RANGE, em qualquer andar (o estalo se ouve)
+    sonar_hears = function()
+        assert(R.hears(0, 0, R.SEND_RANGE, 0) and not R.hears(0, 0, R.SEND_RANGE + 0.1, 0))
+        assert(R.hears(100, 100, 120, 120))
+    end,
+
     -- só estala na rede com jogador perto, no mesmo andar
     sonar_near_player = function()
         local players = { { x = 0, y = 0, z = 0 }, { x = 30, y = 0, z = 1 } }

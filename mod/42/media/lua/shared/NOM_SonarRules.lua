@@ -106,6 +106,13 @@ function R.near(x, y, z, players)
     return false
 end
 
+-- O jogador em (px, py) recebe o anel de (x, y): a até SEND_RANGE, em qualquer andar (o estalo
+-- se ouve de outro andar; o desenho confere o andar).
+function R.hears(x, y, px, py)
+    local dx, dy = px - x, py - y
+    return dx * dx + dy * dy <= R.SEND_RANGE * R.SEND_RANGE
+end
+
 -- Distância² do ponto ao jogador mais perto no mesmo andar (math.huge sem ninguém).
 function R.nearest2(x, y, z, players)
     local floor, best = math.floor(z), math.huge
