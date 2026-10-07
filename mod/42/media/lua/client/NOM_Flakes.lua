@@ -122,7 +122,7 @@ local function draw(el, now)
     local zoom = math.max(getCore():getZoom(0), 0.25)
     local left, top = getPlayerScreenLeft(0), getPlayerScreenTop(0)
     local right, bottom = left + getPlayerScreenWidth(0), top + getPlayerScreenHeight(0)
-    local pal = R.palette(NOM_FogState.red and "red" or "white")
+    local pal = R.palette(NOM_FogState.color())
     local cl, ca, C = pal.lasca, pal.cinza, R.CELL
     for i = 1, #parts do
         local q = parts[i]

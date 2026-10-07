@@ -149,6 +149,8 @@ return {
         assert(sum(r.lasca) < sum(w.lasca), "a vermelha não escurece")
         assert(r.lasca[1] / r.lasca[2] > w.lasca[1] / w.lasca[2] + 0.3, "a vermelha não avermelha")
         assert(sum(w.cinza) > 1.8, "cinza da branca não é clara")
+        local k = R.palette("black")
+        assert(sum(k.lasca) < sum(r.lasca) and sum(k.cinza) < sum(r.cinza), "a preta não é a mais escura")
         local x = R.palette("nada")
         assert(x.lasca[1] == w.lasca[1] and x.cinza[3] == w.cinza[3], "cor sem caso")
     end,

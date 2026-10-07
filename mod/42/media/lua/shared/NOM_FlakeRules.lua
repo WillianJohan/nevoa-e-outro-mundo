@@ -43,10 +43,12 @@ function R.rng(seed)
 end
 
 -- Multiplica a cor da textura (DrawSubTextureRGBA / DrawTextureScaledColor). A lasca do sheet
--- já é escura com borda clara ou ferrugem; a cinza é branca. A preta (sprint 0038) entra aqui.
+-- já é escura com borda clara ou ferrugem; a cinza é branca. Na preta (sprint 0038), carvão e
+-- cinza escura com um resto de brasa.
 local PALETTES = {
     white = { lasca = { 1, 0.96, 0.9 }, cinza = { 0.8, 0.79, 0.77 } },
     red = { lasca = { 0.72, 0.34, 0.3 }, cinza = { 0.66, 0.44, 0.42 } },
+    black = { lasca = { 0.3, 0.2, 0.17 }, cinza = { 0.34, 0.33, 0.33 } },
 }
 
 function R.palette(fog)

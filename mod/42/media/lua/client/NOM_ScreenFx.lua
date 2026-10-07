@@ -81,19 +81,17 @@ function S.sample(now)
     lastMs = now
     local F = NOM_FogState
     local visible = F.visible()
-    local red
-    if visible then red = F.visibleRed() else red = F.omenRed end
     R.stepStatic(S.state, { omenAt = F.omenAt, sirenAt = F.sirenAt, visible = visible,
-        kind = red and "red" or "white" }, now)
-    R.step(S.seen, { fog = visible, red = visible and F.visibleRed() }, dt)
-    return R.step(S.state, { fog = F.on, red = F.red }, dt)
+        kind = F.color() }, now)
+    R.step(S.seen, { fog = visible, red = visible and F.visibleRed(), black = visible and F.visibleBlack() }, dt)
+    return R.step(S.state, { fog = F.on, red = F.red, black = F.black }, dt)
 end
 
 -- O estado do canal da vinheta do shader: a névoa que se vê (S.seen) com o chiado e o grito
 -- do estado de sempre (os dois só existem com a névoa de jogo).
 function S.sampleSeen(now)
     local s = S.sample(now)
-    return { fog = S.seen.fog, red = S.seen.red, static = s.static, flashAt = s.flashAt,
+    return { fog = S.seen.fog, red = S.seen.red, black = S.seen.black, static = s.static, flashAt = s.flashAt,
         flashStrength = s.flashStrength }
 end
 
