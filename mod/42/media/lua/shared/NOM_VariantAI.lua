@@ -26,8 +26,9 @@ local CLICK_ODDS = 2
 -- que deixa o Estalador ouvir entre uma e outra.
 NOM_VariantAI.BLIND_FRAMES = 60
 
--- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates, common = visão
--- curta } }. Só esses são desligados; useless de outro (tutorial, debug, outro mod) fica.
+-- Zumbis que ESTE mod deixou useless: { [zumbi] = { p = jogador, n = updates, t = tick do
+-- último update, common = visão curta, x, y = onde o cego comum parou } }. Só esses são
+-- desligados; useless de outro (tutorial, debug, outro mod) fica.
 -- Exposta só pra leitura: o rodízio do NOM_SirenFreeze não solta o cego.
 NOM_VariantAI.blinded = {}
 local blinded = NOM_VariantAI.blinded
@@ -59,9 +60,14 @@ NOM_VariantAI.NOISE_MAX = 7200
 NOM_VariantAI.NOISE_MIN_RADIUS = 10
 NOM_VariantAI.NOISE_NEAR = 3
 NOM_VariantAI.LOG_TICKS = 300 -- no -debug, a contagem no console (~5 s a 60 FPS)
--- Recém-soltos da visão curta, vigiados todo frame: { [zumbi] = frames }.
+-- Zumbi descarregado não tem OnZombieUpdate: sem atualização há STALE_TICKS, sai de blinded
+-- e watched (a cada LOG_TICKS no rodízio e na hora no counts).
+NOM_VariantAI.STALE_TICKS = 600
+-- Recém-soltos da visão curta, vigiados todo frame: { [zumbi] = tick em que foi solto }.
 NOM_VariantAI.watched = {}
 local watched = NOM_VariantAI.watched
+-- Ticks (OnTick) desde o install: o relógio da visão curta e da validade das entradas.
+local tick = 0
 
 -- Agachado e sem correr: o Estalador não tem como saber que o jogador está ali.
 local function silent(p)
@@ -101,13 +107,17 @@ local function estalador(z, md, blind)
     if t ~= nil and instanceof(t, "IsoPlayer") and silent(t) then
         z:setTarget(nil)
         z:setUseless(true)
-        blinded[z] = { p = t, n = 0 }
+        blinded[z] = { p = t, n = 0, t = tick }
     end
 end
 
 -- Visão curta ---------------------------------------------------------------------
 
-local tick, r2, cursor = 0, nil, 0
+local r2, cursor = nil, 0
+-- Lista de trabalho reaproveitada (sem tabela nova por som nem por passada): mexer na
+-- tabela no meio do pairs não é seguro no Kahlua (NOM_SemRosto.reserve), então junta aqui
+-- e mexe depois.
+local scratch = {}
 -- Por jogador, uma vez por tick: { f = tick, x, y, quiet }. noisy[p] = { t = até que tick,
 -- x, y = ponto do som, rr = raio² }: o último barulho que denuncia o jogador.
 -- ponytail: chave é o objeto do jogador; quem sai fica até reiniciar (um por jogador).
@@ -171,7 +181,7 @@ local function blindCommon(z, p)
     z:setUseless(true)
     halt(z)
     watched[z] = nil
-    blinded[z] = { p = p, n = 0, common = true, x = ux, y = uy }
+    blinded[z] = { p = p, n = 0, common = true, x = ux, y = uy, t = tick }
 end
 
 -- Cego comum, por frame: a cada CHECK_FRAMES confere se o jogador chegou perto ou fez
@@ -186,19 +196,48 @@ local function commonBlind(z, b)
         return
     end
     release(z)
-    watched[z] = 0
+    watched[z] = tick
 end
 
 -- Recém-solto: o spot volta no frame seguinte; se o jogador ainda está longe e quieto, fecha.
-local function watch(z, n)
-    if r2 == nil or n >= NOM_VariantAI.WATCH_FRAMES then
+local function watch(z, since)
+    if r2 == nil or tick - since >= NOM_VariantAI.WATCH_FRAMES then
         watched[z] = nil
         return
     end
-    watched[z] = n + 1
     local t = z:getTarget()
     if aimsUnseen(z, t) and z:isLocal() then blindCommon(z, t) end
 end
+
+-- Tira de blinded e watched quem não é atualizado desde antes de `old` (descarregado: o
+-- OnZombieUpdate parou). O objeto vai pro pool do jogo e o resetForReuse não limpa o useless:
+-- solta junto. old nil: tira todo mundo (fim da névoa).
+local function purge(old)
+    local n = 0
+    for z, b in pairs(blinded) do
+        if old == nil or (b.t or 0) < old then
+            n = n + 1
+            scratch[n] = z
+        end
+    end
+    for i = 1, n do
+        release(scratch[i])
+        scratch[i] = nil
+    end
+    n = 0
+    for z, since in pairs(watched) do
+        if old == nil or since < old then
+            n = n + 1
+            scratch[n] = z
+        end
+    end
+    for i = 1, n do
+        watched[scratch[i]] = nil
+        scratch[i] = nil
+    end
+end
+
+local function purgeStale() purge(tick - NOM_VariantAI.STALE_TICKS) end
 
 -- O rodízio: até VISION_BATCH zumbis por tick, em volta na lista. Tabela Lua antes de
 -- qualquer chamada: variante com mira própria, cego, vigiado, Carpideira parada e
@@ -209,6 +248,8 @@ local function sweep()
     tick = tick + 1
     r2 = visionR2()
     if r2 == nil then return end
+    local logTick = NOM_Math.mod(tick, NOM_VariantAI.LOG_TICKS) == 0
+    if logTick then purgeStale() end
     local list = getCell():getZombieList()
     local size = list:size()
     if size == 0 then return end
@@ -222,7 +263,7 @@ local function sweep()
         end
     end
     cursor = NOM_Math.mod(cursor + n, size)
-    if getDebug() and NOM_Math.mod(tick, NOM_VariantAI.LOG_TICKS) == 0 then
+    if getDebug() and logTick then
         local c = NOM_VariantAI.counts()
         print("[NOM] visao curta cegos=" .. c.common .. " vigiados=" .. c.watched .. " estaladores=" .. c.estalador ..
             " lista=" .. size .. " raio=" .. math.floor(math.sqrt(r2) + 0.5))
@@ -250,9 +291,7 @@ end
 -- vai) e, se o som denuncia (raio ≥ NOISE_MIN_RADIUS), marca barulhento a fonte, se for
 -- jogador (como o server/NOM_Variants.lua no barulho que acorda a Carpideira), e o jogador
 -- local que está no ponto do som agora (carro, som sem fonte). Custo: o laço nos cegos é só
--- Lua (o x, y que cada um guardou) e a lista dos soltos é reaproveitada (soltar mexe em
--- blinded, e mexer na tabela no meio do pairs não é seguro no Kahlua, NOM_SemRosto.reserve).
-local hits = {}
+-- Lua (o x, y que cada um guardou), com a lista de trabalho reaproveitada.
 local function heard(x, y, _, radius, _, source)
     if r2 == nil or type(radius) ~= "number" then return end
     local rr, n = radius * radius, 0
@@ -261,15 +300,15 @@ local function heard(x, y, _, radius, _, source)
             local dx, dy = b.x - x, b.y - y
             if dx * dx + dy * dy <= rr then
                 n = n + 1
-                hits[n] = z
+                scratch[n] = z
             end
         end
     end
     for i = 1, n do
-        local z = hits[i]
-        hits[i] = nil
+        local z = scratch[i]
+        scratch[i] = nil
         release(z)
-        watched[z] = 0
+        watched[z] = tick
     end
     if radius < NOM_VariantAI.NOISE_MIN_RADIUS then return end
     if source ~= nil and instanceof(source, "IsoPlayer") then mark(source, x, y, radius) end
@@ -284,8 +323,10 @@ local function heard(x, y, _, radius, _, source)
     end
 end
 
--- Contagem pro debug (NOM.blind): cegos da visão curta, Estaladores cegos, vigiados.
+-- Contagem pro debug (NOM.blind): cegos da visão curta, Estaladores cegos, vigiados. Tira
+-- antes os descarregados, pra não contar quem já saiu.
 function NOM_VariantAI.counts()
+    purgeStale()
     local common, estalador, w = 0, 0, 0
     for _, b in pairs(blinded) do
         if b.common then common = common + 1 else estalador = estalador + 1 end
@@ -307,7 +348,10 @@ end
 local function onUpdate(z, report)
     local kind, blind, still, w = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z], watched[z]
     if kind == nil and blind == nil and still == nil and w == nil then return end
-    if blind ~= nil and blind.common then return commonBlind(z, blind) end
+    if blind ~= nil then
+        blind.t = tick -- carregado (purge)
+        if blind.common then return commonBlind(z, blind) end
+    end
     if w ~= nil then return watch(z, w) end
     local md = z:getModData()
     if kind ~= nil and md.NOM_variant ~= kind then -- objeto reaproveitado
@@ -429,6 +473,8 @@ function NOM_VariantAI.install(report)
     Events.OnWorldSound.Add(heard)
     NOM_FogState.onChange(function(on)
         afterFogUntil = nil
+        -- o carregado soltaria no próximo update; o descarregado não tem update
+        if not on then purge(nil) end
         if not on and isClient() and (tonumber(NOM_Config.get("FogZombieVision")) or 0) > 0 then
             afterFogUntil = getTimestampMs() + NOM_VariantAI.AFTER_FOG_MS
         end

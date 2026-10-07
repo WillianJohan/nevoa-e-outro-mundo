@@ -889,6 +889,47 @@ return {
         NOM_NightStats.unstick(dbg)
         assert(dbg.useless)
     end,
+    -- review final da 0036: zumbi descarregado (saiu da lista, sem OnZombieUpdate) não fica
+    -- em blinded/watched até ser reaproveitado: sem atualização há STALE_TICKS, sai (o
+    -- NOM.blind conta na hora); no fim da névoa, sai tudo
+    vision_unloaded_entries_expire = function()
+        local function unload(G, z)
+            for i, o in ipairs(G.zombies) do
+                if o == z then table.remove(G.zombies, i) break end
+            end
+        end
+        local G = setup()
+        local a = G.zombie({ x = 0, y = 0 })
+        local b = G.zombie({ x = 0, y = 2 })
+        G.player({ x = 8, y = 0 })
+        G.frame(20)
+        assert(NOM_VariantAI.blinded[a] and NOM_VariantAI.blinded[b], "não cegou os dois")
+        unload(G, a)
+        G.frame(NOM_VariantAI.STALE_TICKS + 1)
+        local c = NOM_VariantAI.counts()
+        assert(NOM_VariantAI.blinded[a] == nil and NOM_VariantAI.watched[a] == nil, "descarregado ficou na tabela")
+        assert(not a.useless, "descarregado ficou useless (o objeto volta pelo pool)")
+        assert(c.common + c.watched == 1, "NOM.blind inflado: " .. c.common .. "+" .. c.watched)
+        -- o que segue carregado não sai
+        assert(NOM_VariantAI.blinded[b] or NOM_VariantAI.watched[b], "tirou quem segue carregado")
+        -- sem chamar o counts: a passada do rodízio tira sozinha
+        local G2 = setup()
+        local z2 = G2.zombie({ x = 0, y = 0 })
+        G2.player({ x = 8, y = 0 })
+        G2.frame(20)
+        unload(G2, z2)
+        G2.frame(NOM_VariantAI.STALE_TICKS + NOM_VariantAI.LOG_TICKS)
+        assert(NOM_VariantAI.blinded[z2] == nil and NOM_VariantAI.watched[z2] == nil, "o rodízio não tirou o descarregado")
+        -- fim da névoa: sai tudo, inclusive o descarregado
+        local G3 = setup()
+        local z3 = G3.zombie({ x = 0, y = 0 })
+        G3.player({ x = 8, y = 0 })
+        G3.frame(20)
+        unload(G3, z3)
+        NOM_FogState.set(false, 1)
+        local c3 = NOM_VariantAI.counts()
+        assert(c3.common == 0 and c3.watched == 0 and not z3.useless, "descarregado sobrou depois da névoa")
+    end,
     -- review final da 0036: no MP, a posse chega com o useless logo depois que a névoa fecha
     -- (o dono antigo cegou, o novo ainda não tinha passado pela passada). Por AFTER_FOG_MS
     -- reais depois do fim, a soltura ampla segue; depois, não. No solo e com a visão
