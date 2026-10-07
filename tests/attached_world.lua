@@ -36,6 +36,12 @@
 --   - getTexture(caminho em media/textures/NOM/OutroMundo/): o PNG existe em mod/42/ (nil se
 --     não; G.missingTex[caminho] = true tira um). Outro caminho: o getTexture que o teste já
 --     tinha (ou textura, se é nome do pack).
+-- * obj:getTextureName() = o nome do sprite do objeto, nil sem sprite (IsoObject.getTextureName
+--   0–16: sprite.name; uso vanilla shared/Foraging/forageSystem.lua:1681 no getFloor()). O piso
+--   nasce com o sprite de G.floorSprite (hotfix do chão, nomes de newtiledefinitions.tiles.txt):
+--   dentro, floors_interior_tilesandwood_01_0; fora, quadras de 8 tiles em xadrez de grama
+--   (blends_natural_01_16, natural) e asfalto (blends_street_01_0). G.floorName[k] troca um
+--   (false = sem sprite).
 local A = {}
 -- os getTexture falsos já postos (global: tem teste que dá dofile neste arquivo a cada setup)
 NOM_TestTextureFakes = NOM_TestTextureFakes or setmetatable({}, { __mode = "k" })
@@ -55,6 +61,7 @@ function A.install(G)
     -- mundo novo: o namedMap começa vazio (IsoWorld.init 2182–2185) e o NOM_OwnSprites também
     _G.NOM_OwnSprites, package.loaded.NOM_OwnSprites = nil, nil
     G.objs, G.unknown, G.invalidations, G.java = {}, {}, 0, G.java or 0
+    G.floorName, G.textureNames = {}, 0
     G.blends = true -- todo piso nasce com um blend de grama anexado (vanilla)
     G.sprites, G.badFlags, G.emptyAttached, G.missingTex = {}, {}, {}, {}
     local pool = {}
@@ -166,11 +173,25 @@ function A.install(G)
         setAttachedAnimSprite = true, transmitUpdatedSpriteToClients = true, transmitUpdatedSpriteToServer = true,
         transmitCompleteItemToServer = true, transmitCompleteItemToClients = true }
 
+    -- nome do sprite do piso que nasce em (x, y, z), ou nil
+    function G.floorSprite(x, y, z)
+        local k = key(x, y, z)
+        if G.floorName[k] ~= nil then return G.floorName[k] or nil end
+        if G.interior[k] or G.roofed[k] then return "floors_interior_tilesandwood_01_0" end
+        if (math.floor(x / 8) + math.floor(y / 8)) % 2 == 0 then return "blends_natural_01_16" end
+        return "blends_street_01_0"
+    end
+
     function G.obj(x, y, z, kind, opts)
         opts = opts or {}
         -- list = false: o campo existe (nulo no Java), sem cair no __index que explode
-        local o = { class = opts.class or "IsoObject", x = x, y = y, z = z or 0, kind = kind, list = false }
+        local o = { class = opts.class or "IsoObject", x = x, y = y, z = z or 0, kind = kind, list = false,
+            sprite = opts.sprite or (kind == "F" and G.floorSprite(x, y, z)) or false }
         local api = {
+            getTextureName = function()
+                G.textureNames = G.textureNames + 1
+                return o.sprite or nil
+            end,
             getAttachedAnimSprite = function()
                 if not o.list then return nil end
                 return { size = function() return #o.list end, get = function(_, i) return o.list[i + 1] end }
