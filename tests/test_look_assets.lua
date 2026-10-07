@@ -56,13 +56,14 @@ local SIZE = {
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
     ["static\\clothes\\NOM_M_SemRostoEstatica"] = 128,
     ["static\\clothes\\NOM_M_CarpideiraCabelo"] = 128,
+    ["static\\clothes\\NOM_M_TicaoCrosta"] = 128,
 }
 
 -- Modelo nosso → arquivo no mod. O jogo monta media/models_x/<nome>.x e acha pelo
 -- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
 -- pz-api-notes §32): o caminho tem que bater ignorando caixa.
 local OWN_MODELS = {}
-for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo" }) do
+for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "TicaoCrosta" }) do
     for _, sex in ipairs({ "M", "F" }) do
         OWN_MODELS["static\\clothes\\NOM_" .. sex .. "_" .. piece] = "models_X/Static/Clothes/NOM_" .. sex .. "_" .. piece .. ".x"
     end
@@ -70,7 +71,7 @@ end
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
 -- pra opção desligada e pro shader que não compila) e a casca do Eco.
-local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_EcoVeu" }
+local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_TicaoCrosta", "NOM_EcoVeu" }
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
 local function xmlOf(name) return read(MEDIA .. "clothing/clothingItems/" .. name .. ".xml") end
@@ -95,7 +96,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 13, "esperava 13 itens, achou " .. n)
+        assert(n == 15, "esperava 15 itens, achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -115,7 +116,7 @@ return {
                 end
             end
         end
-        assert(n == 16, "esperava 4 peças e os gêmeos Fx nos dois sexos, achou " .. n)
+        assert(n == 20, "esperava 5 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()

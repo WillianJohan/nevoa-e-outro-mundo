@@ -2,7 +2,7 @@
    na lista de ItemVisuals do zumbi enquanto a névoa dura (client/NOM_VariantLook.lua)
    e no outfit NOM_Eco (clothing/clothing.xml). Sem ChanceToFall (não caem da cabeça,
    IsoZombie.helmetFallFromVisuals). Ícones vanilla citados pelo nome.
-   Os quatro das variantes ficam em base:zeddmg, lugar multi-item e sem exclusão
+   As peças das variantes (e a crosta do Tição) ficam em base:zeddmg, lugar multi-item e sem exclusão
    (shared/NPCs/BodyLocations.lua:859, o das feridas de zumbi): no DoZombieInventory o
    WornItems.setItem expulsaria o chapéu, a máscara ou os óculos do zumbi se a peça do
    mod ocupasse o mesmo lugar (review da 0012). */
@@ -49,6 +49,17 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCabelo,
+    }
+
+    /* Tição (sprint 0043): crosta de carvão 3D no lugar do véu do Eco que usava desde a 0038. */
+    item NOM_TicaoCrosta
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        ClothingItem = NOM_TicaoCrosta,
     }
 
     item NOM_EcoCinza
@@ -116,6 +127,16 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCabeloFx,
+    }
+
+    item NOM_TicaoCrostaFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        ClothingItem = NOM_TicaoCrostaFx,
     }
 
     item NOM_EcoVeuFx

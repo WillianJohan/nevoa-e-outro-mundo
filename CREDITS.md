@@ -166,7 +166,7 @@ escrita pelo mesmo script.
 Pra regerar: `python3 scripts/gen_tiles.py` (com `--preview`, só monta a prévia em
 `/tmp/om_tiles_preview.png`).
 
-## Modelos 3D (sprints 0041 e 0042)
+## Modelos 3D (sprints 0041 a 0043)
 
 Gerados pelo script [`scripts/gen_models.py`](scripts/gen_models.py) (Python puro, numpy +
 Pillow, sem sorteio: rodar de novo dá os mesmos bytes): malha varrida por código (perfil
@@ -179,7 +179,9 @@ mesmo script, casada com o UV. Os XML das peças (e os gêmeos `*Fx.xml`) citam 
 `static\clothes\NOM_M_EstaladorVenda`, `static\clothes\NOM_F_EstaladorVenda` (`NOM_EstaladorVenda.xml`),
 `static\clothes\NOM_M_CorredorBoca`, `static\clothes\NOM_F_CorredorBoca` (`NOM_CorredorBoca.xml`),
 `static\clothes\NOM_M_SemRostoEstatica`, `static\clothes\NOM_F_SemRostoEstatica` (`NOM_SemRostoEstatica.xml`),
-`static\clothes\NOM_M_CarpideiraCabelo`, `static\clothes\NOM_F_CarpideiraCabelo` (`NOM_CarpideiraCabelo.xml`).
+`static\clothes\NOM_M_CarpideiraCabelo`, `static\clothes\NOM_F_CarpideiraCabelo` (`NOM_CarpideiraCabelo.xml`),
+`static\clothes\NOM_M_TicaoCrosta`, `static\clothes\NOM_F_TicaoCrosta` (`NOM_TicaoCrosta.xml`).
+Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do repositório; ADR-020).
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
@@ -190,6 +192,8 @@ mesmo script, casada com o UV. Os XML das peças (e os gêmeos `*Fx.xml`) citam 
 | `mod/42/media/models_X/Static/Clothes/NOM_M_SemRostoEstatica.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_SemRostoEstatica.x` | ~500 vértices | casca do Sem-rosto (sprint 0042): superelipsoide liso em volta da cabeça inteira, sem nariz, olho nem boca; usa a textura de chiado `NOM_SemRostoEstatica.png` de cima |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCabelo.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCabelo.x` | ~1650 vértices | cabelo da Carpideira em 3D (sprint 0042): 36 mechas em fita saindo do alto da cabeça e caindo como cortina na frente do rosto, três delas brancas; um por sexo |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo3D.png` | 128×128 | textura do cabelo 3D: fios pretos com brilho fraco e a faixa das mechas brancas no meio (espelhado em cima e embaixo) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_TicaoCrosta.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_TicaoCrosta.x` | ~1500 vértices | crosta do Tição (sprint 0043): casca de carvão em placas de alturas diferentes na cabeça inteira, dois olhos de brasa saindo da frente, 14 lascas no alto e atrás, três fitas de fumaça subindo; um por sexo |
+| `mod/42/media/textures/NOM/NOM_TicaoCrosta3D.png` | 128×128 | textura da crosta: carvão com rachaduras de brasa (Voronoi que fecha na volta da cabeça), faixa de carvão liso, fumaça clara e brasa no meio (espelhado em cima e embaixo) |
 
 Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_models.py`).
 

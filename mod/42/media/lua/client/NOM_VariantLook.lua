@@ -39,8 +39,9 @@ NOM_VariantLook = {
         corredor = { skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
         semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
         carpideira = { skin = "NOM_Carpideira", item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx" },
-        -- Tição (sprint 0038): carvão com rachaduras de brasa e o véu de fumaça do Eco
-        ticao = { skin = "NOM_Ticao", item = "Base.NOM_EcoVeu", fx = "Base.NOM_EcoVeuFx" },
+        -- Tição (sprint 0038): carvão com rachaduras de brasa; desde a 0043 a crosta 3D (era o
+        -- véu de fumaça do Eco, Base.NOM_EcoVeu / Base.NOM_EcoVeuFx)
+        ticao = { skin = "NOM_Ticao", item = "Base.NOM_TicaoCrosta", fx = "Base.NOM_TicaoCrostaFx" },
     },
     -- Sprint 0016 (Johan, 05/10): na variante, a roupa vanilla some; fica só o que é do
     -- monstro. Padrões (Lua) de tipo de item que continuam à mostra: as camadas de

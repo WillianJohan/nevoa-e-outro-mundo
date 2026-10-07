@@ -53,4 +53,12 @@
 		<path>media/clothing/clothingItems/NOM_Brasa.xml</path>
 		<guid>fe983ae1-0282-4519-8c3c-b49642d89d42</guid>
 	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_TicaoCrosta.xml</path>
+		<guid>6c2ad766-b8f2-4444-93d7-6cf158416012</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_TicaoCrostaFx.xml</path>
+		<guid>0c92c5ac-fa4b-4b81-8cc3-571b6f1e4c02</guid>
+	</files>
 </fileGuidTable>
