@@ -21,8 +21,9 @@ envia.
 ## Antes de publicar
 
 - [ ] O [teste in-game consolidado](teste-in-game.md) passou (solo e MP), com o mod
-      pelo symlink.
-- [ ] A sprint em teste foi mergeada na `main` e a `main` está limpa:
+      de desenvolvimento (`scripts/dev-sync.sh` a partir da `staging`).
+- [ ] O Johan decidiu a versão, e a `staging` foi mergeada na `main` (`--no-ff`,
+      "Lançamento vX.Y.Z: ..."; regra de branches no [AGENTS.md](../AGENTS.md)). A `main` está limpa:
 
 Comandos na raiz do repositório (`cd ~/Documents/projects/nevoa-e-outro-mundo`).
 
@@ -198,8 +199,9 @@ gh release create v1.0.0 --title "v1.0.0" \
 
 ## Atualizar depois
 
-1. Subir o `modversion=` em `mod/42/mod.info` e mergear na `main` (commitado: o build
-   recusa `mod/` sujo).
+1. Subir o `modversion=` em `mod/42/mod.info` na `staging` e mergear a `staging` na `main`
+   (commitado: o build recusa `mod/` sujo). Hotfix do lançado: `hotfix/*` saindo da `main`,
+   merge na `main` e depois na `staging`.
 2. A pasta `~/Zomboid/Workshop/NevoaEOutroMundo` no lugar (não em `Workshop-parked`) e
    `scripts/build-workshop.sh` (mantém o `id=` e a visibilidade; `AVISO:` de ID = parar e
    conferir).
