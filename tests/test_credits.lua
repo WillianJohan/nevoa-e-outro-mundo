@@ -72,7 +72,7 @@ return {
                 local model = xml:match("<" .. tag .. ">([^<]+)</" .. tag .. ">")
                 if model then
                     models = models + 1
-                    assert(listed(model), "CREDITS.md não cita o modelo vanilla " .. model .. " (" .. path .. ")")
+                    assert(listed(model), "CREDITS.md não cita o modelo " .. model .. " (" .. path .. ")")
                 end
             end
         end

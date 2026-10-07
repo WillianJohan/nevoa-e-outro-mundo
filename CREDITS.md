@@ -114,7 +114,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza clara, veias grossas quase pretas |
 | `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: muito pálida, escorridos de fuligem, fuligem nos olhos |
 | `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (sprint 0038): carvão em placas pequenas, rachaduras finas de brasa viva e apagando |
-| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador: atadura em faixas, arame farpado ferrugem, sangue seco |
+| `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
 | `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor: vermelho escuro, rasgo preto, dentes brancos |
 | `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV em blocos preto/branco, faixas rasgadas |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto |
@@ -166,6 +166,24 @@ escrita pelo mesmo script.
 Pra regerar: `python3 scripts/gen_tiles.py` (com `--preview`, só monta a prévia em
 `/tmp/om_tiles_preview.png`).
 
+## Modelos 3D (sprint 0041)
+
+Gerados pelo script [`scripts/gen_models.py`](scripts/gen_models.py) (Python puro, numpy +
+Pillow, sem sorteio: rodar de novo dá os mesmos bytes): malha varrida por código (perfil
+arredondado em volta da cabeça, tubos do arame, tetraedros das farpas, nó e pontas), escrita em
+`.x` texto. Do jogo só **números** medidos nos `.x` vanilla: o quadro do osso da cabeça, o
+winding das faces e o tamanho dos óculos de esqui (onde a cabeça fica na altura dos olhos).
+Nenhum vértice copiado. A textura sai do mesmo script, casada com o UV. Os XML das peças
+citam pelo nome curto: `static\clothes\NOM_M_EstaladorVenda`, `static\clothes\NOM_F_EstaladorVenda`
+(`NOM_EstaladorVenda.xml` e o gêmeo `NOM_EstaladorVendaFx.xml`).
+
+| Arquivo | Tamanho | Uso |
+|---|---|---|
+| `mod/42/media/models_X/Static/Clothes/NOM_M_EstaladorVenda.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_EstaladorVenda.x` | ~1900 vértices | venda do Estalador em 3D: atadura com volume em volta dos olhos, dois arames farpados enrolados por cima, nó atrás com as duas pontas caindo; um por sexo |
+| `mod/42/media/textures/NOM/NOM_EstaladorVenda3D.png` | 128×128 | textura da venda 3D: pano em faixas com sangue seco nos olhos (espelhado em cima e embaixo) e a ferrugem do arame numa faixa no meio |
+
+Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_models.py`).
+
 ## Shader
 
 | Arquivo | O que é |
@@ -179,11 +197,10 @@ Pra regerar: `python3 scripts/gen_tiles.py` (com `--preview`, só monta a prévi
 |---|---|---|
 | `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | cinza no corpo todo (item do mod, sem modelo: camada no corpo como a do `Gown_Hospital`) | GUID `e8a21b0f-4b56-4b3d-8fab-2ea78dd84e8d` (`NOM_EcoCinza`, do mod) |
 | `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | véu de fumaça (item do mod) | GUID `82f80e18-a7cf-4312-949c-23879a1e3820` (`NOM_EcoVeu`, do mod) |
-| `clothingItems/NOM_EstaladorVenda.xml` | modelo dos óculos de esqui (`Glasses_SkiGoggles`) | `static\clothes\m_glasses_skigoggles`, `static\clothes\f_glasses_skigoggles` |
 | `clothingItems/NOM_CorredorBoca.xml` | modelo da máscara cirúrgica (`Hat_SurgicalMask`) | `static\clothes\m_surgicalmask`, `static\clothes\f_surgicalmask` |
 | `clothingItems/NOM_SemRostoEstatica.xml` | modelo da balaclava inteira (`Hat_BalaclavaFull`) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
 | `clothingItems/NOM_CarpideiraCabelo.xml`, `NOM_EcoVeu.xml` | modelo do véu de noiva (`Hat_WeddingVeil`) | `skinned\clothes\m_weddingveil`, `skinned\clothes\f_weddingveil` |
-| `clothingItems/NOM_*Fx.xml` (sprint 0018) | gêmeos das peças com o shader do dissolve | os mesmos modelos vanilla das peças acima, pelo nome |
+| `clothingItems/NOM_*Fx.xml` (sprint 0018) | gêmeos das peças com o shader do dissolve | os mesmos modelos vanilla das peças acima, pelo nome (a venda do Estalador usa o modelo do mod desde a 0041) |
 | `clothingItems/NOM_Brasa.xml` (sprint 0022) | modelo da roupa de proteção (`HazmatSuit`), casca de brasa do corpo inteiro na mutação, sem máscara | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |

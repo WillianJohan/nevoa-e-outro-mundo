@@ -27,6 +27,8 @@ LIMITS = {
     "NOM/NOM_SemRostoEstatica.png": (0.40, 0.08, 0.20),
     "Body/NOM_Estalador.png": (0.25, 0.15, 0.10),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
+    # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
+    "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
     "Body/NOM_Corredor.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
     "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
@@ -49,7 +51,7 @@ PALE = {
 
 # Atadura: faixas horizontais. A luminância tem que variar muito mais de linha pra
 # linha do que de coluna pra coluna (uma grade em diagonal varia igual nos dois).
-HORIZONTAL = {"NOM/NOM_EstaladorVenda.png"}
+HORIZONTAL = {"NOM/NOM_EstaladorVenda.png", "NOM/NOM_EstaladorVenda3D.png"}
 
 
 def luminance(img):

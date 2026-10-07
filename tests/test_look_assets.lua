@@ -51,6 +51,16 @@ local SIZE = {
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
+    -- modelos nossos (scripts/gen_models.py, sprint 0041): textura nossa, 128 como as outras peças
+    ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
+}
+
+-- Modelo nosso → arquivo no mod. O jogo monta media/models_x/<nome>.x e acha pelo
+-- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
+-- pz-api-notes §32): o caminho tem que bater ignorando caixa.
+local OWN_MODELS = {
+    ["static\\clothes\\NOM_M_EstaladorVenda"] = "models_X/Static/Clothes/NOM_M_EstaladorVenda.x",
+    ["static\\clothes\\NOM_F_EstaladorVenda"] = "models_X/Static/Clothes/NOM_F_EstaladorVenda.x",
 }
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
@@ -81,6 +91,26 @@ return {
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
         assert(n == 13, "esperava 13 itens, achou " .. n)
+    end,
+
+    -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
+    look_assets_own_models_resolve = function()
+        local n = 0
+        for name in pairs(items()) do
+            local xml = xmlOf(name)
+            for _, t in ipairs({ "m_MaleModel", "m_FemaleModel" }) do
+                local model = tag(xml, t)
+                if model:find("NOM_", 1, true) then
+                    n = n + 1
+                    local file = OWN_MODELS[model]
+                    assert(file, name .. ": modelo próprio sem arquivo conhecido " .. model)
+                    local want = ("media/models_x/" .. model:gsub("\\", "/") .. ".x"):lower()
+                    assert(("media/" .. file):lower() == want, name .. ": " .. file .. " não bate com " .. want)
+                    assert(read(MEDIA .. file):sub(1, 16) == "xof 0303txt 0032", file .. " não é .x texto")
+                end
+            end
+        end
+        assert(n == 4, "esperava a venda e o gêmeo Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
