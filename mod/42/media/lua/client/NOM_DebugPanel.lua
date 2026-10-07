@@ -93,6 +93,7 @@ local function statusText()
         getText("UI_NOM_Debug_Night") .. ": " .. yesNo(NOM_NightStats.night),
         getText("UI_NOM_Debug_StatusFog") .. ": " .. yesNo(NOM_FogState.on),
         getText("UI_NOM_Debug_StatusRed") .. ": " .. yesNo(NOM_FogState.red),
+        getText("UI_NOM_Debug_StatusBlack") .. ": " .. yesNo(NOM_FogState.black),
         getText("UI_NOM_Debug_StatusHour") .. ": " .. clock(getGameTime():getTimeOfDay()),
         getText("UI_NOM_Debug_StatusMonsters") .. ": " .. monsters,
     }

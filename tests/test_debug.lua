@@ -169,8 +169,9 @@ local function setup(opts)
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
         status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
-        force = function(red, skip)
-            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true)
+        force = function(red, skip, black)
+            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true) ..
+                (black and ":preta" or "")
             return true
         end,
     }
@@ -708,13 +709,18 @@ return {
         assert(table.concat(G.fogCalls, ",") == "force:true:true", table.concat(G.fogCalls, ","))
         assert(has(G.printed, "^%[NOM%] debug nevoa forcada vermelha=true"), table.concat(G.printed, "\n"))
     end) end,
-    nom_set_black_fog_not_yet = function() run(function()
+    -- sprint 0038: a preta é o mesmo pedido, com black (e o red nunca junto)
+    nom_set_black_fog = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.setBlackFog()
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.black == true and not a.red and not a.skip, "pedido errado")
         NOM.setBlackFog(true)
-        assert(#G.sentClient == 0, "névoa preta mandou algo")
-        assert(has(G.printed, "^%[NOM%] debug névoa preta ainda não existe %(sprint 0038%)"), table.concat(G.printed, "\n"))
+        assert(#G.sentClient == 2 and G.sentClient[2].args.black == true and G.sentClient[2].args.skip == true)
+        assert(table.concat(G.fogCalls, ",") == "force:false:false:preta,force:false:true:preta", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa forcada preta=true"), table.concat(G.printed, "\n"))
     end) end,
     nom_set_end_fog = function() run(function()
         local G = setup()

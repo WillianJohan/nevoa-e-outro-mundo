@@ -102,9 +102,9 @@ function NOM.setRedFog(skip)
     NOM_Debug.send({ op = "setFog", red = true, skip = skip })
 end
 
--- A névoa preta chega na sprint 0038.
-function NOM.setBlackFog()
-    print("[NOM] debug névoa preta ainda não existe (sprint 0038)")
+-- Névoa preta de verdade (sprint 0038): o mesmo pedido, na cor preta.
+function NOM.setBlackFog(skip)
+    NOM_Debug.send({ op = "setFog", black = true, skip = skip })
 end
 
 -- Termina a névoa aberta ou cancela a sirene (sirenStop no MP).
@@ -210,7 +210,7 @@ end
 NOM.HELP = {
     { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
-    { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
+    { "NOM.setBlackFog(skip)", "névoa sempre preta: presságio, sirene fora de sintonia, escuridão e Tições; skip abre já" },
     { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
     { "NOM.turnZombie(i)", "zumbi mais perto vira o tipo i: 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa)" },

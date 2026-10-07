@@ -48,6 +48,7 @@
     "UI_NOM_Debug_No": "no",
     "UI_NOM_Debug_StatusFog": "Fog",
     "UI_NOM_Debug_StatusRed": "Red",
+    "UI_NOM_Debug_StatusBlack": "Black",
     "UI_NOM_Debug_StatusHour": "Hour",
     "UI_NOM_Debug_StatusMonsters": "Monsters here",
     "UI_NOM_Debug_SetFog": "White siren",

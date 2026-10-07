@@ -62,11 +62,12 @@ function ops.fog(_, a)
     return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
 end
 
--- NOM.setFog / NOM.setRedFog (sprint 0033): névoa branca ou vermelha de verdade, qualquer
--- que seja o estado (fecha o que estiver aberto ou contando); skip abre sem a espera.
+-- NOM.setFog / NOM.setRedFog / NOM.setBlackFog (sprints 0033 e 0038): névoa branca, vermelha ou
+-- preta de verdade, qualquer que seja o estado (fecha o que estiver aberto ou contando); skip abre
+-- sem a espera.
 function ops.setFog(_, a)
-    local color = a.red and "vermelha" or "branca"
-    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip))
+    local color = a.black and "preta" or (a.red and "vermelha" or "branca")
+    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip, a.black))
 end
 
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
@@ -192,6 +193,7 @@ function ops.status()
         noiteN = tostring(NOM_NightCount.current()),
         nevoaN = tostring(NOM_Fog.period()),
         vermelha = w.red,
+        preta = w.black,
         proxima = ev.next and fmt(ev.next) or "-", -- horas de mundo (getWorldAgeHours)
         fim = ev.endAt and fmt(ev.endAt) or "-",
         sirene = ev.sirenMs and math.floor(ev.sirenMs) or "-", -- ms reais até a névoa

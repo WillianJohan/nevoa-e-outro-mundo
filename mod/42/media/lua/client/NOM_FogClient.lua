@@ -67,7 +67,7 @@ end
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "fog" then
-        NOM_FogState.set(args.on == true, args.period, args.red == true)
+        NOM_FogState.set(args.on == true, args.period, args.red == true, args.black == true)
         -- a névoa abre: a fuga acabou (o servidor não manda sirenStop nesse caso). O fog off
         -- não desce a subida: quem entra na fuga recebe fog (off) e depois siren.
         if args.on == true then
@@ -75,16 +75,17 @@ Events.OnServerCommand.Add(function(module, command, args)
             NOM_SirenFreeze.stop()
         end
     elseif command == "presage" then -- 3 s antes da sirene: estática na tela (NOM_ScreenFx)
-        NOM_FogState.setOmen(type(args) == "table" and args.red == true)
+        NOM_FogState.setOmen(type(args) == "table" and args.red == true, type(args) == "table" and args.black == true)
         arm()
     elseif command == "siren" then -- evento de névoa: começa a fuga de 30 s (NOM_FogEvent)
         local red = type(args) == "table" and args.red == true
-        NOM_Siren.play(red)
-        NOM_FogState.setRising(true, red)
+        local black = type(args) == "table" and args.black == true
+        NOM_Siren.play(red, black)
+        NOM_FogState.setRising(true, red, black)
         arm()
         NOM_SirenFreeze.start(NOM_FogEventRules.GRACE_MS)
     elseif command == "sirenColor" then -- debug trocou a cor no presságio ou na fuga (NOM_FogEvent.setRed)
-        NOM_FogState.recolor(type(args) == "table" and args.red == true)
+        NOM_FogState.recolor(type(args) == "table" and args.red == true, type(args) == "table" and args.black == true)
     elseif command == "sirenStop" then -- presságio ou sirene cancelada (NOM_FogEvent.stop)
         dropRising()
         NOM_Siren.stop()

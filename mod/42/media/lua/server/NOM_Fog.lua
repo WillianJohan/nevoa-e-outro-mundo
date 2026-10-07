@@ -25,14 +25,15 @@ end
 
 -- Borda da névoa ou do vermelho (sprint 0010; o red só muda sozinho pelo debug).
 NOM_World.onChange(function(flag)
-    if flag ~= "fog" and flag ~= "red" then return end
-    local on, red, period = NOM_World.fog, NOM_World.red, NOM_Fog.period()
+    if flag ~= "fog" and flag ~= "red" and flag ~= "black" then return end
+    local on, red, black, period = NOM_World.fog, NOM_World.red, NOM_World.black, NOM_Fog.period()
     if isServer() then
-        sendServerCommand(MODULE, "fog", { on = on, period = period, red = red })
+        sendServerCommand(MODULE, "fog", { on = on, period = period, red = red, black = black })
     else
-        NOM_FogState.set(on, period, red)
+        NOM_FogState.set(on, period, red, black)
     end
-    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period) .. " vermelha=" .. tostring(red))
+    debugLog("fog=" .. tostring(on) .. " periodo=" .. tostring(period) .. " vermelha=" .. tostring(red) ..
+        " preta=" .. tostring(black))
 end)
 
 -- Cliente que entra no meio da névoa não viu a borda: pergunta. Se entrou
@@ -40,12 +41,13 @@ end)
 -- 0034), recebe o presságio, e a sirene chega pra todos no fim dele.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE or command ~= "fogState" then return end
-    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red })
+    sendServerCommand(player, MODULE, "fog", { on = NOM_World.fog, period = NOM_Fog.period(), red = NOM_World.red,
+        black = NOM_World.black })
     local ev = NOM_FogEvent.status()
     if ev.presageMs then
-        sendServerCommand(player, MODULE, "presage", { red = ev.sirenRed })
+        sendServerCommand(player, MODULE, "presage", { red = ev.sirenRed, black = ev.sirenBlack })
     elseif ev.sirenMs then
-        sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed })
+        sendServerCommand(player, MODULE, "siren", { red = ev.sirenRed, black = ev.sirenBlack })
     end
 end)
 
