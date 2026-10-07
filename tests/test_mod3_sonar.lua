@@ -25,6 +25,22 @@ return {
         assert(const(s, "MAX_RINGS") == R.MAX_RINGS, "MAX_RINGS")
     end,
 
+    -- a curva (raio em t) é a mesma: os pontos de tests/sonar_curve.csv valem no Lua aqui e no
+    -- Java no FlowSonarTest, que lê o mesmo arquivo
+    mod3_sonar_curve_matches_java = function()
+        local R = dofile("mod/42/media/lua/shared/NOM_SonarRules.lua")
+        local n = 0
+        for line in read("tests/sonar_curve.csv"):gmatch("[^\n]+") do
+            local ms, r = line:match("^(%d+),([%d%.]+)$")
+            if ms then
+                n = n + 1
+                assert(math.abs(R.radius(tonumber(ms)) - tonumber(r)) < 1e-6, "raio em " .. ms .. " ms")
+            end
+        end
+        assert(n >= 4, "poucos pontos na curva: " .. n)
+        assert(read("tests/java/FlowSonarTest.java"):find("tests/sonar_curve.csv", 1, true), "o Java não confere a curva")
+    end,
+
     mod3_sonar_never_throws_to_lua = function()
         local s = read(JAVA .. "RenderContext.java")
         local body = s:match('@LuaMethod%(name = "NOMRender_sonar", global = true%)(.-)\n    }\n')

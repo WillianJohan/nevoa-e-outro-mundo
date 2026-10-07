@@ -1,0 +1,8 @@
+# Curva do anel do sonar (ms reais, raio em tiles). Conferida no Lua (tests/test_mod3_sonar.lua,
+# NOM_SonarRules.radius) e no Java (tests/java/FlowSonarTest.java, Sonar.radius).
+0,0
+300,1.6
+750,4
+1200,6.4
+1500,8
+2000,8

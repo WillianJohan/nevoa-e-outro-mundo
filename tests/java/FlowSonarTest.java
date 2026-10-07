@@ -10,6 +10,7 @@ public class FlowSonarTest {
     public static void main(String[] args) {
         run("anel: faixas contíguas de 0 a RANGE em DURATION, depois sai", FlowSonarTest::bandsContiguous);
         run("anel: no máximo MAX_RINGS; passo jogado fora também avança", FlowSonarTest::ringsCap);
+        run("anel: a curva do raio é a do Lua (tests/sonar_curve.csv)", FlowSonarTest::curveMatchesLua);
         run("frente anda pra fora: monte na frente, miolo ralo, longe intocado", FlowSonarTest::frontTravels);
         run("frente conserva massa e respeita o teto", FlowSonarTest::massAndCeiling);
         run("sólido e interior não dão nem recebem", FlowSonarTest::wallsUntouched);
@@ -57,6 +58,19 @@ public class FlowSonarTest {
         s.add(1, 1);
         s.clear();
         check(s.count() == 0, "clear");
+    }
+
+    /** Os mesmos pontos que o tests/test_mod3_sonar.lua confere no NOM_SonarRules.radius. */
+    static void curveMatchesLua() throws Exception {
+        int k = 0;
+        for (String line : java.nio.file.Files.readAllLines(java.nio.file.Path.of("tests/sonar_curve.csv"))) {
+            if (line.isEmpty() || line.startsWith("#")) continue;
+            String[] p = line.split(",");
+            float ms = Float.parseFloat(p[0]), r = Float.parseFloat(p[1]);
+            check(Math.abs(Sonar.radius(ms / 1000f) - r) < 1e-4f, "raio em " + p[0] + " ms: " + Sonar.radius(ms / 1000f));
+            k++;
+        }
+        check(k >= 4, "poucos pontos: " + k);
     }
 
     static FlowGrid still() {
