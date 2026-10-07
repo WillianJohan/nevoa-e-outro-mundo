@@ -40,7 +40,9 @@ local function expect(G, x, y, z, kind)
     local per, d, red = NOM_FogState.period or 0, density(), NOM_FogState.red
     local out = {}
     if kind == "F" then
-        local f = D().floor(x, y, z, per, d, outside, red)
+        local o = G.objs[x .. "," .. y .. "," .. z .. "F"]
+        local natural = D().natural(o and (rawget(o, "sprite") or nil) or G.floorSprite(x, y, z))
+        local f = D().floor(x, y, z, per, d, outside, red, natural)
         for _, l in ipairs(f or {}) do out[#out + 1] = D().name(l) end
         if f and f.grime then out[#out + 1] = D().name(f.grime) end
     else
@@ -1339,9 +1341,52 @@ return {
                 end
             end
         end
-        assert(own.F > 100 and own.N > 30 and own.W > 30, "pouco Silent Hill: " .. own.F .. "/" .. own.N .. "/" .. own.W)
+        -- hotfix do chão: metal só dentro (quebrado) e peça solta no asfalto; na grama, nada
+        assert(own.F > 25 and own.N > 30 and own.W > 30, "pouco Silent Hill: " .. own.F .. "/" .. own.N .. "/" .. own.W)
         assert(#G.badFlags == 0, "sprite sem a flag do lado: " .. table.concat(G.badFlags, ", "))
         assert(#G.emptyAttached == 0, "sprite vazio anexado: " .. table.concat(G.emptyAttached, ", "))
+    end,
+
+    -- hotfix do chão (teste do Johan, 06/10): na grama (piso blends_natural_01_*), nada de metal,
+    -- ferrugem nem tinta, nas duas cores; no asfalto, peça solta, sem outra ao lado. O nome do
+    -- piso (getTextureName, uma ida ao Java) só é lido no square em que a regra pôs textura nossa
+    overlays_natural_floor_no_metal = function()
+        for _, red in ipairs({ false, true }) do
+            local G = setup({ density = 2 })
+            local DIR = NOM_OwnSpriteList.DIR
+            NOM_FogState.set(true, 3, red)
+            G.seconds(5)
+            laidOut(G, D().MIN_RADIUS)
+            local grass, own, asked, at = 0, 0, 0, {}
+            for _, o in pairs(G.objs) do
+                if o.kind == "F" then
+                    local natural = D().natural(rawget(o, "sprite"))
+                    local names = G.attachedNames(o, "mod")
+                    if natural and #names > 0 then grass = grass + 1 end
+                    for _, n in ipairs(names) do
+                        if n:sub(1, #DIR) == DIR then
+                            assert(not natural, "textura nossa na grama: " .. n .. " em " .. o.x .. "," .. o.y)
+                            own = own + 1
+                            at[o.x .. "," .. o.y] = true
+                        end
+                    end
+                    if D().hasOwn(D().floor(o.x, o.y, 0, NOM_FogState.period, density(), true, red)) then
+                        asked = asked + 1
+                    end
+                end
+            end
+            assert(grass > 100, "grama sem nada (teste não mede): " .. grass)
+            assert(own > 5, "asfalto sem textura nossa (teste não mede): " .. own)
+            if not red then
+                for k in pairs(at) do
+                    local x, y = k:match("^(-?%d+),(-?%d+)$")
+                    x, y = tonumber(x), tonumber(y)
+                    assert(not at[(x + 1) .. "," .. y] and not at[x .. "," .. (y + 1)], "metal vizinho no asfalto em " .. k)
+                end
+            end
+            assert(G.textureNames > 0 and G.textureNames <= asked,
+                "nome do piso lido " .. G.textureNames .. " vezes (a regra pôs textura nossa em " .. asked .. ")")
+        end
     end,
 
     -- o sprite próprio sai antes do save como o vanilla do mod (o registro acha a instância pelo
@@ -1361,7 +1406,7 @@ return {
             return n
         end
         local before = own()
-        assert(before > 100, "pouco sprite próprio: " .. before)
+        assert(before > 50, "pouco sprite próprio: " .. before)
         assert(G.saveSnapshot().ours == 0, "o save gravaria anexo do mod")
         G.seconds(3)
         assert(own() == before, "não voltou igual: " .. own() .. " de " .. before)
@@ -1388,6 +1433,8 @@ return {
         for _, s in ipairs(NOM_OwnSpriteList.SPRITES) do
             if s.kind == "Grade" then G.missingTex[s.name] = true end
         end
+        -- hotfix do chão: a chapa, a ferrugem e a tinta em painel são de dentro de casa
+        for x = 85, 114 do for y = 85, 114 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
         NOM_FogState.set(true, 3)
         G.seconds(4)
         local other = 0

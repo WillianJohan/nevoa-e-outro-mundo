@@ -364,12 +364,18 @@ local function dress(cell, x, y, z, sk, per, d, rv)
             props = sq:getProperties()
             local obj = not props:has(IsoFlagType.water) and sq:getFloor() or nil
             if plain(obj) then
-                local names = {}
-                for _, l in ipairs(f) do names[#names + 1] = D.name(l) end
-                local grime = f.grime and D.name(f.grime)
-                if grime then names[#names + 1] = grime end
-                rv = rv or D.reveal(x, y, z, per)
-                add(sk .. "F", sq, sk, "F", obj, x, y, z, rv, names, grime)
+                -- o nome do piso (uma ida ao Java) só quando a regra pôs metal, ferrugem ou tinta
+                if D.hasOwn(f) and D.natural(obj:getTextureName()) then
+                    f = D.floor(x, y, z, per, d, outside, red, true)
+                end
+                if f then
+                    local names = {}
+                    for _, l in ipairs(f) do names[#names + 1] = D.name(l) end
+                    local grime = f.grime and D.name(f.grime)
+                    if grime then names[#names + 1] = grime end
+                    rv = rv or D.reveal(x, y, z, per)
+                    add(sk .. "F", sq, sk, "F", obj, x, y, z, rv, names, grime)
+                end
             end
         end
     end
