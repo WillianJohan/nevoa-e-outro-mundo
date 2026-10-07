@@ -162,12 +162,14 @@ pele dele descasca e mostra metal enferrujado por baixo.
   "Tontura na transição", **ligada por padrão**, dentro dos efeitos de tela; o slider de intensidade
   reduz, mas não dobra. Quem entra no meio da névoa não tem tontura.
 - **Pesos por névoa:**
-  - **branca** favorece o metal e a tinta descascando: cerca de um terço do chão vestido vira
-    grade, ferrugem, chapa ou tinta lascada, em painéis de 4×4 tiles com um tipo só; na parede, a
-    tinta descascando é a camada mais comum, depois a ferrugem escorrida. Sangue de parede ainda
-    aparece, raro;
-  - **vermelha** mantém o sangue de parede como o mais comum e ganha ferrugem na parede e manchas de
-    ferrugem no chão (nada de grade, chapa nem tinta no chão);
+  - **branca** favorece o metal e a tinta descascando. O metal no chão depende do piso (hotfix
+    depois do teste do Johan, 06/10): **grama, terra e areia, nada**; calçada e rua, uma peça solta
+    aqui e ali (grade como bueiro, mancha de ferrugem), nunca duas lado a lado, ~3% do chão;
+    dentro de casa, grade, ferrugem, chapa ou tinta lascada em manchas quebradas (~15% do chão,
+    nenhum bloco cheio). Na parede, a tinta descascando é a camada mais comum, depois a ferrugem
+    escorrida. Sangue de parede ainda aparece, raro;
+  - **vermelha** mantém o sangue de parede como o mais comum e ganha ferrugem na parede e manchas
+    ralas de ferrugem no chão, fora da grama (nada de grade, chapa nem tinta no chão);
   - **nada de sangue no chão**, nas duas, nem tinta vermelha no chão (leria como sangue);
   - **preta** fica pra sprint 0038 (sugestão: descasca e ferrugem escuras, sem grade e sem sangue).
 - **Até a borda da tela andando:** a erosão acompanha o jogador sem deixar um quadrado vestido em

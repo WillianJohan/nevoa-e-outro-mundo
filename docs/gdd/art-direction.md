@@ -197,5 +197,10 @@ enfermeira nem Pyramid Head.
   parecia adesivo e foi refeita mais orgânica.
 - **Pesos:** a branca favorece metal no chão e tinta descascando na parede; a vermelha mantém o
   sangue de parede e ganha ferrugem; a preta fica pra 0038 ([atmosphere.md](atmosphere.md#outro-mundo-estilo-silent-hill-sprint-0035)).
+- **Metal só onde faz sentido** (hotfix depois do teste do Johan, 06/10): grama, terra e areia
+  nunca ganham metal, ferrugem nem tinta (na grama a ferrugem em todo tile virou uma grade de
+  bolotas marrons). Na calçada e na rua, só peça solta e rara, como bueiro; painel inteiro de
+  metal lia como quadrado escuro em xadrez. Dentro de casa o metal fica, mas em mancha quebrada,
+  sem bloco cheio.
 - Técnica: [ADR-018](../architecture/adr-018-sprite-proprio-em-runtime.md) (sprite criado em
   runtime a partir do PNG). Nitidez no zoom longe e a grade em piso escuro ficam pro teste no jogo.

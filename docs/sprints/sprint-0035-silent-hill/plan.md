@@ -169,7 +169,7 @@ Dividida em duas: **4a** gera as texturas e a lista; **4b** liga na erosão (`NO
 - **Registro:** `client/NOM_OwnSprites.lua` (`ensure`, `total`, `missing`). Por sprite: `getTexture` (nil: pula e loga uma vez), `getSprite`, `setName` e as flags do lado. Roda no `OnGameStart` e, preguiçoso, no primeiro `update` com névoa da sessão; o `OnMainMenuEnter` marca pra registrar de novo (o `namedMap` zera por mundo). Evidência na pz-api-notes §26.
 - **Custo:** ~280 chamadas ao Java uma vez por sessão. O enchimento em regime ficou igual (1942 por atualização antes e depois; casa 2250 → 2240); o `[budget]` mostra ~2100 porque no mundo falso o registro cai na primeira atualização (ninguém dispara o `OnGameStart`).
 - **Regra (`NOM_DressingRules`), agora com a cor** (`floor`/`wall` recebem `red`; o `NOM_FogOverlays` passa `NOM_FogState.red` e troca de cor redesenha, pelo `gen`):
-  - **Branca, chão:** manchas de metal pelo ruído (`METAL` 0,4, até 0,45, rede de 5 tiles) e um tipo só por painel de 4×4 tiles: Grade 0,4, Ferrugem 0,25, Chapa 0,2, Tinta 0,15. Onde tem metal não vai rachadura de rua. Medido com densidade 1: 79% dos squares vestidos, ~34% com metal (Grade 13%, Ferrugem 9%, Chapa 7%, Tinta 5%).
+  - **Branca, chão:** manchas de metal pelo ruído (`METAL` 0,4, até 0,45, rede de 5 tiles) e um tipo só por painel de 4×4 tiles: Grade 0,4, Ferrugem 0,25, Chapa 0,2, Tinta 0,15. Onde tem metal não vai rachadura de rua. Medido com densidade 1: 79% dos squares vestidos, ~34% com metal (Grade 13%, Ferrugem 9%, Chapa 7%, Tinta 5%). **Trocado pelo hotfix do chão** (abaixo da Tarefa 5c).
   - **Branca, parede de fora:** tinta 0,35 (Tinta ou, em 35%, Descasca), ferrugem 0,25, trepadeira 0,15, sangue 0,1, sujeira 0,1, rachadura 0,05.
   - **Branca, parede de dentro:** tinta 0,45, ferrugem 0,2, sujeira 0,2, rachadura 0,15 (camadas: tinta, ferrugem, rachadura, sujeira).
   - **Vermelha, chão:** o de antes (queimado, sujeira, rachadura), mais manchas de Ferrugem (`RUST` 0,25, até 0,35, rede de 4 tiles) por cima. Nada de Grade, Chapa ou Tinta, e nada de sangue no chão (as duas cores).
@@ -341,6 +341,58 @@ Estresse (parede N e W em todo square, densidade 3,2, zoom 2,5, raio 30), saindo
 - **Margem do save:** anexo mais longe 40,0 / 39,5 / 38,6 tiles, dentro de 38 + 2 + 1,5. A `overlays_save_margin_invariant` não mudou.
 - **A pé, nada muda:** cobertura 100/99/87% (3 tiles/s) e 95/88/67% (6 tiles/s); estresse a pé 2331–2436 por atualização (antes, 2335–2434).
 - **Custo aceito:** trocar de desenho dirigindo tira o desenho velho a 20 alvos por atualização.
+
+---
+
+### Hotfix do chão depois do teste do Johan
+
+Branch `hotfix/0035-chao` (06/10). No jogo, as paredes ficaram boas, mas o chão da branca não. A
+regra punha metal em qualquer chão, dentro e fora. Na calçada, o painel de 4×4 com um tipo só
+virava quadrados escuros em xadrez. Na grama, a ferrugem e a tinta saíam em todo tile da mancha;
+como cada decalque é centrado no losango, ficava uma grade regular de bolotas marrons.
+
+- **Piso natural** (grama, terra, areia, barro): nada de metal, ferrugem nem tinta, nas duas
+  cores. Fica o de antes da 0035 (mato, folha, sujeira, rachadura). O nome do piso começa com
+  `blends_natural_01` ou `floors_exterior_natural`: a conta do `IsoGridSquare.hasNaturalFloor`.
+  O cliente lê com `getFloor():getTextureName()` só quando a regra pôs textura nossa, uma ida ao
+  Java nesses squares (pz-api-notes §16.7). `R.floor` ganhou o parâmetro `natural`.
+- **Calçada e rua** (fora, não natural): peça solta. Cada tile é candidato com
+  `METAL_OUT` × densidade (0,035, até `METAL_OUT_MAX` 0,07). Só vira peça o candidato sem candidato
+  nos 4 vizinhos, então nunca há dois lado a lado. Grade 0,5, Ferrugem 0,4, Tinta 0,1; sem Chapa.
+  **Teto: 6% do chão** em qualquer densidade da branca. O máximo esperado é 0,07 × 0,93⁴ ≈ 5,2%.
+- **Dentro de casa:** a mancha e o painel de antes, mas quebrados. Grade e Chapa ficam em
+  `METAL_FILL` (0,75) dos tiles da mancha; Ferrugem e Tinta em `METAL_SPOT` (0,3), pra não virar
+  grade de manchas. Um tile de cada bloco 2×2 (sorteado) nunca tem metal, então nenhum 3×3 fica
+  cheio.
+- **Vermelha:** a ferrugem do chão não vai no piso natural. Na mancha, fica em `RUST_SPOT` (0,45)
+  dos tiles, pelo mesmo motivo da tinta e da ferrugem de dentro.
+
+Medido (quadrado de 120×120 tiles, só textura nossa; antes → depois):
+
+| Onde | Opção de densidade 1 | Opção de densidade 2 |
+|---|---|---|
+| Branca, piso natural (dentro ou fora) | 37% → 0 | 46% → 0 |
+| Branca, fora, pavimento | 37% → 3,1% (grade 1,5%), 0 pares vizinhos | 46% → 5,3%, 0 pares vizinhos |
+| Branca, dentro | 37% → 16% (grade e chapa 13%), 1780 → 0 janelas 4×4 cheias | 46% → 19% |
+| Vermelha, fora do piso natural | 25% → 11,5% | igual (a mancha já satura) |
+
+- **Testes novos** (`test_dressing_rules.lua`): `dressing_rules_natural_names`,
+  `dressing_rules_natural_floor_no_metal`, `dressing_rules_natural_only_drops_own`,
+  `dressing_rules_pavement_metal_isolated` (disco de raio 60, d = 0,5/1/2) e
+  `dressing_rules_inside_metal_broken` (100×100, sem 3×3 cheio, teto de 22%, ferrugem e tinta
+  ≤ 5%). Em `test_fog_overlays.lua`: `overlays_natural_floor_no_metal`, com a grama limpa nas
+  duas cores, o asfalto sem vizinho e `getTextureName` ≤ squares com textura nossa.
+- **Testes reajustados:** `dressing_rules_white_favors_silent_hill` (dentro 10–22%, fora
+  1,5–6%, sem chapa fora) e `dressing_rules_metal_patches`. Neste, a troca entre vizinhos fica
+  < 0,85 do sorteio por tile (medido 0,72). A mancha agora aparece no bloco: a variância em
+  blocos 6×6 é ~5,5× a de tiles independentes (trava > 3). Os limiares de textura própria no
+  chão de `overlays_white_fog_own_sprites`, `overlays_own_sprites_out_before_save` e
+  `overlays_own_missing_texture_skipped` também mudaram; este último ganhou uma casa.
+- **Fake fiel:** o piso do mundo falso tem sprite de verdade (`newtiledefinitions.tiles.txt`).
+  Dentro, `floors_interior_tilesandwood_01_0`; fora, quadras de 8 tiles em xadrez de grama
+  (`blends_natural_01_16`) e asfalto (`blends_street_01_0`). Tem também `getTextureName`.
+- **Pra ver no jogo:** a grama sem nada de metal; na calçada, uma grade ou ferrugem solta de vez
+  em quando; dentro de casa, se o metal quebrado ainda lê como Silent Hill ou ficou ralo demais.
 
 ---
 

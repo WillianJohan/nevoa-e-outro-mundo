@@ -1460,6 +1460,37 @@ jogo instalado (B42.21): packs, arquivos de texto, Lua e bytecode. A regra está
   peça cortada quando a parede vizinha da fileira é porta, janela ou falta; o tempo de quadro
   numa casa grande com 3 camadas por parede; o ícone de coleta de planta no mato do mod.
 
+### 16.7 Piso natural (hotfix do chão da 0035)
+
+O Johan viu no jogo (06/10) o metal da branca em qualquer chão: painéis escuros na calçada e uma
+grade de manchas de ferrugem na grama. Grama, terra e areia não ganham mais textura nossa
+([plano da 0035](../sprints/sprint-0035-silent-hill/plan.md), "Hotfix do chão"). Só leitura do
+B42.21 instalado: bytecode, Lua vanilla e tiledef.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoGridSquare.hasNaturalFloor()`: o nome do sprite do piso (`getFloor().getSprite().getName()`) começa com `blends_natural_01` ou `floors_exterior_natural`; sem piso, sprite ou nome, `false` | CONFIRMED (bytecode); sem uso no Lua vanilla | `IsoGridSquare.hasNaturalFloor` 0–68 |
+| `hasSand()`/`hasDirt()`: o mesmo prefixo (com `contains`) e nomes exatos. Areia: `blends_natural_01_0/5/6/7`, `floors_exterior_natural_24`. Terra: `blends_natural_01_64/69/70/71` e `_80/85/86/87`, `floors_exterior_natural_16..19` | CONFIRMED (bytecode) | `IsoGridSquare.hasSand` 0–120, `hasDirt` 0–192 |
+| `IsoObject.getTextureName()` = `sprite == null ? null : sprite.name`: um getter | CONFIRMED (bytecode) | `IsoObject.getTextureName` 0–16 |
+| O vanilla testa o piso natural pelo prefixo de `square:getFloor():getTextureName()` (ou do nome do sprite) | CONFIRMED (Lua) | `shared/Foraging/forageSystem.lua:1679-1685` com `forageCategories.lua:82` (`floors_exterior_natural`, `blends_natural`); `server/BuildingObjects/ISEmptyGraves.lua:93`; `client/Mining/DiggingUtil.lua:136`; `shared/Moveables/ISMoveableSpriteProps.lua:1893-1894` |
+| `blends_natural_01`: 28 pisos sólidos, 4 de cada `FloorMaterial` (Grass_Light, Grass_Medium, Grass_Dark, Dirt_Grass, Dirt, Clay, Sand). Só 20 têm a propriedade `natureFloor`, e nenhum dos 22 de `floors_exterior_natural_01` tem. Não naturais: `blends_street_01` (asfalto, `Road_01`..`Road_07`), `floors_exterior_street_01`, `floors_interior_*`. `blends_natural_02` é água | CONFIRMED (tiledef) | `media/newtiledefinitions.tiles.txt:8321` (`blends_natural_01`), `:9807` (`_02`), `:10013` (`blends_street_01`), `:71728`, `:72031`, `:73472` |
+
+- **Escolha:** o prefixo do `hasNaturalFloor` (`NOM_DressingRules.NATURAL_PREFIXES`, `R.natural`)
+  sobre `obj:getTextureName()` do piso que o overlay já pegou (`sq:getFloor()`). O resultado é o do
+  `hasNaturalFloor`, mas por uma chamada com uso no vanilla. A propriedade `natureFloor` não serve:
+  falta em 8 pisos de `blends_natural_01` e em todo `floors_exterior_natural_01`. A água
+  (`blends_natural_02`) já sai antes, pelo `IsoFlagType.water`.
+- **Custo:** uma ida ao Java (`getTextureName`) só no square em que a regra pôs textura nossa
+  (`R.hasOwn`). Aí a regra roda de novo com `natural`, só Lua. Com `natural`, `R.floor` só tira as
+  camadas nossas: sem elas, a resposta é igual (`dressing_rules_natural_only_drops_own`), então não
+  ler o nome nos outros squares não erra nada. No mundo falso (`overlays_budget`), são 3 a 19
+  leituras por atualização. Enchendo: 2097 → 2100 chamadas por atualização no campo e 2375 → 2378
+  na casa. Estresse a pé: até 2433 (antes, 2331–2436). Carro: 2039, 2040 e 2231 por tick
+  (0,5, 1 e 2 tiles por tick; antes, 2005–2050, 1992–2059 e 2216–2284).
+- **UNKNOWN (roteiro do hotfix):** piso de mapa com nome natural que não é grama nem terra (nenhum
+  conhecido). O piso trocado pelo jogador no meio da névoa (pá, saco de terra) só conta quando o
+  square é vestido de novo; o nome não é relido a cada volta.
+
 ## 17. Dissolve e bloom (sprint 0018)
 
 Bytecode do B42.21. Decisão na [ADR-016](adr-016-dissolve-e-bloom.md); a cadeia do `<m_Shader>`
