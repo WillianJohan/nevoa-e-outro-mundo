@@ -24,26 +24,32 @@ e foi medido antes de qualquer código.
 - **Visão de ~4 tiles** (`shared/NOM_VariantAI.lua`):
   - **Quem:** todo zumbi sem mira própria, o comum e o Sem-rosto. Estalador, Corredor, Carpideira e Eco
     ficam como estão.
-  - **Quando fica cego:** se ele mira num jogador quieto (sem correr nem sprint, sem barulho no pé nos
-    últimos ~3 s) a mais de 4 tiles, a mira é desfeita e ele para (o mesmo `useless` + `halt` da sirene).
+  - **Quando fica cego:** se ele mira num jogador quieto (sem correr nem sprint) a mais de 4 tiles, e
+    não está no raio de um barulho recente desse jogador, a mira é desfeita e ele para (o mesmo
+    `useless` + `halt` da sirene).
   - **Como confere:** a cada 10 frames vê se o jogador chegou perto ou fez barulho. Em ~1 s solta e
     vigia 30 frames, e se o jogador ainda está longe e quieto, fecha de novo.
-  - **Som acorda:** todo som do mundo (`OnWorldSound`) solta os cegos no raio dele. Som a até 3 tiles do
-    jogador (tiro, carro) o denuncia por ~3 s.
+  - **Som acorda:** todo som do mundo (`OnWorldSound`) solta os cegos no raio dele.
+  - **Som atrai:** um som com raio de 10 tiles ou mais, feito pelo jogador (tiro) ou no pé dele (carro),
+    o denuncia pra todo zumbi no raio do som. Quem ouviu vem até ele e não fica cego no caminho. A
+    janela cresce com o raio (2 s por tile, de 3 s a 2 min a 60 FPS), pra dar tempo de o zumbi lento
+    chegar. O passo andando (raio ~7) não denuncia.
   - **Opção:** `FogZombieVision`, de 0 a 10, padrão 4; 0 desliga.
   - **Custo** com 300 zumbis no mundo falso: 61 chamadas por tick com todos parados; na multidão, média
-    de 129 e pior tick de 452.
+    de 129 e pior tick de 452. Cada som custa 4 chamadas, com qualquer número de cegos.
 - **Perambular** (`shared/NOM_WanderRules.lua`, `shared/NOM_Wander.lua`, `server/NOM_WanderServer.lua`):
   - **Quem decide:** o servidor, a cada 4 a 8 minutos de jogo de névoa aberta (10 a 20 s reais com o dia
     de 1 h). Ele solta a onda e a semente.
   - **Quem aplica:** quem simula os zumbis. Pra cada jogador local, pega no máximo um grupo de 1 a 3
     zumbis parados (sem alvo, sem andar, sem regra própria) a 6–30 tiles dele.
   - **Pra onde:** o grupo anda 8–20 tiles em formação até um ponto a 8–35 tiles de todo jogador. O
-    caminho reto não passa a menos de 5 tiles de nenhum jogador.
+    caminho reto não passa a menos de 5 tiles de nenhum jogador, inclusive os de outros clientes no MP.
   - **Andar:** `pathToLocationF`, com evidência no bytecode e no menu de debug vanilla.
-  - **Ficam de fora:** a sirene, variantes, Ecos, cegos, Carpideira parada e congelados.
+  - **Ficam de fora:** a sirene, variantes, Sem-rostos, Ecos, cegos, Carpideira parada, congelados, quem
+    finge de morto e quem está sentado no chão.
   - **Opção:** `FogWander`, ligada.
-  - **Custo da onda** com 300 zumbis: 404 a 1201 chamadas, uma vez a cada 4–8 minutos de jogo.
+  - **Custo da onda** com 300 zumbis: até ~1200 chamadas, fatiadas em 1 ou 2 ticks de até ~600, uma vez
+    a cada 4–8 minutos de jogo.
 - **Debug:**
   - `NOM.wander()`: uma onda agora, decidida pelo servidor.
   - `NOM.blind()`: cegos, vigiados e a última onda neste processo.
@@ -54,8 +60,9 @@ e foi medido antes de qualquer código.
 | Decisão | Valor | Onde mudar |
 |---|---|---|
 | Raio da visão | 4 tiles | opção `FogZombieVision` (padrão em `NOM_Config` e `sandbox-options.txt`) |
-| "Quieto" | andar e agachar contam como quieto; correr, sprint ou som a até 3 tiles por ~3 s, não | `NOM_VariantAI.NOISE_*` |
-| Sem-rosto | ganha a visão curta (não tem IA de mira própria) | `sweep` no `NOM_VariantAI` |
+| "Quieto" | andar e agachar contam como quieto; correr e sprint, não | `about` no `NOM_VariantAI` |
+| Barulho que atrai | som com raio ≥ 10 do jogador (fonte) ou no pé dele (≤ 3 tiles); vale pra quem está no raio, por raio × 2 s (de 3 s a 2 min a 60 FPS) | `NOM_VariantAI.NOISE_*` |
+| Sem-rosto | ganha a visão curta (não tem IA de mira própria) e não perambula | `sweep` no `NOM_VariantAI`, `idle` no `NOM_Wander` |
 | Intervalo das ondas | 4 a 8 minutos de jogo | `NOM_WanderRules.MIN_GAP`/`MAX_GAP` |
 | Grupo | 1 a 3, juntos a até 5 tiles, um grupo por jogador por onda | `GROUP_MAX`, `GROUP_RADIUS` |
 | Distâncias | saem de 6–30 tiles, andam 8–20, destino a 8–35, caminho a ≥ 5 do jogador | `NEAR_*`, `LEG_*`, `DEST_MIN`, `REGION_MAX`, `PASS_MIN` |
@@ -72,22 +79,32 @@ Save descartável, `-debug`, `scripts/dev-sync.sh` e o jogo reiniciado. Painel: 
    - "Cegos da visão curta no console" imprime `[NOM] debug visão curta ligada=true raio=4 cegos=...`.
 2. **Chegando perto:** ande até 3 tiles de um deles. Esperado: ele te vê e vem.
 3. **Barulho:** a 8 tiles, corra (Shift) ou dê um tiro. Esperado: eles vêm.
-4. **Garrafa longe:** jogue algo longe deles. Pelo bytecode, quem viu você há menos de ~8 s não liga pro
+4. **Atire na névoa e veja os zumbis chegarem:** "10 zumbis" uns 25–30 tiles longe de você (fora da
+   vista), "Branca já", fique parado e dê um tiro.
+   - Esperado: eles vêm até você e mordem. Não param no caminho a 10–20 tiles nem ficam dando um passo
+     e parando.
+   - Depois, ande devagar uns 20 tiles pra longe (sem correr). Esperado: zumbi que não estava no raio
+     do tiro e te vê de longe não vem.
+5. **Garrafa longe:** jogue algo longe deles. Pelo bytecode, quem viu você há menos de ~8 s não liga pro
    som (como no vanilla): só os que não te viram vão até lá.
-5. **Variantes iguais:** "Vira Corredor" num deles, a 8 tiles. Esperado: ele te vê, grita e corre.
-6. **Perambular:** névoa aberta, fique parado num lugar com zumbis espalhados a 6–30 tiles e clique
+6. **Variantes iguais:** "Vira Corredor" num deles, a 8 tiles. Esperado: ele te vê, grita e corre.
+7. **Perambular:** névoa aberta, fique parado num lugar com zumbis espalhados a 6–30 tiles e clique
    "Onda de perambular".
    - Esperado: 1 a 3 zumbis parados saem andando juntos, pra longe de você, nunca na sua direção.
    - Console: `[NOM] debug perambular onda semente=N` e `[NOM] perambular zumbis=K candidatos=C jogadores=1 lista=L`.
    - Sem clicar, uma onda a cada 4–8 minutos de jogo: `[NOM] perambular onda por=tempo semente=N`.
-7. **Sem névoa:** "Fim da névoa". Esperado: os cegos soltam na hora e `visao curta` some do console.
-   "Onda de perambular" responde `[NOM] debug perambular precisa de névoa aberta`.
-8. **FPS:** numa cidade cheia (300+ zumbis carregados), névoa aberta. Compare o FPS com a névoa e sem ela.
+8. **Sem névoa:** "Fim da névoa". Esperado: os cegos soltam na hora e `visao curta` some do console.
+   "Onda de perambular" responde `[NOM] debug perambular precisa de névoa aberta`. Com a névoa aberta
+   e a opção "Zumbis perambulando na névoa" (`FogWander`) desligada, responde `[NOM] debug perambular desligado na opção FogWander`.
+9. **FPS:** numa cidade cheia (300+ zumbis carregados), névoa aberta. Compare o FPS com a névoa e sem ela.
 
 **O que só o jogo responde:**
 - se 4 tiles fica bom (pouco demais, muito?) e se andar em pé deve contar como barulho;
+- se o piso de raio 10 separa bem o passo do tiro, e se a janela do barulho (2 s por tile do raio) dá
+  tempo de os zumbis chegarem sem durar demais;
 - se o perambular dá encontro frequente sem horda, e se o intervalo de 4–8 minutos é muito ou pouco;
 - se o `halt` para o zumbi que já vinha andando, ou se ele continua até a última posição vista;
 - o FPS com muitos zumbis;
 - no MP: se o `OnWorldSound` chega no cliente dono (senão o tiro não acorda os cegos dele), e se a cópia
-  dos outros acompanha o grupo que perambula (pz-api-notes §27, UNKNOWN 20).
+  dos outros acompanha o grupo que perambula, e se correr perto do zumbi de outro cliente conta como
+  barulho (`isRunning` do jogador remoto; pz-api-notes §27, UNKNOWN 20).

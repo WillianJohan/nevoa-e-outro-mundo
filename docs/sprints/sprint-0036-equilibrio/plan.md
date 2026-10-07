@@ -114,3 +114,37 @@ Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes 
 **Testes (2026-10-06):** `./run-tests.sh` verde: 1048 testes Lua (eram 1014; a suíte Lua rodou 3 vezes seguidas, sem falha de ordem do `pairs`), 9 de contraste, 11 do Outro Mundo, os do mod3 e 29 de build.
 
 **Feito:** [pz-api-notes §27](../../architecture/pz-api-notes.md#27-visão-curta-e-perambular-na-névoa-sprint-0036) (APIs novas, linhas no resumo por mecânica, UNKNOWN 20), [README.md](README.md) com decisões e roteiro, linha da 0036 em `docs/sprints/README.md`, seção "Em andamento" no HANDOFF.
+
+---
+
+## Code review final
+
+Treze achados, todos corrigidos com TDD (o teste novo falhou antes da correção), um commit por item.
+
+1. **O tiro não puxava o zumbi até o jogador.** O zumbi ouvia, andava até o som, via o jogador a 10–20 tiles e era cegado e parado; o "barulhento" dependia de alguém já ter mirado no jogador, comparava com a posição velha e durava 180 ticks.
+   - Agora o `heard` marca o barulho pela fonte do som, quando é jogador, e pelo jogador local que está no ponto do som (posição de agora). A janela é raio × `NOISE_PER_TILE` (120) ticks, entre 180 e 7200.
+   - O barulho vale pra quem está no raio do som (o zumbi que ouviu e veio): esse não fica cego pro jogador. Quem não ouviu continua com a visão curta.
+   - Som com raio abaixo de `NOISE_MIN_RADIUS` (10) não denuncia. O passo do jogador também é som de mundo, com o jogador de fonte e raio ~7 andando de sapato (`IsoPlayer.DoFootstepSound`, bytecode). Sem esse piso, andar deixaria de contar como quieto.
+   - Fake corrigido: o `halt` cancela a caminhada até o som (`bPathfind`). Testes: `vision_shot_30_tiles_zombie_arrives`, `vision_shot_window_and_reach`, `vision_footstep_is_quiet`.
+2. **Eco cegado e perambulando no MP.** O cliente não recebe o modData do servidor. Visão curta e perambular usam `NOM_NightStats.isEco` (modData ou outfit `NOM_Eco`). Testes com `client = true`.
+3. **Soltura ampla de useless no solo.** Só no cliente de MP (`isClient()`). No solo, o useless de outro mod e o do debug ficam (troca escrita no [README](README.md#decisões-pra-revisar-no-teste)). Teste `vision_solo_keeps_foreign_useless`.
+4. **Cego herdado preso depois da névoa no MP.** O fim da névoa marca `AFTER_FOG_MS` (10 s reais, como o `SWEEP_MS` da sirene), e a soltura ampla segue até lá. Teste `vision_mp_inherited_released_after_fog`.
+5. **O perambular ignorava jogadores de outros clientes.** `R.plan(players, zombies, rand, ok, everyone)`: o grupo sai perto dos locais; destino e caminho respeitam todos os conhecidos (`getOnlinePlayers()` no cliente). Testes `wander_respects_everyone_known` e `wander_respects_remote_player`.
+6. **O `heard` custava 2 chamadas Java por cego a cada som.** O cego guarda `x, y` ao parar (e a cada conferência). O laço é só Lua e reaproveita a lista de trabalho. Medido com ~216 cegos e um som por tick (`vision_budget_sound_per_tick_200_blind`): **437 → 4 chamadas por som** (as 4 são o jogador local, uma vez por tick), com teto de 8 no teste.
+7. **Sem-rosto.** O `NOM_NightStats` nunca o põe em `variants`, então o `kind == "semrosto"` era código morto. No `NOM_VariantAI` ele entra como o comum e tem visão curta, sem chamada a mais. No perambular, `NOM_SemRosto.isSemRosto` o deixa de fora. Os testes usam o estado real: ID sorteado, fora de `variants`.
+8. **Perambular** deixa `isFakeDead()` e `isSitOnGround()`. Teste `wander_skips_fake_dead_and_sitting`.
+9. **Zumbi descarregado** ficava em `blinded`/`watched`. Agora cada entrada tem o tick do último update (`watched` guarda o tick em que foi solto). Sem update há `STALE_TICKS` (600), ela sai: no rodízio, a cada `LOG_TICKS`, e no `counts()` do `NOM.blind`. O useless é solto, porque o objeto volta pelo pool. No fim da névoa sai tudo. Teste `vision_unloaded_entries_expire`.
+10. **`NOM.wander()` com `FogWander` desligado** responde `[NOM] debug perambular desligado na opção FogWander` (debug, como as outras respostas do `ops`).
+11. **UNKNOWN 20** ganhou `isRunning`/`isSprinting` do jogador remoto no MP.
+12. **Sirene:** o `hold` pula o zumbi em `blinded` (o helper `blind` que o `NOM_SirenFreeze` já tinha). Teste `siren_freeze_hold_skips_blinded`.
+13. **Onda de perambular fatiada.** A coleta segue no `OnTick` com orçamento de ~600 chamadas por tick (`TICK_CALLS`; 4 por zumbi olhado, 10 a mais no que está perto). A névoa que fecha ou a sirene cancela a onda no meio. Com 300 zumbis:
+
+| Cenário | Antes (num tick) | Depois |
+|---|---|---|
+| Todos perto | 564 | 566 em 1 tick |
+| Todos longe | 1201 | 1203 em 2 ticks, pior tick 602 |
+| Misturado | 1044 | 1046 em 2 ticks, pior tick 604 |
+
+O orçamento da visão curta (`vision_budget_300_zombies`) não mudou: 61 chamadas por tick parados; multidão com média de 129 e pior tick de 452.
+
+**Testes (2026-10-06, depois do review):** `./run-tests.sh` verde: 1069 testes Lua (eram 1054; a suíte Lua rodou 3 vezes seguidas, sem falha de ordem do `pairs`), 9 de contraste, 11 do Outro Mundo, os do mod3 e 29 de build. Docs: [pz-api-notes §27](../../architecture/pz-api-notes.md#27-visão-curta-e-perambular-na-névoa-sprint-0036) (fonte do `OnWorldSound`, passo do jogador, `isFakeDead`/`isSitOnGround`, `getOnlinePlayers`, `getTimestampMs`, custos novos) e o [README](README.md) (decisões e roteiro, com "atire na névoa e veja os zumbis chegarem").

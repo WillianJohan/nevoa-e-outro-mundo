@@ -1867,12 +1867,20 @@ Visão de ~4 tiles (`shared/NOM_VariantAI.lua`) e perambular (`shared/NOM_Wander
 | Destino: `getCell():getGridSquare(x, y, z)` + `NOM_SemRosto.floorOk` (carregado, `isFree(false)`, sem água) | CONFIRMED | §3.4 |
 | No MP só o dono anda o zumbi: a posição vai no pacote dele | EXISTS | §3.4 (`NetworkZombiePacker.applyZombie`) |
 | `ZombRand(n)`, `EveryOneMinute`, `sendServerCommand` sem jogador (todos) | CONFIRMED | `server/ClientCommands.lua:120`; §7 |
+| O 6º argumento do `OnWorldSound` é a fonte do `addSound`: o próprio jogador no passo e no tiro dele | EXISTS | `WorldSoundManager.addSound(Object, …)` passa a fonte ao `WorldSound.init` (§13); `IsoPlayer.DoFootstepSound(F)` 257–292 chama `addSound(this, x, y, z, raio, raio, …)`; uso no mod: `server/NOM_Variants.lua:123` (`instanceof(source, "IsoPlayer")`) |
+| O passo do jogador é som de mundo: raio `ceil(volume × 1,4 × 10)` (×0,6 Graceful, ×1,2 Clumsy, ×0,5 descalço, × Lightfoot, × (2 − Nimble), × furtividade agachado; metade dentro de casa), com chance 1/2 andando | EXISTS | `IsoPlayer.DoFootstepSound(F)` 0–296; volume por passo em `DoFootstepSound(String)` 0–248: `sneak_walk` 0,2, `walk` e `sneak_run` 0,5, `strafe` 0,3 (0,2 agachado), `run` 1,3, `sprint` 1,8. Andando de sapato na rua: raio ~7. Por isso a visão curta só deixa o som denunciar com raio ≥ 10 (`NOISE_MIN_RADIUS`) |
+| `z:isFakeDead()` e `z:isSitOnGround()` (o perambular deixa quem finge de morto e quem está sentado) | EXISTS | `IsoZombie.isFakeDead()Z` (`javap`; uso vanilla no zumbi `client/DebugUIs/DebugContextMenu.lua:560`); `IsoGameCharacter.isSitOnGround()Z` 0–4 (campo `sitOnGround`; uso vanilla no jogador `client/ISUI/ISWorldObjectContextMenu.lua:1490`) |
+| Jogadores de outros clientes no destino do perambular: `getOnlinePlayers()` no cliente de MP (vazio no solo) | CONFIRMED | §23 (`client/Chat/ISChat.lua:560`; `LuaManager$GlobalObject.getOnlinePlayers` 0–30) |
+| Sem-rosto fora do perambular: `NOM_SemRosto.isSemRosto(z, período, cfg, vermelha)` (sorteio pelo `getPersistentOutfitID`; o `NOM_NightStats` não o põe em `variants`) | CONFIRMED | §3 (ID persistente, ADR-006); `shared/NOM_SemRosto.lua` |
+| Janela depois da névoa no MP (`AFTER_FOG_MS`) em tempo real: `getTimestampMs()` | CONFIRMED | `server/ISObjectClickHandler.lua:352`; o mesmo do `SWEEP_MS` da sirene (§21) |
 
 Custo medido no mundo falso (Tarefa 0 e testes da sprint): a cegueira em todo zumbi, todo frame,
 custaria 600 chamadas por frame com 300 zumbis parados e 2700 com a multidão. Em rodízio de 30 por tick
-(`vision_budget_300_zombies`): 61 parados; multidão com média de 129 e pior tick de 452. A onda de
-perambular (`wander_wave_cost_300`): 404 chamadas com todos perto, 1201 com todos longe, uma vez a
-cada 4–8 minutos de jogo.
+(`vision_budget_300_zombies`): 61 parados; multidão com média de 129 e pior tick de 452. O som com
+~216 cegos (`vision_budget_sound_per_tick_200_blind`, um som por tick): 4 chamadas por som (eram 437:
+duas por cego; o cego guarda onde parou). A onda de perambular (`wander_wave_cost_300`), fatiada em
+ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick 602) com todos longe,
+1046 em 2 ticks (pior 604) misturado; uma vez a cada 4–8 minutos de jogo.
 
 ## Abordagem recomendada por mecânica (resumo)
 
@@ -1900,7 +1908,7 @@ cada 4–8 minutos de jogo.
 | Cor da névoa | camada modded do `getClimateColor(1)` (`COLOR_NEW_FOG`), vanilla escrito antes de desligar (§12) | — |
 | Barulho do jogador no servidor | `Events.OnWorldSound` (todo `addSound`, inclusive o de cliente refeito no servidor) (§13) | — |
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
-| Visão menor que 10 tiles | cegueira em rodízio no dono (`useless` + `halt`), solta por som (`OnWorldSound`) (§27) | piso de 10 tiles com o pior degrau |
+| Visão menor que 10 tiles | cegueira em rodízio no dono (`useless` + `halt`), solta por som (`OnWorldSound`); som com raio ≥ 10 denuncia o jogador pra quem está no raio (§27) | piso de 10 tiles com o pior degrau |
 | Zumbi andar até um ponto | `z:pathToLocationF(x, y, z)` no dono (§27) | `addSound` no ponto (puxa todos em volta) |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 | Efeito de tela | `ISUIElement` de 1×1 px, `backMost`, sem consumir mouse, desenhando no retângulo do jogador 0 (§15) | — |
