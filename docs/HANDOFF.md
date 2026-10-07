@@ -2,6 +2,14 @@
 
 Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) e a 0046 (painel de debug novo) estão na `staging` com push e sync: esperam o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
+## Lançamento v1.0.0 (2026-10-07)
+
+O Johan testou a 0045 e a 0046 no jogo ("tá ótimo") e decidiu: a `staging` vira a **v1.0.0**, com os
+três mods em `modversion=1.0.0` (a Volumétrica subiu de 0.1.0). Merge `--no-ff` da `staging` na
+`main` e push feitos. **Falta:** o envio pelo jogo e a tag `v1.0.0` no commit enviado
+([publicar.md](publicar.md) §2–5). O envio leva os IDs novos (`NoiseOfMist*`) pro item
+3814379207.
+
 ## Em teste no jogo: sprint 0046 (painel de debug novo)
 
 Pedido do Johan em 2026-10-07: o painel era pequeno e não dava pra entender o que acontecia; queria
