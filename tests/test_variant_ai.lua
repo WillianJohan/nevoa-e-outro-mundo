@@ -1121,4 +1121,27 @@ return {
         assert(blind >= 180, "poucos cegos pro teste: " .. blind)
         assert(worst <= 8, "som com " .. blind .. " cegos: pior " .. worst .. " chamadas")
     end,
+    -- preta (sprint 0038): o Tição tem a visão curta de 3 tiles, com a opção da névoa desligada
+    -- também; a 2 tiles ele vê e morde. O fake anda 1 tile por frame: o jogador a 5 fica a 4 no
+    -- primeiro rodízio, fora dos 3 do Tição e dentro dos 4 da névoa comum (o controle)
+    vision_ticao_sees_only_three_tiles = function()
+        local C = setup({ sandbox = { FogZombieVision = 4 } })
+        C.zombie({ x = 0, y = 0 })
+        local cp = C.player({ x = 5, y = 0, sneaking = true })
+        C.frame(30)
+        assert(cp.bitten > 0, "controle: a névoa comum (4) não viu a 4 tiles")
+        for _, vision in ipairs({ 4, 0 }) do
+            local G = setup({ sandbox = { FogZombieVision = vision } })
+            NOM_FogState.set(true, 1, false, true)
+            local z = G.zombie({ x = 0, y = 0 })
+            NOM_NightStats.variants[z] = "ticao"
+            z.md.NOM_variant = "ticao"
+            local p = G.player({ x = 5, y = 0, sneaking = true })
+            G.frame(30)
+            assert(p.bitten == 0, "Tição viu a 4 tiles (opção " .. vision .. ")")
+            p.x = z.x + 2
+            G.frame(40)
+            assert(p.bitten > 0, "Tição não viu a 2 tiles")
+        end
+    end,
 }

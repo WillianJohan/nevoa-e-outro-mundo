@@ -34,6 +34,8 @@ LIMITS = {
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
+    # Tição (sprint 0038): mesma família da casca, placas menores; lê de longe pela brasa.
+    "Body/NOM_Ticao.png": (0.20, 0.15, 0.05),
 }
 
 # O Eco fica fora da regra das formas grandes: ele lê por ser muito mais claro que

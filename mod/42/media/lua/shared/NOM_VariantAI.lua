@@ -15,6 +15,7 @@ require "NOM_Math"
 
 require "NOM_SonarRules"
 require "NOM_FogEventRules"
+require "NOM_TicaoRules"
 
 NOM_VariantAI = {}
 
@@ -138,9 +139,11 @@ local scratch = {}
 -- ponytail: chave é o objeto do jogador; quem sai fica até reiniciar (um por jogador).
 local seen, noisy = {}, {}
 
--- Raio² da visão curta agora, ou nil (névoa fechada ou opção em 0).
+-- Raio² da visão curta agora, ou nil (névoa fechada ou opção em 0). Na preta (sprint 0038), o
+-- raio do Tição, com a opção ligada ou não: a preta tem o próprio toggle.
 local function visionR2()
     if not NOM_FogState.on then return nil end
+    if NOM_FogState.black then return NOM_TicaoRules.VISION_TILES * NOM_TicaoRules.VISION_TILES end
     local v = tonumber(NOM_Config.get("FogZombieVision")) or 0
     if v <= 0 then return nil end
     return v * v
@@ -256,7 +259,7 @@ local function purgeStale() purge(tick - NOM_VariantAI.STALE_TICKS) end
 
 -- O rodízio: até VISION_BATCH zumbis por tick, em volta na lista. Tabela Lua antes de
 -- qualquer chamada: variante com mira própria, cego, vigiado, Carpideira parada e
--- congelado pela sirene não custam nada. O Sem-rosto entra como o comum: o NOM_NightStats
+-- congelado pela sirene não custam nada. O Tição (sprint 0038) entra como o comum: é a visão curta dele. O Sem-rosto entra como o comum: o NOM_NightStats
 -- não o põe em variants (kind vira nil antes do apply), e ele tem visão curta (decisão do
 -- Johan); perguntar o NOM_SemRosto.isSemRosto custaria uma chamada por zumbi do lote.
 -- As janelas do sonar andam (só o campo muda: a tabela não é mexida no meio do pairs). Sem
@@ -287,7 +290,8 @@ local function sweep()
     local n = math.min(NOM_VariantAI.VISION_BATCH, size)
     for k = 0, n - 1 do
         local z = list:get(NOM_Math.mod(cursor + k, size))
-        if NOM_NightStats.variants[z] == nil and blinded[z] == nil and watched[z] == nil
+        local kind = NOM_NightStats.variants[z]
+        if (kind == nil or kind == "ticao") and blinded[z] == nil and watched[z] == nil
             and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
             local t = z:getTarget()
             if aimsUnseen(z, t) and z:isLocal() and not NOM_NightStats.isEco(z, z:getModData()) then blindCommon(z, t) end
@@ -375,10 +379,10 @@ end
 
 -- OnZombieUpdate roda por zumbi a cada frame: o zumbi comum sai na primeira
 -- linha, com quatro consultas de tabela Lua e nenhuma chamada Java. O cego e o vigiado
--- da visão curta saem antes de qualquer outra chamada.
+-- da visão curta saem antes de qualquer outra chamada. O Tição (sprint 0038) sai como o comum.
 local function onUpdate(z, report)
     local kind, blind, still, w = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z], watched[z]
-    if kind == nil and blind == nil and still == nil and w == nil then return end
+    if (kind == nil or kind == "ticao") and blind == nil and still == nil and w == nil then return end
     if blind ~= nil then
         blind.t = tick -- carregado (purge)
         if blind.common then return commonBlind(z, blind) end

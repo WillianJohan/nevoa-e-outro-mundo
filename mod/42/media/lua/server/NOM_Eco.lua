@@ -209,7 +209,8 @@ local scanning
 local function startScan()
     scanning = nil
     local night = currentNight()
-    if not night or not NOM_World.night or not NOM_Config.get("EcoEnabled") then return end
+    -- na preta (sprint 0038) o Eco não nasce: a noite é do Tição
+    if not night or not NOM_World.night or NOM_World.black or not NOM_Config.get("EcoEnabled") then return end
     local ps = {}
     for _, p in ipairs(NOM_Players.all()) do
         if not p:isDead() then
@@ -224,7 +225,7 @@ end
 
 local function scanStep()
     local s = scanning
-    if not NOM_World.night or currentNight() ~= s.night then -- amanheceu no meio
+    if not NOM_World.night or NOM_World.black or currentNight() ~= s.night then -- amanheceu ou a preta abriu no meio
         scanning = nil
         return
     end
@@ -299,8 +300,8 @@ local function onTick()
         if night then
             local gone, ids = {}, store().ids
             for _, z in ipairs(toCheck) do
-                if isEco(z) and not z:isDead()
-                    and not NOM_EcoRules.keepReloaded(ids[NOM_VariantRules.baseId(z:getPersistentOutfitID())], night, NOM_World.night) then
+                if isEco(z) and not z:isDead() and (NOM_World.black
+                    or not NOM_EcoRules.keepReloaded(ids[NOM_VariantRules.baseId(z:getPersistentOutfitID())], night, NOM_World.night)) then
                     gone[#gone + 1] = z
                 end
             end
@@ -321,6 +322,11 @@ local function onTick()
 end
 
 NOM_World.onChange(function(flag, on)
+    -- a preta abriu (a cor chega junto da borda "fog", ou na "black" do debug): os Ecos somem
+    if (flag == "fog" or flag == "black") and on and NOM_World.black then
+        removeEcos(loadedEcos())
+        return
+    end
     if flag ~= "night" then return end
     currentNight()
     if not on then

@@ -93,7 +93,7 @@ return {
 
     -- pele: mesmo tamanho da pele de zumbi vanilla (Body/M_ZedBody01_level1.png, 256)
     look_assets_skins = function()
-        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira" }) do
+        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira", "NOM_Ticao" }) do
             local w, h = pngSize(MEDIA .. "textures/Body/" .. skin .. ".png")
             assert(w == 256 and h == 256, skin .. " " .. w .. "x" .. h)
         end
@@ -111,7 +111,7 @@ return {
     -- rodar o gerador de novo não muda um byte das texturas do visual (semente fixa)
     look_assets_deterministic = function()
         local paths = {}
-        for _, n in ipairs({ "Estalador", "Corredor", "Carpideira" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
+        for _, n in ipairs({ "Estalador", "Corredor", "Carpideira", "Ticao" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
         for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu", "Brasa" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end

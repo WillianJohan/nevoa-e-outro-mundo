@@ -191,7 +191,7 @@ local function isEco(z)
 end
 
 local function estaladorCfg()
-    return NOM_VariantRules.config(NOM_Config.get), NOM_Fog.period(), NOM_World.red
+    return NOM_VariantRules.config(NOM_Config.get), NOM_Fog.period(), NOM_World.red, NOM_World.black
 end
 
 local function schedule(e) e.at = S.clock + R.gap(ZombRand(R.GAP_ROLL)) end
@@ -201,12 +201,12 @@ local function schedule(e) e.at = S.clock + R.gap(ZombRand(R.GAP_ROLL)) end
 -- Custo: 2 chamadas por zumbi (get, getPersistentOutfitID) e 3 por Estalador.
 local function scan()
     scans = scans + 1
-    local cfg, period, red = estaladorCfg()
+    local cfg, period, red, black = estaladorCfg()
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         local pid = z:getPersistentOutfitID()
-        if NOM_VariantRules.variant(pid, period, cfg, red) == "estalador" and not z:isDead() and not isEco(z) then
+        if NOM_VariantRules.variant(pid, period, cfg, red, black) == "estalador" and not z:isDead() and not isEco(z) then
             local e = S.next[z]
             if e == nil or e.pid ~= pid then -- novo, ou objeto reaproveitado pra outro zumbi
                 e = { pid = pid }
@@ -295,12 +295,12 @@ function S.force(p)
     local px, py, pz = p:getX(), p:getY(), math.floor(p:getZ())
     local best, bestD
     if NOM_World.fog then
-        local cfg, period, red = estaladorCfg()
+        local cfg, period, red, black = estaladorCfg()
         local reach = R.DEBUG_REACH * R.DEBUG_REACH
         local list = getCell():getZombieList()
         for i = 0, list:size() - 1 do
             local z = list:get(i)
-            if NOM_VariantRules.variant(z:getPersistentOutfitID(), period, cfg, red) == "estalador"
+            if NOM_VariantRules.variant(z:getPersistentOutfitID(), period, cfg, red, black) == "estalador"
                 and not z:isDead() and math.floor(z:getZ()) == pz and not isEco(z) then
                 local dx, dy = z:getX() - px, z:getY() - py
                 local d = dx * dx + dy * dy

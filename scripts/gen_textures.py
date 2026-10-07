@@ -19,6 +19,7 @@ Saída (mod/42/media/textures/):
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
+  Body/NOM_Ticao.png             256  carvão em placas pequenas, rachaduras finas de brasa apagando (Tição, sprint 0038)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
@@ -244,6 +245,23 @@ def ember_shell(rng, size=256):
     glow = np.clip((7.0 - c) / 3.0, 0, 1)                                # rachadura de ~10 px
     rgb = mix(rgb, (255, 112, 20), glow)                                 # brasa
     return mix(rgb, (255, 214, 120), np.clip((3.0 - c) / 1.5, 0, 1))    # miolo quente
+
+
+def ticao_skin(rng, size=256):
+    # Tição (sprint 0038): o corpo queimado da névoa preta. Carvão em placas menores que as da
+    # casca (lê como pele, não como roupa) e rachaduras finas de brasa que apagam em vermelho
+    # escuro em parte delas: no escuro, o que se vê de longe é a brasa.
+    rgb = color((30, 24, 21), 0.8 + 0.4 * fbm(rng, size))
+    g = 8
+    pts = (np.stack(np.mgrid[0:g, 0:g], -1).reshape(-1, 2) + 0.2 + 0.6 * rng.random((g * g, 2))) * size / g
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    d = np.sort(np.stack([np.hypot(x - px, y - py) for py, px in pts]), axis=0)
+    c = d[1] - d[0]
+    crack = np.clip((5.0 - c) / 2.0, 0, 1)
+    hot = noise(rng, size, 4) > 0.45                                     # brasa viva ou apagada
+    rgb = mix(rgb, (120, 22, 10), crack * ~hot)                          # brasa apagando
+    rgb = mix(rgb, (255, 120, 24), crack * hot)                          # brasa viva
+    return mix(rgb, (255, 210, 110), np.clip((2.0 - c) / 1.0, 0, 1) * hot)
 
 
 def screen_grain(rng, size=256):
@@ -514,6 +532,7 @@ def main():
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     # casca de brasa: corpo inteiro (malha Hazmat), opaca como a cinza
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
+    save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)
     for i in range(1, 5):

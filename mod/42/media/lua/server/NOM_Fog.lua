@@ -107,7 +107,7 @@ end
 -- ataca), chão, cooldown.
 function NOM_Fog.seen(player, z, x, y, zz)
     if not NOM_World.fog or not NOM_Config.get("SemRostoEnabled") then return false end
-    if not NOM_SemRosto.isSemRosto(z, NOM_Fog.period(), nil, NOM_World.red) then return false end
+    if not NOM_SemRosto.isSemRosto(z, NOM_Fog.period(), nil, NOM_World.red, NOM_World.black) then return false end
     if not R.validMove(player:getX(), player:getY(), z:getX(), z:getY(), x + 0.5, y + 0.5) then return false end
     if not destinationOk(player, x, y, zz) then return false end
     local now, last = getTimestampMs(), moved[z]
