@@ -907,17 +907,22 @@ return {
         assert(own > 1000, "pouco sprite próprio em parede: " .. own)
     end,
 
-    -- "mais Silent Hill" (Johan, 06/10): na branca o chão ganha manchas de metal (grade, chapa,
-    -- ferrugem, tinta lascada), dentro e fora; a grade é a mais comum; as paredes de dentro
-    -- descascam e enferrujam
+    -- "mais Silent Hill" (Johan, 06/10): na branca o chão ganha metal (grade, chapa, ferrugem,
+    -- tinta lascada); a grade é a mais comum; as paredes de dentro descascam e enferrujam.
+    -- Hotfix do chão: dentro, ~15% do chão (era 37%), os quatro tipos; no pavimento de fora,
+    -- ~3% (era 37%), peça solta de grade, ferrugem ou tinta, sem chapa
     dressing_rules_white_favors_silent_hill = function()
         local R = load()
-        for _, outside in ipairs({ false, true }) do
+        local cases = {
+            { outside = false, lo = 0.1, hi = 0.22, sets = { "grateFloor", "plateFloor", "rustFloor", "paintFloor" }, min = 50 },
+            { outside = true, lo = 0.015, hi = 0.06, sets = { "grateFloor", "rustFloor", "paintFloor" }, min = 5 },
+        }
+        for _, c in ipairs(cases) do
             local n, metal, by = 0, 0, {}
             for x = 0, 79 do
                 for y = 0, 79 do
                     n = n + 1
-                    local f = R.floor(11000 + x, 12000 + y, 0, 5, 1, outside, false)
+                    local f = R.floor(11000 + x, 12000 + y, 0, 5, 1, c.outside, false, false)
                     local any = false
                     for _, l in ipairs(f or {}) do
                         if isOwnSet(R, l[1]) then
@@ -928,10 +933,10 @@ return {
                     if any then metal = metal + 1 end
                 end
             end
-            local where = outside and "fora" or "dentro"
-            assert(metal / n >= 0.25 and metal / n <= 0.6, where .. ": metal no chão " .. metal / n)
-            for _, s in ipairs({ "grateFloor", "plateFloor", "rustFloor", "paintFloor" }) do
-                assert((by[s] or 0) > 50, where .. ": pouco " .. s .. " (" .. (by[s] or 0) .. ")")
+            local where = c.outside and "fora" or "dentro"
+            assert(metal / n >= c.lo and metal / n <= c.hi, where .. ": metal no chão " .. metal / n)
+            for _, s in ipairs(c.sets) do
+                assert((by[s] or 0) > c.min, where .. ": pouco " .. s .. " (" .. (by[s] or 0) .. ")")
             end
             for k, v in pairs(by) do
                 if k ~= "grateFloor" then assert(by.grateFloor > v, where .. ": grade não é a mais comum (" .. k .. ")") end
@@ -952,8 +957,11 @@ return {
         assert(sh / walls >= 0.6, "branca: parede de dentro sem Silent Hill " .. sh / walls)
     end,
 
-    -- o metal vem em manchas (o chão inteiro de grade leria como textura repetida) e, dentro da
-    -- mancha, em painéis do mesmo tipo
+    -- dentro, o metal vem em manchas (o chão inteiro de grade leria como textura repetida) e,
+    -- dentro da mancha, em painéis do mesmo tipo. Hotfix do chão: a mancha é quebrada por tile,
+    -- então a troca entre vizinhos fica mais perto do sorteio por tile (medido 0,72; era < 0,6);
+    -- a mancha aparece na escala do bloco: a variância da contagem em blocos 6×6 é ~5,5× a de
+    -- um sorteio por tile
     dressing_rules_metal_patches = function()
         local R = load()
         local has, kind, n, tot = {}, {}, 0, 0
@@ -984,8 +992,23 @@ return {
                 end
             end
         end
-        assert(flips / pairs_ / (2 * p * (1 - p)) < 0.6, "metal tile a tile")
+        assert(flips / pairs_ / (2 * p * (1 - p)) < 0.85, "metal tile a tile")
         assert(same / both > 0.6, "vizinhos de metal com tipo trocado demais: " .. same / both)
+        local B, sum, sum2, nb = 6, 0, 0, 0
+        for bx = 0, 89 - B, B do
+            for by = 0, 89 - B, B do
+                local c = 0
+                for i = 0, B - 1 do
+                    for j = 0, B - 1 do
+                        if has[(bx + i) .. "," .. (by + j)] then c = c + 1 end
+                    end
+                end
+                sum, sum2, nb = sum + c, sum2 + c * c, nb + 1
+            end
+        end
+        local mean = sum / nb
+        local ratio = (sum2 / nb - mean * mean) / (B * B * p * (1 - p))
+        assert(ratio > 3, "metal sem mancha na escala do bloco: " .. ratio)
     end,
 
     -- vermelha: o sangue de parede fica (manda fora), a parede ganha ferrugem, o chão ganha
@@ -1049,5 +1072,151 @@ return {
             end
         end
         assert(diff > 450, "branca e vermelha quase iguais: " .. diff)
+    end,
+
+    -- HOTFIX DO CHÃO (teste do Johan, 06/10) ----------------------------------------------------
+    -- Na branca o metal ia em qualquer chão: na calçada, painéis 4×4 inteiros (quadrados escuros
+    -- em xadrez); na grama, ferrugem e tinta em todo tile da mancha (cada decalque centrado no
+    -- losango: uma grade de bolotas marrons).
+
+    -- o nome do piso natural é a conta do IsoGridSquare.hasNaturalFloor (bytecode do B42.21):
+    -- começa com blends_natural_01 (grama, terra, areia, barro) ou floors_exterior_natural
+    dressing_rules_natural_names = function()
+        local R = load()
+        for _, n in ipairs({ "blends_natural_01_16", "blends_natural_01_64", "blends_natural_01_0",
+            "floors_exterior_natural_01_13" }) do
+            assert(R.natural(n) == true, "não é natural: " .. n)
+        end
+        for _, n in ipairs({ "blends_street_01_0", "floors_exterior_street_01_0", "floors_interior_tilesandwood_01_0",
+            "blends_natural_02_0", "", "xblends_natural_01_16" }) do
+            assert(R.natural(n) == false, "natural: " .. n)
+        end
+        assert(R.natural(nil) == false and R.natural(7) == false, "nome que não é string")
+    end,
+
+    -- piso natural não ganha metal, ferrugem nem tinta, nas duas cores, dentro e fora; fica o
+    -- que havia antes da 0035 (mato, folha, sujeira, rachadura)
+    dressing_rules_natural_floor_no_metal = function()
+        local R = load()
+        local plants = 0
+        for _, c in ipairs({ { 1, false }, { 2, false }, { R.density(1, true), true }, { R.density(2, true), true } }) do
+            for _, outside in ipairs({ true, false }) do
+                for x = 0, 69 do
+                    for y = 0, 69 do
+                        for _, l in ipairs(R.floor(15000 + x, 16000 + y, 0, 5, c[1], outside, c[2], true) or {}) do
+                            assert(not isOwnSet(R, l[1]), "textura nossa em piso natural: " .. R.name(l))
+                            if isPlant(R.name(l)) then plants = plants + 1 end
+                        end
+                    end
+                end
+            end
+        end
+        assert(plants > 1000, "a grama perdeu o mato: " .. plants)
+    end,
+
+    -- o cliente só lê o nome do piso (uma ida ao Java) quando a regra pôs textura nossa: o
+    -- natural só tira metal, ferrugem e tinta; sem elas, a resposta é a mesma
+    dressing_rules_natural_only_drops_own = function()
+        local R = load()
+        local function key(f)
+            if not f then return "-" end
+            local t = {}
+            for _, l in ipairs(f) do t[#t + 1] = l[1] .. l[2] end
+            if f.grime then t[#t + 1] = "g" .. f.grime[2] end
+            return table.concat(t, ";")
+        end
+        assert(R.hasOwn(nil) == false, "hasOwn(nil)")
+        local dropped = 0
+        for _, c in ipairs({ { 1, false }, { 2, false }, { R.density(2, true), true } }) do
+            for _, outside in ipairs({ true, false }) do
+                for x = 0, 49 do
+                    for y = 0, 49 do
+                        local a = R.floor(19000 + x, 2000 + y, 0, 4, c[1], outside, c[2])
+                        local b = R.floor(19000 + x, 2000 + y, 0, 4, c[1], outside, c[2], true)
+                        assert(not R.hasOwn(b), "natural com textura nossa")
+                        if R.hasOwn(a) then
+                            dropped = dropped + 1
+                        else
+                            assert(key(a) == key(b), "natural mudou um chão sem textura nossa")
+                        end
+                    end
+                end
+            end
+        end
+        assert(dropped > 100, "pouca textura nossa (teste não mede): " .. dropped)
+    end,
+
+    -- calçada e rua (fora, não natural): peça solta e rara, como bueiro. Nenhuma textura nossa
+    -- ao lado de outra (4-vizinhança), sem chapa, e no máximo 6% do chão em qualquer densidade
+    -- da branca (o teto do hotfix; era 37% a d=1)
+    dressing_rules_pavement_metal_isolated = function()
+        local R = load()
+        local by = {}
+        for _, d in ipairs({ 0.5, 1, 2 }) do
+            local has, n, own = {}, 0, 0
+            for dx = -60, 60 do
+                for dy = -60, 60 do
+                    if dx * dx + dy * dy <= 3600 then
+                        n = n + 1
+                        for _, l in ipairs(R.floor(17000 + dx, 18000 + dy, 0, 6, d, true, false, false) or {}) do
+                            if isOwnSet(R, l[1]) then
+                                has[dx .. "," .. dy] = true
+                                by[l[1]] = (by[l[1]] or 0) + 1
+                            end
+                        end
+                        if has[dx .. "," .. dy] then own = own + 1 end
+                    end
+                end
+            end
+            for dx = -60, 60 do
+                for dy = -60, 60 do
+                    if has[dx .. "," .. dy] then
+                        assert(not has[(dx + 1) .. "," .. dy] and not has[dx .. "," .. (dy + 1)],
+                            "metal vizinho na calçada em " .. dx .. "," .. dy .. " d=" .. d)
+                    end
+                end
+            end
+            assert(own / n <= 0.06, "calçada com metal demais: d=" .. d .. " " .. own / n)
+            assert(own / n >= 0.01, "calçada sem metal: d=" .. d .. " " .. own / n)
+        end
+        assert(not by.plateFloor, "chapa na calçada")
+        assert((by.grateFloor or 0) > 20 and (by.rustFloor or 0) > 10, "grade " .. tostring(by.grateFloor)
+            .. ", ferrugem " .. tostring(by.rustFloor))
+    end,
+
+    -- dentro de casa o metal fica, quebrado: nenhuma janela 3×3 cheia (nem painel 4×4), menos
+    -- cobertura que na 0035 (37% a d=1; agora ~16%, ~19% a d=2, teto 22%) e ferrugem/tinta
+    -- espalhadas, sem grade de manchas
+    dressing_rules_inside_metal_broken = function()
+        local R = load()
+        local S = 100
+        for _, d in ipairs({ 1, 2 }) do
+            local has, n, own, spots = {}, 0, 0, 0
+            for x = 0, S - 1 do
+                for y = 0, S - 1 do
+                    n = n + 1
+                    for _, l in ipairs(R.floor(21000 + x, 22000 + y, 0, 3, d, false, false, false) or {}) do
+                        if isOwnSet(R, l[1]) then
+                            has[x * S + y] = true
+                            if l[1] == "rustFloor" or l[1] == "paintFloor" then spots = spots + 1 end
+                        end
+                    end
+                    if has[x * S + y] then own = own + 1 end
+                end
+            end
+            for x = 0, S - 3 do
+                for y = 0, S - 3 do
+                    local full = true
+                    for i = 0, 2 do
+                        for j = 0, 2 do
+                            if not has[(x + i) * S + y + j] then full = false end
+                        end
+                    end
+                    assert(not full, "bloco 3×3 cheio de metal em " .. x .. "," .. y .. " d=" .. d)
+                end
+            end
+            assert(own / n <= 0.22 and own / n >= 0.08, "metal dentro: d=" .. d .. " " .. own / n)
+            assert(spots / n <= 0.05, "ferrugem e tinta dentro: d=" .. d .. " " .. spots / n)
+        end
     end,
 }

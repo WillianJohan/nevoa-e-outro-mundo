@@ -51,16 +51,30 @@ NOM_DressingRules = {
     PLANTS = 0.35,
     PLANTS_MAX = 0.45,
     PLANTS_CELL = 4,
-    -- Metal no chão (branca, sprint 0035): manchas pelo ruído numa rede de METAL_CELL tiles; o
-    -- tipo é um só em cada painel de METAL_PANEL tiles (grade aqui, chapa ali).
+    -- Metal no chão (branca, sprint 0035; hotfix do chão depois do teste do Johan). Piso natural
+    -- (grama, terra, areia): nada. Dentro: manchas pelo ruído numa rede de METAL_CELL tiles, o
+    -- tipo é um só em cada painel de METAL_PANEL tiles (grade aqui, chapa ali), mas a mancha não
+    -- enche: grade e chapa em METAL_FILL dos tiles, ferrugem e tinta em METAL_SPOT (decalque
+    -- centrado no losango: tile a tile vira grade de bolotas), e um tile de cada bloco 2×2 nunca
+    -- (nenhum 3×3 cheio). Fora, no pavimento: peça solta, METAL_OUT × densidade por tile (até
+    -- METAL_OUT_MAX), nunca ao lado de outra.
     METAL = 0.4,
     METAL_MAX = 0.45,
     METAL_CELL = 5,
     METAL_PANEL = 4,
-    -- Ferrugem no chão (vermelha): manchas, no lugar da rachadura.
+    METAL_FILL = 0.75,
+    METAL_SPOT = 0.3,
+    METAL_OUT = 0.035,
+    METAL_OUT_MAX = 0.07,
+    -- Ferrugem no chão (vermelha): manchas, no lugar da rachadura; RUST_SPOT dos tiles da mancha
+    -- (o mesmo decalque centrado da branca). Piso natural: nada.
     RUST = 0.25,
     RUST_MAX = 0.35,
     RUST_CELL = 4,
+    RUST_SPOT = 0.45,
+    -- Piso natural: o nome do sprite do piso começa com um destes (IsoGridSquare.hasNaturalFloor,
+    -- bytecode do B42.21; pz-api-notes §16.7).
+    NATURAL_PREFIXES = { "blends_natural_01", "floors_exterior_natural" },
     -- Parede que descasca: Descasca (buraco quase do tile todo) em vez de Tinta, nessa fração.
     PEEL = 0.35,
     -- Os prefixos que só o mod anexa (ninguém no vanilla anexa floors_burnt_01_*, ADR-017, nem
@@ -188,11 +202,28 @@ function R.name(layer)
     return s.prefix .. layer[2]
 end
 
+local function startsWith(name, prefixes)
+    if type(name) ~= "string" then return false end
+    for _, p in ipairs(prefixes) do
+        if name:sub(1, #p) == p then return true end
+    end
+    return false
+end
+
 -- O nome é de um prefixo que só o mod anexa?
 function R.own(name)
-    if type(name) ~= "string" then return false end
-    for _, p in ipairs(R.OWN_PREFIXES) do
-        if name:sub(1, #p) == p then return true end
+    return startsWith(name, R.OWN_PREFIXES)
+end
+
+-- O nome do sprite do piso é de chão natural (grama, terra, areia, barro)?
+function R.natural(name)
+    return startsWith(name, R.NATURAL_PREFIXES)
+end
+
+-- As camadas de R.floor têm textura nossa (metal, ferrugem, tinta)? Só aí o natural muda a resposta.
+function R.hasOwn(layers)
+    for _, l in ipairs(layers or {}) do
+        if R.SETS[l[1]].own then return true end
     end
     return false
 end
@@ -209,8 +240,10 @@ local WALL_KINDS_IN = {
     white = { { "paint", 0.45 }, { "rust", 0.2 }, { "grime", 0.2 }, { "cracks", 0.15 } },
     red = { { "grime", 0.35 }, { "cracks", 0.25 }, { "blood", 0.25 }, { "rust", 0.15 } },
 }
--- Metal no chão da branca, por painel: a grade manda.
+-- Metal no chão da branca: dentro, por painel (a grade manda); fora, por peça solta (bueiro,
+-- mancha de ferrugem), sem chapa.
 local METAL_KINDS = { { "grate", 0.4 }, { "rust", 0.25 }, { "plate", 0.2 }, { "paint", 0.15 } }
+local METAL_KINDS_OUT = { { "grate", 0.5 }, { "rust", 0.4 }, { "paint", 0.1 } }
 
 local function u(id, period, salt)
     return V.hash(id, period or 0, salt) / V.Q
@@ -325,27 +358,53 @@ local function band(id, period, salt, kinds)
     end
 end
 
--- Metal da branca na mancha (o tipo é o do painel, o desenho é do square), ou nil.
-local function metal(x, y, z, id, period, d)
+-- Metal da branca dentro: na mancha (o tipo é o do painel, o desenho é do square), quebrada por
+-- tile; ou nil.
+local function metalIn(x, y, z, id, period, d)
     if not patch(x, y, z, period, d, R.METAL, R.METAL_MAX, R.METAL_CELL, 140) then return nil end
     local panel = sqId(math.floor(x / R.METAL_PANEL), math.floor(y / R.METAL_PANEL), z)
-    return pick(band(panel, period, 141, METAL_KINDS) .. "Floor", id, period, 142)
+    local kind = band(panel, period, 141, METAL_KINDS)
+    local keep = (kind == "grate" or kind == "plate") and R.METAL_FILL or R.METAL_SPOT
+    if u(id, period, 145) >= keep then return nil end
+    local bx, by = math.floor(x / 2), math.floor(y / 2)
+    if (x - 2 * bx) + 2 * (y - 2 * by) == math.floor(u(sqId(bx, by, z), period, 146) * 4) then return nil end
+    return pick(kind .. "Floor", id, period, 142)
+end
+
+-- Candidato a peça solta no pavimento.
+local function loose(x, y, z, period, p)
+    return u(sqId(x, y, z), period, 147) < p
+end
+
+-- Metal da branca no pavimento de fora: o candidato sem candidato ao lado (4-vizinhança); ou nil.
+local function metalOut(x, y, z, id, period, d)
+    local p = math.min(R.METAL_OUT_MAX, R.METAL_OUT * d)
+    if not loose(x, y, z, period, p) then return nil end
+    if loose(x + 1, y, z, period, p) or loose(x - 1, y, z, period, p) or loose(x, y + 1, z, period, p)
+        or loose(x, y - 1, z, period, p) then
+        return nil
+    end
+    return pick(band(id, period, 148, METAL_KINDS_OUT) .. "Floor", id, period, 142)
 end
 
 -- Camadas do chão do square, de baixo pra cima (até MAX_LAYERS), e a sujeira à parte em
 -- out.grime (anexo próprio, mais leve), ou nil. outside: o square é de fora (sem telhado). red:
--- névoa vermelha. Embaixo: na branca o metal tem a vez (sem rachadura de rua por cima), senão
+-- névoa vermelha. natural: o piso é grama, terra ou areia (R.natural do nome do sprite): sem
+-- textura nossa; com natural, só sai o que tinha textura nossa (o cliente só lê o nome do piso
+-- quando R.hasOwn). Embaixo: na branca o metal tem a vez (sem rachadura de rua por cima), senão
 -- queimado (dentro) ou mato (fora). Em cima: rachadura; na vermelha, ferrugem na mancha dela.
-function R.floor(x, y, z, period, d, outside, red)
+function R.floor(x, y, z, period, d, outside, red, natural)
     if not d or d <= 0 then return nil end
     local id = sqId(x, y, z)
     local out = {}
-    local plate = not red and metal(x, y, z, id, period, d)
+    local plate = not red and not natural
+        and (outside and metalOut(x, y, z, id, period, d) or not outside and metalIn(x, y, z, id, period, d))
     out[1] = plate or ground(x, y, z, id, period, d, outside)
     -- mancha pelo ruído; um tile em 7 falha (borda irregular, não losango cheio)
     local grime = R.grimeNoise(x, y, z, period) >= 1 - math.min(R.GRIME_MAX, R.GRIME * d)
         and noise(x, y, z, period, R.GRIME_FINE, 55) >= R.GRIME_CUT
-    if red and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143) then
+    if red and not natural and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143)
+        and u(id, period, 149) < R.RUST_SPOT then
         out[#out + 1] = pick("rustFloor", id, period, 144)
     elseif not plate and u(id, period, 52) < chance(R.CRACKS, d) then
         out[#out + 1] = pick("cracksFloor", id, period, 62)
