@@ -50,6 +50,7 @@ NOM_VariantAI.CHECK_FRAMES = 10
 NOM_VariantAI.WATCH_FRAMES = 30
 NOM_VariantAI.NOISE_TICKS = 180
 NOM_VariantAI.NOISE_NEAR = 3
+NOM_VariantAI.LOG_TICKS = 300 -- no -debug, a contagem no console (~5 s a 60 FPS)
 -- Recém-soltos da visão curta, vigiados todo frame: { [zumbi] = frames }.
 NOM_VariantAI.watched = {}
 local watched = NOM_VariantAI.watched
@@ -197,6 +198,11 @@ local function sweep()
         end
     end
     cursor = NOM_Math.mod(cursor + n, size)
+    if getDebug() and NOM_Math.mod(tick, NOM_VariantAI.LOG_TICKS) == 0 then
+        local c = NOM_VariantAI.counts()
+        print("[NOM] visao curta cegos=" .. c.common .. " vigiados=" .. c.watched .. " estaladores=" .. c.estalador ..
+            " lista=" .. size .. " raio=" .. math.floor(math.sqrt(r2) + 0.5))
+    end
 end
 
 -- Som: o cego é surdo (useless; RespondToSound 8–15). Events.OnWorldSound sai de todo

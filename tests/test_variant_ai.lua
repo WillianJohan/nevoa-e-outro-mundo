@@ -798,6 +798,21 @@ return {
         NOM_NightStats.unstick(dbg)
         assert(dbg.useless)
     end,
+    -- no -debug, a contagem sai no console a cada LOG_TICKS (roteiro de teste da 0036)
+    vision_debug_log = function()
+        local G = setup()
+        local printed = {}
+        local realPrint = print
+        getDebug = function() return true end
+        print = function(s) printed[#printed + 1] = s end
+        G.zombie({ x = 0, y = 0 })
+        G.player({ x = 8, y = 0 })
+        local ok, err = pcall(G.frame, NOM_VariantAI.LOG_TICKS)
+        print = realPrint
+        assert(ok, err)
+        assert(#printed == 1 and printed[1]:find("^%[NOM%] visao curta cegos=%d+ vigiados=%d+ estaladores=0 lista=1 raio=4$"),
+            table.concat(printed, "\n"))
+    end,
     -- orçamento (critério de aceite): 300 zumbis. Parados (sem alvo): só o lote, ~1
     -- chamada por zumbi do lote. Multidão (os 300 com o jogador de alvo a 6–10 tiles,
     -- o pior caso): o pior tick fica longe do teto de 2500 por atualização
