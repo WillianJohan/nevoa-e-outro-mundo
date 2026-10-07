@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Compila o jar do mod3 (NevoaEOutroMundo_Volumetrica) contra o jogo e o ZombieBuddy instalados.
+# Compila o jar do mod3 (NoiseOfMist_Volumetrica) contra o jogo e o ZombieBuddy instalados.
 # Precisa de um JDK >= 25 (o jogo roda no Zulu 25): `brew install openjdk`.
-# Saída: mod3/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar (fora do git).
+# Saída: mod3/42/media/java/client/NoiseOfMist_Volumetrica.jar (fora do git). O nome do jar é
+# livre pro ZombieBuddy: o .zbs é o irmão <jar>.zbs e a assinatura não leva o nome (sprint 0037b).
 # O build do Workshop troca a origem e a saída (MOD3_SRC, MOD3_OUT) e fixa a data das
 # entradas do jar (MOD3_DATE, ISO-8601): o mesmo commit dá o mesmo jar, byte a byte.
 set -euo pipefail
@@ -10,7 +11,7 @@ PZ="${PZ_DIR:-/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid}"
 ZB="${ZB_JAR:-$PZ/ZombieBuddy.jar}"
 JDK="${JAVA_HOME:-/home/linuxbrew/.linuxbrew/opt/openjdk}"
 SRC="${MOD3_SRC:-$REPO/mod3/java}"
-OUT="${MOD3_OUT:-$REPO/mod3/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar}"
+OUT="${MOD3_OUT:-$REPO/mod3/42/media/java/client/NoiseOfMist_Volumetrica.jar}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
 "$JDK/bin/javac" --release 25 -nowarn -d "$TMP/classes" -cp "$PZ/projectzomboid.jar:$ZB" \

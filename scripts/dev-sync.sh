@@ -4,7 +4,7 @@
 # media/scripts/*.txt (visto no console.txt: FileNotFoundException em
 # .../Zomboid/mods/var/home/.../nom_clothing.txt). Lua e texturas carregavam,
 # os itens de visual não. Rode de novo depois de cada mudança e recarregue o save.
-# mod2/ (shader opcional, sprint 0013) vai junto como NevoaEOutroMundo_Shader: só
+# mod2/ (shader opcional, sprint 0013) vai junto como NoiseOfMist_Shader: só
 # fica disponível na lista de mods; ativar é escolha (não com ShadowZ).
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,7 +20,7 @@ sync_mod() { # pasta do repo, id do mod
     rsync -a --delete "$REPO/$1/" "$dest/"
     echo "mod copiado: $REPO/$1 -> $dest ($(find "$dest" -type f | wc -l) arquivos)"
 }
-sync_mod mod NevoaEOutroMundo
-sync_mod mod2 NevoaEOutroMundo_Shader
+sync_mod mod NoiseOfMist
+sync_mod mod2 NoiseOfMist_Shader
 # mod3/ (spike volumétrica, Java via ZombieBuddy): rode scripts/build-mod3.sh antes.
-if [ -f "$REPO/mod3/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar" ]; then sync_mod mod3 NevoaEOutroMundo_Volumetrica; fi
+if [ -f "$REPO/mod3/42/media/java/client/NoiseOfMist_Volumetrica.jar" ]; then sync_mod mod3 NoiseOfMist_Volumetrica; fi

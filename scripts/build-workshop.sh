@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Monta a pasta de upload do Workshop a partir do repositório:
 #
-#   <pasta do jogo>/Workshop/NevoaEOutroMundo/ (~/Zomboid, ou a da Steam Flatpak)
-#     Contents/mods/NevoaEOutroMundo/   ← mod/ como está no último commit (git archive)
-#     Contents/mods/NevoaEOutroMundo_Shader/  ← mod2/ (shader opcional, sprint 0013)
-#     Contents/mods/NevoaEOutroMundo_Volumetrica/ ← mod3/42 e common + o jar compilado do HEAD e
+#   <pasta do jogo>/Workshop/NoiseOfMist/ (~/Zomboid, ou a da Steam Flatpak)
+#     Contents/mods/NoiseOfMist/        ← mod/ como está no último commit (git archive)
+#     Contents/mods/NoiseOfMist_Shader/ ← mod2/ (shader opcional, sprint 0013)
+#     Contents/mods/NoiseOfMist_Volumetrica/ ← mod3/42 e common + o jar compilado do HEAD e
 #                                       assinado (névoa volumétrica, Java via ZombieBuddy)
 #     preview.png                       ← docs/workshop/preview.png
 #     workshop.txt                      ← gerado de docs/workshop/description-*.txt
@@ -22,13 +22,13 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-MOD_ID="NevoaEOutroMundo"
-SHADER_ID="NevoaEOutroMundo_Shader" # segundo mod do mesmo item (validateModsFolder valida cada pasta)
-VOL_ID="NevoaEOutroMundo_Volumetrica" # terceiro: a pasta java/ (fontes) fica de fora, não é versão nem common
+MOD_ID="NoiseOfMist"
+SHADER_ID="NoiseOfMist_Shader" # segundo mod do mesmo item (validateModsFolder valida cada pasta)
+VOL_ID="NoiseOfMist_Volumetrica" # terceiro: a pasta java/ (fontes) fica de fora, não é versão nem common
 VOL_JAR="42/media/java/client/$VOL_ID.jar"
 # Sem assinatura válida o ZombieBuddy exclui o jar (ZBSVerifier): sem a chave, não sai upload.
 ZBS_KEY="${NOM_ZBS_KEY:-$HOME/.signing/nom-zbs-ed25519.pem}"
-TITLE="Névoa e Outro Mundo"
+TITLE="NOM: Noise of Mist"
 TAGS="Build 42;Hardmode;Multiplayer" # permitidas em media/WorkshopTags.txt do jogo
 DEFAULT_VISIBILITY="unlisted"        # primeiro upload: só com o link, até o teste da instalação limpa
 # Pasta de dados do jogo: ZOMBOID_DIR manda; senão a da Steam Flatpak, se existir

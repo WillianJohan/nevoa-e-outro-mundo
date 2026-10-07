@@ -79,6 +79,26 @@ return {
         assert(info:find("\nversionMin=42.20\n", 1, true), "versionMin= errada")
     end,
 
+    -- "NOM: Noise of Mist" (sprint 0037b): IDs, nomes e dependências dos três mods do item.
+    -- Os nomes de espaço no Lua (canal, ModData, opções) continuam NevoaEOutroMundo.
+    modinfo_ids_and_names = function()
+        local WANT = {
+            { "mod", "NoiseOfMist", "NOM: Noise of Mist", nil },
+            { "mod2", "NoiseOfMist_Shader", "NOM: Noise of Mist — Shader (incompatível com ShadowZ)", "NoiseOfMist" },
+            { "mod3", "NoiseOfMist_Volumetrica", "NOM: Noise of Mist — Volumétrica (Java, ZombieBuddy)",
+                "NoiseOfMist,\\ZombieBuddy" },
+        }
+        for _, w in ipairs(WANT) do
+            local info = read(w[1] .. "/42/mod.info")
+            assert(info:find("\nid=" .. w[2] .. "\n", 1, true), w[1] .. ": id= errado")
+            assert(info:match("^name=([^\n]+)") == w[3], w[1] .. ": name= errado")
+            assert(info:match("\nrequire=([^\n]+)") == w[4], w[1] .. ": require= errado")
+            assert(not info:find("Névoa e Outro Mundo", 1, true), w[1] .. ": nome antigo no mod.info")
+        end
+        assert(read("mod3/42/mod.info"):find("\njavaJarFile=media/java/client/NoiseOfMist_Volumetrica.jar\n", 1, true),
+            "mod3: javaJarFile= errado")
+    end,
+
     -- readModInfoAux casa cada linha por contains, numa cadeia if/else nesta ordem
     -- (bytecode 152–1325): linha cujo valor contém uma chave anterior vira essa chave
     modinfo_lines_match_own_key = function()

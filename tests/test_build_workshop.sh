@@ -11,7 +11,7 @@ fail=0
 # chave descartável pra assinar o jar do mod3 (a de verdade fica em ~/.signing, fora dos testes)
 export NOM_ZBS_KEY="$TMP/zbs-test.pem"
 openssl genpkey -algorithm ed25519 -out "$NOM_ZBS_KEY" 2>/dev/null
-DEST_REL="Zomboid/Workshop/NevoaEOutroMundo"
+DEST_REL="Zomboid/Workshop/NoiseOfMist"
 
 # cópia do repo só com o que o build lê, num git próprio (o build só manda o que
 # está commitado em mod/), pra estragar sem medo
@@ -66,14 +66,14 @@ build_creates_layout() {
     local h d
     h="$(build)"
     d="$h/$DEST_REL"
-    test -f "$d/Contents/mods/NevoaEOutroMundo/42/mod.info"
-    test -f "$d/Contents/mods/NevoaEOutroMundo/42/poster.png"
-    test -d "$d/Contents/mods/NevoaEOutroMundo/common"
-    test -f "$d/Contents/mods/NevoaEOutroMundo/42/media/lua/shared/Translate/PTBR/Mod.json"
+    test -f "$d/Contents/mods/NoiseOfMist/42/mod.info"
+    test -f "$d/Contents/mods/NoiseOfMist/42/poster.png"
+    test -d "$d/Contents/mods/NoiseOfMist/common"
+    test -f "$d/Contents/mods/NoiseOfMist/42/media/lua/shared/Translate/PTBR/Mod.json"
     cmp -s "$d/preview.png" "$REPO/docs/workshop/preview.png"
     local w="$d/workshop.txt"
     test "$(head -1 "$w")" = "version=1"
-    grep -qx "title=Névoa e Outro Mundo" "$w"
+    grep -qx "title=NOM: Noise of Mist" "$w"
     grep -qx "tags=Build 42;Hardmode;Multiplayer" "$w"
     grep -qx "visibility=unlisted" "$w"
     test "$(grep -c '^id=' "$w")" -eq 0
@@ -91,10 +91,10 @@ build_excludes_repo_only() {
     d="$h/$DEST_REL"
     test "$(ls "$d" | tr '\n' ' ')" = "Contents preview.png workshop.txt "
     test "$(ls "$d/Contents")" = "mods"
-    test "$(ls "$d/Contents/mods" | tr '\n' ' ')" = "NevoaEOutroMundo NevoaEOutroMundo_Shader NevoaEOutroMundo_Volumetrica "
-    test "$(ls "$d/Contents/mods/NevoaEOutroMundo_Volumetrica" | tr '\n' ' ')" = "42 common "
-    test "$(ls "$d/Contents/mods/NevoaEOutroMundo" | tr '\n' ' ')" = "42 common "
-    test "$(ls "$d/Contents/mods/NevoaEOutroMundo_Shader" | tr '\n' ' ')" = "42 common "
+    test "$(ls "$d/Contents/mods" | tr '\n' ' ')" = "NoiseOfMist NoiseOfMist_Shader NoiseOfMist_Volumetrica "
+    test "$(ls "$d/Contents/mods/NoiseOfMist_Volumetrica" | tr '\n' ' ')" = "42 common "
+    test "$(ls "$d/Contents/mods/NoiseOfMist" | tr '\n' ' ')" = "42 common "
+    test "$(ls "$d/Contents/mods/NoiseOfMist_Shader" | tr '\n' ' ')" = "42 common "
     # SteamWorkshopItem.validateFileTypes recusa estes
     test -z "$(find "$d" -type f \( -name '*.sh' -o -name '*.zip' -o -name '*.exe' -o -name '*.dll' \
         -o -name '*.bat' -o -name '*.app' -o -name '*.dylib' -o -name '*.so' \))"
@@ -125,7 +125,7 @@ build_preserves_id_and_visibility() {
 build_removes_stale_files() {
     local h m
     h="$(build)"
-    m="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo/42/media/lua/client"
+    m="$h/$DEST_REL/Contents/mods/NoiseOfMist/42/media/lua/client"
     touch "$m/NOM_Velho.lua"
     rebuild "$h"
     test ! -e "$m/NOM_Velho.lua"
@@ -141,7 +141,7 @@ build_dry_run_writes_nothing() {
 build_prints_what_it_did() {
     local h
     h="$(build)"
-    grep -q "Contents/mods/NevoaEOutroMundo" "$h/out.txt"
+    grep -q "Contents/mods/NoiseOfMist" "$h/out.txt"
     grep -q "preview.png" "$h/out.txt"
     grep -q "workshop.txt" "$h/out.txt"
 }
@@ -200,7 +200,7 @@ build_ships_only_tracked_files() {
     r="$(fake_repo)"
     echo "rascunho" >"$r/mod/42/media/lua/client/NOM_Rascunho.lua"
     h="$(build "$r")"
-    test ! -e "$h/$DEST_REL/Contents/mods/NevoaEOutroMundo/42/media/lua/client/NOM_Rascunho.lua"
+    test ! -e "$h/$DEST_REL/Contents/mods/NoiseOfMist/42/media/lua/client/NOM_Rascunho.lua"
     grep -q "AVISO.*NOM_Rascunho.lua" "$h/out.txt"
 }
 
@@ -300,7 +300,7 @@ build_zomboid_dir_env_wins() {
     home="$(mktemp -d "$TMP/home.XXXX")"
     mkdir -p "$home/.var/app/com.valvesoftware.Steam/Zomboid"
     ZOMBOID_DIR="$home/outro" HOME_FOR="$home" build >/dev/null
-    test -f "$home/outro/Workshop/NevoaEOutroMundo/workshop.txt"
+    test -f "$home/outro/Workshop/NoiseOfMist/workshop.txt"
 }
 
 
@@ -309,11 +309,11 @@ build_zomboid_dir_env_wins() {
 build_ships_shader_mod() {
     local h d
     h="$(build)"
-    d="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Shader"
-    grep -qx "id=NevoaEOutroMundo_Shader" "$d/42/mod.info"
+    d="$h/$DEST_REL/Contents/mods/NoiseOfMist_Shader"
+    grep -qx "id=NoiseOfMist_Shader" "$d/42/mod.info"
     cmp -s "$d/42/media/shaders/screen.frag" "$REPO/mod2/42/media/shaders/screen.frag"
     test -f "$d/42/media/lua/shared/NOM_ShaderFlag.lua"
-    grep -q "NevoaEOutroMundo_Shader" "$h/out.txt"
+    grep -q "NoiseOfMist_Shader" "$h/out.txt"
 }
 
 build_refuses_uncommitted_change_in_mod2() {
@@ -330,10 +330,10 @@ build_refuses_uncommitted_change_in_mod2() {
 build_ships_volumetric_mod() {
     local h d jar
     h="$(build)"
-    d="$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Volumetrica"
-    grep -qx "id=NevoaEOutroMundo_Volumetrica" "$d/42/mod.info"
+    d="$h/$DEST_REL/Contents/mods/NoiseOfMist_Volumetrica"
+    grep -qx "id=NoiseOfMist_Volumetrica" "$d/42/mod.info"
     cmp -s "$d/42/media/shaders/NOM_VolFog.frag" "$REPO/mod3/42/media/shaders/NOM_VolFog.frag"
-    jar="$d/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar"
+    jar="$d/42/media/java/client/NoiseOfMist_Volumetrica.jar"
     unzip -l "$jar" | grep -q "nom/render/FlowGrid.class"
     test -z "$(find "$d" -name '*.java')"
     # o .zbs assina "ZBS:<SteamID64>:<sha256 do jar>" (ZBSVerifier)
@@ -344,7 +344,7 @@ build_ships_volumetric_mod() {
     echo "$sig" | xxd -r -p >"$h/sig"
     openssl pkey -in "$NOM_ZBS_KEY" -pubout -out "$h/pub.pem"
     openssl pkeyutl -verify -pubin -inkey "$h/pub.pem" -rawin -in "$h/msg" -sigfile "$h/sig" >/dev/null
-    grep -q "NevoaEOutroMundo_Volumetrica" "$h/out.txt"
+    grep -q "NoiseOfMist_Volumetrica" "$h/out.txt"
 }
 
 build_refuses_unsigned_volumetric() {
@@ -360,7 +360,7 @@ build_jar_comes_from_head() {
     echo "class Rascunho {}" >"$r/mod3/java/nom/render/Rascunho.java"
     h="$(build "$r")"
     local list
-    list="$(unzip -l "$h/$DEST_REL/Contents/mods/NevoaEOutroMundo_Volumetrica/42/media/java/client/NevoaEOutroMundo_Volumetrica.jar")"
+    list="$(unzip -l "$h/$DEST_REL/Contents/mods/NoiseOfMist_Volumetrica/42/media/java/client/NoiseOfMist_Volumetrica.jar")"
     grep -q "nom/render/Flow.class" <<<"$list"
     ! grep -q Rascunho <<<"$list"
 }
@@ -379,12 +379,12 @@ dev_sync_copies_both_mods() {
     local z
     z="$(mktemp -d "$TMP/zomboid.XXXX")"
     mkdir -p "$z/mods"
-    ln -s /tmp "$z/mods/NevoaEOutroMundo"
+    ln -s /tmp "$z/mods/NoiseOfMist"
     ZOMBOID_DIR="$z" bash "$REPO/scripts/dev-sync.sh" >/dev/null
-    test ! -L "$z/mods/NevoaEOutroMundo"
-    test -f "$z/mods/NevoaEOutroMundo/42/mod.info"
-    test -f "$z/mods/NevoaEOutroMundo_Shader/42/media/shaders/screen.frag"
-    test ! -L "$z/mods/NevoaEOutroMundo_Shader"
+    test ! -L "$z/mods/NoiseOfMist"
+    test -f "$z/mods/NoiseOfMist/42/mod.info"
+    test -f "$z/mods/NoiseOfMist_Shader/42/media/shaders/screen.frag"
+    test ! -L "$z/mods/NoiseOfMist_Shader"
 }
 
 for t in build_ships_volumetric_mod build_refuses_unsigned_volumetric build_jar_comes_from_head build_refuses_uncommitted_change_in_mod3 build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 dev_sync_copies_both_mods build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
