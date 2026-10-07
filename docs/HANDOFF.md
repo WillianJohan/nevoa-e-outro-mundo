@@ -76,6 +76,15 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: Tição com crosta 3D; teste de IA esperando decisão (sprint 0043, branch empilhada)
+
+O Tição troca o véu do Eco por uma crosta de carvão 3D por script (placas com rachaduras de brasa,
+dois olhos de brasa, lascas, fumaça subindo). **Decisão do Johan pendente:** a
+[ADR-020](architecture/adr-020-modelos-3d-por-ia.md) (proposta) diz que o Hunyuan3D-2 não pode ir
+pro Workshop (a licença exclui UE, Reino Unido e Coreia do Sul) e que o Stable Fast 3D pode, mas o
+download pede a conta dele no Hugging Face. O teste de IA não rodou; nada de IA entrou no repo.
+[README](sprints/sprint-0043-ticao-ia/README.md).
+
 ## Em teste: facelift dos outros monstros (sprint 0042, branch empilhada)
 
 Mesmo caminho da 0041 pros outros três: boca 3D do Corredor (buraco escuro, lábio rasgado,

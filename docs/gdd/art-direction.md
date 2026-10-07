@@ -58,6 +58,7 @@
 | Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, numa **casca lisa** em volta da cabeça inteira, sem nariz, olho nem boca (sprint 0042, modelo nosso; até a 0041 na balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
 | Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche **em mechas 3D** (sprint 0042, modelo nosso): 36 fitas saindo do alto da cabeça, cortina mais densa e comprida na frente do rosto, três mechas brancas. Até a 0041 era pintado no véu de noiva (`Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
 | Eco | coberta: quase branca, salpicos pequenos e esparsos de cinza e poucos escorridos finos na vertical | véu do mesmo jeito, mais escuro só nas bordas (véu de noiva) | o mais claro da névoa: fantasma coberto de cinza |
+| Tição | carvão em placas pequenas, rachaduras finas de brasa viva e apagando (sprint 0038) | **crosta de carvão 3D** (sprint 0043, modelo nosso): a cabeça inteira em placas de alturas diferentes com rachaduras de brasa, dois olhos de brasa acesos na frente, lascas de carvão no alto e atrás, três fitas de fumaça clara subindo. Da 0038 à 0042 usava o véu de fumaça do Eco | preto com fio laranja e dois pontos acesos |
 
 **Por quê, um por um:**
 
