@@ -507,8 +507,17 @@ function W.new(opts)
         return { getTimeOfDay = function() return G.world.tod end,
             getWorldAgeHours = function() return G.world.hours or G.world.tod end }
     end
+    -- ThunderStorm.triggerThunderEvent(x, y, strike, lightning, rumble) (sprint 0045, §34): no servidor
+    -- o jogo transmite sozinho; G.thunders guarda as chamadas.
+    G.thunders = {}
+    local thunder = {
+        triggerThunderEvent = function(_, x, y, strike, lightning, rumble)
+            G.thunders[#G.thunders + 1] = { x = x, y = y, strike = strike, lightning = lightning, rumble = rumble }
+        end,
+    }
     getClimateManager = function()
-        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
+        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end,
+            getThunderStorm = function() return thunder end }
     end
     Events = setmetatable({}, {
         __index = function(t, name)

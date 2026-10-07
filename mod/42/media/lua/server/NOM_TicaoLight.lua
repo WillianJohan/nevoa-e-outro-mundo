@@ -26,6 +26,7 @@ require "NOM_World"
 require "NOM_Players"
 require "NOM_LightRules"
 require "NOM_FlickerRules"
+require "NOM_StormRules"
 require "NOM_TicaoFreeze"
 require "NOM_Math"
 
@@ -42,6 +43,7 @@ local sentEmpty = true
 -- scanNext), as posições dos jogadores da última leitura e o cômodo aceso [room] = bool
 local fixed, scanList, scanAt, scanNext, nextScan, near = {}, nil, 0, {}, 0, {}
 local roomLit = {}
+local flashUntil = 0 -- clarão do relâmpago (server/NOM_Storm.lua): congela perto dos jogadores até aqui
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] ticao luz " .. msg) end
@@ -151,8 +153,8 @@ local function gather(now)
 end
 
 -- Fatia do rodízio: 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e morto. Fora
--- de toda luz e a até FIXED_NEAR de um jogador, o cômodo dele (square e cômodo; o interruptor, uma
--- vez por leitura).
+-- de toda luz e a até FIXED_NEAR de um jogador, o clarão do relâmpago e o cômodo dele (square e
+-- cômodo; o interruptor, uma vez por leitura).
 local function check(z, now)
     local zx, zy = z:getX(), z:getY()
     if #lights > 0 then
@@ -172,6 +174,12 @@ local function check(z, now)
         end
     end
     if not nearPlayer(zx, zy) then return end
+    if now < flashUntil and not z:isDead() then
+        T.untilMs[z] = flashUntil
+        T.by[z] = nil
+        T.byLamp[z] = nil
+        return
+    end
     local sq = z:getCurrentSquare()
     local room = sq and sq:getRoom()
     if room ~= nil and litRoom(room) and not z:isDead() then
@@ -247,10 +255,16 @@ function T.lampFlicker(key, untilMs)
     end
 end
 
+-- Clarão do relâmpago (server/NOM_Storm.lua): a luz do céu congela os Tições a até FIXED_NEAR de
+-- um jogador por FLASH_MS. O rodízio passa por todos em SWEEP_MS.
+function T.flash(now)
+    flashUntil = now + NOM_StormRules.FLASH_MS
+end
+
 -- Fim da preta: a lista vazia vai uma vez (o dono solta), e tudo zera.
 local function stop()
     T.untilMs, T.by, T.flickerUntil, T.lampUntil, T.byLamp = {}, {}, {}, {}, {}
-    lights, lastMs, nextFlicker = {}, nil, nil
+    lights, lastMs, nextFlicker, flashUntil = {}, nil, nil, 0
     fixed, scanList, nextScan, near, roomLit = {}, nil, 0, {}, {}
     send({})
 end
