@@ -16,14 +16,16 @@
 -- interruptor aceso), com a resposta guardada por cômodo a cada leitura.
 --
 -- A lanterna pisca (tarefa 5): a cada FLICKER_CHECK_MS, cada lanterna acesa sorteia; a que
--- apaga não congela ninguém nesse tempo e os Tições que ela segurava soltam na hora. O apagar é
--- local no dono da lanterna (NOM_TicaoFreeze.flicker), sem sync: no solo direto, no dedicado
--- pelo comando "torchFlicker" só pra ele.
+-- pisca não congela ninguém na janela inteira e os Tições que ela segurava soltam na hora. Desde
+-- a sprint 0045 é uma gagueira (NOM_FlickerRules.torch: liga e desliga rápido, escuro, liga e
+-- desliga de volta). O piscar é local no dono da lanterna (NOM_TicaoFreeze.flicker), sem sync:
+-- no solo direto, no dedicado pelo comando "torchFlicker" só pra ele, com o padrão.
 if isClient() then return end
 
 require "NOM_World"
 require "NOM_Players"
 require "NOM_LightRules"
+require "NOM_FlickerRules"
 require "NOM_TicaoFreeze"
 require "NOM_Math"
 
@@ -201,17 +203,21 @@ local function send(zs)
     sentEmpty = #zs == 0
 end
 
+local function rnd() return ZombRand(1000) / 1000 end
+
 local function flickerOne(p, ms, now)
-    T.flickerUntil[p] = now + ms
+    local segs = NOM_FlickerRules.torch(ms, rnd)
+    local total = NOM_FlickerRules.total(segs)
+    T.flickerUntil[p] = now + total
     for z, owner in pairs(T.by) do
         if owner == p then T.untilMs[z] = 0 end
     end
     if isServer() then
-        sendServerCommand(p, MODULE, "torchFlicker", { ms = ms })
+        sendServerCommand(p, MODULE, "torchFlicker", { segs = segs })
     else
-        NOM_TicaoFreeze.flicker(p, ms)
+        NOM_TicaoFreeze.flicker(p, segs)
     end
-    debugLog("lanterna piscou por " .. ms .. " ms")
+    debugLog("lanterna piscou por " .. total .. " ms (" .. #segs .. " trechos)")
 end
 
 local function flickers(now)

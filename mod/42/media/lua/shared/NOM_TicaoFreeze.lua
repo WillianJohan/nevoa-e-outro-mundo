@@ -7,21 +7,24 @@
 -- pacote do dono. Sem lista por SILENCE_MS (comando perdido, servidor caiu), solta todos; o fim
 -- da preta também.
 --
--- A lanterna pisca (F.flicker): o servidor sorteia (server/NOM_TicaoLight.lua) e aqui, no dono da
--- lanterna, ela apaga sem sync (InventoryItem.setActivated é local; o vanilla manda o
--- syncItemActivated à parte, client/ISUI/ISInventoryPaneContextMenu.lua:2882-2883) e volta no fim,
--- se ainda estiver apagada e no inventário dele (item:getContainer() == getInventory(),
--- shared/TimedActions/ISEquipHeavyItem.lua:56). Quem acendeu ou guardou no meio fica como está.
+-- A lanterna pisca (F.flicker): o servidor sorteia o padrão (server/NOM_TicaoLight.lua,
+-- NOM_FlickerRules.torch) e aqui, no dono da lanterna, ela liga e desliga sem sync
+-- (InventoryItem.setActivated é local; o vanilla manda o syncItemActivated à parte,
+-- client/ISUI/ISInventoryPaneContextMenu.lua:2882-2883) e termina acesa, enquanto estiver no
+-- inventário dele (item:getContainer() == getInventory(), shared/TimedActions/ISEquipHeavyItem.lua:56).
+-- Quem mexeu no meio (desligou num trecho aceso, acendeu num apagado, guardou) para o padrão: a
+-- lanterna fica como ele deixou.
 require "NOM_Carpideira"
 require "NOM_SirenFreeze"
 require "NOM_LightRules"
+require "NOM_FlickerRules"
 require "NOM_FogState"
 
 NOM_TicaoFreeze = { frozen = {} }
 local F = NOM_TicaoFreeze
 local lastMsg -- getTimestampMs da última lista
 local scratch = {}
-local flickering = {} -- { { p, item, at } }: lanternas apagadas pelo flicker, voltam em at
+local flickering = {} -- { { p, item, start, segs, lit } }: lanternas tocando o padrão; lit = o último estado posto
 
 -- O cego do NOM_VariantAI (visão curta) já está parado pela regra dele; lido na hora (o
 -- NOM_VariantAI requer este arquivo).
@@ -114,22 +117,29 @@ function F.count()
     return n
 end
 
--- p: jogador local dono da lanterna; ms: quanto tempo apagada.
-function F.flicker(p, ms)
+-- p: jogador local dono da lanterna; segs: o padrão (NOM_FlickerRules; um número = só o escuro).
+function F.flicker(p, segs)
     if p == nil then return false end
     local item = p:getActiveLightItem()
     if item == nil then return false end
+    if type(segs) ~= "table" then segs = { math.max(1, math.floor(tonumber(segs) or 1)) } end
     item:setActivated(false)
-    flickering[#flickering + 1] = { p = p, item = item, at = getTimestampMs() + (ms or 0) }
+    flickering[#flickering + 1] = { p = p, item = item, start = getTimestampMs(), segs = segs, lit = false }
     return true
 end
 
-local function restore(now)
+local function play(now)
     for i = #flickering, 1, -1 do
         local f = flickering[i]
-        if now >= f.at then
+        local on, done = NOM_FlickerRules.stateAt(f.segs, now - f.start)
+        if f.item:isActivated() ~= f.lit or f.item:getContainer() ~= f.p:getInventory() then
+            table.remove(flickering, i) -- o jogador mexeu: fica como ele deixou
+        elseif done then
             table.remove(flickering, i)
-            if not f.item:isActivated() and f.item:getContainer() == f.p:getInventory() then f.item:setActivated(true) end
+            if not f.lit then f.item:setActivated(true) end
+        elseif on ~= f.lit then
+            f.item:setActivated(on)
+            f.lit = on
         end
     end
 end
@@ -137,7 +147,7 @@ end
 function F.tick()
     local now = getTimestampMs()
     if lastMsg ~= nil and now - lastMsg > NOM_LightRules.SILENCE_MS then F.releaseAll() end
-    if #flickering > 0 then restore(now) end
+    if #flickering > 0 then play(now) end
 end
 
 local function forget(z) F.frozen[z] = nil end

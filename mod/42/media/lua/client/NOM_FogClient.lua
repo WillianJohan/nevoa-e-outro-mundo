@@ -95,7 +95,7 @@ Events.OnServerCommand.Add(function(module, command, args)
     elseif command == "ticaoFrozen" then -- a luz congela o Tição (server/NOM_TicaoLight.lua, sprint 0038)
         NOM_TicaoFreeze.applyIds(type(args) == "table" and args.ids or {})
     elseif command == "torchFlicker" then -- a lanterna deste jogador pisca na preta
-        NOM_TicaoFreeze.flicker(getSpecificPlayer(0), type(args) == "table" and tonumber(args.ms) or 0)
+        NOM_TicaoFreeze.flicker(getSpecificPlayer(0), type(args) == "table" and (args.segs or tonumber(args.ms)) or 0)
     elseif command == "semRostoMove" and args.id ~= -1 then
         -- o tile fica reservado aqui também (sprint 0017): o próximo Sem-rosto que este
         -- cliente vir vai pra outro, mesmo que o sumiço tenha sido visto por outro cliente
