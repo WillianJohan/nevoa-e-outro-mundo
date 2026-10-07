@@ -8,13 +8,15 @@
 -- omenAt/omenRed/sirenAt (sprint 0034): marcas de getTimestampMs da estática na tela
 -- (shared/NOM_ScreenFxRules.staticLevel): o presságio, 3 s antes da sirene, e a sirene (a
 -- subida que liga). A subida que desliga (névoa aberta, cancelada) e o fim limpam.
-NOM_FogState = { on = false, period = nil, red = false, rising = false, risingRed = false,
-    omenAt = nil, omenRed = false, sirenAt = nil }
+-- black/risingBlack/omenBlack: a névoa preta (sprint 0038), como as do vermelho; nunca junto dele.
+NOM_FogState = { on = false, period = nil, red = false, black = false, rising = false, risingRed = false,
+    risingBlack = false, omenAt = nil, omenRed = false, omenBlack = false, sirenAt = nil }
 
 local listeners = {}
 
 local function clearMarks()
     NOM_FogState.omenAt, NOM_FogState.omenRed, NOM_FogState.sirenAt = nil, false, nil
+    NOM_FogState.omenBlack = false
 end
 
 -- fn(on) só na borda.
@@ -24,11 +26,12 @@ end
 
 -- period: número do período de névoa (sorteio do Sem-rosto, ADR-006). nil
 -- enquanto o cliente não souber. red: névoa vermelha (sprint 0010), só com névoa.
-function NOM_FogState.set(on, period, red)
+function NOM_FogState.set(on, period, red, black)
     local was = NOM_FogState.on
     NOM_FogState.on = on
     NOM_FogState.period = period
-    NOM_FogState.red = on == true and red == true
+    NOM_FogState.black = on == true and black == true
+    NOM_FogState.red = on == true and red == true and not NOM_FogState.black
     if was == on then return end
     if not on then clearMarks() end
     for _, fn in ipairs(listeners) do fn(on) end
@@ -36,24 +39,29 @@ end
 
 -- Não é borda de névoa: quem ouve onChange (regra de jogo) não fica sabendo.
 -- getTimestampMs: CONFIRMED server/ISObjectClickHandler.lua:352.
-function NOM_FogState.setRising(on, red)
+function NOM_FogState.setRising(on, red, black)
     local was = NOM_FogState.rising
     NOM_FogState.rising = on == true
-    NOM_FogState.risingRed = NOM_FogState.rising and red == true
+    NOM_FogState.risingBlack = NOM_FogState.rising and black == true
+    NOM_FogState.risingRed = NOM_FogState.rising and red == true and not NOM_FogState.risingBlack
     if NOM_FogState.rising and not was then NOM_FogState.sirenAt = getTimestampMs() end
     if not NOM_FogState.rising then clearMarks() end
 end
 
 -- O presságio: a cor é a que a sirene vai tocar.
-function NOM_FogState.setOmen(red)
+function NOM_FogState.setOmen(red, black)
     NOM_FogState.omenAt, NOM_FogState.omenRed, NOM_FogState.sirenAt = getTimestampMs(), red == true, nil
+    NOM_FogState.omenBlack = black == true
+    if NOM_FogState.omenBlack then NOM_FogState.omenRed = false end
 end
 
 -- A cor mudou no meio (debug, NOM_FogEvent.setRed): o presságio e a subida que já correm
 -- trocam de cor, sem recomeçar e sem ligar o que não corre.
-function NOM_FogState.recolor(red)
-    if NOM_FogState.omenAt then NOM_FogState.omenRed = red == true end
-    if NOM_FogState.rising then NOM_FogState.risingRed = red == true end
+function NOM_FogState.recolor(red, black)
+    local b = black == true
+    local r = red == true and not b
+    if NOM_FogState.omenAt then NOM_FogState.omenRed, NOM_FogState.omenBlack = r, b end
+    if NOM_FogState.rising then NOM_FogState.risingRed, NOM_FogState.risingBlack = r, b end
 end
 
 function NOM_FogState.visible()
@@ -62,6 +70,18 @@ end
 
 function NOM_FogState.visibleRed()
     return (NOM_FogState.on == true and NOM_FogState.red) or (NOM_FogState.rising and NOM_FogState.risingRed)
+end
+
+function NOM_FogState.visibleBlack()
+    return (NOM_FogState.on == true and NOM_FogState.black) or (NOM_FogState.rising and NOM_FogState.risingBlack)
+end
+
+-- Cor da névoa aberta (ou da que sobe, ou do presságio): "black", "red" ou "white".
+function NOM_FogState.color()
+    local s = NOM_FogState
+    if s.on then return s.black and "black" or (s.red and "red" or "white") end
+    if s.rising then return s.risingBlack and "black" or (s.risingRed and "red" or "white") end
+    return s.omenBlack and "black" or (s.omenRed and "red" or "white")
 end
 
 return NOM_FogState

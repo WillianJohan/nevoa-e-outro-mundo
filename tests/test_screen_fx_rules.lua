@@ -41,6 +41,23 @@ return {
         assert(r.vr > 0 and r.vg == 0 and r.vb == 0, "vinheta vermelha sem vermelho")
     end,
 
+    -- preta (sprint 0038): vinheta bem mais fechada que a da vermelha, sem vermelho; estática cinza-escura
+    screenfx_rules_black_fog_closes_and_greys = function()
+        local function blackened(red)
+            local s = R.new()
+            R.step(s, { fog = true, red = red, black = true }, R.FADE_MS)
+            return s
+        end
+        local r, b = R.layers(fogged(true), 0, 1), R.layers(blackened(false), 0, 1)
+        assert(b.vignette > r.vignette, "preta não fecha mais que a vermelha")
+        assert(b.vr == 0, "vinheta preta com vermelho")
+        local s = blackened(false)
+        R.step(s, { fog = false }, R.FADE_MS)
+        assert(s.black == 0, "preta não sai com a névoa")
+        local sr, sg, sb = R.staticColor("black")
+        assert(sr < 0.4 and sr > 0.15 and math.abs(sr - sg) < 0.05 and sb >= sr, "estática preta não é cinza-escura")
+    end,
+
     -- linhas pela distância do Sem-rosto (o mesmo volume do rádio, sprint 0005)
     screenfx_rules_lines_grow_near_semrosto = function()
         local far = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(28)), 0, 1).lines

@@ -786,4 +786,19 @@ return {
         G.tick(1)
         assert(back.removed, "Eco de chapéu caído ficou de dia")
     end,
+    -- preta (sprint 0038): Eco não nasce, e os que estavam no mundo somem quando ela abre
+    eco_black_fog_removes_and_blocks = function()
+        local G = setup()
+        bodies(G, 3, 105, 105)
+        G.tenMinutes()
+        assert(#G.ecos() == 3)
+        NOM_World.setFog(true, false, true)
+        assert(#G.ecos() == 0, "Ecos ficaram na preta: " .. #G.ecos())
+        bodies(G, 3, 115, 115)
+        G.tenMinutes()
+        assert(#G.ecos() == 0, "Eco nasceu na preta")
+        NOM_World.setFog(false)
+        G.tenMinutes()
+        assert(#G.ecos() == 3, "a noite comum não voltou a soltar Ecos: " .. #G.ecos())
+    end,
 }

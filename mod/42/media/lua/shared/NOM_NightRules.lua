@@ -1,6 +1,8 @@
 -- Regras puras da noite agressiva: sem API do jogo, testável com ./run-tests.sh.
 -- Velocidade, visão e audição do zumbi são 3 degraus no jogo; 1 é o melhor
 -- (corredor, águia, apurado), 3 o pior (arrastado, ruim, ruim).
+require "NOM_TicaoRules"
+
 NOM_NightRules = {}
 
 NOM_NightRules.ECO_SPEED = 3 -- arrastado
@@ -47,8 +49,16 @@ end
 -- calm: calmaria depois da névoa (sprint 0033). O zumbi comum (kind nil) fica um
 -- degrau pior em velocidade, visão e audição, e isso vale também à noite. Variantes
 -- e Eco não sentem a calmaria (o Eco já é o mais lento).
-function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm)
+-- "ticao" (sprint 0038): ticaoSpeed (NOM_TicaoRules.speed do zumbi), visão ruim e audição
+-- apurada; nem a noite nem a calmaria mexem.
+function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm, ticaoSpeed)
     local R = NOM_NightRules
+    if kind == "ticao" then
+        local T = NOM_TicaoRules
+        local w = { speed = ticaoSpeed or T.SHAMBLER, sight = T.SIGHT, hearing = T.HEARING }
+        w.key = "ticao:" .. w.speed .. "," .. w.sight .. "," .. w.hearing
+        return w
+    end
     if calm and kind == nil then
         local w = { speed = R.dull(dayTier, 1), sight = R.dull(R.baseSense(cfg.sight or 2), 1),
             hearing = R.dull(R.baseSense(cfg.hearing or 2), 1) }

@@ -216,4 +216,20 @@ return {
         local n, r = NOM_Rules.mix(0, 1, 1, 0), NOM_Rules.mix(0, 1, 1, 0)
         for i = 1, 4 do assert(near(n.tint.value[i], NOM_Rules.LOOKS.fog.tint.value[i]) and near(r.tint.value[i], n.tint.value[i])) end
     end,
+    -- preta (sprint 0038): rampa 0 = look de sempre; rampa 1 = noite fechada (luz do dia 0,
+    -- noite 1, ambiente 0, luz quase preta); os canais que só a preta usa nascem com peso 0
+    rules_blacken_ramps_to_closed_night = function()
+        local base = NOM_Rules.mix(1, 1, 1)
+        local z = NOM_Rules.blacken(base, 0)
+        for _, ch in ipairs(NOM_Rules.CHANNELS) do assert(near(z[ch].weight, base[ch].weight), ch) end
+        assert(z.daylight.weight == 0 and z.night.weight == 0, "canal só da preta ligado sem rampa")
+        local b = NOM_Rules.blacken(base, 1)
+        assert(near(b.daylight.value, 0) and near(b.daylight.weight, 1))
+        assert(near(b.night.value, 1) and near(b.night.weight, 1))
+        assert(near(b.ambient.value, 0) and near(b.ambient.weight, 1))
+        for i = 1, 3 do assert(b.tint.value[i] < 0.05, "luz não escureceu no canal " .. i) end
+        local h = NOM_Rules.blacken(base, 0.5)
+        assert(near(h.daylight.weight, 0.5) and near(h.daylight.value, 0), "meia rampa")
+        assert(base.daylight == nil, "blacken mexeu no look de entrada")
+    end,
 }

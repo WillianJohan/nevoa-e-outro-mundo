@@ -30,6 +30,41 @@ return {
         NOM_World.setFog(false)
         assert(table.concat(seen, ",") == "night=true,fog=true,night=false,fog=false", table.concat(seen, ","))
     end,
+    -- sprint 0038: a preta ganha do vermelho, e a borda "black" só sai com a névoa já aberta
+    world_black_fog_flags_and_edges = function()
+        load(12)
+        local seen = {}
+        NOM_World.onChange(function(flag, on) seen[#seen + 1] = flag .. "=" .. tostring(on) end)
+        NOM_World.setFog(true, true, true)
+        assert(NOM_World.black == true and NOM_World.red == false, "preta e vermelha juntas")
+        NOM_World.setFog(true, true, false)
+        assert(NOM_World.red == true and NOM_World.black == false)
+        NOM_World.setFog(false, false, true)
+        assert(NOM_World.black == false, "preta sem névoa")
+        assert(table.concat(seen, ",") == "fog=true,red=true,black=false,fog=false", table.concat(seen, ","))
+        NOM_World.setRising(true, true, true)
+        assert(NOM_World.risingBlack == true and NOM_World.risingRed == false)
+        NOM_World.setRising(false, true, true)
+        assert(NOM_World.risingBlack == false)
+    end,
+    world_fog_state_color = function()
+        load(12)
+        require "NOM_FogState"
+        getTimestampMs = function() return 0 end
+        NOM_FogState.set(false, nil)
+        NOM_FogState.setRising(false)
+        NOM_FogState.setOmen(true, true)
+        assert(NOM_FogState.color() == "black" and NOM_FogState.omenRed == false)
+        NOM_FogState.setRising(true, false, true)
+        assert(NOM_FogState.color() == "black" and NOM_FogState.visibleBlack())
+        NOM_FogState.recolor(true, false)
+        assert(NOM_FogState.color() == "red" and not NOM_FogState.visibleBlack())
+        NOM_FogState.set(true, 3, true, true)
+        assert(NOM_FogState.black == true and NOM_FogState.red == false and NOM_FogState.color() == "black")
+        NOM_FogState.set(false, 3, false, true)
+        assert(NOM_FogState.black == false)
+        NOM_FogState.setRising(false)
+    end,
     -- primeira leitura já de noite (servidor subiu à noite) conta como borda
     world_first_update_at_night_is_an_edge = function()
         load(23)

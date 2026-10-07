@@ -54,10 +54,10 @@ end
 -- um só pra todos). red: névoa vermelha (sprint 0010), divisão por igual.
 -- O sorteio (uma chamada Java, o ID) vem primeiro: a varredura passa por todo
 -- zumbi carregado a cada SCAN_TICKS na névoa, e o comum para aí.
-function NOM_SemRosto.isSemRosto(z, period, cfg, red)
+function NOM_SemRosto.isSemRosto(z, period, cfg, red, black)
     if not period then return false end
     cfg = cfg or NOM_VariantRules.config(NOM_Config.get)
-    if not NOM_VariantRules.semRosto(z:getPersistentOutfitID(), period, cfg, red) then return false end
+    if not NOM_VariantRules.semRosto(z:getPersistentOutfitID(), period, cfg, red, black) then return false end
     if z:isDead() then return false end
     return not ((z:hasModData() and z:getModData().NOM_eco) or z:getOutfitName() == ECO_OUTFIT)
 end
@@ -144,7 +144,7 @@ local function scan(report)
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
-        if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red) then
+        if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red, NOM_FogState.black) then
             found[#found + 1] = z
             if R.ready(lastReport[z], now) and (lastSent == nil or now - lastSent >= R.REPORT_GAP_MS) then
                 for _, p in ipairs(players) do

@@ -116,6 +116,7 @@ function NOM_Debug.status()
         nevoa = NOM_FogState.on,
         nevoaN = tostring(NOM_FogState.period),
         vermelha = NOM_FogState.red == true,
+        preta = NOM_FogState.black == true,
         estaladores = kinds.estalador,
         corredores = kinds.corredor,
         carpideiras = kinds.carpideira,

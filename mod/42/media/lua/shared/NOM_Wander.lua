@@ -77,7 +77,7 @@ local function idle(z, ps, cfg)
         or NOM_NightStats.isEco(z, z:getModData()) then
         return nil, true
     end
-    if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red) then return nil, true end
+    if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red, NOM_FogState.black) then return nil, true end
     return { x = x, y = y, z = z:getZ() }, true
 end
 

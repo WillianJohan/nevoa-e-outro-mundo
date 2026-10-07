@@ -48,6 +48,7 @@
     "UI_NOM_Debug_No": "não",
     "UI_NOM_Debug_StatusFog": "Névoa",
     "UI_NOM_Debug_StatusRed": "Vermelha",
+    "UI_NOM_Debug_StatusBlack": "Preta",
     "UI_NOM_Debug_StatusHour": "Hora",
     "UI_NOM_Debug_StatusMonsters": "Monstros aqui",
     "UI_NOM_Debug_SetFog": "Sirene branca",
@@ -63,5 +64,6 @@
     "UI_NOM_Debug_OwnSprites": "Texturas próprias no console",
     "UI_NOM_Debug_Wander": "Onda de perambular",
     "UI_NOM_Debug_Blind": "Cegos da visão curta no console",
+    "UI_NOM_Debug_Ticao": "Tições no console",
     "UI_NOM_Debug_Sonar": "Sonar do Estalador agora"
 }

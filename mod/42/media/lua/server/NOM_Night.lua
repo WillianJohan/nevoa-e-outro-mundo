@@ -6,6 +6,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_NightRules"
+require "NOM_TicaoRules"
 require "NOM_NightStats"
 require "NOM_Players"
 require "NOM_NightCount"
@@ -70,12 +71,19 @@ NOM_Night = {}
 
 -- src: jogador (caça, lanterna) ou zumbi (gritos do Corredor e da Carpideira, server/NOM_Variants.lua,
 -- que pode vir de dia na névoa: aí ninguém tem o degrau da noite e o raio é o do jogo).
-function NOM_Night.call(src, reach)
-    local radius = NOM_NightRules.soundRadius(reach, {
-        sensesOn = NOM_World.night and NOM_Config.get("NightSharperSenses"),
-        senseMult = NOM_Config.get("NightSenseMult"),
-        hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
-    })
+-- hearing: degrau de audição de quem deve ouvir (a caça da preta: o Tição, NOM_TicaoRules.HEARING);
+-- nil = o do sandbox com o bônus da noite.
+function NOM_Night.call(src, reach, hearing)
+    local radius
+    if hearing then
+        radius = math.max(1, math.floor(reach / NOM_NightRules.HEARING_MULT[hearing] + 0.5))
+    else
+        radius = NOM_NightRules.soundRadius(reach, {
+            sensesOn = NOM_World.night and NOM_Config.get("NightSharperSenses"),
+            senseMult = NOM_Config.get("NightSenseMult"),
+            hearing = getSandboxOptions():getOptionByName("ZombieLore.Hearing"):getValue(),
+        })
+    end
     -- calling: o addSound dispara o OnWorldSound na hora (WorldSound.init 129–155); o
     -- barulho que acorda a Carpideira (server/NOM_Variants.lua) ignora os chamados do mod.
     NOM_Night.calling = true
@@ -90,7 +98,7 @@ local function torchOutside(p)
     return sq ~= nil and sq:isOutside() and p:getActiveLightItem() ~= nil
 end
 
-local huntMinutes, torchMinutes, lastLit = 0, 0, 0
+local huntMinutes, torchMinutes, lastLit, ticaoMinutes = 0, 0, 0, 0
 
 local function hunt(ps)
     if not NOM_Config.get("NightHunt") then
@@ -128,7 +136,22 @@ local function torches(ps)
     end
 end
 
+-- Caça do Tição (sprint 0038): na preta, de dia ou de noite, mais forte que a da noite.
+local function ticaoHunt()
+    if not NOM_World.black then
+        ticaoMinutes = 0
+        return
+    end
+    local due
+    ticaoMinutes, due = NOM_NightRules.countdown(ticaoMinutes, NOM_TicaoRules.HUNT_MINUTES)
+    if not due then return end
+    local ps = alive()
+    for _, p in ipairs(ps) do NOM_Night.call(p, NOM_TicaoRules.HUNT_REACH, NOM_TicaoRules.HEARING) end
+    debugLog("caca do ticao jogadores=" .. #ps .. " alcance=" .. NOM_TicaoRules.HUNT_REACH)
+end
+
 local function everyMinute()
+    ticaoHunt()
     if not NOM_World.night then
         huntMinutes, torchMinutes = 0, 0
         return

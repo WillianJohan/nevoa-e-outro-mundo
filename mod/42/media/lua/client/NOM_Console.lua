@@ -102,9 +102,9 @@ function NOM.setRedFog(skip)
     NOM_Debug.send({ op = "setFog", red = true, skip = skip })
 end
 
--- A névoa preta chega na sprint 0038.
-function NOM.setBlackFog()
-    print("[NOM] debug névoa preta ainda não existe (sprint 0038)")
+-- Névoa preta de verdade (sprint 0038): o mesmo pedido, na cor preta.
+function NOM.setBlackFog(skip)
+    NOM_Debug.send({ op = "setFog", black = true, skip = skip })
 end
 
 -- Termina a névoa aberta ou cancela a sirene (sirenStop no MP).
@@ -190,6 +190,16 @@ function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
 
 -- Visão curta (sprint 0036): cegos e vigiados neste processo, que é quem simula os zumbis
 -- dele (no solo, todos), e a última onda de perambular que ele aplicou.
+-- Tição (sprint 0038): a preta neste processo, quantos Tições ele simula e quantos a luz congela.
+function NOM.ticao()
+    local n = 0
+    for _, k in pairs(NOM_NightStats and NOM_NightStats.variants or {}) do
+        if k == "ticao" then n = n + 1 end
+    end
+    local frozen = NOM_TicaoFreeze and NOM_TicaoFreeze.count() or 0
+    print("[NOM] debug ticao preta=" .. tostring(NOM_FogState.black == true) .. " ticoes=" .. n .. " congelados=" .. frozen)
+end
+
 function NOM.blind()
     if not NOM_VariantAI then
         print("[NOM] debug visão curta: NOM_VariantAI não carregou")
@@ -210,7 +220,7 @@ end
 NOM.HELP = {
     { "NOM.setFog(skip)", "névoa sempre branca: 3 s de estática na tela, sirene (zumbis congelam), a névoa sobe e os bichos soltam em 30 s; setFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
     { "NOM.setRedFog(skip)", "névoa sempre vermelha: 3 s de estática na tela, sirene vermelha, a névoa sobe e os bichos soltam em 30 s; setRedFog(true) abre na hora; com névoa aberta ou sirene contando, recomeça" },
-    { "NOM.setBlackFog(skip)", "névoa preta: ainda não existe (sprint 0038), só avisa" },
+    { "NOM.setBlackFog(skip)", "névoa sempre preta: presságio, sirene fora de sintonia, escuridão e Tições; skip abre já" },
     { "NOM.setEndFog()", "termina a névoa aberta ou cancela a sirene" },
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
     { "NOM.turnZombie(i)", "zumbi mais perto vira o tipo i: 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa)" },
@@ -230,6 +240,7 @@ NOM.HELP = {
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
     { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
+    { "NOM.ticao()", "névoa preta: quantos Tições este processo simula e quantos a luz congela agora" },
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },

@@ -27,7 +27,7 @@ NOM_DeviceRules = {
     OFF_VOLUME = 0.6,      -- desligado ou sem energia fala mais baixo que o ligado
     SPEAKER_SHARE = 3,     -- 1 em cada 3 rádios tem a voz de caixa de som
     BURST = "NOM_DevBurst", -- media/scripts/NOM_sounds.txt
-    -- Ponto único de escolha por névoa (R.sound). A preta (sprint 0038) já tem os sons.
+    -- Ponto único de escolha por névoa (R.sound).
     SOUNDS = {
         tv = { white = "NOM_DevTv", red = "NOM_DevTvRed", black = "NOM_DevTvBlack" },
         radio = { white = "NOM_DevRadio", red = "NOM_DevRadioRed", black = "NOM_DevRadioBlack" },
@@ -48,6 +48,7 @@ function R.mode(s, now)
 end
 
 function R.fogKind(s)
+    if s.black then return "black" end
     return s.red and "red" or "white"
 end
 

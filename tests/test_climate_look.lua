@@ -74,6 +74,8 @@ local function setup(opts)
         [0] = float("f0", 0.2),  -- dessaturação
         [5] = float("f5", 0),    -- névoa
         [9] = float("f9", 0.5),  -- ambient (0 de madrugada no jogo; 0.5 pra ver a mistura)
+        [2] = float("f2", 0),    -- força da noite (meio-dia: 0)
+        [11] = float("f11", 1),  -- força da luz do dia (meio-dia: 1)
     }
     -- noite de lua cheia do jogo (server/Climate/ClimateMain.lua:20-22): cinza 0.33,
     -- alfa 0.8 no exterior; interior azulado 0.12/0.13/0.4, alfa 0.4
@@ -136,7 +138,7 @@ local function setup(opts)
     local colors = { [0] = color, [1] = fogColor }
 
     ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_FOG_INTENSITY = 5,
-        FLOAT_AMBIENT = 9, COLOR_GLOBAL_LIGHT = 0 }
+        FLOAT_AMBIENT = 9, FLOAT_NIGHT_STRENGTH = 2, FLOAT_DAYLIGHT_STRENGTH = 11, COLOR_GLOBAL_LIGHT = 0 }
     ClimateColorInfo = {
         new = function(r, g, b, a, r2, g2, b2, a2) return newColorInfo({ r, g, b, a }, { r2, g2, b2, a2 }) end,
     }
@@ -494,6 +496,34 @@ return {
             env.run(30)
             assert(sameColor(env.fogColor.final.ext, NOM_Rules.RED_FOG_COLOR), "K=" .. K .. " névoa composta")
         end
+    end,
+    -- névoa preta (sprint 0038): meio-dia vira noite fechada (luz do dia 0, noite 1, ambiente 0, luz
+    -- global quase preta com alfa 1) e a névoa fica escura, mesmo com DarkEnabled desligado; no fim
+    -- tudo volta ao vanilla e as camadas desligam
+    look_black_fog_is_closed_night_and_back = function()
+        for _, dark in ipairs({ true, false }) do
+            local env = setup({ tod = 12, K = 10, sandbox = { DarkEnabled = dark } })
+            NOM_World.setFog(true, true, true)
+            env.run(25)
+            assert(near(env.floats[11].final, 0) and near(env.floats[2].final, 1), "dia não virou noite")
+            assert(near(env.floats[9].final, 0), "ambiente " .. env.floats[9].final)
+            local c = env.color.final.ext
+            local mr = NOM_Rules.skyMod(c[1], c[2], c[3], c[4])
+            assert(mr < 0.05, "luz do céu ficou " .. mr)
+            assert(sameColor(env.fogColor.final.ext, NOM_Rules.BLACK_FOG_COLOR), "névoa " .. fmtColor(env.fogColor.final.ext))
+            NOM_World.setFog(false)
+            env.run(25)
+            assert(near(env.floats[11].final, 1) and near(env.floats[2].final, 0), "luz do dia não voltou")
+            assert(env.floats[11].isModded == false and env.floats[2].isModded == false, "camada da escuridão ficou")
+            assert(sameColor(env.fogColor.final.ext, NOM_Rules.FOG_COLOR), "névoa ficou preta")
+        end
+    end,
+    -- a preta sobe já na fuga (risingBlack), como a vermelha
+    look_black_fog_rises_with_siren = function()
+        local env = setup({ tod = 12, K = 10 })
+        NOM_World.setRising(true, false, true)
+        env.run(25)
+        assert(near(env.floats[11].final, 0), "subida preta não escureceu")
     end,
     -- a cor da névoa entra e sai em rampa de 20 minutos de jogo, como a densidade
     look_red_fog_color_ramps = function()

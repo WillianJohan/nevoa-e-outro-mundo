@@ -39,13 +39,29 @@ NOM_Rules.LOOKS = {
         ambient      = { value = 0, weight = 0.3 },
         tint         = { value = { 0.22, 0.02, 0.02, 0.95 }, weight = 0.6 },
     },
+    -- Névoa preta (sprint 0038): noite fechada mesmo de dia, por cima de tudo (NOM_Rules.blacken),
+    -- sem depender de DarkEnabled: a escuridão é a regra do jogo, não o look. daylight e night são
+    -- os canais do slider "Darkness" do admin (ISAdmPanelClimate.lua:362-364: luz do dia 1 − v,
+    -- noite v); com v = 1 o dia vira noite. ambient 0 e a luz global quase preta com alfa 1
+    -- (skyMod ~0,02) apagam o que sobra; só luz de verdade (lanterna, poste, fogo) ilumina.
+    blackFog = {
+        desaturation = { value = 0.8, weight = 0.6 },
+        ambient      = { value = 0, weight = 1 },
+        tint         = { value = { 0.02, 0.02, 0.03, 1 }, weight = 1 },
+        daylight     = { value = 0, weight = 1 },
+        night        = { value = 1, weight = 1 },
+    },
 }
+
+-- Canais que só a preta escreve (NOM_ClimateLook: FLOAT_DAYLIGHT_STRENGTH, FLOAT_NIGHT_STRENGTH).
+NOM_Rules.BLACK_CHANNELS = { "daylight", "night" }
 
 -- Cor da névoa (ClimateManager COLOR_NEW_FOG, id 1), que o ImprovedFog desenha
 -- (update 132–174 → FogShader.setColorInfo). Vanilla: setup() 324–361, exterior e
 -- interior; nenhum Lua vanilla troca. Na névoa vermelha, RED_FOG_COLOR.
 NOM_Rules.FOG_COLOR = { 0.9, 0.9, 0.95, 1 }
 NOM_Rules.RED_FOG_COLOR = { 0.55, 0.06, 0.05, 1 }
+NOM_Rules.BLACK_FOG_COLOR = { 0.06, 0.06, 0.07, 1 }  -- névoa preta (sprint 0038): fumaça, não neblina
 
 -- Luz global (exterior) vanilla de madrugada. O construtor do ClimateManager põe
 -- 0.33/alfa 0.4 (<init> 250–323), mas o server/Climate/ClimateMain.lua:14-22 troca
@@ -137,6 +153,29 @@ function NOM_Rules.mix(nightRamp, fogRamp, intensity, redRamp)
             value = value,
             weight = math.min(1, math.max(nw, fw) * intensity),
         }
+    end
+    return out
+end
+
+-- Névoa preta por cima do look (sprint 0038): cada canal vai do look até o da preta pela rampa
+-- (0..1). Com 1 é o da preta inteiro, com 0 o look de antes. Os canais só da preta saem com
+-- peso 0 sem ela, pra quem aplica desligar a camada.
+function NOM_Rules.blacken(look, blackRamp)
+    local b = blackRamp or 0
+    local out = {}
+    for ch, l in pairs(look) do out[ch] = l end
+    for ch, k in pairs(NOM_Rules.LOOKS.blackFog) do
+        local l = look[ch] or { value = k.value, weight = 0 }
+        local lv = l.value
+        if lv == nil then lv = k.value end
+        local value
+        if type(k.value) == "table" then
+            value = {}
+            for i = 1, 4 do value[i] = NOM_Rules.blend(lv[i], k.value[i], b) end
+        else
+            value = NOM_Rules.blend(lv, k.value, b)
+        end
+        out[ch] = { value = value, weight = NOM_Rules.blend(l.weight, k.weight, b) }
     end
     return out
 end
