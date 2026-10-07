@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em revisão` |
+| Status | `em teste` (na `staging`) |
 | Branch | `sprint/0046-painel-debug` (saiu da `staging`) |
 | Origem | pedido do Johan em 2026-10-07: "tem muita coisa lá, e no fim das contas eu não consigo entender o que tá acontecendo, porque o painel é muito pequeno. Queria poder dar um resize" |
 | Plano | [plan.md](plan.md) |

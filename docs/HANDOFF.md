@@ -1,8 +1,8 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) está na `staging` com push e sync: espera o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) e a 0046 (painel de debug novo) estão na `staging` com push e sync: esperam o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Pronta, esperando o Johan: sprint 0046 (painel de debug novo)
+## Em teste no jogo: sprint 0046 (painel de debug novo)
 
 Pedido do Johan em 2026-10-07: o painel era pequeno e não dava pra entender o que acontecia; queria
 redimensionar, descritivo, intuitivo e bonito. Branch `sprint/0046-painel-debug`, com testes verdes,
@@ -12,8 +12,8 @@ review feito e corrigido. [README da 0046](sprints/sprint-0046-painel-debug/READ
 - Cabeçalho com o estado, seções na lateral, cartões com descrição e botões, e as respostas do debug no rodapé (`shared/NOM_DebugLog.lua`).
 - Todo `NOM.*` tem botão, agora também o `NOM.help()`.
 
-**Falta:** o aval do Johan pra merge `--no-ff` na `staging`, push e `dev-sync.sh`. Depois, o roteiro do
-README e o UNKNOWN 28 do pz-api-notes (alças, recorte, roda e clique no jogo).
+Merge `--no-ff` na `staging` (5fe4937), push e `dev-sync.sh` feitos em 2026-10-07, aprovados pelo Johan.
+**Roteiro no jogo:** o do README e o UNKNOWN 28 do pz-api-notes (alças, recorte, roda e clique no jogo).
 
 ## Em teste no jogo: sprint 0045 (luz que pisca e tempestade)
 
