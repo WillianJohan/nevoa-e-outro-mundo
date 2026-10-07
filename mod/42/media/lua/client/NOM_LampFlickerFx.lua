@@ -14,7 +14,8 @@ local function find(x, y, z)
     local list = getCell():getLamppostPositions()
     for i = 0, list:size() - 1 do
         local l = list:get(i)
-        if l ~= nil and l:getX() == x and l:getY() == y and l:getZ() == z and l:getLocalToBuilding() == nil then
+        if l ~= nil and l:getX() == x and l:getY() == y and l:getZ() == z and l:isHydroPowered()
+            and l:getLocalToBuilding() == nil then
             return l
         end
     end
@@ -50,6 +51,14 @@ end
 
 function X.busy() return #playing > 0 end
 
+-- No solo o cliente e o servidor dividem a luz, e o IsoLightSwitch.save grava a cor dela
+-- (getPrimaryR/G/B, pz-api-notes §34): antes de salvar, todo poste volta à cor de antes.
+-- GameWindow.save dispara "OnSave" antes de gravar o mundo.
+function X.restoreAll()
+    for _, f in ipairs(playing) do paint(f, true) end
+    playing = {}
+end
+
 function X.tick()
     if #playing == 0 then return end
     local now = getTimestampMs()
@@ -66,5 +75,6 @@ function X.tick()
 end
 
 Events.OnTick.Add(X.tick)
+Events.OnSave.Add(X.restoreAll)
 
 return NOM_LampFlickerFx

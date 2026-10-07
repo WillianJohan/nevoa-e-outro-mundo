@@ -295,7 +295,7 @@ return {
     -- sprint 0045: o poste que o servidor sorteou pisca aqui pela cor
     fog_client_lamp_flicker = function()
         local G = setup()
-        local lamp = G.lamp({ x = 5, y = 7 })
+        local lamp = G.lamp({ x = 5, y = 7, hydro = true })
         G.server("lampFlicker", { x = 5, y = 7, z = 0, segs = { 100, 50, 100 } })
         G.tick(1)
         assert(lamp.r == 0, "o poste não apagou")

@@ -203,12 +203,12 @@ local function logChannels(clim, look)
 end
 
 -- Chove nesta névoa? Só na preta e na vermelha abertas, no período sorteado
--- (NOM_StormRules.rains) ou com a chuva forçada pelo debug. NOM_Fog e NOM_Storm carregam depois
--- deste arquivo (ordem alfabética): lidos aqui, na hora.
+-- (NOM_StormRules.rains) ou com a chuva forçada pelo debug. NOM_Fog, NOM_FogEvent e NOM_Storm
+-- carregam depois deste arquivo (ordem alfabética): lidos aqui, na hora.
 local function rainy(w)
     if not (w.fog and (w.red or w.black)) then return false end
     if NOM_Storm and NOM_Storm.rainForced then return true end
-    return NOM_Fog ~= nil and NOM_StormRules.rains(NOM_Fog.period())
+    return NOM_Fog ~= nil and NOM_FogEvent ~= nil and NOM_StormRules.rains(NOM_Fog.period(), NOM_FogEvent.seed())
 end
 
 -- Chuva na camada modded de FLOAT_PRECIPITATION_INTENSITY (id 3, ISAdmPanelClimate.lua:236; o

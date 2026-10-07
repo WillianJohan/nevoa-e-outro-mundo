@@ -985,44 +985,56 @@ return {
         local G = setup()
         local p = G.player({ x = 0, y = 0 })
         local asked = {}
-        NOM_Storm = { force = function(who) asked[#asked + 1] = who; return 300, -40 end }
-        NOM.thunder()
-        NOM_Storm = nil
-        assert(#asked == 1 and asked[1] == p, "não pediu pelo jogador")
-        assert(has(G.printed, "^%[NOM%] debug relâmpago em x=300 y=%-40"), table.concat(G.printed, "\n"))
-        G.printed = {}
-        NOM.thunder()
-        assert(has(G.printed, "^%[NOM%] debug tempestade não carregou"), table.concat(G.printed, "\n"))
+        local saved = NOM_Storm
+        local ok, err = pcall(function()
+            NOM_Storm = { force = function(who) asked[#asked + 1] = who; return 300, -40 end }
+            NOM.thunder()
+            assert(#asked == 1 and asked[1] == p, "não pediu pelo jogador")
+            assert(has(G.printed, "^%[NOM%] debug relâmpago em x=300 y=%-40"), table.concat(G.printed, "\n"))
+            G.printed = {}
+            NOM_Storm = nil
+            NOM.thunder()
+            assert(has(G.printed, "^%[NOM%] debug tempestade não carregou"), table.concat(G.printed, "\n"))
+        end)
+        NOM_Storm = saved
+        assert(ok, err)
     end) end,
     -- sprint 0045: um poste de fora perto pisca já; sem poste, avisa
     nom_flicker_lamp_asks_server = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         local found = true
-        NOM_LampFlicker = { force = function() if found then return 4, 5, 0 end end }
-        NOM.flickerLamp()
-        assert(has(G.printed, "^%[NOM%] debug poste piscou em x=4 y=5 z=0"), table.concat(G.printed, "\n"))
-        found = false
-        G.printed = {}
-        NOM.flickerLamp()
-        NOM_LampFlicker = nil
-        assert(has(G.printed, "^%[NOM%] debug nenhum poste aceso de fora a até 25 tiles"), table.concat(G.printed, "\n"))
+        local saved = NOM_LampFlicker
+        local ok, err = pcall(function()
+            NOM_LampFlicker = { force = function() if found then return 4, 5, 0 end end }
+            NOM.flickerLamp()
+            assert(has(G.printed, "^%[NOM%] debug poste piscou em x=4 y=5 z=0"), table.concat(G.printed, "\n"))
+            found = false
+            G.printed = {}
+            NOM.flickerLamp()
+            assert(has(G.printed, "^%[NOM%] debug nenhum poste aceso de fora a até 25 tiles"), table.concat(G.printed, "\n"))
+        end)
+        NOM_LampFlicker = saved
+        assert(ok, err)
     end) end,
     -- sprint 0045: força a chuva nas névoas pretas e vermelhas (liga/desliga), só em memória
     nom_rain_toggles_forced = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        NOM_Storm = { rainForced = false }
-        NOM.rain()
-        assert(NOM_Storm.rainForced == true)
-        assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: sim"), table.concat(G.printed, "\n"))
-        G.printed = {}
-        NOM.rain()
-        local forced = NOM_Storm.rainForced
-        NOM_Storm = nil
-        assert(forced == false)
-        assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: não %(sorteio de 30%%%)"),
-            table.concat(G.printed, "\n"))
+        local saved = NOM_Storm
+        local ok, err = pcall(function()
+            NOM_Storm = { rainForced = false }
+            NOM.rain()
+            assert(NOM_Storm.rainForced == true)
+            assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: sim"), table.concat(G.printed, "\n"))
+            G.printed = {}
+            NOM.rain()
+            assert(NOM_Storm.rainForced == false)
+            assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: não %(sorteio de 30%%%)"),
+                table.concat(G.printed, "\n"))
+        end)
+        NOM_Storm = saved
+        assert(ok, err)
     end) end,
     -- sprint 0036: cegos da visão curta e a última onda, neste processo (quem simula)
     nom_blind_reports_counts = function() run(function()

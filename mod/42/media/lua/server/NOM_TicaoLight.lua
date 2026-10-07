@@ -162,7 +162,8 @@ local function check(z, now)
         for _, l in ipairs(lights) do
             local dx, dy = zx - l.x, zy - l.y
             local reach = l.range + R.BODY
-            if dx * dx + dy * dy <= reach * reach then
+            -- o poste que começou a piscar sai já, sem esperar a próxima leitura
+            if dx * dx + dy * dy <= reach * reach and not (l.key and (T.lampUntil[l.key] or 0) > now) then
                 zz = zz or z:getZ()
                 if R.lit(l, zx, zy, zz) and not z:isDead() then
                     T.untilMs[z] = now + R.HOLD_MS
@@ -174,19 +175,18 @@ local function check(z, now)
         end
     end
     if not nearPlayer(zx, zy) then return end
-    if now < flashUntil and not z:isDead() then
-        T.untilMs[z] = flashUntil
-        T.by[z] = nil
-        T.byLamp[z] = nil
-        return
-    end
     local sq = z:getCurrentSquare()
     local room = sq and sq:getRoom()
-    if room ~= nil and litRoom(room) and not z:isDead() then
-        T.untilMs[z] = now + R.HOLD_MS
-        T.by[z] = nil
-        T.byLamp[z] = nil
+    local hold
+    if room ~= nil and litRoom(room) then
+        hold = math.max(T.untilMs[z] or 0, now + R.HOLD_MS)
+    elseif now < flashUntil then
+        hold = flashUntil
     end
+    if hold == nil or z:isDead() then return end
+    T.untilMs[z] = hold
+    T.by[z] = nil
+    T.byLamp[z] = nil
 end
 
 local function frozenList(now)

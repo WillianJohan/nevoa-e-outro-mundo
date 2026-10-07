@@ -75,6 +75,25 @@ return {
         G.tick(math.floor((NOM_StormRules.FLASH_MS + 2 * NOM_LightRules.SWEEP_MS) / 16))
         assert(not z.useless, "não soltou depois do clarão")
     end,
+    -- Tição em cômodo aceso segue congelado do clarão pro cômodo, sem buraco
+    storm_flash_keeps_lit_room = function()
+        for phase = 0, 15 do
+            local G = setup({ ticao = true })
+            G.player({ x = 0, y = 0 })
+            G.gridPower = true
+            G.room({ x0 = 5, y0 = 5, x1 = 9, y1 = 9 })
+            local z = G.zombie({ x = 7, y = 7 })
+            for i = 1, 400 do G.zombie({ x = 500 + i, y = 500 }) end -- o rodízio leva SWEEP_MS pra voltar nele
+            fog(true, false, true)
+            G.tick(60 + phase)
+            assert(z.useless, "o cômodo não congelou")
+            NOM_Storm.force(G.players[1])
+            for _ = 1, math.floor((NOM_StormRules.FLASH_MS + 4 * NOM_LightRules.SWEEP_MS) / 16) do
+                G.tick(1)
+                assert(z.useless, "soltou o Tição do cômodo aceso no clarão (fase " .. phase .. ")")
+            end
+        end
+    end,
     -- na vermelha não tem Tição: o clarão não congela ninguém
     storm_flash_red_no_freeze = function()
         local G = setup({ ticao = true })

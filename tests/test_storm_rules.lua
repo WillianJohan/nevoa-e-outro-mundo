@@ -24,14 +24,16 @@ return {
     end,
     -- chuva: sorteio fixo por período (a mesma névoa não liga e desliga), ~30% das névoas
     storm_rain_per_period = function()
-        local n = 0
+        local n, differ = 0, 0
         for p = 1, 1000 do
-            local r = R.rains(p)
-            assert(r == R.rains(p), "sorteio não é fixo")
+            local r = R.rains(p, 12345)
+            assert(r == R.rains(p, 12345), "sorteio não é fixo")
             if r then n = n + 1 end
+            if r ~= R.rains(p, 999) then differ = differ + 1 end
         end
         assert(n >= 250 and n <= 350, "chuva em " .. n .. " de 1000")
-        assert(R.rains(nil) == false)
+        assert(differ > 100, "a semente do mundo não muda o sorteio")
+        assert(R.rains(nil, 1) == false)
         assert(R.RAIN_INTENSITY > 0 and R.RAIN_INTENSITY <= 1)
     end,
 }

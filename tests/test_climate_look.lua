@@ -526,9 +526,10 @@ return {
     look_rain_drawn_red_black = function()
         local wet, dry
         for p = 1, 100 do
-            if NOM_StormRules.rains(p) then wet = wet or p else dry = dry or p end
+            if NOM_StormRules.rains(p, 4242) then wet = wet or p else dry = dry or p end
         end
-        local saved = { NOM_Fog, NOM_Storm }
+        local saved = { NOM_Fog, NOM_Storm, NOM_FogEvent }
+        NOM_FogEvent = { seed = function() return 4242 end }
         local function run(period, forced, red, black, rain)
             NOM_Fog = { period = function() return period end }
             NOM_Storm = { rainForced = forced }
@@ -560,7 +561,7 @@ return {
             env = run(wet, false, true, false, 0.8)
             assert(near(env.floats[3].final, 0.8), "enfraqueceu a chuva do jogo: " .. env.floats[3].final)
         end)
-        NOM_Fog, NOM_Storm = saved[1], saved[2]
+        NOM_Fog, NOM_Storm, NOM_FogEvent = saved[1], saved[2], saved[3]
         assert(ok, err)
     end,
     -- a preta sobe já na fuga (risingBlack), como a vermelha

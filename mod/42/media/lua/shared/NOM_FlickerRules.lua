@@ -18,14 +18,15 @@ R.LAMP_DARK_CHANCE = 0.3
 R.LAMP_DARK_MIN_MS = 400
 R.LAMP_DARK_MAX_MS = 1200
 
--- Sorteio do poste (server/NOM_LampFlicker.lua): a cada LAMP_CHECK_MS, com LAMP_CHANCE (%), tenta
--- LAMP_TRIES postes da lista a partir de um índice sorteado; vale a luz de fora acesa a até
--- LAMP_NEAR de um jogador. No máximo LAMP_MAX piscando juntos.
+-- Sorteio do poste (server/NOM_LampFlicker.lua): a cada LAMP_CHECK_MS, com LAMP_CHANCE (%), um dos
+-- postes da rede, de fora e acesos a até LAMP_NEAR de um jogador. Esses vêm de uma volta pela lista
+-- da célula a cada LAMP_SCAN_MS, LAMP_BATCH por tick. No máximo LAMP_MAX piscando juntos.
 R.LAMP_CHECK_MS = 2000
 R.LAMP_CHANCE = 30
-R.LAMP_TRIES = 12
 R.LAMP_NEAR = 25
 R.LAMP_MAX = 2
+R.LAMP_SCAN_MS = 2000
+R.LAMP_BATCH = 40
 
 -- Chave do poste pela posição (o cliente acha a luz dele pela mesma posição).
 function R.lampKey(x, y, z) return x .. "," .. y .. "," .. z end

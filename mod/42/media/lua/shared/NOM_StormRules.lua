@@ -1,7 +1,7 @@
 -- Regras puras da tempestade da névoa preta e da vermelha (sprint 0045): sem API do jogo,
 -- testável com ./run-tests.sh. Quem usa: server/NOM_Storm.lua (relâmpago e trovão) e
 -- server/NOM_ClimateLook.lua (chuva). A branca não tem tempestade.
-require "NOM_Math"
+require "NOM_FogEventRules"
 
 NOM_StormRules = {}
 
@@ -19,6 +19,7 @@ R.FLASH_MS = 1000
 -- Chuva em RAIN_CHANCE % das névoas pretas e vermelhas, na intensidade RAIN_INTENSITY (0..1).
 R.RAIN_CHANCE = 30
 R.RAIN_INTENSITY = 0.55
+R.RAIN_SALT = 104395301 -- sorteio da chuva por período, separado do da preta
 
 function R.nextThunder(r)
     r = math.max(0, math.min(r, 0.999999))
@@ -32,11 +33,13 @@ function R.thunderPoint(px, py, rAngle, rDist)
     return math.floor(px + math.cos(a) * d + 0.5), math.floor(py + math.sin(a) * d + 0.5)
 end
 
--- O período (contador de névoas do NOM_FogEvent) decide: a mesma névoa chove do começo ao fim.
-function R.rains(period)
+-- O período (contador de névoas do NOM_FogEvent) e a semente do mundo decidem, como o sorteio da
+-- preta (NOM_FogEventRules.blackFog): a mesma névoa chove do começo ao fim, e cada save chove em
+-- névoas diferentes.
+function R.rains(period, seed)
     period = tonumber(period)
     if period == nil then return false end
-    return NOM_Math.mod(math.floor(period) * 7919 + 104729, 100) < R.RAIN_CHANCE
+    return NOM_FogEventRules.frac(seed, math.floor(period), R.RAIN_SALT) * 100 < R.RAIN_CHANCE
 end
 
 return NOM_StormRules
