@@ -146,7 +146,7 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
    - **0040** — vermelha nova: tentáculos e cinza no ar;
    - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
 
-**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o mod de desenvolvimento ganha ID `_Dev` e nome `[DEV]` (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
+**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o oficial vem do Workshop e o de staging é a cópia local do `dev-sync.sh`, com ID `_Staging`, nome `[STAGING]` e a preview vermelha de pôster (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
 
 ## Em teste: névoa com altura (sprint 0032)
 

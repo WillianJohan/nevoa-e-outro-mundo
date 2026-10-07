@@ -21,7 +21,7 @@ envia.
 ## Antes de publicar
 
 - [ ] O [teste in-game consolidado](teste-in-game.md) passou (solo e MP), com o mod
-      de desenvolvimento (`scripts/dev-sync.sh` a partir da `staging`).
+      de staging (`scripts/dev-sync.sh` a partir da `staging`).
 - [ ] O Johan decidiu a versão, e a `staging` foi mergeada na `main` (`--no-ff`,
       "Lançamento vX.Y.Z: ..."; regra de branches no [AGENTS.md](../AGENTS.md)). A `main` está limpa:
 

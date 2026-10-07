@@ -42,12 +42,16 @@ O mod em desenvolvimento e o mod lançado ficam separados **no git e no jogo**.
 
 **No jogo:**
 
-- **O mod lançado** é o do Workshop (inscrição na Steam), com o ID e o nome oficiais.
-- **O mod de desenvolvimento** é o que o `scripts/dev-sync.sh` copia pra `Zomboid/mods/`, com **ID e nome próprios**: ID com sufixo `_Dev` (também no `require=` dos mods opcionais) e nome com `[DEV]` na lista de mods. Assim os dois ficam instalados ao mesmo tempo e o Johan escolhe qual ativar em cada save.
-- **Nunca os dois ativos no mesmo save**: os arquivos Lua têm os mesmos nomes e um sobrescreve o outro. O `mod.info` de desenvolvimento marca o lançado como `incompatible=`.
-- O ID `_Dev` e o `[DEV]` existem **só na cópia do `dev-sync.sh`**; o repo e o `build-workshop.sh` usam sempre o ID e o nome oficiais. Os nomes de espaço no Lua (canal de rede, `ModData`, ID das opções) não mudam.
-- Save criado com o mod de desenvolvimento pede o mod de desenvolvimento pra abrir (e vice-versa).
-- **Pendente:** o `dev-sync.sh` ainda copia com o ID oficial. A troca entra na mini-sprint da renomeação pra "NOM: Noise of Mist" (logo depois da 0037), junto com os IDs novos (`NoiseOfMist` e `NoiseOfMist_Dev`).
+- **Oficial:** o do Workshop (inscrição na Steam), com o ID, o nome e as imagens oficiais (preview cinza no Workshop, pôster da parede descascando e ícone "NOM").
+- **Staging:** a cópia local que o `scripts/dev-sync.sh` põe em `Zomboid/mods/`, com **ID, nome e imagens próprios**:
+  - ID com sufixo `_Staging`, também nos mods opcionais e no `require=` deles (`NoiseOfMist_Staging`, `NoiseOfMist_Shader_Staging`, `NoiseOfMist_Volumetrica_Staging`);
+  - nome com `[STAGING]` na lista de mods;
+  - **pôster = a preview vermelha** e ícone "NOM" avermelhado, pra se diferenciar do oficial à primeira vista.
+  Assim os dois ficam instalados ao mesmo tempo e o Johan escolhe qual ativar em cada save.
+- **Nunca os dois ativos no mesmo save**: os arquivos Lua têm os mesmos nomes e um sobrescreve o outro. O `mod.info` de staging marca o oficial como `incompatible=`.
+- O ID `_Staging`, o `[STAGING]` e as imagens vermelhas existem **só na cópia do `dev-sync.sh`**; o repo e o `build-workshop.sh` usam sempre o ID, o nome e as imagens oficiais. Os nomes de espaço no Lua (canal de rede, `ModData`, ID das opções) não mudam.
+- Save criado com o mod de staging pede o mod de staging pra abrir (e vice-versa).
+- **Pendente:** o `dev-sync.sh` ainda copia com o ID oficial. A troca entra na mini-sprint da renomeação pra "NOM: Noise of Mist" (logo depois da 0037), junto com os IDs novos e as imagens do lançamento.
 
 ## Fluxo de sprint (decisão do Johan, 2026-10-05; branches de 2026-10-06)
 
@@ -55,7 +59,7 @@ O mod em desenvolvimento e o mod lançado ficam separados **no git e no jogo**.
 2. Plano, TDD e docs da sprint em `docs/sprints/sprint-00NN-slug/`.
 3. **Code review só no final de cada entrega** (decisão do Johan, 2026-10-06).
 4. Testes verdes, merge `--no-ff` na `staging`, push, `scripts/dev-sync.sh` com a `staging` no checkout (o sync copia a branch que estiver no checkout).
-5. O Johan testa no jogo, com o mod de desenvolvimento, e reinicia o jogo depois de cada sync.
+5. O Johan testa no jogo, com o mod de staging, e reinicia o jogo depois de cada sync.
 
 ## Lançar uma versão
 
