@@ -1,5 +1,5 @@
 #version 330
-// Névoa e Outro Mundo — dissolve das peças (sprint 0018, ADR-016), fragmento (o mesmo pras
+// NOM: Noise of Mist — dissolve das peças (sprint 0018, ADR-016), fragmento (o mesmo pras
 // peças com esqueleto e as presas a osso).
 //
 // Código original deste repositório, licença MIT. Do jogo vem só a interface: o sampler

@@ -3,7 +3,8 @@
 -- e sobem devagar, girando. Desenho pelo overlay de tela da sprint 0013 (NOM_ScreenFx.extra),
 -- como as brasas do Eco (client/NOM_Embers.lua): sem profundidade, passam por cima de parede e
 -- de personagem (limite aceito, spike-dissolve §D). Só o jogador 0, como o resto do overlay.
--- O que nasce, onde e como anda: shared/NOM_FlakeRules.lua.
+-- O que nasce, onde e como anda: shared/NOM_FlakeRules.lua. Na vermelha (sprint 0040), também
+-- cinza solta no ar em volta do jogador (NOM_FlakeRules.air), desenhada como a cinza.
 --
 -- Liga com a névoa de jogo (NOM_FogState.on), não na subida da fuga; no fim nada nasce e as
 -- vivas terminam o fade. Respeita o toggle FogOverlays do sandbox, a densidade do Outro Mundo e
@@ -83,7 +84,7 @@ end
 local function rate()
     local F = NOM_FogState
     if not F.on or not NOM_Config.get("FogOverlays") then return 0 end
-    local d = NOM_DressingRules.density(NOM_ScreenFxOptions.overlayDensity(), F.red)
+    local d = NOM_DressingRules.density(NOM_ScreenFxOptions.overlayDensity(), F.red, F.black)
     return R.rate(d, NOM_ScreenFxOptions.intensity())
 end
 
@@ -91,6 +92,7 @@ local function refresh(p, now)
     srcAt = now
     local px, py, pz = math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ())
     src = R.sources(NOM_FogOverlays.targets(px, py, pz, R.RADIUS), px, py, pz)
+    src.px, src.py, src.pz = px + 0.5, py + 0.5, pz
 end
 
 local function draw(el, now)
@@ -107,6 +109,12 @@ local function draw(el, now)
     end
     if r > 0 and (not srcAt or now - srcAt >= N.SOURCE_MS) then refresh(p, now) end
     R.step(state, dt, r, src, random)
+    -- cinza no ar (sprint 0040): só na vermelha, em volta da última posição lida das fontes
+    if src and NOM_FogState.red then
+        R.air(state, r, src.px, src.py, src.pz, dt, random)
+    else
+        R.air(state, 0)
+    end
     local parts = state.parts
     if #parts == 0 then return end
     local chip, ash = texture(R.TEXTURES.lasca), texture(R.TEXTURES.cinza)
@@ -122,7 +130,7 @@ local function draw(el, now)
     local zoom = math.max(getCore():getZoom(0), 0.25)
     local left, top = getPlayerScreenLeft(0), getPlayerScreenTop(0)
     local right, bottom = left + getPlayerScreenWidth(0), top + getPlayerScreenHeight(0)
-    local pal = R.palette(NOM_FogState.red and "red" or "white")
+    local pal = R.palette(NOM_FogState.color())
     local cl, ca, C = pal.lasca, pal.cinza, R.CELL
     for i = 1, #parts do
         local q = parts[i]

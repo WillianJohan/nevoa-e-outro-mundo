@@ -40,6 +40,10 @@ local omenLeft -- ms reais do presságio até a sirene (sprint 0034); nil = sem 
 -- só debug): nil = sorteio, true = vermelha (NOM_Debug.redFog(true), NOM_FogEvent.force),
 -- false = branca forçada (só NOM_FogEvent.force; NOM_Debug.redFog(false) volta ao sorteio).
 local forcedRed
+-- Névoa preta (sprint 0038): decidida no presságio junto da vermelha e salva em data.fog.black
+-- (a preta ganha: data.fog.red fica false). forcedBlack: true = preta forçada (NOM.setBlackFog),
+-- false = não preta; nil = sorteio, ou o forcedRed manda (vermelha ou branca forçada não é preta).
+local forcedBlack
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] nevoa " .. msg) end
@@ -71,13 +75,18 @@ local function hours(v) return v and string.format("%.2f", v) or "-" end
 
 -- A subida da fuga no mundo (o clima do servidor) e, no solo, em quem vê. No dedicado o
 -- cliente liga a dele pelos comandos siren/sirenStop/fog (client/NOM_FogClient.lua).
-local function rise(on, red)
-    NOM_World.setRising(on, red)
-    if not isServer() then NOM_FogState.setRising(on, red) end
+local function rise(on, red, black)
+    NOM_World.setRising(on, red, black)
+    if not isServer() then NOM_FogState.setRising(on, red, black) end
 end
 
 function NOM_FogEvent.period()
     return state().night or 0
+end
+
+-- Semente do mundo (sprint 0033), pra outros sorteios por período (a chuva do NOM_ClimateLook).
+function NOM_FogEvent.seed()
+    return state().seed
 end
 
 -- { next, endAt, sirenMs, sirenRed, presageMs } pro status do debug e pra quem entra na
@@ -86,7 +95,7 @@ function NOM_FogEvent.status()
     local s = state()
     local pending = countdown or (omenLeft and omenLeft + R.GRACE_MS)
     return { next = s.next, endAt = s.endAt, sirenMs = pending, sirenRed = pending and s.red == true,
-        presageMs = omenLeft }
+        sirenBlack = pending and s.black == true, presageMs = omenLeft }
 end
 
 -- O vermelho é do período que a sirene anuncia (o próximo): sorteio puro do número e da
@@ -102,11 +111,26 @@ end
 
 -- A cor do período que vem, no data.fog.red: se já estava salva (presságio, recarga), vale
 -- ela. Devolve a chance usada, "-" se não houve sorteio (pro log).
+local function decideBlack(s)
+    if forcedBlack ~= nil then return forcedBlack end
+    if forcedRed ~= nil then return false end
+    return R.blackFog((s.night or 0) + 1, s.seed, cfg(), R.days(s, now()))
+end
+
 local function decideColor(s)
-    if s.red ~= nil and forcedRed == nil then return "-" end
+    if s.red ~= nil and forcedRed == nil and forcedBlack == nil then return "-" end
+    s.black = decideBlack(s)
+    if s.black then
+        s.red = false
+        return "preta"
+    end
     local red, c = decideRed()
     s.red = red
     return hours(c)
+end
+
+local function colorLog(s)
+    return " vermelha=" .. tostring(s.red) .. " preta=" .. tostring(s.black == true)
 end
 
 -- Presságio (sprint 0034): decide a cor, avisa quem vê (estática na tela) e conta
@@ -118,11 +142,11 @@ local function presage()
     local chance = decideColor(s)
     omenLeft, lastMs = R.PRESAGE_MS, getTimestampMs()
     if isServer() then
-        sendServerCommand(MODULE, "presage", { red = s.red })
+        sendServerCommand(MODULE, "presage", { red = s.red, black = s.black == true })
     else
-        NOM_FogState.setOmen(s.red)
+        NOM_FogState.setOmen(s.red, s.black == true)
     end
-    debugLog("presagio vermelha=" .. tostring(s.red) .. " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
+    debugLog("presagio" .. colorLog(s) .. " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
     return true
 end
 
@@ -135,15 +159,15 @@ function NOM_FogEvent.siren(skip)
     omenLeft = nil
     countdown, lastMs = skip and 0 or R.GRACE_MS, getTimestampMs()
     local chance = decideColor(s)
-    rise(true, s.red)
+    rise(true, s.red, s.black == true)
     if isServer() then
-        sendServerCommand(MODULE, "siren", { red = s.red })
+        sendServerCommand(MODULE, "siren", { red = s.red, black = s.black == true })
     else
-        NOM_Siren.play(s.red)
+        NOM_Siren.play(s.red, s.black == true)
         NOM_SirenFreeze.start(countdown)
     end
     -- inteiro: "contagem=30000"; dias e chance da vermelha com 2 casas
-    debugLog("sirene contagem=" .. math.floor(countdown) .. " vermelha=" .. tostring(s.red) ..
+    debugLog("sirene contagem=" .. math.floor(countdown) .. colorLog(s) ..
         " dias=" .. hours(R.days(s, now())) .. " chance=" .. chance)
     return true
 end
@@ -154,7 +178,7 @@ end
 function NOM_FogEvent.stop()
     local was = countdown ~= nil or omenLeft ~= nil
     countdown, omenLeft = nil, nil
-    forcedRed = nil
+    forcedRed, forcedBlack = nil, nil
     if not state().inNight then
         if was then
             R.cancel(state())
@@ -184,18 +208,21 @@ function NOM_FogEvent.setRed(on)
     local s = state()
     if s.inNight then
         s.red = on == true
-        NOM_World.setFog(true, s.red)
+        if s.red then s.black = false end
+        NOM_World.setFog(true, s.red, s.black == true)
         debugLog("vermelha=" .. tostring(s.red) .. " periodo=" .. tostring(s.night))
         return true
     end
     forcedRed = on and true or nil
+    if on then forcedBlack = nil end
     if countdown or omenLeft then
         s.red = on == true
-        if countdown then NOM_World.setRising(true, s.red) end
+        if s.red then s.black = false end
+        if countdown then NOM_World.setRising(true, s.red, s.black == true) end
         if isServer() then
-            sendServerCommand(MODULE, "sirenColor", { red = s.red })
+            sendServerCommand(MODULE, "sirenColor", { red = s.red, black = s.black == true })
         else
-            NOM_FogState.recolor(s.red)
+            NOM_FogState.recolor(s.red, s.black == true)
         end
         return true
     end
@@ -207,26 +234,28 @@ end
 -- sorteio). Evento aberto, presságio ou sirene contando fecham antes (stop), então vale pra
 -- quem estiver aberto; depois vem o presságio e a sirene (skip: sem presságio, a névoa abre
 -- no próximo tick). Sem a calmaria que o stop acabou de ligar: é uma névoa nova.
-function NOM_FogEvent.force(red, skip)
+-- black (NOM.setBlackFog, sprint 0038): preta, e aí o red não vale.
+function NOM_FogEvent.force(red, skip, black)
     if state().inNight or countdown or omenLeft then NOM_FogEvent.stop() end
     state().calmUntil = nil
     NOM_World.setCalm(false)
-    forcedRed = red == true
+    forcedBlack = black == true
+    forcedRed = red == true and not forcedBlack
     if skip then return NOM_FogEvent.siren(true) end
     return presage()
 end
 
 local function begin()
     countdown = nil
-    forcedRed = nil
+    forcedRed, forcedBlack = nil, nil
     if not isServer() then NOM_SirenFreeze.stop() end -- a fuga acabou: os zumbis soltam antes da névoa
-    if not R.start(state(), now(), cfg(), rand, state().red) then
+    if not R.start(state(), now(), cfg(), rand, state().red, state().black) then
         rise(false)
         return
     end
     NOM_World.setCalm(false) -- R.start zerou a calmaria; o clima só relê no minuto seguinte
-    debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. " vermelha=" .. tostring(state().red))
-    NOM_World.setFog(true, state().red)
+    debugLog("evento inicio periodo=" .. state().night .. " fim=" .. hours(state().endAt) .. colorLog(state()))
+    NOM_World.setFog(true, state().red, state().black)
     rise(false) -- depois do setFog: no solo quem vê já está com on e não pisca
 end
 
@@ -239,7 +268,7 @@ Events.OnClimateTick.Add(function()
     if action == "siren" then presage() end
     if action == "end" then debugLog("evento fim proxima=" .. hours(s.next)) end
     if s.next ~= before and action ~= "end" then debugLog("proxima=" .. hours(s.next)) end
-    NOM_World.setFog(s.inNight == true, s.red == true)
+    NOM_World.setFog(s.inNight == true, s.red == true, s.black == true)
     NOM_World.setCalm(R.calm(s, now()))
 end)
 

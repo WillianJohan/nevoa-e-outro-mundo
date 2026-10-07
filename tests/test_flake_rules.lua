@@ -149,6 +149,8 @@ return {
         assert(sum(r.lasca) < sum(w.lasca), "a vermelha não escurece")
         assert(r.lasca[1] / r.lasca[2] > w.lasca[1] / w.lasca[2] + 0.3, "a vermelha não avermelha")
         assert(sum(w.cinza) > 1.8, "cinza da branca não é clara")
+        local k = R.palette("black")
+        assert(sum(k.lasca) < sum(r.lasca) and sum(k.cinza) < sum(r.cinza), "a preta não é a mais escura")
         local x = R.palette("nada")
         assert(x.lasca[1] == w.lasca[1] and x.cinza[3] == w.cinza[3], "cor sem caso")
     end,
@@ -259,5 +261,52 @@ return {
         end
         assert(shot(41) == shot(41), "mesmo rand, resultado diferente")
         assert(shot(41) ~= shot(43), "rand não muda nada")
+    end,
+
+    -- CINZA NO AR (sprint 0040) ------------------------------------------------------------------
+    -- na vermelha, cinza e esporo nascem soltos no ar em volta do jogador, a meia altura, e
+    -- flutuam devagar pra qualquer lado (não sobem como a cinza do chão), com vida longa e fade lento
+    flakes_air_floats = function()
+        local st, rand = R.new(), seq(5)
+        for _ = 1, 600 do
+            R.step(st, 16, 0, nil, rand)
+            R.air(st, R.rate(1, 1), 100, 200, 1, 16, rand)
+        end
+        local n, left, right = 0, 0, 0
+        for _, p in ipairs(st.parts) do
+            assert(p.from == "A" and p.type == "cinza", "no ar: " .. tostring(p.from) .. "/" .. tostring(p.type))
+            n = n + 1
+            local dx, dy = p.x - 100, p.y - 200
+            assert(dx * dx + dy * dy <= R.AIR_RADIUS * R.AIR_RADIUS, "longe do jogador")
+            assert(p.z >= 1 + R.AIR_Z_MIN and p.z <= 1 + R.AIR_Z_MAX, "altura " .. p.z)
+            assert(math.abs(p.vy) <= R.AIR_DRIFT and math.abs(p.vx) <= R.AIR_DRIFT, "rápido demais no ar")
+            assert(p.life >= R.AIR_LIFE_MIN_MS and p.life <= R.AIR_LIFE_MAX_MS, "vida " .. p.life)
+            local _, _, a = R.at(p, R.FADE_IN_MS)
+            assert(a < p.peak * 0.6, "aparece de golpe: " .. a)
+            if p.vx < 0 then left = left + 1 else right = right + 1 end
+        end
+        assert(n > 15 and n <= R.AIR_MAX, "no ar: " .. n)
+        assert(left > 2 and right > 2, "flutua pra um lado só: " .. left .. "/" .. right)
+    end,
+
+    -- o ar tem teto próprio e não come o lugar das lascas do chão; não anda o relógio; sem ritmo, nada
+    flakes_air_cap_and_share = function()
+        local st, rand = R.new(), seq(9)
+        local s = src(field(6, { "F", "W" }))
+        for _ = 1, 900 do
+            R.step(st, 16, R.rate(2, 2), s, rand)
+            local t = st.t
+            R.air(st, R.rate(2, 2), 0, 0, 0, 16, rand)
+            assert(st.t == t, "o ar andou o relógio")
+        end
+        local air, ground = 0, 0
+        for _, p in ipairs(st.parts) do
+            if p.from == "A" then air = air + 1 else ground = ground + 1 end
+        end
+        assert(#st.parts <= R.MAX, "passou do teto: " .. #st.parts)
+        assert(air <= R.AIR_MAX and air > 0, "no ar: " .. air)
+        assert(ground >= R.MAX - R.AIR_MAX - 5, "o ar comeu as lascas do chão: " .. ground)
+        local st2 = R.new()
+        assert(R.air(st2, 0, 0, 0, 0, 1000, rand) == 0 and #st2.parts == 0, "nasceu sem ritmo")
     end,
 }

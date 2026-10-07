@@ -14,11 +14,14 @@ require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
 require "NOM_DebugRules"
+require "NOM_DebugLog"
 require "NOM_NightCount"
 require "NOM_Fog"
 require "NOM_FogEvent"
 require "NOM_Eco"
 require "NOM_SemRosto"
+require "NOM_FlickerRules"
+require "NOM_StormRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -29,7 +32,7 @@ local function allowed(player)
     if not getDebug() or player == nil then return false end
     if not isServer() then return true end
     if player:getRole():hasCapability(Capability.UseDebugContextMenu) then return true end
-    print("[NOM] debug negado: sem permissão de debug")
+    NOM_DebugLog.say("[NOM] debug negado: sem permissão de debug")
     return false
 end
 
@@ -62,11 +65,12 @@ function ops.fog(_, a)
     return "nevoa fim=" .. tostring(NOM_FogEvent.stop())
 end
 
--- NOM.setFog / NOM.setRedFog (sprint 0033): névoa branca ou vermelha de verdade, qualquer
--- que seja o estado (fecha o que estiver aberto ou contando); skip abre sem a espera.
+-- NOM.setFog / NOM.setRedFog / NOM.setBlackFog (sprints 0033 e 0038): névoa branca, vermelha ou
+-- preta de verdade, qualquer que seja o estado (fecha o que estiver aberto ou contando); skip abre
+-- sem a espera.
 function ops.setFog(_, a)
-    local color = a.red and "vermelha" or "branca"
-    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip))
+    local color = a.black and "preta" or (a.red and "vermelha" or "branca")
+    return "nevoa forcada " .. color .. "=" .. tostring(NOM_FogEvent.force(a.red, a.skip, a.black))
 end
 
 -- Por persistentOutfitID: todo processo sorteia igual (ADR-006), então o servidor
@@ -177,6 +181,33 @@ function ops.wander()
     return "perambular onda semente=" .. NOM_WanderServer.wave("debug")
 end
 
+-- Um estalo do sonar agora (sprint 0037; NOM_SonarServer, lido na hora como o perambular).
+function ops.sonar(player)
+    if not NOM_SonarServer then return "sonar não carregou" end
+    return NOM_SonarServer.force(player)
+end
+
+-- Tempestade e poste que pisca (sprint 0045; NOM_Storm e NOM_LampFlicker, lidos na hora).
+function ops.thunder(player)
+    if not NOM_Storm then return "tempestade não carregou" end
+    local x, y = NOM_Storm.force(player)
+    return "relâmpago em x=" .. x .. " y=" .. y
+end
+
+function ops.lampFlicker(player)
+    if not NOM_LampFlicker then return "poste não carregou" end
+    local x, y, z = NOM_LampFlicker.force(player)
+    if not x then return "nenhum poste aceso de fora a até " .. NOM_FlickerRules.LAMP_NEAR .. " tiles" end
+    return "poste piscou em x=" .. x .. " y=" .. y .. " z=" .. z
+end
+
+function ops.rain()
+    if not NOM_Storm then return "tempestade não carregou" end
+    NOM_Storm.rainForced = not NOM_Storm.rainForced
+    return "chuva forçada na preta e na vermelha: "
+        .. (NOM_Storm.rainForced and "sim" or ("não (sorteio de " .. NOM_StormRules.RAIN_CHANCE .. "%)"))
+end
+
 function ops.status()
     local w, f, ev = NOM_World, NOM_World.forced, NOM_FogEvent.status()
     return NOM_DebugRules.line("[NOM] debug servidor", {
@@ -186,6 +217,7 @@ function ops.status()
         noiteN = tostring(NOM_NightCount.current()),
         nevoaN = tostring(NOM_Fog.period()),
         vermelha = w.red,
+        preta = w.black,
         proxima = ev.next and fmt(ev.next) or "-", -- horas de mundo (getWorldAgeHours)
         fim = ev.endAt and fmt(ev.endAt) or "-",
         sirene = ev.sirenMs and math.floor(ev.sirenMs) or "-", -- ms reais até a névoa
@@ -202,7 +234,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     if not a then return end
     local msg = ops[a.op](player, a)
     if a.op ~= "status" then msg = "[NOM] debug " .. msg end
-    print(msg)
+    NOM_DebugLog.say(msg)
     if isServer() then sendServerCommand(player, MODULE, "debugReply", { msg = msg }) end
 end)
 

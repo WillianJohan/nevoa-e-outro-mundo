@@ -27,13 +27,22 @@ LIMITS = {
     "NOM/NOM_SemRostoEstatica.png": (0.40, 0.08, 0.20),
     "Body/NOM_Estalador.png": (0.25, 0.15, 0.10),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
+    # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
+    "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
     "Body/NOM_Corredor.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
     "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
+    # peças 3D da 0042: mesmos limites das texturas que elas substituem
+    "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
+    "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
+    # Tição (sprint 0038): mesma família da casca, placas menores; lê de longe pela brasa.
+    "Body/NOM_Ticao.png": (0.20, 0.15, 0.05),
+    # crosta 3D do Tição (sprint 0043): carvão e brasa da pele, mais a fumaça clara
+    "NOM/NOM_TicaoCrosta3D.png": (0.20, 0.15, 0.05),
 }
 
 # O Eco fica fora da regra das formas grandes: ele lê por ser muito mais claro que
@@ -47,7 +56,7 @@ PALE = {
 
 # Atadura: faixas horizontais. A luminância tem que variar muito mais de linha pra
 # linha do que de coluna pra coluna (uma grade em diagonal varia igual nos dois).
-HORIZONTAL = {"NOM/NOM_EstaladorVenda.png"}
+HORIZONTAL = {"NOM/NOM_EstaladorVenda.png", "NOM/NOM_EstaladorVenda3D.png"}
 
 
 def luminance(img):

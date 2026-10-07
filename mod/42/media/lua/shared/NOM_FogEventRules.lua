@@ -4,6 +4,7 @@
 -- state = { night = número do período, inNight = evento aberto,
 --           next = hora de mundo da próxima sirene, endAt = hora de mundo do fim,
 --           red = névoa vermelha (sprint 0010), decidida na sirene e limpa no fim,
+--           black = névoa preta (sprint 0038), idem; nunca junto da vermelha,
 --           bornAt = hora de mundo do nascimento do save pra curva (sprint 0019),
 --           seed = semente do mundo (sorteio determinístico, sprint 0033),
 --           day = último dia de jogo planejado, hadFog = teve névoa neste dia,
@@ -34,6 +35,7 @@ R.DAY_SALT = 15485863
 R.HOUR_SALT = 32452843
 R.SECOND_SALT = 49979687
 R.SECOND_HOUR_SALT = 67867967
+R.BLACK_SALT = 86028121   -- sorteio da preta por período, separado do da vermelha
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
@@ -43,7 +45,10 @@ function R.config(get)
         secondChance = get("FogSecondChance"), minGapHours = get("FogMinGapHours"),
         maxDaysWithout = get("FogMaxDaysWithout"), minHours = get("FogMinHours"), maxHours = get("FogMaxHours"),
         redMinHours = get("RedFogMinHours"), redMaxHours = get("RedFogMaxHours"),
-        redGraceDays = get("RedFogGraceDays"), calmHours = get("FogCalmHours") }
+        redGraceDays = get("RedFogGraceDays"), calmHours = get("FogCalmHours"),
+        blackOn = get("BlackFogEnabled"), blackChance = get("BlackFogChance"),
+        blackGraceDays = get("BlackFogGraceDays"), blackMinHours = get("BlackFogMinHours"),
+        blackMaxHours = get("BlackFogMaxHours") }
 end
 
 -- Grava o bornAt uma vez. Save novo nasce agora; save veterano (já tem agenda: night ou
@@ -139,13 +144,15 @@ function R.update(state, now, cfg, rand)
     return nil
 end
 
--- Abre o evento com a duração do tipo. red: o que a sirene decidiu.
-function R.start(state, now, cfg, rand, red)
+-- Abre o evento com a duração do tipo. red/black: o que a sirene decidiu (a preta ganha).
+function R.start(state, now, cfg, rand, red, black)
     if state.inNight then return false end
     state.night = (state.night or 0) + 1
-    state.inNight, state.red, state.hadFog = true, red == true, true
+    state.black = black == true
+    state.inNight, state.red, state.hadFog = true, red == true and not state.black, true
     local lo, hi = cfg.minHours, cfg.maxHours
-    if state.red then lo, hi = cfg.redMinHours, cfg.redMaxHours end
+    if state.black then lo, hi = cfg.blackMinHours or 2, cfg.blackMaxHours or 3
+    elseif state.red then lo, hi = cfg.redMinHours, cfg.redMaxHours end
     state.endAt = now + R.durationHours(lo, hi, rand())
     state.next, state.calmUntil = nil, nil
     return true
@@ -154,7 +161,7 @@ end
 -- Fecha o evento: calmaria, folga e, se o dia quis e couber, a segunda névoa
 -- (começa antes da meia-noite, depois de minGapHours).
 function R.stop(state, now, cfg)
-    state.inNight, state.endAt, state.red = false, nil, nil
+    state.inNight, state.endAt, state.red, state.black = false, nil, nil, nil
     state.lastEnd = now
     state.calmUntil = now + (cfg.calmHours or 0)
     if state.next ~= nil then state.next = afterGap(state, state.next, cfg) end
@@ -168,7 +175,7 @@ end
 -- Sirene cancelada (debug): a pendente sai, o dia não ganha outra, e a cor que ela
 -- tinha decidido some (a próxima sorteia de novo).
 function R.cancel(state)
-    state.next, state.red = nil, nil
+    state.next, state.red, state.black = nil, nil, nil
 end
 
 function R.calm(state, now)
@@ -179,6 +186,14 @@ end
 function R.redChance(chance, cfg, d)
     if d < (cfg.redGraceDays or 0) then return 0 end
     return chance
+end
+
+-- Preta (sprint 0038): nunca na carência (dias desde o bornAt), BlackFogChance% dos períodos
+-- depois, determinística pelo período e pela semente do mundo, com sal próprio.
+function R.blackFog(period, seed, cfg, days)
+    if period == nil or not cfg.blackOn then return false end
+    if (days or 0) < (cfg.blackGraceDays or 0) then return false end
+    return R.frac(seed, period, R.BLACK_SALT) * 100 < (cfg.blackChance or 0)
 end
 
 -- Contagem regressiva da sirene em ms reais: parada com o jogo pausado, e um

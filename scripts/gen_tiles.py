@@ -29,6 +29,15 @@ Tipos (mod/42/media/textures/NOM/OutroMundo/NOM_OM_<tipo>_<lado>_<nn>.png):
                 furando a tinta, em cachos
   Descasca_W/N  a parede quase toda descascada (só ilhas da tinta do jogo ficam)
 
+Outro Mundo queimado da névoa preta (sprint 0039), no fim de KINDS (a semente das antigas não muda):
+  Cinza_F       monte de cinza assentada, grão claro, pedacinho de carvão e farelo em volta
+  Brasa_F       pedaços de carvão rachado com brasa fraca em algumas trincas (apagando)
+  Fuligem_W/N   fuligem subindo do rodapé em plumas que afinam, escura embaixo
+
+Tentáculos da névoa vermelha (sprint 0040), também no fim de KINDS:
+  Tentaculo_F   buraco escuro no chão de onde saem 3 a 5 tentáculos que se arrastam e enrolam
+  Tentaculo_W/N 2 a 4 tentáculos subindo do rodapé, com ramos finos e mancha úmida em volta
+
 Paleta suja e dessaturada (ferrugem marrom, não laranja); o RGB dos pixels vazios herda o dos
 vizinhos (o filtro linear do jogo não puxa preto pra borda). Também escreve
 mod/42/media/lua/shared/NOM_OwnSpriteList.lua (nome, lado e tipo de cada PNG).
@@ -58,7 +67,9 @@ VARIANTS = 5
 PLANE = {"F": (72, 72), "W": (72, 194), "N": (72, 196)}
 KINDS = (("Grade", "F"), ("Ferrugem", "F"), ("Chapa", "F"), ("Tinta", "F"),
          ("Tinta", "W"), ("Ferrugem", "W"), ("Descasca", "W"),
-         ("Tinta", "N"), ("Ferrugem", "N"), ("Descasca", "N"))
+         ("Tinta", "N"), ("Ferrugem", "N"), ("Descasca", "N"),
+         ("Cinza", "F"), ("Brasa", "F"), ("Fuligem", "W"), ("Fuligem", "N"),
+         ("Tentaculo", "F"), ("Tentaculo", "W"), ("Tentaculo", "N"))
 
 # luz do alto à esquerda da tela, no plano (x, y): na parede x segue a face e y desce; no chão
 # o alto à esquerda da tela cai em (−3, −1) no (u, v)
@@ -74,6 +85,12 @@ OXIDE = (124, 106, 80)          # óxido seco, ocre apagado
 STREAK = (118, 96, 76)          # o fim do escorrido, lavado
 PLASTER = ((150, 144, 132), (139, 135, 127), (158, 149, 134), (146, 140, 134), (152, 146, 128))
 PAINTS = ((164, 156, 136), (110, 118, 104), (146, 136, 104), (104, 108, 112), (132, 126, 112))
+ASH_D, ASH, ASH_L = (62, 60, 57), (114, 111, 106), (160, 157, 150)
+CHAR_D, CHAR = (24, 22, 21), (54, 50, 47)
+EMBER_D, EMBER = (92, 42, 27), (160, 70, 34)     # brasa apagando: laranja sujo, nunca vivo
+SOOT_D, SOOT = (16, 15, 14), (92, 84, 75)
+TENT_D, TENT, TENT_L = (10, 8, 9), (46, 24, 26), (182, 156, 154)   # quase preto, reflexo vinho, brilho
+SLIME = (40, 22, 22)
 
 
 # ---------------------------------------------------------------- utilidades do plano
@@ -705,6 +722,178 @@ def floor_paint(p, paint_rgb):
     return over(rgb, a, pc, curl)
 
 
+# ---------------------------------------------------------------- queimado (sprint 0039)
+
+def floor_ash(p):
+    rng = p.rng
+    env = p.blobs(int(rng.integers(1, 4)), 12, 24, *p.warp(8, 6), 14)
+    field = 0.6 * env + 0.4 * p.fbm(8) - 0.7 * (1 - smooth(2, 10, p.edge_px()))
+    th = np.quantile(field, 1 - rng.uniform(0.3, 0.45))
+    a = smooth(th, th + 0.12, field)                 # borda macia: a cinza assenta
+    h = blur(a, 1.2) * (0.8 + 0.2 * p.fbm(4))
+    rgb = ramp3(p.fbm(5), ASH_D, ASH, ASH_L) * (0.9 + 0.25 * lit(h, p.light, 1.2))[..., None]
+    rgb = mix(rgb, ASH_L, 0.3 * smooth(0.65, 0.9, p.noise(0.6)))       # grão claro
+    _, _, v, cx, cy = p.voronoi(1.6)
+    bits = ((v < 0.06) & (p.at(a, cx, cy) > 0.3)).astype(np.float32)
+    rgb = mix(rgb, CHAR_D, 0.85 * bits)
+    a = np.clip(a * (0.75 + 0.25 * p.noise(1.0)), 0, 1)                # cinza fina: o chão passa
+    zone = smooth(th - 0.15, th, field) * (1 - a)
+    _, _, fv, _, _ = p.voronoi(1.2)
+    crumbs = ((fv < 0.08) & (zone > 0.2)).astype(np.float32) * zone
+    rgb = np.where((crumbs > a)[..., None], col(ASH) * (0.85 + 0.3 * p.noise(0.5))[..., None], rgb)
+    return rgb, np.maximum(a, 0.8 * crumbs)
+
+
+def floor_ember(p, glow):
+    rng = p.rng
+    env = p.blobs(int(rng.integers(1, 3)), 9, 16, *p.warp(6, 4), 18)
+    field = 0.65 * env + 0.35 * p.fbm(6) - 0.7 * (1 - smooth(2, 10, p.edge_px()))
+    th = np.quantile(field, 1 - rng.uniform(0.12, 0.22))
+    f1, f2, v, cx, cy = p.voronoi(3.2, *p.warp(4, 1.5))
+    lump = (p.at(field, cx, cy) > th).astype(np.float32)           # pedaço de carvão inteiro
+    gap = 1 - smooth(0.0, 0.5, f2 - f1)
+    piece = lump * (1 - gap)
+    rgb = np.zeros(p.X.shape + (3,), np.float32)
+    a = np.zeros(p.X.shape, np.float32)
+    ash = smooth(th - 0.2, th, field)
+    rgb, a = over(rgb, a, ramp(p.noise(2), ASH_D, ASH), 0.55 * ash * (0.6 + 0.4 * p.noise(1.2)))
+    lx, ly = p.light
+    rgb, a = over(rgb, a, VOID, 0.5 * blur(shift(piece, -lx * 0.6, -ly * 0.6), 0.4) * (1 - piece))
+    c = ramp(v, CHAR_D, CHAR) * (0.85 + 0.35 * lit(blur(piece, 0.3), p.light, 0.8))[..., None]
+    c = mix(c, ASH, 0.35 * smooth(0.6, 0.9, p.noise(0.7)))         # casca de cinza
+    rgb, a = over(rgb, a, c, piece)
+    # brasa: a trinca larga entre pedaços, só em algumas e fraca (apagando); a trinca fina fica preta
+    crack = lump * (1 - smooth(0.1, 1.1, f2 - f1))
+    nz = p.noise(2.5)
+    q = np.quantile(nz[crack > 0.3], 0.5) if (crack > 0.3).any() else 0.5   # metade das trincas
+    hot = crack * smooth(q - 0.1, q + 0.1, nz)
+    return over(rgb, a, ramp(crack * p.noise(1.0) * glow, EMBER_D, EMBER), 0.95 * hot)
+
+
+def wall_soot(p, tall):
+    rng = p.rng
+    u = p.Y / p.ph                                   # 0 no alto, 1 no rodapé
+    plumes = np.zeros(p.X.shape, np.float32)
+    for _ in range(int(rng.integers(3, 6))):
+        x0, w0 = rng.uniform(4, p.pw - 4), rng.uniform(12, 26)
+        top = rng.uniform(0.1, 0.45) if tall else rng.uniform(0.35, 0.65)
+        sway = curve(p, 30, 12)[:, None]
+        rise = smooth(top, 1.0, u)                   # 0 acima do topo da pluma, 1 no rodapé
+        w = w0 * (0.3 + 0.7 * rise)
+        d = np.abs(p.X - x0 - sway * (1 - rise))
+        plumes = np.maximum(plumes, smooth(0, 1, 1 - d / np.maximum(w, 1e-3)) * np.sqrt(rise))
+    streak = p.noise(1.6, 14)                        # a fumaça sobe em fios
+    field = np.maximum(plumes, 0.9 * smooth(0.7, 1.0, u)) * (0.55 + 0.45 * p.fbm(9)) * (0.75 + 0.35 * streak)
+    a = np.clip(field * 1.5, 0, 0.95) * smooth(0, 3, p.edge_px(sides="x"))
+    rgb = ramp(0.45 * p.fbm(7) + 0.45 * u + 0.4 * (streak - 0.5), SOOT, SOOT_D)
+    rgb = rgb * (0.7 + 0.6 * p.noise(2.5))[..., None]                     # manchas da fuligem
+    rgb = mix(rgb, (84, 76, 66), 0.4 * smooth(0.05, 0.4, a) * (1 - smooth(0.4, 0.8, a)))   # borda da fumaça
+    return rgb, a
+
+
+# ---------------------------------------------------------------- tentáculos (sprint 0040)
+
+def tendril_path(rng, x0, y0, ang, length, curl, wobble, step=0.5):
+    """Caminho de um tentáculo: anda em passos de step px virando aos poucos (wobble rad por passo,
+    no máximo) e na ponta enrola curl × π pro lado sorteado. Lista de (x, y, t), t de 0 (raiz) a
+    1 (ponta)."""
+    n = max(2, int(length / step))
+    x, y, a, turn = x0, y0, ang, 0.0
+    side = rng.choice((-1, 1))
+    per = curl * np.pi / max(1.0, 0.35 * n)
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        turn = np.clip(turn + rng.normal(0, wobble * 0.3), -wobble, wobble)
+        a += turn + side * per * smooth(0.6, 0.75, t)
+        x, y = x + step * np.cos(a), y + step * np.sin(a)
+        pts.append((x, y, t))
+    return pts
+
+
+def tendrils(p, paths):
+    """Tubos que afinam ao longo dos caminhos [(pts, largura da raiz)]: altura 0..1 (o corte do
+    tubo) e o t do ponto que ganhou em cada amostra."""
+    h = np.zeros(p.X.shape, np.float32)
+    tt = np.zeros(p.X.shape, np.float32)
+    for pts, w in paths:
+        for x, y, t in pts:
+            r = w * (1 - t) ** 0.75 + 0.35
+            x0, x1 = max(int((x - r) * K), 0), min(int((x + r) * K) + 2, p.w)
+            y0, y1 = max(int((y - r) * K), 0), min(int((y + r) * K) + 2, p.h)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            d2 = ((p.X[y0:y1, x0:x1] - x) ** 2 + (p.Y[y0:y1, x0:x1] - y) ** 2) / (r * r)
+            hh = np.sqrt(np.clip(1 - d2, 0, 1)) * (0.55 + 0.45 * r / (w + 0.35))
+            sub, st = h[y0:y1, x0:x1], tt[y0:y1, x0:x1]
+            win = hh > sub
+            sub[win] = hh[win]
+            st[win] = t
+    return h, tt
+
+
+def shade_tendrils(p, rgb, a, h, tt, fade):
+    """Tentáculo por cima: sombra, corpo quase preto com gomos, reflexo vinho e brilho molhado."""
+    m = smooth(0.0, 0.12, h) * fade
+    lx, ly = p.light
+    rgb, a = over(rgb, a, VOID, 0.55 * blur(shift(m, -lx * 1.3, -ly * 1.3), 0.6) * (1 - m))
+    s = lit(blur(h, 0.15), p.light, 3.5)
+    rings = 0.8 + 0.2 * np.sin(tt * p.rng.uniform(70, 110)) ** 2
+    c = ramp(np.clip(0.3 + 0.7 * s, 0, 1) * smooth(0.0, 0.6, h), TENT_D, TENT) * rings[..., None]
+    c = c * (0.85 + 0.3 * p.noise(1.2))[..., None]
+    c = mix(c, TENT_L, smooth(0.2, 0.6, s) * smooth(0.4, 0.85, h) * rings)
+    return over(rgb, a, c, m)
+
+
+def floor_tentacle(p):
+    """Massa escura com um buraco no chão; dele saem 3 a 5 tentáculos que se arrastam e enrolam."""
+    rng = p.rng
+    cx, cy = rng.uniform(22, 50), rng.uniform(22, 50)
+    rgb = np.zeros(p.X.shape + (3,), np.float32)
+    a = np.zeros(p.X.shape, np.float32)
+    d = np.hypot(*(np.array(p.warp(4, 3)) - np.array([cx, cy])[:, None, None]))
+    r0 = rng.uniform(4.5, 7.0)
+    stain = smooth(r0 * 2.6, r0 * 0.8, d) * (0.6 + 0.4 * p.noise(2.5))
+    rgb, a = over(rgb, a, SLIME, 0.45 * stain)
+    rgb, a = over(rgb, a, VOID, 0.92 * smooth(r0, r0 * 0.5, d))
+    paths = []
+    base = rng.uniform(0, 2 * np.pi)
+    n = int(rng.integers(3, 6))
+    for k in range(n):
+        ang = base + 2 * np.pi * k / n + rng.normal(0, 0.35)
+        sx, sy = cx + 0.7 * r0 * np.cos(ang), cy + 0.7 * r0 * np.sin(ang)
+        paths.append((tendril_path(rng, sx, sy, ang, rng.uniform(20, 40), rng.uniform(0.4, 1.1), 0.02),
+                      rng.uniform(3.0, 4.6)))
+    h, tt = tendrils(p, paths)
+    return shade_tendrils(p, rgb, a, h, tt, smooth(0, 3, p.edge_px()))
+
+
+def wall_tentacle(p, count):
+    """count tentáculos subindo do rodapé, com ramos finos e mancha úmida em volta."""
+    rng = p.rng
+    paths, roots = [], []
+    for _ in range(count):
+        x0 = rng.uniform(10, p.pw - 10)
+        roots.append(x0)
+        main = tendril_path(rng, x0, p.ph - 1, -np.pi / 2 + rng.normal(0, 0.15),
+                            rng.uniform(0.45, 0.85) * p.ph, rng.uniform(0.3, 0.9), 0.006)
+        paths.append((main, rng.uniform(3.6, 5.5)))
+        for _ in range(int(rng.integers(1, 3))):
+            x, y, t = main[int(rng.uniform(0.15, 0.6) * len(main))]
+            ang = -np.pi / 2 + rng.choice((-1, 1)) * rng.uniform(0.6, 1.2)
+            paths.append((tendril_path(rng, x, y, ang, rng.uniform(12, 28), 0.8, 0.02), rng.uniform(1.0, 1.8)))
+    h, tt = tendrils(p, paths)
+    near = np.clip(blur((h > 0).astype(np.float32), 3.0) * 3, 0, 1)
+    wet = near * (0.5 + 0.5 * p.noise(3, 10))
+    rgb = np.zeros(p.X.shape + (3,), np.float32) + col(SLIME)
+    rgb, a = over(rgb, np.zeros(p.X.shape, np.float32), SLIME, 0.35 * wet)
+    foot = np.zeros(p.X.shape, np.float32)
+    for x0 in roots:
+        foot = np.maximum(foot, np.exp(-((p.X - x0) / 7) ** 2 - ((p.Y - p.ph) / 6) ** 2))
+    rgb, a = over(rgb, a, VOID, 0.8 * foot * (0.6 + 0.4 * p.noise(1.5)))
+    return shade_tendrils(p, rgb, a, h, tt, smooth(0, 3, p.edge_px(sides="x")))
+
+
 # ---------------------------------------------------------------- variações
 
 WALL_SUB = {"Tinta": ("reboco", "metal", "reboco", "misto", "reboco"),
@@ -712,6 +901,9 @@ WALL_SUB = {"Tinta": ("reboco", "metal", "reboco", "misto", "reboco"),
 GRADE = (("quadrado", False), ("losango", False), ("barra", True), ("losango", True), ("quadrado", True))
 CHAPA = ((False, 1), (True, 1), (False, 2), (True, 2), (False, 1))
 RUST_WALL = ((False, False), (True, False), (False, True), (True, True), (False, False))
+GLOW = (1.0, 0.8, 0.9, 0.65, 0.85)
+SOOT_TALL = (True, False, True, False, False)
+TENT_WALL = (3, 2, 4, 3, 2)
 
 
 def file_name(kind, side, n):
@@ -772,10 +964,20 @@ def render(kind, side, n):
             rgb, a = floor_chapa(p, *CHAPA[i])
         elif kind == "Ferrugem":
             rgb, a = floor_rust(p)
+        elif kind == "Cinza":
+            rgb, a = floor_ash(p)
+        elif kind == "Brasa":
+            rgb, a = floor_ember(p, GLOW[i])
+        elif kind == "Tentaculo":
+            rgb, a = floor_tentacle(p)
         else:
             rgb, a = floor_paint(p, PAINTS[i % len(PAINTS)])
     elif kind == "Ferrugem":
         rgb, a = wall_rust(p, *RUST_WALL[i])
+    elif kind == "Fuligem":
+        rgb, a = wall_soot(p, SOOT_TALL[(i + (side == "N") * 2) % len(SOOT_TALL)])
+    elif kind == "Tentaculo":
+        rgb, a = wall_tentacle(p, TENT_WALL[(i + (side == "N") * 2) % len(TENT_WALL)])
     else:
         subs = WALL_SUB[kind]
         rgb, a = wall_peel(p, kind == "Descasca", subs[(i + (side == "N") * 2) % len(subs)])

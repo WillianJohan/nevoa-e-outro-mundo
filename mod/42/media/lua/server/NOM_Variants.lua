@@ -29,7 +29,7 @@ local function isKind(z, kind)
     if z:isDead() then return false end
     if z:getModData().NOM_eco or z:getOutfitName() == ECO_OUTFIT then return false end
     local cfg = NOM_VariantRules.config(NOM_Config.get)
-    return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg, NOM_World.red) == kind
+    return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg, NOM_World.red, NOM_World.black) == kind
 end
 
 -- Som: no dedicado sendPlaySound manda aos clientes perto (FishingNet.lua:86;
@@ -121,6 +121,7 @@ end
 Events.OnWorldSound.Add(function(x, y, zz, radius, volume, source)
     if NOM_Night.calling or not NOM_World.fog or radius < CR.LOUD_RADIUS then return end
     if source == nil or not instanceof(source, "IsoPlayer") or not NOM_Config.get("CarpideiraEnabled") then return end
+    if NOM_World.black then return end -- na preta todo zumbi é Tição: Carpideira nenhuma
     local cfg, period, red = NOM_VariantRules.config(NOM_Config.get), NOM_Fog.period(), NOM_World.red
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do

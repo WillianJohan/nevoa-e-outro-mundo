@@ -26,6 +26,13 @@ uniform int uTorchCount;
 uniform vec4 uTorchPos[4];     // x, y (relativos a uOrigin), z (andares), alcance (tiles)
 uniform vec4 uTorchDir[4];     // direção unitária (em tiles), cos do meio-ângulo do cone (-1 = luz em volta)
 uniform vec4 uTorchColor[4];   // r, g, b, força
+// Clareiras dos tiros e explosões (Blasts.java): a névoa inteira abre no raio e fecha em ~4 s.
+uniform int uClearCount;
+uniform vec4 uClears[8];       // x, y (relativos a uOrigin), raio (tiles), força (0..1)
+// Rosto censurado do Sem-rosto (Censor.java, sprint 0044).
+uniform sampler2D uScene;      // cor da cena (cópia do FBO do jogador); só vale com uCensorCount > 0
+uniform int uCensorCount;
+uniform vec4 uCensor[4];       // x, y (relativos a uOrigin), z do meio da cabeça (andares), alfa do zumbi pro jogador
 
 const float NOM_FLOW_VMAX = 4.0;
 const float NOM_FLOW_DMAX = 1.5;      // a densidade acumula até 1,5 contra o obstáculo (FlowGrid.D_MAX)
@@ -118,6 +125,17 @@ float nomFlowTree(vec2 xy) {
     return mix(mix(t00, t10, f.x), mix(t01, t11, f.x), f.y);
 }
 
+// Quanto da névoa sobra em xy depois das clareiras dos tiros (1 = nada aberto). Miolo limpo até
+// metade do raio, borda macia até o raio.
+float nomClearing(vec2 xy) {
+    float keep = 1.0;
+    for (int i = 0; i < uClearCount; i++) {
+        vec4 c = uClears[i];
+        keep *= 1.0 - c.w * (1.0 - smoothstep(c.z * 0.5, c.z, length(xy - c.xy)));
+    }
+    return keep;
+}
+
 // Quanto de carro há em volta de xy (0..1, interpolado como nomFlowTree).
 float nomFlowLow(vec2 xy) {
     vec2 g = xy - 0.5;
@@ -128,4 +146,20 @@ float nomFlowLow(vec2 xy) {
     float t01 = (nomFlowFlags(b + vec2(0, 1)) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
     float t11 = (nomFlowFlags(b + vec2(1, 1)) & NOM_FLOW_LOW) != 0 ? 1.0 : 0.0;
     return mix(mix(t00, t10, f.x), mix(t01, t11, f.x), f.y);
+}
+
+// Mundo (relativo) → tela iso: o inverso do nomIsoScreen sem a profundidade (IsoUtils.XToScreen/YToScreen).
+vec2 nomWorldToIso(vec3 p) {
+    float T = uCam.w;
+    return vec2(32.0 * T * (p.x - p.y), 16.0 * T * (p.x + p.y) - 96.0 * T * p.z);
+}
+
+// Tela iso → gl_FragCoord deste jogador (pra amostrar uScene/uDepth noutro ponto).
+vec2 nomIsoToFrag(vec2 iso) {
+    return vec2((iso.x - uCam.x) / uCam.z, uViewport.w - (iso.y - uCam.y) / uCam.z) + uViewport.xy;
+}
+
+// Profundidade que o jogo daria a um ponto do mundo (a conta do nomWorldPos ao contrário): menor = mais perto.
+float nomDepthOf(vec3 p) {
+    return uDepthRef.x - uDepthRef.w * ((p.x + p.y) - uDepthRef.y) - 2.0 * uDepthRef.w * (p.z - uDepthRef.z);
 }

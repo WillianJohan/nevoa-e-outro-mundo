@@ -103,6 +103,10 @@ function W.new(opts)
             isCouldSee = function(_, pn) return couldSee(pn, x, y, z) end,
             isOutside = function() return G.interior[k] == nil and not G.roofed[k] end,
             getBuilding = function() return G.interior[k] end,
+            -- luz fixa (sprint 0039): rede (hasGridPower), gerador (haveElectricity) e cômodo
+            hasGridPower = function() return G.gridPower == true end,
+            haveElectricity = function() return G.generator[k] == true end,
+            getRoom = function() return G.rooms[k] end,
             getFloor = function() return G.floorOf and G.floorOf(x, y, z) or nil end,
             getWall = function(_, north) return G.wallOf and G.wallOf(x, y, z, north) or nil end,
             isCanSee = function(_, pn)
@@ -230,7 +234,33 @@ function W.new(opts)
         function p:getBuilding() return G.interior[key(math.floor(self.x), math.floor(self.y), math.floor(self.z))] end
         function p:DistTo(x, y) return math.sqrt((self.x - x) ^ 2 + (self.y - y) ^ 2) end
         function p:getEmitter() return emitter end
-        function p:getActiveLightItem() if self.light then return { lit = true } end return nil end
+        -- Luz na mão (sprint 0038): o.light = true (HandTorch: cone, 15, 0,5) ou
+        -- { cone, distance, dot }. InventoryItem.isTorchCone/getLightDistance/getTorchDot (javap);
+        -- getActiveLightItem só devolve item aceso. setActivated é local (sem sync).
+        if o.light then
+            local l = type(o.light) == "table" and o.light or {}
+            local inv = {}
+            p.inventory = inv
+            local item = { lit = true, on = true, cone = l.cone ~= false, distance = l.distance or 15, dot = l.dot or 0.5 }
+            function item:isTorchCone() return self.cone end
+            function item:getLightDistance() return self.distance end
+            function item:getTorchDot() return self.dot end
+            function item:isActivated() return self.on end
+            function item:setActivated(b) self.on = b end
+            function item:getContainer() return inv end
+            p.item = item
+        end
+        function p:getInventory() return self.inventory end
+        function p:getActiveLightItem()
+            if self.item and self.item.on then return self.item end
+            return nil
+        end
+        -- IsoGameCharacter.getForwardDirectionX/Y()F (javap): a direção unitária pra onde olha
+        function p:getForwardDirectionX() return math.cos(self.face) end
+        function p:getForwardDirectionY() return math.sin(self.face) end
+        -- IsoGameCharacter.getVehicle(); BaseVehicle.getHeadlightsOn()Z (server/Vehicles/Vehicles.lua:565)
+        p.vehicle = o.vehicle
+        function p:getVehicle() return self.vehicle end
         function p:playSoundLocal(name)
             local id = #G.sounds + 1
             G.sounds[id] = { name = name, volume = 1, playing = true }
@@ -406,7 +436,47 @@ function W.new(opts)
         return {
             getGridSquare = function(_, x, y, z) return G.square(x, y, z) end,
             getZombieList = function() return jlist(G.zombies) end,
+            getLamppostPositions = function() G.lampListCalls = G.lampListCalls + 1 return jlist(G.lamps) end,
         }
+    end
+    -- Luz fixa (sprint 0039): IsoLightSource da lista de postes (getX/Y/Z, getRadius, isActive,
+    -- isHydroPowered; javap) e cômodo com interruptor (IsoRoom.getLightSwitches, IsoLightSwitch
+    -- isActivated/hasLightBulb/getUseBattery/getHasBattery/getPower/getSquare). G.lampCalls conta.
+    G.lamps, G.rooms, G.generator, G.lampCalls, G.lampListCalls = {}, {}, {}, 0, 0
+    function G.lamp(o)
+        local l = { x = o.x, y = o.y, z = o.z or 0, radius = o.radius or 8, on = o.on ~= false, hydro = o.hydro == true }
+        local function c(f) return function() G.lampCalls = G.lampCalls + 1 return f() end end
+        l.getX, l.getY, l.getZ = c(function() return l.x end), c(function() return l.y end), c(function() return l.z end)
+        l.getRadius = c(function() return l.radius end)
+        l.isActive = c(function() return l.on end)
+        l.isHydroPowered = c(function() return l.hydro end)
+        -- Poste que pisca (sprint 0045, §34): luz de dentro de prédio tem getLocalToBuilding() e o
+        -- update() do jogo reescreve a cor dela; a de fora guarda o setR/G/B.
+        l.building = o.building
+        l.r, l.g, l.b = 1, 0.9, 0.7
+        l.getLocalToBuilding = function() return l.building end
+        l.getR, l.getG, l.getB = function() return l.r end, function() return l.g end, function() return l.b end
+        l.setR = function(_, v) l.r = v end
+        l.setG = function(_, v) l.g = v end
+        l.setB = function(_, v) l.b = v end
+        G.lamps[#G.lamps + 1] = l
+        return l
+    end
+    -- Cômodo retangular x0..x1, y0..y1 no andar z, com um interruptor.
+    function G.room(o)
+        local sw = { on = o.on ~= false, bulb = o.bulb ~= false, battery = o.battery == true, charge = o.charge or 0 }
+        sw.isActivated = function() return sw.on end
+        sw.hasLightBulb = function() return sw.bulb end
+        sw.getUseBattery = function() return sw.battery end
+        sw.getHasBattery = function() return sw.charge > 0 end
+        sw.getPower = function() return sw.charge end
+        sw.getSquare = function() return G.square(o.x0, o.y0, o.z or 0) end
+        local room = { switch = sw }
+        room.getLightSwitches = function() G.roomCalls = (G.roomCalls or 0) + 1 return jlist({ sw }) end
+        for x = o.x0, o.x1 do
+            for y = o.y0, o.y1 do G.rooms[key(x, y, o.z or 0)] = room end
+        end
+        return room
     end
     addZombiesInOutfit = function(x, y, z, n, outfit, female)
         local zz = G.zombie({ x = x, y = y, z = z, id = G.nextID, outfit = outfit, onlineID = G.nextID })
@@ -437,8 +507,17 @@ function W.new(opts)
         return { getTimeOfDay = function() return G.world.tod end,
             getWorldAgeHours = function() return G.world.hours or G.world.tod end }
     end
+    -- ThunderStorm.triggerThunderEvent(x, y, strike, lightning, rumble) (sprint 0045, §34): no servidor
+    -- o jogo transmite sozinho; G.thunders guarda as chamadas.
+    G.thunders = {}
+    local thunder = {
+        triggerThunderEvent = function(_, x, y, strike, lightning, rumble)
+            G.thunders[#G.thunders + 1] = { x = x, y = y, strike = strike, lightning = lightning, rumble = rumble }
+        end,
+    }
     getClimateManager = function()
-        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
+        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end,
+            getThunderStorm = function() return thunder end }
     end
     Events = setmetatable({}, {
         __index = function(t, name)

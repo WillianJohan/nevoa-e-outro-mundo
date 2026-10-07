@@ -17,6 +17,8 @@ import zombie.characters.IsoZombie;
 import zombie.core.Color;
 import zombie.core.Core;
 import zombie.core.SpriteRenderer;
+import zombie.core.skinnedmodel.visual.ItemVisual;
+import zombie.core.skinnedmodel.visual.ItemVisuals;
 import zombie.core.textures.TextureDraw;
 import zombie.core.textures.TextureFBO;
 import zombie.gameStates.IngameState;
@@ -38,15 +40,17 @@ import zombie.vehicles.VehiclePart;
  *
  * Main thread (Core.EndFrame(int), depois do IsoWorld.render): tira um retrato do
  * quadro (câmera iso, âncora de profundidade, personagens perto, névoa do clima,
- * params do Lua) e enfileira um GenericDrawer. Render thread (o FBO fora da tela do
- * jogador ainda está preso): copia a profundidade do FBO pra uma textura nossa e roda
- * cada passe registrado em PASSES, por cima da cena, antes do screen.frag e da UI.
+ * cabeças do Sem-rosto, params do Lua) e enfileira um GenericDrawer. Render thread (o
+ * FBO fora da tela do jogador ainda está preso): copia a profundidade do FBO pra uma
+ * textura nossa (e a cor, só com rosto censurado na tela) e roda cada passe registrado em
+ * PASSES, na ordem, por cima da cena, antes do screen.frag e da UI.
  *
  * Efeito novo = um arquivo media/shaders/NOM_X.frag (que usa o cabeçalho
  * NOM_RenderContext.glsl) + o nome em PASSES.
  */
 public final class RenderContext {
-    static final String[] PASSES = { "NOM_VolFog" };
+    // o rosto censurado vem antes da névoa: a névoa cobre o quadrado (sprint 0044)
+    static final String[] PASSES = { "NOM_Censura", "NOM_VolFog" };
     static final int MAX_CHARS = 8;
     static final float CHAR_RANGE = 20f;
     static final int MAX_TORCHES = 4;
@@ -64,6 +68,8 @@ public final class RenderContext {
     static final int PARAM_FLOW_RES = 9;        // células por tile da névoa fluida, 1 a 3 (Opções > Mods, pelo Lua)
     static final int PARAM_VACUUM = 10;         // 1 vácuo atrás dos prédios (o Johan escolheu no A/B); 0 a esteira enche
     static final int PARAM_WIND_SOURCE = 11;    // 1 liga um foco de vento aleatório perto do jogador (teste, sprint 0033); padrão 0
+    static final int PARAM_BLACK = 12;          // 1 na névoa preta: a luz empurra a névoa (sprint 0039, client/NOM_FogQualitySync.lua)
+    static final int PARAM_CENSOR = 13;         // rosto censurado do Sem-rosto: 0 desliga, 1 tamanho normal, 1,5 maior (sprint 0044)
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_FLOW_RES] = 2f;
@@ -71,6 +77,7 @@ public final class RenderContext {
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
         luaParams[PARAM_HAZE] = 1f;
+        luaParams[PARAM_CENSOR] = 1f;
     }
 
     // ---------- Lua ----------
@@ -85,6 +92,20 @@ public final class RenderContext {
 
     @LuaMethod(name = "NOMRender_isActive", global = true)
     public static boolean isActive() { return true; }
+
+    /**
+     * Sonar do Estalador (sprint 0037, client/NOM_SonarFx.lua): anel em (x, y) no andar z que empurra
+     * a névoa fluida. true: o mod3 pegou; false: o Lua desenha o anel na tela. Nunca derruba o jogo.
+     */
+    @LuaMethod(name = "NOMRender_sonar", global = true)
+    public static boolean sonar(double x, double y, double z) {
+        try {
+            return Flow.addSonar((float) x, (float) y, (int) Math.floor(z));
+        } catch (Throwable t) {
+            log("sonar: erro, o anel vai pra tela: " + t);
+            return false;
+        }
+    }
 
     /**
      * A névoa vanilla para antes da borda de baixo da tela (maxYOffset -5) e com zoom afastado vira
@@ -124,6 +145,10 @@ public final class RenderContext {
         final float[] torchPos = new float[MAX_TORCHES * 4];   // x, y (relativos), z, alcance
         final float[] torchDir = new float[MAX_TORCHES * 4];   // dx, dy, dz (unitário, tiles), cos do cone
         final float[] torchColor = new float[MAX_TORCHES * 4]; // r, g, b, força
+        int clearCount;
+        final float[] clears = new float[Blasts.MAX_CLEARS * 4]; // x, y (relativos), raio, força
+        int censorCount;
+        final float[] censors = new float[Censor.MAX * 4];   // x, y (relativos), z da cabeça, alfa pro jogador
 
         @Override public void render() { RenderContext.renderFrame(this); }
     }
@@ -166,8 +191,13 @@ public final class RenderContext {
 
             collectChars(f, cell, cx, cy);
             collectTorches(f, cell, cx, cy);
-            if (playerIndex == 0) Flow.update(cell, fs);
+            if (playerIndex == 0) {
+                Flow.setTorches(f.torchPos, f.torchDir, f.torchCount, f.originX, f.originY);
+                Flow.update(cell, fs);
+            }
+            f.clearCount = Flow.fillClears(f.clears, f.originX, f.originY);
             System.arraycopy(luaParams, 0, f.params, 0, 16);
+            if (f.params[PARAM_CENSOR] > 0f) collectCensors(f, cell, cx, cy, playerIndex);
             SpriteRenderer.instance.drawGeneric(f);
         } catch (Throwable t) {
             fail("onWorldEnd", t);
@@ -199,6 +229,39 @@ public final class RenderContext {
         f.chars[slot * 4 + 1] = ch.getY() - f.originY;
         f.chars[slot * 4 + 2] = ch.getZ();
         f.chars[slot * 4 + 3] = 1.2f;
+    }
+
+    private static final Censor censor = new Censor();
+    private static boolean censorFailed;
+
+    /**
+     * Cabeças do Sem-rosto pro quadrado censurado: o zumbi com a peça do visual (a lista de ItemVisual que o
+     * client/NOM_VariantLook.lua preenche; IsoZombie.getItemVisuals, ItemVisual.getItemType, bytecode em
+     * pz-api-notes §33) e o alfa dele pra este jogador (IsoObject.getAlpha(int): 0 fora da vista).
+     * Erro aqui só apaga o quadrado; a névoa segue.
+     */
+    private static void collectCensors(Frame f, IsoCell cell, float cx, float cy, int playerIndex) {
+        try {
+            censor.begin();
+            ArrayList<IsoZombie> zs = cell.getZombieList();
+            for (int i = 0; i < zs.size(); i++) {
+                IsoZombie z = zs.get(i);
+                float dx = z.getX() - cx, dy = z.getY() - cy, d2 = dx * dx + dy * dy;
+                if (d2 > Censor.RANGE * Censor.RANGE) continue;
+                ItemVisuals ivs = z.getItemVisuals();
+                boolean semRosto = false;
+                for (int k = 0; ivs != null && k < ivs.size() && !semRosto; k++) {
+                    ItemVisual iv = ivs.get(k);
+                    semRosto = iv != null && Censor.isSemRostoItem(iv.getItemType());
+                }
+                if (semRosto) censor.offer(z.getX(), z.getY(), z.getZ(), z.getAlpha(playerIndex), d2);
+            }
+            f.censorCount = censor.fill(f.censors, f.originX, f.originY);
+        } catch (Throwable t) {
+            f.censorCount = 0;
+            if (!censorFailed) log("rosto censurado: erro, sem quadrado neste quadro: " + t);
+            censorFailed = true;
+        }
     }
 
     private static final ArrayList<InventoryItem> lightItems = new ArrayList<>();
@@ -270,6 +333,8 @@ public final class RenderContext {
 
     private static boolean disabled;
     private static int vao, depthFbo, depthTex, depthTexW, depthTexH;
+    private static int sceneFbo, sceneTex, sceneTexW, sceneTexH;
+    static final int SCENE_UNIT = 5;
     private static int[] programs;
 
     static void renderFrame(Frame f) {
@@ -290,6 +355,8 @@ public final class RenderContext {
         int prevTexFlow = glGetInteger(GL_TEXTURE_BINDING_2D);
         glActiveTexture(GL_TEXTURE7);
         int prevTex7 = glGetInteger(GL_TEXTURE_BINDING_2D);
+        glActiveTexture(GL_TEXTURE0 + SCENE_UNIT);
+        int prevTexScene = glGetInteger(GL_TEXTURE_BINDING_2D);
         int[] vp = new int[4];
         glGetIntegerv(GL_VIEWPORT, vp);
         try {
@@ -301,6 +368,7 @@ public final class RenderContext {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, depthFbo);
             glBlitFramebuffer(vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3],
                               vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            if (f.censorCount > 0) copyScene(f, vp);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDraw);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, prevRead);
 
@@ -313,12 +381,15 @@ public final class RenderContext {
             // saída pré-multiplicada; o alfa de destino fica como está
             glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
             Flow.prepare();
+            glActiveTexture(GL_TEXTURE0 + SCENE_UNIT);
+            glBindTexture(GL_TEXTURE_2D, f.censorCount > 0 ? sceneTex : 0);
             glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_2D, depthTex);
             glBindVertexArray(vao);
 
-            for (int prog : programs) {
-                if (prog == 0) continue;
+            for (int i = 0; i < programs.length; i++) {
+                int prog = programs[i];
+                if (prog == 0 || (f.censorCount == 0 && "NOM_Censura".equals(PASSES[i]))) continue;
                 glUseProgram(prog);
                 bindContext(prog, f, vp);
                 glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -331,6 +402,8 @@ public final class RenderContext {
             glBindTexture(GL_TEXTURE_2D, prevTexFlow);
             glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_2D, prevTex7);
+            glActiveTexture(GL_TEXTURE0 + SCENE_UNIT);
+            glBindTexture(GL_TEXTURE_2D, prevTexScene);
             glActiveTexture(prevActive);
             glUseProgram(prevProg);
             glBlendFuncSeparate(bSrcRgb, bDstRgb, bSrcA, bDstA);
@@ -362,6 +435,11 @@ public final class RenderContext {
         glUniform4fv(glGetUniformLocation(prog, "uTorchPos"), f.torchPos);
         glUniform4fv(glGetUniformLocation(prog, "uTorchDir"), f.torchDir);
         glUniform4fv(glGetUniformLocation(prog, "uTorchColor"), f.torchColor);
+        glUniform1i(glGetUniformLocation(prog, "uClearCount"), f.clearCount);
+        glUniform4fv(glGetUniformLocation(prog, "uClears"), f.clears);
+        glUniform1i(glGetUniformLocation(prog, "uScene"), SCENE_UNIT);
+        glUniform1i(glGetUniformLocation(prog, "uCensorCount"), f.censorCount);
+        glUniform4fv(glGetUniformLocation(prog, "uCensor"), f.censors);
         Flow.bindUniforms(prog, f.originX, f.originY);
     }
 
@@ -402,6 +480,47 @@ public final class RenderContext {
         depthTexW = w;
         depthTexH = h;
         log("depth target " + w + "x" + h);
+    }
+
+    private static boolean sceneFailed;
+
+    /**
+     * Cor da cena pro borrado do rosto censurado, só com quadrado na tela (o blit custa ~0,1 ms). Erro aqui
+     * desliga só o quadrado, de vez (o FBO pode ter ficado pela metade); a névoa segue.
+     */
+    private static void copyScene(Frame f, int[] vp) {
+        if (sceneFailed) { f.censorCount = 0; return; }
+        try {
+            ensureSceneTarget(f.depthW, f.depthH);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sceneFbo);
+            glBlitFramebuffer(vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3],
+                              vp[0], vp[1], vp[0] + vp[2], vp[1] + vp[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        } catch (Throwable t) {
+            f.censorCount = 0;
+            sceneFailed = true;
+            log("rosto censurado: cópia da cor falhou, quadrado desligado: " + t);
+        }
+    }
+
+    /** Textura RGBA8 do tamanho da de profundidade, pra cópia da cor da cena (rosto censurado). */
+    private static void ensureSceneTarget(int w, int h) {
+        if (sceneFbo != 0 && w == sceneTexW && h == sceneTexH) return;
+        if (sceneFbo != 0) { glDeleteFramebuffers(sceneFbo); glDeleteTextures(sceneTex); }
+        sceneTex = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, sceneTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, (java.nio.ByteBuffer) null);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        sceneFbo = glGenFramebuffers();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sceneFbo);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneTex, 0);
+        int st = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+        if (st != GL_FRAMEBUFFER_COMPLETE) throw new IllegalStateException("scene FBO incompleto: 0x" + Integer.toHexString(st));
+        sceneTexW = w;
+        sceneTexH = h;
+        log("scene target " + w + "x" + h);
     }
 
     private static int link(String vs, String fs) {

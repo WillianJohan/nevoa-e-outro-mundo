@@ -1,11 +1,57 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) e a 0046 (painel de debug novo) estão na `staging` com push e sync: esperam o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+
+## Lançamento v1.0.0 (2026-10-07)
+
+O Johan testou a 0045 e a 0046 no jogo ("tá ótimo") e decidiu: a `staging` vira a **v1.0.0**, com os
+três mods em `modversion=1.0.0` (a Volumétrica subiu de 0.1.0). Merge `--no-ff` da `staging` na
+`main` e push feitos. **Falta:** o envio pelo jogo e a tag `v1.0.0` no commit enviado
+([publicar.md](publicar.md) §2–5). O envio leva os IDs novos (`NoiseOfMist*`) pro item
+3814379207.
+
+## Em teste no jogo: sprint 0046 (painel de debug novo)
+
+Pedido do Johan em 2026-10-07: o painel era pequeno e não dava pra entender o que acontecia; queria
+redimensionar, descritivo, intuitivo e bonito. Branch `sprint/0046-painel-debug`, com testes verdes,
+review feito e corrigido. [README da 0046](sprints/sprint-0046-painel-debug/README.md), com prévias.
+
+- Janela grande e redimensionável (mínimo pelas fontes), leiaute salvo com nome novo.
+- Cabeçalho com o estado, seções na lateral, cartões com descrição e botões, e as respostas do debug no rodapé (`shared/NOM_DebugLog.lua`).
+- Todo `NOM.*` tem botão, agora também o `NOM.help()`.
+
+Merge `--no-ff` na `staging` (5fe4937), push e `dev-sync.sh` feitos em 2026-10-07, aprovados pelo Johan.
+**Roteiro no jogo:** o do README e o UNKNOWN 28 do pz-api-notes (alças, recorte, roda e clique no jogo).
+
+## Em teste no jogo: sprint 0045 (luz que pisca e tempestade)
+
+Pedido do Johan depois do teste da pilha: a lanterna pisca de verdade, postes piscam, tempestade com
+relâmpago na preta e na vermelha (a branca fica como está). Escolhas dele: alguns postes perto piscam
+na preta e na vermelha; o clarão congela o Tição; chuva em 30% das névoas.
+[README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md).
+
+Merge `--no-ff` na `staging` (9d86bb3), push e `dev-sync.sh` feitos em 2026-10-07, aprovados pelo Johan.
+O mod3 não mudou. Reiniciar o jogo antes de testar.
+
+**Roteiro no jogo:** o do [README da 0045](sprints/sprint-0045-luz-e-tempestade/README.md#roteiro-de-teste-no-jogo)
+e os UNKNOWNs 25, 26 e 27 do [pz-api-notes](architecture/pz-api-notes.md#testes-in-game-prioritários-unknowns)
+(o clarão aparece no escuro da preta? a cor 0 apaga o poste? a chuva molha?).
+
+**Ficou do teste da pilha:** na segunda névoa preta alguns zumbis ficaram parados e outros caçaram.
+Não é bug: na primeira o Johan estava com `NOM.invisible()` ligado (log); o Tição caça a cada 20 min
+e só a luz congela.
+
+**Decisão pendente do Johan:** o teste de IA 3D no Tição ([ADR-020](architecture/adr-020-modelos-3d-por-ia.md),
+proposta). O Hunyuan3D-2 não pode ir pro Workshop; o Stable Fast 3D pode, mas o download pede a conta
+dele no Hugging Face. Nada de IA entrou no repo.
+
+**Decisões da pilha 0039–0044** (feitas com o Johan fora, todas fáceis de voltar; o "como voltar" está no
+README de cada uma): ver o [índice das sprints](sprints/README.md) e o README de cada sprint.
 
 ## Estado da `main`
 
 - Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)**, com o hotfix do chão, e a **0036 (Equilíbrio: visão de ~4 tiles e perambular)** estão na `main` (`em teste`), sincronizadas pro jogo. O roadmap está em [sprints/README.md](sprints/README.md).
-- **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
+- **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica), ainda com os IDs antigos `NevoaEOutroMundo*`; o próximo envio leva os IDs e o nome da 0037b. Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
 - 1069 testes Lua, 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
@@ -60,6 +106,8 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
 | `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
+| `NOMRender_setParam(12, 1)` / `(12, 0)` | névoa preta: a luz (lanterna, farol, lampião, poste) empurra a névoa. O Lua manda sozinho na borda da preta (sprint 0039) |
+| `NOMRender_setParam(13, s)` | rosto censurado do Sem-rosto: 0 desliga, 1 tamanho normal (padrão), 1,5 maior (sprint 0044) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -74,6 +122,92 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 4. **O advice é inlinado dentro da classe do jogo.** Todo método do mod3 chamado do `@Patch` precisa ser `public`, senão dá `IllegalAccessError` e o jogo crasha. Há um teste pra isso em `tests/test_mod3_depth.py`.
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
+
+## Em teste: rosto censurado do Sem-rosto (sprint 0044, branch empilhada)
+
+Com o mod3, a cabeça do Sem-rosto ganha um quadrado de censura de TV: a cena atrás em mosaico,
+chiando e com linhas de varredura. O passe `NOM_Censura` roda antes da névoa (a névoa cobre o
+quadrado), some atrás de parede e com o zumbi fora da vista. Só há custo com Sem-rosto na tela
+(até 4 a 20 tiles). Desligar: `NOMRender_setParam(13, 0)`. **Falta ver no jogo** (item 24 da lista
+de UNKNOWNs, [pz-api-notes §33](architecture/pz-api-notes.md)).
+[README](sprints/sprint-0044-rosto-censurado/README.md).
+
+## Em teste: Tição com crosta 3D; teste de IA esperando decisão (sprint 0043, branch empilhada)
+
+O Tição troca o véu do Eco por uma crosta de carvão 3D por script (placas com rachaduras de brasa,
+dois olhos de brasa, lascas, fumaça subindo). **Decisão do Johan pendente:** a
+[ADR-020](architecture/adr-020-modelos-3d-por-ia.md) (proposta) diz que o Hunyuan3D-2 não pode ir
+pro Workshop (a licença exclui UE, Reino Unido e Coreia do Sul) e que o Stable Fast 3D pode, mas o
+download pede a conta dele no Hugging Face. O teste de IA não rodou; nada de IA entrou no repo.
+[README](sprints/sprint-0043-ticao-ia/README.md).
+
+## Em teste: facelift dos outros monstros (sprint 0042, branch empilhada)
+
+Mesmo caminho da 0041 pros outros três: boca 3D do Corredor (buraco escuro, lábio rasgado,
+dentes, rasgos até a orelha), casca lisa de chiado do Sem-rosto e cabelo de mechas da Carpideira
+(três brancas; a peça passou a `nohair`). Medidas da cabeça em
+[pz-api-notes §32.1](architecture/pz-api-notes.md). **Falta ver no jogo** se assentam (item 23 da
+lista de UNKNOWNs). Voltar uma peça: o comentário no topo do XML dela tem o valor antigo
+([README](sprints/sprint-0042-facelift-monstros/README.md)).
+
+## Em teste: facelift, spike (sprint 0041, branch empilhada)
+
+A venda do Estalador virou peça 3D nossa: faixa com volume, dois arames farpados com farpas e o nó
+atrás, um modelo por sexo. `scripts/gen_models.py` (Python puro, sem Blender) escreve o `.x` texto
+e a textura; `scripts/preview_models.py` mostra sem o jogo. O caminho (nome curto
+`static\clothes\NOM_…` → `media/models_x/…x` no mod) está provado por bytecode
+([pz-api-notes §32](architecture/pz-api-notes.md)). **Falta ver no jogo** se o `.x` carrega; se
+não, a peça some sem quebrar nada. Voltar pra venda pintada: três linhas por XML
+([README](sprints/sprint-0041-facelift-spike/README.md)).
+
+## Em teste: vermelha nova (sprint 0040, branch empilhada)
+
+Tentáculos pretos na parede e no chão da vermelha e cinza flutuando no ar. Decisões e roteiro em
+[sprint-0040-vermelha-nova/README.md](sprints/sprint-0040-vermelha-nova/README.md). Pra mudar
+rápido: `NOM_DressingRules` (`TENTACLE*`, faixas `WALL_KINDS.red`) e `NOM_FlakeRules` (`AIR_*`).
+**Sem merge:** o review automático bloqueou merge/push/sync com o Johan fora, então as sprints
+estão empilhadas (`sprint/0039-nevoa-preta-ii` ← `sprint/0040-vermelha-nova` ← …); a última da
+pilha contém todas.
+
+## Em teste: névoa preta II (sprint 0039, branch `sprint/0039-nevoa-preta-ii`, sem merge)
+
+Luz fixa congela o Tição (poste, abajur, fogo, cômodo aceso), Outro Mundo queimado (cinza, brasa,
+fuligem) e, no mod3, a luz empurra a névoa preta (`NOMRender_setParam(12, 1)`, mandado sozinho pelo
+`NOM_FogQualitySync`). Decisões tomadas na ausência do Johan e roteiro em
+[sprint-0039-nevoa-preta-ii/README.md](sprints/sprint-0039-nevoa-preta-ii/README.md). Pra mudar
+rápido: `NOM_LightRules.FIXED_*`, `NOM_DressingRules` (`BLACK_MULT`, `ASH*`, `EMBER`) e
+`LightWind.java` (`SPEED`, `BEAM_REACH`). Farol com direção pro Tição continua de fora.
+
+## Em teste: névoa preta I (sprint 0038, na `staging`)
+
+Noite fechada mesmo de dia, todo zumbi vira Tição, a luz congela e a lanterna pisca. Resumo, decisões
+tomadas na ausência do Johan e roteiro em [sprint-0038-nevoa-preta/README.md](sprints/sprint-0038-nevoa-preta/README.md).
+Pra mudar rápido: `NOM_TicaoRules` (velocidade, caça, visão), `NOM_LightRules` (raios, piscar).
+
+## NOM: Noise of Mist (mini-sprint 0037b)
+
+Mergeada na `staging` (`b7247df`), com push e sync. Plano em [sprints/sprint-0037b-noise-of-mist/plan.md](sprints/sprint-0037b-noise-of-mist/plan.md); mapa de IDs, saves antigos e roteiro em [sprints/sprint-0037b-noise-of-mist/README.md](sprints/sprint-0037b-noise-of-mist/README.md).
+
+- **IDs oficiais:** `NoiseOfMist`, `NoiseOfMist_Shader`, `NoiseOfMist_Volumetrica` (repo, `build-workshop.sh`, pasta `Workshop/NoiseOfMist/`; o item 3814379207 não muda). Os nomes de espaço no Lua (canal, `ModData`, opções) continuam `NevoaEOutroMundo`.
+- **Jar:** `NoiseOfMist_Volumetrica.jar`, recompilado e assinado (o nome não entra na assinatura ZBS).
+- **Arte de lançamento do Johan** ([ADR-019](architecture/adr-019-arte-de-lancamento.md)): fontes em `docs/art/`, finais pelo `scripts/gen_images.py`.
+- **`scripts/dev-sync.sh` instala o mod de staging:** `mods/NoiseOfMist_Staging`, `NoiseOfMist_Shader_Staging`, `NoiseOfMist_Volumetrica_Staging`, nome com `[STAGING]`, pôster vermelho, `incompatible=` com o oficial. Teste: `tests/test_dev_sync.sh`.
+
+**Aviso pro Johan, depois do merge e do sync:**
+- No jogo, ative **`[STAGING] NOM: Noise of Mist`** (e os opcionais `[STAGING]`), nunca junto do oficial.
+- O ZombieBuddy pode pedir pra aprovar o jar de novo (ID novo).
+- Saves antigos pedem `NevoaEOutroMundo`. As pastas `mods/NevoaEOutroMundo*` ficam (o sync só avisa): o save antigo abre com a cópia antiga. Pra passar um save pro staging: backup da pasta do save e, no `mods.txt` dela, trocar `NevoaEOutroMundo` → `NoiseOfMist_Staging` (e os `_Shader`/`_Volumetrica`) — passo a passo no [README da 0037b](sprints/sprint-0037b-noise-of-mist/README.md#saves-antigos). Quando não precisar mais, apague `mods/NevoaEOutroMundo*`.
+- No primeiro envio ao Workshop, a pasta de upload passa a ser `Workshop/NoiseOfMist/`; sem `id=` lá, o build usa o `docs/workshop/workshop-id.txt` (mesmo item).
+
+## Sonar do Estalador (sprint 0037)
+
+Mergeada na `staging`. Antes do merge, na branch `sprint/0037-sonar-estalador`, **sem merge nem push**; o code review final foi corrigido (seção "Code review final" do plano: ritmo de 5–30 s reais, casa protege, teto de anéis sem anúncio perdido, anel só pra quem está perto, frente do mod3 parando em parede); falta o merge e o teste do Johan no jogo. Plano em [sprints/sprint-0037-sonar-estalador/plan.md](sprints/sprint-0037-sonar-estalador/plan.md); decisões, custos e roteiro em [sprints/sprint-0037-sonar-estalador/README.md](sprints/sprint-0037-sonar-estalador/README.md).
+
+- **Sonar:** cada estalo solta um anel de 8 tiles em 1,5 s. Em pé ou andando, o Estalador acha o jogador mesmo cego e não volta a cegar por 10 s; agachado e parado, o anel passa (`shared/NOM_SonarRules.lua`).
+- **O servidor decide** (`server/NOM_SonarServer.lua`): o estalo saiu do `NOM_VariantAI`, onde cada cliente sorteava o seu. "Agachado" é o `isSneaking` (vem no pacote do jogador) e "andando" é lido pela posição a cada 250 ms. O dono do Estalador aplica (`NOM_VariantAI.sonarFound`).
+- **Visual:** com o mod3, a frente empurra a névoa fluida (`Sonar.java`, `FlowGrid.sonar`, `NOMRender_sonar`). Sem ele, um anel discreto no chão (`client/NOM_SonarFx.lua`, textura `NOM_SonarAnel.png`). **O jar do mod3 foi recompilado.**
+- **Debug:** `NOM.sonar()`, com o botão "Sonar do Estalador agora" no painel.
+- **Testes na branch:** 1120 Lua e 8 Java do sonar no núcleo do mod3, `./run-tests.sh` verde.
 
 ## Em teste: Equilíbrio (sprint 0036)
 
@@ -140,13 +274,14 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 1. **Testar a 0035 e a 0036 no jogo:** o Johan reinicia o jogo e segue os roteiros da [0035](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e da [0036](sprints/sprint-0036-equilibrio/README.md). Já confirmado no jogo em 2026-10-06: o congelamento da sirene depois da troca pra `isLocal` (97 de 97 parados), as paredes Silent Hill ("ficaram top"). O chão estranho (metal em bloco na calçada, ferrugem em grade na grama) foi corrigido no hotfix `7149d87`: falta o Johan conferir.
 2. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
-   - **0037** — sonar do Estalador;
+   - **0037** — sonar do Estalador (feito na branch com o review final corrigido, falta o merge);
    - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
    - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
    - **0040** — vermelha nova: tentáculos e cinza no ar;
    - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
+   - 0037 e 0038 estão na `staging`; **0039–0044 feitas na pilha de branches, esperando o Johan** (topo deste arquivo).
 
-**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o mod de desenvolvimento ganha ID `_Dev` e nome `[DEV]` (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
+**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o oficial vem do Workshop e o de staging é a cópia local do `dev-sync.sh`, com ID `_Staging`, nome `[STAGING]` e a preview vermelha de pôster (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
 
 ## Em teste: névoa com altura (sprint 0032)
 

@@ -6,15 +6,21 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_FogEventRules"
+require "NOM_StormRules"
 
 -- Em minutos de jogo: cobre pelo menos 2 pacotes de clima do MP (1 a cada 10).
 local TRANSITION_MINUTES = 20
 
 -- FLOAT_AMBIENT: client/DebugUIs/DebugMenu/Climate/PopupColorEdit.lua:64. Por que
 -- estes canais e não a "intensidade da luz global": NOM_Rules.LOOKS.
+-- daylight/night (sprint 0038): só a névoa preta escreve (NOM_Rules.blacken); os ids estão no
+-- bytecode (ClimateManager.FLOAT_DAYLIGHT_STRENGTH = 11, FLOAT_NIGHT_STRENGTH = 2) e são os do
+-- slider "Darkness" do admin (client/ISUI/AdminPanel/ISAdmPanelClimate.lua:235-244, 362-364).
 local FLOATS = {
     desaturation = ClimateManager.FLOAT_DESATURATION,
     ambient = ClimateManager.FLOAT_AMBIENT,
+    daylight = ClimateManager.FLOAT_DAYLIGHT_STRENGTH,
+    night = ClimateManager.FLOAT_NIGHT_STRENGTH,
 }
 
 -- COLOR_NEW_FOG: o ClimateManager não tem o campo estático (só COLOR_GLOBAL_LIGHT
@@ -26,7 +32,9 @@ local COLOR_NEW_FOG = 1
 -- depende de DarkEnabled: a névoa é o evento, o look é por cima (ADR-009).
 -- redRamp: névoa vermelha (sprint 0010, ADR-010); a cor da névoa é do evento (não
 -- depende de DarkEnabled), a luz vermelha é do look.
-local state = { nightRamp = 0, fogRamp = 0, eventRamp = 0, redRamp = 0 }
+-- blackRamp: névoa preta (sprint 0038), escuridão e cor da névoa, sem depender de DarkEnabled.
+-- rainRamp: chuva da tempestade da preta e da vermelha (sprint 0045), só no período sorteado.
+local state = { nightRamp = 0, fogRamp = 0, eventRamp = 0, redRamp = 0, blackRamp = 0, rainRamp = 0 }
 local applied = {} -- canal -> true enquanto a camada modded dele está ligada por nós
 local tintInfo = nil
 
@@ -94,7 +102,7 @@ local function rgbaOf(col)
 end
 
 local function paintFogColor(c)
-    local r = state.redRamp
+    local r = math.max(state.redRamp, state.blackRamp)
     if r <= 0 then
         if applied.fogColor == "vanilla" then
             c:setEnableModded(false)
@@ -108,7 +116,7 @@ local function paintFogColor(c)
         c:setEnableModded(true)
     end
     if r > 0 and c:isEnableOverride() then c:setEnableOverride(false) end
-    local red = NOM_Rules.RED_FOG_COLOR
+    local red = state.blackRamp >= state.redRamp and NOM_Rules.BLACK_FOG_COLOR or NOM_Rules.RED_FOG_COLOR
     local x, y = {}, {}
     for i = 1, 4 do
         -- r = 0 aqui é o minuto do vanilla: o interno volta ao do jogo
@@ -133,7 +141,7 @@ end
 
 local lastNight, lastFog, lastHour
 -- As rampas nascem em 0: save carregado de noite também loga a borda do 1.
-local lastEdge = { nightRamp = 0, fogRamp = 0, eventRamp = 0, redRamp = 0 }
+local lastEdge = { nightRamp = 0, fogRamp = 0, eventRamp = 0, redRamp = 0, blackRamp = 0, rainRamp = 0 }
 -- Devolve true quando é hora do bloco canal a canal (logChannels): borda da rampa,
 -- ou hora de jogo nova à noite.
 local function logDebug(w)
@@ -143,7 +151,7 @@ local function logDebug(w)
         lastNight, lastFog = w.night, w.fog
     end
     local edged = false
-    for _, k in ipairs({ "nightRamp", "fogRamp", "eventRamp", "redRamp" }) do
+    for _, k in ipairs({ "nightRamp", "fogRamp", "eventRamp", "redRamp", "blackRamp", "rainRamp" }) do
         local v = state[k]
         local edge = (v == 0 or v == 1) and v or nil
         if edge and edge ~= lastEdge[k] then
@@ -152,8 +160,9 @@ local function logDebug(w)
         end
     end
     if edged then
-        print(string.format("[NOM] nightRamp=%.2f fogRamp=%.2f nevoa=%.2f vermelha=%.2f", state.nightRamp, state.fogRamp,
-            NOM_FogEventRules.DENSITY * state.eventRamp, state.redRamp))
+        print(string.format("[NOM] nightRamp=%.2f fogRamp=%.2f nevoa=%.2f vermelha=%.2f preta=%.2f chuva=%.2f",
+            state.nightRamp, state.fogRamp, NOM_FogEventRules.DENSITY * state.eventRamp, state.redRamp, state.blackRamp,
+            state.rainRamp))
     end
     local hour = math.floor(w.tod)
     local hourly = w.night and lastHour ~= nil and hour ~= lastHour
@@ -171,7 +180,7 @@ end
 -- bater com o escrito. Se não bate, outra camada (admin, override de clima, outro
 -- mod) está por cima. luz = multiplicador da luz do céu por canal (NOM_Rules.skyMod).
 local function logChannels(clim, look)
-    for _, ch in ipairs({ "desaturation", "ambient" }) do
+    for _, ch in ipairs({ "desaturation", "ambient", "daylight", "night" }) do
         local f, l = clim:getClimateFloat(FLOATS[ch]), look[ch]
         local vanilla = f:getInternalValue()
         local written = l.weight > 0 and string.format("%.2f", NOM_Rules.blend(vanilla, l.value, l.weight)) or "-"
@@ -193,6 +202,25 @@ local function logChannels(clim, look)
         rgba(clim:getClimateColor(COLOR_NEW_FOG):getFinalValue():getExterior()), state.redRamp))
 end
 
+-- Chove nesta névoa? Só na preta e na vermelha abertas, no período sorteado
+-- (NOM_StormRules.rains) ou com a chuva forçada pelo debug. NOM_Fog, NOM_FogEvent e NOM_Storm
+-- carregam depois deste arquivo (ordem alfabética): lidos aqui, na hora.
+local function rainy(w)
+    if not (w.fog and (w.red or w.black)) then return false end
+    if NOM_Storm and NOM_Storm.rainForced then return true end
+    return NOM_Fog ~= nil and NOM_FogEvent ~= nil and NOM_StormRules.rains(NOM_Fog.period(), NOM_FogEvent.seed())
+end
+
+-- Chuva na camada modded de FLOAT_PRECIPITATION_INTENSITY (id 3, ISAdmPanelClimate.lua:236; o
+-- isRaining() do jogo lê o final dele, pz-api-notes §34). Só soma: chuva do jogo mais forte fica.
+local function paintRain(clim)
+    local f = clim:getClimateFloat(ClimateManager.FLOAT_PRECIPITATION_INTENSITY)
+    apply("rain", f, state.rainRamp, function()
+        local v = f:getInternalValue()
+        f:setModdedValue(math.max(v, NOM_Rules.blend(v, NOM_StormRules.RAIN_INTENSITY, state.rainRamp)))
+    end)
+end
+
 -- Roda logo depois de updateValues(): os valores internos são o vanilla limpo.
 local function onClimateTick(clim)
     local enabled = NOM_Config.get("DarkEnabled")
@@ -205,15 +233,20 @@ local function onClimateTick(clim)
     -- dia padrão) deixam ela pelo meio quando os bichos soltam, e a rampa segue sem degrau.
     local fog = w.fog or w.rising
     local red = (w.fog and w.red) or (w.rising and w.risingRed)
+    local black = (w.fog and w.black) or (w.rising and w.risingBlack)
     state.eventRamp = NOM_Rules.ramp(state.eventRamp, fog, TRANSITION_MINUTES)
     state.redRamp = NOM_Rules.ramp(state.redRamp, red, TRANSITION_MINUTES)
+    state.blackRamp = NOM_Rules.ramp(state.blackRamp, black, TRANSITION_MINUTES)
     state.nightRamp = NOM_Rules.ramp(state.nightRamp, enabled and w.night, TRANSITION_MINUTES)
     state.fogRamp = NOM_Rules.ramp(state.fogRamp, enabled and fog, TRANSITION_MINUTES)
+    state.rainRamp = NOM_Rules.ramp(state.rainRamp, rainy(w), TRANSITION_MINUTES)
     local dump = logDebug(w)
     ownFog(clim:getClimateFloat(ClimateManager.FLOAT_FOG_INTENSITY))
     paintFogColor(clim:getClimateColor(COLOR_NEW_FOG))
+    paintRain(clim)
 
     local look = NOM_Rules.mix(state.nightRamp, state.fogRamp, NOM_Config.get("DarkIntensity"), state.redRamp)
+    look = NOM_Rules.blacken(look, state.blackRamp)
     for ch, id in pairs(FLOATS) do
         local f = clim:getClimateFloat(id)
         local l = look[ch]

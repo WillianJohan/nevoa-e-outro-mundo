@@ -30,23 +30,25 @@ local O = function() return NOM_FogOverlays end
 local D = function() return NOM_DressingRules end
 
 local function density()
-    return D().density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red)
+    return D().density(NOM_ScreenFxOptions.overlayDensity(), NOM_FogState.red, NOM_FogState.black)
 end
 
 -- o que a regra pede pro objeto (kind "F", "N", "W") do square, na ordem em que o mod anexa
 local function expect(G, x, y, z, kind)
     local sq = G.square(x, y, z)
     local outside = sq:isOutside()
-    local per, d, red = NOM_FogState.period or 0, density(), NOM_FogState.red
+    local per, d, red, black = NOM_FogState.period or 0, density(), NOM_FogState.red, NOM_FogState.black
     local out = {}
     if kind == "F" then
         local o = G.objs[x .. "," .. y .. "," .. z .. "F"]
-        local natural = D().natural(o and (rawget(o, "sprite") or nil) or G.floorSprite(x, y, z))
-        local f = D().floor(x, y, z, per, d, outside, red, natural)
+        local natural = not black and D().natural(o and (rawget(o, "sprite") or nil) or G.floorSprite(x, y, z))
+        local f = D().floor(x, y, z, per, d, outside, red, natural, black)
         for _, l in ipairs(f or {}) do out[#out + 1] = D().name(l) end
         if f and f.grime then out[#out + 1] = D().name(f.grime) end
     else
-        for _, l in ipairs(D().wall(x, y, z, per, d, kind == "N", outside, red) or {}) do out[#out + 1] = D().name(l) end
+        for _, l in ipairs(D().wall(x, y, z, per, d, kind == "N", outside, red, black) or {}) do
+            out[#out + 1] = D().name(l)
+        end
     end
     return table.concat(out, "|")
 end
@@ -247,6 +249,29 @@ return {
         assert(wallsDressed > 40, "paredes sem nada: " .. wallsDressed)
         local fl, wl = O().count()
         assert(fl > 300 and wl == wallsDressed, "count: " .. fl .. "/" .. wl)
+    end,
+
+    -- sprint 0039: na preta o Outro Mundo queima (cinza, brasa, fuligem; sem metal), exatamente o
+    -- que a regra pede; a preta acabando em branca refaz o desenho
+    overlays_black_burnt = function()
+        local G = setup({ density = 1 })
+        walls(G, 96, 96, 8)
+        for x = 102, 110 do for y = 102, 110 do G.interior[x .. "," .. y .. ",0"] = { name = "casa" } end end
+        NOM_FogState.set(true, 3, false, true)
+        G.seconds(5)
+        assert(laidOut(G, D().MIN_RADIUS) > 400, "pouco anexado na preta")
+        local has = {}
+        for _, o in pairs(G.objs) do
+            for _, n in ipairs(G.attachedNames(o, "mod")) do
+                local kind = n:match("NOM_OM_(%a+)_")
+                if kind then has[kind] = true end
+            end
+        end
+        assert(has.Cinza and has.Fuligem, "sem cinza ou fuligem na preta")
+        assert(not has.Grade and not has.Chapa and not has.Tinta, "metal da branca na preta")
+        NOM_FogState.set(true, 3)
+        G.seconds(5)
+        laidOut(G, D().MIN_RADIUS)
     end,
 
     -- sprint 0034, "casa destruída": a parede de dentro ganha as camadas empilhadas na ordem da
@@ -727,7 +752,8 @@ return {
                 maxInv = math.max(maxInv, G.invalidations - inv)
             end
             local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
-            assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
+            -- casa na vermelha: 2488 antes da 0040, 2584 com o tentáculo (o custo por camada é o mesmo)
+            assert(maxFill <= 2600, "enchendo: " .. maxFill .. " chamadas por atualização")
             assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
             -- ≤ 80 squares por lote: MAX_LAYERS + sujeira no piso e WALL_LAYERS em cada parede
             assert(maxInv <= O().SCAN_BUDGET * (D().MAX_LAYERS + 1 + 2 * D().WALL_LAYERS), "invalidações por lote: " .. maxInv)

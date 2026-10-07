@@ -103,10 +103,13 @@ end
 -- zumbi sem outfit: todos iguais, nenhum vira variante.
 -- red: névoa vermelha (sprint 0010): todo zumbi é variante, dividido por igual
 -- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
--- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | nil.
-function NOM_VariantRules.variant(id, period, cfg, red)
+-- black: névoa preta (sprint 0038): todo zumbi é Tição, nem o forçado do debug vale (o
+-- Tição não está em KINDS: as faixas de sempre não andam).
+-- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | "ticao" | nil.
+function NOM_VariantRules.variant(id, period, cfg, red, black)
     id = NOM_VariantRules.baseId(id)
     if not id or id == 0 or not period then return nil end
+    if black then return "ticao" end
     local f = NOM_VariantRules.forced[id]
     if f then return f end
     if red then
@@ -123,8 +126,8 @@ function NOM_VariantRules.variant(id, period, cfg, red)
     return nil
 end
 
-function NOM_VariantRules.semRosto(id, period, cfg, red)
-    return NOM_VariantRules.variant(id, period, cfg, red) == "semrosto"
+function NOM_VariantRules.semRosto(id, period, cfg, red, black)
+    return NOM_VariantRules.variant(id, period, cfg, red, black) == "semrosto"
 end
 
 -- get = NOM_Config.get (injetado: este arquivo não depende do sandbox).

@@ -21,6 +21,10 @@ return {
         assert(D.parse({ op = "spawnEco" }).op == "spawnEco")
         assert(D.parse({ op = "status" }).op == "status")
         assert(D.parse({ op = "wander" }).op == "wander")
+        assert(D.parse({ op = "sonar" }).op == "sonar")
+        assert(D.parse({ op = "thunder" }).op == "thunder")
+        assert(D.parse({ op = "lampFlicker" }).op == "lampFlicker")
+        assert(D.parse({ op = "rain" }).op == "rain")
     end,
     debug_rules_parse_rejects_garbage = function()
         assert(D.parse(nil) == nil)

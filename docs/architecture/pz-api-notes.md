@@ -1882,6 +1882,170 @@ duas por cego; o cego guarda onde parou). A onda de perambular (`wander_wave_cos
 ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick 602) com todos longe,
 1046 em 2 ticks (pior 604) misturado; uma vez a cada 4–8 minutos de jogo.
 
+## 28. Sonar do Estalador (sprint 0037)
+
+Regra pura em `shared/NOM_SonarRules.lua`; o servidor decide (`server/NOM_SonarServer.lua`), quem
+simula aplica (`shared/NOM_Sonar.lua`, `NOM_VariantAI.sonarFound`), quem renderiza desenha
+(`client/NOM_SonarFx.lua` e `NOMRender_sonar` no mod3). Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| "Agachado" lido no servidor: `p:isSneaking()` | CONFIRMED | `IsoGameCharacter.isSneaking()Z` 0–4 (campo `sneaking`); uso vanilla `shared/TimedActions/ISFitnessAction.lua:17`. Chega ao servidor no pacote do jogador: `NetworkPlayerVariables.getBooleanVariables(IsoPlayer)` 5–12 põe `Flags.isSneaking` de `IsoPlayer.isSneaking`; `setBooleanVariables(IsoPlayer, ShortFlags)` 2–8 chama `setSneaking`; `NetworkPlayerAI.parse(PlayerPacket)` 221–224 chama o `setBooleanVariables` |
+| "Andando" lido no servidor pela posição, não por `isPlayerMoving` | decisão | `IsoPlayer.isPlayerMoving()Z` só lê o campo `isPlayerMoving`, e não achei quem o escreva a partir do pacote no servidor; a posição chega (`Prediction.position`, §3.4). O servidor guarda a posição a cada `SAMPLE_MS` (250 ms) e conta como andando quem moveu ≥ `MOVE_EPS` (0,1 tile) desde a amostra anterior |
+| Caçar mesmo com a cegueira: soltar (`release`) e `z:spotted(p, true)` | CONFIRMED | §13.2 (`spotted` forçado só vale com o zumbi não useless; por isso o `release` antes) |
+| O estalo num ponto, sem pacote: `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil)` | CONFIRMED | §22; cada cliente toca o seu quando chega o comando `sonar` |
+| `sendServerCommand(MODULE, "sonar" / "sonarFound", args)` a todos; `getPlayerByOnlineID(id)` no cliente | CONFIRMED | §7; `client/ServerCommands.lua:10` |
+| Tempo real do anel no servidor: `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | CONFIRMED | `server/ISObjectClickHandler.lua:352`; §11.2 |
+| Anel na tela: `isoToScreenX/Y(0, x, y, z)` e `el:drawTextureScaled(tex, x, y, w, h, a, r, g, b)` | CONFIRMED | §25; `client/ISUI/ISUIElement.lua:1032-1041` (com cor → `DrawTextureScaledColor`); `getTexture` nil sem arquivo (`ISSleepingUI.lua:14-15`) |
+| Círculo de raio r no chão isométrico vira elipse 2:1 na tela; a ponta da direita é (x + r/√2, y − r/√2) | CONFIRMED | `IsoUtils.XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96Tz` (§25): o máximo de x − y no círculo é r√2 e o de x + y também, com metade do peso em y |
+| `NOMRender_sonar(x, y, z)` (mod3): `@LuaMethod(global = true)` como os outros, devolve boolean, `catch (Throwable)` devolve false | CONFIRMED | o mesmo caminho do `NOMRender_setParam` (registro no `Main.java`); contrato em `tests/test_mod3_sonar.lua` |
+| O mod3 recusa o anel sem névoa visível: `ClimateManager.getInstance().getFogIntensity() < 0.05` | CONFIRMED | já lido no `RenderContext.onWorldEnd` (`f.fogIntensity`); uso vanilla `shared/Fishing/Bobber.lua:94` |
+| Na névoa fluida o anel move densidade (como o `blast`), não velocidade | decisão | a projeção de pressão do `FlowGrid.step` apaga velocidade radial pra fora (divergência); cada célula da faixa varrida leva `Sonar.TAKE` (50 %) da névoa dela pra frente na própria direção radial, até meio tile depois da frente, sem criar massa (`FlowSonarTest`) |
+| A frente da névoa fluida para em parede: face fechada (`openU`/`openV`, a máscara de parede, porta e janela que o `Flow` monta), sólido e interior | decisão (review final) | `FlowGrid.sonarPass`/`sonarTarget`; `FlowSonarTest.noneBehindWall` (o lado de trás de uma parede comprida começa vazio e continua vazio) |
+| Casa protege: interior pelo square, `o:getCurrentSquare()`, `sq:isOutside()`, `sq:getBuilding()` | CONFIRMED (bytecode + vanilla) | `IsoGridSquare.isOutside()Z` 0–10 lê a flag `IsoFlagType.exterior` das propriedades do square; `IsoGridSquare.getBuilding()` 0–15 = `getRoom()` e `IsoRoom.getBuilding()`, ou `null` sem sala; `getCurrentSquare()` em `IsoMovingObject` (`javap -p`). Vanilla: `shared/RadioCom/ISRadioInteractions.lua:185` (`source:isOutside() ~= plrsquare:isOutside()`: o rádio não chega de dentro pra fora), `client/ISUI/ISWorldObjectContextMenu.lua:1679` (`getBuilding() ~=` entre square e jogador); no servidor, `getCurrentSquare():isOutside()` já roda no `server/NOM_Night.lua:89`. Regra: um dentro e o outro fora, ou prédios diferentes, o anel não acha (`NOM_SonarRules.sheltered`); sem square, não protege |
+| O anel vai só a quem está perto: `sendServerCommand(jogador, MODULE, "sonar", args)` | CONFIRMED | §7 (`server/ClientCommands.lua:477`); já usado no `server/NOM_Fog.lua:43`. O `sonarFound` continua indo a todos (o dono do Estalador pode ser qualquer cliente) e leva o `persistentOutfitID` (`pid`), que o dono confere (o `onlineID` se reaproveita) |
+| Ritmo do estalo e janela do achado em tempo real que para na pausa | CONFIRMED | `getTimestampMs()` + `isGamePaused()` (§11.2). Servidor: `S.clock` soma o tempo do `OnTick` (no máximo 250 ms por tick) e joga fora o acumulado com o jogo pausado (conferido a cada amostra, 250 ms). Dono: `NOM_VariantAI.found[z].left` desconta pelo `NOM_FogEventRules.countdown` (parado na pausa, no máximo 1 s por tick), como as sirenes atrasadas |
+| Abaixo de 10 FPS a frente do mod3 anda mais devagar que o anel do servidor | limitação | `Flow` roda no máximo 2 passos de 0,05 s por quadro (`while (acc >= STEP && steps < 2)`) e joga fora o resto: abaixo de 10 FPS a simulação (e a onda na névoa) fica atrás do tempo real. Quem acha é o servidor, então só o desenho atrasa |
+
+Custo medido (mundo falso e teste Java):
+
+- servidor, `sonar_budget`: com névoa e sem anel, 2,37 chamadas por tick (a amostra de posição a cada
+  250 ms); 8 anéis e 4 jogadores, pior tick 79 (+3 por cruzamento pela casa, +1 por achado pelo
+  `persistentOutfitID`); a passada na lista (a cada 1 s) com 303 zumbis, 624 num tick, média de
+  11,3 por tick (sorteio pelo ID persistente, sem tocar no zumbi que não é Estalador além disso).
+  Sem névoa e sem anel: 0;
+- tela, `sonar_fx_budget`: 0 por quadro sem anel; 6 de base + 4 por anel (3 projeções e 1 desenho):
+  10 com 1 anel, 38 com 8;
+- mod3, `FlowSonarTest.cost`: 8 anéis no fim (maior faixa) num passo da grade de 128 tiles na escala 2:
+  ~0,15 ms na thread da simulação, ~3 % do passo inteiro da grade nessa escala (~5,6 ms,
+  `FlowScaleTest`).
+
+## 29. Tiro abre a névoa (mod3, sprint 0037c)
+
+O §19 já tinha a lista de sons (`WorldSoundManager.instance.soundList`). Aqui fica o que o teste no
+jogo mostrou e por que o tiro não aparecia.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Um tiro de pistola gera dois sons no tile do jogador, raio 40 e raio 20, z do jogador | CONFIRMED (no jogo) | `Events.OnWorldSound` de teste no console.txt do Johan, 2026-10-06 (não 100 como o `SoundRadius` do script sugere) |
+| O som vive 16 atualizações; a coleta do `Flow` (~20 Hz) o vê | EXISTS | `WorldSound.init` 6–8 (`life = 16`, §27); `Flow.collectSounds` roda a cada `STEP` (0,05 s) |
+| O sopro no fluido não aparecia: perto do jogador o fluido já está ~0 (o personagem cava o rastro, `outdoorRefill = 0`) e o véu de fundo (`HAZE`) é somado sem depender do fluido | decisão | log do mod3 "densidade ... sob o jogador=0.02"; `NOM_VolFog.frag` `densityLook` soma `HAZE * uParams[1].w` fora do `fd` |
+| Clareira: até 8 (`uClears`), abre em 0,15 s, fecha em 4 s (tempo da simulação, para na pausa), miolo limpo até meio raio e borda até o raio; multiplica a densidade inteira (véu, rolos, fluido) | decisão | `Blasts.java`, `nomClearing` no `NOM_RenderContext.glsl`; `FlowBlastTest` |
+| Raio do sopro e da clareira: som × 0,25, entre 5 e 12 tiles (pistola 10, som 20 → 5); os dois sons do mesmo tiro viram uma clareira só | decisão | `Blasts.radius`, `Blasts.add`; antes era som/10 entre 2,5 e 9 |
+
+## 30. Névoa preta: escuridão, Tição e luz (sprint 0038)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `ClimateManager.FLOAT_DESATURATION = 0`, `FLOAT_NIGHT_STRENGTH = 2`, `FLOAT_AMBIENT = 9`, `FLOAT_DAYLIGHT_STRENGTH = 11` | EXISTS | `javap -constants zombie.iso.weather.ClimateManager` |
+| O slider "Darkness" do admin escreve luz do dia = 1 − v e noite = v na camada modded | CONFIRMED (Lua vanilla) | `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:235-244, 362-364`; a preta usa os mesmos dois canais pela camada modded (`server/NOM_ClimateLook.lua`, `NOM_Rules.blacken`) |
+| `IsoPlayer.getActiveLightItem()` devolve o item aceso na mão ou preso; o liga/desliga é sincronizado pelo vanilla, então o servidor vê | EXISTS | javap `IsoPlayer`; `client/ISUI/ISInventoryPaneContextMenu.lua:2880-2884` (`setActivated` + `syncItemActivated`); já usado no `server/NOM_Night.lua` |
+| `InventoryItem.isTorchCone()Z`, `getLightDistance()I`, `getTorchDot()F`, `isActivated()Z`, `setActivated(Z)V`, `getContainer()` | EXISTS | javap `zombie.inventory.InventoryItem`; `getContainer() == getInventory()`: `shared/TimedActions/ISEquipHeavyItem.lua:56` |
+| `setActivated` é local: o vanilla manda o `syncItemActivated` à parte | CONFIRMED (Lua vanilla) | `ISInventoryPaneContextMenu.lua:2882-2883`; o piscar da lanterna apaga só no dono, sem pacote |
+| Lanternas vanilla: HandTorch 15 / cone / 0,5; Torch 25 / 0,66; PenLight 11 / 0,75; lampiões 15 (elétrico 10) sem cone; isqueiro 5 sem cone | EXISTS | `media/scripts/generated/items/drainable.txt` (HandTorch 979–992, Torch 1058–1071, PenLight 1084–1094, Lantern_* 1123–1376, Lighter 712–725) |
+| `TorchDot` tratado como o cosseno do meio ângulo do cone | decisão | 0,5 = 60° pra cada lado, coerente com a lanterna larga do jogo; `NOM_LightRules.lit` |
+| `IsoGameCharacter.getForwardDirectionX()F` / `getForwardDirectionY()F` | EXISTS | javap `zombie.characters.IsoGameCharacter` |
+| `IsoGameCharacter.getVehicle()`, `BaseVehicle.getHeadlightsOn()Z` | EXISTS | javap; `server/Vehicles/Vehicles.lua:565` |
+| Direção do carro sem `Vector3f` no Lua: o farol vira um raio de 8 tiles em volta do carro | decisão (conservadora) | `BaseVehicle.getForwardVector(Vector3f)` pede um `org.joml.Vector3f`; a 0039 decide se vale |
+| Luz fixa (cômodo aceso, poste) não congela o Tição na 0038 | decisão | feita na 0039 (§31) |
+| Congelar = `setUseless(true)` + `setTarget(nil)` + halt, no dono (`z:isLocal()`); a lista vai por `onlineID` | EXISTS | o mesmo da sirene (§3.2, §21, §24); `IsoZombie.getOnlineID()` (javap, já usado no Eco) |
+| Com a direção do jogador remoto no servidor dedicado, o facho segue quem gira | UNKNOWN | testar no MP: girar com a lanterna e ver o Tição soltar e outro congelar |
+
+## 31. Névoa preta II: luz fixa, Outro Mundo queimado, luz que empurra a névoa (sprint 0039)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoCell.getLamppostPositions()` devolve `Stack<IsoLightSource>`: poste, abajur, fogo | EXISTS | javap `zombie.iso.IsoCell`; `java.util.Stack`, `Vector` e `IsoLightSource` estão no `LuaManager$Exposer` (bytecode, `ldc` das classes) |
+| `IsoLightSource.getX/Y/Z()I`, `getRadius()I`, `isActive()Z`, `isHydroPowered()Z` | EXISTS | javap; o vanilla usa `getCell():getLightSourceAt(...)`, `isActive()` e `isHydroPowered()` em `client/DebugUIs/DebugChunkState/DebugChunkState_SquarePanel.lua:124-127` |
+| `IsoLightSource.update()` apaga a luz da rede quando o square não tem `hasGridPower()` nem `haveElectricity()` | CONFIRMED (bytecode) | `javap -c zombie.iso.IsoLightSource`, `update()` offsets 22–49; o mod repete a regra (no dedicado o `update` pode não rodar) |
+| `IsoGridSquare.getRoom()`, `hasGridPower()Z`, `haveElectricity()Z` | EXISTS | javap; `haveElectricity`: `client/ISUI/ISButtonPrompt.lua:520` |
+| `IsoRoom.getLightSwitches()` → `ArrayList<IsoLightSwitch>` | EXISTS | javap; `DebugChunkState_SquarePanel.lua:104` |
+| `IsoLightSwitch.isActivated()Z`, `hasLightBulb()Z`, `getUseBattery()Z`, `getHasBattery()Z`, `getPower()F`, `getSquare()` | EXISTS | javap; `isActivated`: `client/ISUI/ISWorldObjectContextMenu.lua:1230` |
+| A lista de postes do servidor dedicado tem as mesmas luzes que a do cliente | UNKNOWN | testar no MP: poste aceso perto de Tição, `NOM.ticao()` no solo mostra `luzes_fixas` |
+| Texturas próprias novas (Cinza_F, Brasa_F, Fuligem_W/N) pelo mesmo caminho das da 0035 | EXISTS | §16.6, spike-sprite-proprio §1b; registradas pelo `client/NOM_OwnSprites.lua` a partir da lista gerada |
+| mod3: `IsoCell.getLamppostPositions()` lido na thread principal (`RenderContext.onWorldEnd` → `Flow.update`) | EXISTS | o mesmo javap; erro na leitura fica no `Flow.lightImpulses` (10 seguidos desligam só o empurrão) |
+| A cor da névoa do mod3 na preta vem do clima (`COLOR_NEW_FOG`), que a preta já escurece | CONFIRMED (código) | `RenderContext.onWorldEnd` lê `getClimateColor(1).getFinalValue().getExterior()` (§30, camada modded) |
+
+## 32. Modelo 3D próprio: peça estática presa à cabeça (sprint 0041)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Peça estática presa ao osso: `<m_Static>true</m_Static>` + `<m_AttachBone>Bip01_Head</m_AttachBone>` + `m_MaleModel`/`m_FemaleModel` pelo nome curto | EXISTS | `media/clothing/clothingItems/Glasses_SkiGoggles.xml` e `Earring_BirdSkull.xml` vanilla; a venda da 0012 já usava (`static\clothes\m_glasses_skigoggles`) |
+| O nome curto vira `media/models_x/<nome>` + `.fbx`, `.glb` ou `.x`, resolvido por `ZomboidFileSystem.getString` | CONFIRMED (bytecode) | `javap -c zombie.core.skinnedmodel.model.FileTask_LoadMesh`: o construtor passa `"media/models"`/`"media/models_x"` pro `FileTask_AbstractLoadModel`; `checkExtensionType()` monta os caminhos (`makeConcatWithConstants`) e chama `ZomboidFileSystem.getString` + `File.exists` pra cada extensão |
+| `ZomboidFileSystem.getString` procura no `activeFileMap` com o caminho em minúsculas: arquivo de mod ativo atende o mesmo caminho do jogo | CONFIRMED (bytecode) | `javap -c zombie.ZomboidFileSystem`, `getString(String)`: `toLowerCase`, `relativeMap`, `activeFileMap.get`. É o mesmo caminho das texturas e sons do mod |
+| `.x` vai pro Assimp (`Jassimp.importFile`) sem rotação nem escala. O `.fbx` gira −90° e escala 0,01 | CONFIRMED (bytecode) | `FileTask_LoadMesh.loadX()` não tem o `Quaternion.setFromAxisAngle` nem o `0.01f` que o `loadFBX()` tem |
+| Quadro do osso da cabeça, em metros: X sobe pela cabeça, Y vai de orelha a orelha, Z aponta pra frente | CONFIRMED (medido) | `M_Glasses_SkiGoggles.x` vanilla: a lente fica em z +0,077 com y = 0, e as hastes dos óculos redondos vão até z −0,024 (lidos só os números, nada copiado) |
+| Winding: `cross(b−a, c−a)` aponta pro lado da normal gravada | CONFIRMED (medido) | 280 de 280 faces em `M_HeadBandage.x` e `M_Glasses_SkiGoggles.x` |
+| Cabeça na altura dos olhos (óculos de esqui), masculino: x 0,055–0,108, y ±0,060, z −0,073..0,077 | CONFIRMED (medido) | `M_Glasses_SkiGoggles.x`; atrás a tira sobe até x ≈ 0,10 |
+| Cabeça na altura dos olhos (óculos de esqui), feminino: x 0,048–0,098, y ±0,057, z −0,062..0,081 | CONFIRMED (medido) | `F_Glasses_SkiGoggles.x` |
+| Leiaute do `.x` texto: `Material` com `TextureFilename`, `Frame` com `FrameTransformMatrix` identidade, `Mesh` com `MeshNormals`, `MeshMaterialList` e `MeshTextureCoords`, CRLF | EXISTS | os `.x` vanilla em `media/models_X/Static/Clothes/`. O nosso não leva os templates (o Assimp não precisa deles) |
+| A textura do item vem de `textureChoices` (o `TextureFilename` do `.x` não manda) | EXISTS | todas as peças do mod desde a 0012 usam `textureChoices` com modelo vanilla de outra textura |
+| O jogo carrega e desenha o `.x` gerado (Assimp aceita sem templates, o v da textura sai certo) | UNKNOWN | testar no jogo: Estalador na névoa com a venda 3D. Se falhar, o `console.txt` mostra `Model not found` e a peça some (não quebra). A textura é espelhada em v, então o v virado não muda o desenho |
+
+### 32.1 As outras peças (sprint 0042)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Peça estática na cabeça que tapa a cabeça inteira: `m_Static true` + `Bip01_Head` + `nohairnobeard` | EXISTS | `media/clothing/clothingItems/Hat_CrashHelmetFULL.xml` vanilla (`static\clothes\m_crashhelmetfull`). É o que a casca do Sem-rosto usa |
+| Peça estática na cabeça com `nohair` (esconde o cabelo, deixa a barba) | EXISTS | `Hat_Spiffo.xml` vanilla (`static\clothes\m_spiffohead`). É o que o cabelo da Carpideira usa: o cabelo do zumbi sumiria por baixo de qualquer jeito, e as mechas nossas são o cabelo |
+| Alto do crânio, nuca e lados: masculino x 0,181, z −0,092, y ±0,071; feminino x 0,176, z −0,082, y ±0,066 | CONFIRMED (medido) | `M_ShowerCap.x`, `F_ShowerCap.x` (só os números) |
+| Nariz e testa: masculino z 0,084 em x 0,05 e ~0,072 em x 0,12; feminino z 0,086 e ~0,074 em x 0,11 | CONFIRMED (medido) | `M_HockeyMask.x`, `F_HockeyMask.x` |
+| Queixo: masculino x −0,017, z 0,062; feminino x −0,007, z 0,064 | CONFIRMED (medido) | `M_SurgicalMask.x`, `F_SurgicalMask.x` |
+| Narina: masculino x 0,054–0,062; feminino x 0,041–0,053 (a boca fica abaixo) | CONFIRMED (medido) | `M_NoseStud.x`, `F_NoseStud.x` |
+| Caixa que cabe em volta da cabeça: masculino x −0,017–0,179, y ±0,071, z −0,091..0,093; feminino x −0,014–0,171, y ±0,067, z −0,085..0,088 | CONFIRMED (medido) | `M_CrashHelmetFULL.x`, `F_CrashHelmetFULL.x`. A casca do Sem-rosto fica dentro dela (`tests/test_models.py`) |
+| As malhas novas carregam e assentam (boca no lugar da boca, casca sem a cabeça furando, mechas na frente do rosto) | UNKNOWN | testar no jogo, item 23 da lista abaixo |
+
+## 33. Rosto censurado do Sem-rosto: passe mod3 (sprint 0044)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoCell.getZombieList()` devolve `ArrayList<IsoZombie>` | CONFIRMED (bytecode) | `javap zombie.iso.IsoCell` |
+| `IsoZombie.getItemVisuals()` devolve `ItemVisuals`, que é `final class ItemVisuals extends ArrayList<ItemVisual>` | CONFIRMED (bytecode) | `javap zombie.characters.IsoZombie` e `zombie.core.skinnedmodel.visual.ItemVisuals`. É a lista onde o `client/NOM_VariantLook.lua` põe a peça (`ItemVisual.new()` + `setItemType`) |
+| `ItemVisual.getItemType()` devolve o `fullType` gravado por `setItemType(String)`, com o módulo (`Base.NOM_SemRostoEstatica`) | CONFIRMED (bytecode) | `javap -c ItemVisual`: `setItemType` exige `.` no nome (assert) e grava em `fullType`; `getItemType` só lê `fullType` |
+| `IsoObject.getAlpha(int)` dá o alfa do objeto pra cada jogador (0 fora da vista, sobe no fade-in) | CONFIRMED (bytecode) | `javap zombie.iso.IsoObject`: `getAlpha(int)` e `getTargetAlpha(int)`. O quadrado usa esse alfa: zumbi que o jogador não vê não tem quadrado |
+| Altura da cabeça: `getZ() + 0.6` em andares é o alto do personagem pra UI | EXISTS | `media/lua/client/Fishing/TensionUI.lua:11` vanilla. O meio da cabeça fica em +0,52 (`Censor.HEAD_Z`); as tochas do RenderContext usam +0,4 |
+| Cópia da cor da cena: `glBlitFramebuffer(..., GL_COLOR_BUFFER_BIT, GL_NEAREST)` do FBO do jogador (preso como `GL_READ_FRAMEBUFFER`) pra uma textura RGBA8 nossa | EXISTS | o mesmo blit da profundidade (§26, `RenderContext.render`), com outro bit; GL 3.0. Só roda com rosto censurado na tela |
+| O quadrado aparece na cabeça certa, some atrás de parede e com o zumbi fora da vista, e a névoa cobre ele | UNKNOWN | testar no jogo, item 24 da lista abaixo |
+
+## 34. Luz que pisca e tempestade da preta e da vermelha (sprint 0045)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `InventoryItem.setActivated(Z)` é local (sem sync); trocar várias vezes seguidas é só escrever o campo | EXISTS | §30; o vanilla manda o `syncItemActivated` à parte (`client/ISUI/ISInventoryPaneContextMenu.lua:2882-2883`). A gagueira da lanterna (`shared/NOM_TicaoFreeze.lua`) troca a cada 40–140 ms |
+| `IsoLightSource.setActive(Z)` não apaga o poste da rede: o `LightingJNI.checkLights` recalcula o `active` da luz hydro (sem interruptor: `hydroPowerOn` ou `square.haveElectricity`; com interruptor: `canSwitchLight` e `isActivated`; poste de rua olha `getNight`) antes de comparar com o `activeJni` | CONFIRMED (bytecode) | `javap -c zombie.iso.LightingJNI`, `checkLights`; `IsoLightSource.setActive` só grava o campo |
+| A cor da luz vai pro JNI quando muda: `r/g/b != rJni/gJni/bJni` → `setLightColor(id, clamp(r*2), …)` | CONFIRMED (bytecode) | o mesmo `checkLights`. `IsoLightSource.getR/G/B()F`, `setR/G/B(F)` existem (javap). É o caminho do poste que pisca (`client/NOM_LampFlickerFx.lua`): cor 0 = apagado |
+| O `IsoLightSource.update()` reescreve `r/g/b` com o ambiente só quando `localToBuilding != null` | CONFIRMED (bytecode) | `javap -c zombie.iso.IsoLightSource`, `update()`. Por isso só pisca luz com `getLocalToBuilding() == nil` (de fora) |
+| `IsoFire.update()` reescreve o `r/g/b` da luz do fogo todo tick | CONFIRMED (bytecode) | `javap -c zombie.iso.objects.IsoFire`, `update()` offsets 316–356 (`putfield IsoLightSource.r/g/b`). Fogo e lampião não entram no pisca: só `isHydroPowered()` |
+| `IsoLightSwitch.save()` grava `getPrimaryR/G/B()`, que lê a cor atual da luz (`getPrimaryLight()`); o `removeLightBulb` lê a mesma cor | CONFIRMED (bytecode) | `javap -c zombie.iso.objects.IsoLightSwitch`, `save` (offsets 159–177) e `getPrimaryR`. No solo, cliente e servidor dividem a luz: poste salvo no meio do pisca ficaria preto |
+| `GameWindow.save(Z)` dispara `"OnSave"` antes de gravar o mundo (offset 68, depois do mapa) | CONFIRMED (bytecode) | `javap -c zombie.GameWindow`. O `client/NOM_LampFlickerFx.lua` devolve a cor de todo poste no `OnSave` |
+| `ClimateManager.getThunderStorm()` → `ThunderStorm`; `triggerThunderEvent(x, y, strike, lightning, rumble)` no servidor preenche o `networkThunderEvent` e chama `transmitClimatePacket` (vai pros clientes); no cliente e no solo, `enqueueThunderEvent` | CONFIRMED (bytecode) | `javap -c zombie.iso.weather.ThunderStorm`; vanilla em `media/lua/server/ClientCommands.lua:657-664` (com `true, true, true`) |
+| `enqueueThunderEvent`: sem `strike` e sem `rumble`, sai; clarão (`lightningState = ApplyLightning`) com força 1 − dist/7500 até 7500 tiles; o som espera dist/300·60 frames | CONFIRMED (bytecode) | o mesmo javap. O mod usa `false, true, true` (sem raio caindo), a 40–900 tiles (`shared/NOM_StormRules.lua`) |
+| `ClimateManager.FLOAT_PRECIPITATION_INTENSITY = 3`, criado no `setup()` com `initClimateFloat(3, "PRECIPITATION_INTENSITY")` | CONFIRMED (bytecode) | `javap -constants` e `javap -c -p ClimateManager`; o vanilla usa `getClimateFloat(3)` em `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:236,273` |
+| `getPrecipitationIntensity()` = `finalValue` desse float; `isRaining()` = intensidade > 0 e `!getPrecipitationIsSnow()` | CONFIRMED (bytecode) | o mesmo javap. A chuva do mod vai na camada modded, como a névoa (§11); no frio pode virar neve |
+| O clarão aparece por cima do clima escuro da preta; o trovão se ouve a 900 tiles | UNKNOWN | testar no jogo, item 25 |
+| Cor 0 apaga a luz do poste na tela (o JNI aceita 0) e a cor volta no fim | UNKNOWN | testar no jogo, item 26 |
+| Chunk descarregado ou lâmpada tirada no meio do pisca (até ~3,7 s, a até 25 tiles do jogador) salva o poste preto no solo | UNKNOWN | improvável (o chunk a 25 tiles não descarrega em 3,7 s); se aparecer poste preto pra sempre, é isso |
+| A chuva da camada modded molha (poças, roupa) como a do jogo | UNKNOWN | testar no jogo, item 27 |
+
+## 35. Painel de debug desenhado e redimensionável (sprint 0046)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `ISCollapsableWindow:new` liga `resizable`; o `createChildren` põe as duas alças (`ISResizeWidget`) pela altura e largura de agora | EXISTS | `client/ISUI/ISCollapsableWindow.lua:26-49, 395`. O painel nasce 820×620 antes do `addToUIManager` |
+| `ISResizeWidget:resize` não passa de `target.minimumWidth/minimumHeight` e chama `target:setWidth/setHeight` | EXISTS | `client/ISUI/ISResizeWidget.lua:9-34`. O painel refaz o leiaute no `update` quando `width/height` mudam (não depende do `onResize` do Java) |
+| `ISCollapsableWindow:RestoreLayout` só apaga largura e altura do leiaute salvo quando a janela não redimensiona; o `SaveLayout` grava sempre | EXISTS | `client/ISUI/ISCollapsableWindow.lua:336-354` |
+| `ISLayoutManager.DefaultRestoreWindow` devolve o tamanho pelo `ISResizeWidget:resize` da janela (prende no mínimo e corta a altura na borda de baixo da tela) | EXISTS | `client/ISUI/ISLayoutManager.lua:26-41`; `ISResizeWidget.lua:13-27`. O leiaute do painel da 0020 (440 de largura, nome `NOM_DebugPanel`) abriria o novo espremido no mínimo: o novo usa o nome `NOM_DebugPanel_0046`. Altura cortada pela tela: o `update` sobe a janela até caber o mínimo |
+| `ISUIElement:instantiate` cria o objeto Java e chama `createChildren`; `addToUIManager` só instancia na primeira vez | EXISTS | `client/ISUI/ISUIElement.lua:993-1007, 1365-1371` |
+| `ISPanel:new` (`background`, `backgroundColor`, `borderColor`), `noBackground` | EXISTS | `client/ISUI/ISPanel.lua:9-12, 96-115` |
+| Desenho: `drawRect(x, y, w, h, a, r, g, b)`, `drawRectBorder` (mesma ordem), `drawText/drawTextRight/drawTextCentre(str, x, y, r, g, b, a, font)` | EXISTS | `client/ISUI/ISUIElement.lua:1191, 1219, 1280, 1293, 1306` |
+| Recorte: `setStencilRect(0, 0, w, h)` no `prerender` e `clearStencilRect` no `render` de um painel filho que rola | EXISTS | `client/ISUI/AdminPanel/ISStatisticsUI.lua:14-31`; `client/ISUI/ISUIElement.lua:459-475` |
+| Mouse local: `onMouseDown(x, y)`, `onMouseWheel(del)` (devolve `true` = consumido); `getMouseX/Y` descontam o `xScroll/yScroll` do Java | EXISTS | `client/ISUI/ISScrollingListBox.lua:347, 577`; `ISStatisticsUI.lua:19-25`; `ISUIElement.lua:339-346`. A lista rola em Lua (`yScroll` do Java fica 0) |
+| `getTextManager():MeasureStringX(fonte, texto)`, `getFontHeight(fonte)`; `UIFont.Small`, `UIFont.Medium` | EXISTS | `client/ISUI/ISButton.lua:233`; `client/ISUI/ISContextMenu.lua:1109` |
+| `getTextManager():getFontHeight` segue a opção de tamanho de fonte do jogo | EXISTS | `ISCollapsableWindow:titleBarHeight` usa a altura da fonte (`:298-300`). O mínimo da altura do painel sai das fontes (a lateral inteira mais 3 linhas de respostas) |
+| Som do clique de botão: `getSoundManager():playUISound("UIActivateButton")` | EXISTS | `client/ISUI/ISButton.lua:46, 521` |
+| O clique numa área vazia da janela (cabeçalho) começa a arrastar | EXISTS | `ISCollapsableWindow:onMouseDown` (`:270-280`): os painéis filhos devolvem `true` pra não arrastar a janela |
+| As alças, o recorte e a roda do mouse se comportam no jogo como no vanilla | UNKNOWN | testar no jogo, item 28 |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1910,6 +2074,7 @@ ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
 | Visão menor que 10 tiles | cegueira em rodízio no dono (`useless` + `halt`), solta por som (`OnWorldSound`); som com raio ≥ 10 denuncia o jogador pra quem está no raio (§27) | piso de 10 tiles com o pior degrau |
 | Zumbi andar até um ponto | `z:pathToLocationF(x, y, z)` no dono (§27) | `addSound` no ponto (puxa todos em volta) |
+| Zumbi achar o jogador apesar da cegueira | servidor decide (`isSneaking` + posição), dono solta e `spotted(p, true)` com janela anti-recegueira (§28) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 | Efeito de tela | `ISUIElement` de 1×1 px, `backMost`, sem consumir mouse, desenhando no retângulo do jogador 0 (§15) | — |
 | Canal Lua → shader | floats do `SearchMode` com override e sem `enabled`, marcador no gradiente (§15.4) | `DesaturationVal` (ambíguo) |
@@ -1963,3 +2128,40 @@ ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick
     No MP, `isRunning()`/`isSprinting()` do jogador de outro cliente (a cópia remota que o dono
     do zumbi vê) acompanham o que ele faz? Se vierem sempre falsos, quem corre perto do zumbi de
     outro cliente conta como quieto pra ele.
+21. Sonar do Estalador (sprint 0037, §28): no dedicado, o `isSneaking()` do jogador visto no
+    servidor acompanha o agachar do cliente (o bytecode diz que sim)? A posição chega fina o bastante
+    pra 0,1 tile em 250 ms contar como andando, sem contar o jogador parado como andando? O anel na
+    tela cai no chão certo com zoom e em andar de cima? A frente na névoa fluida do mod3 se vê, e
+    lê como onda? O Estalador achado anda mesmo até o jogador agachado antes de a janela de 10 s
+    acabar? No dedicado, o square do jogador remoto (`getCurrentSquare()`) acompanha ele entrar e
+    sair de casa, e varanda ou garagem sem sala (`isOutside` falso, `getBuilding` nil) protege como
+    o esperado?
+22. Venda 3D do Estalador (sprint 0041, §32): o `.x` gerado sem templates carrega (nada de
+    `Model not found` no `console.txt`)? A faixa fica nos olhos, sem atravessar a cabeça nem
+    flutuar longe, nos dois sexos? O arame aparece de longe (zoom normal) ou some? O dissolve
+    (gêmeo `Fx`) desfaz a malha nova como desfazia os óculos?
+23. Peças 3D da 0042 (§32.1): a boca do Corredor fica na boca (nem no nariz, nem no queixo) nos
+    dois sexos? A casca do Sem-rosto tapa a cabeça sem o rosto furar em animação de ataque ou
+    queda? As mechas da Carpideira ficam na frente do rosto e não atravessam o ombro de um jeito
+    feio? O `nohair` esconde o cabelo do zumbi por baixo? O dissolve desfaz as três?
+24. Rosto censurado (sprint 0044, §33): o quadrado fica na cabeça do Sem-rosto (nem no peito,
+    nem flutuando) com o zumbi em pé, no chão e no andar de cima? Some atrás de parede e quando o
+    zumbi sai da vista? A névoa cobre o quadrado? `NOMRender_setParam(13, 0)` apaga e `1.5`
+    aumenta? O FPS cai com três Sem-rosto na tela? Se o `console.txt` mostrar
+    `rosto censurado: erro`, o quadrado some e a névoa segue.
+25. Tempestade (sprint 0045, §34): na preta e na vermelha, `NOM.thunder()` dá o clarão (a tela
+    clareia por um instante mesmo com o escuro da preta) e o trovão chega depois? Na preta, os
+    Tições perto param por ~1 s no clarão (`NOM.ticao()` logo depois mostra congelados)? Na
+    branca não tem relâmpago sozinho (espere 30 s)?
+26. Poste que pisca (§34): `NOM.flickerLamp()` perto de um poste de rua aceso faz a luz dele
+    gaguejar (apaga e acende rápido, às vezes um escuro) e voltar na mesma cor? Luz de dentro de
+    casa não pisca? A lanterna na mão gagueja (liga e desliga várias vezes) e volta acesa? Se você
+    desligar a lanterna no meio, ela fica desligada?
+27. Chuva (§34): `NOM.rain()` e uma névoa preta ou vermelha: começa a chover em rampa (~20 min de
+    jogo), o chão molha, e para quando a névoa acaba? Desligado de novo, a próxima névoa chove só
+    se o sorteio do período der (30%)?
+28. Painel de debug (sprint 0046, §35): a janela redimensiona pelas alças (canto e borda de
+    baixo) sem passar de 600×440, e reabre no tamanho que ficou? A lista rola com a roda e os
+    cartões não vazam por cima do cabeçalho nem das Respostas? O texto quebra certo na largura?
+    O clique acerta o botão desenhado (com a lista rolada também)? Clicar na lista não arrasta
+    a janela? As respostas do servidor (no MP, pelo `debugReply`) aparecem em Respostas?

@@ -1,7 +1,7 @@
 -- Regras puras dos efeitos de tela (sprint 0013): quanto de cada camada se vê,
 -- pelo estado da névoa, do Sem-rosto e do último grito de Carpideira. Sem API do
 -- jogo, testável com ./run-tests.sh. Quem desenha é o client/NOM_ScreenFx.lua; o
--- canal pro shader opcional (mod NevoaEOutroMundo_Shader) sai de R.channel.
+-- canal pro shader opcional (mod NoiseOfMist_Shader) sai de R.channel.
 require "NOM_AtmosphereRules"
 require "NOM_Math"
 require "NOM_Rules"
@@ -100,18 +100,22 @@ function R.stepStatic(s, w, now)
     return s
 end
 
--- RGB da estática pelo tipo da névoa (o alfa da cor do clima não entra). Ponto único: a
--- preta entra aqui na 0038.
+-- Estática da preta (sprint 0038): cinza-escura; a cor da névoa preta (quase preta) sumiria na tela.
+R.BLACK_STATIC = { 0.28, 0.28, 0.3 }
+
+-- RGB da estática pelo tipo da névoa (o alfa da cor do clima não entra). Ponto único.
 function R.staticColor(kind)
+    if kind == "black" then return R.BLACK_STATIC[1], R.BLACK_STATIC[2], R.BLACK_STATIC[3] end
     local c = kind == "red" and NOM_Rules.RED_FOG_COLOR or NOM_Rules.FOG_COLOR
     return c[1], c[2], c[3]
 end
 
--- want = { fog = bool, red = bool }: aproxima fog e red dos alvos em FADE_MS.
+-- want = { fog = bool, red = bool, black = bool }: aproxima fog, red e black dos alvos em FADE_MS.
 function R.step(s, want, dtMs)
     local A = NOM_AtmosphereRules
     s.fog = A.approach(s.fog, want.fog and 1 or 0, dtMs, R.FADE_MS)
     s.red = A.approach(s.red, (want.fog and want.red) and 1 or 0, dtMs, R.FADE_MS)
+    s.black = A.approach(s.black or 0, (want.fog and want.black) and 1 or 0, dtMs, R.FADE_MS)
     return s
 end
 
@@ -152,19 +156,20 @@ function R.dizzyLevel(t, i)
     return R.dizzy(t) * clamp(i or 1, 0, 1)
 end
 
--- Alfas das camadas (0..1), a cor da vinheta (preta; vermelha escura na vermelha) e a da
+-- Alfas das camadas (0..1), a cor da vinheta (preta; vermelha escura na vermelha; na preta, maior
+-- e sem vermelho, sprint 0038) e a da
 -- estática da névoa (sr, sg, sb). i: intensidade da opção do jogador (0..2). dz: tontura
 -- (R.dizzyLevel, 0 com o shader, que a faz no canal): a vinheta pulsa e a tela escurece.
 function R.layers(s, now, i, dz)
     i = clamp(i or 1, 0, 2)
     dz = clamp(dz or 0, 0, 1)
-    local f, r = s.fog, s.red
+    local f, r, b = s.fog, s.red, s.black or 0
     local sr, sg, sb = R.staticColor(s.staticKind)
     local pulse = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, R.DIZZY_PULSE_MS) / R.DIZZY_PULSE_MS)
     return {
-        grain = clamp(f * (0.09 + 0.05 * r) * i, 0, 1),
-        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
-        vr = 0.42 * r, vg = 0, vb = 0,
+        grain = clamp(f * (0.09 + 0.05 * r + 0.04 * b) * i, 0, 1),
+        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
+        vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
         fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),

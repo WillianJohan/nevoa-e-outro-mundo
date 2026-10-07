@@ -340,4 +340,17 @@ return {
         R.forced[id] = nil
         assert(ok, "forçado perdeu o chapéu e deixou de ser forçado")
     end,
+    -- preta (sprint 0038): todo zumbi com ID é Tição, contra chance, toggle e forçado; sem ID ou
+    -- sem período, nada
+    variant_rules_black_is_always_ticao = function()
+        local c = cfg({ estaladorOn = false, corredorOn = false, semRostoOn = false, carpideiraOn = false })
+        R.forced[outfitID(2, 7)] = "estalador"
+        for _, id in ipairs(realIDs()) do
+            assert(R.variant(id, 5, c, false, true) == "ticao")
+            assert(R.variant(id, 5, c, true, true) == "ticao", "a preta vale mais que a vermelha")
+        end
+        R.forced = {}
+        assert(R.variant(0, 5, c, false, true) == nil and R.variant(outfitID(1, 1), nil, c, false, true) == nil)
+        assert(not R.semRosto(outfitID(1, 1), 5, cfg({ semRostoChance = 100 }), false, true), "Sem-rosto na preta")
+    end,
 }

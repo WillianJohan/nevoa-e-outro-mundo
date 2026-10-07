@@ -23,7 +23,8 @@ local function setup(opts)
     opts = opts or {}
     if opts.client == nil then opts.client = true end
     local G = W.new(opts)
-    G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_Siren", "NOM_SirenFreeze" })
+    G.reload({ "NOM_FogState", "NOM_SemRosto", "NOM_Siren", "NOM_SirenFreeze", "NOM_TicaoFreeze", "NOM_LampFlickerFx",
+        "NOM_FlickerRules" })
     dofile(FILE)
     function G.server(command, args) G.fire("OnServerCommand", "NevoaEOutroMundo", command, args) end
     return G
@@ -289,5 +290,29 @@ return {
         local free = scanOnce()
         local got = scanOnce({ id = 77, x = free.x, y = free.y, z = 0 }) -- outro zumbi, de outro cliente
         assert(got.x ~= free.x or got.y ~= free.y, "escolheu o tile que o servidor acabou de usar")
+    end,
+
+    -- sprint 0045: o poste que o servidor sorteou pisca aqui pela cor
+    fog_client_lamp_flicker = function()
+        local G = setup()
+        local lamp = G.lamp({ x = 5, y = 7, hydro = true })
+        G.server("lampFlicker", { x = 5, y = 7, z = 0, segs = { 100, 50, 100 } })
+        G.tick(1)
+        assert(lamp.r == 0, "o poste não apagou")
+        G.tick(20)
+        assert(lamp.r == 1, "a cor não voltou")
+    end,
+    -- sprint 0045: a lanterna deste jogador toca o padrão que veio do servidor
+    fog_client_torch_flicker_pattern = function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0, light = true })
+        G.server("torchFlicker", { segs = { 50, 50, 50 } })
+        assert(p.item.on == false, "não apagou")
+        G.tick(4)
+        assert(p.item.on == true, "não acendeu no meio")
+        G.tick(4)
+        assert(p.item.on == false, "não apagou de novo")
+        G.tick(4)
+        assert(p.item.on == true, "não voltou no fim")
     end,
 }

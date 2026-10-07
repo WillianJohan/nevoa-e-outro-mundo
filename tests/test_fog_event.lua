@@ -995,4 +995,84 @@ return {
         assert(#omen == 1 and omen[1].player == who and omen[1].args.red == false, "entrou sem o presságio")
         assert(#G.commands(G.sentServer, "siren") == 0, "sirene antes da hora pra quem entrou")
     end,
+    -- Névoa preta (sprint 0038): decidida no presságio, sirene preta, sobe preta, abre preta com a
+    -- duração dela, nunca vermelha junto, salva em data.fog.black
+    fog_event_black_decided_at_presage = function()
+        local G = setup({ sandbox = { BlackFogChance = 100, BlackFogGraceDays = 0, RedFogChance = 100,
+            BlackFogMinHours = 2.5, BlackFogMaxHours = 3 } })
+        G.at(fogMD(G).next)
+        assert(NOM_FogState.omenBlack == true and NOM_FogState.omenRed == false, "presságio sem a cor preta")
+        presage(G)
+        assert(played(G, "black") == 1 and played(G, "red") == 0 and played(G, "white") == 0, "sirene errada")
+        assert(NOM_World.risingBlack == true and NOM_FogState.risingBlack == true and NOM_World.risingRed == false)
+        assert(NOM_FogEvent.status().sirenBlack == true and NOM_FogEvent.status().sirenRed == false)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.black == true and NOM_World.red == false)
+        assert(NOM_FogState.black == true and NOM_FogState.red == false and NOM_FogState.color() == "black")
+        assert(fogMD(G).black == true and fogMD(G).red == false)
+        assert(fogMD(G).endAt == G.world.hours + 2.5, "duração da preta " .. tostring(fogMD(G).endAt - G.world.hours))
+        G.advance(3)
+        assert(NOM_World.fog == false and NOM_World.black == false and NOM_FogState.black == false)
+        assert(fogMD(G).black == nil, "a cor preta ficou depois do fim")
+    end,
+    -- carência: nenhuma preta antes de BlackFogGraceDays (save novo nasce agora)
+    fog_event_black_grace = function()
+        local G = setup({ sandbox = { BlackFogChance = 100, BlackFogGraceDays = 14 } })
+        toSiren(G)
+        G.seconds(31)
+        assert(NOM_World.fog and NOM_World.black == false and played(G, "black") == 0)
+    end,
+    -- recarregar no meio da preta continua preta, mesmo com o sandbox mudado
+    fog_event_black_reload_mid_fog_stays_black = function()
+        local G = setup({ sandbox = { BlackFogChance = 100, BlackFogGraceDays = 0 } })
+        toSiren(G)
+        G.seconds(31)
+        local G2 = setup({ globalMD = G.globalMD, hours = G.world.hours + 0.5, sandbox = { BlackFogChance = 0 } })
+        assert(NOM_World.fog and NOM_World.black == true and NOM_FogState.black == true, "recarga perdeu a preta")
+        assert(played(G2, "black") == 0, "recarga tocou sirene")
+    end,
+    -- save de antes da 0038 (data.fog.red salvo, sem black) segue a cor salva
+    fog_event_black_old_save_keeps_saved_color = function()
+        local G = setup({ sandbox = { BlackFogChance = 100, BlackFogGraceDays = 0 } })
+        fogMD(G).red = true
+        toSiren(G)
+        G.seconds(31)
+        assert(NOM_World.red == true and NOM_World.black == false, "save antigo virou preta")
+    end,
+    -- dedicado: presage, siren e fog levam o black; quem entra recebe
+    fog_event_black_mp_broadcast = function()
+        local G = setup({ server = true, player = false, sandbox = { BlackFogChance = 100, BlackFogGraceDays = 0 } })
+        G.at(fogMD(G).next)
+        local omen = G.commands(G.sentServer, "presage")
+        assert(#omen == 1 and omen[1].args.black == true and omen[1].args.red == false)
+        presage(G)
+        local siren = G.commands(G.sentServer, "siren")
+        assert(#siren == 1 and siren[1].args.black == true and siren[1].args.red == false)
+        G.seconds(31)
+        local fog = G.commands(G.sentServer, "fog")
+        assert(fog[#fog].args.on == true and fog[#fog].args.black == true and fog[#fog].args.red == false)
+        G.sentServer = {}
+        local who = {}
+        G.fire("OnClientCommand", "NevoaEOutroMundo", "fogState", who, {})
+        assert(G.sentServer[1].args.black == true and G.sentServer[1].args.on == true)
+    end,
+    -- NOM.setBlackFog: preta mesmo com chance 0 e na carência; force vermelho depois volta a ser vermelho
+    fog_event_force_black = function()
+        local G = setup({ sandbox = { BlackFogChance = 0 } })
+        assert(NOM_FogEvent.force(false, true, true))
+        G.seconds(0.1)
+        assert(NOM_World.fog and NOM_World.black == true and NOM_World.red == false)
+        assert(played(G, "black") == 1)
+        assert(NOM_FogEvent.force(true, true))
+        G.seconds(0.1)
+        assert(NOM_World.fog and NOM_World.red == true and NOM_World.black == false, "force vermelho ficou preto")
+    end,
+    -- debug vermelho no meio da preta aberta: vira vermelha (nunca as duas)
+    fog_event_set_red_over_black = function()
+        local G = setup({ sandbox = { BlackFogChance = 100, BlackFogGraceDays = 0 } })
+        toSiren(G)
+        G.seconds(31)
+        assert(NOM_FogEvent.setRed(true))
+        assert(NOM_World.red == true and NOM_World.black == false and fogMD(G).black == false)
+    end,
 }

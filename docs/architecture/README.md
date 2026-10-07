@@ -19,6 +19,8 @@
 | [adr-017-outro-mundo-anexado.md](adr-017-outro-mundo-anexado.md) | Outro Mundo anexado ao piso e à parede (`addAttachedAnimSpriteByName`, o caminho da erosão): registro do que o mod pôs e só isso sai; tudo sai no `OnSave`, fora do raio de 15, no salto e na morte; `LoadGridsquare` limpa o `floors_burnt_01_*` vazado; a ação do jogador segura o square. Substitui o como da ADR-015 |
 | [adr-016-dissolve-e-bloom.md](adr-016-dissolve-e-bloom.md) | Dissolve: peças gêmeas `*Fx` com o shader `NOM_Dissolve` (`<m_Shader>`), limiar no `Alpha` do personagem dirigido no `OnTick`; a variante se forma e se desfaz, o Eco queima na morte (casca pelo `WornItems`, brasas pelo overlay); bloom no `screen.frag` do mod2 com a intensidade do jogador no canal. Emenda da 0022: casca de brasa no corpo inteiro do zumbi vivo (lista de `ItemVisual`, peça sem shader embaixo, teto de 6) |
 | [adr-018-sprite-proprio-em-runtime.md](adr-018-sprite-proprio-em-runtime.md) | Sprite próprio do Outro Mundo em runtime (caminho 1b): PNG nosso 128×256 em `media/textures/NOM/OutroMundo/`, `getSprite` + `setName` obrigatório + flags `FloorOverlay`/`WallOverlay` e `attachedW/N`; o anexo vazado (ID 20000000) é descartado no load; prefixo de limpeza próprio; plano B é o tile pack (1a) com os mesmos PNG. Emenda a ADR-017 |
+| [adr-019-arte-de-lancamento.md](adr-019-arte-de-lancamento.md) | Arte de lançamento (pôster, preview, ícone, banner) é do Johan, por decisão dele: exceção à regra de tudo gerado por script; fontes reduzidas em `docs/art/`, finais e imagens de staging só redimensionados e tingidos pelo `gen_images.py` |
+| [adr-020-modelos-3d-por-ia.md](adr-020-modelos-3d-por-ia.md) | **Proposta** (espera o Johan): modelo 3D de IA só com licença mundial e a ADR aceita. Hunyuan3D-2 fora (licença exclui UE, Reino Unido e Coreia do Sul); Stable Fast 3D possível (gated, atribuição por cautela); output passa pelos mesmos testes e é marcado no CREDITS. Nada de IA entrou |
 
 Design de jogo fica em [../gdd/Overview.md](../gdd/Overview.md). Conflito
 entre ADR e GDD: o GDD manda no **quê**, o ADR manda no **como**.
@@ -82,11 +84,12 @@ mod/
     lua/client/NOM_DebugPanel.lua   painel de botões do debug, pela tecla das opções do mod (só com -debug)
     lua/server/NOM_DebugServer.lua  aplica os comandos de debug (só com -debug; permissão no dedicado)
     clothing/clothing.xml           outfit NOM_Eco (itens do mod por GUID: cinza e véu de fumaça)
-    clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo vanilla pelo nome, textura do mod; *Fx, NOM_EcoCasca e NOM_Brasa com <m_Shader>NOM_Dissolve</m_Shader> (sprints 0018, 0022)
+    clothing/clothingItems/NOM_*.xml   itens de roupa do visual: modelo pelo nome curto (das peças dos monstros, nosso desde as sprints 0041–0043: static\clothes\NOM_…), textura do mod; *Fx, NOM_EcoCasca e NOM_Brasa com <m_Shader>NOM_Dissolve</m_Shader> (sprints 0018, 0022)
     shaders/NOM_Dissolve.vert, NOM_Dissolve_static.vert, NOM_Dissolve.frag   shader original do dissolve das peças (ADR-016)
     fileGuidTable.xml               GUIDs dos itens de roupa do mod (o jogo junta com a vanilla)
     scripts/NOM_clothing.txt        itens de script do visual (Base.NOM_*, sem ChanceToFall)
-    textures/Body/NOM_*.png, textures/NOM/*.png, textures/NOM/ScreenFx/*.png   geradas por scripts/gen_textures.py (CREDITS.md)
+    textures/Body/NOM_*.png, textures/NOM/*.png, textures/NOM/ScreenFx/*.png   geradas por scripts/gen_textures.py (as *3D.png por scripts/gen_models.py; CREDITS.md)
+    models_X/Static/Clothes/NOM_M_*.x, NOM_F_*.x   peças 3D dos monstros, presas ao osso da cabeça, geradas por scripts/gen_models.py (sprints 0041–0043, pz-api-notes §32)
     scripts/NOM_sounds.txt          sons do mod (estalo, gritos, soluço, drone, metal, rádio, sirene, sirene vermelha)
     sound/*.ogg                     gerados por scripts/gen_sounds.py (CREDITS.md)
   common/                           exigida pelo B42
@@ -96,7 +99,7 @@ mod2/                               mod opcional NevoaEOutroMundo_Shader (ADR-01
   42/media/lua/shared/NOM_ShaderFlag.lua   NOM_ShaderMod = true (o mod principal passa a usar o canal)
   common/
 tests/                              asserts de lua puro (./run-tests.sh, luajit), contraste das texturas (test_look_contrast.py) e teste do build
-scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, preview_textures.py (folha de contato das texturas, sprint 0014), build-workshop.sh (pasta de upload, só o mod/ commitado)
+scripts/                            gen_sounds.py, gen_images.py, gen_textures.py, preview_textures.py (folha de contato das texturas, sprint 0014), gen_models.py e preview_models.py (peças 3D e a prévia delas, sprints 0041–0043), build-workshop.sh (pasta de upload, só o mod/ commitado)
 docs/workshop/                      descrições do Workshop (BBCode), preview.png e workshop-id.txt (ID do item, depois do 1º envio)
 ```
 

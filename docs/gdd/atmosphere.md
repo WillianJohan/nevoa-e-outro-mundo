@@ -124,7 +124,7 @@ máximo". Substitui as manchas esparsas da sprint 0005
   jeito em ~4 s quando ela baixa (detalhe na seção seguinte). Acompanha o jogador andando até a
   borda da tela. Quem carrega o save no meio da névoa vê o mundo já virado. Na morte, no teleporte
   e no save some na hora (e volta logo depois do save).
-- **Densidade do jogador:** Opções > Mods > "Névoa e Outro Mundo" > "Sangue e erosão na névoa"
+- **Densidade do jogador:** Opções > Mods > "NOM: Noise of Mist" > "Sangue e erosão na névoa"
   (1.0, 0–2; 0 desliga). `FogOverlays` no sandbox é o liga/desliga do servidor.
 - **Locais e só visuais**, sem sincronizar: cada jogador vê o próprio pesadelo (em MP, cada um
   num lugar diferente). **Nada fica no save:** o mod tira tudo antes de o jogo gravar
@@ -169,9 +169,13 @@ pele dele descasca e mostra metal enferrujado por baixo.
     nenhum bloco cheio). Na parede, a tinta descascando é a camada mais comum, depois a ferrugem
     escorrida. Sangue de parede ainda aparece, raro;
   - **vermelha** mantém o sangue de parede como o mais comum e ganha ferrugem na parede e manchas
-    ralas de ferrugem no chão, fora da grama (nada de grade, chapa nem tinta no chão);
+    ralas de ferrugem no chão, fora da grama (nada de grade, chapa nem tinta no chão). Desde a
+    sprint 0040, **tentáculos pretos**: na parede, subindo do rodapé (fora e dentro de casa, por
+    cima do sangue); no chão, saindo de um buraco, peça solta como o metal da calçada, fora da
+    grama. E **cinza no ar**: pontos soltos flutuando devagar em volta do jogador, a meia altura;
   - **nada de sangue no chão**, nas duas, nem tinta vermelha no chão (leria como sangue);
-  - **preta** fica pra sprint 0038 (sugestão: descasca e ferrugem escuras, sem grade e sem sangue).
+  - **preta** (sprint 0039): o mundo queimado, com chão queimado dentro e fora, cinza, brasa
+    apagando e fuligem nas paredes.
 - **Até a borda da tela andando:** a erosão acompanha o jogador sem deixar um quadrado vestido em
   volta. Mais longe que a tela não vai: a margem do save não deixa (decisão da sprint 0035).
 - Texturas próprias, geradas por script nosso (direção de arte em
@@ -211,7 +215,7 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
   inteiras; no fim some em ~3 s. Segue a mesma opção e intensidade dos outros efeitos de tela.
 - **Tontura na transição** (sprint 0035): ~5 s de tela ondulando quando o Outro Mundo descasca, com
   opção própria ligada por padrão (seção "Outro Mundo estilo Silent Hill").
-- **Opção do jogador, não do servidor:** Opções > Mods > "Névoa e Outro Mundo": liga/desliga e
+- **Opção do jogador, não do servidor:** Opções > Mods > "NOM: Noise of Mist": liga/desliga e
   intensidade (1.0, 0–2). Cada um ajusta a própria tela.
 - **Fora da névoa, nada**, nem à noite, a não ser a estática do presságio e da fuga: a noite é
   escuridão; o filme granulado é a assinatura do Outro Mundo (decisão da sprint 0013, ADR-013).
@@ -219,7 +223,7 @@ Desenhado por cima do mundo e por baixo do HUD, sem pegar clique
 - É desenhado pela UI: esconder a UI (tecla do HUD) esconde o efeito, e ele anda no ritmo de
   quadros da UI do jogo.
 
-## Shader opcional (mod "Névoa e Outro Mundo — Shader")
+## Shader opcional (mod "NOM: Noise of Mist — Shader")
 
 | Status | `accepted` — sprint 0013 (o ShadowZ instalado aqui prova que o override do `screen.frag` pega; [spike](../sprints/spike-shader/README.md)) |
 |---|---|

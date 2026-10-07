@@ -19,6 +19,7 @@ Saída (mod/42/media/textures/):
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
+  Body/NOM_Ticao.png             256  carvão em placas pequenas, rachaduras finas de brasa apagando (Tição, sprint 0038)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
@@ -34,6 +35,9 @@ Lascas do Outro Mundo (sprint 0035), fundo transparente, tingidas pela cor da n�
                                          (tinta velha suja, craquelê, fio de borda clara falhado,
                                          ferrugem marrom escamando; contorno serrilhado; verso ferrugem)
   NOM/NOM_Cinza.png              16   floco de cinza torto e macio, tons de cinza
+
+Sonar do Estalador (sprint 0037), branco com alfa, tingido e achatado no desenho:
+  NOM/ScreenFx/NOM_SonarAnel.png 256  anel fino em r = 0,9 com rastro macio pra dentro e falhas suaves
 
 Semente fixa: rodar de novo dá os mesmos bytes. Uso: python3 scripts/gen_textures.py
 """
@@ -243,6 +247,23 @@ def ember_shell(rng, size=256):
     return mix(rgb, (255, 214, 120), np.clip((3.0 - c) / 1.5, 0, 1))    # miolo quente
 
 
+def ticao_skin(rng, size=256):
+    # Tição (sprint 0038): o corpo queimado da névoa preta. Carvão em placas menores que as da
+    # casca (lê como pele, não como roupa) e rachaduras finas de brasa que apagam em vermelho
+    # escuro em parte delas: no escuro, o que se vê de longe é a brasa.
+    rgb = color((30, 24, 21), 0.8 + 0.4 * fbm(rng, size))
+    g = 8
+    pts = (np.stack(np.mgrid[0:g, 0:g], -1).reshape(-1, 2) + 0.2 + 0.6 * rng.random((g * g, 2))) * size / g
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    d = np.sort(np.stack([np.hypot(x - px, y - py) for py, px in pts]), axis=0)
+    c = d[1] - d[0]
+    crack = np.clip((5.0 - c) / 2.0, 0, 1)
+    hot = noise(rng, size, 4) > 0.45                                     # brasa viva ou apagada
+    rgb = mix(rgb, (120, 22, 10), crack * ~hot)                          # brasa apagando
+    rgb = mix(rgb, (255, 120, 24), crack * hot)                          # brasa viva
+    return mix(rgb, (255, 210, 110), np.clip((2.0 - c) / 1.0, 0, 1) * hot)
+
+
 def screen_grain(rng, size=256):
     # ruído em blocos de 2 px, esparso: a maioria quase transparente, poucos grãos fortes
     cells = rng.random((size // 2, size // 2)).astype(np.float32) ** 3
@@ -263,6 +284,22 @@ def screen_lines(rng, w=512, h=256):
     gaps = np.clip(noise(rng, w, 32)[:h, :] * 1.6 - 0.3, 0, 1)
     a = row[:, None] * gaps
     return np.full((h, w, 3), 255, np.float32), a
+
+
+def sonar_ring(size=256):
+    # anel do sonar do Estalador (sprint 0037): branco com alfa, desenhado achatado 2:1 no chão
+    # isométrico. Frente fina e nítida em r = 0,9 com rastro macio pra dentro (a onda que passou)
+    # e falhas suaves ao longo da volta, pra não parecer círculo de interface.
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    cx = cy = (size - 1) / 2
+    r = np.hypot(x - cx, y - cy) / (size / 2)
+    th = np.arctan2(y - cy, x - cx)
+    front = np.exp(-((r - 0.9) / 0.022) ** 2)
+    wake = np.where(r < 0.9, np.exp(-((0.9 - r) / 0.12) ** 2) * 0.35, 0)
+    gaps = 0.72 + 0.28 * np.sin(7 * th) * np.sin(3 * th + 1.3)
+    a = np.clip((front + wake) * gaps, 0, 1)
+    a[r > 0.98] = 0
+    return np.full((size, size, 3), 255, np.float32), a
 
 
 def screen_static(rng, size=256):
@@ -495,6 +532,7 @@ def main():
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     # casca de brasa: corpo inteiro (malha Hazmat), opaca como a cinza
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
+    save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)
     for i in range(1, 5):
@@ -513,6 +551,9 @@ def main():
     save(rgb, "NOM/NOM_Lascas.png", alpha=a)
     rgb, a = ash_flake(np.random.default_rng((SEED, 16)))
     save(rgb, "NOM/NOM_Cinza.png", alpha=a)
+    # anel do sonar (sprint 0037): sem sorteio
+    rgb, a = sonar_ring()
+    save(rgb, "NOM/ScreenFx/NOM_SonarAnel.png", alpha=a)
 
 
 if __name__ == "__main__":

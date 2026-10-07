@@ -12,6 +12,13 @@ local FILES = {
     "tests/test_dissolve_shader.lua",
     "tests/test_eco_fx.lua",
     "tests/test_rules.lua",
+    "tests/test_ticao_rules.lua",
+    "tests/test_light_rules.lua",
+    "tests/test_flicker_rules.lua",
+    "tests/test_storm_rules.lua",
+    "tests/test_ticao_light.lua",
+    "tests/test_lamp_flicker.lua",
+    "tests/test_storm.lua",
     "tests/test_config.lua",
     "tests/test_climate_look.lua",
     "tests/test_eco_rules.lua",
@@ -27,6 +34,12 @@ local FILES = {
     "tests/test_variant_ai.lua",
     "tests/test_wander_rules.lua",
     "tests/test_wander.lua",
+    "tests/test_sonar_rules.lua",
+    "tests/test_sonar.lua",
+    "tests/test_sonar_fx.lua",
+    "tests/test_mod3_sonar.lua",
+    "tests/test_mod3_light.lua",
+    "tests/test_mod3_censor.lua",
     "tests/test_carpideira.lua",
     "tests/test_variants_client.lua",
     "tests/test_variants.lua",
@@ -57,6 +70,7 @@ local FILES = {
     "tests/test_night_and_fog.lua",
     "tests/test_fog_event_rules.lua",
     "tests/test_debug_rules.lua",
+    "tests/test_debug_log.lua",
     "tests/test_debug.lua",
     "tests/test_debug_panel.lua",
     "tests/test_translations.lua",
@@ -67,8 +81,10 @@ local FILES = {
 }
 
 local pass, fail = 0, 0
+-- luajit tests/run.lua [trecho]: só os arquivos com o trecho no nome
+local only = arg and arg[1]
 for _, file in ipairs(FILES) do
-    local tests = dofile(file)
+    local tests = (not only or file:find(only, 1, true)) and dofile(file) or {}
     for name, fn in pairs(tests) do
         NOM_ShaderMod = nil -- flag do mod do shader (mod2): só quem testa liga
         local ok, err = pcall(fn)

@@ -285,6 +285,52 @@ return {
         assert(high <= R().MAX)
     end,
 
+    -- review da 0039: a preta veste o Outro Mundo ×1,4 e as lascas acompanham
+    flakes_black_denser = function()
+        local function alive(black)
+            local G = setup()
+            NOM_FogState.set(true, 3, false, black)
+            G.secs(6)
+            return F().count()
+        end
+        local white, black = alive(false), alive(true)
+        assert(black > white * 1.2, "branca " .. white .. " preta " .. black)
+    end,
+
+    -- cinza no ar (sprint 0040): só na vermelha, em volta do jogador, a meia altura, com a cor da
+    -- paleta vermelha; some com os efeitos de tela desligados; na branca e na preta, não
+    flakes_red_air = function()
+        local function air(red, black, opts)
+            local G = setup(opts)
+            NOM_FogState.set(true, 3, red, black)
+            G.secs(6)
+            local n = 0
+            for _, p in ipairs(F().parts()) do
+                if p.from == "A" then
+                    n = n + 1
+                    local dx, dy = p.x - 100.5, p.y - 100.5 -- o meio do square do jogador
+                    assert(dx * dx + dy * dy <= R().AIR_RADIUS ^ 2 + 1e-6, "longe do jogador")
+                    assert(p.z > 0, "no chão")
+                end
+            end
+            return n, G
+        end
+        local n, G = air(true, false)
+        assert(n > 10 and n <= R().AIR_MAX, "vermelha sem cinza no ar: " .. n)
+        local red = R().palette("red").cinza
+        local seen = 0
+        for _, d in ipairs(G.draws) do
+            if d.kind == "scaled" then
+                seen = seen + 1
+                assert(d.r == red[1] and d.g == red[2] and d.b == red[3], "cor da cinza")
+            end
+        end
+        assert(seen > 0, "cinza não desenhada")
+        assert(air(false, false) == 0, "cinza no ar na branca")
+        assert(air(false, true) == 0, "cinza no ar na preta")
+        assert(air(true, false, { intensity = 0 }) == 0, "cinza no ar com os efeitos desligados")
+    end,
+
     -- sem névoa e sem lasca, o desenho não vai ao Java
     flakes_off_costs_nothing = function()
         local G = setup()

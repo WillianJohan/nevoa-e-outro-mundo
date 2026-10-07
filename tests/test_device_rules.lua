@@ -30,6 +30,8 @@ return {
     device_rules_fog_kind_single_point = function()
         assert(R.fogKind({ on = true, red = false }) == "white")
         assert(R.fogKind({ on = true, red = true }) == "red")
+        assert(R.fogKind({ on = true, red = false, black = true }) == "black")
+        assert(R.sound("tv", "black") == "NOM_DevTvBlack" and R.sound("radio", "black") == "NOM_DevRadioBlack")
     end,
     -- lista de sons por névoa: caixa e carro usam a branca até ganharem a vermelha
     device_rules_sounds_by_fog = function()

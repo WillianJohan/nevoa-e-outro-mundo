@@ -14,6 +14,7 @@ require "NOM_NightRules"
 require "NOM_VariantRules"
 require "NOM_Config"
 require "NOM_FogState"
+require "NOM_TicaoRules"
 
 -- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
 -- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
@@ -166,7 +167,7 @@ local function process(z, c)
         kind = "eco"
     elseif fog then
         id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- sem o chapéu caído (sprint 0017)
-        kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red)
+        kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red, NOM_FogState.black)
     end
     -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit
     look(z, kind ~= "eco" and kind or nil, id)
@@ -177,7 +178,8 @@ local function process(z, c)
     if dayTier == nil and not (c.inactive and c.speed == 4) then
         dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
     end
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm)
+    local ticaoSpeed = kind == "ticao" and NOM_TicaoRules.speed(id, NOM_FogState.period) or nil
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm, ticaoSpeed)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key

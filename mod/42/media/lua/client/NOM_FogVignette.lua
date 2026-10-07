@@ -9,7 +9,7 @@
 -- isOverride só durante a névoa e só enquanto o jogador não forrageia.
 -- setOverrideSearchManager não é usado: ele bloqueia o forrageamento (:1102).
 --
--- Com o mod do shader (NevoaEOutroMundo_Shader, flag NOM_ShaderMod, sprint 0013) o
+-- Com o mod do shader (NoiseOfMist_Shader, flag NOM_ShaderMod, sprint 0013) o
 -- SearchMode vira o canal Lua → shader em vez da vinheta (ADR-013): override do
 -- SearchMode ligado (PlayerSearchMode.update sai na 1ª linha e não mexe nos floats),
 -- enabled nunca ligado (VarInfo.x = 0: o screen.frag do mod sabe que os floats são

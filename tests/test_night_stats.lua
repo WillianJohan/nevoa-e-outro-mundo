@@ -867,4 +867,34 @@ return {
         for i, z in ipairs(zs) do assert(seen[z], "zumbi " .. i .. " fora do unstick de dia") end
         NOM_NightStats.unstick = nil
     end,
+    -- preta (sprint 0038): todo zumbi com ID vira Tição (visão ruim, audição apurada, arrastado ou
+    -- arrastado rápido), nem a noite nem o forçado do debug mudam; o Eco fica Eco; no fim, tudo volta
+    stats_black_fog_every_zombie_is_ticao = function()
+        local sb = { EstaladorChance = 100 }
+        local G = setup({ sandbox = sb })
+        local zs = {}
+        for seed = 1, 40 do zs[#zs + 1] = G.spawn({ id = 3 * 65536 + seed }) end
+        local eco = G.spawn({ id = 3 * 65536 + 1, outfit = "NOM_Eco" })
+        NOM_VariantRules.forced[3 * 65536 + 2] = "corredor"
+        NOM_NightStats.setNight(true, 4)
+        NOM_FogState.set(true, 4, false, true)
+        G.converge()
+        local speeds = { [2] = 0, [3] = 0 }
+        for _, z in ipairs(zs) do
+            assert(z.md.NOM_variant == "ticao" and NOM_NightStats.variants[z] == "ticao", "zumbi comum na preta")
+            assert(z.sight == 3 and z.hearing == 1, "sentidos do Tição")
+            assert(z.speedType == NOM_TicaoRules.speed(z.outfitID, 4), "velocidade do sorteio")
+            speeds[z.speedType] = speeds[z.speedType] + 1
+        end
+        assert(speeds[2] >= 10 and speeds[3] >= 10, "metade a metade: " .. speeds[2] .. "/" .. speeds[3])
+        assert(eco.md.NOM_variant == nil, "Eco virou Tição")
+        assert(G.lore.Sight == 2 and G.lore.Hearing == 2, "sandbox vazou")
+        NOM_FogState.set(false, 4)
+        NOM_NightStats.setNight(false, 4)
+        G.converge()
+        for _, z in ipairs(zs) do
+            assert(z.md.NOM_variant == nil and NOM_NightStats.variants[z] == nil and z.sight == 2 and z.hearing == 2, "Tição ficou")
+        end
+        NOM_VariantRules.forced = {}
+    end,
 }

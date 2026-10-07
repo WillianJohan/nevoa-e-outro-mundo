@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Visual do Tição (sprint 0043): crosta de carvão em placas na cabeça inteira, dois olhos de brasa,
+     lascas no alto e atrás, três fitas de fumaça subindo; modelo de scripts/gen_models.py
+     (media/models_X/Static/Clothes/NOM_M_|NOM_F_TicaoCrosta.x). Voltar pro véu da 0038: em
+     client/NOM_VariantLook.lua, LOOKS.ticao com item Base.NOM_EcoVeu e fx Base.NOM_EcoVeuFx. -->
+<clothingItem>
+	<m_MaleModel>static\clothes\NOM_M_TicaoCrosta</m_MaleModel>
+	<m_FemaleModel>static\clothes\NOM_F_TicaoCrosta</m_FemaleModel>
+	<m_GUID>6c2ad766-b8f2-4444-93d7-6cf158416012</m_GUID>
+	<m_Static>true</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_HatCategory>nohairnobeard</m_HatCategory>
+	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
+	<textureChoices>NOM\NOM_TicaoCrosta3D</textureChoices>
+</clothingItem>

@@ -169,8 +169,9 @@ local function setup(opts)
         stop = function() G.fogCalls[#G.fogCalls + 1] = "stop"; G.sirenMs = nil; return true end,
         status = function() return { next = 136, endAt = nil, sirenMs = G.sirenMs, sirenRed = G.sirenMs ~= nil and G.sirenRed == true } end,
         setRed = function(on) G.fogCalls[#G.fogCalls + 1] = "red:" .. tostring(on); return true end,
-        force = function(red, skip)
-            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true)
+        force = function(red, skip, black)
+            G.fogCalls[#G.fogCalls + 1] = "force:" .. tostring(red) .. ":" .. tostring(skip == true) ..
+                (black and ":preta" or "")
             return true
         end,
     }
@@ -193,6 +194,8 @@ local function setup(opts)
     for _, m in ipairs({ "NOM_Fog", "NOM_FogEvent", "NOM_Eco", "NOM_NightStats", "NOM_FogState", "NOM_SemRosto" }) do
         package.loaded[m] = _G[m]
     end
+    NOM_DebugLog = nil
+    package.loaded["NOM_DebugLog"] = nil
     require "NOM_World"
     if opts.loadServer ~= false then dofile("mod/42/media/lua/server/NOM_DebugServer.lua") end
     if opts.loadClient ~= false then
@@ -708,13 +711,18 @@ return {
         assert(table.concat(G.fogCalls, ",") == "force:true:true", table.concat(G.fogCalls, ","))
         assert(has(G.printed, "^%[NOM%] debug nevoa forcada vermelha=true"), table.concat(G.printed, "\n"))
     end) end,
-    nom_set_black_fog_not_yet = function() run(function()
+    -- sprint 0038: a preta é o mesmo pedido, com black (e o red nunca junto)
+    nom_set_black_fog = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
         NOM.setBlackFog()
+        assert(#G.sentClient == 1, "esperava um pedido só")
+        local a = G.sentClient[1].args
+        assert(a.op == "setFog" and a.black == true and not a.red and not a.skip, "pedido errado")
         NOM.setBlackFog(true)
-        assert(#G.sentClient == 0, "névoa preta mandou algo")
-        assert(has(G.printed, "^%[NOM%] debug névoa preta ainda não existe %(sprint 0038%)"), table.concat(G.printed, "\n"))
+        assert(#G.sentClient == 2 and G.sentClient[2].args.black == true and G.sentClient[2].args.skip == true)
+        assert(table.concat(G.fogCalls, ",") == "force:false:false:preta,force:false:true:preta", table.concat(G.fogCalls, ","))
+        assert(has(G.printed, "^%[NOM%] debug nevoa forcada preta=true"), table.concat(G.printed, "\n"))
     end) end,
     nom_set_end_fog = function() run(function()
         local G = setup()
@@ -959,6 +967,100 @@ return {
         assert(#waves == 0, "mandou onda com o perambular desligado")
         assert(has(G.printed, "^%[NOM%] debug perambular desligado na opção FogWander"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0037: um estalo do sonar agora; quem decide é o servidor (o Estalador mais perto
+    -- de quem pediu, ou o anel no próprio jogador)
+    nom_sonar_asks_server = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        local asked = {}
+        NOM_SonarServer = { force = function(who) asked[#asked + 1] = who; return "sonar estalador x=3 y=4 dist=5" end }
+        NOM.sonar()
+        NOM_SonarServer = nil
+        assert(#asked == 1 and asked[1] == p, "não pediu pelo jogador")
+        assert(has(G.printed, "^%[NOM%] debug sonar estalador x=3 y=4 dist=5"), table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.sonar()
+        assert(has(G.printed, "^%[NOM%] debug sonar não carregou"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0046: as respostas do debug ficam no NOM_DebugLog pro painel: a do servidor no solo
+    -- (mesmo processo), a do MP (debugReply) e as do próprio console
+    debug_log_collects_replies = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local saved = NOM_Storm
+        NOM_Storm = { force = function() return 7, 8 end }
+        NOM.thunder()
+        NOM_Storm = saved
+        local function last() local l = NOM_DebugLog.lines(); return l[#l] and l[#l].text end
+        assert(last() == "relâmpago em x=7 y=8", "resposta do servidor no solo: " .. tostring(last()))
+        NOM.time()
+        assert(last():find("^uso: NOM.time"), "aviso do console: " .. tostring(last()))
+        assert(has(G.printed, "^%[NOM%] debug uso: NOM.time"), "parou de imprimir")
+    end) end,
+    debug_log_collects_mp_reply = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 0, y = 0 })
+        G.fire("OnServerCommand", "NevoaEOutroMundo", "debugReply", { msg = "[NOM] debug poste piscou em x=1 y=2 z=0" })
+        local l = NOM_DebugLog.lines()
+        assert(l[#l] and l[#l].text == "poste piscou em x=1 y=2 z=0", "resposta do MP fora do registro")
+        assert(has(G.printed, "^%[NOM%] debug poste piscou"), "parou de imprimir")
+    end) end,
+    -- sprint 0045: relâmpago já perto de quem pediu; quem dispara é o servidor
+    nom_thunder_asks_server = function() run(function()
+        local G = setup()
+        local p = G.player({ x = 0, y = 0 })
+        local asked = {}
+        local saved = NOM_Storm
+        local ok, err = pcall(function()
+            NOM_Storm = { force = function(who) asked[#asked + 1] = who; return 300, -40 end }
+            NOM.thunder()
+            assert(#asked == 1 and asked[1] == p, "não pediu pelo jogador")
+            assert(has(G.printed, "^%[NOM%] debug relâmpago em x=300 y=%-40"), table.concat(G.printed, "\n"))
+            G.printed = {}
+            NOM_Storm = nil
+            NOM.thunder()
+            assert(has(G.printed, "^%[NOM%] debug tempestade não carregou"), table.concat(G.printed, "\n"))
+        end)
+        NOM_Storm = saved
+        assert(ok, err)
+    end) end,
+    -- sprint 0045: um poste de fora perto pisca já; sem poste, avisa
+    nom_flicker_lamp_asks_server = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local found = true
+        local saved = NOM_LampFlicker
+        local ok, err = pcall(function()
+            NOM_LampFlicker = { force = function() if found then return 4, 5, 0 end end }
+            NOM.flickerLamp()
+            assert(has(G.printed, "^%[NOM%] debug poste piscou em x=4 y=5 z=0"), table.concat(G.printed, "\n"))
+            found = false
+            G.printed = {}
+            NOM.flickerLamp()
+            assert(has(G.printed, "^%[NOM%] debug nenhum poste aceso de fora a até 25 tiles"), table.concat(G.printed, "\n"))
+        end)
+        NOM_LampFlicker = saved
+        assert(ok, err)
+    end) end,
+    -- sprint 0045: força a chuva nas névoas pretas e vermelhas (liga/desliga), só em memória
+    nom_rain_toggles_forced = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local saved = NOM_Storm
+        local ok, err = pcall(function()
+            NOM_Storm = { rainForced = false }
+            NOM.rain()
+            assert(NOM_Storm.rainForced == true)
+            assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: sim"), table.concat(G.printed, "\n"))
+            G.printed = {}
+            NOM.rain()
+            assert(NOM_Storm.rainForced == false)
+            assert(has(G.printed, "^%[NOM%] debug chuva forçada na preta e na vermelha: não %(sorteio de 30%%%)"),
+                table.concat(G.printed, "\n"))
+        end)
+        NOM_Storm = saved
+        assert(ok, err)
+    end) end,
     -- sprint 0036: cegos da visão curta e a última onda, neste processo (quem simula)
     nom_blind_reports_counts = function() run(function()
         local G = setup()
@@ -973,6 +1075,21 @@ return {
         G.printed = {}
         NOM.blind()
         assert(has(G.printed, "^%[NOM%] debug visão curta: NOM_VariantAI não carregou"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0038: Tições e congelados pela luz neste processo
+    nom_ticao_reports_counts = function() run(function()
+        local G = setup()
+        local oldNS, oldTF, oldFS, oldTL = NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black, NOM_TicaoLight
+        NOM_NightStats = { variants = { a = "ticao", b = "ticao", c = "estalador" } }
+        NOM_TicaoFreeze = { count = function() return 1 end }
+        NOM_FogState.black = true
+        NOM_TicaoLight = nil
+        NOM.ticao()
+        NOM_TicaoLight = { fixedCount = function() return 3 end }
+        NOM.ticao()
+        NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black, NOM_TicaoLight = oldNS, oldTF, oldFS, oldTL
+        assert(has(G.printed, "^%[NOM%] debug ticao preta=true ticoes=2 congelados=1 luzes_fixas=%-$"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "luzes_fixas=3$"), table.concat(G.printed, "\n"))
     end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()

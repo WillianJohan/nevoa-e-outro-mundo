@@ -19,7 +19,7 @@ NOM_SirenSpotsRules = {
     PITCH_MIN = 0.95, PITCH_MAX = 1.05,
     -- Ponto único dos sons por tipo de névoa (gerados em scripts/gen_sounds.py, OFICIAIS). Tipo
     -- sem lista usa a branca. A vermelha é o aviso da névoa vermelha (ADR-010): as listas não se
-    -- misturam. A preta só toca a partir da sprint 0038.
+    -- misturam.
     SOUNDS = {
         white = { "NOM_SirenWhite1", "NOM_SirenWhite2", "NOM_SirenWhite3", "NOM_SirenWhite4", "NOM_SirenWhite5",
             "NOM_SirenWhite6", "NOM_SirenWhite7", "NOM_SirenWhite8", "NOM_SirenWhite9" },

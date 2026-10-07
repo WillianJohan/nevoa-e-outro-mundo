@@ -1,13 +1,15 @@
 -- Cliente de MP: o dono do zumbi roda a IA (ADR-005), então é aqui que o
--- Estalador fica cego, estala, o Corredor é visto pegando um jogador de alvo e a
--- Carpideira fica parada e soluça. Quem decide os gritos é o servidor
--- (server/NOM_Variants.lua): o cliente só avisa e aplica o que ele decidiu.
+-- Estalador fica cego, o Corredor é visto pegando um jogador de alvo e a
+-- Carpideira fica parada e soluça. Quem decide os gritos e o sonar do Estalador é o
+-- servidor (server/NOM_Variants.lua, server/NOM_SonarServer.lua): o cliente só avisa e
+-- aplica o que ele decidiu.
 if not isClient() then return end
 
 require "NOM_VariantAI"
 require "NOM_VariantRules"
 require "NOM_Carpideira"
 require "NOM_Wander"
+require "NOM_Sonar"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -48,5 +50,7 @@ Events.OnServerCommand.Add(function(module, command, args)
         for _, pid in pairs(args.pids) do NOM_Carpideira.screamed[pid] = true end
     elseif command == "wander" and type(args.seed) == "number" then
         NOM_Wander.wave(args.seed) -- o servidor decidiu a onda; os zumbis daqui andam (sprint 0036)
+    elseif command == "sonar" or command == "sonarFound" then
+        NOM_Sonar.command(command, args) -- estalo, anel e achado do sonar (sprint 0037)
     end
 end)

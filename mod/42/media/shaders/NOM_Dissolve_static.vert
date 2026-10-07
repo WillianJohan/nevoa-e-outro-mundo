@@ -1,5 +1,5 @@
 #version 330
-// Névoa e Outro Mundo — dissolve das peças (sprint 0018, ADR-016), vértice da peça presa a
+// NOM: Noise of Mist — dissolve das peças (sprint 0018, ADR-016), vértice da peça presa a
 // um osso (m_Static=true: venda do Estalador, boca do Corredor).
 //
 // Código original deste repositório, licença MIT. Do jogo vem só a interface: os atributos

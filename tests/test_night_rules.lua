@@ -145,4 +145,19 @@ return {
         assert(e.speed == 2 and e.sight == 3 and e.hearing == 1 and e.key ~= "day")
         assert(e.key ~= NOM_NightRules.wanted(true, "estalador", 2, cfg()).key, "dia e noite com a mesma chave")
     end,
+    -- Tição (sprint 0038): a velocidade do sorteio, visão ruim, audição apurada; nem a noite nem a
+    -- calmaria mexem
+    night_rules_wanted_ticao = function()
+        local R = NOM_NightRules
+        for _, night in ipairs({ true, false }) do
+            for _, calm in ipairs({ true, false }) do
+                for _, sp in ipairs({ 2, 3 }) do
+                    local w = R.wanted(night, "ticao", 1, cfg(), calm, sp)
+                    assert(w.speed == sp and w.sight == 3 and w.hearing == 1, "ticao")
+                    assert(w.key == "ticao:" .. sp .. ",3,1", w.key)
+                end
+            end
+        end
+        assert(R.wanted(true, "ticao", 1, cfg()).speed == 3, "sem sorteio: arrastado")
+    end,
 }

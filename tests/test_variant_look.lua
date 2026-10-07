@@ -1348,4 +1348,23 @@ return {
         z.alphaThrows = false
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0, "a casca ficou: " .. types(z))
     end,
+    -- preta (sprint 0038): todo zumbi vira Tição (pele de carvão e, desde a 0043, a crosta 3D com
+    -- olhos de brasa e fumaça); no fim volta o zumbi de sempre
+    look_black_fog_ticao_and_back = function()
+        local G = setup()
+        for seed = 1, 20 do G.spawn({ id = 9 * 65536 + seed }) end
+        NOM_FogState.set(true, 12, false, true)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.ticao
+        assert(look.skin == "NOM_Ticao" and look.item == "Base.NOM_TicaoCrosta" and look.fx == "Base.NOM_TicaoCrostaFx")
+        for _, z in ipairs(G.zombies) do
+            assert(z.hv.name == look.skin and hasItem(z, look.item), "preta: zumbi sem o Tição: " .. types(z))
+        end
+        assert(NOM_VariantLook.count() == 20)
+        fogOff()
+        G.converge()
+        for _, z in ipairs(G.zombies) do
+            assert(z.hv.name == nil and types(z) == table.concat(OUTFIT, ","), "Tição ficou: " .. types(z))
+        end
+    end,
 }

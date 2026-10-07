@@ -39,14 +39,20 @@ POLY = {
     "W": ((0, 32), (64, 0), (64, 194), (0, 226)),
     "N": ((64, 0), (128, 32), (128, 228), (64, 196)),
 }
-KINDS = {"F": {"Grade", "Ferrugem", "Chapa", "Tinta"}, "W": {"Tinta", "Ferrugem", "Descasca"},
-         "N": {"Tinta", "Ferrugem", "Descasca"}}
+KINDS = {"F": {"Grade", "Ferrugem", "Chapa", "Tinta", "Cinza", "Brasa", "Tentaculo"},
+         "W": {"Tinta", "Ferrugem", "Descasca", "Fuligem", "Tentaculo"},
+         "N": {"Tinta", "Ferrugem", "Descasca", "Fuligem", "Tentaculo"}}
 # fração do lado coberta (alfa médio na máscara): parcial = nem vazio nem tile cheio. Os
 # escorridos de ferrugem na parede são fios e manchas de fonte: cobrem pouco (3–15%).
 COVER = {"Ferrugem": (0.03, 0.6), "Tinta": (0.06, 0.6), "Grade": (0.3, 0.93), "Chapa": (0.25, 0.93),
-         "Descasca": (0.6, 0.98)}
+         "Descasca": (0.6, 0.98), "Cinza": (0.08, 0.7), "Brasa": (0.05, 0.6), "Fuligem": (0.12, 0.8),
+         "Tentaculo": (0.04, 0.5)}
+# tentáculo preto (sprint 0040): luminância média do opaco abaixo disto
+TENTACLE_LUM_MAX = 0.2
 SAT_MAX = 0.42          # saturação média (HSV) do que é opaco
 VIVID_MAX = 0.01        # fração de laranja vivo (saturação > 0,65 e brilho > 0,4)
+# a brasa (sprint 0039) é o laranja que pode: fraco, só em algumas trincas
+VIVID_KIND = {"Brasa": 0.08}
 HALO_MAX = 0.12         # |luminância| do pixel transparente contra os vizinhos com tinta
 DIFF_MIN = 0.02         # diferença média de alfa entre duas variações
 DETAIL_MIN = 0.035      # desvio da luminância no opaco
@@ -172,14 +178,37 @@ def saturation(a):
 
 
 def test_palette_desaturated():
-    for _, _, _, f in files():
+    for kind, _, _, f in files():
         _, a = load(f)
         op = a[..., 3] > 0.5
         sat, mx = saturation(a)
         mean = float(sat[op].mean())
         vivid = float(((sat > 0.65) & (mx > 0.4) & op).sum() / max(op.sum(), 1))
         assert mean < SAT_MAX, "%s: saturação média %.3f (teto %.2f)" % (f, mean, SAT_MAX)
-        assert vivid < VIVID_MAX, "%s: %.1f%% de laranja vivo" % (f, 100 * vivid)
+        assert vivid < VIVID_KIND.get(kind, VIVID_MAX), "%s: %.1f%% de laranja vivo" % (f, 100 * vivid)
+
+
+def test_ember_glows():
+    # brasa apagando, mas brasa: alguma trinca com laranja em cada variação
+    for kind, _, _, f in files():
+        if kind != "Brasa":
+            continue
+        _, a = load(f)
+        r, g, b = a[..., 0], a[..., 1], a[..., 2]
+        warm = ((r > g * 1.6) & (r > 0.3) & (a[..., 3] > 0.5)).sum()
+        assert warm > 20, "%s: sem brasa (%d px quentes)" % (f, warm)
+
+
+def test_tentacle_dark():
+    # tentáculo preto, com reflexo: escuro na média, mas com brilho (não é borrão chapado)
+    for kind, _, _, f in files():
+        if kind != "Tentaculo":
+            continue
+        _, a = load(f)
+        op = a[..., 3] > 0.5
+        L = lum(a)[op]
+        assert L.mean() < TENTACLE_LUM_MAX, "%s: claro demais (%.3f)" % (f, L.mean())
+        assert np.percentile(L, 99) > 0.25, "%s: sem brilho molhado (p99 %.3f)" % (f, np.percentile(L, 99))
 
 
 def neighbours_mean(v, w):
@@ -237,7 +266,7 @@ def test_list_written_by_generator():
 def test_generator_deterministic():
     # regera duas texturas na memória (uma de chão, uma de parede) e compara com o arquivo
     g = generator()
-    for kind, side, n in (("Grade", "F", 2), ("Tinta", "W", 3)):
+    for kind, side, n in (("Grade", "F", 2), ("Tinta", "W", 3), ("Brasa", "F", 1), ("Tentaculo", "N", 2)):
         rgb, al = g.render(kind, side, n)
         mine = g.to_rgba(rgb, al)
         disk = np.asarray(Image.open(os.path.join(DIR, g.file_name(kind, side, n))).convert("RGBA"))
@@ -246,7 +275,8 @@ def test_generator_deterministic():
 
 def main():
     tests = [test_names_and_kinds, test_frame_rgba_128x256, test_nothing_outside_side_mask,
-             test_coverage_partial_and_heavy, test_variations_differ, test_palette_desaturated,
+             test_coverage_partial_and_heavy, test_variations_differ, test_palette_desaturated, test_ember_glows,
+             test_tentacle_dark,
              test_no_halo, test_halo_criterion_catches_black_edge, test_not_flat,
              test_list_written_by_generator, test_generator_deterministic]
     fail = 0

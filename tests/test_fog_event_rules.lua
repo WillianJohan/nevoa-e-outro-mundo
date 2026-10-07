@@ -205,4 +205,57 @@ return {
         assert(R.durationHours(2, 6, 0) == 2 and R.durationHours(2, 6, 0.5) == 4)
         assert(R.durationHours(6, 2, 0) == 2, "min > max não troca")
     end,
+    -- preta (sprint 0038): 0 na carência, a chance do sandbox depois, desligada pelo toggle
+    fog_event_rules_black_grace_and_toggle = function()
+        local c = cfg({ blackOn = true, blackChance = 100, blackGraceDays = 14 })
+        assert(R.blackFog(1, SEED, c, 13.99) == false, "preta na carência")
+        assert(R.blackFog(1, SEED, c, 14) == true and R.blackFog(1, SEED, c, 90) == true)
+        c.blackOn = false
+        assert(R.blackFog(1, SEED, c, 90) == false, "preta desligada")
+        c.blackOn, c.blackChance = true, 0
+        assert(R.blackFog(1, SEED, c, 90) == false, "chance 0")
+        assert(R.blackFog(nil, SEED, cfg({ blackOn = true, blackChance = 100 }), 90) == false, "sem período")
+    end,
+    -- 5% dos períodos, determinístico e sem casar com o sorteio da vermelha
+    fog_event_rules_black_chance_deterministic = function()
+        local c = cfg({ blackOn = true, blackChance = 5, blackGraceDays = 0 })
+        local vc = { redFogOn = true, redFogChance = 20 }
+        local n, both, redN = 0, 0, 0
+        for p = 1, 20000 do
+            local b = R.blackFog(p, SEED, c, 30)
+            assert(b == R.blackFog(p, SEED, c, 30), "re-sorteou")
+            local red = NOM_VariantRules.redFog(p, vc, SEED)
+            if b then n = n + 1 end
+            if red then redN = redN + 1 end
+            if b and red then both = both + 1 end
+        end
+        assert(n > 850 and n < 1150, "preta em " .. n .. " de 20000")
+        -- independentes: P(preta e vermelha) ≈ 5% × 20% = 1%
+        assert(both > 120 and both < 280, "preta e vermelha juntas " .. both)
+        assert(redN > 3700 and redN < 4300)
+    end,
+    -- a preta dura o que o sandbox dela manda e nunca é vermelha junto
+    fog_event_rules_black_start_duration = function()
+        local s = { seed = SEED, bornAt = 0 }
+        local c = cfg({ blackMinHours = 2, blackMaxHours = 3 })
+        assert(R.start(s, 100, c, seq(0.5), true, true))
+        assert(s.black == true and s.red == false, "preta e vermelha juntas")
+        assert(s.endAt == 102.5, "duração da preta " .. tostring(s.endAt))
+        R.stop(s, 102.5, c)
+        assert(s.black == nil and s.red == nil, "a cor ficou depois do fim")
+        assert(R.start(s, 200, c, seq(0), false))
+        assert(s.black == false and s.endAt == 203, "branca com a duração da preta")
+    end,
+    fog_event_rules_cancel_clears_black = function()
+        local s = { seed = SEED, bornAt = 0, black = true, red = false, next = 10 }
+        R.cancel(s)
+        assert(s.black == nil and s.red == nil and s.next == nil)
+    end,
+    fog_event_rules_config_reads_black = function()
+        local t = { BlackFogEnabled = true, BlackFogChance = 5, BlackFogGraceDays = 14, BlackFogMinHours = 2,
+            BlackFogMaxHours = 3 }
+        local c = R.config(function(k) return t[k] end)
+        assert(c.blackOn == true and c.blackChance == 5 and c.blackGraceDays == 14)
+        assert(c.blackMinHours == 2 and c.blackMaxHours == 3)
+    end,
 }

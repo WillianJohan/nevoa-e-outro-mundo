@@ -18,6 +18,7 @@ import zombie.characters.IsoZombie;
 import zombie.iso.IsoCamera;
 import zombie.iso.IsoCell;
 import zombie.iso.IsoGridSquare;
+import zombie.iso.IsoLightSource;
 import zombie.iso.IsoMovingObject;
 import zombie.iso.SpriteDetails.IsoFlagType;
 import zombie.iso.weather.ClimateManager;
@@ -37,6 +38,9 @@ import zombie.vehicles.BaseVehicle;
  * A névoa viaja (sprint 0026): entra em bancos pelo lado de onde vem o vento, atravessa e sai pelo
  * outro; a rua não é recarregada, então rastro e vácuo atrás de prédio duram e andam com ela.
  * Resolução (sprint 0030): NOMRender_setParam(9, s), s células por tile (1 a 3); trocar recria a grade.
+ * Névoa preta (sprint 0039, NOMRender_setParam(12, 1)): a luz empurra a névoa (LightWind) a cada passo,
+ * as lanternas e faróis do RenderContext.collectTorches e os postes acesos perto. Erro aí desliga só o
+ * empurrão.
  */
 final class Flow {
     static final int TILES = 128;
@@ -58,6 +62,21 @@ final class Flow {
     static float sourceX, sourceY, sourceVX, sourceVY;        // só a thread principal escreve
     static boolean sourceOn;
     private static final java.util.Random sourceRandom = new java.util.Random();
+    // luz que empurra a névoa preta (sprint 0039): lanternas/faróis do quadro + postes, até MAX_LIGHTS
+    static final int MAX_LIGHTS = 8;
+    static final int MAX_LIGHT_IMPULSES = MAX_LIGHTS * LightWind.MAX_PER_LIGHT;
+    static final float FIXED_RANGE = 40f;         // tiles da câmera
+    static final int FIXED_MIN = 3;               // raio mínimo do poste (vela não empurra), o NOM_LightRules
+    static final long FIXED_EVERY_NS = 500_000_000L;
+    private static final float[] torches = new float[RenderContext.MAX_TORCHES * 5];   // x, y, z, dx, dy | dot, alcance
+    private static final float[] torchExtra = new float[RenderContext.MAX_TORCHES * 2];
+    private static int torchCount;
+    private static final float[] fixedLights = new float[MAX_LIGHTS * 3];               // x, y, alcance
+    private static int fixedCount, fixedZ = Integer.MIN_VALUE;
+    private static long fixedAt;
+    private static boolean lightsDead;
+    private static int lightErrors, lightShown;
+    static final int LIGHT_ERRORS = 10;
     static final int PARAM_ON = 4;         // NOMRender_setParam(4, 0) desliga, (4, 1) liga
     static final int UNIT = 6;
     static final int W_OPEN = 1 << 8, N_OPEN = 1 << 9;   // na máscara empilhada, junto das flags
@@ -85,6 +104,9 @@ final class Flow {
     private static HashSet<Long> soundsSeen = new HashSet<>(), soundsNow = new HashSet<>();
     private static final float[] blasts = new float[MAX_BLASTS * 3];  // x, y, raio
     private static int blastCount;
+    private static final Blasts clears = new Blasts();   // só a thread principal mexe (collectSounds e fillClears)
+    private static final Blasts.Budget blastLog = new Blasts.Budget(10);
+    private static final Sonar sonar = new Sonar();   // anéis do sonar do Estalador (sprint 0037)
     private static long statFrames, statMaskNanos;
 
     /** O que a thread principal leu do jogo desde a última vez que a simulação pegou. */
@@ -99,13 +121,18 @@ final class Flow {
         int blastCount;
         final float[] winds = new float[MAX_PENDING_STEPS * 2];
         int steps;
+        // frente de cada anel do sonar em cada passo: x, y, r0, r1 (Sonar.bands)
+        final float[] sonars = new float[MAX_PENDING_STEPS * Sonar.MAX_RINGS * 4];
+        final int[] sonarCount = new int[MAX_PENDING_STEPS];
         float stillDecay;   // sorvedouro do ar parado: o vácuo atrás dos prédios (PARAM_VACUUM)
         boolean sourceOn;   // foco de vento ligado (PARAM_WIND_SOURCE); posição e sopro em coordenadas de mundo
         float sourceX, sourceY, sourceVX, sourceVY;
+        final float[] lights = new float[MAX_LIGHT_IMPULSES * LightWind.FLOATS];   // impulsos da luz (névoa preta)
+        int lightCount;
 
         boolean hasWork() { return reset || scroll || maskCount > 0 || steps > 0; }
 
-        void clear() { reset = scroll = false; maskCount = moverCount = blastCount = steps = 0; }
+        void clear() { reset = scroll = false; maskCount = moverCount = blastCount = steps = lightCount = 0; }
 
         void addMask(int x, int y, int code) {
             if (maskCount + 3 > mask.length) mask = Arrays.copyOf(mask, mask.length * 2);
@@ -205,6 +232,7 @@ final class Flow {
                     maskRow = 0;
                     acc = 0f;
                     prev.clear();
+                    sonar.clear();
                     running = true;
                 } else if (nx0 != x0 || ny0 != y0) {
                     int dx = nx0 - x0, dy = ny0 - y0;
@@ -231,6 +259,8 @@ final class Flow {
                 in.sourceY = sourceY;
                 in.sourceVX = sourceVX;
                 in.sourceVY = sourceVY;
+                in.lightCount = RenderContext.luaParams[RenderContext.PARAM_BLACK] >= 0.5f ? lightImpulses(cell, cz, cx, cy, now, in.lights) : 0;
+                lightShown = in.lightCount;
                 for (int r = 0; r < ROWS_PER_FRAME; r++) {
                     buildRow(cell, in, maskRow);
                     maskRow = (maskRow + 1) % TILES;
@@ -258,10 +288,13 @@ final class Flow {
                         if (in.steps < MAX_PENDING_STEPS) {
                             in.winds[in.steps * 2] = windX;
                             in.winds[in.steps * 2 + 1] = windY;
+                            in.sonarCount[in.steps] = sonar.bands(STEP, in.sonars, in.steps * Sonar.MAX_RINGS * 4);
                             in.steps++;
                             bankX += windX * STEP;      // a mesma conta do FogBanks.advance
                             bankY += windY * STEP;
                             if (++stepsSent % 600 == 0) logStats();
+                        } else {
+                            sonar.bands(STEP, null, 0);   // passo jogado fora: o anel anda igual
                         }
                         acc -= STEP;
                         steps++;
@@ -279,6 +312,83 @@ final class Flow {
         }
     }
 
+    /**
+     * Lanternas e faróis do quadro (RenderContext.collectTorches, relativos à origem do quadro), em
+     * coordenadas de mundo, pro empurrão da luz. Thread principal, antes do update.
+     */
+    static void setTorches(float[] pos, float[] dir, int count, float originX, float originY) {
+        torchCount = Math.min(count, RenderContext.MAX_TORCHES);
+        for (int k = 0; k < torchCount; k++) {
+            int i = k * 4, o = k * 5;
+            torches[o] = pos[i] + originX;
+            torches[o + 1] = pos[i + 1] + originY;
+            torches[o + 2] = pos[i + 2];
+            torches[o + 3] = dir[i];
+            torches[o + 4] = dir[i + 1];
+            torchExtra[k * 2] = dir[i + 3];
+            torchExtra[k * 2 + 1] = pos[i + 3];
+        }
+    }
+
+    /**
+     * Impulsos da luz neste quadro (névoa preta): facho de lanterna/farol no andar da grade (o cone,
+     * dot > -0,5; sem cone vira anel) e anel de cada poste aceso perto. Erro desliga só isto.
+     */
+    private static int lightImpulses(IsoCell cell, int cz, float cx, float cy, long now, float[] out) {
+        if (lightsDead) return 0;
+        try {
+            int n = 0, used = 0;
+            for (int k = 0; k < torchCount && used < MAX_LIGHTS; k++) {
+                int o = k * 5;
+                if ((int) Math.floor(torches[o + 2]) != cz) continue;
+                float dot = torchExtra[k * 2], dist = torchExtra[k * 2 + 1];
+                int add = dot > -0.5f
+                        ? LightWind.beam(torches[o], torches[o + 1], torches[o + 3], torches[o + 4], dot, dist, out, n * LightWind.FLOATS)
+                        : LightWind.ring(torches[o], torches[o + 1], dist, out, n * LightWind.FLOATS);
+                n += add;
+                if (add > 0) used++;
+            }
+            if (now - fixedAt >= FIXED_EVERY_NS || fixedZ != cz) readFixed(cell, cz, cx, cy, now);
+            for (int k = 0; k < fixedCount && used < MAX_LIGHTS; k++, used++)
+                n += LightWind.ring(fixedLights[k * 3], fixedLights[k * 3 + 1], fixedLights[k * 3 + 2], out, n * LightWind.FLOATS);
+            lightErrors = 0;
+            return n;
+        } catch (Throwable t) {
+            // a lista de postes é do jogo: um erro solto passa; LIGHT_ERRORS seguidos desligam o empurrão
+            fixedCount = 0;
+            if (++lightErrors >= LIGHT_ERRORS) lightsDead = true;
+            RenderContext.log("luz na névoa preta: erro " + lightErrors + (lightsDead ? ", o empurrão desliga" : "")
+                    + " (o fluido segue): " + t);
+            return 0;
+        }
+    }
+
+    /**
+     * Postes acesos a até FIXED_RANGE da câmera, no andar cz (IsoCell.getLamppostPositions; a regra de
+     * força do IsoLightSource.update: da rede, só com hasGridPower ou haveElectricity no square).
+     */
+    private static void readFixed(IsoCell cell, int cz, float cx, float cy, long now) {
+        fixedAt = now;
+        fixedZ = cz;
+        fixedCount = 0;
+        List<IsoLightSource> list = cell.getLamppostPositions();
+        int size = list.size();
+        for (int i = 0; i < size && fixedCount < MAX_LIGHTS; i++) {
+            IsoLightSource s = list.get(i);
+            if (s == null || !s.isActive() || s.getZ() != cz || s.getRadius() < FIXED_MIN) continue;
+            float x = s.getX() + 0.5f, y = s.getY() + 0.5f;
+            if (Math.abs(x - cx) > FIXED_RANGE || Math.abs(y - cy) > FIXED_RANGE) continue;
+            if (s.isHydroPowered()) {
+                IsoGridSquare sq = cell.getGridSquare(s.getX(), s.getY(), cz);
+                if (sq == null || !(sq.hasGridPower() || sq.haveElectricity())) continue;
+            }
+            int o = fixedCount++ * 3;
+            fixedLights[o] = x;
+            fixedLights[o + 1] = y;
+            fixedLights[o + 2] = s.getRadius();
+        }
+    }
+
     /** Sorteia o foco de vento perto de (px, py) e loga. O sorteio em si é do WindSource (puro, testável). */
     public static void pickSource(float px, float py, java.util.Random r) {
         WindSource w = WindSource.pick(px, py, r);
@@ -287,6 +397,18 @@ final class Flow {
         sourceVX = w.vx;
         sourceVY = w.vy;
         RenderContext.log(String.format("vento: foco em (%.1f,%.1f) soprando (%.2f,%.2f)", sourceX, sourceY, sourceVX, sourceVY));
+    }
+
+    /**
+     * Anel do sonar do Estalador (NOMRender_sonar, thread principal, a mesma do update). false: a
+     * tela desenha (fluido desligado ou morto, sem névoa, outro andar, perto da borda da grade, cheio).
+     */
+    static boolean addSonar(float wx, float wy, int wz) {
+        if (dead || !running || RenderContext.luaParams[PARAM_ON] < 0.5f || wz != z) return false;
+        if (ClimateManager.getInstance().getFogIntensity() < 0.05f) return false;
+        float reach = TILES / 2f - Sonar.RANGE - Sonar.AHEAD;
+        if (Math.abs(wx - camX) > reach || Math.abs(wy - camY) > reach) return false;
+        return sonar.add(wx, wy);
     }
 
     private static void die(String why, Throwable t) {
@@ -396,14 +518,28 @@ final class Flow {
             long key = ((long) s.x << 40) ^ ((long) s.y << 16) ^ (s.radius * 31L) ^ System.identityHashCode(s);
             soundsNow.add(key);
             if (soundsSeen.contains(key) || blastCount >= MAX_BLASTS) continue;
+            float bx = s.x + 0.5f, by = s.y + 0.5f, br = Blasts.radius(s.radius);
             int k = blastCount++ * 3;
-            blasts[k] = s.x + 0.5f;
-            blasts[k + 1] = s.y + 0.5f;
-            blasts[k + 2] = Math.max(2.5f, Math.min(9f, s.radius / 10f));
+            blasts[k] = bx;
+            blasts[k + 1] = by;
+            blasts[k + 2] = br;
+            clears.add(bx, by, br, simTime);
+            if (blastLog.take(System.nanoTime()))
+                RenderContext.log(String.format("tiro na névoa: som em (%d, %d) raio %d -> sopro e clareira de %.1f tiles",
+                        s.x, s.y, s.radius, br));
         }
         HashSet<Long> t = soundsSeen;
         soundsSeen = soundsNow;
         soundsNow = t;
+    }
+
+    /** Clareiras dos tiros pro quadro (thread principal). O tempo é o da simulação: para na pausa. */
+    static int fillClears(float[] out, float originX, float originY) {
+        if (dead || !running) {        // sem simulação o tempo dela para: clareira velha ficaria aberta
+            clears.clear();
+            return 0;
+        }
+        return clears.fill(out, simTime + acc, originX, originY);
     }
 
     private static void logStats() {
@@ -420,9 +556,11 @@ final class Flow {
     /** Estado da simulação: o que a thread principal mandou, o que a simulação achou e o que o shader recebeu. */
     static String info() {
         return String.format("fluido: %s param4=%.0f escala=%d vento=(%.2f,%.2f) andar=%d origem=(%d,%d) %s"
-                        + " publicada=%d enviada=%d shader uFlow=(%.0f,%.0f,%.0f) tex0=(%d,%d) tex=%d",
+                        + " publicada=%d enviada=%d shader uFlow=(%.0f,%.0f,%.0f) tex0=(%d,%d) tex=%d"
+                        + " preta=%.0f luz=%d postes=%d%s",
                 dead ? "MORTO" : running ? "rodando" : "parado", RenderContext.luaParams[PARAM_ON], scale, windX, windY, z,
-                x0, y0, simInfo, pubVersion, texVersion, sentX, sentY, sentOn, texX0, texY0, texN);
+                x0, y0, simInfo, pubVersion, texVersion, sentX, sentY, sentOn, texX0, texY0, texN,
+                RenderContext.luaParams[RenderContext.PARAM_BLACK], lightShown, fixedCount, lightsDead ? " (luz MORTA)" : "");
     }
 
     // ---------- thread da simulação ----------
@@ -472,8 +610,12 @@ final class Flow {
                 grid.impulse(in.movers[o], in.movers[o + 1], in.movers[o + 2], in.movers[o + 3], in.movers[o + 4]);
             }
             if (in.sourceOn) grid.impulse(in.sourceX, in.sourceY, in.sourceVX, in.sourceVY, SOURCE_RADIUS);
+            for (int k = 0, o = 0; k < in.lightCount; k++, o += LightWind.FLOATS)
+                grid.impulse(in.lights[o], in.lights[o + 1], in.lights[o + 2], in.lights[o + 3], in.lights[o + 4]);
             if (s == 0)
                 for (int k = 0; k < in.blastCount; k++) grid.blast(in.blasts[k * 3], in.blasts[k * 3 + 1], in.blasts[k * 3 + 2]);
+            for (int k = 0, o = s * Sonar.MAX_RINGS * 4; k < in.sonarCount[s]; k++, o += 4)
+                grid.sonar(in.sonars[o], in.sonars[o + 1], in.sonars[o + 2], in.sonars[o + 3]);
             grid.step(STEP);
             statStepNanos += System.nanoTime() - s0;
             statSteps++;

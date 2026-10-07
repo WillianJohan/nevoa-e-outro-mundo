@@ -63,7 +63,7 @@ local function rand() return ZombRand(10000) / 10000 end
 
 -- Devolve quantas sirenes vão tocar, ou nil sem jogador local. Tocar de novo (o comando
 -- repetido de quem entra na fuga) troca as que estavam tocando.
-function NOM_Siren.play(red)
+function NOM_Siren.play(red, black)
     local p = getSpecificPlayer(0) -- getPlayer() é o jogador em foco na tela dividida
     if not p then return nil end
     NOM_Siren.stop()
@@ -73,7 +73,8 @@ function NOM_Siren.play(red)
     end
     local z = math.floor(p:getZ())
     lastMs = getTimestampMs()
-    local spots = NOM_SirenSpotsRules.spots(p:getX(), p:getY(), red and "red" or "white", rand)
+    local spots = NOM_SirenSpotsRules.spots(p:getX(), p:getY(),
+        black and "black" or (red and "red" or "white"), rand)
     for _, s in ipairs(spots) do
         if s.delayMs <= 0 then
             start(s.x, s.y, z, s.sound, s.pitch)

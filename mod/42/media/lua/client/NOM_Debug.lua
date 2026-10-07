@@ -51,6 +51,7 @@ if not getDebug() then return end
 
 require "NOM_VariantRules"
 require "NOM_DebugRules"
+require "NOM_DebugLog"
 require "NOM_NightStats"
 require "NOM_FogState"
 
@@ -91,11 +92,11 @@ function NOM_Debug.variant(kind)
     local p = getSpecificPlayer(0)
     local z = p and nearest(p)
     if not z then
-        print("[NOM] debug nenhum zumbi perto")
+        NOM_DebugLog.say("[NOM] debug nenhum zumbi perto")
         return
     end
     local id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- o forçado é pelo ID sem o chapéu caído
-    print("[NOM] debug variante x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " id=" .. id)
+    NOM_DebugLog.say("[NOM] debug variante x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " id=" .. id)
     send({ op = "variant", id = id, kind = kind })
 end
 
@@ -110,12 +111,13 @@ function NOM_Debug.status()
     -- pisos e paredes com anexo do Outro Mundo nesta tela (client/NOM_FogOverlays.lua, sprints 0015 e 0023)
     local chao, paredes = 0, 0
     if NOM_FogOverlays and NOM_FogOverlays.count then chao, paredes = NOM_FogOverlays.count() end
-    print(NOM_DebugRules.line("[NOM] debug local", {
+    NOM_DebugLog.say(NOM_DebugRules.line("[NOM] debug local", {
         noite = NOM_NightStats.night,
         noiteN = tostring(NOM_NightStats.nightNumber),
         nevoa = NOM_FogState.on,
         nevoaN = tostring(NOM_FogState.period),
         vermelha = NOM_FogState.red == true,
+        preta = NOM_FogState.black == true,
         estaladores = kinds.estalador,
         corredores = kinds.corredor,
         carpideiras = kinds.carpideira,
@@ -136,7 +138,7 @@ end
 Events.OnServerCommand.Add(function(module, command, args)
     if module ~= MODULE then return end
     if command == "debugReply" then
-        print(args.msg)
+        NOM_DebugLog.say(args.msg)
     elseif command == "debugVariant" and type(args.id) == "number" then
         NOM_VariantRules.forced[args.id] = args.kind
     elseif command == "debugForced" and type(args.list) == "table" then -- entrou depois

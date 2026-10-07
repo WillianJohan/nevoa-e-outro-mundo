@@ -9,16 +9,28 @@ require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_Carpideira"
 require "NOM_SirenFreeze"
+require "NOM_TicaoFreeze"
 require "NOM_VariantRules"
 require "NOM_Config"
 require "NOM_Math"
 
+require "NOM_SonarRules"
+require "NOM_FogEventRules"
+require "NOM_TicaoRules"
+
 NOM_VariantAI = {}
 
-NOM_VariantAI.CLICK_SOUND = "NOM_EstaladorClick" -- media/scripts/NOM_sounds.txt
--- Estalo a cada minuto de jogo com chance 1/CLICK_ODDS: espalha os estalos
--- (todos no mesmo minuto viraria metrônomo).
-local CLICK_ODDS = 2
+-- O estalo do Estalador é decisão do servidor desde a sprint 0037 (é o sonar):
+-- server/NOM_SonarServer.lua sorteia, shared/NOM_Sonar.lua toca no ponto e desenha o anel.
+
+-- Estaladores que o sonar fez achar um jogador: { [zumbi] = { left = ms } }. Nessa janela
+-- (NOM_SonarRules.FOUND_MS) ele não é cegado de novo, nem se o jogador se agachar. O left
+-- desconta o tempo real do OnTick (getTimestampMs) como as sirenes atrasadas
+-- (NOM_FogEventRules.countdown): parado com isGamePaused (pz-api-notes §11.2), no máximo
+-- MAX_STEP_MS por tick.
+NOM_VariantAI.found = {}
+local found = NOM_VariantAI.found
+local foundMs -- getTimestampMs do último tick com janela aberta
 
 -- Janela de cegueira, em updates do zumbi, não em tempo real (~1 s a 60 FPS). Fecha sozinha e abre
 -- de novo no update seguinte se o jogador ainda estiver agachado à vista: useless
@@ -86,6 +98,11 @@ end
 -- spottedNew (191–208): o laço do spot forçado morre ali. A caminhada até a
 -- última posição vista (WalkTowardState) continua, mas sem alvo não há ataque.
 local function estalador(z, md, blind)
+    local f = found[z]
+    if f ~= nil then
+        if f.left > 0 then return end
+        found[z] = nil
+    end
     if blind then
         blind.n = blind.n + 1
         if blind.n < NOM_VariantAI.BLIND_FRAMES and silent(blind.p) then return end
@@ -123,9 +140,11 @@ local scratch = {}
 -- ponytail: chave é o objeto do jogador; quem sai fica até reiniciar (um por jogador).
 local seen, noisy = {}, {}
 
--- Raio² da visão curta agora, ou nil (névoa fechada ou opção em 0).
+-- Raio² da visão curta agora, ou nil (névoa fechada ou opção em 0). Na preta (sprint 0038), o
+-- raio do Tição, com a opção ligada ou não: a preta tem o próprio toggle.
 local function visionR2()
     if not NOM_FogState.on then return nil end
+    if NOM_FogState.black then return NOM_TicaoRules.VISION_TILES * NOM_TicaoRules.VISION_TILES end
     local v = tonumber(NOM_Config.get("FogZombieVision")) or 0
     if v <= 0 then return nil end
     return v * v
@@ -205,6 +224,7 @@ local function watch(z, since)
         watched[z] = nil
         return
     end
+    if NOM_TicaoFreeze.frozen[z] then return end
     local t = z:getTarget()
     if aimsUnseen(z, t) and z:isLocal() then blindCommon(z, t) end
 end
@@ -241,11 +261,27 @@ local function purgeStale() purge(tick - NOM_VariantAI.STALE_TICKS) end
 
 -- O rodízio: até VISION_BATCH zumbis por tick, em volta na lista. Tabela Lua antes de
 -- qualquer chamada: variante com mira própria, cego, vigiado, Carpideira parada e
--- congelado pela sirene não custam nada. O Sem-rosto entra como o comum: o NOM_NightStats
+-- congelado pela sirene não custam nada. O Tição (sprint 0038) entra como o comum: é a visão curta dele. O Sem-rosto entra como o comum: o NOM_NightStats
 -- não o põe em variants (kind vira nil antes do apply), e ele tem visão curta (decisão do
 -- Johan); perguntar o NOM_SemRosto.isSemRosto custaria uma chamada por zumbi do lote.
+-- As janelas do sonar andam (só o campo muda: a tabela não é mexida no meio do pairs). Sem
+-- janela, nenhuma chamada.
+local function ageFound()
+    local now, dt, paused
+    for _, f in pairs(found) do
+        if now == nil then
+            now, paused = getTimestampMs(), isGamePaused()
+            dt = foundMs and now - foundMs or 0
+            foundMs = now
+        end
+        f.left = NOM_FogEventRules.countdown(f.left, dt, paused)
+    end
+    if now == nil then foundMs = nil end
+end
+
 local function sweep()
     tick = tick + 1
+    ageFound()
     r2 = visionR2()
     if r2 == nil then return end
     local logTick = NOM_Math.mod(tick, NOM_VariantAI.LOG_TICKS) == 0
@@ -256,8 +292,9 @@ local function sweep()
     local n = math.min(NOM_VariantAI.VISION_BATCH, size)
     for k = 0, n - 1 do
         local z = list:get(NOM_Math.mod(cursor + k, size))
-        if NOM_NightStats.variants[z] == nil and blinded[z] == nil and watched[z] == nil
-            and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] then
+        local kind = NOM_NightStats.variants[z]
+        if (kind == nil or kind == "ticao") and blinded[z] == nil and watched[z] == nil
+            and NOM_Carpideira.still[z] == nil and not NOM_SirenFreeze.frozen[z] and not NOM_TicaoFreeze.frozen[z] then
             local t = z:getTarget()
             if aimsUnseen(z, t) and z:isLocal() and not NOM_NightStats.isEco(z, z:getModData()) then blindCommon(z, t) end
         end
@@ -344,10 +381,10 @@ end
 
 -- OnZombieUpdate roda por zumbi a cada frame: o zumbi comum sai na primeira
 -- linha, com quatro consultas de tabela Lua e nenhuma chamada Java. O cego e o vigiado
--- da visão curta saem antes de qualquer outra chamada.
+-- da visão curta saem antes de qualquer outra chamada. O Tição (sprint 0038) sai como o comum.
 local function onUpdate(z, report)
     local kind, blind, still, w = NOM_NightStats.variants[z], blinded[z], NOM_Carpideira.still[z], watched[z]
-    if kind == nil and blind == nil and still == nil and w == nil then return end
+    if (kind == nil or kind == "ticao") and blind == nil and still == nil and w == nil then return end
     if blind ~= nil then
         blind.t = tick -- carregado (purge)
         if blind.common then return commonBlind(z, blind) end
@@ -426,7 +463,8 @@ local function heldByMod(id)
 end
 
 local function unstick(z)
-    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or not z:isLocal() or not z:isUseless() then return end
+    if blinded[z] or NOM_Carpideira.still[z] or NOM_SirenFreeze.frozen[z] or NOM_TicaoFreeze.frozen[z] or not z:isLocal()
+        or not z:isUseless() then return end
     if getCore():getGameMode() == "Tutorial" or NOM_Carpideira.gameUseless(z) then return end
     if heldByMod(z:getPersistentOutfitID()) then z:setUseless(false) end
 end
@@ -436,6 +474,7 @@ end
 local function forget(z)
     if blinded[z] then release(z) end
     watched[z] = nil
+    found[z] = nil
     NOM_Carpideira.forget(z)
 end
 
@@ -444,20 +483,33 @@ local function created(z)
     unstick(z)
 end
 
--- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador
--- ouve o que está perto dele, sem rede. playSoundLocal = getEmitter():playSoundImpl
--- (nome, nil), sem pacote; emitter:playSound no cliente de MP manda PacketType.PlaySound
--- (FMODSoundEmitter.playSound 0–104) e cada cliente faria os outros ouvirem de novo.
-local function clicks()
-    if not NOM_FogState.on then return end
-    local list = getCell():getZombieList()
-    for i = 0, list:size() - 1 do
-        local z = list:get(i)
-        -- tabela Lua antes de qualquer chamada no zumbi: o comum não custa nada
-        if NOM_NightStats.variants[z] == "estalador" and z:getModData().NOM_variant == "estalador"
-            and not z:isDead() and ZombRand(CLICK_ODDS) == 0 then
-            z:playSoundLocal(NOM_VariantAI.CLICK_SOUND)
-        end
+-- O anel do sonar passou pelo jogador p em pé ou andando (o servidor decidiu, sprint 0037):
+-- no dono, o Estalador z solta a cegueira e acha p pelo mesmo spot forçado do grito da
+-- Carpideira (spotted(p, true) → spottedNew com chance 1 000 000, 1114–1120; só vale sem
+-- useless, 191–208: solta antes). O useless que este dono não marcou (herdado na troca de
+-- posse, como no estalador()) também sai; fica o do próprio jogo (gameUseless) e o congelado
+-- da sirene. Por FOUND_MS reais o estalador() não o cega de novo.
+-- Devolve se aplicou (só o dono aplica, pz-api-notes §24).
+function NOM_VariantAI.sonarFound(z, p)
+    if z == nil or p == nil or not z:isLocal() or z:isDead() then return false end
+    if blinded[z] then release(z) end
+    watched[z] = nil
+    if z:isUseless() and not NOM_SirenFreeze.frozen[z] and not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
+    found[z] = { left = NOM_SonarRules.FOUND_MS }
+    z:spotted(p, true)
+    if getDebug() then print("[NOM] sonar estalador achou o jogador (alvo=" .. tostring(z:getTarget() == p) .. ")") end
+    return true
+end
+
+local function forgetFound()
+    local n = 0
+    for z in pairs(found) do
+        n = n + 1
+        scratch[n] = z
+    end
+    for i = 1, n do
+        found[scratch[i]] = nil
+        scratch[i] = nil
     end
 end
 
@@ -468,13 +520,15 @@ function NOM_VariantAI.install(report)
     Events.OnZombieCreate.Add(created)
     NOM_NightStats.unstick = unstick
     Events.OnZombieDead.Add(forget)
-    Events.EveryOneMinute.Add(clicks)
     Events.OnTick.Add(sweep)
     Events.OnWorldSound.Add(heard)
     NOM_FogState.onChange(function(on)
         afterFogUntil = nil
         -- o carregado soltaria no próximo update; o descarregado não tem update
-        if not on then purge(nil) end
+        if not on then
+            purge(nil)
+            forgetFound()
+        end
         if not on and isClient() and (tonumber(NOM_Config.get("FogZombieVision")) or 0) > 0 then
             afterFogUntil = getTimestampMs() + NOM_VariantAI.AFTER_FOG_MS
         end

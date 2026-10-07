@@ -52,7 +52,7 @@ local function wallKind(layer)
 end
 
 -- de baixo pra cima: a tinta que descasca é a pele da parede, a ferrugem escorre por cima dela
-local ORDER = { paint = 0, rust = 0.5, cracks = 1, grime = 2, vines = 2, blood = 3, writing = 4 }
+local ORDER = { paint = 0, rust = 0.5, cracks = 1, grime = 2, vines = 2, blood = 3, tentacle = 3.5, writing = 4 }
 
 -- paredes de um quarteirão, dentro ou fora: { [x,y,lado] = camadas }
 local function wallsOf(R, outside, d, per, size, red)
@@ -877,9 +877,13 @@ return {
         for _, s in ipairs(L.SPRITES) do assert(used[s.name], "PNG sem set: " .. s.name) end
         assert(kinds.grateFloor == "Grade" and kinds.plateFloor == "Chapa" and kinds.rustFloor == "Ferrugem"
             and kinds.paintFloor == "Tinta", "sets de chão")
+        assert(kinds.ashFloor == "Cinza" and kinds.emberFloor == "Brasa", "sets de chão da preta")
+        assert(kinds.tentacleFloor == "Tentaculo", "set de chão da vermelha")
         for _, side in ipairs({ "W", "N" }) do
             assert(kinds["paintWall" .. side] == "Tinta" and kinds["peelWall" .. side] == "Descasca"
-                and kinds["rustWall" .. side] == "Ferrugem", "sets de parede " .. side)
+                and kinds["rustWall" .. side] == "Ferrugem" and kinds["sootWall" .. side] == "Fuligem"
+                and kinds["tentacleWall" .. side] == "Tentaculo",
+                "sets de parede " .. side)
         end
     end,
 
@@ -1021,7 +1025,11 @@ return {
             for y = 0, 79 do
                 for _, outside in ipairs({ false, true }) do
                     for _, l in ipairs(R.floor(14000 + x, 3000 + y, 0, 5, d, outside, true) or {}) do
-                        if l[1] == "rustFloor" then floorRust = floorRust + 1 elseif isOwnSet(R, l[1]) then other = other + 1 end
+                        if l[1] == "rustFloor" then
+                            floorRust = floorRust + 1
+                        elseif isOwnSet(R, l[1]) and l[1] ~= "tentacleFloor" then
+                            other = other + 1
+                        end
                     end
                 end
             end
@@ -1217,6 +1225,142 @@ return {
             end
             assert(own / n <= 0.22 and own / n >= 0.08, "metal dentro: d=" .. d .. " " .. own / n)
             assert(spots / n <= 0.05, "ferrugem e tinta dentro: d=" .. d .. " " .. spots / n)
+        end
+    end,
+
+    -- NÉVOA PRETA (sprint 0039) -----------------------------------------------------------------
+    -- "Chão queimado, cinzas, brasas apagando" (spec §1): queimado dentro e fora (fora no lugar
+    -- do mato), sem metal; cinza em manchas e brasa rara por cima. Na parede a fuligem manda, com
+    -- sujeira e rachadura; sem tinta, ferrugem nem trepadeira.
+    dressing_rules_black_burnt_world = function()
+        local R = load()
+        local d = R.density(1, false, true)
+        assert(d == R.BLACK_MULT, "densidade da preta: " .. d)
+        for _, outside in ipairs({ false, true }) do
+            local n, burnt, ash, ember, bad, tiles = {}, 0, 0, 0, 0, 0
+            for x = 0, 79 do
+                for y = 0, 79 do
+                    tiles = tiles + 1
+                    for _, l in ipairs(R.floor(31000 + x, 32000 + y, 0, 5, d, outside, false, false, true) or {}) do
+                        n[l[1]] = (n[l[1]] or 0) + 1
+                        if l[1]:find("^burntFloor") then burnt = burnt + 1
+                        elseif l[1] == "ashFloor" then ash = ash + 1
+                        elseif l[1] == "emberFloor" then ember = ember + 1
+                        elseif isOwnSet(R, l[1]) or isPlant(R.name(l)) then bad = bad + 1 end
+                    end
+                end
+            end
+            local where = outside and "fora" or "dentro"
+            assert(bad == 0, "metal ou mato na preta " .. where .. ": " .. bad)
+            assert(burnt / tiles > 0.25, "pouco queimado " .. where .. ": " .. burnt / tiles)
+            assert(ash / tiles > 0.08 and ash / tiles < 0.4, "cinza " .. where .. ": " .. ash / tiles)
+            assert(ember > 0 and ember < ash / 3, "brasa " .. where .. ": " .. ember .. " (cinza " .. ash .. ")")
+        end
+        local byKind = {}
+        for _, outside in ipairs({ false, true }) do
+            for x = 0, 59 do
+                for y = 0, 59 do
+                    for _, north in ipairs({ true, false }) do
+                        for _, l in ipairs(R.wall(33000 + x, 34000 + y, 0, 5, d, north, outside, false, true) or {}) do
+                            local k = wallKind(l)
+                            byKind[k] = (byKind[k] or 0) + 1
+                            if k == "soot" then
+                                assert(l[1] == "sootWall" .. (north and "N" or "W"), "fuligem do lado errado: " .. l[1])
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        local soot = byKind.soot or 0
+        for k, v in pairs(byKind) do
+            assert(k == "soot" or k == "grime" or k == "cracks" or k == "writing", "parede preta com " .. k .. ": " .. v)
+            if k ~= "soot" then assert(v < soot, "fuligem não manda: " .. k .. " " .. v .. " × " .. soot) end
+        end
+        assert(soot > 2000, "pouca fuligem: " .. soot)
+    end,
+
+    -- a preta é determinística e diferente da branca e da vermelha no mesmo square
+    dressing_rules_black_differs_and_deterministic = function()
+        local R = load()
+        local function key(ls)
+            if not ls then return "-" end
+            local t = {}
+            for _, l in ipairs(ls) do t[#t + 1] = l[1] .. l[2] end
+            return table.concat(t, ";")
+        end
+        local diffW, diffR = 0, 0
+        for x = 0, 29 do
+            for y = 0, 29 do
+                local b = key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false, false, false, true))
+                assert(b == key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false, false, false, true)), "mudou sem mudar a entrada")
+                if b ~= key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false)) then diffW = diffW + 1 end
+                if b ~= key(R.floor(1500 + x, 1600 + y, 0, 3, 1, false, true)) then diffR = diffR + 1 end
+            end
+        end
+        assert(diffW > 300 and diffR > 300, "preta quase igual: branca " .. diffW .. ", vermelha " .. diffR)
+    end,
+
+    -- VERMELHA NOVA (sprint 0040) ---------------------------------------------------------------
+    -- "Tentáculos pretos" (spec §1): no chão, peça solta como o metal da calçada (o decalque é
+    -- centrado no losango; lado a lado viraria grade de estrelas), dentro e fora, nunca em piso
+    -- natural; na parede, um tipo a mais da vermelha, fora e dentro, com o sangue mandando fora.
+    -- Branca e preta sem tentáculo.
+    dressing_rules_red_tentacles = function()
+        local R = load()
+        local d = R.density(1, true)
+        for _, outside in ipairs({ false, true }) do
+            local has, n, tiles = {}, 0, 0
+            for x = 0, 99 do
+                for y = 0, 99 do
+                    tiles = tiles + 1
+                    for _, l in ipairs(R.floor(41000 + x, 42000 + y, 0, 5, d, outside, true) or {}) do
+                        if l[1] == "tentacleFloor" then
+                            has[x * 100 + y] = true
+                            n = n + 1
+                        end
+                    end
+                    for _, l in ipairs(R.floor(41000 + x, 42000 + y, 0, 5, d, outside, true, true) or {}) do
+                        assert(l[1] ~= "tentacleFloor", "tentáculo na grama")
+                    end
+                end
+            end
+            local where = outside and "fora" or "dentro"
+            assert(n / tiles > 0.02 and n / tiles <= R.TENTACLE_MAX, "tentáculo no chão " .. where .. ": " .. n / tiles)
+            for x = 0, 98 do
+                for y = 0, 98 do
+                    if has[x * 100 + y] then
+                        assert(not has[(x + 1) * 100 + y] and not has[x * 100 + y + 1], "tentáculo vizinho " .. where)
+                    end
+                end
+            end
+        end
+        for _, outside in ipairs({ false, true }) do
+            local tent, blood = 0, 0
+            for _, ls in pairs(wallsOf(R, outside, d, 5, 60, true)) do
+                for _, l in ipairs(ls or {}) do
+                    if wallKind(l) == "tentacle" then tent = tent + 1 end
+                    if wallKind(l) == "blood" then blood = blood + 1 end
+                end
+            end
+            assert(tent > 300, "pouco tentáculo na parede " .. (outside and "fora" or "dentro") .. ": " .. tent)
+            if outside then assert(tent < blood, "tentáculo passou o sangue fora: " .. tent .. " × " .. blood) end
+        end
+        for _, c in ipairs({ { 1, false, false }, { R.density(1, false, true), false, true } }) do
+            for x = 0, 59 do
+                for y = 0, 59 do
+                    for _, outside in ipairs({ false, true }) do
+                        for _, l in ipairs(R.floor(43000 + x, 44000 + y, 0, 5, c[1], outside, c[2], false, c[3]) or {}) do
+                            assert(l[1] ~= "tentacleFloor", "tentáculo no chão fora da vermelha")
+                        end
+                        for _, north in ipairs({ true, false }) do
+                            for _, l in ipairs(R.wall(43000 + x, 44000 + y, 0, 5, c[1], north, outside, c[2], c[3]) or {}) do
+                                assert(wallKind(l) ~= "tentacle", "tentáculo na parede fora da vermelha")
+                            end
+                        end
+                    end
+                end
+            end
         end
     end,
 }
