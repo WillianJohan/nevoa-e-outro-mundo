@@ -1,12 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprint 0035 na `main` desde o merge `e73202b`, sincronizada e pronta pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
-- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)** está na `main` desde o merge `e73202b` (`em teste`), sincronizada pro jogo. O roadmap está em [sprints/README.md](sprints/README.md).
+- Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)**, com o hotfix do chão, e a **0036 (Equilíbrio: visão de ~4 tiles e perambular)** estão na `main` (`em teste`), sincronizadas pro jogo. O roadmap está em [sprints/README.md](sprints/README.md).
 - **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
-- 1014 testes Lua, 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
+- 1069 testes Lua, 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
 **Confirmado no jogo pelo Johan:**
@@ -75,9 +75,9 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Em andamento: Equilíbrio (sprint 0036, branch `sprint/0036-equilibrio`, sem merge)
+## Em teste: Equilíbrio (sprint 0036)
 
-Implementada e com testes verdes; falta o code review final, o merge e o teste do Johan no jogo. Plano com a medição em [sprints/sprint-0036-equilibrio/plan.md](sprints/sprint-0036-equilibrio/plan.md); resumo, decisões e roteiro em [sprints/sprint-0036-equilibrio/README.md](sprints/sprint-0036-equilibrio/README.md).
+Na `main` e sincronizada; falta o teste do Johan no jogo. O code review final achou 6 problemas importantes (o pior: o tiro deixava de puxar o zumbi até o jogador) e 7 menores, todos corrigidos antes do merge (seção "Code review final" do plano). Plano com a medição em [sprints/sprint-0036-equilibrio/plan.md](sprints/sprint-0036-equilibrio/plan.md); resumo, decisões e roteiro em [sprints/sprint-0036-equilibrio/README.md](sprints/sprint-0036-equilibrio/README.md).
 
 - **Visão de ~4 tiles** na névoa branca e na vermelha (`shared/NOM_VariantAI.lua`). Vale pro zumbi comum e pro Sem-rosto: é a cegueira do Estalador, num rodízio de 30 zumbis por tick. O som acorda (`OnWorldSound`). Opção `FogZombieVision`.
 - **Custo medido antes:** todo zumbi, todo frame, passava do teto (2700 chamadas por frame com a multidão). O rodízio dá média de 129 e pior tick de 452 com 300 zumbis.
@@ -138,9 +138,8 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 ## Próximo passo
 
-1. **Testar a 0035 no jogo:** o Johan reinicia o jogo e segue o [roteiro do README da sprint](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo), incluindo as pendências da 0034.
-2. **Sprint 0036 — Equilíbrio:** visão de ~4 tiles e vaguear (perambular), com medição de custo. Branch `sprint/0036-equilibrio` saindo da `main`.
-3. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
+1. **Testar a 0035 e a 0036 no jogo:** o Johan reinicia o jogo e segue os roteiros da [0035](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e da [0036](sprints/sprint-0036-equilibrio/README.md). Já confirmado no jogo em 2026-10-06: o congelamento da sirene depois da troca pra `isLocal` (97 de 97 parados), as paredes Silent Hill ("ficaram top"). O chão estranho (metal em bloco na calçada, ferrugem em grade na grama) foi corrigido no hotfix `7149d87`: falta o Johan conferir.
+2. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
    - **0037** — sonar do Estalador;
    - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
    - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
