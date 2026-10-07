@@ -76,6 +76,15 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: facelift dos outros monstros (sprint 0042, branch empilhada)
+
+Mesmo caminho da 0041 pros outros três: boca 3D do Corredor (buraco escuro, lábio rasgado,
+dentes, rasgos até a orelha), casca lisa de chiado do Sem-rosto e cabelo de mechas da Carpideira
+(três brancas; a peça passou a `nohair`). Medidas da cabeça em
+[pz-api-notes §32.1](architecture/pz-api-notes.md). **Falta ver no jogo** se assentam (item 23 da
+lista de UNKNOWNs). Voltar uma peça: o comentário no topo do XML dela tem o valor antigo
+([README](sprints/sprint-0042-facelift-monstros/README.md)).
+
 ## Em teste: facelift, spike (sprint 0041, branch empilhada)
 
 A venda do Estalador virou peça 3D nossa: faixa com volume, dois arames farpados com farpas e o nó
