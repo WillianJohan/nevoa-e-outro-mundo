@@ -71,7 +71,8 @@ P.ROWS = {
         { "UI_NOM_Debug_Status", function() NOM.status() end },
         { "UI_NOM_Debug_OwnSprites", function() NOM.ownSprites() end } },
     { { "UI_NOM_Debug_Wander", function() NOM.wander() end },
-        { "UI_NOM_Debug_Blind", function() NOM.blind() end } },
+        { "UI_NOM_Debug_Blind", function() NOM.blind() end },
+        { "UI_NOM_Debug_Sonar", function() NOM.sonar() end } },
 }
 
 local function yesNo(v) return getText(v and "UI_NOM_Debug_Yes" or "UI_NOM_Debug_No") end
