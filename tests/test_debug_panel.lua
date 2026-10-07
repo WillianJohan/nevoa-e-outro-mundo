@@ -97,13 +97,14 @@ local function setup(opts)
     NOM = {}
     for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind", "status",
-        "ownSprites", "wander", "blind", "sonar", "ticao" }) do
+        "ownSprites", "wander", "blind", "sonar", "ticao", "thunder", "flickerLamp", "rain" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
     NOM_NightStats = { night = false, variants = {} }
     NOM_FogState = { on = false, red = false }
     NOM_ScreenFxOptions = { debugPanelKey = function() if G.debug then return G.key end end }
+    require "NOM_Math"
     for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math",
         "ISUI/ISCollapsableWindow", "ISUI/ISButton" }) do
         package.loaded[m] = true
@@ -179,6 +180,7 @@ return {
             UI_NOM_Debug_GodMode = "godMode()", UI_NOM_Debug_Wind = "wind()", UI_NOM_Debug_Status = "status()",
             UI_NOM_Debug_OwnSprites = "ownSprites()",
             UI_NOM_Debug_Wander = "wander()", UI_NOM_Debug_Blind = "blind()", UI_NOM_Debug_Sonar = "sonar()", UI_NOM_Debug_Ticao = "ticao()",
+            UI_NOM_Debug_Thunder = "thunder()", UI_NOM_Debug_FlickerLamp = "flickerLamp()", UI_NOM_Debug_Rain = "rain()",
             UI_NOM_Debug_Night = "night(true)", UI_NOM_Debug_Day = "night(false)", UI_NOM_Debug_Clock = "clock()",
             UI_NOM_Debug_Hour0 = "time(0)", UI_NOM_Debug_Hour6 = "time(6)", UI_NOM_Debug_Hour12 = "time(12)",
             UI_NOM_Debug_Hour18 = "time(18)", UI_NOM_Debug_Hour22 = "time(22)",

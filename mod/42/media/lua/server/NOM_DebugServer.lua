@@ -19,6 +19,8 @@ require "NOM_Fog"
 require "NOM_FogEvent"
 require "NOM_Eco"
 require "NOM_SemRosto"
+require "NOM_FlickerRules"
+require "NOM_StormRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -182,6 +184,27 @@ end
 function ops.sonar(player)
     if not NOM_SonarServer then return "sonar não carregou" end
     return NOM_SonarServer.force(player)
+end
+
+-- Tempestade e poste que pisca (sprint 0045; NOM_Storm e NOM_LampFlicker, lidos na hora).
+function ops.thunder(player)
+    if not NOM_Storm then return "tempestade não carregou" end
+    local x, y = NOM_Storm.force(player)
+    return "relâmpago em x=" .. x .. " y=" .. y
+end
+
+function ops.lampFlicker(player)
+    if not NOM_LampFlicker then return "poste não carregou" end
+    local x, y, z = NOM_LampFlicker.force(player)
+    if not x then return "nenhum poste aceso de fora a até " .. NOM_FlickerRules.LAMP_NEAR .. " tiles" end
+    return "poste piscou em x=" .. x .. " y=" .. y .. " z=" .. z
+end
+
+function ops.rain()
+    if not NOM_Storm then return "tempestade não carregou" end
+    NOM_Storm.rainForced = not NOM_Storm.rainForced
+    return "chuva forçada na preta e na vermelha: "
+        .. (NOM_Storm.rainForced and "sim" or ("não (sorteio de " .. NOM_StormRules.RAIN_CHANCE .. "%)"))
 end
 
 function ops.status()

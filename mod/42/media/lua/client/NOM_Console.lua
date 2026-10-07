@@ -188,6 +188,12 @@ function NOM.wander() NOM_Debug.send({ op = "wander" }) end
 -- de você (na névoa, até 60 tiles) ou solta o anel nos seus pés; o anel faz o resto.
 function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
 
+-- Tempestade da preta e da vermelha (sprint 0045): relâmpago já perto de você, um poste de fora
+-- perto pisca já, e a chuva forçada (liga/desliga) em vez do sorteio de 30% por névoa.
+function NOM.thunder() NOM_Debug.send({ op = "thunder" }) end
+function NOM.flickerLamp() NOM_Debug.send({ op = "lampFlicker" }) end
+function NOM.rain() NOM_Debug.send({ op = "rain" }) end
+
 -- Visão curta (sprint 0036): cegos e vigiados neste processo, que é quem simula os zumbis
 -- dele (no solo, todos), e a última onda de perambular que ele aplicou.
 -- Tição (sprint 0038): a preta neste processo, quantos Tições ele simula e quantos a luz congela.
@@ -243,6 +249,9 @@ NOM.HELP = {
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
     { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
+    { "NOM.thunder()", "relâmpago e trovão agora perto de você (na preta, o clarão congela os Tições por 1 s)" },
+    { "NOM.flickerLamp()", "um poste aceso de fora perto de você (até 25 tiles) pisca agora" },
+    { "NOM.rain()", "força a chuva nas névoas pretas e vermelhas (liga/desliga); desligado, chove em 30% delas" },
     { "NOM.ticao()", "névoa preta: quantos Tições este processo simula e quantos a luz congela agora" },
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
