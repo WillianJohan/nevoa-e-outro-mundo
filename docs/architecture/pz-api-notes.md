@@ -1952,3 +1952,6 @@ cada 4–8 minutos de jogo.
 20. Visão curta e perambular (sprint 0036, §27): o `halt` para o zumbi cego que já vinha andando
     atrás do jogador? O `OnWorldSound` dispara no cliente de MP dono do zumbi (no solo, sim)? O
     `pathToLocationF` anda o zumbi parado até o ponto, e no MP a cópia dos outros acompanha?
+    No MP, `isRunning()`/`isSprinting()` do jogador de outro cliente (a cópia remota que o dono
+    do zumbi vê) acompanham o que ele faz? Se vierem sempre falsos, quem corre perto do zumbi de
+    outro cliente conta como quieto pra ele.
