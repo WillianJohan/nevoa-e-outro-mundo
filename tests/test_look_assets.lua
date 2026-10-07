@@ -51,17 +51,22 @@ local SIZE = {
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
-    -- modelos nossos (scripts/gen_models.py, sprint 0041): textura nossa, 128 como as outras peças
+    -- modelos nossos (scripts/gen_models.py, sprints 0041 e 0042): textura nossa, 128 como as outras peças
     ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
+    ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
+    ["static\\clothes\\NOM_M_SemRostoEstatica"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraCabelo"] = 128,
 }
 
 -- Modelo nosso → arquivo no mod. O jogo monta media/models_x/<nome>.x e acha pelo
 -- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
 -- pz-api-notes §32): o caminho tem que bater ignorando caixa.
-local OWN_MODELS = {
-    ["static\\clothes\\NOM_M_EstaladorVenda"] = "models_X/Static/Clothes/NOM_M_EstaladorVenda.x",
-    ["static\\clothes\\NOM_F_EstaladorVenda"] = "models_X/Static/Clothes/NOM_F_EstaladorVenda.x",
-}
+local OWN_MODELS = {}
+for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo" }) do
+    for _, sex in ipairs({ "M", "F" }) do
+        OWN_MODELS["static\\clothes\\NOM_" .. sex .. "_" .. piece] = "models_X/Static/Clothes/NOM_" .. sex .. "_" .. piece .. ".x"
+    end
+end
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
 -- pra opção desligada e pro shader que não compila) e a casca do Eco.
@@ -110,7 +115,7 @@ return {
                 end
             end
         end
-        assert(n == 4, "esperava a venda e o gêmeo Fx nos dois sexos, achou " .. n)
+        assert(n == 16, "esperava 4 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()

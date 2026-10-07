@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Visual do mod (sprint 0012): modelo vanilla citado pelo nome, textura gerada por scripts/gen_textures.py. -->
+<!-- Visual do mod (sprint 0012). Desde a 0042 a malha é nossa: cortina de mechas pretas tapando o rosto, três mechas brancas;
+     modelo de scripts/gen_models.py (media/models_X/Static/Clothes/NOM_M_|NOM_F_CarpideiraCabelo.x).
+     Voltar pra peça vanilla pintada (nos dois XML): skinned\clothes\m_weddingveil, skinned\clothes\f_weddingveil, NOM\NOM_CarpideiraCabelo, Group02; static false, sem osso. -->
 <clothingItem>
-	<m_MaleModel>skinned\clothes\m_weddingveil</m_MaleModel>
-	<m_FemaleModel>skinned\clothes\f_weddingveil</m_FemaleModel>
+	<m_MaleModel>static\clothes\NOM_M_CarpideiraCabelo</m_MaleModel>
+	<m_FemaleModel>static\clothes\NOM_F_CarpideiraCabelo</m_FemaleModel>
 	<m_GUID>d6c55e60-188d-4b27-a2aa-3ed9e3902662</m_GUID>
-	<m_Static>false</m_Static>
+	<m_Static>true</m_Static>
 	<m_AllowRandomHue>false</m_AllowRandomHue>
 	<m_AllowRandomTint>false</m_AllowRandomTint>
-	<m_AttachBone></m_AttachBone>
-	<m_HatCategory>Group02</m_HatCategory>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_HatCategory>nohair</m_HatCategory>
 	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
-	<textureChoices>NOM\NOM_CarpideiraCabelo</textureChoices>
+	<textureChoices>NOM\NOM_CarpideiraCabelo3D</textureChoices>
 </clothingItem>

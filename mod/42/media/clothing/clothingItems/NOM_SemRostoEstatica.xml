@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Visual do mod (sprint 0012): modelo vanilla citado pelo nome, textura gerada por scripts/gen_textures.py. -->
+<!-- Visual do mod (sprint 0012). Desde a 0042 a malha é nossa: casca lisa em volta da cabeça inteira, sem feição, com o chiado de TV de gen_textures.py;
+     modelo de scripts/gen_models.py (media/models_X/Static/Clothes/NOM_M_|NOM_F_SemRostoEstatica.x).
+     Voltar pra peça vanilla pintada (nos dois XML): skinned\hair\m_balaclavafull, skinned\hair\f_balaclavafull, NOM\NOM_SemRostoEstatica; static false, sem osso. -->
 <clothingItem>
-	<m_MaleModel>skinned\hair\m_balaclavafull</m_MaleModel>
-	<m_FemaleModel>skinned\hair\f_balaclavafull</m_FemaleModel>
+	<m_MaleModel>static\clothes\NOM_M_SemRostoEstatica</m_MaleModel>
+	<m_FemaleModel>static\clothes\NOM_F_SemRostoEstatica</m_FemaleModel>
 	<m_GUID>412f470a-8cba-4e3b-a9f4-bdca386e6603</m_GUID>
-	<m_Static>false</m_Static>
+	<m_Static>true</m_Static>
 	<m_AllowRandomHue>false</m_AllowRandomHue>
 	<m_AllowRandomTint>false</m_AllowRandomTint>
-	<m_AttachBone></m_AttachBone>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
 	<m_HatCategory>nohairnobeard</m_HatCategory>
 	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
 	<textureChoices>NOM\NOM_SemRostoEstatica</textureChoices>
