@@ -19,6 +19,11 @@ NOM_SonarRules = {
     DEBUG_REACH = 60,      -- NOM.sonar(): Estalador a até isso de quem pede
     MAX_COORD = 100000,    -- coordenada de tile aceita na mensagem
     MIN_FLOOR = -32, MAX_FLOOR = 32,
+    -- desenho sem mod3 (client/NOM_SonarFx.lua)
+    TEXTURE = "media/textures/NOM/ScreenFx/NOM_SonarAnel.png",
+    TEX_RING = 0.9,        -- raio da frente na textura, em meias-larguras (scripts/gen_textures.py)
+    VIEW = 30,             -- tiles: anel mais longe que isso do jogador não é desenhado
+    COLOR = { white = { 0.85, 0.9, 0.95 }, red = { 0.95, 0.42, 0.36 } },
 }
 local R = NOM_SonarRules
 
@@ -107,6 +112,19 @@ function R.alpha(age)
     local k = 1 - (age - R.DURATION_MS) / R.FADE_MS
     if k <= 0 then return 0 end
     return R.ALPHA * k
+end
+
+-- Ponta da direita do anel de raio r no chão isométrico: o ponto do círculo que vai mais
+-- longe na tela em x.
+local DIAG = 1 / math.sqrt(2)
+function R.edge(x, y, r) return x + r * DIAG, y - r * DIAG end
+
+-- Retângulo da textura na tela: (cx, cy) é o centro projetado e ex o x projetado da ponta.
+-- A elipse é 2:1 (meia-altura = meia-largura / 2) e a frente fica em TEX_RING da textura.
+function R.rect(cx, cy, ex)
+    local half = (ex - cx) / R.TEX_RING
+    if half <= 0 then return nil end
+    return cx - half, cy - half / 2, 2 * half, half
 end
 
 return NOM_SonarRules

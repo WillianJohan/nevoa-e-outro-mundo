@@ -99,6 +99,20 @@ return {
         assert(R.ALPHA <= 0.4, "discreto")
     end,
 
+    -- No chão isométrico o círculo de raio r vira elipse 2:1; a ponta da direita é o ponto
+    -- (x + r/√2, y − r/√2). A textura tem a frente em TEX_RING da meia-largura, então o
+    -- retângulo cresce pra frente cair na ponta projetada.
+    sonar_screen_rect = function()
+        local x, y, w, h = R.rect(500, 300, 600)
+        assert(near(w, 2 * 100 / R.TEX_RING) and near(h, w / 2), "2:1")
+        assert(near(x, 500 - w / 2) and near(y, 300 - h / 2), "centrado")
+        assert(near(x + w / 2 + R.TEX_RING * w / 2, 600), "frente na ponta")
+        assert(R.rect(500, 300, 500) == nil, "raio zero")
+        local o = 1 / math.sqrt(2)
+        local ox, oy = R.edge(10, 20, 4)
+        assert(near(ox, 10 + 4 * o) and near(oy, 20 - 4 * o))
+    end,
+
     -- a janela anti-recegueira cobre o tempo de o Estalador chegar: 8 tiles a ~1 tile/s
     sonar_found_window_covers_walk = function()
         assert(R.FOUND_MS >= R.RANGE * 1000, "janela curta demais: " .. R.FOUND_MS)
