@@ -198,6 +198,28 @@ def test_closed():
     assert open_edges(v, np.array([[0, 1, 2]])) == 3, "o critério não pega a face solta"
 
 
+def flipped_edges(verts, faces):
+    """Arestas orientadas sem o par contrário (soldando por posição): face virada no meio da casca."""
+    seen = {}
+    for f in weld(verts)[faces]:
+        for e in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
+            seen[e] = seen.get(e, 0) + 1
+    return sum(1 for (a, b), c in seen.items() if c != 1 or seen.get((b, a), 0) != 1)
+
+
+def test_consistent_orientation():
+    # o volume da casca só vê o total; face virada no meio (ponta, lasca) passa nele e não aqui
+    for piece, sex, name in every():
+        verts, faces, _, _, _ = load(piece, sex)
+        bad = flipped_edges(verts, faces)
+        assert bad == 0, "%s: %d arestas com face virada" % (name, bad)
+    v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], float)
+    good = np.array([[0, 2, 1], [0, 1, 3], [1, 2, 3], [2, 0, 3]])
+    bad = good.copy()
+    bad[3] = bad[3][::-1]
+    assert flipped_edges(v, good) == 0 and flipped_edges(v, bad) > 0, "o critério não pega a face virada"
+
+
 def shells(verts, faces):
     """Componentes conexas (soldando por posição): lista de arrays de faces."""
     w = weld(verts)
@@ -486,7 +508,7 @@ def test_generator_deterministic():
 
 
 def main():
-    tests = [test_format, test_winding_like_vanilla, test_closed, test_outward, test_venda_fits_head,
+    tests = [test_format, test_winding_like_vanilla, test_closed, test_consistent_orientation, test_outward, test_venda_fits_head,
              test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face,
              test_ticao_crust_covers_head, test_ticao_eyes_smoke_shards, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]

@@ -193,7 +193,7 @@ def sweep(points, frames, profile, uv_of, closed):
             q0, q1 = p0 + m, p1 + m
             faces += [[p0, q0, q1], [p0, q1, p1]]
     if not closed:
-        for i, flip in ((0, True), (cols - 1, False)):
+        for i, flip in ((0, False), (cols - 1, True)):
             centre = len(verts)
             verts.append(np.mean([verts[i * m + j] for j in range(m)], axis=0))
             uvs.append(uvs[i * m])
@@ -557,7 +557,7 @@ def crosta(sex):
         b, length = 0.005 + 0.002 * hash01(k, 23), 0.018 + 0.012 * hash01(k, 24)
         ring = [base + b * (math.cos(t) * e1 + math.sin(t) * e2) for t in (0, 2.0944, 4.1888)]
         m.add_shell(ring + [base + d * length], [(0.5, SHARD_V)] * 4,
-                    [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 0, 3]], "shard", flat=True, strand=k)
+                    [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]], "shard", flat=True, strand=k)
     for k, (th0, ps0) in enumerate(WISPS):
         start = point(th0, ps0)
         rise = 0.09 + 0.03 * hash01(k, 31)
