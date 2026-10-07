@@ -59,7 +59,7 @@ e foi medido antes de qualquer código.
 | Intervalo das ondas | 4 a 8 minutos de jogo | `NOM_WanderRules.MIN_GAP`/`MAX_GAP` |
 | Grupo | 1 a 3, juntos a até 5 tiles, um grupo por jogador por onda | `GROUP_MAX`, `GROUP_RADIUS` |
 | Distâncias | saem de 6–30 tiles, andam 8–20, destino a 8–35, caminho a ≥ 5 do jogador | `NEAR_*`, `LEG_*`, `DEST_MIN`, `REGION_MAX`, `PASS_MIN` |
-| Useless herdado | na névoa, com a visão curta ligada, qualquer useless local que não é do jogo cai (inclusive o de outro mod) | `heldByMod` no `NOM_VariantAI` |
+| Useless herdado | só no cliente de MP: na névoa, com a visão curta ligada, qualquer useless local que não é do jogo cai (inclusive o de outro mod). No solo não há troca de posse, então o useless de outro mod e o do menu de debug ficam (troca do code review final) | `heldByMod` no `NOM_VariantAI` |
 
 ## Roteiro de teste no jogo
 

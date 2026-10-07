@@ -343,9 +343,11 @@ end
 local HELD = { carpideira = true, estalador = true }
 
 local function heldByMod(id)
-    -- visão curta (sprint 0036): na névoa, qualquer zumbi pode ter ficado cego. O useless de
-    -- outro mod num zumbi comum também cai, só enquanto a névoa durar
-    if visionR2() ~= nil then return true end
+    -- visão curta (sprint 0036): no cliente de MP, na névoa, qualquer zumbi pode ter chegado
+    -- cego pela troca de posse. O useless de outro mod num zumbi comum também cai, só enquanto
+    -- a névoa durar. No solo não há posse pra trocar (o cego daqui está em blinded, e o
+    -- reaproveitado passa pelo forget): o de outro mod e o do debug ficam
+    if isClient() and visionR2() ~= nil then return true end
     local period = NOM_FogState.period
     if not period then return false end
     local cfg = NOM_VariantRules.config(NOM_Config.get)

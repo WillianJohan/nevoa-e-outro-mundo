@@ -859,9 +859,9 @@ return {
         assert(not z.useless and NOM_VariantAI.blinded[z] == nil, "ficou cego depois da névoa")
     end,
     -- posse que muda no meio da janela: o novo dono herda o useless (pacote, §3.2). Com a
-    -- visão curta, qualquer zumbi pode ter ficado cego: na névoa, o unstick solta
+    -- visão curta, qualquer zumbi pode ter ficado cego: no cliente de MP, na névoa, o unstick solta
     vision_inherited_blind_released_in_fog = function()
-        local G = setup()
+        local G = setup({ client = true })
         NOM_FogState.set(true, 3)
         local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
         NOM_NightStats.unstick(z)
@@ -870,6 +870,16 @@ return {
         local dbg = G.zombie({ x = 0, y = 5, useless = true, outfit = "DebugUseless", id = idFor(nil, nil, { 2, 3 }) })
         NOM_NightStats.unstick(dbg)
         assert(dbg.useless)
+    end,
+    -- review final da 0036: no solo não há posse pra trocar; o useless de outro mod (ou do
+    -- menu de debug) num zumbi comum fica, mesmo na névoa com a visão curta
+    vision_solo_keeps_foreign_useless = function()
+        local G = setup()
+        NOM_FogState.set(true, 3)
+        local z = G.zombie({ x = 0, y = 0, useless = true, id = idFor(nil, nil, { 2, 3 }) })
+        NOM_NightStats.unstick(z)
+        G.reuse(z)
+        assert(z.useless, "no solo soltou o useless de outro mod")
     end,
     -- no -debug, a contagem sai no console a cada LOG_TICKS (roteiro de teste da 0036)
     vision_debug_log = function()
