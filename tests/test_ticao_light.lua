@@ -2,7 +2,7 @@
 -- aplica no dono, contra o mundo falso (tests/fog_world.lua).
 local W = dofile("tests/fog_world.lua")
 
-local MODS = { "NOM_TicaoLight", "NOM_TicaoFreeze", "NOM_LightRules", "NOM_World", "NOM_Players", "NOM_FogState",
+local MODS = { "NOM_TicaoLight", "NOM_TicaoFreeze", "NOM_LightRules", "NOM_FlickerRules", "NOM_World", "NOM_Players", "NOM_FogState",
     "NOM_SirenFreeze", "NOM_Carpideira", "NOM_VariantAI", "NOM_NightStats" }
 
 -- rand 99: nenhuma lanterna pisca (ZombRand(100) = 99), salvo o teste do flicker
@@ -156,7 +156,8 @@ return {
         NOM_NightStats.unstick(z)
         assert(z.useless == true, "o unstick soltou o congelado pela luz")
     end,
-    -- a lanterna pisca: apaga no dono, quem ela segurava solta na hora, e volta acesa no fim
+    -- a lanterna pisca (sprint 0045: gagueira de verdade): liga e desliga várias vezes no dono, o
+    -- Tição solta durante a janela e a lanterna termina acesa
     ticao_light_flicker = function()
         local G = setup({ rand = 0 })
         local p = G.player({ x = 0, y = 0, face = 0, light = true })
@@ -164,24 +165,81 @@ return {
         black(true)
         G.tick(30)
         assert(z.useless, "não congelou antes do flicker")
-        G.tick(math.floor(NOM_LightRules.FLICKER_CHECK_MS / 16))
-        assert(p.item.on == false, "a lanterna não apagou")
-        G.tick(math.floor(NOM_LightRules.SWEEP_MS / 16) + 2)
-        assert(z.useless == false, "o Tição não soltou com a lanterna apagada")
-        G.tick(math.floor(NOM_LightRules.FLICKER_MIN_MS / 16) + 2)
+        G.tick(math.floor(NOM_LightRules.FLICKER_CHECK_MS / 16) - 40)
+        assert(p.item.on == true, "piscou antes da hora")
+        local changes, last, released = 0, true, false
+        for _ = 1, math.floor(NOM_FlickerRules.torchMax(NOM_LightRules.FLICKER_MAX_MS) / 16) + 80 do
+            G.tick(1)
+            if p.item.on ~= last then
+                changes = changes + 1
+                last = p.item.on
+            end
+            if z.useless == false then released = true end
+        end
+        assert(changes >= 6, "a lanterna não gaguejou: " .. changes .. " trocas")
+        assert(released, "o Tição não soltou com a lanterna piscando")
         assert(p.item.on == true, "a lanterna não voltou")
     end,
-    -- quem desliga a lanterna no meio do flicker não a vê acender sozinha
+    -- dedicado: o servidor manda o padrão inteiro só pro dono e conta a janela inteira como apagada
+    ticao_light_flicker_server_sends_pattern = function()
+        local G = setup({ server = true, rand = 0 })
+        local p = G.player({ x = 0, y = 0, face = 0, light = true })
+        black(true)
+        G.tick(math.floor((NOM_LightRules.FLICKER_CHECK_MS + NOM_LightRules.SWEEP_MS) / 16) + 2)
+        local cmds = G.commands(G.sentServer, "torchFlicker")
+        assert(#cmds == 1 and cmds[1].player == p, "o dono não recebeu o flicker")
+        local segs = cmds[1].args.segs
+        assert(type(segs) == "table" and #segs >= 7 and #segs % 2 == 1, "padrão inválido")
+        local total = NOM_FlickerRules.total(segs)
+        assert(NOM_TicaoLight.flickerUntil[p] - G.now <= total and NOM_TicaoLight.flickerUntil[p] - G.now > total - NOM_LightRules.SWEEP_MS - 50,
+            "a janela apagada não cobre o padrão inteiro")
+    end,
+    -- quem guarda a lanterna no meio do flicker não a vê acender sozinha
     ticao_light_flicker_respects_player = function()
         local G = setup({ rand = 0 })
         local p = G.player({ x = 0, y = 0, face = 0, light = true })
         black(true)
-        G.tick(math.floor(NOM_LightRules.FLICKER_CHECK_MS / 16) + 30)
-        assert(p.item.on == false)
+        G.tick(math.floor(NOM_LightRules.FLICKER_CHECK_MS / 16) - 10)
+        local n = 0
+        while p.item.on and n < 60 do
+            G.tick(1)
+            n = n + 1
+        end
+        assert(p.item.on == false, "a lanterna não apagou")
         p.item.inventory = nil
         p.item.getContainer = function() return {} end -- guardou em outra bolsa
-        G.tick(math.floor(NOM_LightRules.FLICKER_MAX_MS / 16) + 2)
-        assert(p.item.on == false, "acendeu a lanterna guardada")
+        local lit = false
+        for _ = 1, math.floor(NOM_FlickerRules.torchMax(NOM_LightRules.FLICKER_MAX_MS) / 16) + 4 do
+            G.tick(1)
+            if p.item.on then lit = true end
+        end
+        assert(not lit, "acendeu a lanterna guardada")
+    end,
+    -- quem desliga a lanterna num trecho aceso da gagueira fica com ela desligada
+    ticao_light_flicker_player_turns_off = function()
+        local G = setup({ rand = 0 })
+        local p = G.player({ x = 0, y = 0, face = 0, light = true })
+        black(true)
+        G.tick(math.floor(NOM_LightRules.FLICKER_CHECK_MS / 16) - 10)
+        local n = 0
+        while p.item.on and n < 60 do
+            G.tick(1)
+            n = n + 1
+        end
+        assert(p.item.on == false, "a lanterna não apagou")
+        n = 0
+        while not p.item.on and n < 20 do
+            G.tick(1)
+            n = n + 1
+        end
+        assert(p.item.on, "a gagueira não acendeu")
+        p.item.on = false -- o jogador desligou
+        local lit = false
+        for _ = 1, math.floor(NOM_FlickerRules.torchMax(NOM_LightRules.FLICKER_MAX_MS) / 16) + 4 do
+            G.tick(1)
+            if p.item.on then lit = true end
+        end
+        assert(not lit, "o flicker religou a lanterna que o jogador desligou")
     end,
     -- luz fixa (sprint 0039): poste aceso perto congela em volta; poste da rede sem força, longe
     -- dos jogadores ou apagado, não; a força voltando (gerador) acende

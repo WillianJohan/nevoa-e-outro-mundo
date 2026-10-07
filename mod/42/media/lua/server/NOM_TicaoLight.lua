@@ -16,21 +16,26 @@
 -- interruptor aceso), com a resposta guardada por cômodo a cada leitura.
 --
 -- A lanterna pisca (tarefa 5): a cada FLICKER_CHECK_MS, cada lanterna acesa sorteia; a que
--- apaga não congela ninguém nesse tempo e os Tições que ela segurava soltam na hora. O apagar é
--- local no dono da lanterna (NOM_TicaoFreeze.flicker), sem sync: no solo direto, no dedicado
--- pelo comando "torchFlicker" só pra ele.
+-- pisca não congela ninguém na janela inteira e os Tições que ela segurava soltam na hora. Desde
+-- a sprint 0045 é uma gagueira (NOM_FlickerRules.torch: liga e desliga rápido, escuro, liga e
+-- desliga de volta). O piscar é local no dono da lanterna (NOM_TicaoFreeze.flicker), sem sync:
+-- no solo direto, no dedicado pelo comando "torchFlicker" só pra ele, com o padrão.
 if isClient() then return end
 
 require "NOM_World"
 require "NOM_Players"
 require "NOM_LightRules"
+require "NOM_FlickerRules"
+require "NOM_StormRules"
 require "NOM_TicaoFreeze"
 require "NOM_Math"
 
 local MODULE = "NevoaEOutroMundo"
 local R = NOM_LightRules
 
-NOM_TicaoLight = { untilMs = {}, by = {}, flickerUntil = {} }
+-- lampUntil[chave do poste] = até quando o poste pisca (server/NOM_LampFlicker.lua); byLamp[z] = o
+-- poste que segura o zumbi
+NOM_TicaoLight = { untilMs = {}, by = {}, flickerUntil = {}, lampUntil = {}, byLamp = {} }
 local T = NOM_TicaoLight
 local lights, cursor, lastMs, nextGather, nextSend, nextFlicker = {}, 0, nil, 0, 0, nil
 local sentEmpty = true
@@ -38,6 +43,7 @@ local sentEmpty = true
 -- scanNext), as posições dos jogadores da última leitura e o cômodo aceso [room] = bool
 local fixed, scanList, scanAt, scanNext, nextScan, near = {}, nil, 0, {}, 0, {}
 local roomLit = {}
+local flashUntil = 0 -- clarão do relâmpago (server/NOM_Storm.lua): congela perto dos jogadores até aqui
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] ticao luz " .. msg) end
@@ -76,6 +82,7 @@ local function scanFixed(now)
                 if l then
                     l.x, l.y, l.z = x + 0.5, y + 0.5, z
                     l.src = s
+                    l.key = NOM_FlickerRules.lampKey(x, y, z)
                     scanNext[#scanNext + 1] = l
                 end
             end
@@ -108,7 +115,7 @@ local function litRoom(room)
     return v
 end
 
--- Luzes acesas agora, com o jogador dono (a fixa, sem dono). Lanterna em flicker não conta.
+-- Luzes acesas agora, com o jogador dono (a fixa, sem dono). Lanterna e poste piscando não contam.
 local function gather(now)
     local out = {}
     near, roomLit = {}, {}
@@ -140,14 +147,14 @@ local function gather(now)
     end
     -- a volta leva segundos: o poste que apagou no meio sai já (1 chamada por luz perto a cada SWEEP_MS)
     for _, l in ipairs(fixed) do
-        if l.src:isActive() then out[#out + 1] = l end
+        if l.src:isActive() and not ((T.lampUntil[l.key] or 0) > now) then out[#out + 1] = l end
     end
     return out
 end
 
 -- Fatia do rodízio: 2 chamadas (x, y) por zumbi longe de toda luz; perto, + andar e morto. Fora
--- de toda luz e a até FIXED_NEAR de um jogador, o cômodo dele (square e cômodo; o interruptor, uma
--- vez por leitura).
+-- de toda luz e a até FIXED_NEAR de um jogador, o clarão do relâmpago e o cômodo dele (square e
+-- cômodo; o interruptor, uma vez por leitura).
 local function check(z, now)
     local zx, zy = z:getX(), z:getY()
     if #lights > 0 then
@@ -155,11 +162,13 @@ local function check(z, now)
         for _, l in ipairs(lights) do
             local dx, dy = zx - l.x, zy - l.y
             local reach = l.range + R.BODY
-            if dx * dx + dy * dy <= reach * reach then
+            -- o poste que começou a piscar sai já, sem esperar a próxima leitura
+            if dx * dx + dy * dy <= reach * reach and not (l.key and (T.lampUntil[l.key] or 0) > now) then
                 zz = zz or z:getZ()
                 if R.lit(l, zx, zy, zz) and not z:isDead() then
                     T.untilMs[z] = now + R.HOLD_MS
                     T.by[z] = l.owner
+                    T.byLamp[z] = l.key
                     return
                 end
             end
@@ -168,10 +177,16 @@ local function check(z, now)
     if not nearPlayer(zx, zy) then return end
     local sq = z:getCurrentSquare()
     local room = sq and sq:getRoom()
-    if room ~= nil and litRoom(room) and not z:isDead() then
-        T.untilMs[z] = now + R.HOLD_MS
-        T.by[z] = nil
+    local hold
+    if room ~= nil and litRoom(room) then
+        hold = math.max(T.untilMs[z] or 0, now + R.HOLD_MS)
+    elseif now < flashUntil then
+        hold = flashUntil
     end
+    if hold == nil or z:isDead() then return end
+    T.untilMs[z] = hold
+    T.by[z] = nil
+    T.byLamp[z] = nil
 end
 
 local function frozenList(now)
@@ -182,6 +197,7 @@ local function frozenList(now)
     for _, z in ipairs(gone) do
         T.untilMs[z] = nil
         T.by[z] = nil
+        T.byLamp[z] = nil
     end
     return zs
 end
@@ -201,17 +217,21 @@ local function send(zs)
     sentEmpty = #zs == 0
 end
 
+local function rnd() return ZombRand(1000) / 1000 end
+
 local function flickerOne(p, ms, now)
-    T.flickerUntil[p] = now + ms
+    local segs = NOM_FlickerRules.torch(ms, rnd)
+    local total = NOM_FlickerRules.total(segs)
+    T.flickerUntil[p] = now + total
     for z, owner in pairs(T.by) do
         if owner == p then T.untilMs[z] = 0 end
     end
     if isServer() then
-        sendServerCommand(p, MODULE, "torchFlicker", { ms = ms })
+        sendServerCommand(p, MODULE, "torchFlicker", { segs = segs })
     else
-        NOM_TicaoFreeze.flicker(p, ms)
+        NOM_TicaoFreeze.flicker(p, segs)
     end
-    debugLog("lanterna piscou por " .. ms .. " ms")
+    debugLog("lanterna piscou por " .. total .. " ms (" .. #segs .. " trechos)")
 end
 
 local function flickers(now)
@@ -226,10 +246,25 @@ local function flickers(now)
     end
 end
 
+-- O poste key pisca até untilMs (server/NOM_LampFlicker.lua): não congela nesse tempo e solta já
+-- quem ele segurava.
+function T.lampFlicker(key, untilMs)
+    T.lampUntil[key] = untilMs
+    for z, k in pairs(T.byLamp) do
+        if k == key then T.untilMs[z] = 0 end
+    end
+end
+
+-- Clarão do relâmpago (server/NOM_Storm.lua): a luz do céu congela os Tições a até FIXED_NEAR de
+-- um jogador por FLASH_MS. O rodízio passa por todos em SWEEP_MS.
+function T.flash(now)
+    flashUntil = now + NOM_StormRules.FLASH_MS
+end
+
 -- Fim da preta: a lista vazia vai uma vez (o dono solta), e tudo zera.
 local function stop()
-    T.untilMs, T.by, T.flickerUntil = {}, {}, {}
-    lights, lastMs, nextFlicker = {}, nil, nil
+    T.untilMs, T.by, T.flickerUntil, T.lampUntil, T.byLamp = {}, {}, {}, {}, {}
+    lights, lastMs, nextFlicker, flashUntil = {}, nil, nil, 0
     fixed, scanList, nextScan, near, roomLit = {}, nil, 0, {}, {}
     send({})
 end
@@ -278,6 +313,7 @@ function T.fixedCount() return #fixed end
 local function forget(z)
     T.untilMs[z] = nil
     T.by[z] = nil
+    T.byLamp[z] = nil
 end
 
 Events.OnTick.Add(T.tick)

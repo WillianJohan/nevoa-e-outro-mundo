@@ -74,6 +74,9 @@ P.ROWS = {
         { "UI_NOM_Debug_Blind", function() NOM.blind() end },
         { "UI_NOM_Debug_Ticao", function() NOM.ticao() end },
         { "UI_NOM_Debug_Sonar", function() NOM.sonar() end } },
+    { { "UI_NOM_Debug_Thunder", function() NOM.thunder() end },
+        { "UI_NOM_Debug_FlickerLamp", function() NOM.flickerLamp() end },
+        { "UI_NOM_Debug_Rain", function() NOM.rain() end } },
 }
 
 local function yesNo(v) return getText(v and "UI_NOM_Debug_Yes" or "UI_NOM_Debug_No") end

@@ -2007,6 +2007,26 @@ jogo mostrou e por que o tiro não aparecia.
 | Cópia da cor da cena: `glBlitFramebuffer(..., GL_COLOR_BUFFER_BIT, GL_NEAREST)` do FBO do jogador (preso como `GL_READ_FRAMEBUFFER`) pra uma textura RGBA8 nossa | EXISTS | o mesmo blit da profundidade (§26, `RenderContext.render`), com outro bit; GL 3.0. Só roda com rosto censurado na tela |
 | O quadrado aparece na cabeça certa, some atrás de parede e com o zumbi fora da vista, e a névoa cobre ele | UNKNOWN | testar no jogo, item 24 da lista abaixo |
 
+## 34. Luz que pisca e tempestade da preta e da vermelha (sprint 0045)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `InventoryItem.setActivated(Z)` é local (sem sync); trocar várias vezes seguidas é só escrever o campo | EXISTS | §30; o vanilla manda o `syncItemActivated` à parte (`client/ISUI/ISInventoryPaneContextMenu.lua:2882-2883`). A gagueira da lanterna (`shared/NOM_TicaoFreeze.lua`) troca a cada 40–140 ms |
+| `IsoLightSource.setActive(Z)` não apaga o poste da rede: o `LightingJNI.checkLights` recalcula o `active` da luz hydro (sem interruptor: `hydroPowerOn` ou `square.haveElectricity`; com interruptor: `canSwitchLight` e `isActivated`; poste de rua olha `getNight`) antes de comparar com o `activeJni` | CONFIRMED (bytecode) | `javap -c zombie.iso.LightingJNI`, `checkLights`; `IsoLightSource.setActive` só grava o campo |
+| A cor da luz vai pro JNI quando muda: `r/g/b != rJni/gJni/bJni` → `setLightColor(id, clamp(r*2), …)` | CONFIRMED (bytecode) | o mesmo `checkLights`. `IsoLightSource.getR/G/B()F`, `setR/G/B(F)` existem (javap). É o caminho do poste que pisca (`client/NOM_LampFlickerFx.lua`): cor 0 = apagado |
+| O `IsoLightSource.update()` reescreve `r/g/b` com o ambiente só quando `localToBuilding != null` | CONFIRMED (bytecode) | `javap -c zombie.iso.IsoLightSource`, `update()`. Por isso só pisca luz com `getLocalToBuilding() == nil` (de fora) |
+| `IsoFire.update()` reescreve o `r/g/b` da luz do fogo todo tick | CONFIRMED (bytecode) | `javap -c zombie.iso.objects.IsoFire`, `update()` offsets 316–356 (`putfield IsoLightSource.r/g/b`). Fogo e lampião não entram no pisca: só `isHydroPowered()` |
+| `IsoLightSwitch.save()` grava `getPrimaryR/G/B()`, que lê a cor atual da luz (`getPrimaryLight()`); o `removeLightBulb` lê a mesma cor | CONFIRMED (bytecode) | `javap -c zombie.iso.objects.IsoLightSwitch`, `save` (offsets 159–177) e `getPrimaryR`. No solo, cliente e servidor dividem a luz: poste salvo no meio do pisca ficaria preto |
+| `GameWindow.save(Z)` dispara `"OnSave"` antes de gravar o mundo (offset 68, depois do mapa) | CONFIRMED (bytecode) | `javap -c zombie.GameWindow`. O `client/NOM_LampFlickerFx.lua` devolve a cor de todo poste no `OnSave` |
+| `ClimateManager.getThunderStorm()` → `ThunderStorm`; `triggerThunderEvent(x, y, strike, lightning, rumble)` no servidor preenche o `networkThunderEvent` e chama `transmitClimatePacket` (vai pros clientes); no cliente e no solo, `enqueueThunderEvent` | CONFIRMED (bytecode) | `javap -c zombie.iso.weather.ThunderStorm`; vanilla em `media/lua/server/ClientCommands.lua:657-664` (com `true, true, true`) |
+| `enqueueThunderEvent`: sem `strike` e sem `rumble`, sai; clarão (`lightningState = ApplyLightning`) com força 1 − dist/7500 até 7500 tiles; o som espera dist/300·60 frames | CONFIRMED (bytecode) | o mesmo javap. O mod usa `false, true, true` (sem raio caindo), a 40–900 tiles (`shared/NOM_StormRules.lua`) |
+| `ClimateManager.FLOAT_PRECIPITATION_INTENSITY = 3`, criado no `setup()` com `initClimateFloat(3, "PRECIPITATION_INTENSITY")` | CONFIRMED (bytecode) | `javap -constants` e `javap -c -p ClimateManager`; o vanilla usa `getClimateFloat(3)` em `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:236,273` |
+| `getPrecipitationIntensity()` = `finalValue` desse float; `isRaining()` = intensidade > 0 e `!getPrecipitationIsSnow()` | CONFIRMED (bytecode) | o mesmo javap. A chuva do mod vai na camada modded, como a névoa (§11); no frio pode virar neve |
+| O clarão aparece por cima do clima escuro da preta; o trovão se ouve a 900 tiles | UNKNOWN | testar no jogo, item 25 |
+| Cor 0 apaga a luz do poste na tela (o JNI aceita 0) e a cor volta no fim | UNKNOWN | testar no jogo, item 26 |
+| Chunk descarregado ou lâmpada tirada no meio do pisca (até ~3,7 s, a até 25 tiles do jogador) salva o poste preto no solo | UNKNOWN | improvável (o chunk a 25 tiles não descarrega em 3,7 s); se aparecer poste preto pra sempre, é isso |
+| A chuva da camada modded molha (poças, roupa) como a do jogo | UNKNOWN | testar no jogo, item 27 |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -2110,3 +2130,14 @@ jogo mostrou e por que o tiro não aparecia.
     zumbi sai da vista? A névoa cobre o quadrado? `NOMRender_setParam(13, 0)` apaga e `1.5`
     aumenta? O FPS cai com três Sem-rosto na tela? Se o `console.txt` mostrar
     `rosto censurado: erro`, o quadrado some e a névoa segue.
+25. Tempestade (sprint 0045, §34): na preta e na vermelha, `NOM.thunder()` dá o clarão (a tela
+    clareia por um instante mesmo com o escuro da preta) e o trovão chega depois? Na preta, os
+    Tições perto param por ~1 s no clarão (`NOM.ticao()` logo depois mostra congelados)? Na
+    branca não tem relâmpago sozinho (espere 30 s)?
+26. Poste que pisca (§34): `NOM.flickerLamp()` perto de um poste de rua aceso faz a luz dele
+    gaguejar (apaga e acende rápido, às vezes um escuro) e voltar na mesma cor? Luz de dentro de
+    casa não pisca? A lanterna na mão gagueja (liga e desliga várias vezes) e volta acesa? Se você
+    desligar a lanterna no meio, ela fica desligada?
+27. Chuva (§34): `NOM.rain()` e uma névoa preta ou vermelha: começa a chover em rampa (~20 min de
+    jogo), o chão molha, e para quando a névoa acaba? Desligado de novo, a próxima névoa chove só
+    se o sorteio do período der (30%)?

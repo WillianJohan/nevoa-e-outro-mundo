@@ -4,6 +4,7 @@
 -- modded NO PRÓPRIO valor interno (internal = lerp(interp, internal, modded)).
 require "NOM_Rules"
 require "NOM_FogEventRules"
+require "NOM_StormRules"
 
 local LOOK_FILE = "mod/42/media/lua/server/NOM_ClimateLook.lua"
 
@@ -76,6 +77,7 @@ local function setup(opts)
         [9] = float("f9", 0.5),  -- ambient (0 de madrugada no jogo; 0.5 pra ver a mistura)
         [2] = float("f2", 0),    -- força da noite (meio-dia: 0)
         [11] = float("f11", 1),  -- força da luz do dia (meio-dia: 1)
+        [3] = float("f3", opts.rain or 0), -- chuva (sprint 0045; ISAdmPanelClimate.lua:236)
     }
     -- noite de lua cheia do jogo (server/Climate/ClimateMain.lua:20-22): cinza 0.33,
     -- alfa 0.8 no exterior; interior azulado 0.12/0.13/0.4, alfa 0.4
@@ -137,7 +139,8 @@ local function setup(opts)
     end
     local colors = { [0] = color, [1] = fogColor }
 
-    ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_FOG_INTENSITY = 5,
+    ClimateManager = { FLOAT_DESATURATION = 0, FLOAT_GLOBAL_LIGHT_INTENSITY = 1, FLOAT_PRECIPITATION_INTENSITY = 3,
+        FLOAT_FOG_INTENSITY = 5,
         FLOAT_AMBIENT = 9, FLOAT_NIGHT_STRENGTH = 2, FLOAT_DAYLIGHT_STRENGTH = 11, COLOR_GLOBAL_LIGHT = 0 }
     ClimateColorInfo = {
         new = function(r, g, b, a, r2, g2, b2, a2) return newColorInfo({ r, g, b, a }, { r2, g2, b2, a2 }) end,
@@ -517,6 +520,49 @@ return {
             assert(env.floats[11].isModded == false and env.floats[2].isModded == false, "camada da escuridão ficou")
             assert(sameColor(env.fogColor.final.ext, NOM_Rules.FOG_COLOR), "névoa ficou preta")
         end
+    end,
+    -- chuva (sprint 0045): só na preta e na vermelha abertas do período sorteado (ou forçada pelo
+    -- debug), em rampa, e no fim a camada desliga; a chuva do jogo fica como está
+    look_rain_drawn_red_black = function()
+        local wet, dry
+        for p = 1, 100 do
+            if NOM_StormRules.rains(p, 4242) then wet = wet or p else dry = dry or p end
+        end
+        local saved = { NOM_Fog, NOM_Storm, NOM_FogEvent }
+        NOM_FogEvent = { seed = function() return 4242 end }
+        local function run(period, forced, red, black, rain)
+            NOM_Fog = { period = function() return period end }
+            NOM_Storm = { rainForced = forced }
+            local env = setup({ tod = 12, K = 10, rain = rain })
+            NOM_World.setFog(true, red, black)
+            env.run(5)
+            local mid = env.floats[3].final
+            env.run(20)
+            return env, mid
+        end
+        local ok, err = pcall(function()
+            local env = run(wet, false, false, false)
+            assert(near(env.floats[3].final, 0) and not env.floats[3].isModded, "choveu na branca")
+            env = run(dry, false, true, false)
+            assert(near(env.floats[3].final, 0) and not env.floats[3].isModded, "choveu no período seco")
+            for _, black in ipairs({ false, true }) do
+                local mid
+                env, mid = run(wet, false, not black, black)
+                assert(mid > 0 and mid < NOM_StormRules.RAIN_INTENSITY - 0.01, "sem rampa: " .. mid)
+                assert(near(env.floats[3].final, NOM_StormRules.RAIN_INTENSITY), "chuva " .. env.floats[3].final)
+                NOM_World.setFog(false)
+                env.run(25)
+                assert(near(env.floats[3].final, 0) and not env.floats[3].isModded, "a chuva ficou")
+            end
+            env = run(dry, true, false, true)
+            assert(near(env.floats[3].final, NOM_StormRules.RAIN_INTENSITY), "a chuva forçada não veio")
+            env = run(dry, false, true, false, 0.8)
+            assert(near(env.floats[3].final, 0.8) and not env.floats[3].isModded, "mexeu na chuva do jogo")
+            env = run(wet, false, true, false, 0.8)
+            assert(near(env.floats[3].final, 0.8), "enfraqueceu a chuva do jogo: " .. env.floats[3].final)
+        end)
+        NOM_Fog, NOM_Storm, NOM_FogEvent = saved[1], saved[2], saved[3]
+        assert(ok, err)
     end,
     -- a preta sobe já na fuga (risingBlack), como a vermelha
     look_black_fog_rises_with_siren = function()

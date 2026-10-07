@@ -65,5 +65,8 @@
     "UI_NOM_Debug_Wander": "Wander wave",
     "UI_NOM_Debug_Blind": "Short-sight blind to console",
     "UI_NOM_Debug_Ticao": "Cinders to console",
-    "UI_NOM_Debug_Sonar": "Estalador sonar now"
+    "UI_NOM_Debug_Sonar": "Estalador sonar now",
+    "UI_NOM_Debug_Thunder": "Lightning now",
+    "UI_NOM_Debug_FlickerLamp": "Flicker a lamppost now",
+    "UI_NOM_Debug_Rain": "Forced rain (toggle)"
 }

@@ -84,6 +84,11 @@ function NOM_FogEvent.period()
     return state().night or 0
 end
 
+-- Semente do mundo (sprint 0033), pra outros sorteios por período (a chuva do NOM_ClimateLook).
+function NOM_FogEvent.seed()
+    return state().seed
+end
+
 -- { next, endAt, sirenMs, sirenRed, presageMs } pro status do debug e pra quem entra na
 -- contagem. O presságio conta como sirene pendente (sirenMs até a névoa), pros toggles.
 function NOM_FogEvent.status()

@@ -450,6 +450,15 @@ function W.new(opts)
         l.getRadius = c(function() return l.radius end)
         l.isActive = c(function() return l.on end)
         l.isHydroPowered = c(function() return l.hydro end)
+        -- Poste que pisca (sprint 0045, §34): luz de dentro de prédio tem getLocalToBuilding() e o
+        -- update() do jogo reescreve a cor dela; a de fora guarda o setR/G/B.
+        l.building = o.building
+        l.r, l.g, l.b = 1, 0.9, 0.7
+        l.getLocalToBuilding = function() return l.building end
+        l.getR, l.getG, l.getB = function() return l.r end, function() return l.g end, function() return l.b end
+        l.setR = function(_, v) l.r = v end
+        l.setG = function(_, v) l.g = v end
+        l.setB = function(_, v) l.b = v end
         G.lamps[#G.lamps + 1] = l
         return l
     end
@@ -498,8 +507,17 @@ function W.new(opts)
         return { getTimeOfDay = function() return G.world.tod end,
             getWorldAgeHours = function() return G.world.hours or G.world.tod end }
     end
+    -- ThunderStorm.triggerThunderEvent(x, y, strike, lightning, rumble) (sprint 0045, §34): no servidor
+    -- o jogo transmite sozinho; G.thunders guarda as chamadas.
+    G.thunders = {}
+    local thunder = {
+        triggerThunderEvent = function(_, x, y, strike, lightning, rumble)
+            G.thunders[#G.thunders + 1] = { x = x, y = y, strike = strike, lightning = lightning, rumble = rumble }
+        end,
+    }
     getClimateManager = function()
-        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end }
+        return { getSeason = function() return { getDawn = function() return 6 end, getDusk = function() return 21 end } end,
+            getThunderStorm = function() return thunder end }
     end
     Events = setmetatable({}, {
         __index = function(t, name)
