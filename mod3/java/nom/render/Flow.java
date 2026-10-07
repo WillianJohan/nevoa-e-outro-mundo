@@ -85,6 +85,8 @@ final class Flow {
     private static HashSet<Long> soundsSeen = new HashSet<>(), soundsNow = new HashSet<>();
     private static final float[] blasts = new float[MAX_BLASTS * 3];  // x, y, raio
     private static int blastCount;
+    private static final Blasts clears = new Blasts();   // só a thread principal mexe (collectSounds e fillClears)
+    private static final Blasts.Budget blastLog = new Blasts.Budget(10);
     private static final Sonar sonar = new Sonar();   // anéis do sonar do Estalador (sprint 0037)
     private static long statFrames, statMaskNanos;
 
@@ -416,14 +418,28 @@ final class Flow {
             long key = ((long) s.x << 40) ^ ((long) s.y << 16) ^ (s.radius * 31L) ^ System.identityHashCode(s);
             soundsNow.add(key);
             if (soundsSeen.contains(key) || blastCount >= MAX_BLASTS) continue;
+            float bx = s.x + 0.5f, by = s.y + 0.5f, br = Blasts.radius(s.radius);
             int k = blastCount++ * 3;
-            blasts[k] = s.x + 0.5f;
-            blasts[k + 1] = s.y + 0.5f;
-            blasts[k + 2] = Math.max(2.5f, Math.min(9f, s.radius / 10f));
+            blasts[k] = bx;
+            blasts[k + 1] = by;
+            blasts[k + 2] = br;
+            clears.add(bx, by, br, simTime);
+            if (blastLog.take(System.nanoTime()))
+                RenderContext.log(String.format("tiro na névoa: som em (%d, %d) raio %d -> sopro e clareira de %.1f tiles",
+                        s.x, s.y, s.radius, br));
         }
         HashSet<Long> t = soundsSeen;
         soundsSeen = soundsNow;
         soundsNow = t;
+    }
+
+    /** Clareiras dos tiros pro quadro (thread principal). O tempo é o da simulação: para na pausa. */
+    static int fillClears(float[] out, float originX, float originY) {
+        if (dead || !running) {        // sem simulação o tempo dela para: clareira velha ficaria aberta
+            clears.clear();
+            return 0;
+        }
+        return clears.fill(out, simTime + acc, originX, originY);
     }
 
     private static void logStats() {

@@ -75,7 +75,7 @@ float density(vec3 w, float ground, float top, out float wisp) {
         float sameFloor = 1.0 - smoothstep(0.5, 1.0, abs(w.z - c.z));
         d *= mix(1.0, smoothstep(c.w * 0.4, c.w, r), sameFloor);
     }
-    return d;
+    return d * nomClearing(w.xy);                   // o tiro abre tudo, véu de fundo inclusive
 }
 
 // ---------- visual novo: rolos com silhueta e sombra própria ----------
@@ -134,7 +134,7 @@ float densityLook(vec3 w, float ground, float layer, out float shade) {
         float sameFloor = 1.0 - smoothstep(0.5, 1.0, abs(w.z - c.z));
         d *= mix(1.0, smoothstep(c.w * 0.4, c.w, r), sameFloor);
     }
-    return d;
+    return d * nomClearing(w.xy);                   // o tiro abre tudo, véu de fundo inclusive
 }
 
 // Luz das lanternas e faróis em w (0 fora dos fachos); `open` = o quanto o facho abre a névoa ali.

@@ -1920,6 +1920,19 @@ Custo medido (mundo falso e teste Java):
   ~0,15 ms na thread da simulação, ~3 % do passo inteiro da grade nessa escala (~5,6 ms,
   `FlowScaleTest`).
 
+## 29. Tiro abre a névoa (mod3, sprint 0037c)
+
+O §19 já tinha a lista de sons (`WorldSoundManager.instance.soundList`). Aqui fica o que o teste no
+jogo mostrou e por que o tiro não aparecia.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Um tiro de pistola gera dois sons no tile do jogador, raio 40 e raio 20, z do jogador | CONFIRMED (no jogo) | `Events.OnWorldSound` de teste no console.txt do Johan, 2026-10-06 (não 100 como o `SoundRadius` do script sugere) |
+| O som vive 16 atualizações; a coleta do `Flow` (~20 Hz) o vê | EXISTS | `WorldSound.init` 6–8 (`life = 16`, §27); `Flow.collectSounds` roda a cada `STEP` (0,05 s) |
+| O sopro no fluido não aparecia: perto do jogador o fluido já está ~0 (o personagem cava o rastro, `outdoorRefill = 0`) e o véu de fundo (`HAZE`) é somado sem depender do fluido | decisão | log do mod3 "densidade ... sob o jogador=0.02"; `NOM_VolFog.frag` `densityLook` soma `HAZE * uParams[1].w` fora do `fd` |
+| Clareira: até 8 (`uClears`), abre em 0,15 s, fecha em 4 s (tempo da simulação, para na pausa), miolo limpo até meio raio e borda até o raio; multiplica a densidade inteira (véu, rolos, fluido) | decisão | `Blasts.java`, `nomClearing` no `NOM_RenderContext.glsl`; `FlowBlastTest` |
+| Raio do sopro e da clareira: som × 0,25, entre 5 e 12 tiles (pistola 10, som 20 → 5); os dois sons do mesmo tiro viram uma clareira só | decisão | `Blasts.radius`, `Blasts.add`; antes era som/10 entre 2,5 e 9 |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

@@ -138,6 +138,8 @@ public final class RenderContext {
         final float[] torchPos = new float[MAX_TORCHES * 4];   // x, y (relativos), z, alcance
         final float[] torchDir = new float[MAX_TORCHES * 4];   // dx, dy, dz (unitário, tiles), cos do cone
         final float[] torchColor = new float[MAX_TORCHES * 4]; // r, g, b, força
+        int clearCount;
+        final float[] clears = new float[Blasts.MAX_CLEARS * 4]; // x, y (relativos), raio, força
 
         @Override public void render() { RenderContext.renderFrame(this); }
     }
@@ -181,6 +183,7 @@ public final class RenderContext {
             collectChars(f, cell, cx, cy);
             collectTorches(f, cell, cx, cy);
             if (playerIndex == 0) Flow.update(cell, fs);
+            f.clearCount = Flow.fillClears(f.clears, f.originX, f.originY);
             System.arraycopy(luaParams, 0, f.params, 0, 16);
             SpriteRenderer.instance.drawGeneric(f);
         } catch (Throwable t) {
@@ -376,6 +379,8 @@ public final class RenderContext {
         glUniform4fv(glGetUniformLocation(prog, "uTorchPos"), f.torchPos);
         glUniform4fv(glGetUniformLocation(prog, "uTorchDir"), f.torchDir);
         glUniform4fv(glGetUniformLocation(prog, "uTorchColor"), f.torchColor);
+        glUniform1i(glGetUniformLocation(prog, "uClearCount"), f.clearCount);
+        glUniform4fv(glGetUniformLocation(prog, "uClears"), f.clears);
         Flow.bindUniforms(prog, f.originX, f.originY);
     }
 
