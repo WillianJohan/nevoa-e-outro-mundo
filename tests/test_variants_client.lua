@@ -22,6 +22,9 @@ local function setup(client)
     NOM_Carpideira = { screamed = {}, install = function(fn) C.carpReport = fn end,
         scream = function(z, p) C.screams[#C.screams + 1] = { z = z, p = p } end }
     package.loaded["NOM_Carpideira"] = NOM_Carpideira
+    C.waves = {}
+    NOM_Wander = { wave = function(seed) C.waves[#C.waves + 1] = seed end }
+    package.loaded["NOM_Wander"] = NOM_Wander
     C.players = {}
     getPlayerByOnlineID = function(id) return C.players[id] end
     getCell = function()
@@ -45,6 +48,13 @@ local function setup(client)
 end
 
 return {
+    -- perambular (sprint 0036): o servidor manda a semente, o cliente aplica nos zumbis dele
+    variants_client_applies_wander_wave = function()
+        local C = setup(true)
+        C.server("wander", { seed = 77 })
+        C.server("wander", { seed = "x" })
+        assert(#C.waves == 1 and C.waves[1] == 77, "ondas: " .. #C.waves)
+    end,
     variants_client_inert_outside_mp = function()
         local C = setup(false)
         assert(C.reporter == nil, "solo/servidor instalou o cliente")

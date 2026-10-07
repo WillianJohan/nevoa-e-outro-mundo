@@ -85,6 +85,19 @@ Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes 
 - Quem simula `shared/NOM_Wander.lua`: escolhe entre os zumbis locais parados perto dos jogadores locais e manda andar (`pathToLocationF`). Pula sirene, cegos, Carpideira parada, variantes e Ecos.
 - Opção de sandbox `FogWander` (ligada).
 
+**Feito** (9 testes em `tests/test_wander_rules.lua`, 8 em `tests/test_wander.lua`, 1 em `tests/test_variants_client.lua`):
+- **Números** (`NOM_WanderRules`, todos ajustáveis lá):
+  - uma onda a cada 4 a 8 minutos de jogo (10 a 20 s reais com o dia de 1 h);
+  - por onda, no máximo um grupo por jogador, de 1 a 3 zumbis parados juntos (a até 5 tiles de quem puxa);
+  - saem de 6 a 30 tiles do jogador e andam de 8 a 20 tiles, em formação;
+  - o destino fica a 8–35 tiles de todo jogador do andar, e o caminho reto não passa a menos de 5 tiles de nenhum;
+  - até 8 sorteios de ponto por grupo; sem ponto bom, o grupo não sai.
+- **Quem decide e quem aplica:** o servidor decide quando e a semente (`server/NOM_WanderServer.lua`, `EveryOneMinute` com `NOM_World.fog`, que só abre depois da fuga da sirene). Quem simula escolhe entre os zumbis locais parados perto dos jogadores locais (`shared/NOM_Wander.lua`): no solo, o próprio processo; no dedicado, o comando `wander` vai a todos os clientes. O alvo do zumbi não viaja (pz-api-notes §3.3), então "parado e sem alvo" só o dono sabe.
+- **Parado:** sem alvo, sem andar (`isMoving`), sem useless, local, vivo, não Eco, não variante, nem cego, nem vigiado, nem Carpideira parada, nem congelado pela sirene. Com a sirene ativa não sai onda.
+- **Chão:** o destino passa pelo `NOM_SemRosto.floorOk` (carregado, livre, sem água).
+- **Andar:** `z:pathToLocationF(x + 0,5, y + 0,5, z)`, com evidência no bytecode e no menu de debug vanilla (pz-api-notes §27).
+- **Custo da onda com 300 zumbis:** 404 chamadas com todos perto (a coleta para em `SCAN_MAX` = 40 candidatos, a partir de um ponto sorteado da lista) e 1201 com todos longe (a lista inteira: `get`, `getTarget`, `getX`, `getY`). Abaixo do teto de 2500, uma vez a cada 4–8 minutos de jogo.
+
 ### Tarefa 3: debug
 
 - `NOM.wander()` (força uma onda; o servidor decide) e `NOM.blind()` (contagem de cegos e vigiados neste processo), com botão no `NOM.panel()` e chaves PTBR + EN.

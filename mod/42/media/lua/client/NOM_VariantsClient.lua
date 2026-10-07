@@ -7,6 +7,7 @@ if not isClient() then return end
 require "NOM_VariantAI"
 require "NOM_VariantRules"
 require "NOM_Carpideira"
+require "NOM_Wander"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -45,5 +46,7 @@ Events.OnServerCommand.Add(function(module, command, args)
         screamed(args)
     elseif command == "carpideiraList" and type(args.pids) == "table" then -- entrou no meio da névoa
         for _, pid in pairs(args.pids) do NOM_Carpideira.screamed[pid] = true end
+    elseif command == "wander" and type(args.seed) == "number" then
+        NOM_Wander.wave(args.seed) -- o servidor decidiu a onda; os zumbis daqui andam (sprint 0036)
     end
 end)
