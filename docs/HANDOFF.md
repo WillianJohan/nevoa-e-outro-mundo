@@ -60,6 +60,7 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
 | `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
+| `NOMRender_setParam(12, 1)` / `(12, 0)` | névoa preta: a luz (lanterna, farol, lampião, poste) empurra a névoa. O Lua manda sozinho na borda da preta (sprint 0039) |
 
 **Build e instalação (armadilhas que custaram caro):**
 1. `scripts/build-mod3.sh` compila com o openjdk do brew (`--release 25`; o jogo roda no Zulu 25) e **assina** o jar.
@@ -75,13 +76,20 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em teste: névoa preta II (sprint 0039, na `staging`)
+
+Luz fixa congela o Tição (poste, abajur, fogo, cômodo aceso), Outro Mundo queimado (cinza, brasa,
+fuligem) e, no mod3, a luz empurra a névoa preta (`NOMRender_setParam(12, 1)`, mandado sozinho pelo
+`NOM_FogQualitySync`). Decisões tomadas na ausência do Johan e roteiro em
+[sprint-0039-nevoa-preta-ii/README.md](sprints/sprint-0039-nevoa-preta-ii/README.md). Pra mudar
+rápido: `NOM_LightRules.FIXED_*`, `NOM_DressingRules` (`BLACK_MULT`, `ASH*`, `EMBER`) e
+`LightWind.java` (`SPEED`, `BEAM_REACH`). Farol com direção pro Tição continua de fora.
+
 ## Em teste: névoa preta I (sprint 0038, na `staging`)
 
 Noite fechada mesmo de dia, todo zumbi vira Tição, a luz congela e a lanterna pisca. Resumo, decisões
 tomadas na ausência do Johan e roteiro em [sprint-0038-nevoa-preta/README.md](sprints/sprint-0038-nevoa-preta/README.md).
 Pra mudar rápido: `NOM_TicaoRules` (velocidade, caça, visão), `NOM_LightRules` (raios, piscar).
-Fica pra 0039: luz fixa congelando, farol com direção, a névoa preta do mod3 empurrada pela luz
-(`NOM_TicaoLight.lights()` é o gancho) e o Outro Mundo queimado.
 
 ## Em andamento: NOM: Noise of Mist (mini-sprint 0037b)
 

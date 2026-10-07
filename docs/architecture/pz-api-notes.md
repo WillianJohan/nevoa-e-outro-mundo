@@ -1947,9 +1947,24 @@ jogo mostrou e por que o tiro não aparecia.
 | `IsoGameCharacter.getForwardDirectionX()F` / `getForwardDirectionY()F` | EXISTS | javap `zombie.characters.IsoGameCharacter` |
 | `IsoGameCharacter.getVehicle()`, `BaseVehicle.getHeadlightsOn()Z` | EXISTS | javap; `server/Vehicles/Vehicles.lua:565` |
 | Direção do carro sem `Vector3f` no Lua: o farol vira um raio de 8 tiles em volta do carro | decisão (conservadora) | `BaseVehicle.getForwardVector(Vector3f)` pede um `org.joml.Vector3f`; a 0039 decide se vale |
-| Luz fixa (cômodo aceso, poste) não congela o Tição na 0038 | decisão | a varredura de squares acesos fica pra 0039, junto com a luz que empurra a névoa do mod3 |
+| Luz fixa (cômodo aceso, poste) não congela o Tição na 0038 | decisão | feita na 0039 (§31) |
 | Congelar = `setUseless(true)` + `setTarget(nil)` + halt, no dono (`z:isLocal()`); a lista vai por `onlineID` | EXISTS | o mesmo da sirene (§3.2, §21, §24); `IsoZombie.getOnlineID()` (javap, já usado no Eco) |
 | Com a direção do jogador remoto no servidor dedicado, o facho segue quem gira | UNKNOWN | testar no MP: girar com a lanterna e ver o Tição soltar e outro congelar |
+
+## 31. Névoa preta II: luz fixa, Outro Mundo queimado, luz que empurra a névoa (sprint 0039)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoCell.getLamppostPositions()` devolve `Stack<IsoLightSource>`: poste, abajur, fogo | EXISTS | javap `zombie.iso.IsoCell`; `java.util.Stack`, `Vector` e `IsoLightSource` estão no `LuaManager$Exposer` (bytecode, `ldc` das classes) |
+| `IsoLightSource.getX/Y/Z()I`, `getRadius()I`, `isActive()Z`, `isHydroPowered()Z` | EXISTS | javap; o vanilla usa `getCell():getLightSourceAt(...)`, `isActive()` e `isHydroPowered()` em `client/DebugUIs/DebugChunkState/DebugChunkState_SquarePanel.lua:124-127` |
+| `IsoLightSource.update()` apaga a luz da rede quando o square não tem `hasGridPower()` nem `haveElectricity()` | CONFIRMED (bytecode) | `javap -c zombie.iso.IsoLightSource`, `update()` offsets 22–49; o mod repete a regra (no dedicado o `update` pode não rodar) |
+| `IsoGridSquare.getRoom()`, `hasGridPower()Z`, `haveElectricity()Z` | EXISTS | javap; `haveElectricity`: `client/ISUI/ISButtonPrompt.lua:520` |
+| `IsoRoom.getLightSwitches()` → `ArrayList<IsoLightSwitch>` | EXISTS | javap; `DebugChunkState_SquarePanel.lua:104` |
+| `IsoLightSwitch.isActivated()Z`, `hasLightBulb()Z`, `getUseBattery()Z`, `getHasBattery()Z`, `getPower()F`, `getSquare()` | EXISTS | javap; `isActivated`: `client/ISUI/ISWorldObjectContextMenu.lua:1230` |
+| A lista de postes do servidor dedicado tem as mesmas luzes que a do cliente | UNKNOWN | testar no MP: poste aceso perto de Tição, `NOM.ticao()` no solo mostra `luzes_fixas` |
+| Texturas próprias novas (Cinza_F, Brasa_F, Fuligem_W/N) pelo mesmo caminho das da 0035 | EXISTS | §16.6, spike-sprite-proprio §1b; registradas pelo `client/NOM_OwnSprites.lua` a partir da lista gerada |
+| mod3: `IsoCell.getLamppostPositions()` lido na thread principal (`RenderContext.onWorldEnd` → `Flow.update`) | EXISTS | o mesmo javap; erro na leitura fica no `Flow.lightImpulses` (10 seguidos desligam só o empurrão) |
+| A cor da névoa do mod3 na preta vem do clima (`COLOR_NEW_FOG`), que a preta já escurece | CONFIRMED (código) | `RenderContext.onWorldEnd` lê `getClimateColor(1).getFinalValue().getExterior()` (§30, camada modded) |
 
 ## Abordagem recomendada por mecânica (resumo)
 
