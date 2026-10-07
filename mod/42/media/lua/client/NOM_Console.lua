@@ -260,7 +260,7 @@ NOM.HELP = {
 }
 
 function NOM.help()
-    for _, h in ipairs(NOM.HELP) do print("[NOM] " .. h[1] .. " - " .. h[2]) end
+    for _, h in ipairs(NOM.HELP) do NOM_DebugLog.say("[NOM] " .. h[1] .. " - " .. h[2]) end
 end
 
 return NOM

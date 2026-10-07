@@ -10,15 +10,17 @@
 -- * getTextManager():MeasureStringX(fonte, texto) (ISButton.lua:233): aqui 7 px por letra.
 -- * getSoundManager():playUISound(nome) (ISButton.lua:46).
 -- * ISButton:new(x, y, w, h, título, alvo, onclick): o clique chama onclick(alvo, botão).
--- * ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela) devolve o leiaute salvo,
---   com largura e altura quando a janela é redimensionável (ISCollapsableWindow.lua:336-340).
+-- * ISLayoutManager.RegisterWindow(nome, ISCollapsableWindow, janela) devolve o leiaute salvo com
+--   aquele nome: posição e, com a janela redimensionável (ISCollapsableWindow.lua:336-340), o tamanho
+--   pelo ISResizeWidget:resize (ISLayoutManager.lua:26-41), que prende no mínimo e depois corta a
+--   altura na borda de baixo da tela (ISResizeWidget.lua:13-27).
 -- NOM é um registrador: os atalhos de verdade moram em test_debug.
 local FILE = "mod/42/media/lua/client/NOM_DebugPanel.lua"
 
 local function setup(opts)
     opts = opts or {}
     local G = { ui = {}, calls = {}, layouts = {}, sounds = {}, now = 0, key = 65, debug = opts.debug ~= false,
-        hour = 13.5, saved = opts.saved }
+        hour = 13.5, saved = opts.saved or {} }
     local handlers = {}
     function G.fire(name, ...)
         for _, h in ipairs(handlers[name] or {}) do h(...) end
@@ -37,7 +39,7 @@ local function setup(opts)
     UIFont = { Small = "small", Medium = "medium" }
     getTextManager = function()
         return {
-            getFontHeight = function(_, f) return f == "medium" and 18 or 14 end,
+            getFontHeight = function(_, f) return f == "medium" and (opts.medium or 18) or (opts.small or 14) end,
             MeasureStringX = function(_, _, s) return #s * 7 end,
         }
     end
@@ -131,9 +133,14 @@ local function setup(opts)
     function ISButton:setBorderRGBA() end
     ISLayoutManager = { RegisterWindow = function(name, funcs, win)
         G.layouts[#G.layouts + 1] = { name = name, funcs = funcs, win = win }
-        if G.saved then
-            win:setWidth(G.saved.width)
-            win:setHeight(G.saved.height)
+        local l = G.saved[name]
+        if not l then return end
+        win:setX(l.x); win:setY(l.y)
+        if win.resizable then
+            local w = math.max(l.width, win.minimumWidth or 0)
+            local h = math.max(l.height, win.minimumHeight or 0)
+            if win.y + h > 1080 then h = 1080 - win.y end
+            win:setWidth(w); win:setHeight(h)
         end
     end }
 
@@ -153,7 +160,7 @@ local function setup(opts)
     NOM = {}
     for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind", "status",
-        "ownSprites", "wander", "blind", "sonar", "ticao", "thunder", "flickerLamp", "rain" }) do
+        "ownSprites", "wander", "blind", "sonar", "ticao", "thunder", "flickerLamp", "rain", "help" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
@@ -277,13 +284,40 @@ return {
         assert(w.width >= 800 and w.height >= 600, "pequena: " .. w.width .. "x" .. w.height)
         assert(w.minimumWidth and w.minimumHeight and w.minimumWidth <= 640 and w.minimumHeight <= 480,
             "sem mínimo razoável")
-        assert(#G.layouts == 1 and G.layouts[1].name == "NOM_DebugPanel" and G.layouts[1].funcs == ISCollapsableWindow)
+        assert(#G.layouts == 1 and G.layouts[1].funcs == ISCollapsableWindow and G.layouts[1].win == w)
     end,
-    -- leiaute salvo do painel antigo (440 de largura, sem altura útil) não deixa a janela espremida
-    debug_panel_old_layout_is_clamped = function()
-        setup({ saved = { width = 440, height = 120 } })
+    -- o leiaute salvo pelo painel da 0020 (nome NOM_DebugPanel, 440 de largura) não vale pro novo:
+    -- o resize do vanilla prenderia no mínimo e o painel abriria espremido
+    debug_panel_old_layout_ignored = function()
+        local G = setup({ saved = { NOM_DebugPanel = { x = 50, y = 60, width = 440, height = 350 } } })
         local w = open()
-        assert(w.width >= w.minimumWidth and w.height >= w.minimumHeight, "ficou " .. w.width .. "x" .. w.height)
+        assert(G.layouts[1].name ~= "NOM_DebugPanel", "registrou com o nome do painel antigo")
+        assert(w.width == 820 and w.height == 620, "ficou " .. w.width .. "x" .. w.height)
+        G.saved[G.layouts[1].name] = { x = 10, y = 20, width = 1000, height = 700 }
+        setup({ saved = G.saved })
+        w = open()
+        assert(w.width == 1000 and w.height == 700, "não voltou no tamanho salvo")
+    end,
+    -- perto da borda de baixo o resize corta a altura abaixo do mínimo: a janela sobe até caber
+    debug_panel_below_minimum_moves_up = function()
+        setup()
+        setup({ saved = { [NOM_DebugPanel.LAYOUT] = { x = 10, y = 900, width = 820, height = 620 } } })
+        local w = open()
+        assert(w.height >= w.minimumHeight, "altura " .. w.height)
+        assert(w.y + w.height <= 1080, "passou da tela: y=" .. w.y)
+        for _, c in ipairs({ w.side, w.list, w.log }) do assert(inside(c, w), c.Type .. " fora da janela") end
+    end,
+    -- fonte grande (opção do jogo): no mínimo a lateral inteira cabe e as respostas não somem
+    debug_panel_big_fonts_fit_at_minimum = function()
+        setup({ small = 24, medium = 30 })
+        local w = open()
+        w:setWidth(w.minimumWidth)
+        w:setHeight(w.minimumHeight)
+        w:update()
+        local last = w.side.rows[#w.side.rows]
+        assert(last.y + last.h <= w.side.height, "a lateral não cabe: " .. (last.y + last.h) .. " > " .. w.side.height)
+        assert(w.log.height >= 24 * 3, "respostas espremidas")
+        for _, c in ipairs({ w.side, w.list, w.log }) do assert(inside(c, w), c.Type .. " fora da janela") end
     end,
     debug_panel_resize_relayouts = function()
         setup()
@@ -350,6 +384,7 @@ return {
             UI_NOM_Debug_C_Ticao = { "ticao()" },
             UI_NOM_Debug_C_Blind = { "blind()" },
             UI_NOM_Debug_C_OwnSprites = { "ownSprites()" },
+            UI_NOM_Debug_C_Help = { "help()" },
         }
         local n, want = 0, 0
         for _, calls in pairs(expect) do want = want + #calls end
@@ -367,7 +402,7 @@ return {
         assert(#G.sounds == n + #NOM_DebugPanel.SECTIONS - 1 and G.sounds[1] == "UIActivateButton",
             "cliques com som: " .. #G.sounds)
     end,
-    -- Regra do AGENTS.md: todo comando do NOM.HELP (menos panel e help) tem botão. O console
+    -- Regra do AGENTS.md: todo comando do NOM.HELP (menos o próprio panel) tem botão. O console
     -- de verdade dá o HELP; cada NOM.* vira espião e o teste aperta todos os botões.
     debug_panel_every_help_command_has_button = function()
         setup()
@@ -386,7 +421,7 @@ return {
         for _, h in ipairs(NOM.HELP) do
             local name = h[1]:match("^NOM%.(%w+)%(")
             assert(name, "linha do HELP sem NOM.x(: " .. h[1])
-            if name ~= "panel" and name ~= "help" then
+            if name ~= "panel" then
                 assert(called[name], "comando sem botão no NOM.panel(): NOM." .. name .. " (regra do AGENTS.md)")
                 checked = checked + 1
             end

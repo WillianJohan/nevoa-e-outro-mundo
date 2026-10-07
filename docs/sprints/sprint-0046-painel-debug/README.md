@@ -10,8 +10,9 @@
 ## O que entrou
 
 - **Janela grande e redimensionável.**
-  - Abre com 820×620 e vai até o mínimo de 600×440 pelas alças do canto e da borda de baixo.
-  - O jogo guarda posição e tamanho. O leiaute salvo pelo painel antigo (440 de largura) sobe pro mínimo.
+  - Abre com 820×620 e vai até o mínimo de 600×440 pelas alças do canto e da borda de baixo. Com fonte grande nas opções do jogo, o mínimo cresce até a lateral inteira caber.
+  - O jogo guarda posição e tamanho com um nome novo (`NOM_DebugPanel_0046`): o leiaute do painel antigo (440 de largura) faria o novo abrir espremido.
+  - Perto da borda de baixo da tela, a janela sobe em vez de encolher abaixo do mínimo.
 - **Cabeçalho com o estado**, atualizado a cada segundo:
   - hora;
   - dia ou noite do mod;
@@ -24,13 +25,13 @@
   - Monstros;
   - Tempestade e luz;
   - Jogador;
-  - Diagnóstico.
+  - Diagnóstico (inclui a lista de comandos do `NOM.help()`, que agora também aparece em Respostas).
 - **Cada ação é um cartão** com título, uma descrição do que faz e os botões.
   - As ações irmãs ficam juntas:
     - a hora tem 00h, 06h, 12h, 18h e 22h;
     - "Criar zumbis" tem 1, 5 e 10;
     - "Transformar o mais perto" tem os quatro monstros e Desfazer;
-    - cada névoa tem "Com sirene" e "Abrir já".
+    - cada névoa tem "Com presságio" e "Abrir já" (que pula o presságio e a espera; a sirene toca igual).
   - Os cheats mostram LIGADO (verde) ou DESLIGADO.
   - A lista rola com a roda do mouse.
   - O botão sob o mouse acende e o clique toca o som de botão do jogo.
@@ -40,7 +41,7 @@
   - Tudo continua saindo no console como antes.
 - **`shared/NOM_DebugLog.lua`:** as mensagens `[NOM] debug ...` do console, do `NOM_Debug` e do servidor passam por ele. Ele imprime e guarda as últimas 60 linhas.
 
-Nenhum comando sumiu: todo `NOM.*` do `NOM.help()` continua com botão (o teste clica em todos).
+Nenhum comando sumiu: todo `NOM.*` do `NOM.help()` tem botão, agora inclusive o próprio `NOM.help()` (só o `NOM.panel()` fica de fora). O teste clica em todos.
 
 ![Prévia: seção Névoa em 820×620, com névoa vermelha à noite](previa-nevoa.png)
 
@@ -56,11 +57,13 @@ As prévias saem do desenho de verdade do painel (os mesmos `drawRect`/`drawText
   - tira só o prefixo `[NOM] debug `;
   - o eco não vai pro console.
 - `tests/test_debug.lua`: a resposta do servidor no solo, a do MP (`debugReply`) e o aviso do console caem no registro.
-- `tests/test_debug_panel.lua` (reescrito, 16 testes):
+- `tests/test_debug_panel.lua` (reescrito, 18 testes):
   - **Abrir e fechar:** tecla, fechar, sem jogador.
   - **Tamanho:**
     - abre grande e redimensionável, com mínimo;
-    - o leiaute antigo sobe pro mínimo;
+    - o leiaute do painel antigo não vale (o fake restaura pelo `resize` do vanilla, com mínimo e borda da tela);
+    - perto da borda de baixo, a janela sobe até caber;
+    - com fonte grande, a lateral inteira cabe no mínimo;
     - redimensionar refaz o leiaute;
     - no mínimo os botões não vazam.
   - **Conteúdo:**
@@ -76,6 +79,17 @@ As prévias saem do desenho de verdade do painel (os mesmos `drawRect`/`drawText
     - o cabeçalho atualiza a cada segundo (a preta ganha da vermelha);
     - as respostas mostram as mais novas e o Limpar apaga;
     - o hover acha o botão e todo stencil fecha.
+
+## Review
+
+Feito no fim da entrega, por um agente separado e lendo o diff. Nada crítico. Corrigido:
+
+- o leiaute do painel antigo prenderia o novo no mínimo (nome novo de leiaute);
+- "Abrir já" dizia que pulava a sirene: pula o presságio e a espera, a sirene toca ("Com sirene" virou "Com presságio");
+- com fonte grande, a lateral não cabia no mínimo (mínimo pelas fontes);
+- altura cortada pela borda da tela quebrava o leiaute (a janela sobe);
+- descrições do "Vermelha (alternar)", do "Desfazer" e da noite;
+- `NOM.help()` ganhou botão e sai em Respostas.
 
 ## Roteiro de teste no jogo
 

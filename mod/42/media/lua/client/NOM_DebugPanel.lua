@@ -7,7 +7,9 @@
 -- lateral, a lista de ações da seção (cada ação é um cartão com título, descrição e botões) e as
 -- respostas do debug no rodapé (shared/NOM_DebugLog.lua). A janela redimensiona (alças do
 -- ISCollapsableWindow; o ISResizeWidget respeita minimumWidth/minimumHeight) e refaz o leiaute
--- quando o tamanho muda. Posição e tamanho ficam no layout do jogo (ISLayoutManager).
+-- quando o tamanho muda. Posição e tamanho ficam no layout do jogo (ISLayoutManager), com nome
+-- novo (P.LAYOUT): o leiaute do painel da 0020 tinha 440 de largura e o resize do vanilla
+-- (ISLayoutManager.lua:30-33) só subiria até o mínimo.
 -- A lista rola por conta própria (scroll em Lua, yScroll do Java sempre 0): o clique e o mouse
 -- chegam em coordenadas locais e o desenho sai em y - scroll, recortado pelo stencil.
 if isServer() or not getDebug() then return end
@@ -28,6 +30,7 @@ local List = ISPanel:derive("NOM_DebugPanelList")
 local Log = ISPanel:derive("NOM_DebugPanelLog")
 
 local P = NOM_DebugPanel
+P.LAYOUT = "NOM_DebugPanel_0046"
 local WIDTH, HEIGHT, MIN_W, MIN_H = 820, 620, 600, 440
 local PAD, GAP, SIDE_W = 8, 8, 168
 local REFRESH_MS = 1000
@@ -39,6 +42,8 @@ local MEDIUM_HGT = getTextManager():getFontHeight(MEDIUM)
 local PILL_H = SMALL_HGT + 8
 local HEADER_H = SMALL_HGT + MEDIUM_HGT + 14
 local LOG_HEAD, LOG_LINE = SMALL_HGT + 10, SMALL_HGT + 1
+local LOG_MIN = math.max(96, LOG_HEAD + LOG_LINE * 3 + 9)
+local SIDE_ROW, SIDE_GAP = MEDIUM_HGT + 14, 4
 local CLICK_SOUND = "UIActivateButton" -- ISButton.lua:521
 
 local TEXT = { r = 0.92, g = 0.93, b = 0.95 }
@@ -65,10 +70,10 @@ P.SECTIONS = {
     { title = "UI_NOM_Debug_Sec_Fog", desc = "UI_NOM_Debug_Sec_Fog_Desc", color = { r = 0.62, g = 0.74, b = 0.90 },
         cards = {
             { title = "UI_NOM_Debug_C_White", desc = "UI_NOM_Debug_C_White_Desc", choices = {
-                c("UI_NOM_Debug_B_Siren", function() NOM.setFog() end),
+                c("UI_NOM_Debug_B_Omen", function() NOM.setFog() end),
                 c("UI_NOM_Debug_B_OpenNow", function() NOM.setFog(true) end) } },
             { title = "UI_NOM_Debug_C_Red", desc = "UI_NOM_Debug_C_Red_Desc", choices = {
-                c("UI_NOM_Debug_B_Siren", function() NOM.setRedFog() end),
+                c("UI_NOM_Debug_B_Omen", function() NOM.setRedFog() end),
                 c("UI_NOM_Debug_B_OpenNow", function() NOM.setRedFog(true) end) } },
             { title = "UI_NOM_Debug_C_Black", desc = "UI_NOM_Debug_C_Black_Desc", choices = {
                 c("UI_NOM_Debug_B_Omen", function() NOM.setBlackFog() end),
@@ -146,6 +151,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Show", function() NOM.blind() end) } },
             { title = "UI_NOM_Debug_C_OwnSprites", desc = "UI_NOM_Debug_C_OwnSprites_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.ownSprites() end) } },
+            { title = "UI_NOM_Debug_C_Help", desc = "UI_NOM_Debug_C_Help_Desc", choices = {
+                c("UI_NOM_Debug_B_Show", function() NOM.help() end) } },
         } },
 }
 
@@ -239,11 +246,12 @@ end
 -- Lateral: uma linha por seção, com a cor e o número de ações.
 function Side:layout()
     self.rows = {}
-    local h = MEDIUM_HGT + 14
     for i = 1, #P.SECTIONS do
-        self.rows[i] = { x = 0, y = (i - 1) * (h + 4), w = self.width, h = h }
+        self.rows[i] = { x = 0, y = (i - 1) * (SIDE_ROW + SIDE_GAP), w = self.width, h = SIDE_ROW }
     end
 end
+
+local function sideHeight() return #P.SECTIONS * (SIDE_ROW + SIDE_GAP) - SIDE_GAP end
 
 function Side:rowAt(x, y)
     for i, r in ipairs(self.rows or {}) do
@@ -486,7 +494,8 @@ function P:layout()
     self.headerY = top
     local bodyY = top + HEADER_H + PAD
     local bottom = h - self:resizeWidgetHeight() - PAD
-    local logH = math.max(96, math.min(190, math.floor(h * 0.22)))
+    -- a lateral inteira cabe sempre (minimumHeight conta com ela); as respostas cedem até LOG_MIN
+    local logH = math.max(LOG_MIN, math.min(190, math.floor(h * 0.22), bottom - bodyY - GAP - sideHeight()))
     local logY = bottom - logH
     local bodyH = logY - GAP - bodyY
     local function place(el, x, y, ew, eh)
@@ -505,8 +514,19 @@ function P:refresh()
     if self.list then self.list:layout() end
 end
 
+-- Altura mínima pelas fontes de agora (a opção de tamanho de fonte do jogo muda as alturas).
+function P:neededHeight()
+    return self:titleBarHeight() + PAD + HEADER_H + PAD + sideHeight() + GAP + LOG_MIN + self:resizeWidgetHeight() + PAD
+end
+
 function P:update()
     ISCollapsableWindow.update(self)
+    -- o ISResizeWidget corta a altura na borda de baixo da tela depois do mínimo
+    -- (ISResizeWidget.lua:25-27): a janela sobe até caber
+    if self.height < self.minimumHeight then
+        self:setY(math.max(0, self.y - (self.minimumHeight - self.height)))
+        self:setHeight(self.minimumHeight)
+    end
     if self.width ~= self.lastW or self.height ~= self.lastH then self:layout() end
     local now = getTimestampMs()
     if self.nextRefresh == nil or now >= self.nextRefresh then
@@ -548,17 +568,15 @@ function P.toggle()
     if not player() then return end -- menu principal
     if not w then
         w = P:new(100, 100, WIDTH, HEIGHT)
-        w.minimumWidth, w.minimumHeight = MIN_W, MIN_H -- ISResizeWidget.lua:13-23
+        w.minimumWidth = MIN_W -- ISResizeWidget.lua:13-23
+        w.minimumHeight = math.max(MIN_H, w:neededHeight())
         w.backgroundColor = { r = 0.06, g = 0.065, b = 0.08, a = 0.95 }
         w:setTitle(getText("UI_NOM_Debug_Title"))
         w:initialise()
         w:addToUIManager()
         P.instance = w
-        -- devolve posição e tamanho salvos (e o "visible" salvo, que o setVisible abaixo corrige);
-        -- o leiaute do painel antigo (0020) tinha 440 de largura: não deixa abaixo do mínimo
-        ISLayoutManager.RegisterWindow("NOM_DebugPanel", ISCollapsableWindow, w)
-        if w.width < MIN_W then w:setWidth(MIN_W) end
-        if w.height < MIN_H then w:setHeight(MIN_H) end
+        -- devolve posição e tamanho salvos (e o "visible" salvo, que o setVisible abaixo corrige)
+        ISLayoutManager.RegisterWindow(P.LAYOUT, ISCollapsableWindow, w)
     else
         w:addToUIManager()
     end
