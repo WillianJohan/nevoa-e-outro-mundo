@@ -1966,6 +1966,22 @@ jogo mostrou e por que o tiro não aparecia.
 | mod3: `IsoCell.getLamppostPositions()` lido na thread principal (`RenderContext.onWorldEnd` → `Flow.update`) | EXISTS | o mesmo javap; erro na leitura fica no `Flow.lightImpulses` (10 seguidos desligam só o empurrão) |
 | A cor da névoa do mod3 na preta vem do clima (`COLOR_NEW_FOG`), que a preta já escurece | CONFIRMED (código) | `RenderContext.onWorldEnd` lê `getClimateColor(1).getFinalValue().getExterior()` (§30, camada modded) |
 
+## 32. Modelo 3D próprio: peça estática presa à cabeça (sprint 0041)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Peça estática presa ao osso: `<m_Static>true</m_Static>` + `<m_AttachBone>Bip01_Head</m_AttachBone>` + `m_MaleModel`/`m_FemaleModel` pelo nome curto | EXISTS | `media/clothing/clothingItems/Glasses_SkiGoggles.xml` e `Earring_BirdSkull.xml` vanilla; a venda da 0012 já usava (`static\clothes\m_glasses_skigoggles`) |
+| O nome curto vira `media/models_x/<nome>` + `.fbx`, `.glb` ou `.x`, resolvido por `ZomboidFileSystem.getString` | CONFIRMED (bytecode) | `javap -c zombie.core.skinnedmodel.model.FileTask_LoadMesh`: o construtor passa `"media/models"`/`"media/models_x"` pro `FileTask_AbstractLoadModel`; `checkExtensionType()` monta os caminhos (`makeConcatWithConstants`) e chama `ZomboidFileSystem.getString` + `File.exists` pra cada extensão |
+| `ZomboidFileSystem.getString` procura no `activeFileMap` com o caminho em minúsculas: arquivo de mod ativo atende o mesmo caminho do jogo | CONFIRMED (bytecode) | `javap -c zombie.ZomboidFileSystem`, `getString(String)`: `toLowerCase`, `relativeMap`, `activeFileMap.get`. É o mesmo caminho das texturas e sons do mod |
+| `.x` vai pro Assimp (`Jassimp.importFile`) sem rotação nem escala. O `.fbx` gira −90° e escala 0,01 | CONFIRMED (bytecode) | `FileTask_LoadMesh.loadX()` não tem o `Quaternion.setFromAxisAngle` nem o `0.01f` que o `loadFBX()` tem |
+| Quadro do osso da cabeça, em metros: X sobe pela cabeça, Y vai de orelha a orelha, Z aponta pra frente | CONFIRMED (medido) | `M_Glasses_SkiGoggles.x` vanilla: a lente fica em z +0,077 com y = 0, e as hastes dos óculos redondos vão até z −0,024 (lidos só os números, nada copiado) |
+| Winding: `cross(b−a, c−a)` aponta pro lado da normal gravada | CONFIRMED (medido) | 280 de 280 faces em `M_HeadBandage.x` e `M_Glasses_SkiGoggles.x` |
+| Cabeça na altura dos olhos (óculos de esqui), masculino: x 0,055–0,108, y ±0,060, z −0,073..0,077 | CONFIRMED (medido) | `M_Glasses_SkiGoggles.x`; atrás a tira sobe até x ≈ 0,10 |
+| Cabeça na altura dos olhos (óculos de esqui), feminino: x 0,048–0,098, y ±0,057, z −0,062..0,081 | CONFIRMED (medido) | `F_Glasses_SkiGoggles.x` |
+| Leiaute do `.x` texto: `Material` com `TextureFilename`, `Frame` com `FrameTransformMatrix` identidade, `Mesh` com `MeshNormals`, `MeshMaterialList` e `MeshTextureCoords`, CRLF | EXISTS | os `.x` vanilla em `media/models_X/Static/Clothes/`. O nosso não leva os templates (o Assimp não precisa deles) |
+| A textura do item vem de `textureChoices` (o `TextureFilename` do `.x` não manda) | EXISTS | todas as peças do mod desde a 0012 usam `textureChoices` com modelo vanilla de outra textura |
+| O jogo carrega e desenha o `.x` gerado (Assimp aceita sem templates, o v da textura sai certo) | UNKNOWN | testar no jogo: Estalador na névoa com a venda 3D. Se falhar, o `console.txt` mostra `Model not found` e a peça some (não quebra). A textura é espelhada em v, então o v virado não muda o desenho |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -2056,3 +2072,7 @@ jogo mostrou e por que o tiro não aparecia.
     acabar? No dedicado, o square do jogador remoto (`getCurrentSquare()`) acompanha ele entrar e
     sair de casa, e varanda ou garagem sem sala (`isOutside` falso, `getBuilding` nil) protege como
     o esperado?
+22. Venda 3D do Estalador (sprint 0041, §32): o `.x` gerado sem templates carrega (nada de
+    `Model not found` no `console.txt`)? A faixa fica nos olhos, sem atravessar a cabeça nem
+    flutuar longe, nos dois sexos? O arame aparece de longe (zoom normal) ou some? O dissolve
+    (gêmeo `Fx`) desfaz a malha nova como desfazia os óculos?
