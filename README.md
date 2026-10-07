@@ -1,6 +1,8 @@
-# Névoa e Outro Mundo
+# NOM: Noise of Mist
 
-Mod de horror para **Project Zomboid (Build 42)**, inspirado em The Last of Us e
+![NOM: Noise of Mist](docs/art/NOM_Banner.png)
+
+*(antes "Névoa e Outro Mundo")* Mod de horror para **Project Zomboid (Build 42)**, inspirado em The Last of Us e
 Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 
 **A noite traz infectados de carne. A névoa traz o Outro Mundo.**
@@ -43,36 +45,40 @@ Silent Hill. Para o Steam Workshop, funciona em solo e multiplayer.
 | Dissolve e bloom | a peça do monstro se forma e se desfaz queimando, o Eco queima até a cinza com brasas na morte; bloom no shader opcional, mais forte na névoa; opção de cada jogador | 0018 |
 | Balanceamento do PO e curva de tensão | defaults e presets novos (névoa 2 dias e 3–6 h, Eco 20/30, caça 90/25, monstros 5/3/3/3); a névoa começa a cada ~3 dias e aperta com os dias do save, sem vermelha na primeira semana e com o dobro dela no dia 90 | 0019 |
 
-Tudo configurável na página "Névoa e Outro Mundo" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
+Tudo configurável na página "NOM: Noise of Mist" do sandbox ([opções e presets](docs/gdd/sandbox.md)).
 
 > **Steam Flatpak (o caso deste PC):** o jogo roda em sandbox e a pasta de dados é
 > `~/.var/app/com.valvesoftware.Steam/Zomboid`, não `~/Zomboid` — vale pra `mods/`,
 > `Workshop/` e `console.txt` em todo este documento. Mod de dev: **`scripts/dev-sync.sh`** copia `mod/`
-> pra pasta de mods do jogo (rodar de novo a cada mudança e recarregar o save). **Não use
+> pra pasta de mods do jogo como o mod de staging (rodar de novo a cada mudança e reiniciar o jogo). **Não use
 > symlink**: com link o jogo não lê `media/scripts/*.txt` (itens de visual somem).
 > O `build-workshop.sh` detecta essa pasta sozinho (ou use `ZOMBOID_DIR=...`).
 
 ## Instalar
 
 **Jogador:** inscrever-se no [item do Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207)
-e ativar "Névoa e Outro Mundo" em Mods. Requer Build 42.20 ou mais novo.
-Em servidor: `WorkshopItems=3814379207` e `Mods=NevoaEOutroMundo` no `.ini` (se não carregar,
-`Mods=\NevoaEOutroMundo`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
+e ativar "NOM: Noise of Mist" em Mods. Requer Build 42.20 ou mais novo.
+Em servidor: `WorkshopItems=3814379207` e `Mods=NoiseOfMist` no `.ini` (se não carregar,
+`Mods=\NoiseOfMist`; a confirmar no teste do dedicado, [publicar.md §4](docs/publicar.md#servidor-dedicado)).
 Com a névoa volumétrica, o **ZombieBuddy vem primeiro** na linha:
-`Mods=ZombieBuddy;NevoaEOutroMundo;NevoaEOutroMundo_Shader;NevoaEOutroMundo_Volumetrica`.
+`Mods=ZombieBuddy;NoiseOfMist;NoiseOfMist_Shader;NoiseOfMist_Volumetrica`.
+Até a 0037 os IDs eram `NevoaEOutroMundo*`: save e servidor criados com eles pedem o ID antigo
+(veja o [README da 0037b](docs/sprints/sprint-0037b-noise-of-mist/README.md#saves-antigos)).
 O cliente carrega o ZombieBuddy antes de tudo. Se o servidor o carregar em outra posição, as listas
 de Lua saem em ordem diferente e o checksum expulsa o jogador com
 "File doesn't exist on the client: media/lua/client/nom_console.lua".
 
-**Dev:** cópia do repositório na pasta de mods (`mod/` e o shader opcional `mod2/`):
+**Dev:** cópia do repositório na pasta de mods como o **mod de staging** (`[STAGING] NOM: Noise of Mist`,
+IDs `NoiseOfMist*_Staging`, pôster vermelho), que convive com o do Workshop; nunca os dois no mesmo save
+([AGENTS.md](AGENTS.md#desenvolvimento-x-lançado-decisão-do-johan-2026-10-06)):
 
 ```bash
 scripts/dev-sync.sh
 ```
 
-Se existir `~/Zomboid/Workshop/NevoaEOutroMundo/` (criada pelo
-`scripts/build-workshop.sh`) ou a inscrição no Workshop, o jogo carrega essa cópia e
-**ignora o symlink** ([por quê](docs/publicar.md#o-build-ganha-do-symlink)).
+Como o ID de staging é outro, a pasta `~/Zomboid/Workshop/NoiseOfMist/` (criada pelo
+`scripts/build-workshop.sh`) e a inscrição no Workshop não escondem mais a cópia de dev; elas só
+disputam entre si o ID oficial ([por quê](docs/publicar.md#o-build-ganha-do-symlink)).
 
 ---
 
@@ -91,8 +97,9 @@ docs/
 ├─ teste-in-game.md ← roteiro da sessão de teste no jogo
 └─ publicar.md     ← passo a passo do Workshop e da release
 mod/               ← o mod em si (nasce na sprint 0001)
-mod2/              ← mod opcional do shader (NevoaEOutroMundo_Shader, sprint 0013)
-scripts/           ← geradores de som e imagem, build do Workshop
+mod2/              ← mod opcional do shader (NoiseOfMist_Shader, sprint 0013)
+mod3/              ← mod opcional da névoa volumétrica (NoiseOfMist_Volumetrica, Java via ZombieBuddy)
+scripts/           ← geradores de som e imagem, build do Workshop, cópia de staging
 tests/             ← testes (./run-tests.sh)
 ```
 
@@ -143,12 +150,14 @@ git push origin --delete sprint/0001-estado-e-clima
 - Project Zomboid **Build 42**: desenvolvido contra 42.20.4; publicação verificada contra 42.21.
 - Lua do mod em `mod/42/media/` + `mod/common/` (estrutura de mod do B42.20).
 - Testes: `brew install luajit`, depois `./run-tests.sh` (lógica pura, traduções,
-  créditos, contraste das texturas com Python + numpy + Pillow, e o build do Workshop, com `HOME` temporário).
+  créditos, contraste das texturas com Python + numpy + Pillow, o build do Workshop, com `HOME` temporário,
+  e a cópia de staging do `dev-sync.sh`, com `ZOMBOID_DIR` temporário).
 - Teste in-game com o jogo em modo `-debug`: [roteiro consolidado](docs/teste-in-game.md).
   Em `-debug`, `NOM.help()` no console lista os atalhos (`NOM.fog()`, `NOM.spawn(5)`,
   `NOM.time(22)`, `NOM.god()`…) e **Insert** (trocável em Opções > Mods) abre o painel de botões.
-- Sons, imagens e texturas são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_images.py`,
-  `scripts/gen_textures.py`; prévia das texturas no tamanho do jogo: `scripts/preview_textures.py`);
+- Sons e texturas são gerados por script (`scripts/gen_sounds.py`, `scripts/gen_textures.py`; prévia
+  das texturas no tamanho do jogo: `scripts/preview_textures.py`); a arte de lançamento é do Johan, só
+  redimensionada e tingida por `scripts/gen_images.py` ([ADR-019](docs/architecture/adr-019-arte-de-lancamento.md));
   nada de terceiros ([CREDITS.md](CREDITS.md)).
 - Publicar e atualizar no Workshop: [docs/publicar.md](docs/publicar.md)
   (`scripts/build-workshop.sh` monta a pasta de upload).

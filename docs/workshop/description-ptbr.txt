@@ -21,7 +21,7 @@ Quase todo dia, numa hora qualquer, sirenes tocam ao longe, de vários lados, e 
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
 
 [h2]Sandbox[/h2]
-Página própria, "Névoa e Outro Mundo": liga/desliga e números pra cada sistema (frequência e duração da névoa, névoa vermelha, força da noite, chance de cada monstro, Ecos, efeitos de tela). Presets "Leve" e "Pesadelo" no GitHub.
+Página própria, "NOM: Noise of Mist": liga/desliga e números pra cada sistema (frequência e duração da névoa, névoa vermelha, força da noite, chance de cada monstro, Ecos, efeitos de tela). Presets "Leve" e "Pesadelo" no GitHub.
 
 [h2]Multiplayer[/h2]
 Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide noite, névoa, variantes e Ecos; som, vinheta e manchas são locais de cada jogador e não vão pra rede nem pro save. No servidor, coloque o mod em Mods e WorkshopItems; os clientes baixam sozinhos.
@@ -41,4 +41,4 @@ Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide 
 A atmosfera da névoa (som, manchas, tela) segue só o primeiro jogador na tela dividida.
 
 Código, documentação de design e bugs: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
-Todos os sons e imagens são originais, gerados por scripts do repositório. Licença MIT.
+Sons e texturas originais, gerados por scripts nossos; arte de lançamento do Johan. Licença MIT.

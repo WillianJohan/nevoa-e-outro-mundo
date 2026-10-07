@@ -1,11 +1,11 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo; 0037, sonar do Estalador, pronta na branch, sem merge). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo; 0037, sonar do Estalador, mergeada na `staging`; **mini-sprint 0037b, renomeação pra "NOM: Noise of Mist" e mod de staging, pronta na branch `sprint/0037b-noise-of-mist`, sem merge**). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
 ## Estado da `main`
 
 - Sprints 0001–0022 entregues, todas `em teste`; 0023 concluída; **0024 (névoa fluida no mod3), 0025 (luz e volume na névoa), 0026 (névoa viajante, luz que abre a névoa), 0027 (névoa orgânica, sem vai e vem), 0028 (névoa só nossa, sem a faixa embaixo), 0029 (ondas nos obstáculos), 0030 (névoa em alta resolução), 0031 (névoa que contorna), 0032 (névoa com altura), 0033 (ritmo novo) e 0034 (sons I: sirene e fuga) `em teste`**. A **0035 (Outro Mundo estilo Silent Hill)**, com o hotfix do chão, e a **0036 (Equilíbrio: visão de ~4 tiles e perambular)** estão na `main` (`em teste`), sincronizadas pro jogo. O roadmap está em [sprints/README.md](sprints/README.md).
-- **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica). Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
+- **Workshop:** publicado em 2026-10-05 como **não listado**, item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) (ID em `docs/workshop/workshop-id.txt`), com os três mods (o principal, Shader e Volumétrica), ainda com os IDs antigos `NevoaEOutroMundo*`; o próximo envio leva os IDs e o nome da 0037b. Falta o teste da cópia baixada e abrir pra público ([publicar.md](publicar.md) §4–5).
 - 1069 testes Lua, 9 de contraste, 11 das texturas do Outro Mundo (`test_om_tiles.py`), os testes python do mod3 (profundidade e contrato Java/GLSL), os do núcleo da névoa fluida em Java (da 0024 à 0032, mais 3 do foco de vento da 0033) (com os shaders compilados pelo `glslangValidator`) e 29 de build, todos verdes (`./run-tests.sh`, precisa do JDK do brew).
 - Mod principal em `mod/`. Shader de tela opcional em `mod2/`, incompatível com o ShadowZ. Mod Java opcional em `mod3/` (ponte GPU + névoa volumétrica + névoa fluida).
 
@@ -75,9 +75,24 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
-## Em andamento: sonar do Estalador (sprint 0037)
+## Em andamento: NOM: Noise of Mist (mini-sprint 0037b)
 
-Na branch `sprint/0037-sonar-estalador`, **sem merge nem push**; o code review final foi corrigido (seção "Code review final" do plano: ritmo de 5–30 s reais, casa protege, teto de anéis sem anúncio perdido, anel só pra quem está perto, frente do mod3 parando em parede); falta o merge e o teste do Johan no jogo. Plano em [sprints/sprint-0037-sonar-estalador/plan.md](sprints/sprint-0037-sonar-estalador/plan.md); decisões, custos e roteiro em [sprints/sprint-0037-sonar-estalador/README.md](sprints/sprint-0037-sonar-estalador/README.md).
+Na branch `sprint/0037b-noise-of-mist`, **sem merge, push nem sync**; `./run-tests.sh` verde. Plano em [sprints/sprint-0037b-noise-of-mist/plan.md](sprints/sprint-0037b-noise-of-mist/plan.md); mapa de IDs, saves antigos e roteiro em [sprints/sprint-0037b-noise-of-mist/README.md](sprints/sprint-0037b-noise-of-mist/README.md).
+
+- **IDs oficiais:** `NoiseOfMist`, `NoiseOfMist_Shader`, `NoiseOfMist_Volumetrica` (repo, `build-workshop.sh`, pasta `Workshop/NoiseOfMist/`; o item 3814379207 não muda). Os nomes de espaço no Lua (canal, `ModData`, opções) continuam `NevoaEOutroMundo`.
+- **Jar:** `NoiseOfMist_Volumetrica.jar`, recompilado e assinado (o nome não entra na assinatura ZBS).
+- **Arte de lançamento do Johan** ([ADR-019](architecture/adr-019-arte-de-lancamento.md)): fontes em `docs/art/`, finais pelo `scripts/gen_images.py`.
+- **`scripts/dev-sync.sh` instala o mod de staging:** `mods/NoiseOfMist_Staging`, `NoiseOfMist_Shader_Staging`, `NoiseOfMist_Volumetrica_Staging`, nome com `[STAGING]`, pôster vermelho, `incompatible=` com o oficial. Teste: `tests/test_dev_sync.sh`.
+
+**Aviso pro Johan, depois do merge e do sync:**
+- No jogo, ative **`[STAGING] NOM: Noise of Mist`** (e os opcionais `[STAGING]`), nunca junto do oficial.
+- O ZombieBuddy pode pedir pra aprovar o jar de novo (ID novo).
+- Saves antigos pedem `NevoaEOutroMundo`. As pastas `mods/NevoaEOutroMundo*` ficam (o sync só avisa): o save antigo abre com a cópia antiga. Pra passar um save pro staging: backup da pasta do save e, no `mods.txt` dela, trocar `NevoaEOutroMundo` → `NoiseOfMist_Staging` (e os `_Shader`/`_Volumetrica`) — passo a passo no [README da 0037b](sprints/sprint-0037b-noise-of-mist/README.md#saves-antigos). Quando não precisar mais, apague `mods/NevoaEOutroMundo*`.
+- No primeiro envio ao Workshop, a pasta de upload passa a ser `Workshop/NoiseOfMist/`; sem `id=` lá, o build usa o `docs/workshop/workshop-id.txt` (mesmo item).
+
+## Sonar do Estalador (sprint 0037)
+
+Mergeada na `staging`. Antes do merge, na branch `sprint/0037-sonar-estalador`, **sem merge nem push**; o code review final foi corrigido (seção "Code review final" do plano: ritmo de 5–30 s reais, casa protege, teto de anéis sem anúncio perdido, anel só pra quem está perto, frente do mod3 parando em parede); falta o merge e o teste do Johan no jogo. Plano em [sprints/sprint-0037-sonar-estalador/plan.md](sprints/sprint-0037-sonar-estalador/plan.md); decisões, custos e roteiro em [sprints/sprint-0037-sonar-estalador/README.md](sprints/sprint-0037-sonar-estalador/README.md).
 
 - **Sonar:** cada estalo solta um anel de 8 tiles em 1,5 s. Em pé ou andando, o Estalador acha o jogador mesmo cego e não volta a cegar por 10 s; agachado e parado, o anel passa (`shared/NOM_SonarRules.lua`).
 - **O servidor decide** (`server/NOM_SonarServer.lua`): o estalo saiu do `NOM_VariantAI`, onde cada cliente sorteava o seu. "Agachado" é o `isSneaking` (vem no pacote do jogador) e "andando" é lido pela posição a cada 250 ms. O dono do Estalador aplica (`NOM_VariantAI.sonarFound`).
