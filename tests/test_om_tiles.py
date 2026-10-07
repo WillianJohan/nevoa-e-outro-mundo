@@ -39,13 +39,16 @@ POLY = {
     "W": ((0, 32), (64, 0), (64, 194), (0, 226)),
     "N": ((64, 0), (128, 32), (128, 228), (64, 196)),
 }
-KINDS = {"F": {"Grade", "Ferrugem", "Chapa", "Tinta", "Cinza", "Brasa"},
-         "W": {"Tinta", "Ferrugem", "Descasca", "Fuligem"},
-         "N": {"Tinta", "Ferrugem", "Descasca", "Fuligem"}}
+KINDS = {"F": {"Grade", "Ferrugem", "Chapa", "Tinta", "Cinza", "Brasa", "Tentaculo"},
+         "W": {"Tinta", "Ferrugem", "Descasca", "Fuligem", "Tentaculo"},
+         "N": {"Tinta", "Ferrugem", "Descasca", "Fuligem", "Tentaculo"}}
 # fração do lado coberta (alfa médio na máscara): parcial = nem vazio nem tile cheio. Os
 # escorridos de ferrugem na parede são fios e manchas de fonte: cobrem pouco (3–15%).
 COVER = {"Ferrugem": (0.03, 0.6), "Tinta": (0.06, 0.6), "Grade": (0.3, 0.93), "Chapa": (0.25, 0.93),
-         "Descasca": (0.6, 0.98), "Cinza": (0.08, 0.7), "Brasa": (0.05, 0.6), "Fuligem": (0.12, 0.8)}
+         "Descasca": (0.6, 0.98), "Cinza": (0.08, 0.7), "Brasa": (0.05, 0.6), "Fuligem": (0.12, 0.8),
+         "Tentaculo": (0.04, 0.5)}
+# tentáculo preto (sprint 0040): luminância média do opaco abaixo disto
+TENTACLE_LUM_MAX = 0.2
 SAT_MAX = 0.42          # saturação média (HSV) do que é opaco
 VIVID_MAX = 0.01        # fração de laranja vivo (saturação > 0,65 e brilho > 0,4)
 # a brasa (sprint 0039) é o laranja que pode: fraco, só em algumas trincas
@@ -196,6 +199,18 @@ def test_ember_glows():
         assert warm > 20, "%s: sem brasa (%d px quentes)" % (f, warm)
 
 
+def test_tentacle_dark():
+    # tentáculo preto, com reflexo: escuro na média, mas com brilho (não é borrão chapado)
+    for kind, _, _, f in files():
+        if kind != "Tentaculo":
+            continue
+        _, a = load(f)
+        op = a[..., 3] > 0.5
+        L = lum(a)[op]
+        assert L.mean() < TENTACLE_LUM_MAX, "%s: claro demais (%.3f)" % (f, L.mean())
+        assert np.percentile(L, 99) > 0.25, "%s: sem brilho molhado (p99 %.3f)" % (f, np.percentile(L, 99))
+
+
 def neighbours_mean(v, w):
     """Média de v ponderada por w nos 8 vizinhos de cada pixel."""
     pv, pw = np.pad(v * w, 1), np.pad(w, 1)
@@ -251,7 +266,7 @@ def test_list_written_by_generator():
 def test_generator_deterministic():
     # regera duas texturas na memória (uma de chão, uma de parede) e compara com o arquivo
     g = generator()
-    for kind, side, n in (("Grade", "F", 2), ("Tinta", "W", 3), ("Brasa", "F", 1)):
+    for kind, side, n in (("Grade", "F", 2), ("Tinta", "W", 3), ("Brasa", "F", 1), ("Tentaculo", "N", 2)):
         rgb, al = g.render(kind, side, n)
         mine = g.to_rgba(rgb, al)
         disk = np.asarray(Image.open(os.path.join(DIR, g.file_name(kind, side, n))).convert("RGBA"))
@@ -261,6 +276,7 @@ def test_generator_deterministic():
 def main():
     tests = [test_names_and_kinds, test_frame_rgba_128x256, test_nothing_outside_side_mask,
              test_coverage_partial_and_heavy, test_variations_differ, test_palette_desaturated, test_ember_glows,
+             test_tentacle_dark,
              test_no_halo, test_halo_criterion_catches_black_edge, test_not_flat,
              test_list_written_by_generator, test_generator_deterministic]
     fail = 0

@@ -18,6 +18,9 @@
 -- dentro e fora (fora no lugar do mato), sem metal, com cinza em manchas e brasa rara no miolo
 -- do queimado; a parede ganha fuligem, sujeira e rachadura. A preta vence a vermelha.
 --
+-- Tentáculos pretos na vermelha (sprint 0040): no chão, peça solta (nunca lado a lado), fora do
+-- piso natural; na parede, um tipo a mais, por cima do sangue dentro de casa.
+--
 -- Nada é guardado: a resposta é função do square, do período de névoa, da densidade e da cor
 -- (hash do NOM_VariantRules, ADR-006). Andar e voltar dá o mesmo desenho.
 require "NOM_VariantRules"
@@ -87,6 +90,10 @@ NOM_DressingRules = {
     ASH_CELL = 3,
     ASH_SPOT = 0.55,
     EMBER = 0.12,
+    -- Tentáculo no chão da vermelha (sprint 0040): peça solta, TENTACLE × densidade por tile (até
+    -- TENTACLE_MAX), nunca ao lado de outra (o decalque é centrado), fora do piso natural.
+    TENTACLE = 0.04,
+    TENTACLE_MAX = 0.08,
     -- Piso natural: o nome do sprite do piso começa com um destes (IsoGridSquare.hasNaturalFloor,
     -- bytecode do B42.21; pz-api-notes §16.7).
     NATURAL_PREFIXES = { "blends_natural_01", "floors_exterior_natural" },
@@ -203,6 +210,7 @@ local OWN_SETS = {
     rustWallW = { "W", "Ferrugem" }, rustWallN = { "N", "Ferrugem" },
     ashFloor = { "F", "Cinza" }, emberFloor = { "F", "Brasa" },
     sootWallW = { "W", "Fuligem" }, sootWallN = { "N", "Fuligem" },
+    tentacleFloor = { "F", "Tentaculo" }, tentacleWallW = { "W", "Tentaculo" }, tentacleWallN = { "N", "Tentaculo" },
 }
 for setName, k in pairs(OWN_SETS) do
     local names = {}
@@ -251,12 +259,13 @@ end
 -- 0034): sujeira e rachadura, e na branca a tinta que descasca.
 local WALL_KINDS = {
     white = { { "paint", 0.35 }, { "rust", 0.25 }, { "blood", 0.1 }, { "grime", 0.1 }, { "cracks", 0.05 }, { "vines", 0.15 } },
-    red = { { "blood", 0.4 }, { "rust", 0.2 }, { "grime", 0.15 }, { "cracks", 0.1 }, { "vines", 0.15 } },
+    red = { { "blood", 0.35 }, { "tentacle", 0.15 }, { "rust", 0.2 }, { "grime", 0.1 }, { "cracks", 0.08 },
+        { "vines", 0.12 } },
     black = { { "soot", 0.6 }, { "grime", 0.25 }, { "cracks", 0.15 } },
 }
 local WALL_KINDS_IN = {
     white = { { "paint", 0.45 }, { "rust", 0.2 }, { "grime", 0.2 }, { "cracks", 0.15 } },
-    red = { { "grime", 0.35 }, { "cracks", 0.25 }, { "blood", 0.25 }, { "rust", 0.15 } },
+    red = { { "grime", 0.3 }, { "cracks", 0.2 }, { "blood", 0.2 }, { "rust", 0.15 }, { "tentacle", 0.15 } },
     black = { { "soot", 0.55 }, { "grime", 0.25 }, { "cracks", 0.2 } },
 }
 -- Metal no chão da branca: dentro, por painel (a grade manda); fora, por peça solta (bueiro,
@@ -390,20 +399,28 @@ local function metalIn(x, y, z, id, period, d)
     return pick(kind .. "Floor", id, period, 142)
 end
 
--- Candidato a peça solta no pavimento.
-local function loose(x, y, z, period, p)
-    return u(sqId(x, y, z), period, 147) < p
+-- Candidato a peça solta (o sorteio salt com chance p).
+local function loose(x, y, z, period, p, salt)
+    return u(sqId(x, y, z), period, salt) < p
 end
 
--- Metal da branca no pavimento de fora: o candidato sem candidato ao lado (4-vizinhança); ou nil.
+-- Peça solta: o candidato sem candidato ao lado (4-vizinhança).
+local function alone(x, y, z, period, p, salt)
+    return loose(x, y, z, period, p, salt) and not (loose(x + 1, y, z, period, p, salt)
+        or loose(x - 1, y, z, period, p, salt) or loose(x, y + 1, z, period, p, salt)
+        or loose(x, y - 1, z, period, p, salt))
+end
+
+-- Metal da branca no pavimento de fora: peça solta; ou nil.
 local function metalOut(x, y, z, id, period, d)
-    local p = math.min(R.METAL_OUT_MAX, R.METAL_OUT * d)
-    if not loose(x, y, z, period, p) then return nil end
-    if loose(x + 1, y, z, period, p) or loose(x - 1, y, z, period, p) or loose(x, y + 1, z, period, p)
-        or loose(x, y - 1, z, period, p) then
-        return nil
-    end
+    if not alone(x, y, z, period, math.min(R.METAL_OUT_MAX, R.METAL_OUT * d), 147) then return nil end
     return pick(band(id, period, 148, METAL_KINDS_OUT) .. "Floor", id, period, 142)
+end
+
+-- Tentáculo da vermelha no chão: peça solta, dentro e fora; ou nil.
+local function tentacle(x, y, z, id, period, d)
+    if not alone(x, y, z, period, math.min(R.TENTACLE_MAX, R.TENTACLE * d), 186) then return nil end
+    return pick("tentacleFloor", id, period, 187)
 end
 
 -- Camadas do chão do square, de baixo pra cima (até MAX_LAYERS), e a sujeira à parte em
@@ -443,7 +460,10 @@ function R.floor(x, y, z, period, d, outside, red, natural, black)
         local plate = not red and not natural
             and (outside and metalOut(x, y, z, id, period, d) or not outside and metalIn(x, y, z, id, period, d))
         out[1] = plate or ground(x, y, z, id, period, d, outside)
-        if red and not natural and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143)
+        local tent = red and not natural and tentacle(x, y, z, id, period, d)
+        if tent then
+            out[#out + 1] = tent
+        elseif red and not natural and patch(x, y, z, period, d, R.RUST, R.RUST_MAX, R.RUST_CELL, 143)
             and u(id, period, 149) < R.RUST_SPOT then
             out[#out + 1] = pick("rustFloor", id, period, 144)
         elseif not plate and u(id, period, 52) < chance(R.CRACKS, d) then
@@ -479,8 +499,8 @@ end
 
 -- Dentro, de baixo pra cima: a tinta que descasca é a pele da parede, a ferrugem escorre por
 -- cima dela, depois rachadura, sujeira e sangue. Na branca, sem sangue dentro.
-local INSIDE_KINDS = { white = { "paint", "rust", "cracks", "grime" }, red = { "rust", "cracks", "grime", "blood" },
-    black = { "soot", "cracks", "grime" } }
+local INSIDE_KINDS = { white = { "paint", "rust", "cracks", "grime" },
+    red = { "rust", "cracks", "grime", "blood", "tentacle" }, black = { "soot", "cracks", "grime" } }
 
 -- Set da camada de parede do tipo no lado: a tinta descascando é Tinta ou Descasca.
 local function wallSet(kind, side, id, period, salt)

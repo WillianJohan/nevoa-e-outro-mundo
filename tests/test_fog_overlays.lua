@@ -752,7 +752,8 @@ return {
                 maxInv = math.max(maxInv, G.invalidations - inv)
             end
             local laps = math.ceil(D().WITHIN[O().radius()] / O().SCAN_BUDGET)
-            assert(maxFill <= 2500, "enchendo: " .. maxFill .. " chamadas por atualização")
+            -- casa na vermelha: 2488 antes da 0040, 2584 com o tentáculo (o custo por camada é o mesmo)
+            assert(maxFill <= 2600, "enchendo: " .. maxFill .. " chamadas por atualização")
             assert(maxIdle <= 300, "parado: " .. maxIdle .. " chamadas por atualização")
             -- ≤ 80 squares por lote: MAX_LAYERS + sujeira no piso e WALL_LAYERS em cada parede
             assert(maxInv <= O().SCAN_BUDGET * (D().MAX_LAYERS + 1 + 2 * D().WALL_LAYERS), "invalidações por lote: " .. maxInv)
