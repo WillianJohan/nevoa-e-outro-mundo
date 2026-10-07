@@ -1882,6 +1882,36 @@ duas por cego; o cego guarda onde parou). A onda de perambular (`wander_wave_cos
 ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick 602) com todos longe,
 1046 em 2 ticks (pior 604) misturado; uma vez a cada 4–8 minutos de jogo.
 
+## 28. Sonar do Estalador (sprint 0037)
+
+Regra pura em `shared/NOM_SonarRules.lua`; o servidor decide (`server/NOM_SonarServer.lua`), quem
+simula aplica (`shared/NOM_Sonar.lua`, `NOM_VariantAI.sonarFound`), quem renderiza desenha
+(`client/NOM_SonarFx.lua` e `NOMRender_sonar` no mod3). Bytecode do B42 instalado (`javap -c -p`).
+
+| Fato | Status | Evidência |
+|---|---|---|
+| "Agachado" lido no servidor: `p:isSneaking()` | CONFIRMED | `IsoGameCharacter.isSneaking()Z` 0–4 (campo `sneaking`); uso vanilla `shared/TimedActions/ISFitnessAction.lua:17`. Chega ao servidor no pacote do jogador: `NetworkPlayerVariables.getBooleanVariables(IsoPlayer)` 5–12 põe `Flags.isSneaking` de `IsoPlayer.isSneaking`; `setBooleanVariables(IsoPlayer, ShortFlags)` 2–8 chama `setSneaking`; `NetworkPlayerAI.parse(PlayerPacket)` 221–224 chama o `setBooleanVariables` |
+| "Andando" lido no servidor pela posição, não por `isPlayerMoving` | decisão | `IsoPlayer.isPlayerMoving()Z` só lê o campo `isPlayerMoving`, e não achei quem o escreva a partir do pacote no servidor; a posição chega (`Prediction.position`, §3.4). O servidor guarda a posição a cada `SAMPLE_MS` (250 ms) e conta como andando quem moveu ≥ `MOVE_EPS` (0,1 tile) desde a amostra anterior |
+| Caçar mesmo com a cegueira: soltar (`release`) e `z:spotted(p, true)` | CONFIRMED | §13.2 (`spotted` forçado só vale com o zumbi não useless; por isso o `release` antes) |
+| O estalo num ponto, sem pacote: `getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil)` | CONFIRMED | §22; cada cliente toca o seu quando chega o comando `sonar` |
+| `sendServerCommand(MODULE, "sonar" / "sonarFound", args)` a todos; `getPlayerByOnlineID(id)` no cliente | CONFIRMED | §7; `client/ServerCommands.lua:10` |
+| Tempo real do anel no servidor: `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | CONFIRMED | `server/ISObjectClickHandler.lua:352`; §11.2 |
+| Anel na tela: `isoToScreenX/Y(0, x, y, z)` e `el:drawTextureScaled(tex, x, y, w, h, a, r, g, b)` | CONFIRMED | §25; `client/ISUI/ISUIElement.lua:1032-1041` (com cor → `DrawTextureScaledColor`); `getTexture` nil sem arquivo (`ISSleepingUI.lua:14-15`) |
+| Círculo de raio r no chão isométrico vira elipse 2:1 na tela; a ponta da direita é (x + r/√2, y − r/√2) | CONFIRMED | `IsoUtils.XToScreen = 32T(x − y)`, `YToScreen = 16T(x + y) − 96Tz` (§25): o máximo de x − y no círculo é r√2 e o de x + y também, com metade do peso em y |
+| `NOMRender_sonar(x, y, z)` (mod3): `@LuaMethod(global = true)` como os outros, devolve boolean, `catch (Throwable)` devolve false | CONFIRMED | o mesmo caminho do `NOMRender_setParam` (registro no `Main.java`); contrato em `tests/test_mod3_sonar.lua` |
+| O mod3 recusa o anel sem névoa visível: `ClimateManager.getInstance().getFogIntensity() < 0.05` | CONFIRMED | já lido no `RenderContext.onWorldEnd` (`f.fogIntensity`); uso vanilla `shared/Fishing/Bobber.lua:94` |
+| Na névoa fluida o anel move densidade (como o `blast`), não velocidade | decisão | a projeção de pressão do `FlowGrid.step` apaga velocidade radial pra fora (divergência); a frente leva `Sonar.TAKE` (50 %) da faixa varrida pra 1 tile à frente, sem criar massa (`FlowSonarTest`) |
+
+Custo medido (mundo falso e teste Java):
+
+- servidor, `sonar_budget`: com névoa e sem anel, 2,36 chamadas por tick (a amostra de posição a cada
+  250 ms); 8 anéis e 4 jogadores, pior tick 58; o minuto de jogo com 303 zumbis, 634 (sorteio pelo ID
+  persistente, sem tocar no zumbi que não é Estalador além disso). Sem névoa e sem anel: 0;
+- tela, `sonar_fx_budget`: 0 por quadro sem anel; 6 de base + 4 por anel (3 projeções e 1 desenho):
+  10 com 1 anel, 38 com 8;
+- mod3, `FlowSonarTest.cost`: 8 anéis no fim (maior faixa) num passo da grade de 128 tiles na escala 2:
+  ~0,18 ms na thread da simulação (o passo inteiro é ~1 ms).
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -1910,6 +1940,7 @@ ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick
 | Zumbi parado | `setUseless(true)` + `setTarget(nil)` no dono (§3.2, §13) | — |
 | Visão menor que 10 tiles | cegueira em rodízio no dono (`useless` + `halt`), solta por som (`OnWorldSound`); som com raio ≥ 10 denuncia o jogador pra quem está no raio (§27) | piso de 10 tiles com o pior degrau |
 | Zumbi andar até um ponto | `z:pathToLocationF(x, y, z)` no dono (§27) | `addSound` no ponto (puxa todos em volta) |
+| Zumbi achar o jogador apesar da cegueira | servidor decide (`isSneaking` + posição), dono solta e `spotted(p, true)` com janela anti-recegueira (§28) | — |
 | Tempo real no servidor | `getTimestampMs()` no `OnTick`, parado com `isGamePaused()` | — |
 | Efeito de tela | `ISUIElement` de 1×1 px, `backMost`, sem consumir mouse, desenhando no retângulo do jogador 0 (§15) | — |
 | Canal Lua → shader | floats do `SearchMode` com override e sem `enabled`, marcador no gradiente (§15.4) | `DesaturationVal` (ambíguo) |
@@ -1963,3 +1994,9 @@ ticks de ~600 chamadas: 566 num tick com todos perto, 1203 em 2 ticks (pior tick
     No MP, `isRunning()`/`isSprinting()` do jogador de outro cliente (a cópia remota que o dono
     do zumbi vê) acompanham o que ele faz? Se vierem sempre falsos, quem corre perto do zumbi de
     outro cliente conta como quieto pra ele.
+21. Sonar do Estalador (sprint 0037, §28): no dedicado, o `isSneaking()` do jogador visto no
+    servidor acompanha o agachar do cliente (o bytecode diz que sim)? A posição chega fina o bastante
+    pra 0,1 tile em 250 ms contar como andando, sem contar o jogador parado como andando? O anel na
+    tela cai no chão certo com zoom e em andar de cima? A frente na névoa fluida do mod3 se vê, e
+    lê como onda? O Estalador achado anda mesmo até o jogador agachado antes de a janela de 10 s
+    acabar?

@@ -80,3 +80,26 @@ Teste primeiro (`tests/test_sonar_rules.lua`):
 ### Tarefa 6: docs
 
 - README da sprint com decisões e roteiro (botões, linhas de log), pz-api-notes §28, `docs/sprints/README.md`, GDD de monstros e HANDOFF.
+
+---
+
+## Resultado
+
+| Tarefa | Commit | Testes novos |
+|---|---|---|
+| 0 plano | `1b720b3` | — |
+| 1 regra pura | `fd01f41` | `test_sonar_rules.lua` (11, com o retângulo da tela que entrou na 3) |
+| 2 servidor e quem simula | `9b79071` | `test_sonar.lua` (10, com o custo), 6 em `test_variant_ai.lua` (saíram os 4 do estalo local), 1 em `test_variants_client.lua` |
+| 3 visual sem mod3 | `31c1ebe` | `test_sonar_fx.lua` (7, com o custo por quadro e o asset) |
+| 4 mod3 | `361c535` | `tests/java/FlowSonarTest.java` (6), `test_mod3_sonar.lua` (3, contrato Lua ↔ Java) |
+| 5 debug | `705753b` | 1 em `test_debug.lua`, 1 linha em `test_debug_rules.lua`, botão em `test_debug_panel.lua` |
+
+- **A fonte radial move densidade, não velocidade:** um impulso radial pra fora é divergência pura e
+  a projeção de pressão do `FlowGrid.step` o apaga no mesmo passo. Por isso a frente leva névoa
+  como o `blast`: o monte anda com a frente porque a cada passo a faixa varrida inclui o que a frente
+  de antes depositou.
+- **Soma de float:** 30 passos de 0,05 s podem dar um fio abaixo de 1,5 s, e o anel do mod3 vive um
+  passo a mais (o teste conta com isso).
+- **`./run-tests.sh` verde:** Lua 1104/1104 (três vezes), contraste 9, Outro Mundo 11, mod3
+  (profundidade, contrato, núcleo Java com 6 do sonar, shaders) e build 29. O jar do mod3 foi
+  recompilado e assinado (`scripts/build-mod3.sh`).

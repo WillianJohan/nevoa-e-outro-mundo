@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `accepted` |
-| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira), 0012 (visual), 0017 (Sem-rosto espalhado, chapéu caído não muda a variante) |
+| Sprints | 0002 (Eco), 0004 (Estalador, Corredor), 0005 (Sem-rosto), 0008 (só na névoa, Eco do morto antigo), 0009 (névoa é evento), 0010 (névoa vermelha), 0011 (Carpideira), 0012 (visual), 0017 (Sem-rosto espalhado, chapéu caído não muda a variante), 0037 (sonar do Estalador) |
 
 ## Regra geral
 
@@ -75,6 +75,12 @@ calcula o mesmo sorteio. O som continua avisando (estalo, grito, rádio, soluço
 - Agarrão letal rápido: **pendente** — o jogo não tem dano por zumbi nem evento
   no golpe do zumbi (ver Pendências da [sprint 0004](../sprints/sprint-0004-estalador-corredor/README.md)).
 - Estalo audível, em média a cada 2 minutos de jogo, que serve de aviso.
+- **Sonar** (sprint 0037): cada estalo solta um anel que corre 8 tiles em 1,5 s. Se o anel
+  passa por um jogador no mesmo andar **em pé ou andando**, o Estalador o acha, mesmo cego, e
+  não volta a ser cegado por 10 s: dá tempo de ele chegar. **Agachado e parado**, o anel
+  passa. Agachado andando não basta. Quem decide é o servidor; o anel aparece na névoa fluida
+  (mod Volumétrica) como uma onda que empurra a névoa pra fora, ou, sem ela, como um anel
+  discreto no chão, na cor da névoa. Estalo e anel são os mesmos pra todos no MP.
 - Visual: olhos tapados por atadura manchada e arame enferrujado, pele de porcelana rachada.
 - Quando a névoa baixa, volta a ser zumbi comum.
 
