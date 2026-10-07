@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-"""Modelos 3D próprios (sprint 0041): a venda do Estalador, gerada por scripts/gen_models.py.
+"""Modelos 3D próprios (sprints 0041–0042), gerados por scripts/gen_models.py.
 
+Em toda peça, nos dois sexos:
   formato    .x texto (xof 0303txt 0032), contagens e índices batem; lido por um parser
              daqui, não pelo do gerador
   winding    o do vanilla (medido em M_HeadBandage e M_Glasses_SkiGoggles): cross(b−a, c−a)
              aponta pro lado da normal em toda face
   fechada    soldando por posição, toda aresta tem duas faces (o culling não mostra buraco)
-  encaixe    nada entra na cabeça (elipse medida nos óculos de esqui vanilla, por sexo), tudo
-             fica perto dos óculos e a frente da faixa está em +Z
-  UV         arame na faixa de ferrugem e atadura no pano, lendo v de cima ou de baixo
-  mesmo      regerar não muda um byte (modelos e textura)
+  pra fora   cada casca com volume com sinal positivo
+  cor        cada parte cai na cor certa da textura; as texturas nossas são espelhadas em v
+             (o jogo pode ler v de cima ou de baixo)
+  mesmo      regerar não muda um byte (modelos e texturas)
+
+Encaixe por peça, contra números medidos nos .x vanilla (pz-api-notes §32):
+  venda      nada entra na cabeça na altura dos olhos, tudo perto dos óculos de esqui, frente em +Z
+  boca       perto da boca, na frente do rosto, bem mais larga que alta
+  sem-rosto  a cabeça inteira (pontos medidos) dentro da casca, casca perto do capacete fechado
+  cabelo     nada no crânio, mechas na frente do nariz, o rosto tapado, três mechas brancas
 
 Uso: python3 tests/test_models.py (o run-tests.sh chama). Exit 0 = passou.
 """
@@ -24,17 +31,48 @@ from PIL import Image
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 MEDIA = os.path.join(ROOT, "mod", "42", "media")
 MODELS = os.path.join(MEDIA, "models_X", "Static", "Clothes")
-TEXTURE = os.path.join(MEDIA, "textures", "NOM", "NOM_EstaladorVenda3D.png")
+TEXTURES = os.path.join(MEDIA, "textures", "NOM")
 SEXES = ("M", "F")
 
-# Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a venda de hoje.
-# A cabeça na altura dos olhos cabe na elipse (y, z) um pouco menor que eles.
+# peça → textura
+PIECES = {
+    "EstaladorVenda": "NOM_EstaladorVenda3D",
+    "CorredorBoca": "NOM_CorredorBoca3D",
+    "SemRostoEstatica": "NOM_SemRostoEstatica",
+    "CarpideiraCabelo": "NOM_CarpideiraCabelo3D",
+}
+MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D")
+MAX_VERTS = 2500     # a peça tem ~20 px de tela (o HeadBandage vanilla tem 52 vértices)
+
+# Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a cabeça na altura dos
+# olhos cabe na elipse (y, z) um pouco menor que eles.
 GOGGLES = {
     "M": {"x": (0.055, 0.108), "y": 0.060, "z": (-0.073, 0.077)},
     "F": {"x": (0.048, 0.098), "y": 0.057, "z": (-0.062, 0.081)},
 }
 HEAD_INSET = 0.004   # a pele fica uns mm pra dentro da superfície dos óculos
-BOX_SLACK = 0.03     # a peça pode passar dos óculos (pontas do nó caem atrás)
+BOX_SLACK = 0.03     # a venda pode passar dos óculos (pontas do nó caem atrás)
+
+# Pontos da cabeça (touca de banho, máscara de hóquei, máscara cirúrgica, óculos de esqui,
+# bandana: só números). Ficam dentro da casca do Sem-rosto e fora do cabelo da Carpideira.
+HEAD_POINTS = {
+    "M": [(0.181, 0, -0.01), (0.10, 0, -0.092), (0.11, 0.071, -0.01), (0.11, -0.071, -0.01),
+          (0.08, 0.060, 0.0), (0.08, -0.060, 0.0), (0.12, 0, 0.072), (0.05, 0, 0.084),
+          (-0.017, 0, 0.062), (0.0, 0.050, 0.03), (0.0, -0.050, 0.03)],
+    "F": [(0.176, 0, -0.01), (0.10, 0, -0.082), (0.11, 0.066, -0.01), (0.11, -0.066, -0.01),
+          (0.075, 0.057, 0.0), (0.075, -0.057, 0.0), (0.11, 0, 0.074), (0.05, 0, 0.086),
+          (-0.007, 0, 0.064), (0.005, 0.048, 0.03), (0.005, -0.048, 0.03)],
+}
+SHELL_MARGIN = 0.004
+HELMET = {   # capacete fechado vanilla (a casca do Sem-rosto fica por perto)
+    "M": {"x": (-0.017, 0.179), "y": 0.071, "z": (-0.091, 0.093)},
+    "F": {"x": (-0.014, 0.171), "y": 0.067, "z": (-0.085, 0.088)},
+}
+MOUTH = {    # entre o queixo (máscara cirúrgica) e a narina (brinco de nariz), na frente
+    "M": {"x": (-0.017, 0.054), "front": 0.072},
+    "F": {"x": (-0.007, 0.041), "front": 0.074},
+}
+NOSE_Z = {"M": 0.084, "F": 0.086}
 
 
 def generator():
@@ -44,8 +82,12 @@ def generator():
     return mod
 
 
-def model_path(sex):
-    return os.path.join(MODELS, "NOM_%s_EstaladorVenda.x" % sex)
+def model_path(piece, sex):
+    return os.path.join(MODELS, "NOM_%s_%s.x" % (sex, piece))
+
+
+def texture_path(piece):
+    return os.path.join(TEXTURES, PIECES[piece] + ".png")
 
 
 def parse_x(text):
@@ -85,22 +127,33 @@ def parse_x(text):
     return verts, faces, normals, fnorm, uv
 
 
-def load(sex):
-    with open(model_path(sex), encoding="ascii") as f:
-        return parse_x(f.read())
+CACHE = {}
+
+
+def load(piece, sex):
+    key = (piece, sex)
+    if key not in CACHE:
+        with open(model_path(piece, sex), encoding="ascii") as f:
+            CACHE[key] = parse_x(f.read())
+    return CACHE[key]
+
+
+def every():
+    for piece in PIECES:
+        for sex in SEXES:
+            yield piece, sex, "%s/%s" % (piece, sex)
 
 
 def test_format():
-    for sex in SEXES:
-        verts, faces, normals, fnorm, uv = load(sex)
+    for piece, sex, name in every():
+        verts, faces, normals, fnorm, uv = load(piece, sex)
         n = len(verts)
-        # a peça tem ~20 px de tela: até ~2500 vértices (o HeadBandage vanilla tem 52)
-        assert 200 < n < 2500, "%s: %d vértices" % (sex, n)
-        assert faces.min() >= 0 and faces.max() < n, sex + ": índice de face fora"
-        assert len(normals) == n and np.array_equal(fnorm, faces), sex + ": normal por vértice"
-        assert len(uv) == n, sex + ": UV por vértice"
-        assert np.allclose(np.linalg.norm(normals, axis=1), 1, atol=1e-3), sex + ": normal não unitária"
-        assert uv.min() >= 0 and uv.max() <= 1, sex + ": UV fora de 0..1"
+        assert 200 < n < MAX_VERTS, "%s: %d vértices" % (name, n)
+        assert faces.min() >= 0 and faces.max() < n, name + ": índice de face fora"
+        assert len(normals) == n and np.array_equal(fnorm, faces), name + ": normal por vértice"
+        assert len(uv) == n, name + ": UV por vértice"
+        assert np.allclose(np.linalg.norm(normals, axis=1), 1, atol=1e-3), name + ": normal não unitária"
+        assert uv.min() >= 0 and uv.max() <= 1, name + ": UV fora de 0..1"
 
 
 def winding_ok(verts, faces, normals):
@@ -110,21 +163,25 @@ def winding_ok(verts, faces, normals):
 
 
 def test_winding_like_vanilla():
-    for sex in SEXES:
-        verts, faces, normals, _, _ = load(sex)
+    for piece, sex, name in every():
+        verts, faces, normals, _, _ = load(piece, sex)
         ok = winding_ok(verts, faces, normals)
-        assert ok.all(), "%s: %d faces ao contrário" % (sex, (~ok).sum())
+        assert ok.all(), "%s: %d faces ao contrário" % (name, (~ok).sum())
     # o critério pega a face virada
     v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], float)
     n = np.array([[0, 0, 1]] * 3, float)
     assert winding_ok(v, np.array([[0, 1, 2]]), n).all() and not winding_ok(v, np.array([[0, 2, 1]]), n).any()
 
 
+def weld(verts):
+    rounded = np.round(verts, 6).tolist()
+    key = {tuple(p): k for k, p in enumerate(rounded)}
+    return np.array([key[tuple(p)] for p in rounded])
+
+
 def open_edges(verts, faces):
-    key = {tuple(p): k for k, p in enumerate(np.round(verts, 6).tolist())}
-    weld = np.array([key[tuple(p)] for p in np.round(verts, 6).tolist()])
     count = {}
-    for f in weld[faces]:
+    for f in weld(verts)[faces]:
         for e in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
             e = (min(e), max(e))
             count[e] = count.get(e, 0) + 1
@@ -132,18 +189,17 @@ def open_edges(verts, faces):
 
 
 def test_closed():
-    for sex in SEXES:
-        verts, faces, _, _, _ = load(sex)
+    for piece, sex, name in every():
+        verts, faces, _, _, _ = load(piece, sex)
         bad = open_edges(verts, faces)
-        assert bad == 0, "%s: %d arestas sem par" % (sex, bad)
+        assert bad == 0, "%s: %d arestas sem par" % (name, bad)
     v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], float)
     assert open_edges(v, np.array([[0, 1, 2]])) == 3, "o critério não pega a face solta"
 
 
 def shells(verts, faces):
     """Componentes conexas (soldando por posição): lista de arrays de faces."""
-    key = {tuple(p): k for k, p in enumerate(np.round(verts, 6).tolist())}
-    weld = np.array([key[tuple(p)] for p in np.round(verts, 6).tolist()])
+    w = weld(verts)
     parent = list(range(len(verts)))
 
     def root(a):
@@ -151,11 +207,11 @@ def shells(verts, faces):
             parent[a] = parent[parent[a]]
             a = parent[a]
         return a
-    for f in weld[faces]:
+    for f in w[faces]:
         for q in f[1:]:
             parent[root(q)] = root(f[0])
     groups = {}
-    for k, f in enumerate(weld[faces]):
+    for k, f in enumerate(w[faces]):
         groups.setdefault(root(f[0]), []).append(k)
     return [faces[g] for g in groups.values()]
 
@@ -167,20 +223,18 @@ def signed_volume(verts, faces):
 
 def test_outward():
     # cada casca virada pra fora: com o winding do vanilla, volume com sinal positivo
-    for sex in SEXES:
-        verts, faces, _, _, _ = load(sex)
-        parts = shells(verts, faces)
-        assert len(parts) > 3, "%s: %d cascas" % (sex, len(parts))
-        bad = [k for k, f in enumerate(parts) if signed_volume(verts, f) <= 0]
-        assert not bad, "%s: %d cascas viradas pra dentro" % (sex, len(bad))
+    for piece, sex, name in every():
+        verts, faces, _, _, _ = load(piece, sex)
+        bad = [k for k, f in enumerate(shells(verts, faces)) if signed_volume(verts, f) <= 0]
+        assert not bad, "%s: %d cascas viradas pra dentro" % (name, len(bad))
     v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], float)
     tetra = np.array([[0, 2, 1], [0, 1, 3], [1, 2, 3], [2, 0, 3]])
     assert signed_volume(v, tetra) > 0 and signed_volume(v, tetra[:, ::-1]) < 0, "critério do volume"
 
 
-def test_fits_head():
+def test_venda_fits_head():
     for sex in SEXES:
-        verts, _, _, _, _ = load(sex)
+        verts, _, _, _, _ = load("EstaladorVenda", sex)
         g = GOGGLES[sex]
         x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
         z0 = (g["z"][0] + g["z"][1]) / 2
@@ -197,6 +251,96 @@ def test_fits_head():
         assert abs(front[1]) < 0.02 and front[2] > g["z"][1], "%s: frente fora de +Z %s" % (sex, front)
 
 
+def part_verts(piece, sex, parts):
+    """Vértices (do build, não do arquivo) das faces das partes pedidas."""
+    m = generator().build(piece, sex)
+    idx = sorted({q for f, p in zip(m.faces, m.parts) if p in parts for q in f})
+    return np.array(m.verts)[idx], np.array(m.uvs)[idx]
+
+
+def test_boca_fits_mouth():
+    for sex in SEXES:
+        verts, _, _, _, _ = load("CorredorBoca", sex)
+        b = MOUTH[sex]
+        x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
+        assert x.min() > b["x"][0] and x.max() < b["x"][1], "%s: x %.3f..%.3f fora da boca" % (sex, x.min(), x.max())
+        assert np.abs(y).max() < 0.06 and z.min() > 0.0 and z.max() < 0.10, "%s: longe do rosto" % sex
+        front = verts[np.argmax(z)]
+        assert abs(front[1]) < 0.03 and front[2] > b["front"], "%s: frente fora de +Z %s" % (sex, front)
+        hole, _ = part_verts("CorredorBoca", sex, ("cavity",))
+        wide = np.ptp(hole[:, 1])
+        tall = np.ptp(hole[:, 0])
+        assert wide > 2 * tall, "%s: buraco %.3f de largura por %.3f de altura" % (sex, wide, tall)
+
+
+def inside_mesh(verts, faces, p):
+    """Paridade de um raio em +Y (Möller–Trumbore) contra todas as faces."""
+    a, b, c = verts[faces[:, 0]], verts[faces[:, 1]], verts[faces[:, 2]]
+    d = np.array([0.0137, 1.0, 0.0071])        # torto de leve: não passa rente a aresta
+    e1, e2 = b - a, c - a
+    h = np.cross(d, e2)
+    det = np.einsum("ij,ij->i", e1, h)
+    ok = np.abs(det) > 1e-12
+    inv = np.where(ok, 1 / np.where(ok, det, 1), 0)
+    s = np.asarray(p) - a
+    u = inv * np.einsum("ij,ij->i", s, h)
+    q = np.cross(s, e1)
+    v = inv * (q @ d)
+    t = inv * np.einsum("ij,ij->i", e2, q)
+    hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0)
+    return int(hit.sum()) % 2 == 1
+
+
+def test_semrosto_covers_head():
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("SemRostoEstatica", sex)
+        for p in HEAD_POINTS[sex]:
+            p = np.array(p, float)
+            for d in ([1, 0, 0], [0, 1, 0], [0, 0, 1]):          # o ponto e a folga em volta
+                for sgn in (1, -1):
+                    q = p + sgn * SHELL_MARGIN * np.array(d, float)
+                    assert inside_mesh(verts, faces, q), "%s: ponto da cabeça %s fora da casca" % (sex, tuple(q))
+        h = HELMET[sex]
+        x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
+        s = 0.025
+        assert x.min() > h["x"][0] - s and x.max() < h["x"][1] + s, "%s: x %.3f..%.3f" % (sex, x.min(), x.max())
+        assert np.abs(y).max() < h["y"] + s and z.min() > h["z"][0] - s and z.max() < h["z"][1] + s, \
+            "%s: casca grande demais" % sex
+    # o critério pega ponto de fora
+    cube = np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)], float)
+    faces = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+                      [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    assert inside_mesh(cube, faces, (0.5, 0.5, 0.5)) and not inside_mesh(cube, faces, (1.5, 0.5, 0.5))
+
+
+SKULL = {   # crânio: o elipsoide que a touca de banho e a máscara de hóquei cercam, um pouco pra dentro
+    "M": {"c": (0.085, 0.0, -0.004), "r": (0.092, 0.066, 0.084)},
+    "F": {"c": (0.082, 0.0, 0.0), "r": (0.088, 0.062, 0.080)},
+}
+
+
+def test_cabelo_hides_face():
+    g = generator()
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("CarpideiraCabelo", sex)
+        k = SKULL[sex]
+        rel = (verts - k["c"]) / k["r"]
+        inside = (rel ** 2).sum(axis=1) < 1
+        assert not inside.any(), "%s: %d vértices no crânio" % (sex, inside.sum())
+        face = (np.abs(verts[:, 1]) < 0.03) & (verts[:, 0] > 0.0) & (verts[:, 0] < 0.10) & (verts[:, 2] > 0)
+        assert (verts[face, 2] > NOSE_Z[sex]).all(), "%s: mecha atravessa o rosto" % sex
+        m = g.build("CarpideiraCabelo", sex)
+        v = np.array(m.verts)
+        cross = set()
+        for k_, (f, s) in enumerate(zip(m.faces, m.strand)):
+            p = v[f].mean(axis=0)
+            if abs(p[1]) < 0.03 and 0.03 < p[0] < 0.07 and p[2] > NOSE_Z[sex]:
+                cross.add(s)
+        assert len(cross) >= 3, "%s: só %d mechas na frente do rosto" % (sex, len(cross))
+        white = {s for s, p in zip(m.strand, m.parts) if p == "streak"}
+        assert len(white) == 3, "%s: %d mechas brancas" % (sex, len(white))
+
+
 def luminance(rgb):
     return (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]) / 255
 
@@ -208,50 +352,75 @@ def sample(img, uv):
     return img[py, px].astype(np.float32)
 
 
-def test_uv_survives_v_flip():
+def test_textures_mirrored():
+    for name in MIRRORED:
+        img = np.asarray(Image.open(os.path.join(TEXTURES, name + ".png")).convert("RGB"))
+        assert img.shape == (128, 128, 3), "%s: %s" % (name, img.shape)
+        assert np.array_equal(img, img[::-1]), name + ": não é espelhada em v"
+
+
+# parte → (o que a cor tem de ser, descrição)
+def rust(c): return (luminance(c) < 0.4) & (c[:, 0] > c[:, 1])
+def bright(c): return luminance(c) > 0.6
+def dark(c): return luminance(c) < 0.12
+def red(c): return (c[:, 0] > 2 * c[:, 1]) & (c[:, 0] > 60) & (luminance(c) < 0.4)
+def cloth(c): return np.ones(len(c), bool)
+
+
+def not_rust(c):
+    # pano, fresta ou sangue: a ferrugem tem verde ~0,45 do vermelho, o sangue ~0,2 e o pano ~1
+    gr = c[:, 1] / np.maximum(c[:, 0], 1)
+    return ~((gr > 0.36) & (gr < 0.56))
+
+
+COLOURS = {
+    "EstaladorVenda": {"wire": rust, "barb": rust, "band": not_rust},
+    "CorredorBoca": {"teeth": bright, "cavity": dark, "tear": dark, "lips": red},
+    "SemRostoEstatica": {"shell": cloth},
+    "CarpideiraCabelo": {"hair": dark, "streak": bright},
+}
+
+
+def test_parts_land_on_colours():
     g = generator()
-    img = np.asarray(Image.open(TEXTURE).convert("RGB"))
-    assert img.shape == (128, 128, 3), "textura %s" % (img.shape,)
-    for sex in SEXES:
-        m = g.build(sex)
+    for piece, sex, name in every():
+        img = np.asarray(Image.open(texture_path(piece)).convert("RGB"))
+        m = g.build(piece, sex)
         uv = np.array(m.uvs)
-        wire = np.zeros(len(uv), bool)
-        for f, part in zip(m.faces, m.parts):
-            if part in ("wire", "barb"):
-                wire[list(f)] = True
-        assert wire.any() and (~wire).any(), sex + ": sem arame ou sem atadura"
-        for flip in (False, True):
-            u = uv.copy()
-            if flip:
-                u[:, 1] = 1 - u[:, 1]
-            rgb = sample(img, u)
-            rust = rgb[wire]
-            assert (luminance(rust) < 0.4).all() and (rust[:, 0] > rust[:, 1]).all(), \
-                "%s: arame fora da ferrugem (flip=%s)" % (sex, flip)
-            cloth = u[~wire, 1]
-            assert ((cloth < g.WIRE_V[0]) | (cloth > g.WIRE_V[1])).all(), "%s: atadura na ferrugem" % sex
+        seen = set()
+        for part, check in COLOURS[piece].items():
+            idx = sorted({q for f, p in zip(m.faces, m.parts) if p == part for q in f})
+            assert idx, "%s: sem a parte %s" % (name, part)
+            seen.add(part)
+            ok = check(sample(img, uv[idx]))
+            assert ok.all(), "%s: %d vértices de %s fora da cor" % (name, (~ok).sum(), part)
+        assert set(m.parts) == seen, "%s: parte sem regra de cor %s" % (name, set(m.parts) - seen)
+    # o critério pega a cor errada
+    assert not dark(np.array([[236.0, 228, 206]])).any() and not bright(np.array([[20.0, 6, 6]])).any()
 
 
 def test_generator_deterministic():
     g = generator()
-    for sex in SEXES:
-        with open(model_path(sex), encoding="ascii", newline="") as f:
+    for piece, sex, name in every():
+        with open(model_path(piece, sex), encoding="ascii", newline="") as f:
             disk = f.read()
-        assert g.to_x(g.build(sex), "NOM_%s_EstaladorVenda" % sex) == disk, sex + ": .x mudou ao regerar"
-    disk = np.asarray(Image.open(TEXTURE).convert("RGB"))
-    assert np.array_equal(g.texture(), disk), "textura mudou ao regerar"
+        assert g.to_x(g.build(piece, sex), "NOM_%s_%s" % (sex, piece)) == disk, name + ": .x mudou ao regerar"
+    for tex, img in g.textures().items():
+        disk = np.asarray(Image.open(os.path.join(TEXTURES, tex + ".png")).convert("RGB"))
+        assert np.array_equal(img, disk), tex + ": textura mudou ao regerar"
 
 
 def main():
-    tests = [test_format, test_winding_like_vanilla, test_closed, test_outward, test_fits_head,
-             test_uv_survives_v_flip, test_generator_deterministic]
+    tests = [test_format, test_winding_like_vanilla, test_closed, test_outward, test_venda_fits_head,
+             test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_hides_face, test_textures_mirrored,
+             test_parts_land_on_colours, test_generator_deterministic]
     fail = 0
     for t in tests:
         try:
             t()
-        except (AssertionError, FileNotFoundError, AttributeError, ImportError) as e:
+        except (AssertionError, FileNotFoundError, AttributeError, ImportError, KeyError, TypeError) as e:
             fail += 1
-            print("FAIL tests/test_models.py :: %s\n  %s" % (t.__name__, e))
+            print("FAIL tests/test_models.py :: %s\n  %s: %s" % (t.__name__, type(e).__name__, e))
     print("modelos total=%d passou=%d falhou=%d" % (len(tests), len(tests) - fail, fail))
     return 1 if fail else 0
 

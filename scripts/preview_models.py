@@ -5,7 +5,7 @@ Rasterizador simples com z-buffer: UV e normal interpolados por pixel, textura s
 luz difusa, face de trás cortada como no jogo. Cabeça cinza de referência: um elipsoide no
 tamanho medido dos óculos de esqui vanilla (HEADS do gerador), não a malha do jogo.
 
-Uso: python3 scripts/preview_models.py [saída.png]
+Uso: python3 scripts/preview_models.py [saída.png [peça ...]]  (sem peça: todas, uma linha por sexo)
 """
 import math
 import os
@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 import gen_models as g  # noqa: E402
 
 SIZE = 320
-SCALE = 1900           # pixels por metro
+SCALE = 1100           # pixels por metro (cabeça inteira e as pontas do cabelo)
+CENTRE = 0.045         # altura (x da cabeça) no meio da tela
 LIGHT = np.array([0.6, 0.3, 0.75])
 # vistas: (nome, rotação em volta de X pela cabeça, inclinação) — câmera olha pra −Z da vista
 VIEWS = (("frente", 0.0, 0.0), ("lado", math.pi / 2, 0.0), ("trás", math.pi, 0.0), ("iso", math.pi / 4, 0.55))
@@ -27,7 +28,7 @@ VIEWS = (("frente", 0.0, 0.0), ("lado", math.pi / 2, 0.0), ("trás", math.pi, 0.
 def head(h, n=24):
     """Elipsoide de referência: cabeça na altura dos olhos (y, z dos óculos, um pouco pra dentro)."""
     z0 = (h["z"][0] + h["z"][1]) / 2
-    ry, rz, rx, cx = h["y"] - 0.004, (h["z"][1] - h["z"][0]) / 2 - 0.004, 0.115, 0.085
+    ry, rz, rx, cx = h["y"] - 0.004, (h["z"][1] - h["z"][0]) / 2 - 0.004, 0.098, 0.082   # queixo ~−0,016, alto ~0,18
     m = g.Mesh()
     verts, uvs, faces = [], [], []
     for i in range(n + 1):
@@ -58,14 +59,15 @@ def render(meshes, tex, yaw, tilt):
         return np.stack([y, x * ct - z * st, x * st + z * ct], axis=-1)
     th, tw = tex.shape[:2]
     for mesh, flat in meshes:
-        v = rot(np.array(mesh.verts) - [0.085, 0, 0])
+        v = rot(np.array(mesh.verts) - [CENTRE, 0, 0])
         n, uv = rot(np.array(mesh.normals)), np.array(mesh.uvs)
-        sx, sy2 = SIZE / 2 + v[:, 0] * SCALE, SIZE * 0.55 - v[:, 1] * SCALE
+        # câmera em +profundidade olhando pra trás, cima = +X: a direita da tela é −lado
+        sx, sy2 = SIZE / 2 - v[:, 0] * SCALE, SIZE / 2 - v[:, 1] * SCALE
         for f in mesh.faces:
             a, b, c = f
             area = (sx[b] - sx[a]) * (sy2[c] - sy2[a]) - (sx[c] - sx[a]) * (sy2[b] - sy2[a])
             if area >= 0:
-                continue                           # face de trás (y da tela pra baixo): o jogo corta
+                continue                           # face de trás: o jogo corta
             x0, x1 = int(max(0, min(sx[f]))), int(min(SIZE - 1, max(sx[f]) + 1))
             y0, y1 = int(max(0, min(sy2[f]))), int(min(SIZE - 1, max(sy2[f]) + 1))
             if x0 > x1 or y0 > y1:
@@ -97,10 +99,14 @@ def render(meshes, tex, yaw, tilt):
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/nom_models_preview.png"
-    tex = g.texture().astype(np.float32)
-    sheet = Image.new("RGB", (SIZE * len(VIEWS), SIZE * 2))
-    for row, sex in enumerate(g.HEADS):
-        meshes = [(head(g.HEADS[sex]), (150, 146, 140)), (g.build(sex), None)]
+    pieces = sys.argv[2:] or list(g.BUILDERS)
+    rows = [(p, s) for p in pieces for s in g.HEADS]
+    sheet = Image.new("RGB", (SIZE * len(VIEWS), SIZE * len(rows)))
+    for row, (piece, sex) in enumerate(rows):
+        mesh = g.build(piece, sex)
+        path = os.path.join(g.MEDIA, "textures", "NOM", mesh.texture + ".png")
+        tex = np.asarray(Image.open(path).convert("RGB"), np.float32)
+        meshes = [(head(g.HEADS[sex]), (150, 146, 140)), (mesh, None)]
         for col, (_, yaw, tilt) in enumerate(VIEWS):
             sheet.paste(render(meshes, tex, yaw, tilt), (col * SIZE, row * SIZE))
     sheet.save(out)
