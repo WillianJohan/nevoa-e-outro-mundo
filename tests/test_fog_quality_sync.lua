@@ -19,6 +19,7 @@ local function load(opt, withJava)
     local calls = {}
     NOMRender_setParam = withJava and function(i, v) calls[#calls + 1] = { i, v } end or nil
     _G.NOM_FogQualitySync = nil
+    _G.NOM_FogState, package.loaded.NOM_FogState = nil, nil -- sem ouvintes de carregamentos anteriores
     dofile(FILE)
     return NOM_FogQualitySync, handlers, calls
 end
@@ -55,7 +56,7 @@ return {
         local _, h, calls = load(o, true)
         fire(h, "OnGameStart")
         fire(h, "EveryOneMinute")
-        assert(#calls == 2, "mandou de novo sem mudar")
+        assert(#calls == 3, "mandou de novo sem mudar")
         o.quality = 0
         fire(h, "EveryOneMinute")
         assert(count(calls, 6) == 2 and sent(calls, 6) == 0, "não seguiu a qualidade")
@@ -64,6 +65,22 @@ return {
         fire(h, "EveryOneMinute")
         assert(count(calls, 9) == 2 and sent(calls, 9) == 1, "não seguiu a resolução")
         assert(count(calls, 6) == 2, "mandou a qualidade sem ela mudar")
+    end,
+
+    -- sprint 0039: a névoa preta liga o empurrão da luz no mod3 (param 12) na borda, sem esperar o
+    -- minuto; desliga quando acaba; não repete sem mudar
+    fog_quality_sync_black_fog = function()
+        local o = { quality = 2, res = 2 }
+        local S, h, calls = load(o, true)
+        assert(S.PARAM_BLACK == 12)
+        fire(h, "OnGameStart")
+        assert(sent(calls, 12) == 0, "não mandou a preta desligada no início")
+        NOM_FogState.set(true, 3, false, true)
+        assert(sent(calls, 12) == 1, "a borda da preta não ligou o param 12")
+        fire(h, "EveryOneMinute")
+        assert(count(calls, 12) == 2, "mandou de novo sem mudar")
+        NOM_FogState.set(false, 3)
+        assert(sent(calls, 12) == 0 and count(calls, 12) == 3, "o fim da preta não desligou")
     end,
 
     fog_quality_sync_without_java_mod = function()
