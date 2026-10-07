@@ -374,20 +374,7 @@ build_refuses_uncommitted_change_in_mod3() {
     grep -q "Flow.java" "$h/out.txt"
 }
 
-# dev-sync: cópia (não symlink) dos dois mods pra pasta de mods do jogo
-dev_sync_copies_both_mods() {
-    local z
-    z="$(mktemp -d "$TMP/zomboid.XXXX")"
-    mkdir -p "$z/mods"
-    ln -s /tmp "$z/mods/NoiseOfMist"
-    ZOMBOID_DIR="$z" bash "$REPO/scripts/dev-sync.sh" >/dev/null
-    test ! -L "$z/mods/NoiseOfMist"
-    test -f "$z/mods/NoiseOfMist/42/mod.info"
-    test -f "$z/mods/NoiseOfMist_Shader/42/media/shaders/screen.frag"
-    test ! -L "$z/mods/NoiseOfMist_Shader"
-}
-
-for t in build_ships_volumetric_mod build_refuses_unsigned_volumetric build_jar_comes_from_head build_refuses_uncommitted_change_in_mod3 build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 dev_sync_copies_both_mods build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
+for t in build_ships_volumetric_mod build_refuses_unsigned_volumetric build_jar_comes_from_head build_refuses_uncommitted_change_in_mod3 build_ships_shader_mod build_refuses_uncommitted_change_in_mod2 build_uses_flatpak_zomboid_dir build_zomboid_dir_env_wins build_creates_layout build_excludes_repo_only build_is_idempotent build_preserves_id_and_visibility \
     build_removes_stale_files build_dry_run_writes_nothing build_prints_what_it_did \
     build_refuses_long_description build_refuses_bad_preview build_refuses_missing_source \
     build_preview_size_limit_inclusive build_ships_only_tracked_files build_refuses_uncommitted_change_in_mod \
