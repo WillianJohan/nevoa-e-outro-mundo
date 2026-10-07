@@ -46,6 +46,25 @@ Saída: números nesta seção (chamadas ao Java por tick e trabalho Lua) no mun
 
 Teto de referência: 2500 chamadas por atualização (Outro Mundo, pz-api-notes §16).
 
+**Feito.** Script: [medicao.lua](medicao.lua) (`luajit -joff docs/sprints/sprint-0036-equilibrio/medicao.lua`). Mundo falso com 300 zumbis comuns, 600 frames. Dois cenários: "parados" (ninguém com alvo) e "multidão" (os 300 com o jogador de alvo, a 6–10 tiles, o pior caso). A pergunta por zumbi é a da cegueira: tem jogador de alvo, ele está quieto e a mais de 4 tiles?
+
+| Versão | Parados (chamadas/tick) | Multidão (chamadas/tick) | Lua no luajit sem JIT (µs/tick, parados / multidão) |
+|---|---|---|---|
+| Hoje (só variantes no `OnZombieUpdate`) | 0 | 0 | 9 / 12 |
+| Ingênua: todo zumbi comum, todo frame | 600 | 2700 | 27 / 80 |
+| Em fatias, 20 por tick | 61 | 201 | 12 / 15 |
+| Em fatias, 30 por tick | 91 | 301 | 12 / 18 |
+| Em fatias, 50 por tick | 151 | 501 | 14 / 24 |
+
+**Como o `NOM_VariantAI` itera hoje:** pelo `OnZombieUpdate`, que o jogo chama pra todo zumbi a cada frame. O zumbi comum sai na primeira linha com três consultas de tabela Lua e nenhuma chamada Java (teste `ai_common_zombie_no_java_calls`). Só variante, cego e Carpideira parada seguem.
+
+**Conclusão:**
+- A versão ingênua não serve: a multidão passa do teto de 2500 em todo frame, não só numa atualização.
+- Em fatias (`OnTick`, `VISION_BATCH` zumbis por tick em volta na lista, como o rodízio da sirene) o custo fica em ~1/7 da ingênua, sem tocar no `OnZombieUpdate` do comum. A latência é uma volta na lista: 300/30 = 10 ticks (~0,17 s a 60 FPS, ~0,33 s a 30 FPS) até um zumbi que acabou de mirar no jogador ficar cego.
+- Escolhido: **30 por tick**, com a posição e o "quieto" de cada jogador guardados uma vez por tick (some o custo do jogador na multidão).
+- Quem já está cego não é conferido todo frame: a cada `CHECK_FRAMES` (10) frames, só a distância. Depois da janela, `WATCH_FRAMES` (30) frames de vigia por frame (só `getTarget`) pegam a volta do spot.
+- O plano B (piso de 10 tiles) não é preciso. O número final com o código de verdade está na Tarefa 1.
+
 ### Tarefa 1: visão de ~4 tiles
 
 - Teste primeiro (`tests/test_variant_ai.lua`): zumbi comum com jogador a 8 tiles, quieto, não persegue; a 3 tiles persegue; correndo persegue; tiro (som) perto acorda; variantes iguais a antes; zumbi remoto intocado; névoa desligada intocado; orçamento por tick com 300 zumbis.
