@@ -228,6 +228,7 @@ local function setup(opts)
     end
     G.now = 0
     getTimestampMs = function() return G.now end -- CONFIRMED server/ISObjectClickHandler.lua:352
+    isGamePaused = function() return G.paused == true end -- pz-api-notes §11.2
     getNumActivePlayers = function() return #locals() end
     getSpecificPlayer = function(i) return locals()[i + 1] end
     isClient = function() return opts.client == true end
@@ -481,10 +482,36 @@ return {
         NOM_VariantAI.sonarFound(z, p)
         G.frame(2)
         assert(not z.useless and z.target == p, "dentro da janela")
-        G.now = G.now + NOM_SonarRules.FOUND_MS
-        G.frame(1)
+        for _ = 1, NOM_SonarRules.FOUND_MS / 500 - 1 do
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        assert(not z.useless and z.target == p, "venceu antes da hora")
+        G.now = G.now + 500
+        G.frame(2)
         assert(z.useless and z.target == nil, "a cegueira não voltou depois da janela")
         assert(NOM_VariantAI.found[z] == nil)
+    end,
+    -- pausa não conta (review, item 10): a janela é tempo real que para com isGamePaused
+    ai_sonar_window_pauses = function()
+        local G = setup()
+        local z = G.zombie({ x = 0, y = 0, variant = "estalador" })
+        local p = G.player({ x = 30, y = 0, sneaking = true })
+        NOM_VariantAI.sonarFound(z, p)
+        G.frame(2)
+        G.paused = true
+        for _ = 1, 40 do -- 20 s pausado
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        G.paused = false
+        G.frame(1)
+        assert(not z.useless and z.target == p, "a janela venceu com o jogo pausado")
+        for _ = 1, NOM_SonarRules.FOUND_MS / 500 + 1 do
+            G.now = G.now + 500
+            G.frame(1)
+        end
+        assert(z.useless and NOM_VariantAI.found[z] == nil, "a janela não venceu depois da pausa")
     end,
     -- já cego por um agachado: o anel achou outro jogador (em pé); solta e mira nele
     ai_sonar_found_releases_blind = function()

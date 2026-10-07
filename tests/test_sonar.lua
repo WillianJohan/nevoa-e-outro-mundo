@@ -59,6 +59,8 @@ local function setup(opts)
         def(p, "getY", function(self) return self.y end)
         def(p, "getZ", function(self) return self.z end)
         def(p, "isSneaking", function(self) return self.sneaking end)
+        def(p, "isRunning", function() return false end)
+        def(p, "isSprinting", function() return false end)
         def(p, "isDead", function(self) return self.dead end)
         def(p, "getOnlineID", function(self) return self.onlineID end)
         G.players[#G.players + 1] = p
@@ -290,6 +292,26 @@ return {
         G2.tick(120)
         assert(e2.target == nil, "agachado e parado foi achado")
         assert(NOM_SonarServer.passed == 1)
+    end,
+
+    -- solo (review, item 10): a janela anti-recegueira do achado não vence com o jogo pausado
+    -- (o NOM_VariantAI instalado, como o server/NOM_Variants.lua faz no solo)
+    sonar_found_window_pauses_solo = function()
+        local G = setup()
+        NOM_VariantAI.install(function() end)
+        G.rolls, G.rand = { 0 }, NOM_SonarRules.GAP_ROLL - 1 -- o segundo estalo só em 30 s
+        local e = G.zombie({ x = 100, y = 100, id = EST })
+        G.player({ x = 104, y = 100 })
+        assert(G.untilRing())
+        G.wait(NOM_SonarRules.DURATION_MS)
+        assert(NOM_VariantAI.found[e] ~= nil, "não achou")
+        G.paused = true
+        G.wait(30000)
+        G.paused = false
+        G.tick(1)
+        assert(NOM_VariantAI.found[e].left > 0, "a janela venceu com o jogo pausado")
+        G.wait(NOM_SonarRules.FOUND_MS)
+        assert(NOM_VariantAI.found[e].left <= 0, "a janela não venceu depois da pausa")
     end,
 
     -- agachado andando é achado; o "andando" vem da posição amostrada

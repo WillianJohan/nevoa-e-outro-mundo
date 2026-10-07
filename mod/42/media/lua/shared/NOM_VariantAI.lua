@@ -14,16 +14,21 @@ require "NOM_Config"
 require "NOM_Math"
 
 require "NOM_SonarRules"
+require "NOM_FogEventRules"
 
 NOM_VariantAI = {}
 
 -- O estalo do Estalador é decisão do servidor desde a sprint 0037 (é o sonar):
 -- server/NOM_SonarServer.lua sorteia, shared/NOM_Sonar.lua toca no ponto e desenha o anel.
 
--- Estaladores que o sonar fez achar um jogador: { [zumbi] = até que getTimestampMs }. Nessa
--- janela (NOM_SonarRules.FOUND_MS) ele não é cegado de novo, nem se o jogador se agachar.
+-- Estaladores que o sonar fez achar um jogador: { [zumbi] = { left = ms } }. Nessa janela
+-- (NOM_SonarRules.FOUND_MS) ele não é cegado de novo, nem se o jogador se agachar. O left
+-- desconta o tempo real do OnTick (getTimestampMs) como as sirenes atrasadas
+-- (NOM_FogEventRules.countdown): parado com isGamePaused (pz-api-notes §11.2), no máximo
+-- MAX_STEP_MS por tick.
 NOM_VariantAI.found = {}
 local found = NOM_VariantAI.found
+local foundMs -- getTimestampMs do último tick com janela aberta
 
 -- Janela de cegueira, em updates do zumbi, não em tempo real (~1 s a 60 FPS). Fecha sozinha e abre
 -- de novo no update seguinte se o jogador ainda estiver agachado à vista: useless
@@ -93,7 +98,7 @@ end
 local function estalador(z, md, blind)
     local f = found[z]
     if f ~= nil then
-        if getTimestampMs() < f then return end
+        if f.left > 0 then return end
         found[z] = nil
     end
     if blind then
@@ -254,8 +259,24 @@ local function purgeStale() purge(tick - NOM_VariantAI.STALE_TICKS) end
 -- congelado pela sirene não custam nada. O Sem-rosto entra como o comum: o NOM_NightStats
 -- não o põe em variants (kind vira nil antes do apply), e ele tem visão curta (decisão do
 -- Johan); perguntar o NOM_SemRosto.isSemRosto custaria uma chamada por zumbi do lote.
+-- As janelas do sonar andam (só o campo muda: a tabela não é mexida no meio do pairs). Sem
+-- janela, nenhuma chamada.
+local function ageFound()
+    local now, dt, paused
+    for _, f in pairs(found) do
+        if now == nil then
+            now, paused = getTimestampMs(), isGamePaused()
+            dt = foundMs and now - foundMs or 0
+            foundMs = now
+        end
+        f.left = NOM_FogEventRules.countdown(f.left, dt, paused)
+    end
+    if now == nil then foundMs = nil end
+end
+
 local function sweep()
     tick = tick + 1
+    ageFound()
     r2 = visionR2()
     if r2 == nil then return end
     local logTick = NOM_Math.mod(tick, NOM_VariantAI.LOG_TICKS) == 0
@@ -467,7 +488,7 @@ function NOM_VariantAI.sonarFound(z, p)
     if blinded[z] then release(z) end
     watched[z] = nil
     if z:isUseless() and not NOM_SirenFreeze.frozen[z] and not NOM_Carpideira.gameUseless(z) then z:setUseless(false) end
-    found[z] = getTimestampMs() + NOM_SonarRules.FOUND_MS
+    found[z] = { left = NOM_SonarRules.FOUND_MS }
     z:spotted(p, true)
     if getDebug() then print("[NOM] sonar estalador achou o jogador (alvo=" .. tostring(z:getTarget() == p) .. ")") end
     return true
