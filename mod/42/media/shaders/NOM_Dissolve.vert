@@ -1,5 +1,5 @@
 #version 330
-// Névoa e Outro Mundo — dissolve das peças (sprint 0018, ADR-016), vértice da peça com
+// NOM: Noise of Mist — dissolve das peças (sprint 0018, ADR-016), vértice da peça com
 // esqueleto (m_Static=false: véu, balaclava, cabelo, casca do Eco).
 //
 // Código original deste repositório, licença MIT. Do jogo vem só a interface: os atributos

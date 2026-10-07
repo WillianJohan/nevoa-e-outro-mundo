@@ -31,10 +31,9 @@ seção [Balanceamento](#balanceamento) e os números das [medições](#parte-3-
 
 ## Antes de começar (~5 min)
 
-- [ ] Mod linkado: `scripts/dev-sync.sh`.
-- [ ] **Sem** `~/Zomboid/Workshop/NevoaEOutroMundo/` (a pasta do build do Workshop):
-      se existir, o jogo carrega ela no lugar do symlink, uma cópia velha
-      ([publicar.md](publicar.md#o-build-ganha-do-symlink)). `ls ~/Zomboid/Workshop`.
+- [ ] Mod de staging copiado: `scripts/dev-sync.sh`; no menu Mods, ativar **"[STAGING] NOM: Noise of Mist"**
+      (pôster vermelho), nunca junto do oficial "NOM: Noise of Mist" do Workshop
+      ([AGENTS.md](../AGENTS.md#desenvolvimento-x-lançado-decisão-do-johan-2026-10-06)).
 - [ ] Jogo aberto com `-debug` (opção de inicialização da Steam).
 - [ ] Toda linha do mod começa com `[NOM]`. No MP, o que é do servidor sai no console
       do **servidor** (noite, névoa, Eco, grito) e o que é de quem simula ou vê sai no
@@ -59,7 +58,7 @@ Os `NOM_Debug.*` da tabela abaixo continuam iguais.
 | `NOM.spawn(5)` / `NOM.spawn(5, "Police")` | zumbis espalhados em 3×3, 3 tiles na sua frente (1 a 50; outfit opcional, nome errado é recusado) | `[NOM] debug spawn n=5 criados=5 outfit=-` (ou `spawn outfit desconhecido=…`) |
 | `NOM.variant("corredor")` / `NOM.eco()` / `NOM.status()` | os mesmos do `NOM_Debug` | idem |
 | `NOM.god()` / `NOM.noclip()` / `NOM.invisible()` | truques do jogador local (inverte; `true`/`false` fixa) | `[NOM] debug god=true` |
-| `NOM.panel()` ou **Insert** | abre e fecha o painel de botões (tecla em Opções > Mods > Névoa e Outro Mundo) | janela "Névoa e Outro Mundo: debug" |
+| `NOM.panel()` ou **Insert** | abre e fecha o painel de botões (tecla em Opções > Mods > NOM: Noise of Mist) | janela "NOM: debug" |
 | `NOM.setFog()` / `(true)` | névoa **sempre branca**: 3 s de estática, coro de sirenes, 30 s de fuga com a névoa subindo (zumbis param) e névoa / névoa na hora; fecha o que estiver aberto ou contando (sprints 0033 e 0034) | `[NOM] debug nevoa forcada branca=true` |
 | `NOM.setRedFog()` / `(true)` | o mesmo, **sempre vermelha** | `[NOM] debug nevoa forcada vermelha=true` |
 | `NOM.setBlackFog()` / `NOM.setEndFog()` | a preta só avisa (0038) / termina a névoa ou cancela a sirene | `[NOM] debug nevoa fim=…` |
@@ -89,16 +88,16 @@ Sem-rosto, som, chão, vinheta e a névoa do clima, que é toda do mod desde a s
 
 ## Parte 1 — Solo (~40 min)
 
-Save novo, sandbox Apocalypse, página "Névoa e Outro Mundo" com os **padrões**,
+Save novo, sandbox Apocalypse, página "NOM: Noise of Mist" com os **padrões**,
 começando de dia, numa cidade (Muldraugh serve).
 
 ### 1.1 Menu e carga (5 min)
 
-- [ ] **Lista de mods (Mods no menu principal):** "Névoa e Outro Mundo" aparece
-      disponível, com o ícone (o "N" na névoa) na linha e o poster no painel de
+- [ ] **Lista de mods (Mods no menu principal):** "[STAGING] NOM: Noise of Mist" aparece
+      disponível, com o ícone ("NOM" avermelhado) na linha e o pôster vermelho no painel de
       informações; descrição em PT-BR, e em inglês depois de trocar o idioma (vem do
       `Mod.json`). → [0007: textos, poster e ícone](sprints/sprint-0007-workshop/README.md#roteiro-in-game)
-- [ ] **Sandbox:** a página "Névoa e Outro Mundo" mostra as 24 opções com rótulo e
+- [ ] **Sandbox:** a página "NOM: Noise of Mist" mostra as 24 opções com rótulo e
       tooltip em PT-BR; trocar o idioma pra inglês e conferir "Clickers", "Runners",
       "Faceless". → [0001: tradução](sprints/sprint-0001-estado-e-clima/README.md#critérios-de-aceite),
       [0002 passo 1](sprints/sprint-0002-eco/README.md#roteiro-in-game),
@@ -249,7 +248,7 @@ Num save à parte, cada um: `DarkEnabled` desligado (sem escurecer), `DarkIntens
 
 ## Parte 2 — Multiplayer (~30 min)
 
-Servidor dedicado local com `-debug`, `Mods=NevoaEOutroMundo` no `.ini`, sandbox com os
+Servidor dedicado local com `-debug`, `Mods=NoiseOfMist_Staging` no `.ini` (o mod de staging copiado pelo `dev-sync.sh`), sandbox com os
 padrões. Cliente(s) também com `-debug`, logados como admin.
 
 ### 2.1 Um cliente

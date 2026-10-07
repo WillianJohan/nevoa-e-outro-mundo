@@ -1,7 +1,7 @@
 -- Regras puras dos efeitos de tela (sprint 0013): quanto de cada camada se vê,
 -- pelo estado da névoa, do Sem-rosto e do último grito de Carpideira. Sem API do
 -- jogo, testável com ./run-tests.sh. Quem desenha é o client/NOM_ScreenFx.lua; o
--- canal pro shader opcional (mod NevoaEOutroMundo_Shader) sai de R.channel.
+-- canal pro shader opcional (mod NoiseOfMist_Shader) sai de R.channel.
 require "NOM_AtmosphereRules"
 require "NOM_Math"
 require "NOM_Rules"

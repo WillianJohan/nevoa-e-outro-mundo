@@ -1,5 +1,5 @@
 {
-    "UI_NOM_Options": "Névoa e Outro Mundo",
+    "UI_NOM_Options": "NOM: Noise of Mist",
     "UI_NOM_ScreenFx": "Efeitos de tela na névoa",
     "UI_NOM_ScreenFx_tooltip": "Grão de filme, vinheta que respira, linhas de chiado com o Sem-rosto perto e um pulso vermelho quando uma Carpideira grita. Só na sua tela.",
     "UI_NOM_ScreenFxIntensity": "Intensidade dos efeitos de tela",
@@ -19,8 +19,8 @@
     "UI_NOM_BodyEmbers": "Brasa no corpo inteiro",
     "UI_NOM_BodyEmbers_tooltip": "Com a queima ligada: quando o zumbi vira monstro e volta, o corpo inteiro queima em brasa, não só a peça do monstro. Desligado: só a peça queima.",
     "UI_NOM_DebugPanelKey": "Painel de debug do mod (só com -debug)",
-    "UI_NOM_DebugPanelKey_tooltip": "Abre e fecha o painel de botões do debug do Névoa e Outro Mundo. Só aparece com o jogo em -debug. Padrão: Insert (F7 abre o editor de veículos do jogo em -debug). No console: NOM.panel().",
-    "UI_NOM_Debug_Title": "Névoa e Outro Mundo: debug",
+    "UI_NOM_DebugPanelKey_tooltip": "Abre e fecha o painel de botões do debug do NOM: Noise of Mist. Só aparece com o jogo em -debug. Padrão: Insert (F7 abre o editor de veículos do jogo em -debug). No console: NOM.panel().",
+    "UI_NOM_Debug_Title": "NOM: debug",
     "UI_NOM_Debug_Fog": "Névoa (liga/desliga)",
     "UI_NOM_Debug_FogNow": "Névoa já",
     "UI_NOM_Debug_FogEnd": "Fim da névoa",

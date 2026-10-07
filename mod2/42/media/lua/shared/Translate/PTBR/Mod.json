@@ -1,4 +1,4 @@
 {
-    "name": "Névoa e Outro Mundo — Shader (incompatível com ShadowZ)",
-    "description": "Opcional. Troca o shader de tela do jogo por um próprio: aberração cromática, grão e distorção na névoa. Precisa do Névoa e Outro Mundo. Não use com ShadowZ nem outro mod que mexa no screen.frag. O jogo compila o shader uma vez por sessão, no primeiro mundo carregado: ligou ou desligou, reinicie o jogo."
+    "name": "NOM: Noise of Mist — Shader (incompatível com ShadowZ)",
+    "description": "Opcional. Troca o shader de tela do jogo por um próprio: aberração cromática, grão e distorção na névoa. Precisa do NOM: Noise of Mist. Não use com ShadowZ nem outro mod que mexa no screen.frag. O jogo compila o shader uma vez por sessão, no primeiro mundo carregado: ligou ou desligou, reinicie o jogo."
 }

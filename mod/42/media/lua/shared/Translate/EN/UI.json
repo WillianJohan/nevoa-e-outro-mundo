@@ -1,5 +1,5 @@
 {
-    "UI_NOM_Options": "Fog and Otherworld",
+    "UI_NOM_Options": "NOM: Noise of Mist",
     "UI_NOM_ScreenFx": "Screen effects in the fog",
     "UI_NOM_ScreenFx_tooltip": "Film grain, a breathing vignette, static lines when the Faceless is near and a red flash when a Mourner screams. Only on your screen.",
     "UI_NOM_ScreenFxIntensity": "Screen effects intensity",
@@ -19,8 +19,8 @@
     "UI_NOM_BodyEmbers": "Whole body burns",
     "UI_NOM_BodyEmbers_tooltip": "With burn in and out on: when a zombie turns into a monster and back, its whole body burns away in embers instead of only the monster piece. Off: only the piece burns.",
     "UI_NOM_DebugPanelKey": "Mod debug panel (-debug only)",
-    "UI_NOM_DebugPanelKey_tooltip": "Opens and closes the Fog and Otherworld debug button panel. Only shown with the game in -debug. Default: Insert (F7 opens the game's vehicle editor in -debug). In the console: NOM.panel().",
-    "UI_NOM_Debug_Title": "Fog and Otherworld: debug",
+    "UI_NOM_DebugPanelKey_tooltip": "Opens and closes the NOM: Noise of Mist debug button panel. Only shown with the game in -debug. Default: Insert (F7 opens the game's vehicle editor in -debug). In the console: NOM.panel().",
+    "UI_NOM_Debug_Title": "NOM: debug",
     "UI_NOM_Debug_Fog": "Fog (toggle)",
     "UI_NOM_Debug_FogNow": "Fog now",
     "UI_NOM_Debug_FogEnd": "End fog",

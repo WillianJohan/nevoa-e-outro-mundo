@@ -4,7 +4,7 @@ Antes de tudo, leia **[docs/HANDOFF.md](docs/HANDOFF.md)**: estado atual, o que 
 
 ## Regras que não se negociam
 
-- **Nada copiado de outros mods.** Mods instalados (inclusive ShadowZ) servem só pra saber qual API existe. Sprites e outfits vanilla são referenciados por nome; nenhum arquivo do jogo ou de terceiros entra no repo. Texturas e sons são gerados por scripts nossos (`scripts/gen_*.py`).
+- **Nada copiado de outros mods.** Mods instalados (inclusive ShadowZ) servem só pra saber qual API existe. Sprites e outfits vanilla são referenciados por nome; nenhum arquivo do jogo ou de terceiros entra no repo. Texturas e sons são gerados por scripts nossos (`scripts/gen_*.py`). Exceção: a arte de lançamento (pôster, preview, ícone, banner) é do Johan e só é redimensionada/tingida por script ([ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)).
 - **Lua roda em Kahlua (subset de Lua 5.1):**
   - não tem `next()`, `//`, `goto` nem operadores de bit;
   - use `unpack`, nunca `table.unpack`;
@@ -22,7 +22,7 @@ Antes de tudo, leia **[docs/HANDOFF.md](docs/HANDOFF.md)**: estado atual, o que 
 
 ```bash
 ./run-tests.sh            # todos os testes (luajit, contraste em python, build)
-scripts/dev-sync.sh       # COPIA mod/ e mod2/ pra pasta de mods do jogo (symlink quebra o ScriptManager)
+scripts/dev-sync.sh       # COPIA mod/, mod2/ e mod3/ pra pasta de mods do jogo como o mod de STAGING (symlink quebra o ScriptManager)
 ```
 
 - **Jogo:** Steam via Flatpak, instalado em `/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid`.
@@ -51,7 +51,7 @@ O mod em desenvolvimento e o mod lançado ficam separados **no git e no jogo**.
 - **Nunca os dois ativos no mesmo save**: os arquivos Lua têm os mesmos nomes e um sobrescreve o outro. O `mod.info` de staging marca o oficial como `incompatible=`.
 - O ID `_Staging`, o `[STAGING]` e as imagens vermelhas existem **só na cópia do `dev-sync.sh`**; o repo e o `build-workshop.sh` usam sempre o ID, o nome e as imagens oficiais. Os nomes de espaço no Lua (canal de rede, `ModData`, ID das opções) não mudam.
 - Save criado com o mod de staging pede o mod de staging pra abrir (e vice-versa).
-- **Pendente:** o `dev-sync.sh` ainda copia com o ID oficial. A troca entra na mini-sprint da renomeação pra "NOM: Noise of Mist" (logo depois da 0037), junto com os IDs novos e as imagens do lançamento.
+- IDs oficiais: `NoiseOfMist`, `NoiseOfMist_Shader`, `NoiseOfMist_Volumetrica` (desde a 0037b; até a 0037 eram `NevoaEOutroMundo*`, que saves antigos ainda pedem). As imagens de staging ficam em `docs/art/staging/`, geradas pelo `scripts/gen_images.py` ([ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)); `tests/test_dev_sync.sh` confere a cópia.
 
 ## Fluxo de sprint (decisão do Johan, 2026-10-05; branches de 2026-10-06)
 
