@@ -1995,6 +1995,18 @@ jogo mostrou e por que o tiro não aparecia.
 | Caixa que cabe em volta da cabeça: masculino x −0,017–0,179, y ±0,071, z −0,091..0,093; feminino x −0,014–0,171, y ±0,067, z −0,085..0,088 | CONFIRMED (medido) | `M_CrashHelmetFULL.x`, `F_CrashHelmetFULL.x`. A casca do Sem-rosto fica dentro dela (`tests/test_models.py`) |
 | As malhas novas carregam e assentam (boca no lugar da boca, casca sem a cabeça furando, mechas na frente do rosto) | UNKNOWN | testar no jogo, item 23 da lista abaixo |
 
+## 33. Rosto censurado do Sem-rosto: passe mod3 (sprint 0044)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `IsoCell.getZombieList()` devolve `ArrayList<IsoZombie>` | CONFIRMED (bytecode) | `javap zombie.iso.IsoCell` |
+| `IsoZombie.getItemVisuals()` devolve `ItemVisuals`, que é `final class ItemVisuals extends ArrayList<ItemVisual>` | CONFIRMED (bytecode) | `javap zombie.characters.IsoZombie` e `zombie.core.skinnedmodel.visual.ItemVisuals`. É a lista onde o `client/NOM_VariantLook.lua` põe a peça (`ItemVisual.new()` + `setItemType`) |
+| `ItemVisual.getItemType()` devolve o `fullType` gravado por `setItemType(String)`, com o módulo (`Base.NOM_SemRostoEstatica`) | CONFIRMED (bytecode) | `javap -c ItemVisual`: `setItemType` exige `.` no nome (assert) e grava em `fullType`; `getItemType` só lê `fullType` |
+| `IsoObject.getAlpha(int)` dá o alfa do objeto pra cada jogador (0 fora da vista, sobe no fade-in) | CONFIRMED (bytecode) | `javap zombie.iso.IsoObject`: `getAlpha(int)` e `getTargetAlpha(int)`. O quadrado usa esse alfa: zumbi que o jogador não vê não tem quadrado |
+| Altura da cabeça: `getZ() + 0.6` em andares é o alto do personagem pra UI | EXISTS | `media/lua/client/Fishing/TensionUI.lua:11` vanilla. O meio da cabeça fica em +0,52 (`Censor.HEAD_Z`); as tochas do RenderContext usam +0,4 |
+| Cópia da cor da cena: `glBlitFramebuffer(..., GL_COLOR_BUFFER_BIT, GL_NEAREST)` do FBO do jogador (preso como `GL_READ_FRAMEBUFFER`) pra uma textura RGBA8 nossa | EXISTS | o mesmo blit da profundidade (§26, `RenderContext.render`), com outro bit; GL 3.0. Só roda com rosto censurado na tela |
+| O quadrado aparece na cabeça certa, some atrás de parede e com o zumbi fora da vista, e a névoa cobre ele | UNKNOWN | testar no jogo, item 24 da lista abaixo |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -2093,3 +2105,8 @@ jogo mostrou e por que o tiro não aparecia.
     dois sexos? A casca do Sem-rosto tapa a cabeça sem o rosto furar em animação de ataque ou
     queda? As mechas da Carpideira ficam na frente do rosto e não atravessam o ombro de um jeito
     feio? O `nohair` esconde o cabelo do zumbi por baixo? O dissolve desfaz as três?
+24. Rosto censurado (sprint 0044, §33): o quadrado fica na cabeça do Sem-rosto (nem no peito,
+    nem flutuando) com o zumbi em pé, no chão e no andar de cima? Some atrás de parede e quando o
+    zumbi sai da vista? A névoa cobre o quadrado? `NOMRender_setParam(13, 0)` apaga e `1.5`
+    aumenta? O FPS cai com três Sem-rosto na tela? Se o `console.txt` mostrar
+    `rosto censurado: erro`, o quadrado some e a névoa segue.
