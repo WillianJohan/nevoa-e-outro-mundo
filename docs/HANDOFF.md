@@ -75,6 +75,15 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 5. **Mod ativado só no save** carrega o jar depois do `exposeAll`, e aí os `@LuaMethod` globais não existem. O `Main.java` registra na hora do load. Pra a janela de aprovação aparecer no startup, ative o mod no menu Mods do menu principal.
 6. **ShadowZ:** deixar desligado na janela do ZB, porque briga com o shader do mod2.
 
+## Em andamento: Equilíbrio (sprint 0036, branch `sprint/0036-equilibrio`, sem merge)
+
+Implementada e com testes verdes; falta o code review final, o merge e o teste do Johan no jogo. Plano com a medição em [sprints/sprint-0036-equilibrio/plan.md](sprints/sprint-0036-equilibrio/plan.md); resumo, decisões e roteiro em [sprints/sprint-0036-equilibrio/README.md](sprints/sprint-0036-equilibrio/README.md).
+
+- **Visão de ~4 tiles** na névoa branca e na vermelha (`shared/NOM_VariantAI.lua`). Vale pro zumbi comum e pro Sem-rosto: é a cegueira do Estalador, num rodízio de 30 zumbis por tick. O som acorda (`OnWorldSound`). Opção `FogZombieVision`.
+- **Custo medido antes:** todo zumbi, todo frame, passava do teto (2700 chamadas por frame com a multidão). O rodízio dá média de 129 e pior tick de 452 com 300 zumbis.
+- **Perambular** (`shared/NOM_WanderRules.lua`, `shared/NOM_Wander.lua`, `server/NOM_WanderServer.lua`). O servidor decide a onda a cada 4–8 min de jogo. Quem simula manda grupos de 1 a 3 parados andarem (`pathToLocationF`) pra longe do jogador. Opção `FogWander`.
+- **Debug:** `NOM.wander()` e `NOM.blind()`, com botão no painel.
+
 ## Estado atual: Outro Mundo estilo Silent Hill (sprint 0035)
 
 **Na `main` desde o merge `e73202b`, sincronizada e pronta pro teste do Johan no jogo.** O code review final não achou nada crítico; os 7 achados (o maior: o esquecimento da memória da varredura saiu do tick do carro) foram corrigidos antes do merge (seção "Code review final" do plano). Plano em [sprints/sprint-0035-silent-hill/plan.md](sprints/sprint-0035-silent-hill/plan.md); resumo, decisões e roteiro em [sprints/sprint-0035-silent-hill/README.md](sprints/sprint-0035-silent-hill/README.md).
