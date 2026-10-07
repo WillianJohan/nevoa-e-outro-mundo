@@ -363,57 +363,72 @@ public final class FlowGrid {
 
     /**
      * Frente do sonar do Estalador (sprint 0037) que andou de r0 a r1 tiles em volta de (wx, wy)
-     * neste passo: leva Sonar.TAKE da névoa da faixa varrida pra logo à frente (Sonar.AHEAD tiles),
-     * sem criar nem sumir massa. A cada passo o monte anda com a frente e deixa o miolo ralo atrás.
-     * Interior não dá nem recebe, como no blast.
+     * neste passo: cada célula da faixa varrida leva Sonar.TAKE da névoa dela pra frente na própria
+     * direção radial, até o meio do monte (Sonar.AHEAD / 2 tiles depois da frente), parando antes de
+     * sólido, interior ou face fechada (parede, janela). Sem criar nem sumir massa; o que não cabe
+     * (D_MAX) fica. A cada passo o monte anda com a frente e deixa o miolo ralo atrás.
      */
     public void sonar(float wx, float wy, float r0, float r1) {
         if (r1 <= r0) return;
         float lx = (wx - x0) * scale, ly = (wy - y0) * scale, a = r0 * scale, b = r1 * scale;
-        float ahead = Sonar.AHEAD * scale, outer = b + ahead;
-        int i0 = Math.max(0, (int) Math.floor(lx - outer)), i1 = Math.min(n - 1, (int) Math.ceil(lx + outer));
-        int j0 = Math.max(0, (int) Math.floor(ly - outer)), j1 = Math.min(n - 1, (int) Math.ceil(ly + outer));
+        float reach = b + Sonar.AHEAD * scale * 0.5f;
+        int i0 = Math.max(0, (int) Math.floor(lx - b)), i1 = Math.min(n - 1, (int) Math.ceil(lx + b));
+        int j0 = Math.max(0, (int) Math.floor(ly - b)), j1 = Math.min(n - 1, (int) Math.ceil(ly + b));
         if (i0 > i1 || j0 > j1) return;
-        double taken = 0, aheadW = 0;
+        // tira tudo antes de pôr: célula que recebe nunca é tirada no mesmo passo
         for (int j = j0; j <= j1; j++)
             for (int i = i0; i <= i1; i++) {
                 int c = j * n + i;
-                if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
+                if (!sonarOpen(i, j)) continue;
                 float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
-                if (dist >= a && dist < b) {
-                    float t = d[c] * Sonar.TAKE;
-                    d[c] -= t;
-                    dn[c] = t;
-                    taken += t;
-                } else if (dist >= b && dist < outer) {
-                    aheadW += 1f - (dist - b) / ahead;
-                }
+                if (dist < a || dist >= b) continue;
+                dn[c] = sonarTarget(i, j, lx, ly, dist, reach) < 0 ? 0f : d[c] * Sonar.TAKE;
+                d[c] -= dn[c];
             }
-        if (taken <= 0) return;
-        double left = taken;
-        if (aheadW > 0)
-            for (int j = j0; j <= j1; j++)
-                for (int i = i0; i <= i1; i++) {
-                    int c = j * n + i;
-                    if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
-                    float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
-                    if (dist < b || dist >= outer) continue;
-                    float put = (float) (taken * (1f - (dist - b) / ahead) / aheadW);
-                    put = Math.min(put, D_MAX - d[c]);
-                    if (put <= 0f) continue;
-                    d[c] += put;
-                    left -= put;
-                }
-        if (left > 1e-6) {                        // o que não coube na frente volta pra faixa
-            float back = (float) (left / taken);
-            for (int j = j0; j <= j1; j++)
-                for (int i = i0; i <= i1; i++) {
-                    int c = j * n + i;
-                    if ((flags[c] & (F_SOLID | F_INDOOR)) != 0) continue;
-                    float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
-                    if (dist >= a && dist < b) d[c] += dn[c] * back;
-                }
+        for (int j = j0; j <= j1; j++)
+            for (int i = i0; i <= i1; i++) {
+                int c = j * n + i;
+                if (!sonarOpen(i, j)) continue;
+                float dist = (float) Math.hypot(i + 0.5f - lx, j + 0.5f - ly);
+                if (dist < a || dist >= b || dn[c] <= 0f) continue;
+                int t = sonarTarget(i, j, lx, ly, dist, reach);
+                float put = Math.min(dn[c], Math.max(0f, D_MAX - d[t]));
+                d[t] += put;
+                d[c] += dn[c] - put;
+            }
+    }
+
+    private boolean sonarOpen(int i, int j) {
+        return i >= 0 && i < n && j >= 0 && j < n && (flags[j * n + i] & (F_SOLID | F_INDOOR)) == 0;
+    }
+
+    /** Dá pra passar da célula (i, j) pra vizinha (ni, nj), lado ou diagonal (um dos dois caminhos em L). */
+    private boolean sonarPass(int i, int j, int ni, int nj) {
+        if (!sonarOpen(ni, nj)) return false;
+        boolean u = openU[j * nu + Math.max(i, ni)] != 0, v = openV[Math.max(j, nj) * n + i] != 0;
+        if (nj == j) return u;
+        if (ni == i) return v;
+        return (sonarOpen(ni, j) && u && openV[Math.max(j, nj) * n + ni] != 0)
+            || (sonarOpen(i, nj) && v && openU[nj * nu + Math.max(i, ni)] != 0);
+    }
+
+    /** Célula onde para a névoa tirada de (i, j), andando na direção radial até reach; -1 se nem sai. */
+    private int sonarTarget(int i, int j, float lx, float ly, float dist, float reach) {
+        if (dist < 1e-4f) return -1;
+        float cx = i + 0.5f, cy = j + 0.5f, ux = (cx - lx) / dist, uy = (cy - ly) / dist, len = reach - dist;
+        int ci = i, cj = j, last = -1;
+        for (float s = 0.25f; ; s += 0.25f) {
+            float t = Math.min(s, len);
+            int ni = (int) Math.floor(cx + ux * t), nj = (int) Math.floor(cy + uy * t);
+            if (ni != ci || nj != cj) {
+                if (!sonarPass(ci, cj, ni, nj)) break;
+                ci = ni;
+                cj = nj;
+                last = cj * n + ci;
+            }
+            if (t >= len) break;
         }
+        return last;
     }
 
     /**

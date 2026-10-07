@@ -13,6 +13,7 @@ public class FlowSonarTest {
         run("frente anda pra fora: monte na frente, miolo ralo, longe intocado", FlowSonarTest::frontTravels);
         run("frente conserva massa e respeita o teto", FlowSonarTest::massAndCeiling);
         run("sólido e interior não dão nem recebem", FlowSonarTest::wallsUntouched);
+        run("a frente não leva névoa pra trás de parede (face fechada ou sólido)", FlowSonarTest::noneBehindWall);
         run("custo: 8 anéis num passo da grade do jogo", FlowSonarTest::cost);
         System.out.println("mod3 sonar: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
@@ -154,6 +155,39 @@ public class FlowSonarTest {
             check(FlowTravelTest.tileDensity(g, 28, 28 + k) == indoor[k], "interior mexeu em " + (28 + k));
         }
         check(FlowTravelTest.tileDensity(g, 32, 30) != 1f, "a rua do lado nem mexeu: o teste não testa nada");
+    }
+
+    /**
+     * Parede comprida a 4 tiles do anel: o lado de trás começa vazio e continua vazio (a névoa da
+     * frente vai só na direção radial de cada célula e para na parede). Parede do jogo é face
+     * fechada entre tiles (setTileOpenW); sólido é o tile inteiro. A massa total não muda.
+     */
+    static void noneBehindWall() {
+        for (int kind = 0; kind < 2; kind++) {
+            FlowGrid g = still();
+            int wall = 36, behind = kind == 0 ? wall : wall + 1;
+            for (int tj = 0; tj < 64; tj++) {
+                if (kind == 0) g.setTileOpenW(wall, tj, false);
+                else g.setTile(wall, tj, FlowGrid.F_SOLID);
+            }
+            for (int j = 0; j < g.n; j++)
+                for (int i = behind * g.scale; i < g.n; i++) g.setDensity(i, j, 0f);
+            float m0 = g.totalMass();
+            Sonar s = new Sonar();
+            s.add(32f, 32f);
+            float[] out = new float[Sonar.MAX_RINGS * 4];
+            while (s.count() > 0) {
+                int b = s.bands(DT, out, 0);
+                for (int q = 0; q < b; q++) g.sonar(out[q * 4], out[q * 4 + 1], out[q * 4 + 2], out[q * 4 + 3]);
+            }
+            double back = 0;
+            for (int j = 0; j < g.n; j++)
+                for (int i = behind * g.scale; i < g.n; i++) back += g.density(i, j);
+            String name = kind == 0 ? "face fechada" : "sólido";
+            check(back < 1e-6, name + ": névoa atrás da parede: " + back);
+            check(Math.abs(g.totalMass() - m0) / m0 < 1e-3f, name + ": massa mudou");
+            check(FlowTravelTest.tileDensity(g, wall - 1, 32) > 1.05f, name + ": não amontoou na frente da parede");
+        }
     }
 
     /** Pior caso: 8 anéis no fim (maior faixa) num passo da grade de 128 tiles na escala do jogo. */
