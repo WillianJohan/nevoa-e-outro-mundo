@@ -1982,6 +1982,19 @@ jogo mostrou e por que o tiro não aparecia.
 | A textura do item vem de `textureChoices` (o `TextureFilename` do `.x` não manda) | EXISTS | todas as peças do mod desde a 0012 usam `textureChoices` com modelo vanilla de outra textura |
 | O jogo carrega e desenha o `.x` gerado (Assimp aceita sem templates, o v da textura sai certo) | UNKNOWN | testar no jogo: Estalador na névoa com a venda 3D. Se falhar, o `console.txt` mostra `Model not found` e a peça some (não quebra). A textura é espelhada em v, então o v virado não muda o desenho |
 
+### 32.1 As outras peças (sprint 0042)
+
+| Fato | Status | Evidência |
+|---|---|---|
+| Peça estática na cabeça que tapa a cabeça inteira: `m_Static true` + `Bip01_Head` + `nohairnobeard` | EXISTS | `media/clothing/clothingItems/Hat_CrashHelmetFULL.xml` vanilla (`static\clothes\m_crashhelmetfull`). É o que a casca do Sem-rosto usa |
+| Peça estática na cabeça com `nohair` (esconde o cabelo, deixa a barba) | EXISTS | `Hat_Spiffo.xml` vanilla (`static\clothes\m_spiffohead`). É o que o cabelo da Carpideira usa: o cabelo do zumbi sumiria por baixo de qualquer jeito, e as mechas nossas são o cabelo |
+| Alto do crânio, nuca e lados: masculino x 0,181, z −0,092, y ±0,071; feminino x 0,176, z −0,082, y ±0,066 | CONFIRMED (medido) | `M_ShowerCap.x`, `F_ShowerCap.x` (só os números) |
+| Nariz e testa: masculino z 0,084 em x 0,05 e ~0,072 em x 0,12; feminino z 0,086 e ~0,074 em x 0,11 | CONFIRMED (medido) | `M_HockeyMask.x`, `F_HockeyMask.x` |
+| Queixo: masculino x −0,017, z 0,062; feminino x −0,007, z 0,064 | CONFIRMED (medido) | `M_SurgicalMask.x`, `F_SurgicalMask.x` |
+| Narina: masculino x 0,054–0,062; feminino x 0,041–0,053 (a boca fica abaixo) | CONFIRMED (medido) | `M_NoseStud.x`, `F_NoseStud.x` |
+| Caixa que cabe em volta da cabeça: masculino x −0,017–0,179, y ±0,071, z −0,091..0,093; feminino x −0,014–0,171, y ±0,067, z −0,085..0,088 | CONFIRMED (medido) | `M_CrashHelmetFULL.x`, `F_CrashHelmetFULL.x`. A casca do Sem-rosto fica dentro dela (`tests/test_models.py`) |
+| As malhas novas carregam e assentam (boca no lugar da boca, casca sem a cabeça furando, mechas na frente do rosto) | UNKNOWN | testar no jogo, item 23 da lista abaixo |
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |
@@ -2076,3 +2089,7 @@ jogo mostrou e por que o tiro não aparecia.
     `Model not found` no `console.txt`)? A faixa fica nos olhos, sem atravessar a cabeça nem
     flutuar longe, nos dois sexos? O arame aparece de longe (zoom normal) ou some? O dissolve
     (gêmeo `Fx`) desfaz a malha nova como desfazia os óculos?
+23. Peças 3D da 0042 (§32.1): a boca do Corredor fica na boca (nem no nariz, nem no queixo) nos
+    dois sexos? A casca do Sem-rosto tapa a cabeça sem o rosto furar em animação de ataque ou
+    queda? As mechas da Carpideira ficam na frente do rosto e não atravessam o ombro de um jeito
+    feio? O `nohair` esconde o cabelo do zumbi por baixo? O dissolve desfaz as três?
