@@ -71,6 +71,9 @@ Até lá a versão por script é a peça do jogo, e **nada gerado por IA entrou 
   Sem-rosto **idênticos byte a byte**.
 - Save antigo no meio de uma preta: sem risco, o visual não vai pro save (o outfit é revestido pelo
   ID no load).
+- **Code review final da pilha (0039–0044), achado e corrigido:** as lascas tinham uma face com a
+  ordem trocada e o tetraedro inteiro saía virado pra dentro (sumiam ou viravam um triângulo solto).
+  As fitas de fumaça tinham a tampa da ponta virada. Os dois corrigidos, com teste de aresta orientada.
 
 ## Roteiro de teste no jogo
 

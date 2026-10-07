@@ -1,6 +1,54 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-06 (sprints 0035, com o hotfix do chão, e 0036 na `main`, sincronizadas e prontas pro teste no jogo; 0037, sonar do Estalador, mergeada na `staging`; **mini-sprint 0037b, renomeação pra "NOM: Noise of Mist" e mod de staging, pronta na branch `sprint/0037b-noise-of-mist`, sem merge**). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-07. A `staging` tem até a 0038 (névoa preta I) e a 0037b (renomeação), sincronizadas. **As sprints 0039 a 0044 estão prontas numa pilha de branches, sem merge, push nem sync: esperam o Johan** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+
+## Esperando o Johan: pilha 0039–0044 (feita com ele fora, 2026-10-06/07)
+
+O Johan pediu pra seguir o plano até o fim e só avisar depois do code review final. O review automático
+bloqueia merge, push e sync com ele fora, então cada sprint saiu da anterior:
+
+`sprint/0039-nevoa-preta-ii` ← `0040-vermelha-nova` ← `0041-facelift-spike` ← `0042-facelift-monstros`
+← `0043-ticao-ia` ← **`sprint/0044-rosto-censurado`** (a última contém todas).
+
+**Pra aprovar, nesta ordem:**
+1. merge de `sprint/0044-rosto-censurado` na `staging` (fast-forward: a pilha saiu da `staging`) e push;
+2. `scripts/build-mod3.sh` (o mod3 mudou na 0039 e na 0044; ele já rodou uma vez na 0044, só pra
+   provar que compila; o jar fica fora do git e o do jogo não mudou);
+3. `scripts/dev-sync.sh` e reiniciar o jogo;
+4. apagar a worktree velha `../nom-hotfix-tiro` (branch `hotfix/tiro-nevoa`, já na `staging` como 0037c):
+   `git worktree remove --force ../nom-hotfix-tiro`. O que sobrou sem commit lá (`FlowBlastTest.java` e
+   uma linha do `test_mod3_flow.sh`) é rascunho velho do "buraco"; a versão da clareira, mais nova, já
+   está commitada.
+
+**Decisão pendente do Johan:** o teste de IA 3D no Tição ([ADR-020](architecture/adr-020-modelos-3d-por-ia.md),
+proposta). O Hunyuan3D-2 não pode ir pro Workshop; o Stable Fast 3D pode, mas o download pede a conta
+dele no Hugging Face. Nada de IA entrou no repo.
+
+**Decisões tomadas em nome do Johan** (todas fáceis de voltar; o "como voltar" está no README de cada uma):
+
+| Sprint | Decisão |
+|---|---|
+| [0039](sprints/sprint-0039-nevoa-preta-ii/README.md) | Cômodo aceso congela o Tição (até 40 tiles de um jogador); poste preso em 8 tiles, vela fora; brasa parada; a preta vence a vermelha no Outro Mundo; cinza e brasa vão na grama; a luz empurra a névoa preta a 2,5 tiles/s; farol com direção só no mod3 |
+| [0040](sprints/sprint-0040-vermelha-nova/README.md) | Tentáculo fora da grama e parado; cinza no ar só na vermelha; teto de custo do Outro Mundo de 2500 pra 2600 chamadas; luz fria pelo clima ficou de fora |
+| [0041](sprints/sprint-0041-facelift-spike/README.md) | Modelos em Python puro (sem Blender); mesmo item, outro modelo (voltar = 3 linhas por XML); arame grosso de propósito; `.x` sem templates; textura espelhada em v |
+| [0042](sprints/sprint-0042-facelift-monstros/README.md) | Sem-rosto `nohairnobeard`; **Carpideira de `Group02` pra `nohair`** (as mechas são o cabelo); Corredor `nobeard`; casca e mechas rígidas (andam com a cabeça) |
+| [0043](sprints/sprint-0043-ticao-ia/README.md) | A crosta de carvão substitui o véu do Eco no Tição; olho laranja claro; fumaça como fita fixa; teste de IA não rodou |
+| [0044](sprints/sprint-0044-rosto-censurado/README.md) | Quadrado de 9 px iso por escala de tile, mosaico de 3 px, 60% chiado; cabeça em z + 0,52; até 4 quadrados a 20 tiles; sem som |
+
+**Code review final da pilha** (dois revisores, Lua do jogo e mod3/modelos). Nada crítico. Corrigido:
+- **modelos:** tampas das pontas abertas (mechas, boca, nó da venda, fumaça) e lascas do Tição saíam
+  viradas pra dentro; os testes não pegavam. `test_models.py` ganhou o teste de aresta orientada;
+- **Tição:** cômodo aceso congelava zumbis no mundo carregado inteiro (lista grande pros clientes a cada
+  250 ms). Agora só a até 40 tiles de um jogador; poste apagado solta na hora, sem esperar a volta;
+- **mod3:** erro na cópia da cor desligaria a névoa junto (agora só o quadrado); borrado preso no
+  retângulo do jogador; chiado sem perder precisão; um teste Java que não testava o alcance.
+
+Aceito sem mudar: a borda de cor no meio da névoa (só no debug) leva até ~2,5 s pra mandar o param 12
+pro mod3.
+
+**Roteiro no jogo:** o de cada README (0039 a 0044) e os UNKNOWNs 22, 23 e 24 do
+[pz-api-notes](architecture/pz-api-notes.md#testes-in-game-prioritários-unknowns) (os `.x` carregam? as peças
+assentam? o quadrado fica na cabeça?). Se uma peça 3D sumir, o `console.txt` mostra `Model not found`.
 
 ## Estado da `main`
 
@@ -138,9 +186,9 @@ Noite fechada mesmo de dia, todo zumbi vira Tição, a luz congela e a lanterna 
 tomadas na ausência do Johan e roteiro em [sprint-0038-nevoa-preta/README.md](sprints/sprint-0038-nevoa-preta/README.md).
 Pra mudar rápido: `NOM_TicaoRules` (velocidade, caça, visão), `NOM_LightRules` (raios, piscar).
 
-## Em andamento: NOM: Noise of Mist (mini-sprint 0037b)
+## NOM: Noise of Mist (mini-sprint 0037b)
 
-Na branch `sprint/0037b-noise-of-mist`, **sem merge, push nem sync**; `./run-tests.sh` verde. Plano em [sprints/sprint-0037b-noise-of-mist/plan.md](sprints/sprint-0037b-noise-of-mist/plan.md); mapa de IDs, saves antigos e roteiro em [sprints/sprint-0037b-noise-of-mist/README.md](sprints/sprint-0037b-noise-of-mist/README.md).
+Mergeada na `staging` (`b7247df`), com push e sync. Plano em [sprints/sprint-0037b-noise-of-mist/plan.md](sprints/sprint-0037b-noise-of-mist/plan.md); mapa de IDs, saves antigos e roteiro em [sprints/sprint-0037b-noise-of-mist/README.md](sprints/sprint-0037b-noise-of-mist/README.md).
 
 - **IDs oficiais:** `NoiseOfMist`, `NoiseOfMist_Shader`, `NoiseOfMist_Volumetrica` (repo, `build-workshop.sh`, pasta `Workshop/NoiseOfMist/`; o item 3814379207 não muda). Os nomes de espaço no Lua (canal, `ModData`, opções) continuam `NevoaEOutroMundo`.
 - **Jar:** `NoiseOfMist_Volumetrica.jar`, recompilado e assinado (o nome não entra na assinatura ZBS).
@@ -233,6 +281,7 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
    - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
    - **0040** — vermelha nova: tentáculos e cinza no ar;
    - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
+   - 0037 e 0038 estão na `staging`; **0039–0044 feitas na pilha de branches, esperando o Johan** (topo deste arquivo).
 
 **Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o oficial vem do Workshop e o de staging é a cópia local do `dev-sync.sh`, com ID `_Staging`, nome `[STAGING]` e a preview vermelha de pôster (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
 

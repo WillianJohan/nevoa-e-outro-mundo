@@ -78,6 +78,9 @@ cada um encaixado nas medidas da cabeça daquele sexo.
   escritos à mão, com a origem na tabela do [plan.md](plan.md).
 - Risco aceito, como na 0041: se o jogo recusar o `.x`, a peça some e o `console.txt` mostra
   `Model not found`; o resto do monstro segue igual.
+- **Code review final da pilha (0039–0044), achado e corrigido:** as tampas das pontas abertas
+  (mechas, buraco e rasgos da boca) saíam viradas pra dentro: furo na ponta e normal puxada na borda.
+  Corrigido no `sweep`, com teste de aresta orientada novo. A casca do Sem-rosto não mudou.
 
 ## Roteiro de teste no jogo
 

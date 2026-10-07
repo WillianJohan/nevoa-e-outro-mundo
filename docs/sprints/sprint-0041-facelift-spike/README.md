@@ -73,6 +73,9 @@
 - Risco aceito: o jogo pode recusar o `.x`. Nesse caso a peça some, o jogo não quebra e o
   `console.txt` mostra `Model not found`. Todo o resto do Estalador (pele, sonar) segue igual.
 - Sem pendência de código.
+- **Code review final da pilha (0039–0044), achado e corrigido:** as tampas das pontas abertas (o nó
+  atrás) saíam viradas pra dentro. O `sweep` foi corrigido e o `test_models.py` ganhou o teste de
+  aresta orientada, que pega face virada no meio da casca.
 
 ## Roteiro de teste no jogo
 

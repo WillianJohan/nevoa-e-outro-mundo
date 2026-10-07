@@ -58,6 +58,13 @@ Tudo em `mod3/42/media/shaders/NOM_Censura.frag` (constantes no topo) e `mod3/ja
 - **Conferido:** erro na coleta só apaga o quadrado daquele quadro e loga uma vez; a névoa segue (não
   chama o `fail` do RenderContext).
 - **Conferido:** a textura da unidade 5 é salva e devolvida, como a 7 da profundidade.
+- **Code review final (da pilha 0039–0044), achado e corrigido:**
+  - erro na cópia da cor (FBO incompleto) caía no `fail` e desligava a névoa junto; agora
+    `copyScene` captura, desliga só o quadrado e loga;
+  - o borrado podia amostrar fora do retângulo do jogador (tela dividida, cabeça na borda); agora
+    fica preso nele;
+  - o chiado usava `sin` com argumento grande (até 1,6 milhão depois de uma hora) e podia virar
+    faixa em GPU Intel/AMD; agora o tempo entra módulo 256.
 
 ## Roteiro de teste no jogo
 

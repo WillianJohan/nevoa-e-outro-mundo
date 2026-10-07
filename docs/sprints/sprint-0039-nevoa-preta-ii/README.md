@@ -34,8 +34,10 @@
 
 ## Decisões tomadas na ausência do Johan (fáceis de mudar)
 
-- **Cômodo aceso congela quem está dentro dele**, mesmo longe do jogador. É a leitura direta de "lâmpada
-  de casa ligada". Tirar: apagar o bloco do cômodo em `NOM_TicaoLight.check`.
+- **Cômodo aceso congela quem está dentro dele**, mesmo longe da lanterna do jogador. É a leitura direta
+  de "lâmpada de casa ligada". Vale até 40 tiles de um jogador (`FIXED_NEAR`, o mesmo dos postes, a tela
+  inteira): o code review final achou que, sem esse limite, toda casa acesa do mundo carregado entrava
+  na lista mandada aos clientes. Tirar: apagar o bloco do cômodo em `NOM_TicaoLight.check`.
 - **Raio do poste preso em 8 tiles** e vela fora (`NOM_LightRules.FIXED_MAX`, `FIXED_MIN`).
 - **Brasa parada** (sprite, sem animação): "apagando" é o laranja fraco, só em metade das trincas.
 - **A preta vence a vermelha** também no Outro Mundo.
