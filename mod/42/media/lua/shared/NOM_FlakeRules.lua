@@ -4,6 +4,7 @@
 -- (rand() em [0, 1)). Cada lasca guarda o ponto do mundo onde nasceu (x, y, z, em tiles; z em
 -- andares) e anda em pixels de tela no zoom 1 a partir dele (y negativo = pra cima); quem
 -- desenha projeta o ponto e divide o movimento pelo zoom (client/NOM_Flakes.lua).
+-- Na vermelha (sprint 0040) também nasce cinza solta no ar em volta do jogador (R.air).
 require "NOM_Math"
 
 NOM_FlakeRules = {
@@ -28,6 +29,19 @@ NOM_FlakeRules = {
         lasca = "media/textures/NOM/NOM_Lascas.png",
         cinza = "media/textures/NOM/NOM_Cinza.png",
     },
+    -- Cinza no ar (vermelha, sprint 0040): nasce solta a até AIR_RADIUS tiles do jogador, entre
+    -- AIR_Z_MIN e AIR_Z_MAX andares acima do chão, AIR_PER_RATE do ritmo das lascas, até AIR_MAX
+    -- vivas (lugar reservado dentro de MAX enquanto o ar está ligado). Flutua a até AIR_DRIFT
+    -- px/s pra qualquer lado e aparece devagar.
+    AIR_PER_RATE = 0.3,
+    AIR_MAX = 40,
+    AIR_RADIUS = 9,
+    AIR_Z_MIN = 0.15,
+    AIR_Z_MAX = 1.1,
+    AIR_DRIFT = 6,
+    AIR_LIFE_MIN_MS = 5000,
+    AIR_LIFE_MAX_MS = 10000,
+    AIR_FADE_IN_MS = 1500,
 }
 
 local R = NOM_FlakeRules
@@ -147,22 +161,30 @@ function R.at(p, ms)
     local w = 2 * math.pi * p.swayHz * s
     local dx = p.vx * s + p.sway * (math.sin(p.phase + w) - math.sin(p.phase))
     local dy = p.vy * s
-    local a = p.peak * math.min(1, ms / R.FADE_IN_MS) * math.min(1, (p.life - ms) / (p.life * R.FADE_OUT))
+    local a = p.peak * math.min(1, ms / (p.fadeIn or R.FADE_IN_MS)) * math.min(1, (p.life - ms) / (p.life * R.FADE_OUT))
     local f = math.floor(NOM_Math.mod(p.f0 + p.spin * s, R.FRAMES))
     return dx, dy, a, f, p.size
 end
 
--- Tira as que acabaram (na ordem, sem buraco).
+-- Tira as que acabaram (na ordem, sem buraco) e reconta as do ar.
 local function prune(state)
-    local parts, n = state.parts, 0
+    local parts, n, air = state.parts, 0, 0
     for i = 1, #parts do
         local p = parts[i]
         if state.t - p.born < p.life then
             n = n + 1
             parts[n] = p
+            if p.from == "A" then air = air + 1 end
         end
     end
     for i = #parts, n + 1, -1 do parts[i] = nil end
+    state.air = air
+end
+
+-- Lugar das lascas do chão: MAX menos o reservado pro ar enquanto ele está ligado.
+local function room(state)
+    local keep = state.airOn and math.max(0, R.AIR_MAX - (state.air or 0)) or 0
+    return R.MAX - #state.parts - keep
 end
 
 -- Anda dt ms: tira as que acabaram e faz nascer rate por segundo nas fontes src, até o teto
@@ -177,11 +199,50 @@ function R.step(state, dt, rate, src, rand)
     state.debt = state.debt + math.min(rate, R.BIRTHS_PER_S) * math.max(0, dt) / 1000
     local n = math.floor(state.debt)
     state.debt = state.debt - n
-    n = math.min(n, R.MAX - #state.parts)
+    n = math.min(n, room(state))
     for _ = 1, n do
         state.parts[#state.parts + 1] = R.spawn(R.pick(src, rand()), state.t, rand)
     end
     return math.max(0, n)
+end
+
+-- Um ponto de cinza no ar nascendo agora (t) perto de (x, y), no andar z.
+local function airSpawn(x, y, z, t, rand)
+    local ang, r = 2 * math.pi * rand(), R.AIR_RADIUS * math.sqrt(rand())
+    return {
+        type = "cinza", from = "A", born = t, fadeIn = R.AIR_FADE_IN_MS,
+        x = x + r * math.cos(ang), y = y + r * math.sin(ang),
+        z = z + R.AIR_Z_MIN + (R.AIR_Z_MAX - R.AIR_Z_MIN) * rand(),
+        life = R.AIR_LIFE_MIN_MS + (R.AIR_LIFE_MAX_MS - R.AIR_LIFE_MIN_MS) * rand(),
+        vx = R.AIR_DRIFT * (2 * rand() - 1),
+        vy = R.AIR_DRIFT * (2 * rand() - 1) * 0.5,
+        sway = 3 + 5 * rand(),
+        swayHz = 0.1 + 0.2 * rand(),
+        phase = 2 * math.pi * rand(),
+        size = 2 + 3 * rand(),
+        peak = 0.35 + 0.3 * rand(),
+        shape = 0, f0 = 0, spin = 0,
+    }
+end
+
+-- Cinza no ar (vermelha): nascem rate × AIR_PER_RATE por segundo em volta de (x, y, z), até
+-- AIR_MAX vivas e o teto MAX. Chamar depois do step do quadro (não anda o relógio). Com rate 0
+-- o ar desliga e devolve o lugar reservado. Devolve quantas nasceram.
+function R.air(state, rate, x, y, z, dt, rand)
+    if not rate or rate <= 0 then
+        state.airOn, state.airDebt = false, 0
+        return 0
+    end
+    state.airOn = true
+    state.airDebt = (state.airDebt or 0) + rate * R.AIR_PER_RATE * math.max(0, dt) / 1000
+    local n = math.floor(state.airDebt)
+    state.airDebt = state.airDebt - n
+    n = math.max(0, math.min(n, math.min(R.AIR_MAX - (state.air or 0), R.MAX - #state.parts)))
+    for _ = 1, n do
+        state.parts[#state.parts + 1] = airSpawn(x, y, z, state.t, rand)
+    end
+    state.air = (state.air or 0) + n
+    return n
 end
 
 -- Rajada de n numa fonte (o square revelado, Tarefa 2), até o teto. Devolve quantas nasceram.
