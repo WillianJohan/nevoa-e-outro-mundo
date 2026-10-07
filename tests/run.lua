@@ -28,6 +28,7 @@ local FILES = {
     "tests/test_wander_rules.lua",
     "tests/test_wander.lua",
     "tests/test_sonar_rules.lua",
+    "tests/test_sonar.lua",
     "tests/test_carpideira.lua",
     "tests/test_variants_client.lua",
     "tests/test_variants.lua",

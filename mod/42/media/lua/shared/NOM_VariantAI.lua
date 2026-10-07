@@ -13,12 +13,17 @@ require "NOM_VariantRules"
 require "NOM_Config"
 require "NOM_Math"
 
+require "NOM_SonarRules"
+
 NOM_VariantAI = {}
 
-NOM_VariantAI.CLICK_SOUND = "NOM_EstaladorClick" -- media/scripts/NOM_sounds.txt
--- Estalo a cada minuto de jogo com chance 1/CLICK_ODDS: espalha os estalos
--- (todos no mesmo minuto viraria metrônomo).
-local CLICK_ODDS = 2
+-- O estalo do Estalador é decisão do servidor desde a sprint 0037 (é o sonar):
+-- server/NOM_SonarServer.lua sorteia, shared/NOM_Sonar.lua toca no ponto e desenha o anel.
+
+-- Estaladores que o sonar fez achar um jogador: { [zumbi] = até que getTimestampMs }. Nessa
+-- janela (NOM_SonarRules.FOUND_MS) ele não é cegado de novo, nem se o jogador se agachar.
+NOM_VariantAI.found = {}
+local found = NOM_VariantAI.found
 
 -- Janela de cegueira, em updates do zumbi, não em tempo real (~1 s a 60 FPS). Fecha sozinha e abre
 -- de novo no update seguinte se o jogador ainda estiver agachado à vista: useless
@@ -86,6 +91,11 @@ end
 -- spottedNew (191–208): o laço do spot forçado morre ali. A caminhada até a
 -- última posição vista (WalkTowardState) continua, mas sem alvo não há ataque.
 local function estalador(z, md, blind)
+    local f = found[z]
+    if f ~= nil then
+        if getTimestampMs() < f then return end
+        found[z] = nil
+    end
     if blind then
         blind.n = blind.n + 1
         if blind.n < NOM_VariantAI.BLIND_FRAMES and silent(blind.p) then return end
@@ -436,6 +446,7 @@ end
 local function forget(z)
     if blinded[z] then release(z) end
     watched[z] = nil
+    found[z] = nil
     NOM_Carpideira.forget(z)
 end
 
@@ -444,20 +455,30 @@ local function created(z)
     unstick(z)
 end
 
--- Estalo de aviso, tocado em toda cópia local (remota também): cada jogador
--- ouve o que está perto dele, sem rede. playSoundLocal = getEmitter():playSoundImpl
--- (nome, nil), sem pacote; emitter:playSound no cliente de MP manda PacketType.PlaySound
--- (FMODSoundEmitter.playSound 0–104) e cada cliente faria os outros ouvirem de novo.
-local function clicks()
-    if not NOM_FogState.on then return end
-    local list = getCell():getZombieList()
-    for i = 0, list:size() - 1 do
-        local z = list:get(i)
-        -- tabela Lua antes de qualquer chamada no zumbi: o comum não custa nada
-        if NOM_NightStats.variants[z] == "estalador" and z:getModData().NOM_variant == "estalador"
-            and not z:isDead() and ZombRand(CLICK_ODDS) == 0 then
-            z:playSoundLocal(NOM_VariantAI.CLICK_SOUND)
-        end
+-- O anel do sonar passou pelo jogador p em pé ou andando (o servidor decidiu, sprint 0037):
+-- no dono, o Estalador z solta a cegueira e acha p pelo mesmo spot forçado do grito da
+-- Carpideira (spotted(p, true) → spottedNew com chance 1 000 000, 1114–1120; só vale sem
+-- useless, 191–208: solta antes). Por FOUND_MS reais o estalador() não o cega de novo.
+-- Devolve se aplicou (só o dono aplica, pz-api-notes §24).
+function NOM_VariantAI.sonarFound(z, p)
+    if z == nil or p == nil or not z:isLocal() or z:isDead() then return false end
+    if blinded[z] then release(z) end
+    watched[z] = nil
+    found[z] = getTimestampMs() + NOM_SonarRules.FOUND_MS
+    z:spotted(p, true)
+    if getDebug() then print("[NOM] sonar estalador achou o jogador (alvo=" .. tostring(z:getTarget() == p) .. ")") end
+    return true
+end
+
+local function forgetFound()
+    local n = 0
+    for z in pairs(found) do
+        n = n + 1
+        scratch[n] = z
+    end
+    for i = 1, n do
+        found[scratch[i]] = nil
+        scratch[i] = nil
     end
 end
 
@@ -468,13 +489,15 @@ function NOM_VariantAI.install(report)
     Events.OnZombieCreate.Add(created)
     NOM_NightStats.unstick = unstick
     Events.OnZombieDead.Add(forget)
-    Events.EveryOneMinute.Add(clicks)
     Events.OnTick.Add(sweep)
     Events.OnWorldSound.Add(heard)
     NOM_FogState.onChange(function(on)
         afterFogUntil = nil
         -- o carregado soltaria no próximo update; o descarregado não tem update
-        if not on then purge(nil) end
+        if not on then
+            purge(nil)
+            forgetFound()
+        end
         if not on and isClient() and (tonumber(NOM_Config.get("FogZombieVision")) or 0) > 0 then
             afterFogUntil = getTimestampMs() + NOM_VariantAI.AFTER_FOG_MS
         end
