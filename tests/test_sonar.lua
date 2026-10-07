@@ -13,6 +13,10 @@
 -- * Som no ponto: getWorld():getFreeEmitter(x, y, z):playSoundImpl(nome, false, nil),
 --   local, sem pacote (pz-api-notes §22).
 -- * getPlayerByOnlineID(id) no cliente (client/ServerCommands.lua:10).
+-- * Interior: getCurrentSquare() (IsoMovingObject; server/NOM_Night.lua já usa no servidor),
+--   sq:isOutside() = flag "exterior" do square (IsoGridSquare.isOutside 0–10) e
+--   sq:getBuilding() = getRoom() e o prédio da sala, ou nil (IsoGridSquare.getBuilding 0–15).
+--   No fake: o.building (o prédio) ou o.roof (coberto sem prédio) põe dentro.
 -- Toda chamada de método em jogador, zumbi, lista e relógio conta em G.calls.
 require "NOM_VariantRules"
 require "NOM_Config"
@@ -40,9 +44,17 @@ local function setup(opts)
     local function def(o, name, fn)
         o[name] = function(...) G.calls = G.calls + 1; return fn(...) end
     end
+    -- square do objeto o (building ou roof: dentro), lido na hora
+    local function square(o)
+        local sq = {}
+        def(sq, "isOutside", function() return o.building == nil and not o.roof end)
+        def(sq, "getBuilding", function() return o.building end)
+        def(o, "getCurrentSquare", function() return sq end)
+    end
     function G.player(o)
         local p = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, sneaking = o.sneaking == true, dead = false,
-            onlineID = o.onlineID or (#G.players + 1), class = "IsoPlayer" }
+            onlineID = o.onlineID or (#G.players + 1), class = "IsoPlayer", building = o.building, roof = o.roof }
+        square(p)
         def(p, "getX", function(self) return self.x end)
         def(p, "getY", function(self) return self.y end)
         def(p, "getZ", function(self) return self.z end)
@@ -54,7 +66,9 @@ local function setup(opts)
     end
     function G.zombie(o)
         local z = { x = o.x + 0.5, y = o.y + 0.5, z = o.z or 0, id = o.id or 0, onlineID = o.onlineID or -1,
-            remote = o.remote == true, dead = false, md = {}, outfit = o.outfit or "Generic01" }
+            remote = o.remote == true, dead = false, md = {}, outfit = o.outfit or "Generic01",
+            building = o.building, roof = o.roof }
+        square(z)
         if o.eco then z.md.NOM_eco = true end
         def(z, "getX", function(self) return self.x end)
         def(z, "getY", function(self) return self.y end)
@@ -291,6 +305,28 @@ return {
         assert(e.target == p, "agachado andando passou")
     end,
 
+    -- casa protege (decisão do Johan, 2026-10-06): em pé dentro de casa com o Estalador na rua
+    -- (ou o contrário), o anel não acha; na mesma casa, acha; casas diferentes, não
+    sonar_house_shelters = function()
+        local HOUSE, OTHER = { name = "casa" }, { name = "vizinha" }
+        local cases = {
+            { p = HOUSE, z = nil, found = false, why = "jogador dentro, Estalador fora" },
+            { p = nil, z = HOUSE, found = false, why = "jogador fora, Estalador dentro" },
+            { p = HOUSE, z = HOUSE, found = true, why = "os dois na mesma casa" },
+            { p = HOUSE, z = OTHER, found = false, why = "casas diferentes" },
+            { p = nil, z = nil, found = true, why = "os dois na rua" },
+        }
+        for _, c in ipairs(cases) do
+            local G = setup()
+            local e = G.zombie({ x = 100, y = 100, id = EST, building = c.z })
+            local p = G.player({ x = 104, y = 100, building = c.p })
+            assert(G.untilRing(), "não estalou")
+            G.wait(NOM_SonarRules.DURATION_MS + 100)
+            assert((e.target == p) == c.found, c.why .. ": achou=" .. tostring(e.target == p))
+            assert(NOM_SonarServer.sheltered == (c.found and 0 or 1), c.why .. ": contagem")
+        end
+    end,
+
     -- correndo na direção do anel, em qualquer fase do tick, ninguém pula a frente (a posição
     -- do tick anterior conta); e o mesmo anel acha cada jogador uma vez só
     sonar_runner_never_jumps_front = function()
@@ -463,7 +499,8 @@ return {
             worst = math.max(worst, G2.calls - before)
         end
         assert(NOM_SonarServer.found > 0, "o teste de custo não achou ninguém")
-        assert(worst <= 70, "com anéis: pior tick " .. worst)
+        -- casa protege: +3 por cruzamento (getCurrentSquare, isOutside, getBuilding)
+        assert(worst <= 90, "com anéis: pior tick " .. worst)
         local G3 = setup()
         for i = 1, 300 do G3.zombie({ x = 100 + i, y = 100, id = COMMON }) end
         for i = 1, 3 do G3.zombie({ x = 100, y = 100 + i, id = EST }) end

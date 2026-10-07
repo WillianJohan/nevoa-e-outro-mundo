@@ -36,6 +36,19 @@ return {
         assert(#a == 1, "o sweep não usa a posição anterior")
     end,
 
+    -- casa protege (decisão do Johan, 2026-10-06): um dentro e o outro fora, o anel não acha;
+    -- os dois fora, ou os dois na mesma casa, acha. Casas diferentes: não acha. Sem square
+    -- (nil): não sabe, não protege.
+    sonar_sheltered_by_house = function()
+        local A, B = {}, {}
+        assert(R.sheltered(true, A, false, nil), "jogador em casa, Estalador na rua")
+        assert(R.sheltered(false, nil, true, A), "jogador na rua, Estalador em casa")
+        assert(not R.sheltered(false, nil, false, nil), "os dois na rua")
+        assert(not R.sheltered(true, A, true, A), "os dois na mesma casa")
+        assert(R.sheltered(true, A, true, B), "casas diferentes")
+        assert(not R.sheltered(nil, nil, false, nil) and not R.sheltered(true, A, nil, nil), "sem square")
+    end,
+
     -- em pé ou andando: achado; agachado e parado: passa
     sonar_exposed_standing_or_moving = function()
         assert(R.exposed(false, false), "em pé parado")

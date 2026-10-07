@@ -33,7 +33,7 @@ local R = NOM_SonarRules
 
 -- rings: { x, y, z, age, r = raio do tick anterior (nil antes do primeiro), zombie, id }.
 -- next[z] = { at = S.clock do próximo estalo, pid = persistentOutfitID, seen = passada }.
-NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, dropped = 0, clock = 0, next = {} }
+NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, sheltered = 0, dropped = 0, clock = 0, next = {} }
 local S = NOM_SonarServer
 -- samples[p] = { x0, y0 = amostra anterior, x1, y1 = a última, lx, ly = posição do último tick
 -- lido (o anel não é pulado entre ticks) }. ponytail: chave é o objeto do jogador; quem sai
@@ -77,6 +77,18 @@ local function sample(players)
     end
 end
 
+-- Interior de o (jogador ou zumbi), pra casa proteger (NOM_SonarRules.sheltered):
+-- sq:isOutside() lê a flag "exterior" do square (IsoGridSquare.isOutside 0–10; o vanilla
+-- compara o isOutside de dois squares em shared/RadioCom/ISRadioInteractions.lua:185) e
+-- sq:getBuilding() é o prédio da sala, ou nil (IsoGridSquare.getBuilding 0–15; comparado com
+-- ~= em client/ISUI/ISWorldObjectContextMenu.lua:1679). Sem square: nil (não sabe).
+local function where(o)
+    local sq = o:getCurrentSquare()
+    if sq == nil then return nil, nil end
+    if sq:isOutside() then return false, nil end
+    return true, sq:getBuilding()
+end
+
 -- Lotado (MAX_RINGS): sai o anel vivo mais longe de todo jogador, se ele já não alcança
 -- ninguém (além de REACH) e está mais longe que o novo; senão o novo não nasce. Anel anunciado
 -- é sempre simulado até o fim. Devolve se o novo cabe.
@@ -102,7 +114,9 @@ function S.emit(z, x, y, zz, why, players)
         return false
     end
     local id = z and z:getOnlineID() or -1
-    S.rings[#S.rings + 1] = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
+    local ring = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
+    if z then ring.inside, ring.building = where(z) end -- onde o Estalador estalou
+    S.rings[#S.rings + 1] = ring
     S.emitted = S.emitted + 1
     if isServer() then
         -- só a quem está perto: sendServerCommand(jogador, módulo, comando, args)
@@ -123,10 +137,17 @@ end
 local function check(ring, e)
     if ring.hit[e.p] then return end
     ring.hit[e.p] = true
+    local dist = math.floor(math.sqrt((e.x - ring.x) ^ 2 + (e.y - ring.y) ^ 2) * 10 + 0.5) / 10
+    local pIn, pBld = where(e.p)
+    if R.sheltered(pIn, pBld, ring.inside, ring.building) then
+        S.sheltered = S.sheltered + 1
+        debugLog("passou pela casa dist=" .. dist .. " jogador_dentro=" .. tostring(pIn) ..
+            " estalador_dentro=" .. tostring(ring.inside))
+        return
+    end
     local sneaking = e.p:isSneaking()
     local s = samples[e.p]
     local moving = s ~= nil and R.moving(s.x0, s.y0, e.x, e.y)
-    local dist = math.floor(math.sqrt((e.x - ring.x) ^ 2 + (e.y - ring.y) ^ 2) * 10 + 0.5) / 10
     if not R.exposed(sneaking, moving) then
         S.passed = S.passed + 1
         debugLog("passou agachado e parado dist=" .. dist)

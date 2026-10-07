@@ -55,6 +55,15 @@ function R.crossed(d2, r0, r1, p2)
     return d2 > rr or (p2 ~= nil and p2 > rr)
 end
 
+-- Casa protege (decisão do Johan, 2026-10-06): pIn/zIn = jogador/Estalador em interior
+-- (nil: sem square, não sabe), pBld/zBld = o prédio de cada um (nil fora ou coberto sem
+-- prédio). Um dentro e o outro fora, ou em prédios diferentes: o anel não acha.
+function R.sheltered(pIn, pBld, zIn, zBld)
+    if pIn == nil or zIn == nil then return false end
+    if pIn ~= zIn then return true end
+    return pIn and pBld ~= zBld
+end
+
 -- Em pé ou andando: achado. Agachado e parado: o anel passa.
 function R.exposed(sneaking, moving)
     return not sneaking or moving == true
