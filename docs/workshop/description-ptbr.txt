@@ -10,7 +10,7 @@ Horror para o Build 42, inspirado em The Last of Us e Silent Hill. [b]A noite tr
 [/list]
 
 [h2]Névoa[/h2]
-Quase todo dia, numa hora qualquer, sirenes tocam ao longe, de vários lados, e os zumbis param onde estão. A névoa começa a subir e, 30 segundos depois, chega de vez, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma o lugar do ambiente, rádios e TVs chiam sozinhos, a erosão toma chão e paredes, que sangram, as bordas da tela se fecham e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
+Quase todo dia, numa hora qualquer, sirenes tocam ao longe, de vários lados, e os zumbis param onde estão. A névoa começa a subir e, 30 segundos depois, chega de vez, de dia ou de noite, por 3 a 5 horas (a vermelha, 4 a 6): o mundo escurece e perde a cor, um drone grave toma conta, rádios chiam sozinhos, paredes apodrecem e sangram e a imagem vira filme granulado (Opções > Mods: intensidade). Não existe outra névoa: a névoa natural do jogo some. Todo monstro, menos os Ecos, só vive na névoa:
 [list]
 [*][b]Estaladores[/b]: cegos, guiados só por som, estalam de aviso. Agachado e em silêncio, dá pra passar do lado.
 [*][b]Corredores[/b]: correm e, quando te veem, gritam e chamam os zumbis em volta. São eles que começam a horda.
@@ -21,14 +21,14 @@ Quase todo dia, numa hora qualquer, sirenes tocam ao longe, de vários lados, e 
 Noite e névoa juntas: tudo ao mesmo tempo. A pior noite possível, de propósito.
 
 [h2]Sandbox[/h2]
-Página própria, "NOM: Noise of Mist": liga/desliga e números pra cada sistema (frequência e duração da névoa, névoa vermelha, força da noite, chance de cada monstro, Ecos, efeitos de tela). Presets "Leve" e "Pesadelo" no GitHub.
+Página própria, "NOM: Noise of Mist": liga/desliga e números pra cada sistema. Presets "Leve" e "Pesadelo" no GitHub.
 
 [h2]Multiplayer[/h2]
-Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide noite, névoa, variantes e Ecos; som, vinheta e manchas são locais de cada jogador e não vão pra rede nem pro save. No servidor, coloque o mod em Mods e WorkshopItems; os clientes baixam sozinhos.
+Solo e servidor dedicado. O servidor decide noite, névoa, monstros e Ecos; som e efeitos de tela são locais de cada jogador. No servidor, coloque o mod em Mods e WorkshopItems.
 
 [h2]Compatibilidade[/h2]
 [list]
-[*]Build 42.20 ou mais novo (nas anteriores o jogo marca o mod como indisponível).
+[*]Build 42.20 ou mais novo.
 [*]Não adiciona itens, receitas nem muda o mapa. Deve conviver com a maioria dos mods; mods que também mexem na velocidade e nos sentidos dos zumbis à noite vão brigar com ele.
 [*]Tirar o mod de um save em andamento não quebra o save.
 [/list]
@@ -36,9 +36,13 @@ Funciona em solo e em servidor dedicado, com o mesmo código. O servidor decide 
 [h2]Mods opcionais neste item[/h2]
 [list]
 [*][b]Shader[/b]: aberração cromática, grão e distorção na névoa. Não com ShadowZ; reinicie o jogo depois de ligar ou desligar.
-[*][b]Volumétrica[/b] (experimental): névoa em volume de verdade, que contorna casas, árvores e carros, sobe contra as paredes e se abre em volta de quem anda nela. Só visual, só no cliente. Precisa do [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853]ZombieBuddy[/url], instalado como a página dele explica (opção de inicialização); sem ele, fica a névoa normal.
+[*][b]Volumétrica[/b] (experimental): névoa 3D de verdade, que contorna casas, árvores e carros e se abre em volta de quem anda nela. Só visual, só no cliente. Precisa de uma opção de inicialização (abaixo).
 [/list]
-A atmosfera da névoa (som, manchas, tela) segue só o primeiro jogador na tela dividida.
+
+[h2]Névoa volumétrica: a opção de inicialização[/h2]
+[b]Por quê:[/b] ela é [b]Java[/b], e sozinho o jogo só roda Lua. Java carrega pelo [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853]ZombieBuddy[/url], que precisa subir [b]junto com o jogo[/b]. Opções de inicialização da Steam (ZombieBuddy.jar na pasta do jogo, veja a página dele):
+[code]-javaagent:ZombieBuddy.jar=verbosity=2 --[/code]
+Windows: [b]-agentlib:zbNative=verbosity=2 --[/b]. Não tire o "--"; o verbosity=2 grava log detalhado no console.txt pra reportar bug. Sem ela: névoa normal, sem crash. Servidor: ZombieBuddy [b]primeiro[/b] em Mods=.
 
 Código, documentação de design e bugs: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
 Sons e texturas originais, gerados por scripts nossos; arte de lançamento do Johan. Licença MIT.
