@@ -157,10 +157,12 @@ function R.dizzyLevel(t, i)
     return R.dizzy(t) * clamp(i or 1, 0, 1)
 end
 
--- Volumétrica ativa? (mod3 registra NOMRender_isActive). Sprint 0047e: com volume, a
--- vinheta/estática não podem ganhar do mar world-space (rosquinha vermelha).
-R.VOL_VIGNETTE_MUL = 0.25   -- preferência PO; faixa 0–0,3
-R.VOL_STATIC_CAP = 0.05     -- chiado ≤ limiar na névoa com mod3
+-- Volumétrica ativa? (mod3 registra NOMRender_isActive). Sprint 0047f: com volume, a
+-- vinheta só tempera (0047e ×0,25 + sem cor → flat vermelha); sem voltar ao donut ×1,45/1,8.
+R.VOL_VIGNETTE_MUL = 0.48   -- tempero; faixa ~0,4–0,55 (não zero, não pleno)
+R.VOL_COLOR_BOOST_R = 0.12  -- leve vermelho (era 0,45 sem volume)
+R.VOL_COLOR_BOOST_B = 0.22  -- leve preta (era 0,8 sem volume)
+R.VOL_STATIC_CAP = 0.08     -- chiado de presença, não textura da fog
 
 function R.volumeActive()
     return type(NOMRender_isActive) == "function" and NOMRender_isActive() == true
@@ -187,10 +189,12 @@ function R.layers(s, now, i, dz)
             vigBase = vigBase + (look.fallbackPocketVignette - look.fallbackBaseVignette) * slow * slow
         end
     end
-    -- 0047e: com mod3 + névoa, volume manda; sem boost ×1,45/1,8; estática limitada.
+    -- 0047f: com mod3 + névoa, volume manda; vinheta tempera com boost leve (não donut).
     -- Presságio (f=0, fogStatic alto) permanece — ainda não há mar no chão.
     local volFog = R.volumeActive() and f > 0
-    local colorBoost = volFog and 1 or (1 + 0.45 * r + 0.8 * b)
+    local colorBoost = volFog
+        and (1 + R.VOL_COLOR_BOOST_R * r + R.VOL_COLOR_BOOST_B * b)
+        or (1 + 0.45 * r + 0.8 * b)
     local vigMul = volFog and R.VOL_VIGNETTE_MUL or 1
     local fogStatic = clamp((s.fogStatic or 0) * i, 0, 1)
     if volFog and fogStatic > R.VOL_STATIC_CAP then fogStatic = R.VOL_STATIC_CAP end

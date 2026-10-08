@@ -47,15 +47,22 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
   `ROLL_SOFT` 0,20 — estável, mas rasa demais (playtest).
 - **0047d (playtest rasa):** altura 0,68… ainda overlay no miolo + rosquinha vermelha (vinheta).
 - **0047e (design α):** [fog-viva-integrada-design.md](fog-viva-integrada-design.md) —
-  gate ScreenFx com mod3 (vinheta ×0,25, sem ×1,45/1,8; estática ≤0,05);
-  `HAZE` 0,38 × haze 0,50 ≈ **0,19** no chão; `FLOOR_MIN` 0,62 independente de `fd`;
-  fall **2,1**; sigma 1,15; curl/`FLOW_ADV` por `nomFlowVel` + rampa em sólido —
-  **sem** reancorar eixo em `uDrift.zw`. Prioridade: **volume no centro > tela nas bordas**.
+  gate ScreenFx ×0,25 sem boost; `FLOOR_MIN` 0,62 flat + HAZE~0,19 + fall 2,1 +
+  `FLOW_ADV` 0,45. Playtest Johan: **péssimo** (overcorrection — ver 0047f).
+- **0047f (após “péssimo”):** corrige a overcorrection da 0047e:
+  - **Diagnóstico:** vinheta ×0,25 + zero cor → vermelha flat; `FLOOR_MIN` 0,62 liso +
+    fall 2,1 → sopa chapada no peito; curl/`normalize(vel)` por quadro → smear.
+  - ScreenFx tempera de novo (×**0,48** + boost leve 0,12r/0,22b; estática ≤0,08) —
+    sem voltar ao donut ×1,45/1,8.
+  - Mar gelo seco: `FLOOR_MIN` **0,42** **ondulado** (ruído espacial estável); HAZE 0,32 ×
+    haze **0,52** ≈ **0,17**; fall **3,2**; sigma 1,08; amp 0,78; `FLOW_ADV` **0,12**;
+    fiapos no eixo mundo (sem `normalize(vel)`).
+  - Prioridade mantida: **volume no centro > tela nas bordas**; tela só tempera.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest 0047e no jogo (branca **e** vermelha; critérios §4 do design); calibrar vs foto/vídeo.
+- Playtest **0047f** no jogo (branca **e** vermelha; critérios §4 do design); calibrar vs foto/vídeo.
 - B' / B só se A+C-lite+Passo 3 falharem no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)

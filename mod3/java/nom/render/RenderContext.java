@@ -79,9 +79,9 @@ public final class RenderContext {
         luaParams[PARAM_VACUUM] = 1f;
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
-        luaParams[2] = 0.68f;                  // base baixa (0047d/e; miolo vem de HAZE+floorMin)
+        luaParams[2] = 0.68f;                  // base baixa (0047f; miolo = floor orgânico + HAZE)
         luaParams[3] = 1.2f;                   // altura absurda só no bolsão
-        luaParams[PARAM_HAZE] = 0.50f;          // 0047e: HAZE×scale ≈ 0,19 (0,38×0,50)
+        luaParams[PARAM_HAZE] = 0.52f;          // 0047f: HAZE×scale ≈ 0,17 (0,32×0,52)
         luaParams[PARAM_CENSOR] = 1f;
         luaParams[PARAM_POCKET_COV] = 0.1f;     // ~10% cobertura (raro)
         luaParams[PARAM_POCKET_BOOST] = 1.2f;

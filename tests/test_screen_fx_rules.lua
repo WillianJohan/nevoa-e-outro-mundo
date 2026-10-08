@@ -291,8 +291,8 @@ return {
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 
-    -- 0047e: com Volumétrica (NOMRender_isActive), vinheta fraca e sem boost vermelha/preta;
-    -- estática ≤ 0,05 na névoa (presságio fora da névoa continua forte).
+    -- 0047f: com Volumétrica, vinheta tempera (não some) mas sem donut ×1,45/1,8;
+    -- estática ≤ 0,08 na névoa (presságio fora da névoa continua forte).
     screenfx_rules_volume_gates_vignette_and_static = function()
         local prev = NOMRender_isActive
         NOMRender_isActive = function() return true end
@@ -304,14 +304,18 @@ return {
             return s
         end
         local black = R.layers(blackened(), 0, 1)
-        assert(white.vignette <= 0.12, "vinheta com volume ainda alta: " .. white.vignette)
-        assert(math.abs(red.vignette - white.vignette) < 0.02,
-            "vermelha não pode ×1,45 com volume: w=" .. white.vignette .. " r=" .. red.vignette)
-        assert(math.abs(black.vignette - white.vignette) < 0.02,
-            "preta não pode ×1,8 com volume: w=" .. white.vignette .. " b=" .. black.vignette)
+        -- tempero: maior que o ×0,25 da 0047e (flat), bem abaixo do boost pleno
+        assert(white.vignette > 0.12 and white.vignette <= 0.28,
+            "vinheta com volume fora do tempero 0047f: " .. white.vignette)
+        assert(red.vignette > white.vignette, "vermelha sem tempero de cor com volume")
+        assert(red.vignette < white.vignette * 1.25,
+            "vermelha ainda donut com volume: w=" .. white.vignette .. " r=" .. red.vignette)
+        assert(black.vignette > white.vignette, "preta sem tempero com volume")
+        assert(black.vignette < white.vignette * 1.35,
+            "preta ainda donut com volume: w=" .. white.vignette .. " b=" .. black.vignette)
         local mist = fogged(false)
         mist.fogStatic = R.STATIC_SUBTLE
-        assert(R.layers(mist, 0, 1).fogStatic <= 0.05 + 1e-6, "estática na névoa com volume")
+        assert(R.layers(mist, 0, 1).fogStatic <= 0.08 + 1e-6, "estática na névoa com volume")
         -- presságio (sem névoa ainda): chiado alto permanece
         local pre = R.new()
         R.stepStatic(pre, { omenAt = 0, kind = "red" }, NOM_FogEventRules.PRESAGE_MS)
