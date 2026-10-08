@@ -1,6 +1,5 @@
 [img]https://raw.githubusercontent.com/WillianJohan/nevoa-e-outro-mundo/main/docs/art/NOM_Banner.png[/img]
 [h1]NOM: Noise of Mist[/h1]
-Formerly "Névoa e Outro Mundo".
 Horror for Build 42, inspired by The Last of Us and Silent Hill. [b]The night brings infected flesh. The fog brings the Otherworld.[/b]
 
 [h2]Night[/h2]
@@ -12,7 +11,7 @@ Horror for Build 42, inspired by The Last of Us and Silent Hill. [b]The night br
 [/list]
 
 [h2]Fog[/h2]
-Almost every day, at any hour, distant sirens wail from every side and the zombies stop where they stand. The fog starts rising and, 30 seconds later, rolls in for real, by day or by night, for 3 to 5 hours (the red one, 4 to 6): the world darkens and loses color, a low drone replaces the ambience, radios and TVs hiss on their own, decay takes floors and walls, the walls bleed, the screen edges close in and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
+Almost every day, at any hour, distant sirens wail from every side and the zombies stop where they stand. The fog starts rising and, 30 seconds later, rolls in for real, by day or by night, for 3 to 5 hours (the red one, 4 to 6): the world darkens and loses color, a low drone takes over, radios hiss on their own, walls rot and bleed and the picture turns to grainy film (Options > Mods: intensity). There is no other fog: the game's natural fog is gone. Every monster except the Echoes lives only in the fog:
 [list]
 [*][b]Clickers[/b]: blind, guided only by sound, clicking as a warning. Crouch, stay quiet and walk right past.
 [*][b]Runners[/b]: sprinters that scream when they spot you and call the zombies around. They start the horde.
@@ -23,24 +22,28 @@ Sometimes the sirens sound lower and torn: that is the [b]red fog[/b]. Fog and l
 Night and fog together: everything at once. The worst night possible, on purpose.
 
 [h2]Sandbox[/h2]
-Own page, "NOM: Noise of Mist": a toggle and numbers for every system (fog frequency and length, red fog, night strength, chance of each monster, Echoes, screen effects). "Light" and "Nightmare" presets on GitHub.
+Own page, "NOM: Noise of Mist": a toggle and numbers for every system. "Light" and "Nightmare" presets on GitHub.
 
 [h2]Multiplayer[/h2]
-Works in solo and on dedicated servers, same code. The server decides night, fog, variants and Echoes; sound, vignette and ground stains are local to each player and never touch the save or the network. On a server, add it to Mods and WorkshopItems; clients download it automatically.
+Solo and dedicated servers. The server decides night, fog, monsters and Echoes; sound and screen effects stay local to each player. On a server, add it to Mods and WorkshopItems.
 
 [h2]Compatibility[/h2]
 [list]
-[*]Build 42.20 or newer (older builds mark it as unavailable).
-[*]Adds no items, recipes or map changes. Should play along with most mods; mods that also rewrite zombie speed and senses at night will fight over them.
+[*]Build 42.20 or newer.
+[*]Adds no items, recipes or map changes. Mods that also rewrite zombie speed and senses at night will fight with it.
 [*]Removing it from a running save does not break the save.
 [/list]
 
 [h2]Optional mods in this item[/h2]
 [list]
 [*][b]Shader[/b]: chromatic aberration, grain and distortion in the fog. Not with ShadowZ; restart the game after turning it on or off.
-[*][b]Volumetric[/b] (experimental): truly volumetric fog that flows around houses, trees and cars, rises against walls and parts around whoever walks through it. Visual only, client only. Needs [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853]ZombieBuddy[/url], set up as its page explains (a launch option); without it you get the regular fog.
+[*][b]Volumetric[/b] (experimental): real 3D fog that flows around houses, trees and cars and parts around whoever walks through it. Visual only, client only. Needs a launch option (below).
 [/list]
-Fog atmosphere (sound, stains, screen) follows only the first player in split screen.
+
+[h2]Volumetric fog: the launch option[/h2]
+[b]Why:[/b] it is [b]Java[/b], and the game alone only runs Lua. Java loads through [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853]ZombieBuddy[/url], which must start [b]with the game[/b]. Steam launch options (ZombieBuddy.jar in the game folder, see its page):
+[code]-javaagent:ZombieBuddy.jar=verbosity=2 --[/code]
+Windows: [b]-agentlib:zbNative=verbosity=2 --[/b]. Keep the "--"; verbosity=2 logs details to console.txt for bug reports. Without it: regular fog, no crash. Servers: ZombieBuddy [b]first[/b] in Mods=.
 
 Source, design docs and bug reports: [url=https://github.com/WillianJohan/nevoa-e-outro-mundo]github.com/WillianJohan/nevoa-e-outro-mundo[/url]
 Sounds and textures are original, made by our own scripts; launch art by Johan. MIT license.
