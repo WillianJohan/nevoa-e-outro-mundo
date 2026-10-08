@@ -82,9 +82,11 @@ float density(vec3 w, float ground, float top, out float wisp) {
 
 // ---------- visual novo: rolos com silhueta e sombra própria ----------
 const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
-const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
+const float ROLL_SOFT = 0.14;                 // andares: borda do topo (0047b: mais afiada = fiapos, menos bolha)
 const float HAZE = 0.18;                      // véu de fundo: ~40% de cobertura no chão com a névoa cheia
 const float PILE = 0.5;                       // quanto o rolo sobe onde o ar para contra a parede
+const float ROLL_STRETCH = 2.2;               // anisotropia ao longo do vento: fitas, não esferas
+const float ROLL_WARP = 1.8;                  // dobra o domínio (curvas/fiapos; playtest 0047)
 
 // Ar mais lento que o vento livre (freando contra a parede) empurra a névoa pra cima; o que acelera
 // na quina, pra baixo (pressão pela velocidade, Bernoulli). Fração de altura a somar no rolo.
@@ -105,15 +107,27 @@ float pileUp(vec2 xy, vec2 vel) {
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
 // Em cima do carro, a névoa que passa por cima (a densidade de lá) começa no teto dele (sprint 0032).
 // `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
+// 0047b (playtest Johan): menos “algodão redondo” — ruído anisotrópico no vento + ridge + warp
+// (curvas/fiapos tipo gelo seco); mantém o mar baixo (layerEff / C-lite).
 float rollTop(vec2 xy, float layer, out vec2 q) {
     float fd = nomFlowDensity(xy);
     vec2 vel = nomFlowVel(xy, uDrift.zw);
     q = driftXY(xy, vel);
-    vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
-    float n = fbm2(vec3(r, morphZ(r, 0.0)));
-    float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
+    // eixo longo = vento (ou deriva); transversal comprimida → fitas curvas, não bolhas
+    float w2 = dot(uDrift.zw, uDrift.zw);
+    vec2 along = w2 > 0.04 ? uDrift.zw * inversesqrt(w2) : vec2(1.0, 0.0);
+    vec2 across = vec2(-along.y, along.x);
+    vec2 local = vec2(dot(q, along), dot(q, across));
+    vec2 r = vec2(local.x * 0.16, local.y * 0.16 * ROLL_STRETCH); // ~6 tiles no vento, ~2,8 de lado
+    float wz = morphZ(r, 0.0);
+    vec2 warp = vec2(noise(vec3(r * 0.5, wz + 2.1)), noise(vec3(r * 0.5 + 19.3, wz + 5.7))) - 0.5;
+    r += warp * ROLL_WARP;
+    float n = fbm2(vec3(r, wz));
+    float ridge = 1.0 - abs(2.0 * n - 1.0);                       // dobras / cristas, não cúmulo
+    ridge *= ridge;
+    float shape = smoothstep(0.12, 0.88, mix(n, ridge, 0.58));    // sem pow^2 de “bola”
     float onCar = NOM_FLOW_LOW_H * gLow * smoothstep(0.0, 0.2, fd);
-    return onCar + layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
+    return onCar + layer * min(fd, 1.5) * (0.28 + 0.72 * shape) * (1.0 + pileUp(xy, vel));
 }
 
 // Bolsão no shader: mesmo espírito do FogPockets (offset+morph+limiar), ruído float do
@@ -151,9 +165,14 @@ float densityLook(vec3 w, float ground, float layer, out float shade) {
     float layerEff = mix(baseLayer(), pocketLayer() * max(uPocket.w, 1.0), pk);
     vec2 q, qs;
     float top = rollTop(w.xy, layerEff, q);
-    vec2 f = q * 0.9;                                                         // fiapos de ~1 tile
+    // fiapos alongados no vento (0047b): quebram a silhueta circular das bordas
+    float w2f = dot(uDrift.zw, uDrift.zw);
+    vec2 alongF = w2f > 0.04 ? uDrift.zw * inversesqrt(w2f) : vec2(1.0, 0.0);
+    vec2 acrossF = vec2(-alongF.y, alongF.x);
+    vec2 fLoc = vec2(dot(q, alongF), dot(q, acrossF));
+    vec2 f = vec2(fLoc.x * 0.55, fLoc.y * 1.4);                               // tendril fino transversal
     float fiapo = noise(vec3(f, morphZ(f, w.z * LEVEL_TILES * 0.9) * 1.7)) - 0.5;
-    float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
+    float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.55 * fiapo);
     // C-lite: base = queda rápida com a altura (mar no piso); bolsão = perfil antigo
     float fall = mix(8.0, 1.0, pk);
     d *= 1.15 - 0.45 * clamp(hz / max(layerEff, 0.01), 0.0, 1.0);

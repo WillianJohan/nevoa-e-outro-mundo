@@ -175,6 +175,10 @@ assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileU
 assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;", volfog) \
     or re.search(r"float top = ground \+ layer \* 1\.6;", volfog), \
     "mod3: o volume não tem altura pro empilhamento"
+# 0047b playtest: shape orgânico (fitas/ridge), não cúmulo redondo (pow^2 + escala iso)
+assert "ROLL_STRETCH" in volfog and "ridge" in roll, "mod3: rollTop sem tempero anisotrópico/ridge (0047b)"
+assert not re.search(r"1\.0\s*-\s*pow\s*\(\s*1\.0\s*-\s*smoothstep", roll), \
+    "mod3: voltou o puff redondo (algodão) no rollTop"
 
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 # Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a
