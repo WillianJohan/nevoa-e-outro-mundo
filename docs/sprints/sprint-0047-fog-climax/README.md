@@ -38,17 +38,21 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 ## O que já entrou (código)
 
 - `NOM_FogClimaxRules` + sandbox `FogBaseHeight` / `FogPocketAggression` (2 eixos).
-- `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura 0,45 / véu 0,2.
+- `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura **0,68** / véu **0,32**
+  (0047d; 0,45/0,2 viraram overlay no piso).
 - Shader: `layerAt` + C-lite (corta peito na base; sobe no bolsão).
 - Sync Lua → params 2/3/7/14/15; fallback vinheta sem mod3; `NOM.fogLook()` + botão no painel.
 - **Tempero 0047b:** aniso no vento do quadro + ridge → flicker e “bolinhas” no piso (rejeitado).
 - **0047c (hotfix):** eixo mundo fixo, warp espacial sem tempo, fbm suave (sem ridge), amp baixa,
-  `ROLL_SOFT` 0,20 — estável primeiro; leve alongamento sem discos.
+  `ROLL_SOFT` 0,20 — estável, mas rasa demais (playtest).
+- **0047d (playtest rasa):** altura 0,68 / haze 0,32 / `HAZE` 0,28 / amp `0,72+0,55` / `PILE` 0,85 /
+  C-lite fall 2,6 / redemoinhos espaciais (`SWIRL_*`, rotação local estável + advecção 0,005) —
+  **sem** reancorar eixo em `uDrift.zw`.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest no jogo (critérios abaixo); calibrar números vs foto/vídeo.
+- Playtest 0047d no jogo (critérios abaixo); calibrar vs foto/vídeo.
 - B' / B só se A+C-lite falharem no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)

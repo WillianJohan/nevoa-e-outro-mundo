@@ -159,11 +159,14 @@ assert re.search(r"@Patch\.OnExit[\s\S]*RenderContext\.afterVanillaFogUpdate\(",
 assert re.search(r"PARAM_VANILLA_FOG = 8;", java) and not re.search(r"luaParams\[PARAM_VANILLA_FOG\] = 1f", java), \
     "mod3: PARAM_VANILLA_FOG (8) ausente ou com a vanilla ligada por padrão"
 jh = re.search(r"PARAM_HAZE = (\d+);", java)
-# sprint 0047: véu fraco na base (0,2); antes era 1 (sopa no ar)
-assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.2f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,2 (clímax fog)"
+# sprint 0047d: véu com presença (0,32); 0,2 ficou overlay; 1 = sopa no ar
+assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.32f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,32 (clímax fog)"
+assert re.search(r"luaParams\[2\] = 0\.68f", java), "mod3: altura da base padrão 0,68 (0047d)"
 assert '"uPocket"' in java and "uPocket" in header, "mod3: falta uniform uPocket dos bolsões"
 assert '"uPocketShape"' in java and "uPocketShape" in header, "mod3: falta uniform uPocketShape"
 assert "pocketSample" in volfog and "layerAt" in volfog, "mod3: NOM_VolFog sem base/bolsão (0047)"
+assert re.search(r"return uParams\[0\]\.z > 0\.0 \? uParams\[0\]\.z : 0\.68;", volfog), \
+    "mod3: baseLayer fallback 0,68 (0047d)"
 hi = int(jh.group(1))
 assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
 assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 torchLight")[0], \
@@ -175,17 +178,20 @@ assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileU
 assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;", volfog) \
     or re.search(r"float top = ground \+ layer \* 1\.6;", volfog), \
     "mod3: o volume não tem altura pro empilhamento"
-# 0047c: tempero estável — eixo mundo fixo (não vento do quadro), sem ridge, sem puff pow^2
+# 0047d: estável (eixo mundo, sem ridge) + volume + redemoinhos espaciais (não vento do quadro)
 roll_fn = volfog.split("float rollTop")[1].split("float pocketSample")[0]
 assert "ROLL_STRETCH" in volfog, "mod3: rollTop sem anisotropia"
+assert "SWIRL_AMP" in volfog and "SWIRL_ADV" in volfog, "mod3: falta redemoinho espacial (0047d)"
 assert not re.search(r"\bridge\b\s*=", roll_fn), "mod3: ridge de volta no rollTop (bolhas/flicker no piso)"
 assert "0.857" in roll_fn, "mod3: falta eixo mundo estável no rollTop"
 assert not re.search(r"uDrift\.zw\s*\*\s*inversesqrt", roll_fn), \
     "mod3: eixo do rollTop não pode seguir o vento do quadro (flicker)"
 assert not re.search(r"1\.0\s*-\s*pow\s*\(\s*1\.0\s*-\s*smoothstep", roll_fn), \
     "mod3: voltou o puff redondo (algodão) no rollTop"
-assert re.search(r"0\.55\s*\+\s*0\.45", roll_fn), \
-    "mod3: amplitude do shape alta demais (ilhas no piso)"
+assert re.search(r"0\.72\s*\+\s*0\.55", roll_fn), \
+    "mod3: amplitude do shape (0047d volume; não overlay 0,55+0,45 nem ilhas 0,28+0,72)"
+assert re.search(r"const float PILE = 0\.85;", volfog), "mod3: PILE baixo demais pra abraçar obstáculo"
+assert re.search(r"const float HAZE = 0\.28;", volfog), "mod3: HAZE shader baixo demais (overlay)"
 
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 # Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a

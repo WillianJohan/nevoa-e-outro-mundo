@@ -10,7 +10,7 @@ R.PARAM_HAZE = 7
 
 R.BASE_HEIGHT_MIN = 0.2
 R.BASE_HEIGHT_MAX = 1.2
-R.BASE_HEIGHT_DEFAULT = 0.45
+R.BASE_HEIGHT_DEFAULT = 0.68   -- 0047d: 0,45 ficou overlay no piso (playtest); ainda baixo vs 1,2
 R.POCKET_HEIGHT = 1.2
 R.POCKET_AGGRESSION_DEFAULT = 1
 
@@ -24,7 +24,7 @@ end
 function R.look(baseHeight, pocketAggression)
     local h = clamp(tonumber(baseHeight) or R.BASE_HEIGHT_DEFAULT, R.BASE_HEIGHT_MIN, R.BASE_HEIGHT_MAX)
     local a = clamp(tonumber(pocketAggression) or R.POCKET_AGGRESSION_DEFAULT, 0, 2)
-    local haze = clamp(0.12 + 0.2 * ((h - R.BASE_HEIGHT_MIN) / (R.BASE_HEIGHT_MAX - R.BASE_HEIGHT_MIN)), 0.1, 0.45)
+    local haze = clamp(0.22 + 0.22 * ((h - R.BASE_HEIGHT_MIN) / (R.BASE_HEIGHT_MAX - R.BASE_HEIGHT_MIN)), 0.18, 0.5)
     local coverage, boost, scale, speed
     if a <= 0 then
         coverage, boost, scale, speed = 0, 0, 50, 1
