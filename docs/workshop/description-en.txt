@@ -30,7 +30,7 @@ Solo and dedicated servers. The server decides night, fog, monsters and Echoes; 
 [h2]Compatibility[/h2]
 [list]
 [*]Build 42.20 or newer.
-[*]Adds no items, recipes or map changes. Should play along with most mods; mods that also rewrite zombie speed and senses at night will fight over them.
+[*]Adds no items, recipes or map changes. Mods that also rewrite zombie speed and senses at night will fight with it.
 [*]Removing it from a running save does not break the save.
 [/list]
 

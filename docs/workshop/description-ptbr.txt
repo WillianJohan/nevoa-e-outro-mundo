@@ -29,7 +29,7 @@ Solo e servidor dedicado. O servidor decide noite, névoa, monstros e Ecos; som 
 [h2]Compatibilidade[/h2]
 [list]
 [*]Build 42.20 ou mais novo.
-[*]Não adiciona itens, receitas nem muda o mapa. Deve conviver com a maioria dos mods; mods que também mexem na velocidade e nos sentidos dos zumbis à noite vão brigar com ele.
+[*]Não adiciona itens, receitas nem muda o mapa. Mods que também mexem na velocidade e nos sentidos dos zumbis à noite vão brigar com ele.
 [*]Tirar o mod de um save em andamento não quebra o save.
 [/list]
 
