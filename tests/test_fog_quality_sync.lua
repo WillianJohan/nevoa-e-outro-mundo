@@ -50,7 +50,9 @@ return {
         assert(sent(calls, 6) == 1, "não mandou a qualidade no início")
         assert(sent(calls, 9) == 3, "não mandou a resolução no início")
         assert(sent(calls, 2) and sent(calls, 2) < 0.7, "altura da base: " .. tostring(sent(calls, 2)))
-        assert(sent(calls, 7) and sent(calls, 7) < 0.5, "véu da base: " .. tostring(sent(calls, 7)))
+        -- 0047f: baseHaze ~0,52 (era <0,5 na 0047e)
+        assert(sent(calls, 7) and sent(calls, 7) > 0.45 and sent(calls, 7) < 0.58,
+            "véu da base: " .. tostring(sent(calls, 7)))
         assert(sent(calls, 14) and sent(calls, 14) > 0, "cobertura dos bolsões")
         assert(sent(calls, 15) and sent(calls, 15) > 0, "boost dos bolsões")
     end,
