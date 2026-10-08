@@ -41,6 +41,8 @@ import zombie.vehicles.BaseVehicle;
  * Névoa preta (sprint 0039, NOMRender_setParam(12, 1)): a luz empurra a névoa (LightWind) a cada passo,
  * as lanternas e faróis do RenderContext.collectTorches e os postes acesos perto. Erro aí desliga só o
  * empurrão.
+ * Bolsões (sprint 0047): FogPockets viaja com o vento; uniforms uPocket* pro shader subir a
+ * altura só neles. Cobertura/boost vêm de NOMRender_setParam(14/15).
  */
 final class Flow {
     static final int TILES = 128;
@@ -149,6 +151,12 @@ final class Flow {
     // thread da simulação
     private static FlowGrid grid;
     private static FogBanks banks;
+    private static FogPockets pockets;
+    private static float pocketCovWant = -1f, pocketBoostWant = 1f;
+    // publicado pra render: estado dos bolsões (mesmo instante da textura)
+    private static volatile double pubPocketOffX, pubPocketOffY;
+    private static volatile float pubPocketMorph, pubPocketScale = 55f, pubPocketThresh = 2f,
+            pubPocketSoft = 0.08f, pubPocketBoost, pubPocketSeed;
     private static volatile long statSteps, statStepNanos;
     private static volatile String simInfo = "sem grade";
 
@@ -583,13 +591,29 @@ final class Flow {
     }
 
     /** Aplica a entrada na ordem em que a thread principal leu: grade nova, rolagem, máscara, passos. */
+    private static void ensurePockets() {
+        float cov = RenderContext.luaParams[RenderContext.PARAM_POCKET_COV];
+        float boost = RenderContext.luaParams[RenderContext.PARAM_POCKET_BOOST];
+        if (cov < 0f) cov = 0f;
+        if (cov > 0.5f) cov = 0.5f;
+        if (boost < 0f) boost = 0f;
+        if (pockets == null || cov != pocketCovWant) {
+            int seed = banks != null ? banks.hashCode() ^ 0xA5A5 : (int) System.nanoTime();
+            pockets = new FogPockets(seed, cov, 55f);
+            pocketCovWant = cov;
+        }
+        pocketBoostWant = boost;
+    }
+
     private static void apply(Input in) {
         if (in.reset) {
             if (banks == null) banks = new FogBanks((int) System.nanoTime(), 0.7f, 22f);
             if (grid == null || grid.scale != in.resetScale) grid = newGrid(in.resetScale, banks);
             grid.reset(in.rx0, in.ry0);
+            pocketCovWant = -1f; // recria bolsões com o seed novo
         }
         if (grid == null) return;
+        ensurePockets();
         if (in.scroll) grid.scroll(in.sx0, in.sy0);
         grid.stillDecay = in.stillDecay;
         for (int k = 0; k < in.maskCount; k += 3) {
@@ -617,6 +641,10 @@ final class Flow {
             for (int k = 0, o = s * Sonar.MAX_RINGS * 4; k < in.sonarCount[s]; k++, o += 4)
                 grid.sonar(in.sonars[o], in.sonars[o + 1], in.sonars[o + 2], in.sonars[o + 3]);
             grid.step(STEP);
+            if (pockets != null) {
+                float mul = 0.85f + 0.25f * Math.min(pocketBoostWant, 2f);
+                pockets.advance(grid.windX * mul, grid.windY * mul, STEP);
+            }
             statStepNanos += System.nanoTime() - s0;
             statSteps++;
         }
@@ -631,6 +659,19 @@ final class Flow {
             pubX0 = grid.x0;
             pubY0 = grid.y0;
             pubN = grid.n;
+            if (pockets != null) {
+                pubPocketOffX = pockets.offsetX();
+                pubPocketOffY = pockets.offsetY();
+                pubPocketMorph = pockets.morph();
+                pubPocketScale = pockets.scale;
+                pubPocketThresh = pockets.threshold();
+                pubPocketSoft = pockets.soft();
+                pubPocketBoost = pocketBoostWant;
+                pubPocketSeed = pockets.seed();
+            } else {
+                pubPocketBoost = 0f;
+                pubPocketThresh = 2f;
+            }
             pubVersion++;
         }
         pubOn = true;
@@ -705,5 +746,10 @@ final class Flow {
         glUniform4f(glGetUniformLocation(prog, "uFlow"), sentX, sentY, TILES, sentOn);
         glUniform4f(glGetUniformLocation(prog, "uDrift"), (float) (originX - driftX), (float) (originY - driftY),
                 driftWX, driftWY);
+        // bolsões (sprint 0047): offset em mundo absoluto; o shader soma uOrigin ao P relativo
+        glUniform4f(glGetUniformLocation(prog, "uPocket"),
+                (float) pubPocketOffX, (float) pubPocketOffY, pubPocketMorph, pubPocketBoost);
+        glUniform4f(glGetUniformLocation(prog, "uPocketShape"),
+                pubPocketScale, pubPocketThresh, pubPocketSoft, pubPocketSeed);
     }
 }

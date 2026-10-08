@@ -6,6 +6,7 @@ require "NOM_AtmosphereRules"
 require "NOM_Math"
 require "NOM_Rules"
 require "NOM_FogEventRules"
+require "NOM_FogClimaxRules"
 
 NOM_ScreenFxRules = {
     FADE_MS = 4000,        -- tempo real do nada à névoa cheia na tela (e de volta)
@@ -166,9 +167,20 @@ function R.layers(s, now, i, dz)
     local f, r, b = s.fog, s.red, s.black or 0
     local sr, sg, sb = R.staticColor(s.staticKind)
     local pulse = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, R.DIZZY_PULSE_MS) / R.DIZZY_PULSE_MS)
+    -- fallback sem mod3 (sprint 0047): vinheta da base mais fraca; com bolsões ligados, pulso
+    -- raro mais forte (não dá pra amostrar o campo espacial sem o volume)
+    local vigBase = 0.42
+    if f > 0 and NOM_FogClimaxRules then
+        local look = NOM_FogClimaxRules.fromConfig()
+        vigBase = look.fallbackBaseVignette
+        if look.pocketCoverage > 0 then
+            local slow = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, 90000) / 90000)
+            vigBase = vigBase + (look.fallbackPocketVignette - look.fallbackBaseVignette) * slow * slow
+        end
+    end
     return {
         grain = clamp(f * (0.09 + 0.05 * r + 0.04 * b) * i, 0, 1),
-        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
         vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),

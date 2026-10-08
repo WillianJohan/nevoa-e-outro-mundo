@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em andamento` |
+| Status | `em andamento` — produto A + C-lite no shader; falta playtest do Johan |
 | Branch | `sprint/0047-fog-climax` (saiu da `staging`) |
 | Go | Johan, 2026-10-08 |
 | Design | [proximos-passos-refinamento.md](../../proximos-passos-refinamento.md) §3.4 |
@@ -34,6 +34,19 @@ base.
 
 Sons II, Estalador clicker, Carpideira Witch/look, transform 100%, almas esqueléticas, aperto da
 preta, partículas “descamando”, rastejante. Documentados no refinamento como after-P0.
+
+## O que já entrou (código)
+
+- `NOM_FogClimaxRules` + sandbox `FogBaseHeight` / `FogPocketAggression` (2 eixos).
+- `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura 0,45 / véu 0,2.
+- Shader: `layerAt` + C-lite (corta peito na base; sobe no bolsão).
+- Sync Lua → params 2/3/7/14/15; fallback vinheta sem mod3; `NOM.fogLook()` + botão no painel.
+- `./run-tests.sh` verde.
+
+## Ainda falta
+
+- Playtest no jogo (critérios abaixo); calibrar números vs foto/vídeo.
+- B' / B só se A+C-lite falharem no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)
 

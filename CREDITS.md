@@ -91,6 +91,7 @@ nada de outro mod.
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
 | `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`) |
 | `docs/workshop/preview.png` | 512×512 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
+| `docs/workshop/release-v1.0.0.md` | texto | notas de release da v1.0.0 (Workshop / GitHub); não é asset |
 | `mod2/42/poster.png`, `mod3/42/poster.png` | 512×512 | painel dos mods opcionais (shader e volumétrica): o pôster com as cores separadas |
 | `mod2/42/icon.png`, `mod3/42/icon.png` | 64×64 | ícone dos mods opcionais: o ícone com as cores separadas |
 | `docs/art/staging/poster.png` | 512×512 | pôster do mod de staging (a preview vermelha), aplicado só na cópia do `scripts/dev-sync.sh` |

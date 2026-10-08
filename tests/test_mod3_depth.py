@@ -159,7 +159,11 @@ assert re.search(r"@Patch\.OnExit[\s\S]*RenderContext\.afterVanillaFogUpdate\(",
 assert re.search(r"PARAM_VANILLA_FOG = 8;", java) and not re.search(r"luaParams\[PARAM_VANILLA_FOG\] = 1f", java), \
     "mod3: PARAM_VANILLA_FOG (8) ausente ou com a vanilla ligada por padrão"
 jh = re.search(r"PARAM_HAZE = (\d+);", java)
-assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 1f", java), "mod3: PARAM_HAZE ausente ou sem padrão 1"
+# sprint 0047: véu fraco na base (0,2); antes era 1 (sopa no ar)
+assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.2f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,2 (clímax fog)"
+assert '"uPocket"' in java and "uPocket" in header, "mod3: falta uniform uPocket dos bolsões"
+assert '"uPocketShape"' in java and "uPocketShape" in header, "mod3: falta uniform uPocketShape"
+assert "pocketSample" in volfog and "layerAt" in volfog, "mod3: NOM_VolFog sem base/bolsão (0047)"
 hi = int(jh.group(1))
 assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
 assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 torchLight")[0], \
@@ -168,7 +172,10 @@ assert "NOM_FLOW_INDOOR" in volfog.split("float densityLook")[1].split("vec3 tor
 # altura pra isso; a simulação liga o reforço de redemoinho.
 roll = volfog.split("float rollTop")[1].split("float densityLook")[0]
 assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileUp)"
-assert re.search(r"float top = ground \+ layer \* 1\.6;", volfog), "mod3: o volume não tem altura pro empilhamento"
+assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;", volfog) \
+    or re.search(r"float top = ground \+ layer \* 1\.6;", volfog), \
+    "mod3: o volume não tem altura pro empilhamento"
+
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 # Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a
 # célula pela escala da textura; a simulação roda numa thread própria e a grade é só dela.

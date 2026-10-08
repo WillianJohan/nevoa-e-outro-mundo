@@ -1,9 +1,7 @@
--- client/NOM_FogQualitySync.lua: manda a qualidade e a resolução escolhidas em Opções > Mods pro mod
--- Java opcional (mod3) com NOMRender_setParam(6, q) e (9, s). O global só existe com o mod3 carregado
--- (ZombieBuddy registra os @LuaMethod do RenderContext); sem ele, nada. Eventos falsos guardam os callbacks.
+-- client/NOM_FogQualitySync.lua: manda qualidade, resolução, preta e clímax fog (0047) pro mod3.
 local FILE = "mod/42/media/lua/client/NOM_FogQualitySync.lua"
 
-local function load(opt, withJava)
+local function load(opt, withJava, sandbox)
     local handlers = {}
     Events = setmetatable({}, { __index = function(t, name)
         local e = { Add = function(fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end }
@@ -16,10 +14,13 @@ local function load(opt, withJava)
         flowResolution = function() return opt.res end,
     }
     package.loaded.NOM_ScreenFxOptions = NOM_ScreenFxOptions
+    SandboxVars = sandbox
+    package.loaded.NOM_Config = nil
+    package.loaded.NOM_FogClimaxRules = nil
     local calls = {}
     NOMRender_setParam = withJava and function(i, v) calls[#calls + 1] = { i, v } end or nil
     _G.NOM_FogQualitySync = nil
-    _G.NOM_FogState, package.loaded.NOM_FogState = nil, nil -- sem ouvintes de carregamentos anteriores
+    _G.NOM_FogState, package.loaded.NOM_FogState = nil, nil
     dofile(FILE)
     return NOM_FogQualitySync, handlers, calls
 end
@@ -28,7 +29,6 @@ local function fire(handlers, name)
     for _, fn in ipairs(handlers[name] or {}) do fn() end
 end
 
--- valor mandado pro parâmetro i (o último), ou nil
 local function sent(calls, i)
     local v
     for _, c in ipairs(calls) do if c[1] == i then v = c[2] end end
@@ -49,14 +49,19 @@ return {
         fire(h, "OnGameStart")
         assert(sent(calls, 6) == 1, "não mandou a qualidade no início")
         assert(sent(calls, 9) == 3, "não mandou a resolução no início")
+        assert(sent(calls, 2) and sent(calls, 2) < 0.7, "altura da base: " .. tostring(sent(calls, 2)))
+        assert(sent(calls, 7) and sent(calls, 7) < 0.5, "véu da base: " .. tostring(sent(calls, 7)))
+        assert(sent(calls, 14) and sent(calls, 14) > 0, "cobertura dos bolsões")
+        assert(sent(calls, 15) and sent(calls, 15) > 0, "boost dos bolsões")
     end,
 
     fog_quality_sync_follows_option_once = function()
         local o = { quality = 2, res = 2 }
         local _, h, calls = load(o, true)
         fire(h, "OnGameStart")
+        local n = #calls
         fire(h, "EveryOneMinute")
-        assert(#calls == 3, "mandou de novo sem mudar")
+        assert(#calls == n, "mandou de novo sem mudar")
         o.quality = 0
         fire(h, "EveryOneMinute")
         assert(count(calls, 6) == 2 and sent(calls, 6) == 0, "não seguiu a qualidade")
@@ -67,8 +72,6 @@ return {
         assert(count(calls, 6) == 2, "mandou a qualidade sem ela mudar")
     end,
 
-    -- sprint 0039: a névoa preta liga o empurrão da luz no mod3 (param 12) na borda, sem esperar o
-    -- minuto; desliga quando acaba; não repete sem mudar
     fog_quality_sync_black_fog = function()
         local o = { quality = 2, res = 2 }
         local S, h, calls = load(o, true)
@@ -89,5 +92,13 @@ return {
         fire(h, "OnGameStart")
         fire(h, "EveryOneMinute")
         assert(S.push() == false)
+    end,
+
+    fog_quality_sync_climax_from_sandbox = function()
+        local o = { quality = 2, res = 2 }
+        local _, h, calls = load(o, true, { NevoaEOutroMundo = { FogBaseHeight = 0.35, FogPocketAggression = 0 } })
+        fire(h, "OnGameStart")
+        assert(math.abs(sent(calls, 2) - 0.35) < 1e-4, "altura sandbox")
+        assert(sent(calls, 14) == 0, "aggression 0 não zerou cobertura")
     end,
 }

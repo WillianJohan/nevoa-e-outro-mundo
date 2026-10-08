@@ -80,6 +80,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_OpenNow", function() NOM.setBlackFog(true) end) } },
             { title = "UI_NOM_Debug_C_End", desc = "UI_NOM_Debug_C_End_Desc", choices = {
                 c("UI_NOM_Debug_B_End", function() NOM.setEndFog() end) } },
+            { title = "UI_NOM_Debug_C_FogLook", desc = "UI_NOM_Debug_C_FogLook_Desc", choices = {
+                c("UI_NOM_Debug_B_FogLook", function() NOM.fogLook() end) } },
             { title = "UI_NOM_Debug_C_FogToggle", desc = "UI_NOM_Debug_C_FogToggle_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.fog() end),
                 c("UI_NOM_Debug_B_OpenNow", function() NOM.fog(true, true) end),

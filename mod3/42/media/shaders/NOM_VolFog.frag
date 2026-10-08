@@ -2,11 +2,13 @@
 // uParams[0]: x = densidade forçada (0 = usa a névoa do clima), y = modo debug
 //             (1 = grade do mundo, 2 = profundidade, 3 = andar, 4 = erro de andar: chão preto liso,
 //              5 = obstáculos do fluido, 6 = densidade do fluido, 7 = velocidade do fluido),
-//             z = altura da camada em andares (0 = 1.2)
+//             z = altura da base em andares (sprint 0047: padrão 0,45; 0 = 0,45),
+//             w = altura no bolsão (padrão 1,2)
 // uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
 // uParams[1].y: visual (1 = rolos com sombra própria, padrão; 0 = camada antiga)
 // uParams[1].z: qualidade (0 baixa, 1 média, 2 alta): passos do raio no visual novo
-// uParams[1].w: escala do véu de fundo (1 padrão, 0 = só rolos); a vanilla sai (param 8 = 1 devolve)
+// uParams[1].w: escala do véu de fundo (sprint 0047: fraco na base; 0 = só rolos); param 8 = 1 devolve vanilla
+// uPocket / uPocketShape: bolsões viajantes (FogPockets)
 
 const int STEPS = 12;
 const float LEVEL_TILES = 2.5;   // um andar ~ 2,5 tiles, pra o ruído e a distância não ficarem esticados em z
@@ -114,20 +116,54 @@ float rollTop(vec2 xy, float layer, out vec2 q) {
     return onCar + layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
 }
 
+// Bolsão no shader: mesmo espírito do FogPockets (offset+morph+limiar), ruído float do
+// shader (evita overflow de int do hash Java no GLSL). Cobertura ~rara pelo limiar.
+float pocketSample(vec2 xyRel) {
+    if (uPocket.w <= 0.001 || uPocketShape.x < 1.0) return 0.0;
+    vec2 w = xyRel + uOrigin - uPocket.xy;
+    float sc = max(uPocketShape.x, 1.0);
+    float n = fbm2(vec3(w / sc, uPocket.z * 0.15));
+    float soft = max(uPocketShape.z, 0.001);
+    float t = (n - uPocketShape.y + soft) / (2.0 * soft);
+    t = clamp(t, 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
+float baseLayer() {
+    return uParams[0].z > 0.0 ? uParams[0].z : 0.45;
+}
+
+float pocketLayer() {
+    return uParams[0].w > 0.0 ? uParams[0].w : 1.2;
+}
+
+float layerAt(vec2 xyRel) {
+    float pk = pocketSample(xyRel);
+    float boost = clamp(uPocket.w, 0.0, 3.0);
+    return mix(baseLayer(), pocketLayer() * max(boost, 1.0), pk);
+}
+
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
+// C-lite (sprint 0047): na base o perfil corta alto (chão denso); no bolsão sobe como antes.
 float densityLook(vec3 w, float ground, float layer, out float shade) {
     float hz = w.z - ground;
+    float pk = pocketSample(w.xy);
+    float layerEff = mix(baseLayer(), pocketLayer() * max(uPocket.w, 1.0), pk);
     vec2 q, qs;
-    float top = rollTop(w.xy, layer, q);
+    float top = rollTop(w.xy, layerEff, q);
     vec2 f = q * 0.9;                                                         // fiapos de ~1 tile
     float fiapo = noise(vec3(f, morphZ(f, w.z * LEVEL_TILES * 0.9) * 1.7)) - 0.5;
     float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
-    d *= 1.15 - 0.45 * clamp(hz / layer, 0.0, 1.0);                         // mais densa embaixo
-    d += gTree * 0.9 * exp(-5.0 * hz / layer) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
+    // C-lite: base = queda rápida com a altura (mar no piso); bolsão = perfil antigo
+    float fall = mix(8.0, 1.0, pk);
+    d *= 1.15 - 0.45 * clamp(hz / max(layerEff, 0.01), 0.0, 1.0);
+    d *= mix(exp(-fall * hz / max(layerEff, 0.01)), 1.0, pk);              // corta o peito na base
+    d += gTree * 0.9 * exp(-5.0 * hz / max(layerEff, 0.01)) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
     bool indoor = (nomFlowFlags(w.xy) & NOM_FLOW_INDOOR) != 0;
-    d += indoor ? 0.0 : HAZE * uParams[1].w * exp(-1.5 * hz / layer);  // véu de fundo, no lugar da vanilla
+    float hazeScale = mix(uParams[1].w, min(uParams[1].w + 0.7, 1.2), pk); // véu sobe no bolsão
+    d += indoor ? 0.0 : HAZE * hazeScale * exp(-1.5 * hz / max(layerEff, 0.01));
     vec3 s = w + SUN_STEP;
-    shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layer, qs) - (s.z - ground));
+    shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layerEff, qs) - (s.z - ground));
     for (int i = 0; i < uCharCount; i++) {
         vec4 c = uChars[i];
         float r = length(w.xy - c.xy);
@@ -158,8 +194,8 @@ vec3 torchLight(vec3 w, out float open) {
 
 vec4 fogLook(vec3 P, float amount) {
     float ground = floor(uDepthRef.z);
-    float layer = uParams[0].z > 0.0 ? uParams[0].z : 1.2;
-    float top = ground + layer * 1.6;
+    float layer = layerAt(P.xy);                    // base baixa; sobe no bolsão (sprint 0047)
+    float top = ground + max(layer, pocketLayer()) * 1.6;
     if (P.z >= top) return vec4(0.0);
     gP = P;
     gTree = nomFlowTree(P.xy);
@@ -246,7 +282,7 @@ void main() {
     if (uParams[1].y > 0.5) { fragColor = fogLook(P, amount); return; }
 
     float ground = floor(uDepthRef.z);
-    float top = ground + (uParams[0].z > 0.0 ? uParams[0].z : 1.2);
+    float top = ground + layerAt(P.xy);
     if (P.z >= top) { fragColor = vec4(0.0); return; }
     gP = P;
     gTree = nomFlowTree(P.xy);

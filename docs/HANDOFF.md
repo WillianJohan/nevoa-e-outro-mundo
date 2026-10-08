@@ -109,11 +109,14 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 5)` | fluido: obstáculos (sólido vermelho, árvore verde, interior azul, parede fechada branca) |
 | `NOMRender_setParam(1, 6)` | fluido: densidade |
 | `NOMRender_setParam(1, 7)` | fluido: velocidade |
-| `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
+| `NOMRender_setParam(2, h)` | altura da **base** em andares (padrão **0,45**, sprint 0047; antes 1,2) |
+| `NOMRender_setParam(3, h)` | altura no **bolsão** (padrão 1,2, sprint 0047) |
+| `NOMRender_setParam(14, c)` | cobertura dos bolsões (0 = off; ~0,1 padrão) |
+| `NOMRender_setParam(15, b)` | boost dos bolsões (intensidade) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 | `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
 | `NOMRender_setParam(6, q)` | qualidade: 0 baixa, 1 média, 2 alta (padrão; Opções > Mods manda sozinho, sprint 0026) |
-| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão 1; 0 = só rolos, sprint 0028) |
+| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão **0,2** na base, sprint 0047; antes 1; 0 = só rolos) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |

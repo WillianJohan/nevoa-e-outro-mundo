@@ -55,6 +55,12 @@ return {
         assert(NOM_Config.get("EcoMaxPerPlayer") == 20)
         assert(NOM_Config.get("EcoRadius") == 30)
     end,
+    -- sprint 0047: clímax fog — base baixa + bolsões
+    config_fog_climax_defaults = function()
+        SandboxVars = nil
+        assert(NOM_Config.get("FogBaseHeight") == 0.45)
+        assert(NOM_Config.get("FogPocketAggression") == 1.0)
+    end,
     config_night_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("NightFaster") == true)
