@@ -175,10 +175,17 @@ assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileU
 assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;", volfog) \
     or re.search(r"float top = ground \+ layer \* 1\.6;", volfog), \
     "mod3: o volume não tem altura pro empilhamento"
-# 0047b playtest: shape orgânico (fitas/ridge), não cúmulo redondo (pow^2 + escala iso)
-assert "ROLL_STRETCH" in volfog and "ridge" in roll, "mod3: rollTop sem tempero anisotrópico/ridge (0047b)"
-assert not re.search(r"1\.0\s*-\s*pow\s*\(\s*1\.0\s*-\s*smoothstep", roll), \
+# 0047c: tempero estável — eixo mundo fixo (não vento do quadro), sem ridge, sem puff pow^2
+roll_fn = volfog.split("float rollTop")[1].split("float pocketSample")[0]
+assert "ROLL_STRETCH" in volfog, "mod3: rollTop sem anisotropia"
+assert not re.search(r"\bridge\b\s*=", roll_fn), "mod3: ridge de volta no rollTop (bolhas/flicker no piso)"
+assert "0.857" in roll_fn, "mod3: falta eixo mundo estável no rollTop"
+assert not re.search(r"uDrift\.zw\s*\*\s*inversesqrt", roll_fn), \
+    "mod3: eixo do rollTop não pode seguir o vento do quadro (flicker)"
+assert not re.search(r"1\.0\s*-\s*pow\s*\(\s*1\.0\s*-\s*smoothstep", roll_fn), \
     "mod3: voltou o puff redondo (algodão) no rollTop"
+assert re.search(r"0\.55\s*\+\s*0\.45", roll_fn), \
+    "mod3: amplitude do shape alta demais (ilhas no piso)"
 
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 # Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a

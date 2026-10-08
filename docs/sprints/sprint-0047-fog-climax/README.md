@@ -41,8 +41,9 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 - `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura 0,45 / véu 0,2.
 - Shader: `layerAt` + C-lite (corta peito na base; sobe no bolsão).
 - Sync Lua → params 2/3/7/14/15; fallback vinheta sem mod3; `NOM.fogLook()` + botão no painel.
-- **Tempero 0047b (playtest):** `rollTop` anisotrópico no vento + ridge + warp; fiapos alongados;
-  `ROLL_SOFT` mais baixo — menos bolha de algodão, mais curvas/fiapos (mar baixo intacto).
+- **Tempero 0047b:** aniso no vento do quadro + ridge → flicker e “bolinhas” no piso (rejeitado).
+- **0047c (hotfix):** eixo mundo fixo, warp espacial sem tempo, fbm suave (sem ridge), amp baixa,
+  `ROLL_SOFT` 0,20 — estável primeiro; leve alongamento sem discos.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
