@@ -58,7 +58,7 @@ return {
     -- sprint 0047: clímax fog — base baixa + bolsões
     config_fog_climax_defaults = function()
         SandboxVars = nil
-        assert(NOM_Config.get("FogBaseHeight") == 0.68)  -- 0047d: 0,45 ficou overlay no piso
+        assert(NOM_Config.get("FogBaseHeight") == 0.45)  -- 0047g: look da 1ª 0047 (b012989)
         assert(NOM_Config.get("FogPocketAggression") == 1.0)
     end,
     config_night_defaults = function()

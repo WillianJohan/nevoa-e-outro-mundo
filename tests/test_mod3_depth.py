@@ -159,20 +159,21 @@ assert re.search(r"@Patch\.OnExit[\s\S]*RenderContext\.afterVanillaFogUpdate\(",
 assert re.search(r"PARAM_VANILLA_FOG = 8;", java) and not re.search(r"luaParams\[PARAM_VANILLA_FOG\] = 1f", java), \
     "mod3: PARAM_VANILLA_FOG (8) ausente ou com a vanilla ligada por padrão"
 jh = re.search(r"PARAM_HAZE = (\d+);", java)
-# sprint 0047e: HAZE×scale ≈ 0,19 (const 0,38 × param 0,50); sem sopa (1)
-assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.50f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,50 (0047e)"
-assert re.search(r"luaParams\[2\] = 0\.68f", java), "mod3: altura da base padrão 0,68 (0047e)"
+# 0047g: look da 1ª 0047 (b012989) — véu 0,2 / altura 0,45; sem tempero b–f
+assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.2f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,2 (1ª 0047)"
+assert re.search(r"luaParams\[2\] = 0\.45f", java), "mod3: altura da base padrão 0,45 (1ª 0047)"
 assert '"uPocket"' in java and "uPocket" in header, "mod3: falta uniform uPocket dos bolsões"
 assert '"uPocketShape"' in java and "uPocketShape" in header, "mod3: falta uniform uPocketShape"
 assert "pocketSample" in volfog and "layerAt" in volfog, "mod3: NOM_VolFog sem base/bolsão (0047)"
-assert re.search(r"return uParams\[0\]\.z > 0\.0 \? uParams\[0\]\.z : 0\.68;", volfog), \
-    "mod3: baseLayer fallback 0,68 (0047e)"
+assert re.search(r"return uParams\[0\]\.z > 0\.0 \? uParams\[0\]\.z : 0\.45;", volfog), \
+    "mod3: baseLayer fallback 0,45 (1ª 0047)"
 hi = int(jh.group(1))
 assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
 dens_look = volfog.split("float densityLook")[1].split("vec3 torchLight")[0]
 assert "NOM_FLOW_INDOOR" in dens_look, "mod3: o véu não pode entrar dentro de casa"
-assert "FLOOR_MIN" in dens_look, "mod3: falta piso mínimo independente de fd (0047e)"
-assert re.search(r"mix\(2\.1,\s*1\.0,\s*pk\)", dens_look), "mod3: C-lite fall fora de 2,1 (0047e)"
+assert "FLOOR_MIN" not in dens_look, "mod3: FLOOR_MIN da 0047e/f não pode voltar (look 1ª 0047)"
+assert re.search(r"mix\(8\.0,\s*1\.0,\s*pk\)", dens_look), "mod3: C-lite fall fora de 8,0 (1ª 0047)"
+assert re.search(r"const float HAZE = 0\.18;", volfog), "mod3: HAZE shader fora do alvo 1ª 0047"
 # Ondas nos obstáculos (sprint 0029): o rolo sobe onde o ar freia contra a parede e o volume tem
 # altura pra isso; a simulação liga o reforço de redemoinho.
 roll = volfog.split("float rollTop")[1].split("float densityLook")[0]
@@ -180,22 +181,6 @@ assert "pileUp(" in roll, "mod3: o topo do rolo não sobe onde o ar freia (pileU
 assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;", volfog) \
     or re.search(r"float top = ground \+ layer \* 1\.6;", volfog), \
     "mod3: o volume não tem altura pro empilhamento"
-# 0047e: estável (eixo mundo, sem ridge) + floorMin + curl por nomFlowVel (não uDrift.zw)
-roll_fn = volfog.split("float rollTop")[1].split("float pocketSample")[0]
-assert "ROLL_STRETCH" in volfog, "mod3: rollTop sem anisotropia"
-assert "SWIRL_AMP" in volfog and "FLOW_ADV" in volfog, "mod3: falta redemoinho/curl por fluxo (0047e)"
-assert "SWIRL_ADV" not in volfog, "mod3: SWIRL_ADV voltou (advecção não pode ser tempo solto × vento)"
-assert not re.search(r"\bridge\b\s*=", roll_fn), "mod3: ridge de volta no rollTop (bolhas/flicker no piso)"
-assert "0.857" in roll_fn, "mod3: falta eixo mundo estável no rollTop"
-assert not re.search(r"uDrift\.zw\s*\*\s*inversesqrt", roll_fn), \
-    "mod3: eixo do rollTop não pode seguir o vento do quadro (flicker)"
-assert not re.search(r"1\.0\s*-\s*pow\s*\(\s*1\.0\s*-\s*smoothstep", roll_fn), \
-    "mod3: voltou o puff redondo (algodão) no rollTop"
-assert re.search(r"0\.85\s*\+\s*0\.55", roll_fn), \
-    "mod3: amplitude do shape (0047e; design α ~0,85)"
-assert re.search(r"const float PILE = 0\.85;", volfog), "mod3: PILE baixo demais pra abraçar obstáculo"
-assert re.search(r"const float HAZE = 0\.38;", volfog), "mod3: HAZE shader fora do alvo 0047e"
-assert re.search(r"const float FLOOR_MIN = 0\.62;", volfog), "mod3: FLOOR_MIN ausente"
 
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
 # Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a

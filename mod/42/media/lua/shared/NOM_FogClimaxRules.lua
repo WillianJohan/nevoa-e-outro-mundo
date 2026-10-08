@@ -10,11 +10,9 @@ R.PARAM_HAZE = 7
 
 R.BASE_HEIGHT_MIN = 0.2
 R.BASE_HEIGHT_MAX = 1.2
-R.BASE_HEIGHT_DEFAULT = 0.68   -- 0047d/e: mantém até o miolo opaco fechar (design α)
+R.BASE_HEIGHT_DEFAULT = 0.45
 R.POCKET_HEIGHT = 1.2
 R.POCKET_AGGRESSION_DEFAULT = 1
--- 0047e: HAZE shader 0,38 × baseHaze ~0,50 ≈ 0,19 no chão (alvo 0,18–0,20)
-R.BASE_HAZE_DEFAULT = 0.50
 
 local function clamp(v, lo, hi)
     if v < lo then return lo end
@@ -26,7 +24,7 @@ end
 function R.look(baseHeight, pocketAggression)
     local h = clamp(tonumber(baseHeight) or R.BASE_HEIGHT_DEFAULT, R.BASE_HEIGHT_MIN, R.BASE_HEIGHT_MAX)
     local a = clamp(tonumber(pocketAggression) or R.POCKET_AGGRESSION_DEFAULT, 0, 2)
-    local haze = clamp(0.40 + 0.20 * ((h - R.BASE_HEIGHT_MIN) / (R.BASE_HEIGHT_MAX - R.BASE_HEIGHT_MIN)), 0.35, 0.60)
+    local haze = clamp(0.12 + 0.2 * ((h - R.BASE_HEIGHT_MIN) / (R.BASE_HEIGHT_MAX - R.BASE_HEIGHT_MIN)), 0.1, 0.45)
     local coverage, boost, scale, speed
     if a <= 0 then
         coverage, boost, scale, speed = 0, 0, 50, 1

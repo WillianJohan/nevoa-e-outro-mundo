@@ -38,25 +38,18 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 ## O que já entrou (código)
 
 - `NOM_FogClimaxRules` + sandbox `FogBaseHeight` / `FogPocketAggression` (2 eixos).
-- `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura **0,68** / véu **0,32**
-  (0047d; 0,45/0,2 viraram overlay no piso).
-- Shader: `layerAt` + C-lite (corta peito na base; sobe no bolsão).
-- Sync Lua → params 2/3/7/14/15; fallback vinheta sem mod3; `NOM.fogLook()` + botão no painel.
-- **Tempero 0047b:** aniso no vento do quadro + ridge → flicker e “bolinhas” no piso (rejeitado).
-- **0047c (hotfix):** eixo mundo fixo, warp espacial sem tempo, fbm suave (sem ridge), amp baixa,
-  `ROLL_SOFT` 0,20 — estável, mas rasa demais (playtest).
-- **0047d (playtest rasa):** altura 0,68… ainda overlay no miolo + rosquinha vermelha (vinheta).
-- **0047e (design α):** [fog-viva-integrada-design.md](fog-viva-integrada-design.md) —
-  gate ScreenFx com mod3 (vinheta ×0,25, sem ×1,45/1,8; estática ≤0,05);
-  `HAZE` 0,38 × haze 0,50 ≈ **0,19** no chão; `FLOOR_MIN` 0,62 independente de `fd`;
-  fall **2,1**; sigma 1,15; curl/`FLOW_ADV` por `nomFlowVel` + rampa em sólido —
-  **sem** reancorar eixo em `uDrift.zw`. Prioridade: **volume no centro > tela nas bordas**.
+- `FogPockets.java` + uniforms `uPocket`/`uPocketShape` (produto mantido).
+- Shader: `layerAt` + C-lite; sync Lua → params 2/3/7/14/15; fallback vinheta; `NOM.fogLook()`.
+- **Look ativo = 1ª 0047 (0047g):** restaurado de `b012989` — altura **0,45** / véu **0,2** /
+  `HAZE` 0,18 / fall **8** / sigma 0,9; ScreenFx sem gate de volume. Johan: “ficou bom / ta ok”.
+- Histórico rejeitado no playtest (não no look atual): tempero 0047b (flicker/bolhas) → 0047c–f
+  (estável/rasa/donut/α/overcorrection). Docs de design α ficam como arquivo; código do look não.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest 0047e no jogo (branca **e** vermelha; critérios §4 do design); calibrar vs foto/vídeo.
-- B' / B só se A+C-lite+Passo 3 falharem no playtest.
+- Playtest **0047g** no jogo (confirmar que voltou o look aprovado da 1ª sync).
+- B' / B só se A+C-lite falharem de novo no playtest (hoje o pedido é **reconhecer**, não melhorar).
 
 ## Critérios (§3.4.3 / §3.4.3a)
 

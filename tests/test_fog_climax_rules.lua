@@ -9,10 +9,8 @@ end
 return {
     fog_climax_defaults_are_low_base_rare_pockets = function()
         local L = R.look()
-        -- 0047e: altura 0,68; baseHaze ~0,50 → HAZE×scale ≈ 0,19
-        assert(L.baseHeight < 0.75 and L.baseHeight > 0.5, "base fora do alvo 0047e: " .. L.baseHeight)
-        assert(L.baseHaze < 0.58 and L.baseHaze > 0.40, "véu fora do alvo 0047e: " .. L.baseHaze)
-        assert(near(L.baseHaze, R.BASE_HAZE_DEFAULT, 0.05))
+        assert(L.baseHeight < 0.7 and L.baseHeight > 0.2, "base alta demais: " .. L.baseHeight)
+        assert(L.baseHaze < 0.4, "véu forte demais: " .. L.baseHaze)
         assert(L.pocketHeight > L.baseHeight + 0.4, "bolsão sem contraste de altura")
         assert(L.pocketCoverage > 0.03 and L.pocketCoverage < 0.18, "cobertura " .. L.pocketCoverage)
         assert(L.pocketScale > 30 and L.pocketScale < 90, "escala " .. L.pocketScale)
