@@ -111,7 +111,8 @@ function S.dizzy(now)
     return v
 end
 
--- com o mod do shader a tontura é dele (ondula e turva), pelo canal
+-- com o mod do shader a tontura é dele (ondula e turva), pelo canal.
+-- 0047e: gate vinheta/estática com Volumétrica vive em R.layers (NOMRender_isActive).
 local function frame(now)
     return R.layers(S.sample(now), now, NOM_ScreenFxOptions.intensity(), NOM_ShaderMod and 0 or S.dizzy(now))
 end

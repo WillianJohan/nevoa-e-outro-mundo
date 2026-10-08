@@ -21,6 +21,9 @@ uniform vec4 uParams[4];       // o que o Lua empurrou com NOMRender_setParam(i,
 uniform sampler2D uFlowTex;
 uniform vec4 uFlow;            // x0, y0 da grade (relativos a uOrigin), tiles por lado, 1 = simulação ligada
 uniform vec4 uDrift;           // xy = uOrigin menos o quanto o vento já levou a névoa (o mesmo dos bancos); zw = vento agora (tiles/s)
+// Bolsões viajantes (FogPockets, sprint 0047): sample no mundo absoluto (P.xy + uOrigin).
+uniform vec4 uPocket;          // xy = offset do ruído (mundo), z = morph, w = boost (0 = off)
+uniform vec4 uPocketShape;     // x = scale (tiles), y = threshold, z = soft, w = seed (float)
 // Lanternas e faróis perto (RenderContext.collectTorches), pro facho na névoa.
 uniform int uTorchCount;
 uniform vec4 uTorchPos[4];     // x, y (relativos a uOrigin), z (andares), alcance (tiles)

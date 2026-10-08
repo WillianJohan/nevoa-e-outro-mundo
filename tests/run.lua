@@ -69,6 +69,7 @@ local FILES = {
     "tests/test_flakes.lua",
     "tests/test_night_and_fog.lua",
     "tests/test_fog_event_rules.lua",
+    "tests/test_fog_climax_rules.lua",
     "tests/test_debug_rules.lua",
     "tests/test_debug_log.lua",
     "tests/test_debug.lua",

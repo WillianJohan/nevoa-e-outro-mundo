@@ -9,10 +9,10 @@ JAVAC="$JDK/bin/javac"; JAVA="$JDK/bin/java"
 [ -x "$JAVA" ] || JAVA="$(command -v java)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java mod3/java/nom/render/FogBanks.java mod3/java/nom/render/Wind.java mod3/java/nom/render/WindSource.java mod3/java/nom/render/Sonar.java mod3/java/nom/render/Blasts.java \
+"$JAVAC" --release 25 -nowarn -d "$TMP" mod3/java/nom/render/FlowGrid.java mod3/java/nom/render/FogBanks.java mod3/java/nom/render/FogPockets.java mod3/java/nom/render/Wind.java mod3/java/nom/render/WindSource.java mod3/java/nom/render/Sonar.java mod3/java/nom/render/Blasts.java \
     mod3/java/nom/render/LightWind.java mod3/java/nom/render/Censor.java \
     tests/java/FlowGridTest.java tests/java/FlowTravelTest.java tests/java/FlowScaleTest.java tests/java/FlowContourTest.java tests/java/FlowHeightTest.java tests/java/FlowWindSourceTest.java \
-    tests/java/FlowSonarTest.java tests/java/FlowBlastTest.java tests/java/FlowLightWindTest.java tests/java/CensorTest.java
+    tests/java/FlowSonarTest.java tests/java/FlowBlastTest.java tests/java/FlowLightWindTest.java tests/java/CensorTest.java tests/java/FogPocketsTest.java
 "$JAVA" -ea -cp "$TMP" FlowGridTest
 "$JAVA" -ea -cp "$TMP" FlowTravelTest
 "$JAVA" -ea -cp "$TMP" FlowScaleTest
@@ -23,6 +23,7 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 "$JAVA" -ea -cp "$TMP" FlowBlastTest
 "$JAVA" -ea -cp "$TMP" FlowLightWindTest
 "$JAVA" -ea -cp "$TMP" CensorTest
+"$JAVA" -ea -cp "$TMP" FogPocketsTest
 
 # Shaders: o RenderContext.init monta cabeçalho + "#line 1" + passe; compila igual.
 if command -v glslangValidator >/dev/null; then

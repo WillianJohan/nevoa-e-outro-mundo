@@ -1,6 +1,18 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) e a 0046 (painel de debug novo) estão na `staging` com push e sync: esperam o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-08. **Próximo passo = sprint FOG clímax (0047)** — go do Johan 2026-10-08. Design fechado em [proximos-passos-refinamento.md](proximos-passos-refinamento.md). A `staging` tem até a 0046 (v1.0.0 lançada na `main`; 0045/0046 aprovadas no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+
+## Próximo passo: sprint 0047 — FOG clímax (P0)
+
+**Go 2026-10-08.** Branch `sprint/0047-fog-climax`. [README](sprints/sprint-0047-fog-climax/README.md) · [plano](sprints/sprint-0047-fog-climax/plan.md) · [refinamento](proximos-passos-refinamento.md).
+
+**Decisões fechadas (Johan):**
+- Base = mar baixo tipo gelo seco (não engole câmera); bolsões = **viajantes raros/brutais** (fog absurda de hoje só neles).
+- Pipeline **A → C-lite → B' → B** (produto A-first; B 3D só se A+C-lite falharem).
+- Sandbox **2 eixos** (base + bolsão); resolução/qualidade no cliente; fallback sem mod3 = visual fino (clima/overlay).
+- Fora desta sprint: Sons II, almas, transform 100%, Carpideira Witch/look, aperto da preta.
+
+**Como testar:** `scripts/dev-sync.sh` com a branch no checkout; reiniciar o jogo; ativar `[STAGING] NOM: Noise of Mist` (+ Volumétrica se for volume). Roteiro no README da 0047.
 
 ## Lançamento v1.0.0 (2026-10-07)
 
@@ -97,11 +109,14 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 5)` | fluido: obstáculos (sólido vermelho, árvore verde, interior azul, parede fechada branca) |
 | `NOMRender_setParam(1, 6)` | fluido: densidade |
 | `NOMRender_setParam(1, 7)` | fluido: velocidade |
-| `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
+| `NOMRender_setParam(2, h)` | altura da **base** em andares (padrão **0,45**, sprint 0047; antes 1,2) |
+| `NOMRender_setParam(3, h)` | altura no **bolsão** (padrão 1,2, sprint 0047) |
+| `NOMRender_setParam(14, c)` | cobertura dos bolsões (0 = off; ~0,1 padrão) |
+| `NOMRender_setParam(15, b)` | boost dos bolsões (intensidade) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 | `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
 | `NOMRender_setParam(6, q)` | qualidade: 0 baixa, 1 média, 2 alta (padrão; Opções > Mods manda sozinho, sprint 0026) |
-| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão 1; 0 = só rolos, sprint 0028) |
+| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão **0,2** na base, sprint 0047; antes 1; 0 = só rolos) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
@@ -272,16 +287,11 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 ## Próximo passo
 
-1. **Testar a 0035 e a 0036 no jogo:** o Johan reinicia o jogo e segue os roteiros da [0035](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e da [0036](sprints/sprint-0036-equilibrio/README.md). Já confirmado no jogo em 2026-10-06: o congelamento da sirene depois da troca pra `isLocal` (97 de 97 parados), as paredes Silent Hill ("ficaram top"). O chão estranho (metal em bloco na calçada, ferrugem em grade na grama) foi corrigido no hotfix `7149d87`: falta o Johan conferir.
-2. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
-   - **0037** — sonar do Estalador (feito na branch com o review final corrigido, falta o merge);
-   - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
-   - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
-   - **0040** — vermelha nova: tentáculos e cinza no ar;
-   - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
-   - 0037 e 0038 estão na `staging`; **0039–0044 feitas na pilha de branches, esperando o Johan** (topo deste arquivo).
+1. **Sprint 0047 — FOG clímax (P0):** [README](sprints/sprint-0047-fog-climax/README.md). Design em [proximos-passos-refinamento.md](proximos-passos-refinamento.md) (§3.4). Go 2026-10-08.
+2. **Depois do P0 FOG** (não agora): Sons II (gritos monstro + ambiente + Estalador clicker); transform 100% + identidade por cor; almas esqueléticas na branca; Carpideira Witch/look; aperto da preta — ver §4 do refinamento.
+3. **Operacional:** envio Workshop v1.0.0 e tag ([publicar.md](publicar.md) §2–5) quando o Johan quiser; FOG segue na `staging`.
 
-**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o oficial vem do Workshop e o de staging é a cópia local do `dev-sync.sh`, com ID `_Staging`, nome `[STAGING]` e a preview vermelha de pôster (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
+**Fluxo:** code review só no final de cada entrega ([AGENTS.md](../AGENTS.md)). Sprints saem da `staging` e voltam pra ela; a `main` é o mod lançado. Staging no jogo = `dev-sync.sh` (`*_Staging`, `[STAGING]`, pôster vermelho).
 
 ## Em teste: névoa com altura (sprint 0032)
 

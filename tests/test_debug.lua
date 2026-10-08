@@ -906,7 +906,7 @@ return {
     nom_help_has_new_commands_on_top_and_30s = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind" }
+        local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind" }
         for i, name in ipairs(order) do
             assert(NOM[name] and NOM.HELP[i][1]:find("^NOM%." .. name .. "%("), "help fora de ordem: " .. name)
         end

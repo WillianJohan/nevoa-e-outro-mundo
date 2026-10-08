@@ -290,4 +290,40 @@ return {
         assert(math.abs(R.layers(s, 0, 2).fogStatic - 1) < 1e-9, "o dobro do pico satura em 1")
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
+
+    -- 0047e: com Volumétrica (NOMRender_isActive), vinheta fraca e sem boost vermelha/preta;
+    -- estática ≤ 0,05 na névoa (presságio fora da névoa continua forte).
+    screenfx_rules_volume_gates_vignette_and_static = function()
+        local prev = NOMRender_isActive
+        NOMRender_isActive = function() return true end
+        local white = R.layers(fogged(false), 0, 1)
+        local red = R.layers(fogged(true), 0, 1)
+        local function blackened()
+            local s = R.new()
+            R.step(s, { fog = true, black = true }, R.FADE_MS)
+            return s
+        end
+        local black = R.layers(blackened(), 0, 1)
+        assert(white.vignette <= 0.12, "vinheta com volume ainda alta: " .. white.vignette)
+        assert(math.abs(red.vignette - white.vignette) < 0.02,
+            "vermelha não pode ×1,45 com volume: w=" .. white.vignette .. " r=" .. red.vignette)
+        assert(math.abs(black.vignette - white.vignette) < 0.02,
+            "preta não pode ×1,8 com volume: w=" .. white.vignette .. " b=" .. black.vignette)
+        local mist = fogged(false)
+        mist.fogStatic = R.STATIC_SUBTLE
+        assert(R.layers(mist, 0, 1).fogStatic <= 0.05 + 1e-6, "estática na névoa com volume")
+        -- presságio (sem névoa ainda): chiado alto permanece
+        local pre = R.new()
+        R.stepStatic(pre, { omenAt = 0, kind = "red" }, NOM_FogEventRules.PRESAGE_MS)
+        assert(R.layers(pre, 0, 1).fogStatic > 0.5, "presságio sumiu com o gate")
+        NOMRender_isActive = prev
+    end,
+
+    screenfx_rules_without_volume_keeps_color_boost = function()
+        local prev = NOMRender_isActive
+        NOMRender_isActive = nil
+        local n, r = R.layers(fogged(false), 0, 1), R.layers(fogged(true), 0, 1)
+        assert(r.vignette > n.vignette * 1.2, "sem volume a vermelha tem que ganhar boost")
+        NOMRender_isActive = prev
+    end,
 }

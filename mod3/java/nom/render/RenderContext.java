@@ -70,14 +70,21 @@ public final class RenderContext {
     static final int PARAM_WIND_SOURCE = 11;    // 1 liga um foco de vento aleatório perto do jogador (teste, sprint 0033); padrão 0
     static final int PARAM_BLACK = 12;          // 1 na névoa preta: a luz empurra a névoa (sprint 0039, client/NOM_FogQualitySync.lua)
     static final int PARAM_CENSOR = 13;         // rosto censurado do Sem-rosto: 0 desliga, 1 tamanho normal, 1,5 maior (sprint 0044)
+    static final int PARAM_POCKET_COV = 14;     // cobertura dos bolsões viajantes (0 = off; sprint 0047)
+    static final int PARAM_POCKET_BOOST = 15;   // intensidade do bolsão (altura/densidade; sprint 0047)
+    // PARAM 2 = altura da base (andares); PARAM 3 = altura no bolsão (sprint 0047)
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
         luaParams[PARAM_FLOW_RES] = 2f;
         luaParams[PARAM_VACUUM] = 1f;
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
-        luaParams[PARAM_HAZE] = 1f;
+        luaParams[2] = 0.68f;                  // base baixa (0047d/e; miolo vem de HAZE+floorMin)
+        luaParams[3] = 1.2f;                   // altura absurda só no bolsão
+        luaParams[PARAM_HAZE] = 0.50f;          // 0047e: HAZE×scale ≈ 0,19 (0,38×0,50)
         luaParams[PARAM_CENSOR] = 1f;
+        luaParams[PARAM_POCKET_COV] = 0.1f;     // ~10% cobertura (raro)
+        luaParams[PARAM_POCKET_BOOST] = 1.2f;
     }
 
     // ---------- Lua ----------

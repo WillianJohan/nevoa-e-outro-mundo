@@ -155,6 +155,19 @@ function NOM.godMode(on)
     NOM_DebugLog.say("[NOM] debug godMode=" .. tostring(on))
 end
 
+-- Clímax fog (sprint 0047): imprime altura/véu/bolsões do sandbox e empurra de novo pro mod3.
+function NOM.fogLook()
+    require "NOM_FogClimaxRules"
+    local L = NOM_FogClimaxRules.fromConfig()
+    NOM_DebugLog.say(string.format(
+        "[NOM] debug fogLook baseH=%.2f haze=%.2f pocketH=%.2f cov=%.3f boost=%.2f agg=%.2f",
+        L.baseHeight, L.baseHaze, L.pocketHeight, L.pocketCoverage, L.pocketBoost, L.pocketAggression))
+    if NOM_FogQualitySync and NOM_FogQualitySync.push then
+        NOM_FogQualitySync.push()
+        NOM_DebugLog.say("[NOM] debug fogLook: params empurrados pro mod3 (se houver)")
+    end
+end
+
 -- Foco de vento do mod Volumétrica (tarefa 8 da sprint 0033): parâmetro 11 do mod3.
 -- O global só existe com o mod3 carregado (client/NOM_FogQualitySync.lua).
 local windOn = false
@@ -235,6 +248,7 @@ NOM.HELP = {
     { "NOM.getZombie()", "puxa o zumbi vivo mais perto (mesmo andar) pra cima de você" },
     { "NOM.turnZombie(i)", "zumbi mais perto vira o tipo i: 1 estalador, 2 corredor, 3 semrosto, 4 carpideira; 0 desfaz (só na névoa)" },
     { "NOM.godMode(on)", "deus + invisível + zumbis não atacam, juntos; sem argumento inverte" },
+    { "NOM.fogLook()", "clímax fog: imprime altura da base, véu e bolsões do sandbox e empurra pro mod3" },
     { "NOM.wind(on)", "foco de vento do mod Volumétrica (mod3); sem argumento inverte" },
     { "NOM.fog(on, skip)", "névoa: true sirene, a névoa sobe e os bichos soltam em 30 s, (true, true) já, false termina; sem argumento inverte (e cancela a sirene)" },
     { "NOM.redFog(on)", "névoa vermelha: true força (com névoa aberta vira na hora), false desfaz; sem argumento inverte" },
