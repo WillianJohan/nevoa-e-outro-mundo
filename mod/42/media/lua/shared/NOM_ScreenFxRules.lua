@@ -157,6 +157,15 @@ function R.dizzyLevel(t, i)
     return R.dizzy(t) * clamp(i or 1, 0, 1)
 end
 
+-- Volumétrica ativa? (mod3 registra NOMRender_isActive). Sprint 0047e: com volume, a
+-- vinheta/estática não podem ganhar do mar world-space (rosquinha vermelha).
+R.VOL_VIGNETTE_MUL = 0.25   -- preferência PO; faixa 0–0,3
+R.VOL_STATIC_CAP = 0.05     -- chiado ≤ limiar na névoa com mod3
+
+function R.volumeActive()
+    return type(NOMRender_isActive) == "function" and NOMRender_isActive() == true
+end
+
 -- Alfas das camadas (0..1), a cor da vinheta (preta; vermelha escura na vermelha; na preta, maior
 -- e sem vermelho, sprint 0038) e a da
 -- estática da névoa (sr, sg, sb). i: intensidade da opção do jogador (0..2). dz: tontura
@@ -178,13 +187,21 @@ function R.layers(s, now, i, dz)
             vigBase = vigBase + (look.fallbackPocketVignette - look.fallbackBaseVignette) * slow * slow
         end
     end
+    -- 0047e: com mod3 + névoa, volume manda; sem boost ×1,45/1,8; estática limitada.
+    -- Presságio (f=0, fogStatic alto) permanece — ainda não há mar no chão.
+    local volFog = R.volumeActive() and f > 0
+    local colorBoost = volFog and 1 or (1 + 0.45 * r + 0.8 * b)
+    local vigMul = volFog and R.VOL_VIGNETTE_MUL or 1
+    local fogStatic = clamp((s.fogStatic or 0) * i, 0, 1)
+    if volFog and fogStatic > R.VOL_STATIC_CAP then fogStatic = R.VOL_STATIC_CAP end
     return {
         grain = clamp(f * (0.09 + 0.05 * r + 0.04 * b) * i, 0, 1),
-        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * colorBoost * vigMul * i
+            + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
         vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
-        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
+        fogStatic = fogStatic,
         sr = sr, sg = sg, sb = sb,
         dark = dz * R.DIZZY_DARK,
     }

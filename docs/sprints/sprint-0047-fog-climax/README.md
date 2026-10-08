@@ -45,15 +45,18 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 - **Tempero 0047b:** aniso no vento do quadro + ridge → flicker e “bolinhas” no piso (rejeitado).
 - **0047c (hotfix):** eixo mundo fixo, warp espacial sem tempo, fbm suave (sem ridge), amp baixa,
   `ROLL_SOFT` 0,20 — estável, mas rasa demais (playtest).
-- **0047d (playtest rasa):** altura 0,68 / haze 0,32 / `HAZE` 0,28 / amp `0,72+0,55` / `PILE` 0,85 /
-  C-lite fall 2,6 / redemoinhos espaciais (`SWIRL_*`, rotação local estável + advecção 0,005) —
-  **sem** reancorar eixo em `uDrift.zw`.
+- **0047d (playtest rasa):** altura 0,68… ainda overlay no miolo + rosquinha vermelha (vinheta).
+- **0047e (design α):** [fog-viva-integrada-design.md](fog-viva-integrada-design.md) —
+  gate ScreenFx com mod3 (vinheta ×0,25, sem ×1,45/1,8; estática ≤0,05);
+  `HAZE` 0,38 × haze 0,50 ≈ **0,19** no chão; `FLOOR_MIN` 0,62 independente de `fd`;
+  fall **2,1**; sigma 1,15; curl/`FLOW_ADV` por `nomFlowVel` + rampa em sólido —
+  **sem** reancorar eixo em `uDrift.zw`. Prioridade: **volume no centro > tela nas bordas**.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest 0047d no jogo (critérios abaixo); calibrar vs foto/vídeo.
-- B' / B só se A+C-lite falharem no playtest.
+- Playtest 0047e no jogo (branca **e** vermelha; critérios §4 do design); calibrar vs foto/vídeo.
+- B' / B só se A+C-lite+Passo 3 falharem no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)
 
