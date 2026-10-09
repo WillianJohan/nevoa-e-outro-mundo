@@ -265,7 +265,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Show", function() NOM.ownSprites() end) } },
             { title = "UI_NOM_Debug_C_Params", desc = "UI_NOM_Debug_C_Params_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.params() end),
-                c("UI_NOM_Debug_B_ResetParams", function() NOM.param("reset") end) } },
+                c("UI_NOM_Debug_B_ResetParams", function() NOM.param("reset") end),
+                c("UI_NOM_Debug_B_CopyParams", function() NOM.copyParams() end) } },
             { title = "UI_NOM_Debug_C_Help", desc = "UI_NOM_Debug_C_Help_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.help() end) } },
         } },

@@ -172,4 +172,44 @@ function P.lookForce()
     return P.get("LookForce")
 end
 
+-- Texto plain chave=valor pra colar no chat (sprint 0058b). Sem JSON (Kahlua sem
+-- encoder); bools em true/false; string vazia como "". Cabeçalho lista overrides live.
+function P.dumpText()
+    local liveKeys = {}
+    for i = 1, #P.KEYS do
+        local k = P.KEYS[i]
+        if P.isLive(k) then liveKeys[#liveKeys + 1] = k end
+    end
+    local lines = { "# NOM_PanelParams" }
+    if #liveKeys > 0 then
+        local parts = liveKeys[1]
+        for i = 2, #liveKeys do parts = parts .. ", " .. liveKeys[i] end
+        lines[#lines + 1] = "# live: " .. parts
+    else
+        lines[#lines + 1] = "# live: (nenhum)"
+    end
+    for i = 1, #P.KEYS do
+        local k = P.KEYS[i]
+        local v = P.get(k)
+        local s
+        if type(v) == "boolean" then
+            s = v and "true" or "false"
+        elseif type(v) == "string" then
+            if v == "" then s = '""' else s = v end
+        elseif type(v) == "number" then
+            -- float com 1 casa quando o schema é float; senão inteiro limpo
+            local sch = P.SCHEMA[k]
+            if sch and sch.type == "float" then
+                s = string.format("%.1f", v)
+            else
+                s = tostring(v)
+            end
+        else
+            s = tostring(v)
+        end
+        lines[#lines + 1] = k .. "=" .. s
+    end
+    return table.concat(lines, "\n")
+end
+
 return NOM_PanelParams

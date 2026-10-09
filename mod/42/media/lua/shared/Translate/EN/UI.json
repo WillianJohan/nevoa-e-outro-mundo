@@ -132,6 +132,7 @@
     "UI_NOM_Debug_C_Params": "Live parameters",
     "UI_NOM_Debug_C_Params_Desc": "Lists session knobs (* = override) or clears every override.",
     "UI_NOM_Debug_B_ResetParams": "Reset",
+    "UI_NOM_Debug_B_CopyParams": "Copy definitions",
     "UI_NOM_Debug_C_White": "White fog",
     "UI_NOM_Debug_C_White_Desc": "Locks the fog white and opens it: omen (3 s of screen static), the siren plays (zombies freeze), the fog rises and monsters are released in 30 s. With the fog open or the siren counting, it starts over. \"Open now\" skips the omen and the wait: the siren plays and the fog opens right away.",
     "UI_NOM_Debug_C_Red": "Red fog",
