@@ -370,6 +370,49 @@ function NOM.params()
     end
 end
 
+-- Empurra NOM_PanelParams pros sistemas reais (0055–0057). Sem isso o dump do
+-- copyParams mostrava knobs live que AlmaRules/SonarRules/FlakeRules ignoravam.
+local function syncPanelToSystems(which)
+    require "NOM_PanelParams"
+    local P = NOM_PanelParams
+    local all = which == nil or which == "all"
+    if (all or which == "almas") and NOM_AlmaRules and NOM_AlmaRules.apply then
+        NOM_AlmaRules.apply("popMin", P.get("AlmaPopMin"))
+        NOM_AlmaRules.apply("popMax", P.get("AlmaPopMax"))
+        NOM_AlmaRules.apply("crawler", P.get("AlmaCrawlerPct") / 100)
+        NOM_AlmaRules.apply("white", P.get("AlmaFogWhite") == true)
+        NOM_AlmaRules.apply("red", P.get("AlmaFogRed") == true)
+        NOM_AlmaRules.apply("black", P.get("AlmaFogBlack") == true)
+    end
+    if (all or which == "estalador") and NOM_SonarRules then
+        local rhythm = P.get("EstaladorRhythm")
+        if NOM_SonarRules.setForceBurst then
+            if rhythm == "rotate" then
+                NOM_SonarRules.setForceBurst("auto")
+            else
+                NOM_SonarRules.setForceBurst(rhythm)
+            end
+        end
+        local gmin, gmax = P.get("EstaladorGapMinMs"), P.get("EstaladorGapMaxMs")
+        if type(gmin) == "number" and type(gmax) == "number" and gmax >= gmin then
+            NOM_SonarRules.GAP_MIN_MS = gmin
+            NOM_SonarRules.GAP_MAX_MS = gmax
+            NOM_SonarRules.GAP_ROLL = gmax - gmin + 1
+        end
+    end
+    if (all or which == "cinzas") and NOM_FlakeRules and NOM_FlakeRules.setDebug then
+        NOM_FlakeRules.setDebug(P.get("CinzaDensityMult"), P.get("CinzaRateMult"), nil)
+    end
+end
+
+local function sectionOfParam(key)
+    if key == nil then return "all" end
+    if key:find("^Alma", 1, false) then return "almas" end
+    if key:find("^Estalador", 1, false) then return "estalador" end
+    if key:find("^Cinza", 1, false) then return "cinzas" end
+    return nil -- LookForce etc.: sem sistema leitor ainda
+end
+
 function NOM.param(key, value)
     require "NOM_PanelParams"
     if key == nil or key == "" then
@@ -378,6 +421,7 @@ function NOM.param(key, value)
     end
     if key == "reset" then
         NOM_PanelParams.reset(value) -- value opcional: chave ou nil = tudo
+        syncPanelToSystems(sectionOfParam(value))
         NOM_DebugLog.say("[NOM] debug param reset " .. (value and tostring(value) or "all"))
         return NOM_PanelParams.snapshot()
     end
@@ -387,6 +431,7 @@ function NOM.param(key, value)
         return v
     end
     local v = NOM_PanelParams.set(key, value)
+    syncPanelToSystems(sectionOfParam(key))
     NOM_DebugLog.say("[NOM] debug param " .. tostring(key) .. " = " .. NOM_PanelParams.format(key, v) ..
         (NOM_PanelParams.isLive(key) and " (live)" or ""))
     return v
