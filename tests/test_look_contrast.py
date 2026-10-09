@@ -33,6 +33,8 @@ LIMITS = {
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
     "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
+    # manto penitente (sprint 0052): tecido escuro com rasgos — contraste alto, pouco cinza médio
+    "NOM/NOM_CarpideiraManto.png": (0.20, 0.25, 0.08),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
     "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),

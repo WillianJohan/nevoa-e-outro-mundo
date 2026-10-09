@@ -16,6 +16,7 @@ Saída (mod/42/media/textures/):
   NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos (máscara cirúrgica)
   NOM/NOM_SemRostoEstatica.png   128  chiado de TV em blocos preto/branco e faixas rasgadas (balaclava inteira)
   NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
+  NOM/NOM_CarpideiraManto.png    256  manto penitente escuro rasgado, fuligem (camada corpo, sprint 0052)
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
@@ -205,6 +206,24 @@ def carpideira_cabelo(rng, size=128):
         wob = 8.0 * np.sin(y / (10.0 + cx / 8) + cx)
         k = np.maximum(k, (np.abs(x - cx - wob) < w).astype(np.float32))
     return mix(rgb, (226, 226, 226), k)
+
+
+def carpideira_manto(rng, size=256):
+    # sprint 0052: manto penitente — metade preto cheio, metade bege rasgado em blocos
+    # grandes (contraste 0014: std alto, pouco cinza médio).
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    # blocos 8×8 (~32 px): preto ou bege — lê de longe como manto rasgado
+    tile = blocks(rng, 8, 8, size)
+    light = (tile > 0.5).astype(np.float32)
+    rgb = mix(color(INK, np.ones((size, size), np.float32)), (228, 218, 204), light)
+    # faixas horizontais escuras (costura / rasgo)
+    seam = ((y % 32) < 5).astype(np.float32)
+    rgb = mix(rgb, INK, seam)
+    # escorridos pretos
+    cols = (blocks(rng, 1, 32, size)[0] > 0.7).astype(np.float32)
+    yy = y / size
+    drip = cols[None, :] * (yy < 0.25 + 0.6 * blocks(rng, 1, 32, size))
+    return mix(rgb, INK, drip * 0.9)
 
 
 # O Eco fica fora da regra das formas grandes: lê por ser muito mais claro que qualquer
@@ -527,6 +546,8 @@ def main():
     save(corredor_boca(rng(5)), "NOM/NOM_CorredorBoca.png")
     save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")
     save(carpideira_cabelo(rng(7)), "NOM/NOM_CarpideiraCabelo.png")
+    # manto penitente (sprint 0052): camada no corpo, opaca como a cinza do Eco
+    save(carpideira_manto(rng(21)), "NOM/NOM_CarpideiraManto.png", alpha=np.ones((256, 256), np.float32))
     # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")

@@ -395,9 +395,28 @@ return {
         f:close()
         for _, k in ipairs(KINDS) do
             setup()
-            local name = NOM_VariantLook.LOOKS[k].item:match("^Base%.(.+)$")
+            local look = NOM_VariantLook.LOOKS[k]
+            local name = look.item:match("^Base%.(.+)$")
             assert(name and s:find("item " .. name .. "\n", 1, true), k .. ": item fora do script")
+            if look.body then
+                local body = look.body:match("^Base%.(.+)$")
+                assert(body and s:find("item " .. body .. "\n", 1, true), k .. ": manto fora do script")
+            end
         end
+    end,
+
+    -- sprint 0052: Carpideira veste manto + mechas
+    look_carpideira_wears_manto = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 52) })
+        fogOn(52)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.carpideira
+        assert(hasItem(z, look.item) and hasItem(z, look.body), "sem manto/mechas: " .. types(z))
+        assert(z.hv.name == look.skin)
+        fogOff()
+        G.converge()
+        assert(not hasItem(z, look.body) and not hasItem(z, look.item), "manto ficou: " .. types(z))
     end,
 
     look_removed_when_fog_ends = function()
@@ -517,7 +536,12 @@ return {
         for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
         fogOn(12, true)
         G.converge()
-        for _, z in ipairs(G.zombies) do assert(#z.ivs.items == 1 and z.ivs.items[1].type:find("NOM_", 1, true), "vermelha: zumbi sem visual: " .. types(z)) end
+        for _, z in ipairs(G.zombies) do
+            assert(#z.ivs.items >= 1, "vermelha: zumbi sem visual: " .. types(z))
+            for _, iv in ipairs(z.ivs.items) do
+                assert(iv.type:find("NOM_", 1, true), "vermelha: sobrou vanilla: " .. types(z))
+            end
+        end
         assert(NOM_VariantLook.count() == 40)
     end,
 

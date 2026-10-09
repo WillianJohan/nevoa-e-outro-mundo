@@ -42,6 +42,14 @@
 		<guid>9df17001-f725-484f-ad1d-38f4e1b99256</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraManto.xml</path>
+		<guid>7c4e9f2a-1b83-4d6e-9f01-a2b3c4d5e6f7</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraMantoFx.xml</path>
+		<guid>8d5f0a3b-2c94-5e7f-a012-b3c4d5e6f708</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_EcoVeuFx.xml</path>
 		<guid>19573452-d035-45e3-9642-0e6665b50005</guid>
 	</files>

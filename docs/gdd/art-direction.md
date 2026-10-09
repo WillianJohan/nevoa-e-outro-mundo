@@ -56,7 +56,7 @@
 | Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura **em 3D** (sprint 0041, modelo nosso de `scripts/gen_models.py`): faixa com volume em volta dos olhos, três voltas branco-sujas com frestas escuras, sangue seco em cada olho, dois arames farpados ferrugem-escuros enrolados por cima com farpas, nó atrás com as duas pontas caindo. Até a 0040 era a mesma ideia pintada nos óculos de esqui (`Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
 | Corredor | cinza de cinza clara, veias grossas roxo-pretas | boca rasgada **em 3D** (sprint 0042, modelo nosso): buraco quase preto largo demais colado no rosto, lábio vermelho vivo rasgado e irregular, oito dentes em ponta, dois rasgos subindo até perto das orelhas. Até a 0041 era pintada na máscara cirúrgica (`Hat_SurgicalMask`) | cinza com veias + boca vermelha e preta |
 | Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, numa **casca lisa** em volta da cabeça inteira, sem nariz, olho nem boca (sprint 0042, modelo nosso; até a 0041 na balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
-| Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche **em mechas 3D** (sprint 0042, modelo nosso): 36 fitas saindo do alto da cabeça, cortina mais densa e comprida na frente do rosto, três mechas brancas. Até a 0041 era pintado no véu de noiva (`Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
+| Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche **em mechas 3D** (sprint 0042) + **manto penitente** escuro rasgado no corpo (sprint 0052, camada como `Gown_Hospital` / Eco cinza, textura nossa): luto que virou praga, não noiva. Até a 0041 o cabelo era véu de noiva (`Hat_WeddingVeil`); até a 0052 o corpo ficava nu sob as mechas | silhueta de criatura de luto: manto escuro + cabeça de mechas |
 | Eco | coberta: quase branca, salpicos pequenos e esparsos de cinza e poucos escorridos finos na vertical | véu do mesmo jeito, mais escuro só nas bordas (véu de noiva) | o mais claro da névoa: fantasma coberto de cinza |
 | Tição | carvão em placas pequenas, rachaduras finas de brasa viva e apagando (sprint 0038) | **crosta de carvão 3D** (sprint 0043, modelo nosso): a cabeça inteira em placas de alturas diferentes com rachaduras de brasa, dois olhos de brasa acesos na frente, lascas de carvão no alto e atrás, três fitas de fumaça clara subindo. Da 0038 à 0042 usava o véu de fumaça do Eco | preto com fio laranja e dois pontos acesos |
 
@@ -68,9 +68,9 @@
   e a pele esticada com veias diz esforço.
 - **Sem-rosto** — some quando visto, e o rádio chia quando ele está perto: o rosto é o mesmo
   chiado do rádio, o aviso que o jogador já aprendeu a temer.
-- **Carpideira** — parada, chorando, e depois o grito: o cabelo caído sobre o rosto baixo e as
-  mãos e o rosto sujos de fuligem como quem enxugou lágrimas de cinza leem "não chegue perto".
-  O visual é o mesmo quando ela grita (sem animação): a imobilidade e o cabelo bastam.
+- **Carpideira** — chora e às vezes anda (Witch do Outro Mundo, 0052): mechas no rosto, manto
+  penitente e fuligem leem "criatura de luto, não chegue perto". Sem cruz nem freira de franquia.
+  O visual é o mesmo quando ela grita (sem animação).
 - **Eco** — alma fraca de um morto, some no amanhecer: cinza e fumaça com forma de gente, sem
   rosto, claro no escuro.
 

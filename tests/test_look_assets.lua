@@ -71,7 +71,7 @@ end
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
 -- pra opção desligada e pro shader que não compila) e a casca do Eco.
-local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_TicaoCrosta", "NOM_EcoVeu" }
+local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_CarpideiraManto", "NOM_TicaoCrosta", "NOM_EcoVeu" }
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
 local function xmlOf(name) return read(MEDIA .. "clothing/clothingItems/" .. name .. ".xml") end
@@ -96,7 +96,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 15, "esperava 15 itens, achou " .. n)
+        assert(n == 17, "esperava 17 itens, achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -148,7 +148,7 @@ return {
     look_assets_deterministic = function()
         local paths = {}
         for _, n in ipairs({ "Estalador", "Corredor", "Carpideira", "Ticao" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
-        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu", "Brasa" }) do
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "CarpideiraManto", "EcoCinza", "EcoVeu", "Brasa" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}

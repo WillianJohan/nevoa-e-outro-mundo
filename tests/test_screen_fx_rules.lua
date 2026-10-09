@@ -66,6 +66,19 @@ return {
         assert(none == 0 and far > 0 and near > far, "linhas: " .. none .. " " .. far .. " " .. near)
     end,
 
+    -- sprint 0052: vinheta sobe perto do soluço da Carpideira (ZB-free)
+    screenfx_rules_sob_vignette_near_carpideira = function()
+        assert(R.sobStrength(nil) == 0 and R.sobStrength(R.SOB_FAR) == 0)
+        assert(R.sobStrength(R.SOB_NEAR) == 1)
+        local base = fogged(false)
+        local far, near = fogged(false), fogged(false)
+        far.sob, near.sob = R.sobStrength(10), R.sobStrength(2)
+        local vf = R.layers(far, 0, 1).vignette
+        local vn = R.layers(near, 0, 1).vignette
+        local v0 = R.layers(base, 0, 1).vignette
+        assert(vf > v0 and vn > vf, "vinheta do soluço: " .. v0 .. " " .. vf .. " " .. vn)
+    end,
+
     screenfx_rules_scream_flash_decays = function()
         assert(R.screamStrength(nil) == 0 and R.screamStrength(R.FLASH_FAR) == 0)
         assert(R.screamStrength(R.FLASH_NEAR) == 1)

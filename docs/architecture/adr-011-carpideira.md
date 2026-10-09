@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | `accepted` |
 | Data | 2026-10-05 |
-| Emenda | [ADR-006](adr-006-variantes-deterministicas.md) (4º tipo em `KINDS`) e [ADR-010](adr-010-nevoa-vermelha.md) (vermelha 1/4) |
+| Emenda | [ADR-006](adr-006-variantes-deterministicas.md) (4º tipo em `KINDS`) e [ADR-010](adr-010-nevoa-vermelha.md) (vermelha 1/4). 2026-10-09 (sprint 0052): calma **anda chorando** — `useless` só entre caminhadas; `pathToLocationF` curto sem `setTarget`; volume do soluço e vinheta por proximidade |
 
 ## Contexto
 
@@ -30,10 +30,13 @@ quem a acordou, uma vez por névoa. O que o B42 dá ([pz-api-notes §13](pz-api-
 1. **Variante determinística**, 4º tipo de `NOM_VariantRules.KINDS`, no fim (faixa
    `[12, 15)` com o padrão; as de antes não andam). Na vermelha, 1/4 de cada.
    Perfil: corredora (`NOM_NightRules.wanted`), que só aparece depois do grito.
-2. **Calma = useless no dono** (`NOM_Carpideira.hold`, chamado pelo `NOM_VariantAI` a
-   cada frame): uma vez por objeto, `setUseless(true)` + `setTarget(nil)`. Solta
-   (`letGo`) quando a névoa baixa, ela deixa de ser Carpideira, vira remota ou grita.
-   Objeto que volta do virtual: confere o ID na lista de quem já gritou antes de parar.
+2. **Calma = useless no dono**, com caminhadas curtas chorando (sprint 0052)
+   (`NOM_Carpideira.hold`, `NOM_VariantAI` a cada frame): entre caminhadas,
+   `setUseless(true)` + `setTarget(nil)`; a cada 20–60 s reais, solta o useless,
+   `pathToLocationF` 2–6 tiles **sem** aproximar jogadores e **sem** `setTarget`,
+   e reaplica useless ao chegar/timeout. Solta de vez (`letGo`) quando a névoa baixa,
+   ela deixa de ser Carpideira, vira remota ou grita. Objeto que volta do virtual:
+   confere o ID na lista de quem já gritou antes de parar.
 3. **Quem vê avisa** (`NOM_Carpideira`, a cada 10 ticks, solo e cada cliente): toca o
    soluço local das calmas a até 15 tiles de um jogador local (`SOB_RANGE`; as outras e
    quem sumiu da lista ficam mudas); jogador local a

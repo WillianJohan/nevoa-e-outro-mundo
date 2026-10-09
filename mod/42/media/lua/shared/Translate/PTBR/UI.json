@@ -115,6 +115,8 @@
     "UI_NOM_Debug_C_Ambient_Desc": "Toca um grito humano distante agora (só neste cliente, zero horda). Precisa névoa aberta ou subindo e FogAmbience; na preta fica off.",
     "UI_NOM_Debug_C_Wander": "Onda de perambular",
     "UI_NOM_Debug_C_Wander_Desc": "Só com a névoa aberta: grupos de 1 a 3 zumbis parados perto de você saem andando.",
+    "UI_NOM_Debug_C_CarpWalk": "Carpideira anda",
+    "UI_NOM_Debug_C_CarpWalk_Desc": "A próxima Carpideira calma dona daqui começa uma caminhada curta chorando (piloto Witch).",
     "UI_NOM_Debug_C_Wind": "Vento da Volumétrica",
     "UI_NOM_Debug_C_Wind_Desc": "Liga ou desliga o foco de vento do mod opcional Volumétrica.",
     "UI_NOM_Debug_C_GodMode": "Deus completo",
