@@ -3,7 +3,7 @@
 | Campo | Valor |
 |-------|-------|
 | Status | `em andamento` (PR draft → staging) |
-| Branch | `sprint/0058-panel-parametros` |
+| Branch | `feature/0058-panel-parametros-cd25` (sprint 0058) |
 | Base | `staging` |
 | Plano | [plan.md](plan.md) |
 | Contrato (store) | `internal/panel-parametros-contrato.md` |
