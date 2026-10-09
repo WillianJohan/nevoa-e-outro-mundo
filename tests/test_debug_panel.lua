@@ -158,7 +158,7 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "god", "noclip", "invisible",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "blind", "sonar", "ambientScream", "ticao", "thunder", "flickerLamp", "rain", "help" }) do
         NOM[n] = rec(n)
@@ -368,6 +368,7 @@ return {
             UI_NOM_Debug_C_Hour = { "time(0)", "time(6)", "time(12)", "time(18)", "time(22)" },
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
+            UI_NOM_Debug_C_Alma = { "alma()" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
                 "variant(carpideira)", "turnZombie(0)" },

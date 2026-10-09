@@ -191,6 +191,14 @@ function ops.sonar(player)
     return NOM_SonarServer.force(player)
 end
 
+-- Uma leva de almas agora (sprint 0050; NOM_AlmaServer). Só névoa branca.
+function ops.alma()
+    if not NOM_AlmaServer then return "almas não carregaram" end
+    local n, why = NOM_AlmaServer.wave("debug")
+    if why then return "almas: " .. why end
+    return "almas leva spawn=" .. tostring(n) .. " vivas=" .. tostring(#NOM_AlmaServer.alive)
+end
+
 -- Tempestade e poste que pisca (sprint 0045; NOM_Storm e NOM_LampFlicker, lidos na hora).
 function ops.thunder(player)
     if not NOM_Storm then return "tempestade não carregou" end

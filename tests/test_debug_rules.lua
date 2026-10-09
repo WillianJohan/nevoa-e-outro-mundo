@@ -20,6 +20,7 @@ return {
         assert(D.parse({ op = "variant", id = 5 }).kind == nil, "kind nil limpa")
         assert(D.parse({ op = "spawnEco" }).op == "spawnEco")
         assert(D.parse({ op = "status" }).op == "status")
+        assert(D.parse({ op = "alma" }).op == "alma")
         assert(D.parse({ op = "wander" }).op == "wander")
         assert(D.parse({ op = "sonar" }).op == "sonar")
         assert(D.parse({ op = "thunder" }).op == "thunder")

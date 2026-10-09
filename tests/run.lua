@@ -22,6 +22,8 @@ local FILES = {
     "tests/test_config.lua",
     "tests/test_climate_look.lua",
     "tests/test_eco_rules.lua",
+    "tests/test_alma_rules.lua",
+    "tests/test_alma.lua",
     "tests/test_world.lua",
     "tests/test_eco.lua",
     "tests/test_eco_client.lua",

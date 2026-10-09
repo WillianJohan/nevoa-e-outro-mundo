@@ -83,7 +83,8 @@ local function idle(z, ps, cfg)
     local x, y = z:getX(), z:getY()
     if not nearAny(ps, x, y) then return nil, false end
     if not z:isLocal() or z:isDead() or z:isUseless() or z:isMoving() or z:isFakeDead() or z:isSitOnGround()
-        or NOM_NightStats.isEco(z, z:getModData()) then
+        or NOM_NightStats.isEco(z, z:getModData())
+        or (NOM_NightStats.isAlma and NOM_NightStats.isAlma(z, z:getModData())) then
         return nil, true
     end
     if NOM_SemRosto.isSemRosto(z, NOM_FogState.period, cfg, NOM_FogState.red, NOM_FogState.black) then return nil, true end

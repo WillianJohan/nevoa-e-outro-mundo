@@ -101,6 +101,8 @@
     "UI_NOM_Debug_C_Pull_Desc": "The nearest living zombie on the same floor lands right on you.",
     "UI_NOM_Debug_C_Eco": "Eco",
     "UI_NOM_Debug_C_Eco_Desc": "An Eco at your feet (night only).",
+    "UI_NOM_Debug_C_Alma": "Soul wave",
+    "UI_NOM_Debug_C_Alma_Desc": "White fog only: spawns a small wave of skeletal souls in the street (mostly crawlers, short TTL).",
     "UI_NOM_Debug_C_Thunder": "Lightning",
     "UI_NOM_Debug_C_Thunder_Desc": "Lightning and thunder now, near you. In the black fog, the flash freezes the Ticoes for 1 s.",
     "UI_NOM_Debug_C_Lamp": "Flickering lamppost",

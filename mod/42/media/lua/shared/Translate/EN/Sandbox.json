@@ -52,6 +52,8 @@
     "Sandbox_NevoaEOutroMundo.FogZombieVision_tooltip": "In white and red fog, common zombies only see this far. Beyond it they only find you by noise: running, shooting, a car. Fog monsters keep their own ways. 0 turns it off (normal sight).",
     "Sandbox_NevoaEOutroMundo.FogWander": "Zombies wander in fog",
     "Sandbox_NevoaEOutroMundo.FogWander_tooltip": "In white fog, every so often groups of 1 to 3 idle zombies near you (including Clickers) start walking around the area, never toward you: you can run into them at any time, without a horde. They do not wander in red or black fog.",
+    "Sandbox_NevoaEOutroMundo.AlmaEnabled": "Skeletal souls in white fog",
+    "Sandbox_NevoaEOutroMundo.AlmaEnabled_tooltip": "In white fog, waves of black skeletal souls rise in the street (mostly crawling), slowly seek the player, and fade after seconds to a minute. They never enter buildings and do not replace fog monsters.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",
     "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Bodies near players release Echoes at night, once per body, but only bodies that died before dusk: whoever dies at night waits for the next one. Burn or bury the dead. An Echo's bite infects like any zombie's.",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Max Echoes per player",
