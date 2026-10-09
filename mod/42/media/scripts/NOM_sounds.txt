@@ -425,10 +425,11 @@ module Base
         {
             file = media/sound/NOM_CarpideiraSob.ogg,
             distanceMax = 12,
-            volume = 0.5,
+            volume = 0.28,
         }
     }
 
+    /* Screamer (sprint 0053): ElevenLabs mysterious female — volume sutil como ambiente */
     sound NOM_CarpideiraScream
     {
         category = Zombie,
@@ -436,6 +437,7 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream.ogg,
             distanceMax = 150,
+            volume = 0.35,
         }
     }
 
@@ -446,6 +448,7 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream2.ogg,
             distanceMax = 150,
+            volume = 0.35,
         }
     }
 
@@ -456,6 +459,7 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream3.ogg,
             distanceMax = 150,
+            volume = 0.35,
         }
     }
 
@@ -628,14 +632,15 @@ module Base
         }
     }
 
-    /* Almas esqueléticas (sprint 0050): Johan + ElevenLabs → scripts/import_elevenlabs_almas.py */
+    /* Almas (sprint 0050→0053): gemidos de sofrimento sutis — import_elevenlabs_almas.py */
     sound NOM_AlmaSpawn
     {
         category = Zombie,
         clip
         {
             file = media/sound/NOM_AlmaSpawn.ogg,
-            distanceMax = 35,
+            distanceMax = 28,
+            volume = 0.18,
         }
     }
 
@@ -645,7 +650,8 @@ module Base
         clip
         {
             file = media/sound/NOM_AlmaCrawl.ogg,
-            distanceMax = 30,
+            distanceMax = 22,
+            volume = 0.14,
         }
     }
 
@@ -655,7 +661,8 @@ module Base
         clip
         {
             file = media/sound/NOM_AlmaShamble.ogg,
-            distanceMax = 30,
+            distanceMax = 22,
+            volume = 0.14,
         }
     }
 
@@ -666,9 +673,9 @@ module Base
         clip
         {
             file = media/sound/NOM_AlmaGroup.ogg,
-            distanceMin = 5,
-            distanceMax = 60,
-            volume = 0.7,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.22,
         }
     }
 
@@ -678,7 +685,8 @@ module Base
         clip
         {
             file = media/sound/NOM_AlmaDespawn.ogg,
-            distanceMax = 35,
+            distanceMax = 28,
+            volume = 0.16,
         }
     }
 }

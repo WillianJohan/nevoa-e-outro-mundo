@@ -2,6 +2,7 @@ package nom.render;
 
 import static org.lwjgl.opengl.GL33C.*;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,7 +29,9 @@ import zombie.iso.IsoCell;
 import zombie.iso.IsoDepthHelper;
 import zombie.iso.IsoWorld;
 import zombie.iso.Vector2;
+import zombie.iso.weather.ClimateColorInfo;
 import zombie.iso.weather.ClimateManager;
+import zombie.iso.weather.ThunderStorm;
 import zombie.iso.weather.fog.ImprovedFog;
 import zombie.scripting.objects.VehicleScript;
 import zombie.vehicles.BaseVehicle;
@@ -125,6 +128,55 @@ public final class RenderContext {
             log("sonarRipple: erro, o anel vai pra tela: " + t);
             return false;
         }
+    }
+
+    // Sprint 0053: cor do clarão do ThunderStorm (PlayerLightningInfo.lightningColor é público;
+    // o array lightningInfos é privado — reflexão uma vez). Vanilla nasce branco (1,1,1);
+    // na névoa preta o Lua pinta vermelho. Nunca derruba o jogo.
+    private static Field lightningInfosField;
+    private static float lightningR = 1f, lightningG = 1f, lightningB = 1f;
+
+    /**
+     * Pinta o clarão do relâmpago vanilla (r,g,b 0..1). client/NOM_StormFx.lua: vermelho
+     * só na névoa preta; branco de volta na vermelha/branca. true se aplicou.
+     */
+    @LuaMethod(name = "NOMRender_setLightningColor", global = true)
+    public static boolean setLightningColor(double r, double g, double b) {
+        try {
+            lightningR = clamp01((float) r);
+            lightningG = clamp01((float) g);
+            lightningB = clamp01((float) b);
+            return paintLightningColor();
+        } catch (Throwable t) {
+            log("setLightningColor: " + t);
+            return false;
+        }
+    }
+
+    private static float clamp01(float v) {
+        return v < 0f ? 0f : (v > 1f ? 1f : v);
+    }
+
+    private static boolean paintLightningColor() throws Exception {
+        ClimateManager cm = ClimateManager.getInstance();
+        if (cm == null) return false;
+        ThunderStorm ts = cm.getThunderStorm();
+        if (ts == null) return false;
+        if (lightningInfosField == null) {
+            lightningInfosField = ThunderStorm.class.getDeclaredField("lightningInfos");
+            lightningInfosField.setAccessible(true);
+        }
+        Object[] infos = (Object[]) lightningInfosField.get(ts);
+        if (infos == null) return false;
+        for (Object info : infos) {
+            if (info == null) continue;
+            Field colorField = info.getClass().getField("lightningColor");
+            ClimateColorInfo col = (ClimateColorInfo) colorField.get(info);
+            if (col == null) continue;
+            col.setExterior(lightningR, lightningG, lightningB, 1f);
+            col.setInterior(lightningR, lightningG, lightningB, 1f);
+        }
+        return true;
     }
 
     /**

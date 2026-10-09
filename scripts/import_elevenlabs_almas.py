@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Converte refs ElevenLabs de esqueleto (MP3) nos oggs das almas (sprint 0050).
+"""Converte refs ElevenLabs em gemidos sutis das almas (sprint 0050→0053).
 
-Fonte (não versionada no repo do jogo): pasta com os 5 MP3 skeleton.
-  NOM_ELEVENLABS_SKELETON_REFS=/caminho/elevenlabs-skeleton-refs \\
+Sprint 0053: ossos/esqueleto ensurdecedores saem; entram gemidos de sofrimento
+(exhausted / faint / distant) com amplitude bem baixa. Fonte: pasta elevenlabs-refs
+do Johan (não versionada no repo do jogo).
+
+  NOM_ELEVENLABS_REFS=/caminho/elevenlabs-refs \\
     python3 scripts/import_elevenlabs_almas.py
-  python3 scripts/import_elevenlabs_almas.py /caminho/elevenlabs-skeleton-refs
+  python3 scripts/import_elevenlabs_almas.py /caminho/elevenlabs-refs
 
 Saída: mod/42/media/sound/NOM_Alma{Spawn,Crawl,Shamble,Group,Despawn}.ogg
-(mono 44,1 kHz). Não copia MP3 pro repo.
-
-Mapa por sufixo hex: internal/elevenlabs-skeleton-almas.md (Agent Store).
+(mono 44,1 kHz). Não copia MP3 pro repo. Volume relativo também em NOM_sounds.txt.
 """
 from __future__ import annotations
 
@@ -25,22 +26,27 @@ import nom_synth as ns
 RATE = ns.RATE
 OUT = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "sound")
 
-# slot -> (sufixo hex, t0 opcional, t1 opcional)
+# slot -> (sufixo hex, t0, t1). Gemidos de sofrimento (não skeletal undead).
 MAP = {
-    "NOM_AlmaSpawn": ("255f", None, None),
-    "NOM_AlmaCrawl": ("21d3", None, None),
-    "NOM_AlmaShamble": ("9ba0", None, None),
-    "NOM_AlmaGroup": ("c66d", None, None),
-    "NOM_AlmaDespawn": ("f836", None, None),
+    "NOM_AlmaSpawn": ("15f9", None, None),      # exhausted adult
+    "NOM_AlmaCrawl": ("2e45", None, None),      # faint distant
+    "NOM_AlmaShamble": ("93bc", None, None),    # distant woman
+    "NOM_AlmaGroup": ("57d8", None, None),      # several distant
+    "NOM_AlmaDespawn": ("081d", None, None),    # very distant
 }
 
 MAX_DUR = {
-    "NOM_AlmaSpawn": 4.5,
-    "NOM_AlmaCrawl": 5.0,
-    "NOM_AlmaShamble": 5.0,
-    "NOM_AlmaGroup": 6.0,
-    "NOM_AlmaDespawn": 4.0,
+    "NOM_AlmaSpawn": 3.5,
+    "NOM_AlmaCrawl": 4.0,
+    "NOM_AlmaShamble": 4.0,
+    "NOM_AlmaGroup": 4.5,
+    "NOM_AlmaDespawn": 3.2,
 }
+
+# Amplitude pós-processamento (antes do finalize): bem baixo / sutil.
+GAIN = 0.28
+# crest alto → RMS mais baixo com o mesmo pico (nom_synth.finalize).
+CREST_DB = 16.5
 
 
 def find_by_suffix(refs_dir: str, suffix: str) -> str:
@@ -69,7 +75,7 @@ def trim_silence(x: np.ndarray, thr_rel: float = 0.028, pad_s: float = 0.04) -> 
     return x[a:b]
 
 
-def fade(x: np.ndarray, in_s: float = 0.012, out_s: float = 0.08) -> np.ndarray:
+def fade(x: np.ndarray, in_s: float = 0.04, out_s: float = 0.12) -> np.ndarray:
     y = x.copy()
     n_in = min(len(y), int(in_s * RATE))
     n_out = min(len(y), int(out_s * RATE))
@@ -90,9 +96,11 @@ def process(path: str, t0, t1, max_dur: float) -> np.ndarray:
     max_n = int(max_dur * RATE)
     if len(x) > max_n:
         x = x[:max_n]
+    # passa-baixa leve: gemido longe, sem clique de osso
+    x = ns.lowpass(x, 2800, 2)
     x = fade(x)
     pk = float(np.max(np.abs(x))) + 1e-12
-    x = np.tanh(1.15 * x / pk) * pk
+    x = np.tanh(1.05 * x / pk) * pk * GAIN
     return x
 
 
@@ -101,14 +109,13 @@ def main(argv=None) -> int:
     ap.add_argument(
         "refs",
         nargs="?",
-        default=os.environ.get("NOM_ELEVENLABS_SKELETON_REFS", "")
-        or os.environ.get("NOM_ELEVENLABS_REFS", ""),
-        help="pasta com os MP3 skeleton (ou env NOM_ELEVENLABS_SKELETON_REFS)",
+        default=os.environ.get("NOM_ELEVENLABS_REFS", ""),
+        help="pasta com os MP3 (elevenlabs-refs) ou env NOM_ELEVENLABS_REFS",
     )
     ap.add_argument("only", nargs="*", help="opcional: só estes NOM_*")
     args = ap.parse_args(argv)
     if not args.refs or not os.path.isdir(args.refs):
-        print("informe a pasta dos MP3 (arg ou NOM_ELEVENLABS_SKELETON_REFS)", file=sys.stderr)
+        print("informe a pasta dos MP3 (arg ou NOM_ELEVENLABS_REFS)", file=sys.stderr)
         return 2
     only = set(args.only)
     os.makedirs(OUT, exist_ok=True)
@@ -118,7 +125,7 @@ def main(argv=None) -> int:
         src = find_by_suffix(args.refs, suffix)
         sig = process(src, t0, t1, MAX_DUR[slot])
         dst = os.path.join(OUT, slot + ".ogg")
-        level, pk, dur = ns.write(dst, sig, crest_db=12.5)
+        level, pk, dur = ns.write(dst, sig, crest_db=CREST_DB)
         print(f"{slot}: {os.path.basename(src)} -> {dur:.2f}s  RMS {level:.1f} dBFS  pico {pk:.1f} dBFS")
     return 0
 

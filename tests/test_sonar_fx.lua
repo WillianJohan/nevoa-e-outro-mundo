@@ -71,12 +71,30 @@ local function setup(opts)
 end
 
 local R
-local function rules()
+local function rules(screen)
     R = NOM_SonarRules
+    -- sprint 0053: padrão é sem anel na tela; testes de desenho religam SCREEN_DRAW
+    R.SCREEN_DRAW = (screen ~= false)
     return R
 end
 
 return {
+    -- sprint 0053: sem SCREEN_DRAW o mod3 recusado não deixa anel branco na tela
+    sonar_fx_no_screen_by_default = function()
+        local G = setup({ mod3 = function() return false end })
+        rules(false)
+        assert(R.SCREEN_DRAW == false)
+        G.ring(100, 100, 0)
+        G.frame(100)
+        assert(#G.draws == 0, "anel na tela com SCREEN_DRAW off")
+        -- batidas futuras ainda agendadas; as que já nasceram e o mod3 recusou saíram
+        for _, g in ipairs(NOM_SonarFx.rings) do
+            assert(not g.sent or G.now < g.born, "ripple recusado ficou na lista")
+        end
+        G.frame(R.BEAT_MS[#R.BEAT_MS] + R.RIPPLE_DURATION_MS + R.RIPPLE_FADE_MS)
+        assert(#NOM_SonarFx.rings == 0 and #G.draws == 0, "burst sem anel na tela")
+    end,
+
     -- No meio da expansão do primeiro ripple a elipse está centrada, 2:1, frente no raio.
     sonar_fx_ring_on_floor = function()
         local G = setup()

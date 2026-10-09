@@ -193,7 +193,8 @@ return {
         assert(R.rippleAlpha(0) == 0)
         assert(near(R.rippleAlpha(275), R.RIPPLE_ALPHA))
         assert(R.rippleAlpha(R.RIPPLE_DURATION_MS + R.RIPPLE_FADE_MS) == 0)
-        assert(R.RIPPLE_ALPHA < R.ALPHA or R.RIPPLE_ALPHA <= 0.3, "ripple discreto")
+        assert(R.RIPPLE_ALPHA <= 0.12, "ripple bem sutil (0053): " .. R.RIPPLE_ALPHA)
+        assert(R.SCREEN_DRAW == false, "0053: sem anel na tela por padrão")
     end,
 
     -- gen_sounds.py declara os mesmos offsets (CLICK_BEATS_MS)

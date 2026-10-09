@@ -29,7 +29,10 @@ NOM_SonarRules = {
     RIPPLE_RANGE = 3,      -- tiles por ondulação de presença
     RIPPLE_DURATION_MS = 550,
     RIPPLE_FADE_MS = 280,
-    RIPPLE_ALPHA = 0.28,
+    -- Sprint 0053: anéis brancos na tela quebravam imersão (playtest). Alpha bem baixo
+    -- se alguém religar SCREEN_DRAW; o padrão é só ripple de mundo (mod3).
+    RIPPLE_ALPHA = 0.08,
+    SCREEN_DRAW = false,   -- false: sem anel ScreenFx; só NOMRender_sonarRipple
     MAX_RIPPLES = 36,      -- ripples na tela / mod3 (vários Estaladores × batidas)
     -- Anel sem jogador a até REACH (mesmo andar) não acha ninguém, nem quem corre (~6 tiles/s)
     -- na direção dele: é o que sai quando lota (NOM_SonarServer.emit)
@@ -37,11 +40,11 @@ NOM_SonarRules = {
     DEBUG_REACH = 60,      -- NOM.sonar(): Estalador a até isso de quem pede
     MAX_COORD = 100000,    -- coordenada de tile aceita na mensagem
     MIN_FLOOR = -32, MAX_FLOOR = 32,
-    -- desenho sem mod3 (client/NOM_SonarFx.lua)
+    -- desenho sem mod3 (client/NOM_SonarFx.lua); cores mais discretas se SCREEN_DRAW voltar
     TEXTURE = "media/textures/NOM/ScreenFx/NOM_SonarAnel.png",
     TEX_RING = 0.9,        -- raio da frente na textura, em meias-larguras (scripts/gen_textures.py)
     VIEW = 30,             -- tiles: anel mais longe que isso do jogador não é desenhado
-    COLOR = { white = { 0.85, 0.9, 0.95 }, red = { 0.95, 0.42, 0.36 } },
+    COLOR = { white = { 0.55, 0.62, 0.7 }, red = { 0.75, 0.28, 0.22 } },
 }
 local R = NOM_SonarRules
 

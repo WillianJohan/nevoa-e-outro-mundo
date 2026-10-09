@@ -131,9 +131,16 @@ def main(argv=None) -> int:
             continue
         src = find_by_suffix(args.refs, suffix)
         sig = process(src, t0, t1, MAX_DUR[slot])
+        # Sprint 0053: Screamer/ambiente sutis — Carpideira e Ambient mais quietos;
+        # Corredor mantém presença (ainda assusta).
+        quiet = slot.startswith("NOM_Carpideira") or slot.startswith("NOM_Ambient")
+        if quiet:
+            sig = sig * 0.45
+            crest = 15.0
+        else:
+            crest = 12.5
         dst = os.path.join(OUT, slot + ".ogg")
-        # crest um pouco maior: gritos ElevenLabs já têm dinâmica; mira ~-14 dBFS RMS
-        level, pk, dur = ns.write(dst, sig, crest_db=12.5)
+        level, pk, dur = ns.write(dst, sig, crest_db=crest)
         print(f"{slot}: {os.path.basename(src)} -> {dur:.2f}s  RMS {level:.1f} dBFS  pico {pk:.1f} dBFS")
     return 0
 

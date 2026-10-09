@@ -9,14 +9,14 @@ chiado, fio), então a peça inteira vira o material. Contraste cheio e formas g
 docs/gdd/art-direction.md; prévia em scripts/preview_textures.py.
 
 Saída (mod/42/media/textures/):
-  Body/NOM_Estalador.png         256  porcelana quase branca, rachaduras grossas pretas
-  Body/NOM_Corredor.png          256  cinza-cinza clara, veias grossas roxo-pretas
-  Body/NOM_Carpideira.png        256  muito pálida, escorridos de fuligem, fuligem nos olhos
-  NOM/NOM_EstaladorVenda.png     128  atadura em faixas branco-sujas, dois arames farpados ferrugem, sangue seco (óculos de esqui)
-  NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos (máscara cirúrgica)
-  NOM/NOM_SemRostoEstatica.png   128  chiado de TV em blocos preto/branco e faixas rasgadas (balaclava inteira)
-  NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
-  NOM/NOM_CarpideiraManto.png    256  manto penitente escuro rasgado, fuligem (camada corpo, sprint 0052)
+  Body/NOM_Estalador.png         256  pele suja creepypasta, rachaduras + sangue (0053)
+  Body/NOM_Corredor.png          256  pele mottled suja, veias e sangue
+  Body/NOM_Carpideira.png        256  pele pálida Jeff-like, sangue nos olhos/boca
+  NOM/NOM_EstaladorVenda.png     128  atadura suja + arame + sangue (sem grade wrap)
+  NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos
+  NOM/NOM_SemRostoEstatica.png   128  chiado de TV em blocos preto/branco
+  NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com mechas brancas
+  NOM/NOM_CarpideiraManto.png    256  hoodie manchado (sangue/sujeira), sem listras wrap (0053)
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
@@ -47,8 +47,10 @@ import os
 import numpy as np
 from PIL import Image
 
-SEED = 1203
+SEED = 1203  # texturas legadas byte-iguais; só as funções de pele/manto mudam (0053)
 OUT = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textures")
+BLOOD = (90, 4, 8)       # sangue bem saturado (contraste 0014: pouco cinza médio)
+GRIME = (18, 14, 12)     # sujeira quase preta
 
 
 def noise(rng, size, cells):
@@ -105,45 +107,58 @@ def blocks(rng, rows, cols, size):
     return np.kron(rng.random((rows, cols)).astype(np.float32), np.ones((size // rows, size // cols), np.float32))
 
 
+def blood_splats(rng, size, n=14, lo=0.35, hi=0.9):
+    """Manchas orgânicas de sangue (sem grade/listra)."""
+    k = np.zeros((size, size), np.float32)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    for _ in range(n):
+        cx, cy = rng.uniform(0, size), rng.uniform(0, size)
+        rx, ry = rng.uniform(size * 0.04, size * 0.14), rng.uniform(size * 0.03, size * 0.12)
+        blob = np.exp(-(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2))
+        k = np.maximum(k, (blob * rng.uniform(lo, hi)).astype(np.float32))
+    k = np.maximum(k, (fbm(rng, size, (5, 11, 23), (0.5, 0.3, 0.2)) > 0.78).astype(np.float32) * 0.55)
+    return np.clip(k, 0, 1)
+
+
 def estalador_skin(rng, size=256):
-    # porcelana quase branca, rachaduras GROSSAS pretas em placas grandes; o Estalador
-    # lê como um boneco trincado
-    rgb = color((246, 242, 234), 0.97 + 0.03 * fbm(rng, size))
-    c = cracks(rng, size, 22)                             # poucas placas, ~50 px cada
-    k = np.clip((5.0 - c) / 1.5, 0, 1)                    # rachadura de ~8 px, borda dura
-    fine = cracks(rng, size, 60)
-    k = np.maximum(k, np.clip((2.2 - fine) / 1.0, 0, 1) * (noise(rng, size, 5) > 0.55))
-    return mix(rgb, INK, k)
+    # sprint 0053: pele creepypasta — quase branco OU quase preto (contraste 0014),
+    # rachadura + sangue; sem película/listra.
+    rgb = color((250, 246, 238), 0.97 + 0.03 * fbm(rng, size))
+    c = cracks(rng, size, 16)
+    k = np.clip((6.0 - c) / 1.4, 0, 1)  # rachaduras largas pretas
+    fine = cracks(rng, size, 40)
+    k = np.maximum(k, np.clip((2.4 - fine) / 0.9, 0, 1) * (noise(rng, size, 4) > 0.5))
+    rgb = mix(rgb, INK, k)
+    # manchas de sujeira bem escuras (não cinza médio)
+    rgb = mix(rgb, INK, (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.78).astype(np.float32) * 0.85)
+    return mix(rgb, BLOOD, blood_splats(rng, size, 9, 0.55, 1.0))
 
 
 def corredor_skin(rng, size=256):
-    # cinza de cinza claro (brilho alto contra a névoa), veias grossas quase pretas
-    rgb = color((200, 197, 190), 0.96 + 0.04 * fbm(rng, size))
+    # pele clara + veias pretas grossas + sangue (std alto, mid baixo)
+    rgb = color((220, 214, 204), 0.96 + 0.04 * fbm(rng, size))
     k = np.zeros((size, size), np.float32)
-    for cells, width in ((4, 0.06), (7, 0.045), (11, 0.03)):
+    for cells, width in ((3, 0.08), (5, 0.055), (8, 0.04)):
         v = fbm(rng, size, (cells, cells * 2), (0.8, 0.2))
-        k = np.maximum(k, np.clip((width - np.abs(v - 0.5)) / 0.012, 0, 1))
-    return mix(rgb, (24, 10, 26), k)                     # roxo-preto
+        k = np.maximum(k, np.clip((width - np.abs(v - 0.5)) / 0.011, 0, 1))
+    rgb = mix(rgb, INK, k)
+    rgb = mix(rgb, INK, (fbm(rng, size, (2, 5), (0.7, 0.3)) > 0.8).astype(np.float32) * 0.9)
+    return mix(rgb, BLOOD, blood_splats(rng, size, 11, 0.5, 1.0))
 
 
 def carpideira_skin(rng, size=256):
-    # muito pálida; escorridos grossos de fuligem de cima pra baixo e o rosto sujo onde
-    # ela enxugou as lágrimas
-    rgb = color((242, 242, 246), 0.97 + 0.03 * fbm(rng, size))
-    cols = blocks(rng, 1, 32, size)[0]                    # colunas de 8 px
-    streak = (cols > 0.8).astype(np.float32)
-    y = np.linspace(0, 1, size, dtype=np.float32)[:, None]
-    stop = 0.2 + 0.5 * blocks(rng, 1, 32, size)            # cada escorrido acaba numa altura
-    k = streak[None, :] * (y < stop)
-    k = np.maximum(k, (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.8).astype(np.float32))   # onde esfregou
-    # fuligem debaixo dos olhos: o rosto da pele de zumbi vanilla fica no alto e no meio
-    # (M e F iguais, visto pelo layout: rosto em x 44–56%, olhos em x ~47% e ~53%,
-    # y ~12%). Uma mancha por olho que escorre até ~24%.
+    # Jeff: pele branca cheia, órbitas pretas grandes, sangue na boca — contraste alto.
+    rgb = color((252, 250, 248), np.ones((size, size), np.float32))
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
     for ex in (0.47, 0.53):
-        eye = (np.abs(xx - ex) < 0.022) & (yy > 0.11) & (yy < 0.17 + 0.07 * (np.abs(xx - ex) < 0.008))
-        k = np.maximum(k, eye.astype(np.float32))
-    return mix(rgb, INK, k)
+        eye = ((xx - ex) ** 2) / (0.035 ** 2) + ((yy - 0.135) ** 2) / (0.05 ** 2) < 1.0
+        rgb = mix(rgb, INK, eye.astype(np.float32))
+        drip = (np.abs(xx - ex) < 0.018) & (yy > 0.13) & (yy < 0.32)
+        rgb = mix(rgb, BLOOD, drip.astype(np.float32))
+    mouth = (yy > 0.20) & (yy < 0.32) & (np.abs(xx - 0.5) < 0.10)
+    rgb = mix(rgb, BLOOD, mouth.astype(np.float32))
+    rgb = mix(rgb, INK, (fbm(rng, size, (2, 4), (0.7, 0.3)) > 0.82).astype(np.float32))
+    return mix(rgb, BLOOD, blood_splats(rng, size, 7, 0.5, 1.0) * 0.85)
 
 
 def estalador_venda(rng, size=128):
@@ -209,21 +224,20 @@ def carpideira_cabelo(rng, size=128):
 
 
 def carpideira_manto(rng, size=256):
-    # sprint 0052: manto penitente — metade preto cheio, metade bege rasgado em blocos
-    # grandes (contraste 0014: std alto, pouco cinza médio).
-    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    # blocos 8×8 (~32 px): preto ou bege — lê de longe como manto rasgado
-    tile = blocks(rng, 8, 8, size)
-    light = (tile > 0.5).astype(np.float32)
-    rgb = mix(color(INK, np.ones((size, size), np.float32)), (228, 218, 204), light)
-    # faixas horizontais escuras (costura / rasgo)
-    seam = ((y % 32) < 5).astype(np.float32)
-    rgb = mix(rgb, INK, seam)
-    # escorridos pretos
-    cols = (blocks(rng, 1, 32, size)[0] > 0.7).astype(np.float32)
-    yy = y / size
-    drip = cols[None, :] * (yy < 0.25 + 0.6 * blocks(rng, 1, 32, size))
-    return mix(rgb, INK, drip * 0.9)
+    # sprint 0053: hoodie manchado — branco sujo OU preto (contraste), sangue orgânico.
+    # Sem blocos 8×8 nem faixas horizontais (lia como película wrap).
+    tile = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
+    light = (tile > 0.48).astype(np.float32)
+    rgb = mix(color(INK, np.ones((size, size), np.float32)), (240, 236, 228), light)
+    # capuz: mancha grande escura (não faixa)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    hood = (np.hypot(xx - 0.5, yy - 0.15) < 0.42).astype(np.float32)
+    rgb = mix(rgb, INK, hood * 0.75)
+    # rasgos irregulares
+    c = cracks(rng, size, 20)
+    tear = np.clip((4.0 - c) / 1.3, 0, 1)
+    rgb = mix(rgb, INK, tear * (noise(rng, size, 3) > 0.45))
+    return mix(rgb, BLOOD, blood_splats(rng, size, 16, 0.6, 1.0))
 
 
 # O Eco fica fora da regra das formas grandes: lê por ser muito mais claro que qualquer
@@ -306,19 +320,18 @@ def screen_lines(rng, w=512, h=256):
 
 
 def sonar_ring(size=256):
-    # anel do sonar do Estalador (sprint 0037): branco com alfa, desenhado achatado 2:1 no chão
-    # isométrico. Frente fina e nítida em r = 0,9 com rastro macio pra dentro (a onda que passou)
-    # e falhas suaves ao longo da volta, pra não parecer círculo de interface.
+    # anel do sonar (0037→0053): bem mais suave — playtest: anéis brancos quebravam imersão.
+    # Frente larga e fraca; alfa baixo. Com SCREEN_DRAW=false quase não é usado.
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
     cx = cy = (size - 1) / 2
     r = np.hypot(x - cx, y - cy) / (size / 2)
     th = np.arctan2(y - cy, x - cx)
-    front = np.exp(-((r - 0.9) / 0.022) ** 2)
-    wake = np.where(r < 0.9, np.exp(-((0.9 - r) / 0.12) ** 2) * 0.35, 0)
-    gaps = 0.72 + 0.28 * np.sin(7 * th) * np.sin(3 * th + 1.3)
-    a = np.clip((front + wake) * gaps, 0, 1)
+    front = np.exp(-((r - 0.9) / 0.045) ** 2)
+    wake = np.where(r < 0.9, np.exp(-((0.9 - r) / 0.18) ** 2) * 0.22, 0)
+    gaps = 0.55 + 0.45 * np.sin(5 * th) * np.sin(2 * th + 0.8)
+    a = np.clip((front + wake) * gaps * 0.35, 0, 1)
     a[r > 0.98] = 0
-    return np.full((size, size, 3), 255, np.float32), a
+    return np.full((size, size, 3), 220, np.float32), a
 
 
 def screen_static(rng, size=256):
