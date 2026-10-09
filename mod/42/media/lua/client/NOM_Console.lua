@@ -197,6 +197,9 @@ function NOM.ownSprites()
     for _, m in ipairs(NOM_OwnSprites.missing()) do NOM_DebugLog.say("[NOM] debug sem textura: " .. m) end
 end
 
+-- Almas esqueléticas (sprint 0050): uma leva agora na névoa branca (rua, ~70% crawler).
+function NOM.alma() NOM_Debug.send({ op = "alma" }) end
+
 -- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
 function NOM.wander() NOM_Debug.send({ op = "wander" }) end
@@ -260,6 +263,7 @@ NOM.HELP = {
     { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
+    { "NOM.alma()", "uma leva de almas esqueléticas agora (só névoa branca): rua, maioria crawler, TTL curto" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },

@@ -130,6 +130,11 @@ option NevoaEOutroMundo.FogWander = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogWander,
 }
 
+option NevoaEOutroMundo.AlmaEnabled = {
+    type = boolean, default = true,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.AlmaEnabled,
+}
+
 option NevoaEOutroMundo.EcoEnabled = {
     type = boolean, default = true,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EcoEnabled,

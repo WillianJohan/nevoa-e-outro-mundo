@@ -3,7 +3,10 @@
 **Nada de terceiros.** Todo arquivo de som, imagem e textura do mod é original, gerado por
 script deste repositório, menos a **arte de lançamento, que é do Johan** (pôster, preview, ícone
 e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)) e só é redimensionada e
-tingida por script; o resto do que o mod mostra é conteúdo vanilla do Project
+tingida por script, e os **sons de almas esqueléticas (sprint 0050)**, gerados pelo Johan com
+ElevenLabs Sound Effects e convertidos por
+[`scripts/import_elevenlabs_almas.py`](scripts/import_elevenlabs_almas.py) (MP3 fonte fora do
+repo); o resto do que o mod mostra é conteúdo vanilla do Project
 Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum
 código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
 [MIT](LICENSE), a mesma do mod.
@@ -68,10 +71,19 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_DevSpeaker.ogg` | caixa de som de poste (7 s): zumbido de terra na corneta, pulsos graves de passada, microfonia cortada seca, eco de rua | caixa de som na névoa |
 | `mod/42/media/sound/NOM_DevCar.ogg` | rádio de carro ligando sozinho, ouvido de fora (8 s): relé, busca de estação, contagem de cinco sílabas, abafado pela lataria | rádio de carro na névoa |
 | `mod/42/media/sound/NOM_DevBurst.ogg` | estouro de estática de aparelho (3 s): chiado na banda AM que cresce, crepitação e rajadas de arco, corte seco | presságio da sirene e aparelho perto do Sem-rosto |
+| `mod/42/media/sound/NOM_AlmaSpawn.ogg` | ElevenLabs (Johan): skeletal undead rising from ground (~4,5 s) | spawn de alma esquelética (sprint 0050) |
+| `mod/42/media/sound/NOM_AlmaCrawl.ogg` | ElevenLabs (Johan): skeletal undead crawling / joints | alma crawler (evento) |
+| `mod/42/media/sound/NOM_AlmaShamble.ogg` | ElevenLabs (Johan): skeletal undead shambling | alma shambler (evento) |
+| `mod/42/media/sound/NOM_AlmaGroup.ogg` | ElevenLabs (Johan): several skeletal undead in fog | leva / grupo na névoa |
+| `mod/42/media/sound/NOM_AlmaDespawn.ogg` | ElevenLabs (Johan): skeletal undead turning to smoke | despawn / TTL da alma |
 
 Pra regerar: `python3 scripts/gen_sounds.py` (ou só alguns: `python3 scripts/gen_sounds.py NOM_DevTv`).
 A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
 são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
+
+**Almas (sprint 0050):** com a pasta de MP3 do Johan,
+`python3 scripts/import_elevenlabs_almas.py /caminho/elevenlabs-skeleton-refs`.
+Os MP3 **não** entram no repo.
 
 ## Imagens
 

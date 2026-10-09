@@ -59,6 +59,13 @@ function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm, ticaoSpeed)
         w.key = "ticao:" .. w.speed .. "," .. w.sight .. "," .. w.hearing
         return w
     end
+    -- Alma (sprint 0050): sempre arrastada (shambler/crawler), visão ruim; nem noite
+    -- nem calmaria mexem. Seek próprio em NOM_Alma.
+    if kind == "alma" then
+        local w = { speed = R.ECO_SPEED, sight = 3, hearing = 2 }
+        w.key = "alma:" .. w.speed .. "," .. w.sight .. "," .. w.hearing
+        return w
+    end
     if calm and kind == nil then
         local w = { speed = R.dull(dayTier, 1), sight = R.dull(R.baseSense(cfg.sight or 2), 1),
             hearing = R.dull(R.baseSense(cfg.hearing or 2), 1) }

@@ -27,6 +27,7 @@ NOM_Config.DEFAULTS = {
     FogPocketAggression = 1.0,
     FogZombieVision = 4,
     FogWander = true,
+    AlmaEnabled = true,
     EcoEnabled = true,
     EcoMaxPerPlayer = 20,
     EcoRadius = 30,

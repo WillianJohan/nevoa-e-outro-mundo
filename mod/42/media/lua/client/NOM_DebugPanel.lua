@@ -116,6 +116,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Pull", function() NOM.getZombie() end) } },
             { title = "UI_NOM_Debug_C_Eco", desc = "UI_NOM_Debug_C_Eco_Desc", choices = {
                 c("UI_NOM_Debug_B_Here", function() NOM.eco() end) } },
+            { title = "UI_NOM_Debug_C_Alma", desc = "UI_NOM_Debug_C_Alma_Desc", choices = {
+                c("UI_NOM_Debug_B_Now", function() NOM.alma() end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {

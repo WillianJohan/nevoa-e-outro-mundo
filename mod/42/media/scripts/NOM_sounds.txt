@@ -535,4 +535,58 @@ module Base
             volume = 0.5,
         }
     }
+
+    /* Almas esqueléticas (sprint 0050): Johan + ElevenLabs → scripts/import_elevenlabs_almas.py */
+    sound NOM_AlmaSpawn
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 35,
+        }
+    }
+
+    sound NOM_AlmaCrawl
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 30,
+        }
+    }
+
+    sound NOM_AlmaShamble
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 30,
+        }
+    }
+
+    sound NOM_AlmaGroup
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 5,
+            distanceMax = 60,
+            volume = 0.7,
+        }
+    }
+
+    sound NOM_AlmaDespawn
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 35,
+        }
+    }
 }

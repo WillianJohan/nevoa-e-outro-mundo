@@ -28,6 +28,7 @@ end
 local function isKind(z, kind)
     if z:isDead() then return false end
     if z:getModData().NOM_eco or z:getOutfitName() == ECO_OUTFIT then return false end
+    if z:getModData().NOM_alma then return false end -- almas (sprint 0050): além das variantes
     local cfg = NOM_VariantRules.config(NOM_Config.get)
     return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg, NOM_World.red, NOM_World.black) == kind
 end

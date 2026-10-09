@@ -101,6 +101,8 @@
     "UI_NOM_Debug_C_Pull_Desc": "O zumbi vivo mais perto, no mesmo andar, vem parar em cima de você.",
     "UI_NOM_Debug_C_Eco": "Eco",
     "UI_NOM_Debug_C_Eco_Desc": "Um Eco nos seus pés (só à noite).",
+    "UI_NOM_Debug_C_Alma": "Leva de almas",
+    "UI_NOM_Debug_C_Alma_Desc": "Só na névoa branca: spawna uma leva pequena de almas esqueléticas na rua (maioria crawler, TTL curto).",
     "UI_NOM_Debug_C_Thunder": "Relâmpago",
     "UI_NOM_Debug_C_Thunder_Desc": "Relâmpago e trovão agora, perto de você. Na névoa preta, o clarão congela os Tições por 1 s.",
     "UI_NOM_Debug_C_Lamp": "Poste piscando",

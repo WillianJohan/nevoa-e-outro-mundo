@@ -160,4 +160,15 @@ return {
         end
         assert(R.wanted(true, "ticao", 1, cfg()).speed == 3, "sem sorteio: arrastado")
     end,
+    -- Alma (sprint 0050): sempre arrastada, visão ruim; noite/calmaria não mexem
+    night_rules_wanted_alma = function()
+        local R = NOM_NightRules
+        for _, night in ipairs({ true, false }) do
+            for _, calm in ipairs({ true, false }) do
+                local w = R.wanted(night, "alma", 1, cfg(), calm)
+                assert(w.speed == 3 and w.sight == 3 and w.hearing == 2, "alma")
+                assert(w.key == "alma:3,3,2", w.key)
+            end
+        end
+    end,
 }

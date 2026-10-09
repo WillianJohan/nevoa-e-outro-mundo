@@ -98,6 +98,12 @@ local function isEco(z, md)
 end
 NOM_NightStats.isEco = isEco
 
+-- Alma esquelética (sprint 0050): marca NOM_alma; nunca vira variante.
+local function isAlma(z, md)
+    return md.NOM_alma == true
+end
+NOM_NightStats.isAlma = isAlma
+
 -- inactive: fase inativa do ActiveOnly. A velocidade fica com o jogo:
 -- doZombieSpeed(t) ignora o inactive com t ≠ -1 (determineZombieSpeed) e acordaria
 -- o zumbi. O doZombieSpeed() de dentro do DoZombieStats usa o speedType atual (3).
@@ -129,8 +135,15 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
         md.NOM_night = key
         md.NOM_dayTier = dayTier
         -- Lido pelo NOM_VariantAI (cego, estalo, grito). Só em memória, como o resto.
-        md.NOM_variant = kind ~= "eco" and kind or nil
+        md.NOM_variant = kind ~= "eco" and kind ~= "alma" and kind or nil
         NOM_NightStats.variants[z] = md.NOM_variant
+    end
+    -- Alma crawler: DoZombieStats pode soltar; reaplica se a API existir (spike §3.9.1).
+    if kind == "alma" and md.NOM_almaCrawler and z.setCrawler then
+        pcall(function() z:setCrawler(true) end)
+    end
+    if kind == "alma" then
+        pcall(function() z:setSkeleton(true) end)
     end
 end
 
@@ -165,12 +178,14 @@ local function process(z, c)
     local kind, id = nil, nil
     if isEco(z, md) then
         kind = "eco"
+    elseif isAlma(z, md) then
+        kind = "alma"
     elseif fog then
         id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- sem o chapéu caído (sprint 0017)
         kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red, NOM_FogState.black)
     end
-    -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit
-    look(z, kind ~= "eco" and kind or nil, id)
+    -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit; alma = setSkeleton
+    look(z, kind ~= "eco" and kind ~= "alma" and kind or nil, id)
     if kind == "semrosto" then kind = nil end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
     -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.

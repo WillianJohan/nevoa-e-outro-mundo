@@ -75,7 +75,7 @@ function NOM_DebugRules.parse(args)
         end
         return { op = op, id = args.id, x = math.floor(args.x), y = math.floor(args.y), z = math.floor(args.z) }
     elseif op == "spawnEco" or op == "status" or op == "wander" or op == "sonar" or op == "thunder"
-        or op == "lampFlicker" or op == "rain" then
+        or op == "lampFlicker" or op == "rain" or op == "alma" then
         return { op = op }
     end
     return nil
