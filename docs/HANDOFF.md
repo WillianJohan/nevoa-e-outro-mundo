@@ -14,6 +14,8 @@ Merge overnight 2026-10-09, ordem da fila. Reiniciar o jogo e `dev-sync.sh` depo
 | 0051 | Aperto da névoa preta (`BlackFogPressure`) | [aperto](sprints/sprint-0051-aperto-preta/README.md) |
 | 0052 | Carpideira Witch (piloto) | [witch](sprints/sprint-0052-carpideira-witch/README.md) |
 
+**Pós-review overnight (Important aplicados):** ambiente usa `FogState.color()` (silêncio na fuga preta); alma crawler reaplica `setCanWalk(false)` após `DoZombieStats`; `almaBorn` com retry no servidor/cliente; FX de leva só `group`. Look negro das almas e A/B visual ficam pro playtest do Johan. Almas no MP: melhor, ainda não chamar “MP-ready”.
+
 ## Em staging: sprint 0047g — FOG clímax (looks por cor)
 
 [README](sprints/sprint-0047-fog-climax/README.md) · shader da 1ª 0047 (`b012989`) + defaults playtest.
