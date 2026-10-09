@@ -25,11 +25,12 @@ local FILE = "mod/42/media/lua/server/NOM_SonarServer.lua"
 local PERIOD = 3
 
 local function idFor(want)
+    -- sprint 0049: branca 100%; comum = ID 0 (sem outfit, ADR-006)
+    if not want then return 0 end
     local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
     for seed = 1, 5000 do
         local id = 13 * 65536 + seed
-        local v = NOM_VariantRules.variant(id, PERIOD, c)
-        if (want and v == want) or (not want and v == nil) then return id end
+        if NOM_VariantRules.variant(id, PERIOD, c) == want then return id end
     end
     error("nenhum ID")
 end

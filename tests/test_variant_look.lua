@@ -331,8 +331,10 @@ local function setup(opts)
     return G
 end
 
--- ID no formato do jogo que dá a variante pedida no período (nil = zumbi comum)
+-- ID no formato do jogo que dá a variante pedida no período (nil = zumbi comum).
+-- Sprint 0049: branca 100%; ID 0 nunca é variante (ADR-006).
 local function idFor(want, period, red, female)
+    if want == nil and not red then return 0 end
     local c = NOM_VariantRules.config(NOM_Config.get)
     for seed = 1, 500 do
         local id = 9 * 65536 + seed
@@ -520,8 +522,9 @@ return {
     end,
 
     look_debug_forced_and_undone = function()
+        -- sprint 0049: ID 0 nunca é variante (nem forçado); usa um Corredor e força por cima
         local G = setup()
-        local id = idFor(nil, 13)
+        local id = idFor("corredor", 13)
         local z = G.spawn({ id = id })
         fogOn(13)
         G.converge()
@@ -534,20 +537,26 @@ return {
             "trocou de tipo e ficou com as duas: " .. types(z))
         NOM_VariantRules.forced[id] = nil
         G.converge()
-        assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil, "desfeito e ficou: " .. types(z))
+        -- desfeito: volta ao sorteio (Corredor), não a Knox
+        assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "desfeito e ficou: " .. types(z))
     end,
 
     look_period_change_without_edge = function()
+        -- sprint 0049: branca 100% — não há período "comum"; o visual acompanha a troca de tipo
         local G = setup()
         local id = idFor("corredor", 14)
         local z = G.spawn({ id = id })
         fogOn(14)
         G.converge()
+        local c = NOM_VariantRules.config(NOM_Config.get)
         local p = 15
-        while NOM_VariantRules.variant(id, p, NOM_VariantRules.config(NOM_Config.get)) ~= nil do p = p + 1 end
+        while NOM_VariantRules.variant(id, p, c) == "corredor" do p = p + 1 end
+        local k = NOM_VariantRules.variant(id, p, c)
+        assert(k and k ~= "corredor", "não achou período com outro tipo")
         fogOn(p)
         G.converge()
-        assert(types(z) == table.concat(OUTFIT, ",") and z.hv.name == nil, "período novo, visual velho")
+        assert(hasItem(z, NOM_VariantLook.LOOKS[k].item), "período novo, visual velho: " .. types(z))
+        assert(not hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "ficou Corredor: " .. types(z))
     end,
 
     -- review da 0012: a peça do mod num lugar comum expulsava o chapéu/máscara/óculos do

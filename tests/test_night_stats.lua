@@ -203,7 +203,9 @@ local function setup(opts)
 end
 
 -- primeiro persistentOutfitID (formato do jogo) que dá a variante pedida
+-- (nil = comum: ID 0 na branca 100%, sprint 0049)
 local function idFor(want, night, sandbox)
+    if want == nil then return 0 end
     local c = NOM_VariantRules.config(function(k)
         local v = sandbox[k]
         if v == nil then v = NOM_Config.DEFAULTS[k] end
@@ -645,19 +647,22 @@ return {
         assert(z.md.NOM_variant == nil and NOM_NightStats.variants[z] == nil and z.md.NOM_night == nil)
     end,
     -- addZombiesInOutfit veste depois do OnZombieCreate: a variante segue o ID atual
+    -- sprint 0049: comum = pesos zero; Corredor = 100% (branca cobre 100% com pesos > 0)
     stats_variant_follows_outfit_id = function()
-        local sb = { CorredorChance = 50, EstaladorChance = 0 }
-        local G = setup({ sandbox = sb })
-        local z = G.spawn({ id = idFor(nil, 6, sb) })
+        local sbNil = { EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0, CarpideiraChance = 0 }
+        local sbCor = { EstaladorChance = 0, CorredorChance = 100, SemRostoChance = 0, CarpideiraChance = 0 }
+        local G = setup({ sandbox = sbNil })
+        local z = G.spawn({ id = idFor(nil, 6, sbNil) })
         NOM_FogState.set(true, 6)
         G.converge()
         assert(z.md.NOM_variant == nil)
-        z.outfitID = idFor("corredor", 6, sb)
+        SandboxVars.NevoaEOutroMundo = sbCor
+        z.outfitID = idFor("corredor", 6, sbCor)
         G.converge()
         assert(z.md.NOM_variant == "corredor" and z.speedType == 1, "não seguiu o ID novo")
-        -- outra névoa, outro sorteio: o mesmo zumbi pode deixar de ser
-        local other = idFor(nil, 7, sb)
-        z.outfitID = other
+        -- pesos de novo zero: deixa de ser variante
+        SandboxVars.NevoaEOutroMundo = sbNil
+        z.outfitID = idFor(nil, 7, sbNil)
         NOM_FogState.set(true, 7)
         G.converge()
         assert(z.md.NOM_variant == nil)
@@ -837,12 +842,20 @@ return {
         -- 1/4 de cada (sprint 0011): ~22 de 90
         for k, v in pairs(n) do assert(v >= 10 and v <= 35, k .. " " .. v) end
         assert(eco.md.NOM_variant == nil, "Eco virou variante")
-        -- a vermelha acaba (névoa normal no mesmo período): volta ao sorteio normal
+        -- a vermelha acaba: branca 100% com pesos (5:3:3:3), não split 1/4
         NOM_FogState.set(true, 4, false)
         G.converge()
-        local still = 0
-        for _, z in ipairs(zs) do if z.md.NOM_variant then still = still + 1 end end
-        assert(still < 20, "continuou vermelha: " .. still)
+        local n2 = { estalador = 0, corredor = 0, semrosto = 0, carpideira = 0 }
+        for _, z in ipairs(zs) do
+            local k = z.md.NOM_variant
+            if k == nil then
+                assert(NOM_VariantRules.variant(z.outfitID, 4, c) == "semrosto", "comum na branca 100%")
+                k = "semrosto"
+            end
+            n2[k] = n2[k] + 1
+        end
+        assert(n2.estalador + n2.corredor + n2.semrosto + n2.carpideira == #zs)
+        assert(n2.estalador > n2.corredor, "pesos da branca: Estalador deveria ser o maior")
     end,
     -- review da 0011: o useless viaja no pacote e nada no jogo o desliga; a passada do
     -- laço (inclusive no fim da névoa e de dia, na conferência de hora em hora) passa

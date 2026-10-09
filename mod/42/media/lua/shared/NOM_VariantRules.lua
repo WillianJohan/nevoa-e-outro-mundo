@@ -3,7 +3,11 @@
 -- função do persistentOutfitID do zumbi e do número do período de névoa (ADR-006). Servidor
 -- e clientes chegam à mesma resposta sem sincronizar nada, e ela sobrevive a
 -- recarregar o chunk ou o save.
+-- Sprint 0049: na névoa branca todo zumbi com outfit vira monstro; os pesos do
+-- sandbox (EstaladorChance etc.) são renormalizados pra 100%. Vermelha e preta
+-- já eram 100% (ADR-010 / 0038).
 require "NOM_Math"
+require "NOM_ColorIdentityRules"
 
 NOM_VariantRules = {}
 
@@ -97,10 +101,12 @@ end
 
 -- Variante do zumbi no período de névoa (decisão do Johan, 05/10: todo monstro,
 -- menos o Eco, só existe na névoa). Um sorteio só, faixas contíguas na ordem de
--- KINDS: os tipos não se sobrepõem e o total é a soma das chances. A faixa de um
--- tipo desligado continua ocupando o lugar (desligar o Estalador não muda quem é
--- Corredor). period = número do período de névoa (nil = desconhecido). ID 0 é
--- zumbi sem outfit: todos iguais, nenhum vira variante.
+-- KINDS: os tipos não se sobrepõem. A faixa de um tipo desligado continua
+-- ocupando o lugar (desligar o Estalador não muda quem é Corredor). period =
+-- número do período de névoa (nil = desconhecido). ID 0 é zumbi sem outfit:
+-- todos iguais, nenhum vira variante.
+-- white (sprint 0049): 100% monstro; pesos do sandbox renormalizados
+-- (r = floor(hash/Q × soma das chances) nas faixas). Tipo desligado → comum.
 -- red: névoa vermelha (sprint 0010): todo zumbi é variante, dividido por igual
 -- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
 -- black: névoa preta (sprint 0038): todo zumbi é Tição, nem o forçado do debug vale (o
@@ -117,7 +123,13 @@ function NOM_VariantRules.variant(id, period, cfg, red, black)
         local kind = kinds[math.floor(hash(id, period, SPLIT_SALT) / Q * #kinds) + 1]
         return cfg[ON[kind]] and kind or nil
     end
-    local r, lo = roll(id, period), 0
+    -- Branca: cobertura 100%. Soma 0 → ninguém (sandbox zerado).
+    local total, lo = 0, 0
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        total = total + (cfg[CHANCE[kind]] or 0)
+    end
+    if total <= 0 then return nil end
+    local r = math.floor(hash(id, period, 0) / Q * total)
     for _, kind in ipairs(NOM_VariantRules.KINDS) do
         local hi = lo + (cfg[CHANCE[kind]] or 0)
         if r < hi then return cfg[ON[kind]] and kind or nil end
@@ -147,8 +159,10 @@ function NOM_VariantRules.config(get)
 end
 
 -- lastAt/now em horas de jogo (GameTime.getWorldAgeHours).
-function NOM_VariantRules.screamReady(lastAt, now)
-    return lastAt == nil or now - lastAt >= NOM_VariantRules.SCREAM_COOLDOWN_HOURS
+-- mood: "white"|"red"|"black" (sprint 0049); omitido = cooldown branco de sempre.
+function NOM_VariantRules.screamReady(lastAt, now, mood)
+    local cd = NOM_ColorIdentityRules.screamCooldownHours(mood)
+    return lastAt == nil or now - lastAt >= cd
 end
 
 return NOM_VariantRules

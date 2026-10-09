@@ -2,6 +2,7 @@
 -- Velocidade, visão e audição do zumbi são 3 degraus no jogo; 1 é o melhor
 -- (corredor, águia, apurado), 3 o pior (arrastado, ruim, ruim).
 require "NOM_TicaoRules"
+require "NOM_ColorIdentityRules"
 
 NOM_NightRules = {}
 
@@ -51,7 +52,9 @@ end
 -- e Eco não sentem a calmaria (o Eco já é o mais lento).
 -- "ticao" (sprint 0038): ticaoSpeed (NOM_TicaoRules.speed do zumbi), visão ruim e audição
 -- apurada; nem a noite nem a calmaria mexem.
-function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm, ticaoSpeed)
+-- mood: "white"|"red"|"black" na névoa (sprint 0049); na vermelha o Estalador fica
+-- rápido (agitação), mantendo visão ruim e audição apurada.
+function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm, ticaoSpeed, mood)
     local R = NOM_NightRules
     if kind == "ticao" then
         local T = NOM_TicaoRules
@@ -82,6 +85,8 @@ function NOM_NightRules.wanted(night, kind, dayTier, cfg, calm, ticaoSpeed)
     if kind == "corredor" or kind == "carpideira" then w.speed = R.CORREDOR_SPEED end
     if kind == "estalador" then
         w.sight, w.hearing = R.ESTALADOR_SIGHT, R.ESTALADOR_HEARING
+        local spd = NOM_ColorIdentityRules.estaladorSpeed(mood)
+        if spd then w.speed = spd end
     end
     local stats = w.speed .. "," .. (w.sight or 0) .. "," .. (w.hearing or 0)
     if kind then

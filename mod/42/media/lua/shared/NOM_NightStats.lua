@@ -12,6 +12,7 @@
 -- (IntegerConfigOption.setValue só grava o campo).
 require "NOM_NightRules"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_TicaoRules"
@@ -179,7 +180,9 @@ local function process(z, c)
         dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
     end
     local ticaoSpeed = kind == "ticao" and NOM_TicaoRules.speed(id, NOM_FogState.period) or nil
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm, ticaoSpeed)
+    -- Identidade por cor (sprint 0049): só na névoa; fora dela mood nil.
+    local mood = fog and NOM_ColorIdentityRules.mood(NOM_FogState.red, NOM_FogState.black) or nil
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm, ticaoSpeed, mood)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key

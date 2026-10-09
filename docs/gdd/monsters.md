@@ -31,19 +31,23 @@ marca: a variante sai do ID do outfit do zumbi e do número do período de névo
 salvar e recarregar; na névoa seguinte é outro sorteio. Zumbis de chunks
 carregados depois também entram. Ecos nunca são variantes.
 
-**Um sorteio só pra todas:** cada zumbi tira um número de 0 a 99, e as chances
-viram faixas seguidas (o chapéu que cai não muda o sorteio: sprint 0017) — Estalador `[0, 5)`, Corredor `[5, 8)`, Sem-rosto `[8, 11)`,
-Carpideira `[11, 14)` com o padrão (5/3/3/3 desde a sprint 0019). Ninguém é duas coisas, e o total é a soma (14% com
-o padrão). Desligar um tipo deixa a faixa dele vazia, sem mexer nas outras. Variante
-nova entra no fim da lista (a Carpideira entrou assim na sprint 0011: quem era
-Estalador, Corredor ou Sem-rosto continua sendo).
+**Um sorteio só pra todas (sprint 0049 — transform 100%):** na névoa **branca**,
+todo zumbi com outfit vira monstro. As chances do sandbox são **pesos relativos**
+renormalizados pra 100% (padrão 5:3:3:3 → ~35,7% Estalador / ~21,4% Corredor /
+~21,4% Sem-rosto / ~21,4% Carpideira). O chapéu que cai não muda o sorteio
+(sprint 0017). Ninguém é duas coisas. Desligar um tipo deixa a faixa dele vazia
+(vira comum), sem mexer nas outras. Variante nova entra no fim da lista (a
+Carpideira entrou assim na sprint 0011).
+
+**Identidade por cor (sprint 0049):** branca = cotidiano (perambular; Estalador
+pode entrar na onda); vermelha = agitação (sem perambular; grito do Corredor mais
+frequente; Estalador rápido); preta = só Tição (inalterado).
 
 **Névoa vermelha** (sprint 0010, [ADR-010](../architecture/adr-010-nevoa-vermelha.md)):
 `RedFogChance`% das névoas (10 por padrão) vêm vermelhas, com sirene própria; nenhuma nos primeiros `RedFogGraceDays` (7) dias do save, e com `FogEscalation` a chance sobe do dia 30 até o dobro no dia 90 (sprint 0019, [sandbox.md](sandbox.md#curva-de-tensão-sprint-0019)). Nelas
-**todo zumbi é monstro**: a chance de virar variante vai a 100% e o tipo sai de um
-segundo sorteio do mesmo ID e período, dividido por igual entre os tipos que existem
-(1/4 Estalador, 1/4 Corredor, 1/4 Sem-rosto, 1/4 Carpideira, desde a sprint 0011). Cada
-um com o comportamento de sempre. Um tipo desligado no sandbox deixa a fatia dele como
+**todo zumbi é monstro**: o tipo sai de um segundo sorteio do mesmo ID e período,
+dividido por igual entre os tipos (1/4 cada desde a sprint 0011). Cada um com o
+comportamento de sempre. Um tipo desligado no sandbox deixa a fatia dele como
 zumbi comum (não redistribui). O Eco continua Eco. Se a névoa é vermelha é sorteado
 pelo número do período e por uma semente do mundo (cada save tem a sua agenda):
 salvar e carregar no meio não muda nada.

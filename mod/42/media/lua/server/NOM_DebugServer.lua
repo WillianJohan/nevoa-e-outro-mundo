@@ -13,6 +13,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_DebugRules"
 require "NOM_DebugLog"
 require "NOM_NightCount"
@@ -173,10 +174,13 @@ function ops.pull(player, a)
 end
 
 -- Uma onda de perambular agora (sprint 0036; NOM_WanderServer, lido na hora: carrega depois
--- deste arquivo). Só com a névoa aberta e a opção FogWander ligada, como a de verdade.
+-- deste arquivo). Só com a névoa branca aberta e a opção FogWander ligada (sprint 0049:
+-- identidade cotidiano; vermelha/preta não perambulam).
 function ops.wander()
     if not NOM_World.fog then return "perambular precisa de névoa aberta" end
     if not NOM_Config.get("FogWander") then return "perambular desligado na opção FogWander" end
+    local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
+    if not NOM_ColorIdentityRules.wanderAllowed(mood) then return "perambular só na névoa branca" end
     if not NOM_WanderServer then return "perambular não carregou" end
     return "perambular onda semente=" .. NOM_WanderServer.wave("debug")
 end

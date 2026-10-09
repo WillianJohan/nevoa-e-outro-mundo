@@ -168,8 +168,10 @@ end
 -- sandbox em que todo zumbi sorteado é Carpideira (os outros tipos zerados)
 local CARP = { CarpideiraChance = 100, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
 
--- ID (formato do jogo) que dá a variante pedida no período de névoa (except: pula esse)
+-- ID (formato do jogo) que dá a variante pedida no período de névoa (except: pula esse).
+-- Sprint 0049: branca 100%; want nil = ID 0 (sem outfit).
 local function idFor(want, night, sandbox, except)
+    if want == nil then return 0 end
     local c = NOM_VariantRules.config(function(k)
         local v = sandbox[k]
         if v == nil then v = NOM_Config.DEFAULTS[k] end

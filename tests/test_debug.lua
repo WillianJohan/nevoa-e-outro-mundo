@@ -967,6 +967,19 @@ return {
         assert(#waves == 0, "mandou onda com o perambular desligado")
         assert(has(G.printed, "^%[NOM%] debug perambular desligado na opção FogWander"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0049: perambular só na névoa branca
+    nom_wander_refuses_on_red = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local waves = {}
+        NOM_WanderServer = { wave = function(why) waves[#waves + 1] = why; return 77 end }
+        NOM_World.fog, NOM_World.red = true, true
+        SandboxVars.NevoaEOutroMundo = { FogWander = true }
+        NOM.wander()
+        NOM_WanderServer = nil
+        assert(#waves == 0, "mandou onda na vermelha")
+        assert(has(G.printed, "^%[NOM%] debug perambular só na névoa branca"), table.concat(G.printed, "\n"))
+    end) end,
     -- sprint 0037: um estalo do sonar agora; quem decide é o servidor (o Estalador mais perto
     -- de quem pediu, ou o anel no próprio jogador)
     nom_sonar_asks_server = function() run(function()
