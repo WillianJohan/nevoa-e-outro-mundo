@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` (PR draft) |
-| Branch | `feature/0059-arrasto-6d17` (saiu da `staging`) |
+| Status | `em teste` (na `staging`) |
+| Branch | `feature/0059-arrasto-6d17` → merge na `staging` (`f2d77ff`) |
 | Plano | [plan.md](plan.md) |
 | Origem | Johan 2026-10-09: continuar após LookForce; [refinamento §3.5](../../proximos-passos-refinamento.md) caminho A |
 
