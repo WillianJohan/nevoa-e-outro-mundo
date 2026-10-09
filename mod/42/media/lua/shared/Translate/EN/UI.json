@@ -197,6 +197,8 @@
     "UI_NOM_Debug_C_Wander_Desc": "Fog open only: groups of 1 to 3 idle zombies near you start walking.",
     "UI_NOM_Debug_C_CarpWalk": "Screamer walk",
     "UI_NOM_Debug_C_CarpWalk_Desc": "Next calm Screamer owned here starts a short crying walk (Witch pilot).",
+    "UI_NOM_Debug_C_Arrasto": "Drag",
+    "UI_NOM_Debug_C_Arrasto_Desc": "Nearest living zombie becomes Arrasto: slow crawler (section 3.5 spike). Red or black fog only.",
     "UI_NOM_Debug_C_Wind": "Volumetrica wind",
     "UI_NOM_Debug_C_Wind_Desc": "Turns the wind focus of the optional Volumetrica mod on or off.",
     "UI_NOM_Debug_C_GodMode": "Full god mode",

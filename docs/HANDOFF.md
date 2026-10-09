@@ -2,6 +2,13 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
+## Em PR draft: sprint 0059 — Arrasto / Rastejante
+
+Spike §3.5 caminho A: crawler lento só vermelha/preta; `NOM.arrasto()` + painel. Branch
+`feature/0059-arrasto-6d17`. [README](sprints/sprint-0059-arrasto/README.md). LookForce do painel
+já na `staging` (`f85bd87`). Sync do `5d0f824` já feito no bluefin; depois do merge da 0059,
+`dev-sync` de novo.
+
 ## Em teste na staging: sprints 0048–0052 (overnight)
 
 Merge overnight 2026-10-09, ordem da fila. Reiniciar o jogo e `dev-sync.sh` depois do pull da `staging`.
