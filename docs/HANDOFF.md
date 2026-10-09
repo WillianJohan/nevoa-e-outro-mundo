@@ -1,10 +1,12 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-08. **Próximo passo = Sons II** (pós-P0 fog). Clímax fog **0047g** aprovado (looks por cor). A `staging` tem a 0047g; v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-08. **Em andamento = sprint 0048 Sons II** (pós-P0 fog). Clímax fog **0047g** aprovado e na `staging`. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Próximo passo: Sons II (pós-P0)
+## Em andamento: sprint 0048 — Sons II
 
-Fog clímax (0047) fechada no playtest do Johan. Seguir [proximos-passos-refinamento.md](proximos-passos-refinamento.md) §3.1–3.2 (Sons II / Estalador). Fora do P0 fog: almas, transform 100%, Carpideira Witch/look, aperto da preta (terror).
+Branch `sprint/0048-sons-ii`. [README](sprints/sprint-0048-sons-ii/README.md) · [plan](sprints/sprint-0048-sons-ii/plan.md).
+
+Gritos monstro + ambiente (obrigatório) + Estalador clicker com ripples. Fora: almas, Carpideira Witch/look, fog visual (salvo blocker). Produto: [proximos-passos-refinamento.md](proximos-passos-refinamento.md) §3.1.
 
 ## Em staging: sprint 0047g — FOG clímax (looks por cor)
 
