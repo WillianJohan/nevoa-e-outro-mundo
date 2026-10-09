@@ -75,4 +75,38 @@ function NOM_Alma.eventSound(z)
     if not ok then debugLog("som: " .. tostring(err)) end
 end
 
+-- Tick do dono (ADR-005): seek e som. No solo o mesmo processo; no MP, cada cliente
+-- nos zumbis locais. O servidor só agenda spawn/TTL (NOM_AlmaServer).
+local installed
+function NOM_Alma.install()
+    if installed then return end
+    installed = true
+    Events.OnTick.Add(function()
+        if isGamePaused and isGamePaused() then return end
+        local now = getTimestampMs()
+        local list = getCell() and getCell():getZombieList()
+        if not list then return end
+        for i = 0, list:size() - 1 do
+            local z = list:get(i)
+            if NOM_Alma.is(z) and z:isLocal() then
+                local md = z:getModData()
+                if (md.NOM_almaSeekAt or 0) <= now then
+                    NOM_Alma.seek(z)
+                    md.NOM_almaSeekAt = now + R.SEEK_MS
+                end
+                if (md.NOM_almaSoundAt or 0) <= now then
+                    NOM_Alma.eventSound(z)
+                    md.NOM_almaSoundAt = now + R.SOUND_EVENT_MS
+                end
+            end
+        end
+    end)
+end
+
+-- Marca no cliente de MP (modData do servidor não chega): onlineID → crawler.
+function NOM_Alma.markRemote(z, crawler)
+    if not z or z:isDead() then return end
+    NOM_Alma.dress(z, crawler == true)
+end
+
 return NOM_Alma

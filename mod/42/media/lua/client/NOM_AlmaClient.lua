@@ -3,9 +3,11 @@
 if isServer() then return end
 
 require "NOM_AlmaRules"
+require "NOM_Alma"
 require "NOM_ScreenFx"
 
 NOM_AlmaClient = { parts = {} }
+NOM_Alma.install() -- dono no MP aplica seek/som
 local C = NOM_AlmaClient
 local R = NOM_AlmaRules
 local TEX = "media/textures/NOM/NOM_Cinza.png"
@@ -96,9 +98,19 @@ local function onServerCommand(module, command, args)
     if module ~= "NevoaEOutroMundo" then return end
     if command == "almaFx" then
         C.fx(args)
+    elseif command == "almaBorn" and type(args) == "table" and type(args.id) == "number" and args.id ~= -1 then
+        -- marca local: modData do servidor não chega (ADR-006 / Eco)
+        local list = getCell():getZombieList()
+        for i = 0, list:size() - 1 do
+            local z = list:get(i)
+            if z:getOnlineID() == args.id then
+                NOM_Alma.markRemote(z, args.crawler == true)
+                break
+            end
+        end
     elseif command == "almaGone" and type(args) == "table" and type(args.ids) == "table" then
         local gone = {}
-        for _, id in pairs(args.ids) do gone[id] = true end
+        for _, id in ipairs(args.ids) do gone[id] = true end
         gone[-1] = nil
         local list = getCell():getZombieList()
         for i = list:size() - 1, 0, -1 do

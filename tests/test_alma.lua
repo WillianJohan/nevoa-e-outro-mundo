@@ -172,13 +172,20 @@ return {
             assert(z.skeleton == true, "esqueleto")
             assert(z.health <= 0.4, "vida baixa")
             assert(z.speed == 3, "shambler")
-            assert(z.goal ~= nil, "seek")
             if z.md.NOM_almaCrawler then crawlers = crawlers + 1 end
         end
-        assert(crawlers >= 0) -- leva debug ≤ 8; proporção flutuante
+        -- leva debug ≤ 8: pelo menos uma crawler esperada na maioria dos sorteios ZombRand
+        assert(crawlers >= 0 and crawlers <= n)
         local kinds = {}
         for _, a in ipairs(G.fx) do kinds[a.kind] = true end
         assert(kinds.spawn and kinds.group, "fx spawn/group")
+        -- seek do dono (NOM_Alma.install)
+        G.fire("OnTick")
+        local sought = 0
+        for _, e in ipairs(NOM_AlmaServer.alive) do
+            if e.z.goal then sought = sought + 1 end
+        end
+        assert(sought > 0, "seek do dono")
     end,
 
     alma_no_wave_on_red_or_black = function()
@@ -243,6 +250,27 @@ return {
         NOM_Alma.dress(z, true)
         assert(z.md.NOM_alma and z.md.NOM_almaCrawler and z.skeleton and z.health == NOM_AlmaRules.HEALTH)
         assert(NOM_Alma.seek(z) and z.goal.x == p.x and z.goal.y == p.y)
+    end,
+
+    alma_mark_remote_sets_moddata = function()
+        setup({ fog = true })
+        local z = {
+            x = 1, y = 1, z = 0, md = {}, dead = false, health = 1, skeleton = false,
+        }
+        function z:isDead() return self.dead end
+        function z:getModData() return self.md end
+        function z:setHealth(h) self.health = h end
+        function z:setSkeleton(v) self.skeleton = v end
+        NOM_Alma.markRemote(z, true)
+        assert(z.md.NOM_alma and z.md.NOM_almaCrawler and z.skeleton)
+    end,
+
+    alma_disabled_sandbox = function()
+        local G = setup({ fog = true, sandbox = { AlmaEnabled = false } })
+        G.player(0, 0, 0)
+        G.fillOutside(0, 0, 0)
+        local n, why = NOM_AlmaServer.wave("debug")
+        assert(n == 0 and why, tostring(why))
     end,
 
     alma_clear_when_fog_ends = function()

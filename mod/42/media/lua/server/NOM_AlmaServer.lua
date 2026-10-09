@@ -71,9 +71,13 @@ local function spawnOne(px, py, pz, now)
     -- shambler mancando (speedType 3); crawler já veio no spawn
     local ok, err = pcall(function() z:doZombieSpeed(3) end)
     if not ok then debugLog("speed: " .. tostring(err)) end
-    NOM_Alma.seek(z)
     track(z, now + ttl)
     fx("spawn", pos.x, pos.y, pos.z)
+    -- MP: modData não viaja — manda o onlineID pra o cliente marcar (como ecoGone).
+    local online = z:getOnlineID()
+    if isServer() and online ~= -1 then
+        sendServerCommand(MODULE, "almaBorn", { id = online, crawler = crawler == true })
+    end
     return z
 end
 
@@ -143,17 +147,8 @@ local function prune(now)
             if sq and not R.streetOk(sq:isOutside()) then
                 removeAlma(z, "interior")
                 table.remove(S.alive, i)
-            elseif z:isLocal() then
-                local md = z:getModData()
-                if (md.NOM_almaSeekAt or 0) <= now then
-                    NOM_Alma.seek(z)
-                    md.NOM_almaSeekAt = now + R.SEEK_MS
-                end
-                if (md.NOM_almaSoundAt or 0) <= now then
-                    NOM_Alma.eventSound(z)
-                    md.NOM_almaSoundAt = now + R.SOUND_EVENT_MS + math.floor(roll() * R.SOUND_EVENT_MS)
-                end
             end
+            -- seek/som: shared/NOM_Alma.install (dono do zumbi, ADR-005)
         end
     end
 end
@@ -193,5 +188,6 @@ NOM_World.onChange(function(flag, on)
 end)
 
 Events.OnTick.Add(S.tick)
+NOM_Alma.install() -- solo: o mesmo processo simula; no dedicado o cliente também instala
 
 return NOM_AlmaServer
