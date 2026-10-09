@@ -81,6 +81,9 @@ local function setup(opts)
         function z:getOutfitName() return self.outfitName end
         function z:isCanCrawlUnderVehicle() return self.canCrawl end
         function z:setCanCrawlUnderVehicle(b) self.canCrawl = b end
+        function z:setSkeleton(v) self.skeleton = v == true end
+        function z:setCrawler(v) self.crawler = v == true end
+        function z:setCanWalk(v) self.canWalk = v == true end
         function z:getSpeedType()
             G.calls.speedReads = G.calls.speedReads + 1
             return self.speedType
@@ -909,5 +912,23 @@ return {
             assert(z.md.NOM_variant == nil and NOM_NightStats.variants[z] == nil and z.sight == 2 and z.hearing == 2, "Tição ficou")
         end
         NOM_VariantRules.forced = {}
+    end,
+
+    -- alma crawler: DoZombieStats solta; apply reaplica setCanWalk(false) (review overnight)
+    stats_alma_crawler_keeps_can_walk_false = function()
+        local G = setup()
+        local z = G.spawn()
+        z.md.NOM_alma = true
+        z.md.NOM_almaCrawler = true
+        z.canWalk = true
+        z.crawler = false
+        z.skeleton = false
+        NOM_FogState.set(true, 1)
+        NOM_NightStats.setNight(true, 1)
+        G.converge()
+        assert(z.crawler == true, "setCrawler")
+        assert(z.canWalk == false, "setCanWalk(false) após apply")
+        assert(z.skeleton == true, "setSkeleton")
+        assert(z.md.NOM_variant == nil, "alma virou variante")
     end,
 }

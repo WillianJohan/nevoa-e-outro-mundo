@@ -13,7 +13,7 @@ require "NOM_Players"
 local MODULE = "NevoaEOutroMundo"
 local R = NOM_AlmaRules
 
-NOM_AlmaServer = { nextAt = nil, waves = 0, alive = {} }
+NOM_AlmaServer = { nextAt = nil, waves = 0, alive = {}, pendingBorn = {} }
 local S = NOM_AlmaServer
 
 local function debugLog(msg)
@@ -53,7 +53,37 @@ local function track(z, diesAt)
     S.alive[#S.alive + 1] = { z = z, diesAt = diesAt }
 end
 
-local function spawnOne(px, py, pz, now)
+-- MP: modData não viaja. Se onlineID ainda é -1 no spawn, reenvia no tick.
+local function announceBorn(z, crawler)
+    if not isServer() then return end
+    local online = z:getOnlineID()
+    if online ~= -1 then
+        sendServerCommand(MODULE, "almaBorn", { id = online, crawler = crawler == true })
+        return
+    end
+    S.pendingBorn[#S.pendingBorn + 1] = { z = z, crawler = crawler == true }
+end
+
+local function flushPendingBorn()
+    if not isServer() or #S.pendingBorn == 0 then return end
+    local left = {}
+    for i = 1, #S.pendingBorn do
+        local e = S.pendingBorn[i]
+        local z = e.z
+        if z and not z:isDead() then
+            local online = z:getOnlineID()
+            if online ~= -1 then
+                sendServerCommand(MODULE, "almaBorn", { id = online, crawler = e.crawler })
+            else
+                left[#left + 1] = e
+            end
+        end
+    end
+    S.pendingBorn = left
+end
+
+-- quiet: leva em massa — só FX de group no wave(); despawn individual fica.
+local function spawnOne(px, py, pz, now, quiet)
     local pos = R.pickSpawn(px, py, pz, roll, outsideOk, 16)
     if not pos then return nil end
     local crawler = R.isCrawler(roll())
@@ -72,12 +102,10 @@ local function spawnOne(px, py, pz, now)
     local ok, err = pcall(function() z:doZombieSpeed(3) end)
     if not ok then debugLog("speed: " .. tostring(err)) end
     track(z, now + ttl)
-    fx("spawn", pos.x, pos.y, pos.z)
-    -- MP: modData não viaja — manda o onlineID pra o cliente marcar (como ecoGone).
-    local online = z:getOnlineID()
-    if isServer() and online ~= -1 then
-        sendServerCommand(MODULE, "almaBorn", { id = online, crawler = crawler == true })
+    if not quiet then
+        fx("spawn", pos.x, pos.y, pos.z)
     end
+    announceBorn(z, crawler)
     return z
 end
 
@@ -101,11 +129,11 @@ function S.wave(why)
         end
     end
     if #ps == 0 then return 0, "sem jogador" end
-    -- grupo: um som de leva no primeiro spawn
+    -- grupo: um FX/som de leva (sem spawn por indivíduo — evita saturar áudio/FPS)
     local groupFx = false
     for i = 1, n do
         local p = ps[1 + ((i - 1) % #ps)]
-        if spawnOne(p.x, p.y, p.z, now) then
+        if spawnOne(p.x, p.y, p.z, now, true) then
             spawned = spawned + 1
             if not groupFx then
                 fx("group", math.floor(p.x), math.floor(p.y), math.floor(p.z))
@@ -164,9 +192,11 @@ end
 function S.tick()
     if isGamePaused and isGamePaused() then return end
     local now = getTimestampMs()
+    flushPendingBorn()
     if not enabled() then
         if #S.alive > 0 then S.clear("fora") end
         S.nextAt = nil
+        S.pendingBorn = {}
         return
     end
     prune(now)

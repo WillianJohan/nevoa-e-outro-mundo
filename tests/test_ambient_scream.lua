@@ -47,6 +47,16 @@ return {
         assert(NOM_AmbientScream.play(G.p) == "ambiente off")
     end,
 
+    -- fuga (~30 s): risingBlack deve silenciar (não tratar como branca)
+    ambient_silent_on_rising_black = function()
+        local G = setup()
+        NOM_FogState.set(false, nil)
+        NOM_FogState.setRising(true, false, true)
+        assert(NOM_FogState.visible() == true and NOM_FogState.color() == "black")
+        assert(NOM_AmbientScream.play(G.p) == "ambiente off")
+        assert(ambientPlayed(G) == 0)
+    end,
+
     ambient_plays_in_red = function()
         local G = setup()
         NOM_FogState.set(true, 1, true)

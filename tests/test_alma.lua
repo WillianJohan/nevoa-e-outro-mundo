@@ -48,8 +48,12 @@ local function setup(opts)
 
     getNumActivePlayers = function() return #G.players end
     getSpecificPlayer = function(i) return G.players[i + 1] end
+    -- dedicado (isServer): NOM_Players.all() lê getOnlinePlayers
     getOnlinePlayers = function()
-        return { size = function() return 0 end, get = function() end }
+        return {
+            size = function() return #G.players end,
+            get = function(_, i) return G.players[i + 1] end,
+        }
     end
 
     function G.square(x, y, z, o)
@@ -101,6 +105,7 @@ local function setup(opts)
             function zd:setHealth(h) self.health = h end
             function zd:setSkeleton(v) self.skeleton = v == true end
             function zd:setCrawler(v) self.crawler = v == true end
+            function zd:setCanWalk(v) self.canWalk = v == true end
             function zd:doZombieSpeed(t) self.speed = t end
             function zd:pathToLocationF(px, py, pz)
                 self.goal = { x = px, y = py, z = pz }
@@ -178,7 +183,8 @@ return {
         assert(crawlers >= 0 and crawlers <= n)
         local kinds = {}
         for _, a in ipairs(G.fx) do kinds[a.kind] = true end
-        assert(kinds.spawn and kinds.group, "fx spawn/group")
+        -- leva em massa: só group (sem spawn por indivíduo — review overnight)
+        assert(kinds.group and not kinds.spawn, "fx group-only na leva")
         -- seek do dono (NOM_Alma.install)
         G.fire("OnTick")
         local sought = 0
@@ -263,6 +269,31 @@ return {
         function z:setSkeleton(v) self.skeleton = v end
         NOM_Alma.markRemote(z, true)
         assert(z.md.NOM_alma and z.md.NOM_almaCrawler and z.skeleton)
+    end,
+
+    -- MP: onlineID -1 no spawn → pendingBorn; no tick seguinte anuncia
+    alma_born_retries_when_online_id_late = function()
+        local G = setup({ fog = true, server = true })
+        G.player(40, 40, 0)
+        G.fillOutside(40, 40, 0)
+        local orig = addZombiesInOutfit
+        addZombiesInOutfit = function(...)
+            local list = orig(...)
+            for i = 0, list:size() - 1 do list:get(i).online = -1 end
+            return list
+        end
+        local n = NOM_AlmaServer.wave("debug")
+        assert(n > 0)
+        local born = 0
+        for _, s in ipairs(G.sent) do if s.command == "almaBorn" then born = born + 1 end end
+        assert(born == 0, "não deveria anunciar com onlineID -1")
+        assert(#NOM_AlmaServer.pendingBorn == n, "pending=" .. #NOM_AlmaServer.pendingBorn)
+        for _, e in ipairs(NOM_AlmaServer.alive) do e.z.online = 5000 + e.z.x end
+        G.fire("OnTick")
+        born = 0
+        for _, s in ipairs(G.sent) do if s.command == "almaBorn" then born = born + 1 end end
+        assert(born == n, "almaBorn depois do ID: " .. born)
+        assert(#NOM_AlmaServer.pendingBorn == 0)
     end,
 
     alma_disabled_sandbox = function()

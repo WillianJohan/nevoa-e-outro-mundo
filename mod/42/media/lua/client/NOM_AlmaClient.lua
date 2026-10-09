@@ -6,13 +6,14 @@ require "NOM_AlmaRules"
 require "NOM_Alma"
 require "NOM_ScreenFx"
 
-NOM_AlmaClient = { parts = {} }
+NOM_AlmaClient = { parts = {}, pendingBorn = {} }
 NOM_Alma.install() -- dono no MP aplica seek/som
 local C = NOM_AlmaClient
 local R = NOM_AlmaRules
 local TEX = "media/textures/NOM/NOM_Cinza.png"
 local LIFE_MS = 900
 local MAX_PARTS = 48
+local BORN_RETRY_TICKS = 90 -- ~1,5 s a 60 fps se o zumbi ainda não replicou
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] almaFx " .. msg) end
@@ -92,26 +93,45 @@ local function draw(el, now)
 end
 
 NOM_ScreenFx.extra[#NOM_ScreenFx.extra + 1] = draw
-Events.OnMainMenuEnter.Add(function() C.parts = {} end)
+Events.OnMainMenuEnter.Add(function() C.parts = {}; C.pendingBorn = {} end)
+
+-- Marca local: modData do servidor não chega (ADR-006 / Eco). Devolve true se achou.
+local function tryMarkBorn(id, crawler)
+    local cell = getCell()
+    if not cell then return false end
+    local list = cell:getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z:getOnlineID() == id then
+            NOM_Alma.markRemote(z, crawler == true)
+            return true
+        end
+    end
+    return false
+end
 
 local function onServerCommand(module, command, args)
     if module ~= "NevoaEOutroMundo" then return end
     if command == "almaFx" then
         C.fx(args)
     elseif command == "almaBorn" and type(args) == "table" and type(args.id) == "number" and args.id ~= -1 then
-        -- marca local: modData do servidor não chega (ADR-006 / Eco)
-        local list = getCell():getZombieList()
-        for i = 0, list:size() - 1 do
-            local z = list:get(i)
-            if z:getOnlineID() == args.id then
-                NOM_Alma.markRemote(z, args.crawler == true)
-                break
-            end
+        if not tryMarkBorn(args.id, args.crawler == true) then
+            C.pendingBorn[#C.pendingBorn + 1] = {
+                id = args.id, crawler = args.crawler == true, left = BORN_RETRY_TICKS,
+            }
         end
     elseif command == "almaGone" and type(args) == "table" and type(args.ids) == "table" then
         local gone = {}
         for _, id in ipairs(args.ids) do gone[id] = true end
         gone[-1] = nil
+        -- tira da fila de retry se o servidor já removeu
+        if #C.pendingBorn > 0 then
+            local keep = {}
+            for i = 1, #C.pendingBorn do
+                if not gone[C.pendingBorn[i].id] then keep[#keep + 1] = C.pendingBorn[i] end
+            end
+            C.pendingBorn = keep
+        end
         local list = getCell():getZombieList()
         for i = list:size() - 1, 0, -1 do
             local z = list:get(i)
@@ -124,5 +144,21 @@ local function onServerCommand(module, command, args)
 end
 
 Events.OnServerCommand.Add(onServerCommand)
+Events.OnTick.Add(function()
+    if #C.pendingBorn == 0 then return end
+    local left = {}
+    for i = 1, #C.pendingBorn do
+        local e = C.pendingBorn[i]
+        if tryMarkBorn(e.id, e.crawler) then
+            -- ok
+        elseif e.left > 1 then
+            e.left = e.left - 1
+            left[#left + 1] = e
+        else
+            debugLog("almaBorn timeout id=" .. tostring(e.id))
+        end
+    end
+    C.pendingBorn = left
+end)
 
 return NOM_AlmaClient

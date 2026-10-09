@@ -140,8 +140,11 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
         NOM_NightStats.variants[z] = md.NOM_variant
     end
     -- Alma crawler: DoZombieStats pode soltar; reaplica se a API existir (spike §3.9.1).
-    if kind == "alma" and md.NOM_almaCrawler and z.setCrawler then
-        pcall(function() z:setCrawler(true) end)
+    if kind == "alma" and md.NOM_almaCrawler then
+        pcall(function()
+            if z.setCrawler then z:setCrawler(true) end
+            if z.setCanWalk then z:setCanWalk(false) end
+        end)
     end
     if kind == "alma" then
         pcall(function() z:setSkeleton(true) end)

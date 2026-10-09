@@ -17,10 +17,10 @@ local A = NOM_AmbientScreamRules
 local nextAt -- timestamp do próximo grito (nil = ainda não agendou)
 local ticks = 0
 
+-- Cor jogável: inclui rising/omen (fuga ~30 s). `.black`/`.red` sozinhos
+-- tratam risingBlack como branca e ligam gritos na subida da preta.
 local function color()
-    if NOM_FogState.black then return "black" end
-    if NOM_FogState.red then return "red" end
-    return "white"
+    return NOM_FogState.color()
 end
 
 local function schedule(now, c)
