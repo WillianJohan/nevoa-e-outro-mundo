@@ -142,8 +142,9 @@ Pedido do Johan (05/10/2026): um monstro que grita muito alto, na linha da Witch
 L4D ou do grito que chama a horda no Back 4 Blood. **Inspirado, não copiado:** o nome é
 o das mulheres pagas pra chorar em velório.
 
-- **Calma, fica parada** onde está: não perambula, não persegue, não vai atrás de som.
-  Soluça baixinho (ouvido a ~12 tiles), e é isso que a denuncia na névoa.
+- **Calma (piloto Witch, sprint 0052):** soluça baixinho (ouvido a ~12 tiles; volume sobe
+  perto) e, de tempos em tempos, **anda chorando** 2–6 tiles sem ir na direção do jogador;
+  entre caminhadas fica parada (`useless`). Não persegue nem vai atrás de som até o grito.
 - **Acorda** com qualquer um destes, do jogador:
   - chegar a `CarpideiraTriggerRadius` tiles (4), **mesmo agachado** (é aí que ela
     difere do Estalador: não adianta passar de fininho do lado);
@@ -159,9 +160,10 @@ o das mulheres pagas pra chorar em velório.
 - Zumbis com o mesmo ID de outfit são a mesma variante (ADR-006): quando uma grita, as
   outras com o mesmo ID (raras) ficam furiosas também, sem gritar.
 - Quando a névoa baixa, volta a ser zumbi comum (e anda de novo).
-- Visual: cabelo preto embolado caindo no rosto, pele pálida com escorridos de fuligem
-  ([art-direction.md](art-direction.md)); o soluço continua sendo o aviso de longe.
-  Técnica: [ADR-011](../architecture/adr-011-carpideira.md), [ADR-012](../architecture/adr-012-visual-das-variantes.md).
+- Visual: cabelo preto embolado em mechas 3D, **manto penitente** escuro no corpo (0052),
+  pele pálida com escorridos de fuligem ([art-direction.md](art-direction.md)); o soluço
+  continua sendo o aviso de longe. Técnica: [ADR-011](../architecture/adr-011-carpideira.md),
+  [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Eco
 

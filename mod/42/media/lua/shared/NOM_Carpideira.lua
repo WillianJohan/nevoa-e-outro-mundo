@@ -13,6 +13,7 @@ require "NOM_CarpideiraRules"
 require "NOM_VariantRules"
 require "NOM_NightStats"
 require "NOM_FogState"
+require "NOM_Math"
 
 NOM_Carpideira = {
     SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
@@ -25,6 +26,12 @@ NOM_Carpideira = {
     screamed = {},
     -- [zumbi] = true: este processo a deixou useless (só esses são soltos).
     still = {},
+    -- Sprint 0052: [zumbi] = { at = ms fim do timeout, gx, gy, gz } enquanto anda chorando.
+    walking = {},
+    -- [zumbi] = ms reais da próxima caminhada (dono).
+    nextWalk = {},
+    -- Debug: força a próxima caminhada no hold seguinte (NOM.carpWalk).
+    forceWalk = false,
 }
 
 local C = NOM_Carpideira
@@ -56,32 +63,111 @@ function C.gameUseless(z)
     return outfit ~= nil and string.find(outfit, "Useless", 1, true) ~= nil
 end
 
--- Por frame, no dono, na névoa (NOM_VariantAI). Parada: useless (o idle não
--- perambula, RespondToSound volta cedo, spottedNew 191–208 zera o alvo) e o alvo de
--- agora largado uma vez. Ligado uma vez por objeto; o pacote leva o useless às
--- outras cópias e a quem herdar a posse.
-function C.hold(z, md)
-    if C.still[z] then
-        if md.NOM_furia ~= nil and md.NOM_furia == NOM_FogState.period then C.letGo(z) end
-        return
+-- Para quem já anda: PathFindState não olha useless (sirene, pz-api-notes §21).
+local function halt(z)
+    z:getPathFindBehavior2():cancel()
+    z:setPath2(nil)
+    z:setVariable("bPathfind", false)
+    z:setVariable("bMoving", false)
+end
+
+local function scheduleWalk(z, now)
+    local u = R.rng(NOM_VariantRules.baseId(z:getPersistentOutfitID()) + NOM_Math.mod(now, 100000))()
+    C.nextWalk[z] = now + R.walkGapMs(u)
+end
+
+local function playersNear()
+    local out = {}
+    for i = 0, getNumActivePlayers() - 1 do
+        local p = getSpecificPlayer(i)
+        if p and not p:isDead() then
+            out[#out + 1] = { x = p:getX(), y = p:getY(), z = p:getZ() }
+        end
     end
-    if C.furious(z, md) then
+    return out
+end
+
+local function endWalk(z, now)
+    C.walking[z] = nil
+    halt(z)
+    scheduleWalk(z, now or getTimestampMs())
+end
+
+-- Por frame, no dono, na névoa (NOM_VariantAI). Calma: useless parado, ou caminhada
+-- curta chorando (sprint 0052): solta useless, pathToLocationF sem setTarget, reaplica
+-- useless ao chegar/timeout. Ligado uma vez por objeto; o pacote leva o useless.
+-- Orçamento: calma parada sai cedo (como na 0011) sem getPersistentOutfitID a cada frame.
+function C.hold(z, md)
+    local now = getTimestampMs()
+    local walk = C.walking[z]
+    if walk then
+        if C.furious(z, md) then
+            endWalk(z, now)
+            C.still[z], C.nextWalk[z] = nil, nil
+            if z:isUseless() and not C.gameUseless(z) then z:setUseless(false) end
+            return
+        end
+        z:setTarget(nil)
+        local gx, gy = walk.gx + 0.5, walk.gy + 0.5
+        local dx, dy = z:getX() - gx, z:getY() - gy
+        if now >= walk.at or (dx * dx + dy * dy) <= 0.36 or not z:isMoving() then
+            endWalk(z, now)
+        else
+            C.still[z] = nil
+            return
+        end
+    end
+    if C.still[z] then
+        if md.NOM_furia ~= nil and md.NOM_furia == NOM_FogState.period then
+            C.letGo(z)
+            return
+        end
+        local due = C.nextWalk[z]
+        if due == nil then scheduleWalk(z, now); due = C.nextWalk[z] end
+        if not C.forceWalk and now < due then return end
+    elseif C.furious(z, md) then
+        C.nextWalk[z] = nil
         -- já gritou, mas a posse veio pra cá com o useless no pacote do dono antigo
-        -- (NetworkZombieAI.set/parse): solta, como o Estalador herdado (NOM_VariantAI).
-        -- Custo: uma chamada a mais por frame na furiosa.
         if z:isUseless() and not C.gameUseless(z) then z:setUseless(false) end
         return
     end
+    if C.forceWalk or (C.nextWalk[z] ~= nil and now >= C.nextWalk[z]) or C.still[z] then
+        C.forceWalk = false
+        -- Chão: o mesmo critério do Sem-rosto / Wander (isFree + sem água), sem
+        -- puxar o módulo inteiro (pz-api-notes §3.4 / §27).
+        local dest = R.pickWalk(z:getX(), z:getY(), z:getZ(), playersNear(),
+            R.rng(NOM_VariantRules.baseId(z:getPersistentOutfitID()) + now),
+            function(x, y, zz)
+                local sq = getCell():getGridSquare(x, y, zz)
+                return sq ~= nil and sq:isFree(false) and not sq:getProperties():has(IsoFlagType.water)
+            end)
+        if dest then
+            if C.still[z] then
+                C.still[z] = nil
+                if not C.gameUseless(z) then z:setUseless(false) end
+            end
+            z:setTarget(nil)
+            z:pathToLocationF(dest.x + 0.5, dest.y + 0.5, dest.z)
+            C.walking[z] = { at = now + R.WALK_TIMEOUT_MS, gx = dest.x, gy = dest.y, gz = dest.z }
+            return
+        end
+        scheduleWalk(z, now)
+        if C.still[z] then return end
+    end
+    if C.still[z] then return end
     z:setUseless(true)
     z:setTarget(nil)
     C.still[z] = true
+    if C.nextWalk[z] == nil then scheduleWalk(z, now) end
 end
 
 -- Desliga o useless sem perguntar de quem é: se o tutorial ou o menu de debug ligou
 -- o useless numa Carpideira que este processo parou, ele cai junto (não dá pra
 -- distinguir, como no Estalador).
 function C.letGo(z)
+    if C.walking[z] then endWalk(z) end
     C.still[z] = nil
+    C.nextWalk[z] = nil
     z:setUseless(false)
 end
 
@@ -95,9 +181,10 @@ end
 -- Objeto reaproveitado pra outro zumbi (OnZombieCreate) ou morto: sai de tudo
 -- (NOM_VariantAI chama nos dois eventos).
 function C.forget(z)
-    if C.still[z] then C.letGo(z) end
+    if C.still[z] or C.walking[z] then C.letGo(z) end
     stopSob(z)
     lastReport[z] = nil
+    C.nextWalk[z] = nil
 end
 
 -- O servidor decidiu o grito (p = quem a acordou, nil se este processo não o tem).
@@ -148,10 +235,17 @@ local function why(p, z, d, radius)
     return nil
 end
 
-local function sob(z)
+-- volume: 0..1 pela distância (R.sobVolume); setVolume no emitter do personagem
+-- (mesmo caminho do FogSound / Devices, local).
+local function sob(z, volume)
     local id = sobs[z]
-    if id and z:getEmitter():isPlaying(id) then return end
+    local e = z:getEmitter()
+    if id and e:isPlaying(id) then
+        e:setVolume(id, volume)
+        return
+    end
     sobs[z] = z:playSoundLocal(C.SOB)
+    e:setVolume(sobs[z], volume)
 end
 
 local function stopAll()
@@ -197,13 +291,29 @@ local function scan(report)
             -- no solo o aviso decide o grito na hora (NOM_Carpideira.scream): sem soluço
             if nearest ~= nil and nearest <= C.SOB_RANGE and md.NOM_furia ~= NOM_FogState.period then
                 found[z] = true
-                sob(z)
+                sob(z, R.sobVolume(nearest))
             end
         end
     end
     for z in pairs(sobs) do
         if not found[z] then stopSob(z) end
     end
+end
+
+-- Distância até a Carpideira calma mais perto que está soluçando (nil se nenhuma).
+-- Usado pela vinheta ZB-free (client/NOM_ScreenFx.lua, sprint 0052).
+function C.nearestSob(p)
+    if not p or not NOM_FogState.on or not NOM_Config.get("CarpideiraEnabled") then return nil end
+    local best = nil
+    local px, py = p:getX(), p:getY()
+    for z, id in pairs(sobs) do
+        if id and z:getEmitter():isPlaying(id) and not z:isDead() then
+            local dx, dy = px - z:getX(), py - z:getY()
+            local d = math.sqrt(dx * dx + dy * dy)
+            if best == nil or d < best then best = d end
+        end
+    end
+    return best
 end
 
 -- report(z, jogador, why): um jogador local acordou a Carpideira z (why = "near" | "light").

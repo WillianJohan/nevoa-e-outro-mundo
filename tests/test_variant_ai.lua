@@ -595,9 +595,9 @@ return {
         -- comum: só o rodízio da visão curta (sprint 0036), 1 chamada (getTarget) por zumbi
         -- do lote, VISION_BATCH por tick
         assert(sum(by.none) <= 10 * NOM_VariantAI.VISION_BATCH, "comum: " .. sum(by.none))
-        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isLocal) e, no
-        -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
-        assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
+        -- Carpideira calma (sprint 0011/0052): 2 por frame (getModData, isLocal) e, no
+        -- primeiro, 4 a mais (setUseless, setTarget, getPersistentOutfitID×2 agenda)
+        assert(sum(by.carpideira) <= 100 * (10 * 2 + 4), "Carpideira: " .. sum(by.carpideira))
         -- o estalo é do servidor (sprint 0037): o minuto não chama ninguém aqui
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)

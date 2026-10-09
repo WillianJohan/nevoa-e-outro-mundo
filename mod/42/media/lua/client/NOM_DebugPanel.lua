@@ -129,6 +129,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Now", function() NOM.sonar() end) } },
             { title = "UI_NOM_Debug_C_Wander", desc = "UI_NOM_Debug_C_Wander_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.wander() end) } },
+            { title = "UI_NOM_Debug_C_CarpWalk", desc = "UI_NOM_Debug_C_CarpWalk_Desc", choices = {
+                c("UI_NOM_Debug_B_Now", function() NOM.carpWalk() end) } },
             { title = "UI_NOM_Debug_C_Wind", desc = "UI_NOM_Debug_C_Wind_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.wind() end) } },
         } },

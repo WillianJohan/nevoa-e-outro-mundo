@@ -38,7 +38,12 @@ NOM_VariantLook = {
         estalador = { skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
         corredor = { skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
         semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
-        carpideira = { skin = "NOM_Carpideira", item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx" },
+        -- Sprint 0052: mechas + manto penitente (corpo, camada como Eco cinza).
+        carpideira = {
+            skin = "NOM_Carpideira",
+            item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
+            body = "Base.NOM_CarpideiraManto", bodyFx = "Base.NOM_CarpideiraMantoFx",
+        },
         -- Tição (sprint 0038): carvão com rachaduras de brasa; desde a 0043 a crosta 3D (era o
         -- véu de fumaça do Eco, Base.NOM_EcoVeu / Base.NOM_EcoVeuFx)
         ticao = { skin = "NOM_Ticao", item = "Base.NOM_TicaoCrosta", fx = "Base.NOM_TicaoCrostaFx" },
@@ -72,7 +77,8 @@ local function hide(list, w)
     local all, gone = {}, {}
     for i = 0, list:size() - 1 do
         local iv = list:get(i)
-        if iv ~= w.iv then
+        -- peça da cabeça e manto do mod (0052) ficam; o resto vanilla some
+        if iv ~= w.iv and iv ~= w.bodyIv then
             all[#all + 1] = iv
             if not keep(iv:getItemType()) then gone[#gone + 1] = iv end
         end
@@ -97,6 +103,7 @@ end
 -- (18–92) ao vestir.
 local function unhide(z, list, w)
     if not list:remove(w.iv) then return end
+    if w.bodyIv then list:remove(w.bodyIv) end
     if not w.all then return end
     local fallen = hatFallen(z:getPersistentOutfitID())
     for _, iv in ipairs(w.all) do list:remove(iv) end -- os que ficaram à mostra
@@ -117,6 +124,9 @@ local function put(z, kind, id)
     local fx = NOM_Dissolve.enabled()
     local shell = fx and NOM_EmberShell.can(z)
     local w = { kind = kind, id = id, item = (fx and not shell) and look.fx or look.item }
+    if look.body then
+        w.body = (fx and not shell and look.bodyFx) and look.bodyFx or look.body
+    end
     worn[z] = w
     -- a casca de uma volta que ainda queima sai antes do hide (não pode virar roupa
     -- guardada); o efeito dela segue e o reveal abaixo continua do limiar em que estava
@@ -127,6 +137,13 @@ local function put(z, kind, id)
     local list = z:getItemVisuals()
     list:add(iv)
     w.iv = iv
+    -- Corpo (sprint 0052): segundo ItemVisual; KEEP já deixa %.NOM_ à mostra.
+    if w.body then
+        local biv = ItemVisual.new()
+        biv:setItemType(w.body)
+        list:add(biv)
+        w.bodyIv = biv
+    end
     hide(list, w)
     z:resetModelNextFrame()
     if shell then

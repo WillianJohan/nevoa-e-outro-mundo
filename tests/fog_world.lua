@@ -330,6 +330,12 @@ function W.new(opts)
             return { cancel = function() zz.pathCancelled = true end }
         end
         function z:isMoving() return self.vars.bMoving == true or self.vars.bPathfind == true end
+        -- Sprint 0052 / 0036: IsoZombie.pathToLocationF → PathFindBehavior2 (pz-api-notes §27).
+        function z:pathToLocationF(x, y, zz)
+            self.goal = { x = x, y = y, z = zz }
+            self.vars.bPathfind, self.vars.bMoving = true, true
+            self.path = self.path or {}
+        end
         function z:getTarget() return self.target end
         function z:spotted(p, forced)
             if self.useless then self.target = nil return end

@@ -236,4 +236,41 @@ return {
         G.scan()
         assert(#G.playing(NOM_Carpideira.SOB) == 0 and #G.reports == 0, "chapéu caído acalmou a Carpideira")
     end,
+
+    -- sprint 0052: calma anda chorando sem mirar o jogador; useless só entre caminhadas
+    carpideira_walks_while_crying_without_hunting = function()
+        local G = setup()
+        local z = G.carpideira({ x = 0, y = 0 })
+        G.player({ x = 20, y = 0 })
+        NOM_Carpideira.hold(z, z.md)
+        assert(z.useless == true and NOM_Carpideira.still[z], "não parou calma")
+        NOM_Carpideira.forceWalk = true
+        NOM_Carpideira.hold(z, z.md)
+        assert(NOM_Carpideira.walking[z], "não começou a caminhada")
+        assert(z.useless ~= true, "useless na caminhada")
+        assert(z.target == nil, "caçou durante o choro")
+        assert(z.goal, "sem pathToLocationF")
+        local gx = z.goal.x
+        assert(gx <= 0.5 or math.abs(z.goal.y - 0) > 1, "andou na direção do jogador em x+")
+        -- chega: para e volta useless
+        z.x, z.y = z.goal.x, z.goal.y
+        z.vars.bMoving, z.vars.bPathfind = false, false
+        NOM_Carpideira.hold(z, z.md)
+        assert(NOM_Carpideira.walking[z] == nil and z.useless == true, "não parou ao chegar")
+    end,
+
+    -- sprint 0052: volume do soluço sobe perto
+    carpideira_sob_volume_by_distance = function()
+        local G = setup()
+        local z = G.carpideira({ x = 0, y = 0 })
+        local p = G.player({ x = 10, y = 0 })
+        G.scan()
+        local s = G.playing(NOM_Carpideira.SOB)
+        assert(#s == 1)
+        local farVol = s[1].volume
+        p.x = 2
+        G.scan()
+        s = G.playing(NOM_Carpideira.SOB)
+        assert(#s == 1 and s[1].volume > farVol, "volume não subiu: " .. farVol .. " -> " .. s[1].volume)
+    end,
 }

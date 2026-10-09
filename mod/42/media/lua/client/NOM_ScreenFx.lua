@@ -186,6 +186,12 @@ local function updateStatic()
         v = NOM_SemRostoRules.staticVolume(NOM_SemRosto.nearest(p))
     end
     S.state.static = v
+    -- Sprint 0052: vinheta perto do soluço (ZB-free); 0 se nada soluçando.
+    local sob = 0
+    if p and not p:isDead() and NOM_FogState.on and NOM_Config.get("CarpideiraEnabled") then
+        sob = R.sobStrength(NOM_Carpideira.nearestSob(p))
+    end
+    S.state.sob = sob
 end
 
 -- O pulso: o grito mais perto ganha; um mais fraco no meio do pulso não o corta.

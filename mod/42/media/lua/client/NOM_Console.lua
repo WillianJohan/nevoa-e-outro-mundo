@@ -201,6 +201,13 @@ end
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
 function NOM.wander() NOM_Debug.send({ op = "wander" }) end
 
+-- Sprint 0052: próxima passada do hold da Carpideira calma começa uma caminhada chorando.
+function NOM.carpWalk()
+    require "NOM_Carpideira"
+    NOM_Carpideira.forceWalk = true
+    NOM_DebugLog.say("[NOM] carpWalk: próxima Carpideira calma anda chorando")
+end
+
 -- Sonar do Estalador (sprint 0037): um estalo agora. O servidor escolhe o Estalador mais perto
 -- de você (na névoa, até 60 tiles) ou solta o anel nos seus pés; o anel faz o resto.
 function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
@@ -266,6 +273,7 @@ NOM.HELP = {
     { "NOM.status()", "estado do mod, local e do servidor" },
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
+    { "NOM.carpWalk()", "próxima Carpideira calma (dona neste processo) anda chorando agora — pra testar o piloto Witch (0052)" },
     { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
     { "NOM.thunder()", "relâmpago e trovão agora perto de você (na preta, o clarão congela os Tições por 1 s)" },
     { "NOM.flickerLamp()", "um poste aceso de fora perto de você (até 25 tiles) pisca agora" },

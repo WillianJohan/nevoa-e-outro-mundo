@@ -45,6 +45,10 @@ NOM_ScreenFxRules = {
     -- DIZZY_BASE · round(tontura · DIZZY_STEPS). Iguais aos NOM_DIZZY_* do screen.frag.
     DIZZY_BASE = 4,
     DIZZY_STEPS = 256,
+    -- Sprint 0052: vinheta que respira perto do soluço da Carpideira (ZB-free, §3.2/§3.3).
+    SOB_NEAR = 3,
+    SOB_FAR = 12,
+    SOB_VIGNETTE = 0.22,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
     TEXTURES = {
         grain = {
@@ -66,9 +70,17 @@ local function clamp(v, lo, hi)
 end
 
 -- static: volume do rádio do Sem-rosto (0..1); flashAt/flashStrength: último grito.
+-- sob: proximidade do soluço da Carpideira (0..1, sprint 0052).
 -- fogStatic/staticKind: estática da névoa (R.stepStatic); staticFadeAt/From: o fade do fim.
 function R.new()
-    return { fog = 0, red = 0, static = 0, flashAt = nil, flashStrength = 0, fogStatic = 0, staticKind = "white" }
+    return { fog = 0, red = 0, static = 0, sob = 0, flashAt = nil, flashStrength = 0, fogStatic = 0, staticKind = "white" }
+end
+
+-- Força da vinheta pelo soluço perto (nil / longe = 0). Mesma curva do volume do soluço.
+function R.sobStrength(d)
+    if d == nil or d >= R.SOB_FAR then return 0 end
+    if d <= R.SOB_NEAR then return 1 end
+    return (R.SOB_FAR - d) / (R.SOB_FAR - R.SOB_NEAR)
 end
 
 -- Alfa base da estática da névoa (0..1), sem o fade do fim. w = { omenAt, sirenAt, visible }
@@ -178,9 +190,11 @@ function R.layers(s, now, i, dz)
             vigBase = vigBase + (look.fallbackPocketVignette - look.fallbackBaseVignette) * slow * slow
         end
     end
+    local sob = clamp(s.sob or 0, 0, 1)
+    local sobVig = sob * R.SOB_VIGNETTE * i * (0.7 + 0.3 * breath(now))
     return {
         grain = clamp(f * (0.09 + 0.05 * r + 0.04 * b) * i, 0, 1),
-        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
         vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
         lines = clamp(s.static * f * 0.2 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),

@@ -111,6 +111,8 @@
     "UI_NOM_Debug_C_Sonar_Desc": "The nearest Estalador (in the fog, up to 60 tiles) clicks now; without one, the ring starts at your feet. Standing or walking, the ring finds you; crouched and still, it passes.",
     "UI_NOM_Debug_C_Wander": "Wander wave",
     "UI_NOM_Debug_C_Wander_Desc": "Fog open only: groups of 1 to 3 idle zombies near you start walking.",
+    "UI_NOM_Debug_C_CarpWalk": "Carpideira walk",
+    "UI_NOM_Debug_C_CarpWalk_Desc": "Next calm Carpideira owned here starts a short crying walk (Witch pilot).",
     "UI_NOM_Debug_C_Wind": "Volumetrica wind",
     "UI_NOM_Debug_C_Wind_Desc": "Turns the wind focus of the optional Volumetrica mod on or off.",
     "UI_NOM_Debug_C_GodMode": "Full god mode",

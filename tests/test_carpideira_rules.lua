@@ -40,4 +40,34 @@ return {
         assert(R.screamed(data, 4)[123] == nil, "grito passou pra névoa seguinte")
         assert(R.screamed(data, nil)[123] == nil)
     end,
+
+    -- sprint 0052: intervalo da caminhada calma em 20–60 s reais
+    carpideira_rules_walk_gap_ms = function()
+        assert(R.walkGapMs(0) == R.WALK_GAP_MIN_MS)
+        assert(R.walkGapMs(1) == R.WALK_GAP_MAX_MS)
+        local mid = R.walkGapMs(0.5)
+        assert(mid > R.WALK_GAP_MIN_MS and mid < R.WALK_GAP_MAX_MS)
+    end,
+
+    -- volume do soluço sobe perto (curva do Sem-rosto)
+    carpideira_rules_sob_volume = function()
+        assert(R.sobVolume(nil) == 0 and R.sobVolume(R.SOB_FAR) == 0)
+        assert(R.sobVolume(R.SOB_NEAR) == 1)
+        local mid = R.sobVolume((R.SOB_NEAR + R.SOB_FAR) / 2)
+        assert(mid > 0 and mid < 1)
+        assert(R.sobVolume(R.SOB_NEAR - 1) == 1)
+    end,
+
+    -- destino da caminhada não aproxima o jogador
+    carpideira_rules_pick_walk_away_from_player = function()
+        local players = { { x = 10, y = 0, z = 0 } }
+        local rand = R.rng(42)
+        local d = R.pickWalk(0, 0, 0, players, rand, nil)
+        assert(d, "não sorteou destino")
+        local before = (10 - 0) * (10 - 0)
+        local after = (10 - d.x) * (10 - d.x) + (0 - d.y) * (0 - d.y)
+        assert(after >= before, "andou na direção do jogador: " .. d.x .. "," .. d.y)
+        assert(not R.walkFair(0, 0, 0, 5, 0, players), "indo pra cima do jogador valeu")
+        assert(R.walkFair(0, 0, 0, -4, 0, players), "afastar falhou")
+    end,
 }
