@@ -38,9 +38,11 @@ local FILE_LOOK = "mod/42/media/lua/client/NOM_VariantLook.lua"
 
 -- roupa vanilla que o outfit dá (dois itens): o que tem que sobrar intacto
 local OUTFIT = { "Base.Tshirt_DefaultTEXTURE", "Base.Trousers_Denim" }
+local PROOF = { "Base.Tshirt_Sport", "Base.Trousers_WhiteTEXTURE" }
 
 -- BodyLocation de cada item (vanilla: generated/items/clothing.txt; mod: NOM_clothing.txt)
 local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"] = "pants",
+    ["Base.Tshirt_Sport"] = "tshirt", ["Base.Trousers_WhiteTEXTURE"] = "pants",
     ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask",
     ["Base.ZedDmg_BACK_Slash"] = "zeddmg", ["Base.Wound_Chest_Bite_Male"] = "wound",
     ["Base.Bandage_Chest"] = "bandage" }
@@ -322,6 +324,7 @@ local function setup(opts)
         _G[m] = nil
         package.loaded[m] = nil
     end
+    NOM_PanelParams = nil -- lookClean off salvo se o teste setar
     require "NOM_Config"
     require "NOM_VariantRules"
     NOM_VariantRules.forced = {}
@@ -370,6 +373,29 @@ return {
         assert(z.outfitID == idFor("estalador", 3), "o ID do outfit mudou")
         assert(z.resets >= 1, "sem resetModelNextFrame")
         assert(NOM_VariantLook.count() == 1)
+    end,
+
+    -- 0060c: LookForce → prova camisa/calça coloridas vanilla no ItemVisual
+    look_clean_proof_colored_body = function()
+        local G = setup()
+        -- lookKind nil: não força kind; lookForce ≠ "" liga lookClean/prova
+        NOM_PanelParams = {
+            lookForce = function() return "misaligned" end,
+            lookKind = function() return nil end,
+        }
+        local z = G.spawn({ id = idFor("estalador", 3) })
+        fogOn(3)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.estalador
+        assert(hasItem(z, look.item), "sem peça: " .. types(z))
+        assert(hasItem(z, PROOF[1]) and hasItem(z, PROOF[2]), "sem prova colorida: " .. types(z))
+        assert(not hasItem(z, OUTFIT[1]) and not hasItem(z, OUTFIT[2]), "roupa escura ficou: " .. types(z))
+        assert(z.hv.name == nil)
+        fogOff()
+        G.converge()
+        assert(hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), "não devolveu outfit: " .. types(z))
+        assert(not hasItem(z, PROOF[1]) and not hasItem(z, look.item), "prova/peça ficaram: " .. types(z))
+        NOM_PanelParams = nil
     end,
 
     look_each_kind_distinct = function()

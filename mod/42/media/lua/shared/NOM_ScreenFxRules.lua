@@ -192,23 +192,33 @@ function R.layers(s, now, i, dz)
     end
     local sob = clamp(s.sob or 0, 0, 1)
     local sobVig = sob * R.SOB_VIGNETTE * i * (0.7 + 0.3 * breath(now))
-    -- 0060b: LookForce no painel → abafa glitch pra isolar o look
-    local damp = 1
-    if NOM_PanelParams and NOM_PanelParams.lookForce then
-        local lf = NOM_PanelParams.lookForce()
-        if lf ~= nil and lf ~= "" then damp = 0.12 end
+    -- 0060c: LookForce = look limpo — zera glitch (0060b damp 0.12 ainda deixava
+    -- scanline/vinheta; o canal do shader seguia com aberração/tear).
+    if R.lookClean() then
+        return {
+            grain = 0, vignette = 0, vr = 0, vg = 0, vb = 0,
+            lines = 0, flash = 0, fogStatic = 0,
+            sr = sr, sg = sg, sb = sb, dark = 0,
+        }
     end
     return {
-        -- Sprint 0060/0060b: grain/lines baixos; com LookForce, damp isola o look.
-        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i * damp, 0, 1),
-        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i * (0.35 + 0.65 * damp) + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
+        -- Sprint 0060: grain/lines baixos pra não comer pele/roupa.
+        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
         vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
-        lines = clamp(s.static * f * 0.12 * i * damp, 0, 1),
+        lines = clamp(s.static * f * 0.12 * i, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
-        fogStatic = clamp((s.fogStatic or 0) * i * damp, 0, 1),
+        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
         sr = sr, sg = sg, sb = sb,
         dark = dz * R.DIZZY_DARK,
     }
+end
+
+-- LookForce do painel ≠ Auto → isola o look (sem grain/lines/aberração/tear).
+function R.lookClean()
+    if not NOM_PanelParams or not NOM_PanelParams.lookForce then return false end
+    local lf = NOM_PanelParams.lookForce()
+    return lf ~= nil and lf ~= ""
 end
 
 function R.visible(l)
@@ -228,6 +238,10 @@ end
 -- dz (sprint 0035): a tontura (R.dizzyLevel), na parte inteira do darkness; o pulso fica no
 -- resto, preso em 2 (o shader prende igual), longe de DIZZY_BASE. Não depende de i (o sandbox).
 function R.channel(s, now, i, bloom, dz)
+    -- 0060c: look limpo solta o canal (fog/hiss/red/pulse → tear/aberração no screen.frag)
+    if R.lookClean() then
+        return { blur = 0, radius = 0, desat = 0, darkness = 0, gradient = 0 }
+    end
     i = clamp(i or 1, 0, 2)
     local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i, 0, 2)
     return {

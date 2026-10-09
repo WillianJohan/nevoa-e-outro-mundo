@@ -30,6 +30,7 @@ require "NOM_NightStats"
 require "NOM_VariantRules"
 require "NOM_Dissolve"
 require "NOM_EmberShell"
+require "NOM_ScreenFxRules"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
 -- Direção de arte: docs/gdd/art-direction.md.
@@ -56,15 +57,21 @@ NOM_VariantLook = {
         "Hat_", "Glasses_", "Balaclava", "Bandana", "Scarf", "WeddingVeil",
         "Mask", "MakeUp_", "Nose", "Earrings", "EarRing",
     },
+    -- 0060c: com LookForce, prova no print — camisa esportiva colorida + calça branca.
+    PROOF_BODY = { "Base.Tshirt_Sport", "Base.Trousers_WhiteTEXTURE" },
+    -- Tipos de corpo que a prova substitui (pra não empilhar tshirt+shirt).
+    PROOF_STRIP = { "Tshirt_", "Shirt_", "Trousers_", "Skirt_", "Dress_", "Shorts_" },
 }
 
 local LOOKS = NOM_VariantLook.LOOKS
 local KEEP = NOM_VariantLook.KEEP
 local STRIP_HEAD = NOM_VariantLook.STRIP_HEAD
--- [zumbi] = { kind, id, item, iv, all, leaving }: só o que este processo pôs (all = a
+local PROOF_BODY = NOM_VariantLook.PROOF_BODY
+local PROOF_STRIP = NOM_VariantLook.PROOF_STRIP
+-- [zumbi] = { kind, id, item, iv, all, leaving, proof }: só o que este processo pôs (all = a
 -- lista de ItemVisual original, na ordem, quando alguma roupa foi escondida; leaving = a
--- peça está se desfazendo e o strip vem no fim do efeito). A tabela evita
--- qualquer chamada Java quando nada muda. Só em memória: nada disto vai pro save.
+-- peça está se desfazendo e o strip vem no fim do efeito; proof = camisa/calça do look limpo).
+-- A tabela evita qualquer chamada Java quando nada muda. Só em memória: nada disto vai pro save.
 local worn = {}
 
 local function keep(t)
@@ -77,6 +84,14 @@ local function keep(t)
         if t:find(p, 1, true) then return false end
     end
     return true
+end
+
+local function isProofStrip(t)
+    if t == nil or t:find("%.NOM_") then return false end
+    for _, p in ipairs(PROOF_STRIP) do
+        if t:find(p, 1, true) then return true end
+    end
+    return false
 end
 
 -- Esconde acessórios de cabeça vanilla (não a roupa do corpo). ItemVisual sem flag de
@@ -93,6 +108,39 @@ local function hide(list, w)
     if #gone == 0 then return end
     w.all = all
     for _, iv in ipairs(gone) do list:remove(iv) end
+end
+
+-- 0060c LookForce: troca camisa/calça por vanilla colorida (prova legível no print).
+-- Carpideira com manto: só calça (o manto já é o torso).
+local function proofBody(list, w)
+    if not NOM_ScreenFxRules.lookClean() then return end
+    if not w.all then
+        local all = {}
+        for i = 0, list:size() - 1 do
+            local iv = list:get(i)
+            if iv ~= w.iv and iv ~= w.bodyIv then all[#all + 1] = iv end
+        end
+        w.all = all
+    end
+    local gone = {}
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        if iv ~= w.iv and iv ~= w.bodyIv and isProofStrip(iv:getItemType()) then
+            gone[#gone + 1] = iv
+        end
+    end
+    for _, iv in ipairs(gone) do list:remove(iv) end
+    w.proof = {}
+    for _, typ in ipairs(PROOF_BODY) do
+        if w.body and typ:find("Tshirt_", 1, true) then
+            -- manto no torso: não empilha camisa
+        else
+            local iv = ItemVisual.new()
+            iv:setItemType(typ)
+            list:add(iv)
+            w.proof[#w.proof + 1] = iv
+        end
+    end
 end
 
 -- Chapéu caído: PersistentOutfits.setFallenHat liga o bit 0x8000 do persistentOutfitID
@@ -152,6 +200,7 @@ local function put(z, kind, id)
         w.bodyIv = biv
     end
     hide(list, w)
+    proofBody(list, w)
     z:resetModelNextFrame()
     if shell then
         if NOM_EmberShell.reveal(z) then NOM_EmberShell.burst(z) end
@@ -166,7 +215,11 @@ local function strip(z)
     worn[z] = nil
     NOM_Dissolve.stop(z)
     NOM_EmberShell.remove(z)
-    if w.iv then unhide(z, z:getItemVisuals(), w) end -- remove(Object): os objetos que este processo tirou e pôs
+    local list = z:getItemVisuals()
+    if w.proof then
+        for _, iv in ipairs(w.proof) do list:remove(iv) end
+    end
+    if w.iv then unhide(z, list, w) end -- remove(Object): os objetos que este processo tirou e pôs
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
@@ -216,6 +269,10 @@ function NOM_VariantLook.sync(z, kind, id)
             elseif not NOM_Dissolve.run(z, "in") then
                 NOM_Dissolve.stop(z) -- a peça se forma de novo
             end
+        elseif NOM_ScreenFxRules.lookClean() and not w.proof then
+            -- LookForce ligado depois da mutação: aplica prova colorida sem re-strip
+            proofBody(z:getItemVisuals(), w)
+            z:resetModelNextFrame()
         end
         return
     end

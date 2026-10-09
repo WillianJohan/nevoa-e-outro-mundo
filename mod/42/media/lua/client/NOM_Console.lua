@@ -98,6 +98,22 @@ function NOM.lookInspect()
     return s
 end
 
+-- Sprint 0060c: isola look — LookForce Misaligned + ScreenFx/shader glitch off + prova
+-- camisa/calça coloridas no próximo sync da variante.
+function NOM.lookClean()
+    require "NOM_PanelParams"
+    require "NOM_ScreenFxRules"
+    if NOM_PanelParams.lookForce() == "" then
+        NOM_PanelParams.set("LookForce", "misaligned")
+    end
+    local lf = NOM_PanelParams.lookForce()
+    local clean = NOM_ScreenFxRules.lookClean()
+    local s = string.format("LookForce=%s screenFxClean=%s (Tshirt_Sport+Trousers_White)",
+        tostring(lf), tostring(clean))
+    NOM_DebugLog.say("[NOM] lookClean " .. s)
+    return s
+end
+
 -- Truques do jogador local (ISAdminPowerUI.lua:31-53): muda e manda pro servidor
 -- (sendPlayerExtraInfo, :403); no MP o servidor aplica as regras dele.
 local function cheat(name, getter, setter)
@@ -548,6 +564,7 @@ NOM.HELP = {
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
+    { "NOM.lookClean()", "isola look: LookForce + zera ScreenFx/shader glitch (0060c)" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },

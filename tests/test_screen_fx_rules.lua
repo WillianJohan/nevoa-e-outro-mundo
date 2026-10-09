@@ -304,4 +304,25 @@ return {
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 
+    -- 0060c: LookForce → look limpo (overlay + canal shader zerados)
+    screenfx_rules_look_clean_kills_glitch = function()
+        assert(not R.lookClean(), "sem PanelParams não é limpo")
+        NOM_PanelParams = { lookForce = function() return "misaligned" end }
+        assert(R.lookClean())
+        local s = fogged(true, 1)
+        s.flashAt, s.flashStrength = 0, 1
+        s.fogStatic = 0.5
+        local l = R.layers(s, 0, 1, 1)
+        assert(l.grain == 0 and l.lines == 0 and l.fogStatic == 0 and l.flash == 0
+            and l.vignette == 0 and l.dark == 0, "camadas ainda pintam")
+        assert(not R.visible(l), "look limpo ainda visível")
+        local c = R.channel(s, 0, 1, 2, 1)
+        assert(c.blur == 0 and c.radius == 0 and c.desat == 0 and c.darkness == 0
+            and c.gradient == 0, "canal shader ainda suja")
+        NOM_PanelParams = { lookForce = function() return "" end }
+        assert(not R.lookClean())
+        assert(R.layers(fogged(true), 0, 1).grain > 0, "Auto não deve zerar")
+        NOM_PanelParams = nil
+    end,
+
 }

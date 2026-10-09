@@ -123,6 +123,8 @@ local function releaseChannel(pn)
 end
 
 local function channelWanted(now)
+    -- 0060c: LookForce → solta o canal do shader (senão bloom/fog mantêm tear/aberração)
+    if NOM_ScreenFxRules.lookClean() then return false end
     if NOM_ScreenFxOptions.bloom() > 0 then return true end
     local c = channelValues(now)
     return c.blur > 0 or c.darkness > 0
@@ -164,7 +166,9 @@ end
 local function update()
     if NOM_ShaderMod then return updateChannel() end
     local intensity = NOM_Config.get("FogVignetteIntensity")
+    -- 0060c: look limpo também solta a vinheta SearchMode (sem shader)
     local on = NOM_FogState.visible() and NOM_Config.get("FogVignette") and intensity > 0
+        and not NOM_ScreenFxRules.lookClean()
     local seen = {}
     for i = 0, getNumActivePlayers() - 1 do
         local p = getSpecificPlayer(i)
