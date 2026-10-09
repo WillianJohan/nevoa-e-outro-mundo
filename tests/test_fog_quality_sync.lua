@@ -49,10 +49,11 @@ return {
         fire(h, "OnGameStart")
         assert(sent(calls, 6) == 1, "não mandou a qualidade no início")
         assert(sent(calls, 9) == 3, "não mandou a resolução no início")
-        assert(sent(calls, 2) and sent(calls, 2) < 0.7, "altura da base: " .. tostring(sent(calls, 2)))
-        assert(sent(calls, 7) and sent(calls, 7) < 0.5, "véu da base: " .. tostring(sent(calls, 7)))
-        assert(sent(calls, 14) and sent(calls, 14) > 0, "cobertura dos bolsões")
-        assert(sent(calls, 15) and sent(calls, 15) > 0, "boost dos bolsões")
+        -- playtest Johan: setParam(2,1) (7,0.8) (14,0.1) (15,1.1)
+        assert(sent(calls, 2) and math.abs(sent(calls, 2) - 1.0) < 1e-4, "altura da base: " .. tostring(sent(calls, 2)))
+        assert(sent(calls, 7) and math.abs(sent(calls, 7) - 0.8) < 1e-4, "véu da base: " .. tostring(sent(calls, 7)))
+        assert(sent(calls, 14) and math.abs(sent(calls, 14) - 0.1) < 1e-4, "cobertura: " .. tostring(sent(calls, 14)))
+        assert(sent(calls, 15) and math.abs(sent(calls, 15) - 1.1) < 1e-4, "boost: " .. tostring(sent(calls, 15)))
     end,
 
     fog_quality_sync_follows_option_once = function()

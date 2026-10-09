@@ -159,14 +159,15 @@ assert re.search(r"@Patch\.OnExit[\s\S]*RenderContext\.afterVanillaFogUpdate\(",
 assert re.search(r"PARAM_VANILLA_FOG = 8;", java) and not re.search(r"luaParams\[PARAM_VANILLA_FOG\] = 1f", java), \
     "mod3: PARAM_VANILLA_FOG (8) ausente ou com a vanilla ligada por padrão"
 jh = re.search(r"PARAM_HAZE = (\d+);", java)
-# 0047g: look da 1ª 0047 (b012989) — véu 0,2 / altura 0,45; sem tempero b–f
-assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.2f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,2 (1ª 0047)"
-assert re.search(r"luaParams\[2\] = 0\.45f", java), "mod3: altura da base padrão 0,45 (1ª 0047)"
+# 0047g: defaults playtest Johan — altura 1 / véu 0,8 / boost 1,1 / res 3
+assert jh and re.search(r"luaParams\[PARAM_HAZE\] = 0\.8f", java), "mod3: PARAM_HAZE ausente ou sem padrão 0,8 (playtest)"
+assert re.search(r"luaParams\[2\] = 1\.0f", java), "mod3: altura da base padrão 1,0 (playtest)"
+assert re.search(r"luaParams\[PARAM_POCKET_BOOST\] = 1\.1f", java), "mod3: pocket boost padrão 1,1"
 assert '"uPocket"' in java and "uPocket" in header, "mod3: falta uniform uPocket dos bolsões"
 assert '"uPocketShape"' in java and "uPocketShape" in header, "mod3: falta uniform uPocketShape"
 assert "pocketSample" in volfog and "layerAt" in volfog, "mod3: NOM_VolFog sem base/bolsão (0047)"
-assert re.search(r"return uParams\[0\]\.z > 0\.0 \? uParams\[0\]\.z : 0\.45;", volfog), \
-    "mod3: baseLayer fallback 0,45 (1ª 0047)"
+assert re.search(r"return uParams\[0\]\.z > 0\.0 \? uParams\[0\]\.z : 1\.0;", volfog), \
+    "mod3: baseLayer fallback 1,0 (playtest Johan)"
 hi = int(jh.group(1))
 assert "uParams[%d].%s" % (hi // 4, "xyzw"[hi % 4]) in volfog, "mod3: NOM_VolFog não lê o véu (PARAM_HAZE)"
 dens_look = volfog.split("float densityLook")[1].split("vec3 torchLight")[0]
@@ -183,10 +184,10 @@ assert re.search(r"float top = ground \+ max\(layer, pocketLayer\(\)\) \* 1\.6;"
     "mod3: o volume não tem altura pro empilhamento"
 
 assert re.search(r"\bg\.vorticity = [\d.]+f;", java), "mod3: o Flow não liga o reforço de redemoinho"
-# Alta resolução (sprint 0030): NOMRender_setParam(9, s), padrão 2 células por tile; o shader acha a
+# Alta resolução (sprint 0030/0047g): NOMRender_setParam(9, s), padrão 3 células por tile; o shader acha a
 # célula pela escala da textura; a simulação roda numa thread própria e a grade é só dela.
-assert re.search(r"PARAM_FLOW_RES = 9;", java) and re.search(r"luaParams\[PARAM_FLOW_RES\] = 2f", java), \
-    "mod3: PARAM_FLOW_RES (9) ausente ou sem padrão 2"
+assert re.search(r"PARAM_FLOW_RES = 9;", java) and re.search(r"luaParams\[PARAM_FLOW_RES\] = 3f", java), \
+    "mod3: PARAM_FLOW_RES (9) ausente ou sem padrão 3 (playtest Johan)"
 ctx = (src.parent.parent.parent / "42/media/shaders/NOM_RenderContext.glsl").read_text()
 flags_fn = ctx.split("int nomFlowFlags")[1].split("float nomFlowTree")[0]
 assert "textureSize(uFlowTex" in flags_fn, "mod3: nomFlowFlags tem que achar a célula pela escala da textura"

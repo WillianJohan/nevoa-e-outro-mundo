@@ -1,4 +1,4 @@
--- Névoa clímax (sprint 0047): base baixa tipo gelo seco + bolsões viajantes raros/brutais.
+-- Névoa clímax (sprint 0047): base + bolsões viajantes. Defaults = playtest Johan (branca, 0047g).
 -- Puro (sem API do jogo). Sandbox manda os 2 eixos; o cliente empurra params pro mod3
 -- (NOM_FogQualitySync) e o fallback sem mod3 usa a vinheta (NOM_ScreenFxRules).
 NOM_FogClimaxRules = {}
@@ -10,7 +10,8 @@ R.PARAM_HAZE = 7
 
 R.BASE_HEIGHT_MIN = 0.2
 R.BASE_HEIGHT_MAX = 1.2
-R.BASE_HEIGHT_DEFAULT = 0.45
+R.BASE_HEIGHT_DEFAULT = 1.0   -- playtest Johan (branca): setParam(2, 1)
+R.BASE_HAZE_DEFAULT = 0.8     -- setParam(7, 0.8) — fixo, não deriva da altura
 R.POCKET_HEIGHT = 1.2
 R.POCKET_AGGRESSION_DEFAULT = 1
 
@@ -24,14 +25,15 @@ end
 function R.look(baseHeight, pocketAggression)
     local h = clamp(tonumber(baseHeight) or R.BASE_HEIGHT_DEFAULT, R.BASE_HEIGHT_MIN, R.BASE_HEIGHT_MAX)
     local a = clamp(tonumber(pocketAggression) or R.POCKET_AGGRESSION_DEFAULT, 0, 2)
-    local haze = clamp(0.12 + 0.2 * ((h - R.BASE_HEIGHT_MIN) / (R.BASE_HEIGHT_MAX - R.BASE_HEIGHT_MIN)), 0.1, 0.45)
+    -- véu fixo no default do Johan; não sobe/desce com a altura do sandbox
+    local haze = R.BASE_HAZE_DEFAULT
     local coverage, boost, scale, speed
     if a <= 0 then
         coverage, boost, scale, speed = 0, 0, 50, 1
     else
-        -- default (a=1): ~8% cobertura, boost forte; a=2 sobe um pouco (ainda raro)
+        -- default (a=1): cov 0,10 / boost 1,1 (setParam 14/15 do playtest)
         coverage = 0.05 + 0.05 * a
-        boost = 0.85 + 0.35 * a
+        boost = 0.75 + 0.35 * a
         scale = 55 - 5 * a
         speed = 0.85 + 0.25 * a
     end

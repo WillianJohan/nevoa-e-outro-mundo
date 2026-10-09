@@ -40,16 +40,20 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 - `NOM_FogClimaxRules` + sandbox `FogBaseHeight` / `FogPocketAggression` (2 eixos).
 - `FogPockets.java` + uniforms `uPocket`/`uPocketShape` (produto mantido).
 - Shader: `layerAt` + C-lite; sync Lua → params 2/3/7/14/15; fallback vinheta; `NOM.fogLook()`.
-- **Look ativo = 1ª 0047 (0047g):** restaurado de `b012989` — altura **0,45** / véu **0,2** /
-  `HAZE` 0,18 / fall **8** / sigma 0,9; ScreenFx sem gate de volume. Johan: “ficou bom / ta ok”.
-- Histórico rejeitado no playtest (não no look atual): tempero 0047b (flicker/bolhas) → 0047c–f
-  (estável/rasa/donut/α/overcorrection). Docs de design α ficam como arquivo; código do look não.
+- **Look shader** = 1ª 0047 (`b012989`: HAZE 0,18 / fall 8 / sigma 0,9; sem FLOOR_MIN; ScreenFx sem gate).
+- **Defaults playtest Johan (branca, 0047g):** empurrados por sync / `NOM.fogLook()`:
+  - param **2** altura base **1,0** (sandbox `FogBaseHeight`)
+  - param **3** bolsão **1,2**
+  - param **7** véu **0,8** (fixo em `BASE_HAZE_DEFAULT`, não deriva da altura)
+  - param **9** resolução grade **3** (Opções > Mods + Java)
+  - param **14** cobertura **0,1** / **15** boost **1,1** (aggression default 1)
+- Histórico rejeitado: tempero 0047b → 0047c–f. Docs de design α ficam; código do look visual não.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest **0047g** no jogo (confirmar que voltou o look aprovado da 1ª sync).
-- B' / B só se A+C-lite falharem de novo no playtest (hoje o pedido é **reconhecer**, não melhorar).
+- Confirmar no jogo que os defaults batem o look da branca que o Johan aprovou (reiniciar após sync).
+- B' / B só se A+C-lite falharem de novo no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)
 

@@ -130,7 +130,7 @@ float pocketSample(vec2 xyRel) {
 }
 
 float baseLayer() {
-    return uParams[0].z > 0.0 ? uParams[0].z : 0.45;
+    return uParams[0].z > 0.0 ? uParams[0].z : 1.0;
 }
 
 float pocketLayer() {
