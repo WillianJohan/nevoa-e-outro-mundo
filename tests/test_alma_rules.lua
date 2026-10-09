@@ -1,53 +1,71 @@
--- Regras puras das almas (sprint 0050).
+-- Regras puras das almas (sprint 0055: ciclo constante, 3 cores, 68% crawler).
 require "NOM_AlmaRules"
 
 local R = NOM_AlmaRules
 
 return {
-    alma_active_only_white_fog = function()
-        assert(R.active({ fog = true, red = false, black = false }) == true)
+    -- Qualquer névoa aberta (branca, vermelha ou preta).
+    alma_active_any_fog_color = function()
+        R.reset()
+        assert(R.active({ fog = true, red = false, black = false }) == true, "branca")
+        assert(R.active({ fog = true, red = true }) == true, "vermelha")
+        assert(R.active({ fog = true, black = true }) == true, "preta")
+        assert(R.active({ fog = true, red = true, black = true }) == true)
         assert(R.active({ fog = false }) == false, "sem névoa")
-        assert(R.active({ fog = true, red = true }) == false, "vermelha")
-        assert(R.active({ fog = true, black = true }) == false, "preta")
-        assert(R.active({ fog = true, red = true, black = true }) == false)
         assert(R.active(nil) == false)
     end,
 
-    alma_gap_45_to_120_seconds = function()
-        assert(R.GAP_MIN_MS == 45000 and R.GAP_MAX_MS == 120000)
-        assert(R.gap(0) == 45000)
-        local hi = R.gap(0.999999)
-        assert(hi >= 119990 and hi <= 120000, "teto: " .. hi)
-        local mid = R.gap(0.5)
-        assert(mid > 45000 and mid < 120000, "meio: " .. mid)
+    alma_population_bounds_4_to_20 = function()
+        R.reset()
+        assert(R.POP_MIN == 4 and R.POP_MAX == 20)
+        assert(R.POP_MIN < R.POP_MAX)
     end,
 
-    alma_wave_sizes_organic = function()
-        local seen = {}
-        for i = 0, 99 do
-            local n = R.waveSize(i / 100, 0.5)
-            seen[n] = true
-            assert(n >= 10 - R.WAVE_JITTER and n <= 20 + R.WAVE_JITTER)
+    -- Abaixo do mínimo: repõe até um alvo em [POP_MIN, POP_MAX]; no intervalo: 0.
+    alma_refill_when_below_min = function()
+        assert(R.refillCount(0, 0) == 4, "piso com u=0")
+        assert(R.refillCount(0, 0.9999) == 20, "teto com u alto")
+        assert(R.refillCount(3, 0) == 1, "falta 1 pro mínimo")
+        local mid = R.refillCount(2, 0.5)
+        assert(mid >= 2 and mid <= 18, "meio: " .. mid)
+        assert(2 + mid >= R.POP_MIN and 2 + mid <= R.POP_MAX)
+        assert(R.refillCount(4, 0.5) == 0, "já no mínimo")
+        assert(R.refillCount(10, 0.9) == 0, "no intervalo")
+        assert(R.refillCount(20, 0) == 0, "no máximo")
+        assert(R.refillCount(25, 0) == 0, "acima do máximo")
+    end,
+
+    alma_refill_never_exceeds_max = function()
+        for alive = 0, 20 do
+            for i = 0, 99 do
+                local n = R.refillCount(alive, i / 100)
+                assert(n >= 0)
+                assert(alive + n <= R.POP_MAX, "estouro: alive=" .. alive .. " n=" .. n)
+                if alive >= R.POP_MIN then
+                    assert(n == 0)
+                elseif n > 0 then
+                    assert(alive + n >= R.POP_MIN)
+                end
+            end
         end
-        assert(seen[10] or seen[15] or seen[20], "bases da leva")
     end,
 
-    alma_ttl_bands = function()
-        assert(R.ttl(0) == 10000)
-        assert(R.ttl(0.34) == 30000 or R.ttl(0.34) == 10000)
-        assert(R.ttl(0.99) == 60000)
-        local got = {}
-        for i = 0, 99 do got[R.ttl(i / 100)] = true end
-        assert(got[10000] and got[30000] and got[60000], "três faixas")
-    end,
-
-    alma_crawler_about_70_percent = function()
-        assert(R.CRAWLER_CHANCE == 0.70)
+    alma_crawler_about_68_percent = function()
+        R.reset()
+        assert(R.CRAWLER_CHANCE == 0.68)
         local n = 0
         for i = 0, 999 do
             if R.isCrawler(i / 1000) then n = n + 1 end
         end
-        assert(n == 700, "crawlers: " .. n)
+        assert(n == 680, "crawlers: " .. n)
+    end,
+
+    alma_ttl_bands = function()
+        assert(R.ttl(0) == 10000)
+        assert(R.ttl(0.99) == 60000)
+        local got = {}
+        for i = 0, 99 do got[R.ttl(i / 100)] = true end
+        assert(got[10000] and got[30000] and got[60000], "três faixas")
     end,
 
     alma_health_low = function()
@@ -87,5 +105,57 @@ return {
         assert(R.SOUND.despawn == "NOM_AlmaDespawn")
         assert(R.loopSound(true) == "NOM_AlmaCrawl")
         assert(R.loopSound(false) == "NOM_AlmaShamble")
+    end,
+
+    alma_refill_throttle_ms = function()
+        assert(type(R.REFILL_MS) == "number" and R.REFILL_MS > 0 and R.REFILL_MS <= 10000)
+    end,
+
+    -- Cores ligáveis/desligáveis (debug/painel); padrão: as três.
+    alma_colors_default_all_on = function()
+        R.reset()
+        assert(R.colorEnabled("white") and R.colorEnabled("red") and R.colorEnabled("black"))
+        assert(R.active({ fog = true }) == true)
+        assert(R.active({ fog = true, red = true }) == true)
+        assert(R.active({ fog = true, black = true }) == true)
+    end,
+
+    alma_colors_gate_active = function()
+        R.reset()
+        R.apply("white", false)
+        assert(R.active({ fog = true, red = false, black = false }) == false, "branca off")
+        assert(R.active({ fog = true, red = true }) == true, "vermelha ainda on")
+        R.apply("red", false)
+        R.apply("black", false)
+        assert(R.active({ fog = true, red = true }) == false)
+        assert(R.active({ fog = true, black = true }) == false)
+        R.reset()
+    end,
+
+    alma_apply_pop_and_crawler = function()
+        R.reset()
+        assert(R.apply("popMin", 6) == 6)
+        assert(R.POP_MIN == 6)
+        assert(R.apply("popMax", 12) == 12)
+        assert(R.POP_MAX == 12)
+        -- min não passa do max
+        assert(R.apply("popMin", 30) == 12)
+        R.apply("popMax", 20)
+        R.apply("popMin", 4)
+        assert(R.apply("crawler", 0.5) == 0.5)
+        assert(R.CRAWLER_CHANCE == 0.5)
+        assert(R.apply("crawler", 2) == 1)
+        assert(R.apply("crawler", -1) == 0)
+        R.reset()
+        assert(R.POP_MIN == 4 and R.POP_MAX == 20 and R.CRAWLER_CHANCE == 0.68)
+    end,
+
+    alma_apply_toggle_color_nil = function()
+        R.reset()
+        R.apply("white", nil) -- toggle
+        assert(R.colorEnabled("white") == false)
+        R.apply("white", nil)
+        assert(R.colorEnabled("white") == true)
+        R.reset()
     end,
 }

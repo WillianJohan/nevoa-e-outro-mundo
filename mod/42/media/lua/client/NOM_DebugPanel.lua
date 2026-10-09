@@ -23,6 +23,7 @@ require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_ScreenFxOptions"
 require "NOM_DebugLog"
+require "NOM_AlmaRules"
 
 NOM_DebugPanel = ISCollapsableWindow:derive("NOM_DebugPanel")
 local Side = ISPanel:derive("NOM_DebugPanelSide")
@@ -62,6 +63,11 @@ local function cheat(getter)
 end
 
 local function c(key, fn) return { key = key, fn = fn } end
+
+-- Botão com rótulo vivo (slider por passos) e/ou estado próprio (toggle por escolha).
+local function dyn(key, fn, labelFn, stateFn)
+    return { key = key, fn = fn, label = labelFn, state = stateFn }
+end
 
 -- Seções da lateral e seus cartões. Chaves literais: o teste das traduções acha a chave no código.
 -- Todo comando do NOM.HELP tem botão aqui (AGENTS.md; tests/test_debug_panel.lua cobra).
@@ -116,8 +122,45 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Pull", function() NOM.getZombie() end) } },
             { title = "UI_NOM_Debug_C_Eco", desc = "UI_NOM_Debug_C_Eco_Desc", choices = {
                 c("UI_NOM_Debug_B_Here", function() NOM.eco() end) } },
+            -- Almas (0055): ação + sliders por botão (±) + cores on/off — compacto no padrão do painel.
             { title = "UI_NOM_Debug_C_Alma", desc = "UI_NOM_Debug_C_Alma_Desc", choices = {
-                c("UI_NOM_Debug_B_Now", function() NOM.alma() end) } },
+                c("UI_NOM_Debug_B_Now", function() NOM.alma() end),
+                c("UI_NOM_Debug_B_Show", function() NOM.almaStatus() end),
+                c("UI_NOM_Debug_B_Reset", function() NOM.almaReset() end) } },
+            { title = "UI_NOM_Debug_C_AlmaPop", desc = "UI_NOM_Debug_C_AlmaPop_Desc", choices = {
+                dyn("UI_NOM_Debug_B_AlmaMinMinus", function() NOM.almaCfg("popMin", NOM_AlmaRules.POP_MIN - 1) end,
+                    function() return "min -" end),
+                dyn("UI_NOM_Debug_B_AlmaMinVal", function() NOM.almaStatus() end,
+                    function() return "min " .. tostring(NOM_AlmaRules.POP_MIN) end),
+                dyn("UI_NOM_Debug_B_AlmaMinPlus", function() NOM.almaCfg("popMin", NOM_AlmaRules.POP_MIN + 1) end,
+                    function() return "min +" end),
+                dyn("UI_NOM_Debug_B_AlmaMaxMinus", function() NOM.almaCfg("popMax", NOM_AlmaRules.POP_MAX - 1) end,
+                    function() return "max -" end),
+                dyn("UI_NOM_Debug_B_AlmaMaxVal", function() NOM.almaStatus() end,
+                    function() return "max " .. tostring(NOM_AlmaRules.POP_MAX) end),
+                dyn("UI_NOM_Debug_B_AlmaMaxPlus", function() NOM.almaCfg("popMax", NOM_AlmaRules.POP_MAX + 1) end,
+                    function() return "max +" end) } },
+            { title = "UI_NOM_Debug_C_AlmaCrawler", desc = "UI_NOM_Debug_C_AlmaCrawler_Desc", choices = {
+                dyn("UI_NOM_Debug_B_AlmaCrawlMinus",
+                    function() NOM.almaCfg("crawler", NOM_AlmaRules.CRAWLER_CHANCE - 0.05) end,
+                    function() return "crawler -" end),
+                dyn("UI_NOM_Debug_B_AlmaCrawlVal", function() NOM.almaStatus() end,
+                    function()
+                        return "crawler " .. tostring(math.floor(NOM_AlmaRules.CRAWLER_CHANCE * 100 + 0.5)) .. "%"
+                    end),
+                dyn("UI_NOM_Debug_B_AlmaCrawlPlus",
+                    function() NOM.almaCfg("crawler", NOM_AlmaRules.CRAWLER_CHANCE + 0.05) end,
+                    function() return "crawler +" end) } },
+            { title = "UI_NOM_Debug_C_AlmaColors", desc = "UI_NOM_Debug_C_AlmaColors_Desc", choices = {
+                dyn("UI_NOM_Debug_B_AlmaWhite", function() NOM.almaCfg("white") end,
+                    function() return getText("UI_NOM_Debug_B_AlmaWhite") end,
+                    function() return NOM_AlmaRules.colorEnabled("white") end),
+                dyn("UI_NOM_Debug_B_AlmaRed", function() NOM.almaCfg("red") end,
+                    function() return getText("UI_NOM_Debug_B_AlmaRed") end,
+                    function() return NOM_AlmaRules.colorEnabled("red") end),
+                dyn("UI_NOM_Debug_B_AlmaBlack", function() NOM.almaCfg("black") end,
+                    function() return getText("UI_NOM_Debug_B_AlmaBlack") end,
+                    function() return NOM_AlmaRules.colorEnabled("black") end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {
@@ -197,10 +240,18 @@ local function text(el, s, x, y, col, a, font) el:drawText(s, x, y, col.r, col.g
 local function mix(col, k) return { r = col.r * k, g = col.g * k, b = col.b * k } end
 
 local function choiceLabel(card, choice)
+    -- estado por escolha (ex.: cor das almas) ou por cartão (liga/desliga clássico)
+    if choice.state then
+        local on = choice.state()
+        if choice.label then return choice.label(), on end
+        local base = choice.key and getText(choice.key) or ""
+        return base, on
+    end
     if card.state then
         local on = card.state()
         return getText(on and "UI_NOM_Debug_On" or "UI_NOM_Debug_Off"), on
     end
+    if choice.label then return choice.label(), nil end
     return getText(choice.key), nil
 end
 

@@ -122,4 +122,19 @@ return {
         assert(D.parse({ op = "fog", value = true }).toggle == false)
         assert(D.parse({ op = "fog", toggle = "sim" }) == nil)
     end,
+    -- sprint 0055: params das almas no painel
+    debug_rules_parse_alma_cfg = function()
+        local a = D.parse({ op = "almaCfg", field = "popMin", value = 6 })
+        assert(a and a.field == "popMin" and a.value == 6)
+        a = D.parse({ op = "almaCfg", field = "crawler", value = 0.5 })
+        assert(a and a.value == 0.5)
+        a = D.parse({ op = "almaCfg", field = "white", value = false })
+        assert(a and a.value == false)
+        a = D.parse({ op = "almaCfg", field = "red" }) -- toggle (nil)
+        assert(a and a.field == "red" and a.value == nil)
+        assert(D.parse({ op = "almaCfg", field = "nope", value = 1 }) == nil)
+        assert(D.parse({ op = "almaCfg", field = "popMin", value = "x" }) == nil)
+        assert(D.parse({ op = "almaStatus" }).op == "almaStatus")
+        assert(D.parse({ op = "almaReset" }).op == "almaReset")
+    end,
 }

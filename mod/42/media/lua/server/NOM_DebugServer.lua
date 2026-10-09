@@ -23,6 +23,7 @@ require "NOM_Eco"
 require "NOM_SemRosto"
 require "NOM_FlickerRules"
 require "NOM_StormRules"
+require "NOM_AlmaRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -191,12 +192,33 @@ function ops.sonar(player)
     return NOM_SonarServer.force(player)
 end
 
--- Uma leva de almas agora (sprint 0050; NOM_AlmaServer). Só névoa branca.
+-- Repor almas agora (sprint 0055; NOM_AlmaServer). Qualquer névoa com a cor ligada.
 function ops.alma()
     if not NOM_AlmaServer then return "almas não carregaram" end
     local n, why = NOM_AlmaServer.wave("debug")
     if why then return "almas: " .. why end
-    return "almas leva spawn=" .. tostring(n) .. " vivas=" .. tostring(#NOM_AlmaServer.alive)
+    return "almas repor spawn=" .. tostring(n) .. " vivas=" .. tostring(#NOM_AlmaServer.alive)
+        .. " (" .. NOM_AlmaRules.describe() .. ")"
+end
+
+function ops.almaStatus()
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    local alive = (NOM_AlmaServer and #NOM_AlmaServer.alive) or 0
+    return "almas " .. NOM_AlmaRules.describe() .. " vivas=" .. tostring(alive)
+end
+
+function ops.almaReset()
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    NOM_AlmaRules.apply("reset")
+    return "almas reset: " .. NOM_AlmaRules.describe()
+end
+
+function ops.almaCfg(player, args)
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    local got = NOM_AlmaRules.apply(args.field, args.value)
+    if got == nil then return "almas cfg campo inválido" end
+    return "almas cfg " .. tostring(args.field) .. "=" .. tostring(got)
+        .. " | " .. NOM_AlmaRules.describe()
 end
 
 -- Tempestade e poste que pisca (sprint 0045; NOM_Storm e NOM_LampFlicker, lidos na hora).

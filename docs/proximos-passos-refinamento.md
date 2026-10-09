@@ -499,9 +499,11 @@ Johan: branca talvez mais tranquila / “dia a dia”. **Leitura PO (fechada):**
 - Áudio: drone + **gritos ambiente** (§3.1.1); gritos de gameplay **esparsos**.
 - Camada rua: almas esqueléticas negras em levas, seek **lento**, TTL curto (§3.9.1) — **além** das quatro variantes.
 
-#### 3.9.1 Almas esqueléticas na branca (**regras Johan fechadas** + PO)
+#### 3.9.1 Almas esqueléticas (**regras Johan** + emenda 2026-10-09)
 
-**Confirmado (Johan, 2026-10-08):** limites **com certeza**; look **esqueletos negros / corpo totalmente decomposto**; locomoção **sempre mancando** (só shamblers) e **grande parte se arrasta** (crawlers); **buscam o jogador** e ficam vivos um tempo (TTL variável); levas orgânicas (~10 / 15 / 20); podem **chorar/gritar** (variedade); só rua; FX **partícula negra** no spawn/despawn; modelo vanilla **por nome** (nada no repo).
+**Emenda (Johan, 2026-10-09 — prevalece):** ciclo **constante** com população viva **4–20** (repor abaixo de 4; teto 20); mix **68% crawler / 32% shambler**; aparece em **branca e vermelha e preta**; params no `NOM.panel()` (sprint **0055**). Gap 45–120 s, levas ~10/15/20 e “só branca” / ~70% crawler da 0050 **ficam obsoletos**.
+
+**Confirmado (Johan, 2026-10-08; look/TTL/rua mantidos):** look **esqueletos negros / corpo totalmente decomposto**; locomoção **sempre mancando** + maioria rasteja; **buscam o jogador**; TTL variável; podem **chorar/gritar**; só rua; FX **partícula negra**; modelo vanilla **por nome**.
 
 ##### Veredito PO (atualizado)
 
@@ -523,16 +525,16 @@ Johan: branca talvez mais tranquila / “dia a dia”. **Leitura PO (fechada):**
 | Regra | Valor |
 |-------|--------|
 | Look | Esqueleto **negro** / corpo **totalmente decomposto** (vanilla por nome) |
-| Mix loco | **Sempre** shambler mancando; **~70% crawler** por leva (resto shambler em pé mancando) |
+| Mix loco | **Sempre** shambler mancando; **~68% crawler** (resto shambler em pé mancando); ajustável no painel |
 | Seek | **Sim** — path/IA em direção ao jogador; **nunca** sprint / corredor |
 | TTL | Variável por indivíduo: ordem **~10 s / ~30 s / ~1 min** (sorteio orgânico) |
-| Levas | Tamanho orgânico **~10 / ~15 / ~20** (jitter); **gap 45–120 s** entre levas |
+| População | **Ciclo constante 4–20** vivos (repor abaixo de 4; teto 20); sem gap de levas |
 | Vida | **Baixa** — pressão / susto, **não** tank |
 | Áudio | Podem **chorar** e **gritar** com variedade — banco na **Sons II** (§3.1.1), distinto de Corredor/Carpideira gameplay |
 | Espaço | **Só rua** (`isOutside`); **nunca** interior; na soleira → não entram / despawn |
 | FX | Partícula **negra** no spawn **e** no despawn |
-| Escopo de cor | **Só branca**; vermelha/preta sem este sistema |
-| Cast | **Além** das variantes 100%; sandbox pode reduzir/zerar levas |
+| Escopo de cor | **Branca + vermelha + preta** (cada uma on/off no debug) |
+| Cast | **Além** das variantes 100%; sandbox `AlmaEnabled` desliga |
 
 ##### Critérios jogáveis
 

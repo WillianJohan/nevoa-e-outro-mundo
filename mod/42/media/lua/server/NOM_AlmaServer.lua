@@ -1,7 +1,6 @@
--- Almas esqueléticas na névoa branca (sprint 0050, ADR-002/005): o servidor decide
--- quando sai uma leva, onde spawna (só rua), TTL e despawn; quem simula aplica
--- look/seek (shared/NOM_Alma.lua). Gap e TTL em tempo real (getTimestampMs).
--- Só branca: vermelha/preta e interior ficam de fora.
+-- Almas esqueléticas (sprint 0055, ADR-002/005): o servidor mantém população
+-- viva 4–20 enquanto a névoa estiver aberta (branca/vermelha/preta); quem
+-- simula aplica look/seek (shared/NOM_Alma.lua). Rua + TTL em tempo real.
 if isClient() then return end
 
 require "NOM_World"
@@ -109,17 +108,32 @@ local function spawnOne(px, py, pz, now, quiet)
     return z
 end
 
--- Uma leva perto dos jogadores vivos. why: "tempo" ou "debug".
+-- Repõe população perto dos jogadores. why: "tempo" ou "debug".
 function S.wave(why)
     if not enabled() and why ~= "debug" then return 0 end
     if why == "debug" and not R.active(NOM_World) then
-        return 0, "almas precisam de névoa branca aberta"
+        return 0, "almas precisam de névoa aberta"
     end
     if why == "debug" and NOM_Config.get("AlmaEnabled") == false then
         return 0, "almas desligadas na opção AlmaEnabled"
     end
-    local n = R.waveSize(roll(), roll())
-    if why == "debug" then n = math.min(n, 8) end -- leva menor no debug pra não lotar
+    local alive = #S.alive
+    local n = R.refillCount(alive, roll())
+    if why == "debug" then
+        -- debug: se já está no intervalo, ainda permite um top-up curto até o teto
+        if n == 0 then
+            n = math.min(8, R.POP_MAX - alive)
+        else
+            n = math.min(n, 8)
+        end
+        if n <= 0 then return 0, "população no teto (" .. R.POP_MAX .. ")" end
+    elseif n <= 0 then
+        return 0
+    end
+    -- nunca passar do máximo (defesa em profundidade)
+    if alive + n > R.POP_MAX then n = R.POP_MAX - alive end
+    if n <= 0 then return 0 end
+
     local spawned = 0
     local now = getTimestampMs()
     local ps = {}
@@ -142,9 +156,9 @@ function S.wave(why)
         end
     end
     S.waves = S.waves + 1
-    S.nextAt = now + R.gap(roll())
-    debugLog("leva por=" .. tostring(why) .. " pedida=" .. n .. " spawn=" .. spawned
-        .. " proxima_ms=" .. (S.nextAt - now))
+    S.nextAt = now + R.REFILL_MS
+    debugLog("repor por=" .. tostring(why) .. " pedida=" .. n .. " spawn=" .. spawned
+        .. " vivas=" .. #S.alive .. " proxima_ms=" .. R.REFILL_MS)
     return spawned
 end
 
@@ -200,9 +214,12 @@ function S.tick()
         return
     end
     prune(now)
-    if S.nextAt == nil then
-        S.nextAt = now + R.gap(roll())
+    -- no intervalo: só espera TTL/interior derrubarem; abaixo do mínimo: repor
+    if #S.alive >= R.POP_MIN then
         return
+    end
+    if S.nextAt == nil then
+        S.nextAt = now
     end
     if now >= S.nextAt then
         S.wave("tempo")
@@ -212,7 +229,7 @@ end
 NOM_World.onChange(function(flag, on)
     if flag == "fog" or flag == "red" or flag == "black" then
         if not R.active(NOM_World) and #S.alive > 0 then
-            S.clear("cor")
+            S.clear("fim")
         end
     end
 end)

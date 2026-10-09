@@ -169,6 +169,14 @@ o das mulheres pagas pra chorar em velório.
   continua sendo o aviso de longe. Técnica: [ADR-011](../architecture/adr-011-carpideira.md),
   [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
+## Almas esqueléticas (névoa)
+
+| Quando | Origem | Sandbox |
+|---|---|---|
+| névoa branca, vermelha ou preta (ciclo) | spawn na rua perto do jogador | `AlmaEnabled` (ligado) |
+
+Presença constante na névoa (sprint 0055): **4–20** vivos, **~68% crawler**, seek lento, TTL curto, só rua. Não substituem as variantes. Debug: `NOM.alma()` / painel (pop, crawler, cores).
+
 ## Eco
 
 | Quando | Origem | Sandbox |
