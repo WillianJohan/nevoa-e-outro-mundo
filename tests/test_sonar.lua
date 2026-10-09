@@ -94,6 +94,7 @@ local function setup(opts)
         return z
     end
     isClient = function() return opts.client == true end
+    instanceof = function(o, cls) return type(o) == "table" and o.class == cls end
     isServer = function() return opts.server == true end
     getDebug = function() return opts.debug == true end
     SandboxVars = { NevoaEOutroMundo = opts.sandbox or {} }

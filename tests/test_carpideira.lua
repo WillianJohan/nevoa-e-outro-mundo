@@ -71,7 +71,9 @@ return {
         G.scan()
         NOM_Carpideira.scream(z, nil)
         assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço depois do grito")
-        assert(G.played(NOM_Carpideira.SCREAM) == 1, "grito não tocou")
+        local screams = 0
+        for _, s in ipairs(NOM_Carpideira.SCREAMS) do screams = screams + G.played(s) end
+        assert(screams == 1, "grito não tocou")
         G.scan()
         assert(#G.playing(NOM_Carpideira.SOB) == 0, "voltou a soluçar furiosa")
 

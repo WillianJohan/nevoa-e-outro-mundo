@@ -21,8 +21,10 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 
 | Arquivo | Som | Uso |
 |---|---|---|
-| `mod/42/media/sound/NOM_EstaladorClick.ogg` | três estalos secos (ruído filtrado em ressonância) | estalo de aviso do Estalador |
-| `mod/42/media/sound/NOM_CorredorScream.ogg` | grito rasgado (onda serra com formantes e saturação) | grito do Corredor |
+| `mod/42/media/sound/NOM_EstaladorClick.ogg` | burst clicker rítmico (~12 cliques secos em ~1,4 s; último mais forte) | estalo/sonar do Estalador (sprint 0048) |
+| `mod/42/media/sound/NOM_CorredorScream.ogg` | raspagem + ar + eco curto de rua (~1,85 s) | grito do Corredor (sprint 0048) |
+| `mod/42/media/sound/NOM_CorredorScream2.ogg` | variante do grito do Corredor | grito do Corredor |
+| `mod/42/media/sound/NOM_CorredorScream3.ogg` | variante do grito do Corredor | grito do Corredor |
 | `mod/42/media/sound/NOM_FogDrone.ogg` | drone grave em loop (senos graves + ronco filtrado) | ambiente da névoa |
 | `mod/42/media/sound/NOM_FogMetal.ogg` | pancada metálica distante (parciais inarmônicos + ecos) | ruídos metálicos da névoa |
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
@@ -58,7 +60,13 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_SirenBlack12.ogg` | "o gerador" (11,8 s): sirene ligada num gerador a diesel que tosse três vezes, dá tiros no escapamento e afoga; sobram os tiques do metal esfriando | sirene da névoa preta |
 | `mod/42/media/sound/NOM_SirenBlack13.ogg` | "uma por uma" (11,8 s): três sirenes graves de bairros diferentes; os transformadores estouram de fora pra dentro e o zumbido da rede some | sirene da névoa preta |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
-| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
+| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | lamento que desafina e falha (~3,6 s): voz que quebra no meio, eco de rua | grito da Carpideira acordada (sprint 0048) |
+| `mod/42/media/sound/NOM_CarpideiraScream2.ogg` | variante do grito da Carpideira | grito da Carpideira |
+| `mod/42/media/sound/NOM_CarpideiraScream3.ogg` | variante do grito da Carpideira | grito da Carpideira |
+| `mod/42/media/sound/NOM_AmbientScream1.ogg` | grito humano distante (passa-baixa + eco de cidade) | gritos ambiente da névoa (sprint 0048) |
+| `mod/42/media/sound/NOM_AmbientScream2.ogg` | variante de grito ambiente | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream3.ogg` | variante de grito ambiente | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream4.ogg` | variante de grito ambiente | gritos ambiente |
 | `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
 | `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
 | `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |

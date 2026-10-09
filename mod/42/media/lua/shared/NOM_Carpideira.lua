@@ -16,7 +16,8 @@ require "NOM_FogState"
 
 NOM_Carpideira = {
     SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
-    SCREAM = "NOM_CarpideiraScream",
+    SCREAM = "NOM_CarpideiraScream", -- legado / default
+    SCREAMS = { "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3" },
     SCAN_TICKS = 10,
     -- Soluça só quem está a até SOB_RANGE tiles de um jogador local (o som some a 12):
     -- a célula carregada pode ter dezenas de Carpideiras, e cada uma seria um loop.
@@ -115,7 +116,7 @@ end
 function C.scream(z, p)
     z:getModData().NOM_furia = NOM_FogState.period
     stopSob(z)
-    z:playSoundLocal(C.SCREAM)
+    z:playSoundLocal(C.SCREAMS[ZombRand(#C.SCREAMS) + 1])
     for _, fn in ipairs(screamListeners) do
         local ok, err = pcall(fn, z)
         if not ok and getDebug() then print("[NOM] grito: erro de quem ouve: " .. tostring(err)) end

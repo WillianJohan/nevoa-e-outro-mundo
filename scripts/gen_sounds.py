@@ -39,31 +39,55 @@ def resonator(x, freq, q):
     return y * (1 - r)
 
 
+# Espelho de NOM_SonarRules.BEAT_MS (sprint 0048). Teste: sonar_beats_match_gen_sounds.
+CLICK_BEATS_MS = [0, 90, 165, 250, 320, 410, 490, 600, 720, 880, 1100, 1400]
+
+
 def click(rng):
-    """Estalador: três estalos secos de língua, o último mais forte, ~0,5 s."""
-    out = np.zeros(int(0.55 * RATE))
-    for start, gain in ((0.0, 0.6), (0.11, 0.7), (0.24, 1.0)):
-        n = int(0.025 * RATE)
+    """Estalador (0048): burst clicker rítmico — cliques secos de língua/mandíbula em série
+    rápida com micro-variação; último mais forte. Não latido nem garganta animal."""
+    dur = CLICK_BEATS_MS[-1] / 1000.0 + 0.08
+    out = np.zeros(int(dur * RATE) + 1)
+    n_beats = len(CLICK_BEATS_MS)
+    for bi, start_ms in enumerate(CLICK_BEATS_MS):
+        n = int(rng.uniform(0.014, 0.022) * RATE)
         t = np.arange(n) / RATE
-        burst = rng.standard_normal(n) * np.exp(-t * 260)
-        body = resonator(burst, 2300 + rng.uniform(-200, 200), 9) + 0.4 * resonator(burst, 900, 5)
-        i = int(start * RATE)
-        out[i:i + n] += gain * body
+        burst = rng.standard_normal(n) * np.exp(-t * rng.uniform(220, 320))
+        f_hi = 2100 + rng.uniform(-180, 220)
+        body = resonator(burst, f_hi, 10) + 0.35 * resonator(burst, 850 + rng.uniform(-80, 80), 5)
+        # quase sem grave contínuo: evita ler como rosnado de animal
+        body = highpass(body, 400, 1)
+        gain = 0.55 + 0.35 * (bi / max(1, n_beats - 1))
+        if bi == n_beats - 1:
+            gain = 1.0
+        i = int(start_ms / 1000.0 * RATE)
+        end = min(len(out), i + n)
+        out[i:end] += gain * body[: end - i]
     return out
 
 
 def scream(rng):
-    """Corredor: grito rasgado que sobe, segura e quebra, ~1,6 s."""
-    dur = 1.6
+    """Corredor (0048): raspagem + ar + eco curto de rua; menos serra aguda 'blehhh'."""
+    dur = 1.85
     t = np.arange(int(dur * RATE)) / RATE
-    f0 = np.interp(t, [0, 0.25, 1.0, 1.6], [420, 880, 760, 520])
-    f0 = f0 * (1 + 0.03 * np.sin(2 * np.pi * 7 * t)) * (1 + 0.01 * rng.standard_normal(len(t)).cumsum() / 300)
+    # antecipação: sopro/raspagem antes da voz
+    f0 = np.interp(t, [0, 0.18, 0.45, 1.1, 1.85], [180, 240, 620, 540, 280])
+    f0 = f0 * (1 + 0.02 * np.sin(2 * np.pi * 5.5 * t))
+    f0 = f0 * (1 + 0.012 * np.cumsum(rng.standard_normal(len(t))) / 400)
     phase = 2 * np.pi * np.cumsum(f0) / RATE
-    voice = sum(np.sin(k * phase) / k for k in range(1, 18))  # serra (rouca)
-    voice = voice + 0.6 * rng.standard_normal(len(t))  # ar na garganta
-    formants = resonator(voice, 1000, 6) + 0.8 * resonator(voice, 2600, 8) + 0.5 * resonator(voice, 3600, 10)
-    env = np.interp(t, [0, 0.06, 1.2, 1.6], [0, 1, 0.8, 0])
-    return np.tanh(1.5 * formants / np.max(np.abs(formants)) * env)  # saturação: garganta estourando
+    # menos harmônicos agudos que a serra antiga (1..18)
+    voice = sum(np.sin(k * phase) / (k ** 1.15) for k in range(1, 11))
+    breath = highpass(rng.standard_normal(len(t)), 800, 1)
+    scrape = resonator(rng.standard_normal(len(t)), 1400, 2) * np.interp(t, [0, 0.12, 0.35, 1.85], [0.9, 0.7, 0.25, 0.1])
+    mixed = 0.55 * voice + 0.45 * breath + 0.35 * scrape
+    formants = resonator(mixed, 900, 5) + 0.55 * resonator(mixed, 1800, 6) + 0.25 * resonator(mixed, 2800, 7)
+    env = np.interp(t, [0, 0.1, 0.35, 1.35, 1.85], [0, 0.45, 1, 0.75, 0])
+    dry = np.tanh(1.1 * formants / (np.max(np.abs(formants)) + 1e-9) * env)
+    wet = dry.copy()
+    for delay, gain in ((0.09, 0.22), (0.21, 0.12)):
+        k = int(delay * RATE)
+        wet[k:] += gain * lowpass(dry, 2200, 1)[:-k]
+    return wet
 
 
 def loopable(signal, fade):
@@ -143,27 +167,53 @@ def sob(rng):
 
 
 def wail(rng):
-    """Carpideira acordada: grito agudo e longo que sobe e rasga, ~3,5 s.
+    """Carpideira acordada (0048): lamento que desafina e falha, ~3,6 s.
 
-    Começa num lamento, sobe até um guincho (~1,4 kHz) e segura, com duas vozes
-    desafinadas (a garganta falhando), saturação forte e um rabo de eco.
+    Sobe sem virar guincho de serra; uma voz quebra no meio; eco de rua curto.
     """
-    dur = 3.5
+    dur = 3.6
     t = np.arange(int(dur * RATE)) / RATE
-    f0 = np.interp(t, [0, 0.35, 0.9, 2.6, 3.5], [520, 760, 1350, 1250, 700])
-    f0 = f0 * (1 + 0.04 * np.sin(2 * np.pi * 9 * t))
+    f0 = np.interp(t, [0, 0.4, 1.0, 2.0, 2.8, 3.6], [380, 520, 780, 720, 480, 320])
+    # falha de garganta: afina pra baixo num trecho
+    fail = (t > 1.6) & (t < 2.1)
+    f0 = f0 * (1 + 0.03 * np.sin(2 * np.pi * 6.5 * t))
+    f0[fail] *= np.linspace(1.0, 0.82, fail.sum())
     out = np.zeros_like(t)
-    for detune, gain in ((1.0, 1.0), (1.035, 0.7)):
+    for detune, gain in ((1.0, 1.0), (1.018, 0.55), (0.985, 0.35)):
         phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
-        out += gain * sum(np.sin(k * phase) / k for k in range(1, 14))
-    out = out + 0.8 * rng.standard_normal(len(t))  # garganta rasgando
-    formants = resonator(out, 1100, 5) + resonator(out, 2900, 7) + 0.6 * resonator(out, 4200, 9)
-    env = np.interp(t, [0, 0.08, 0.4, 2.8, 3.5], [0, 0.6, 1, 0.9, 0])
-    dry = np.tanh(2.5 * formants / np.max(np.abs(formants)) * env)
+        out += gain * sum(np.sin(k * phase) / (k ** 1.2) for k in range(1, 10))
+    breath = highpass(rng.standard_normal(len(t)), 600, 1) * 0.45
+    formants = resonator(out + breath, 950, 5) + 0.55 * resonator(out, 2100, 6) + 0.2 * resonator(out, 3200, 7)
+    env = np.interp(t, [0, 0.12, 0.5, 2.6, 3.6], [0, 0.55, 1, 0.7, 0])
+    env[fail] *= np.linspace(0.7, 0.4, fail.sum())  # falha: volume cai no trecho
+    dry = np.tanh(1.4 * formants / (np.max(np.abs(formants)) + 1e-9) * env)
     wet = dry.copy()
-    for delay, gain in ((0.13, 0.3), (0.31, 0.2), (0.55, 0.12)):
+    for delay, gain in ((0.14, 0.25), (0.33, 0.14), (0.58, 0.08)):
         k = int(delay * RATE)
-        wet[k:] += gain * dry[:-k]
+        wet[k:] += gain * lowpass(dry, 2400, 1)[:-k]
+    return wet
+
+
+def ambient_scream(rng):
+    """Grito humano distante (0048, spec §5): longe, passa-baixa, eco de cidade; sem horda."""
+    dur = rng.uniform(1.4, 2.4)
+    t = np.arange(int(dur * RATE)) / RATE
+    f0 = np.interp(t, [0, 0.15, 0.5, dur], [280, 520 + rng.uniform(-40, 60), 480, 220])
+    f0 = f0 * (1 + 0.04 * np.sin(2 * np.pi * rng.uniform(5, 8) * t))
+    phase = 2 * np.pi * np.cumsum(f0) / RATE
+    voice = sum(np.sin(k * phase) / (k ** 1.3) for k in range(1, 9))
+    breath = rng.standard_normal(len(t)) * 0.35
+    formants = resonator(voice + breath, 800, 4) + 0.4 * resonator(voice, 1600, 5)
+    env = np.interp(t, [0, 0.08, 0.35, dur - 0.25, dur], [0, 0.7, 1, 0.5, 0])
+    dry = formants * env
+    dry = lowpass(dry, 1600, 2)  # longe: come o agudo
+    wet = dry.copy()
+    for delay, gain in ((0.28, 0.35), (0.55, 0.2), (0.95, 0.1)):
+        k = int(delay * RATE)
+        if k < len(wet):
+            wet[k:] += gain * lowpass(dry, 1200, 1)[: len(wet) - k]
+    # cauda de reverb distante
+    wet = wet + 0.15 * reverb_wet(wet, 1.8, 0.1, 900, int(rng.integers(1, 9999)))
     return wet
 
 
@@ -681,22 +731,33 @@ def main():
     def want(*names):
         return not only or any(name in only for name in names)
 
-    if want("NOM_EstaladorClick", "NOM_CorredorScream"):
+    if want("NOM_EstaladorClick", "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3"):
         rng = np.random.default_rng(SEED)  # os dois dividem o rng: um sem o outro mudaria o segundo
         clk, scr = click(rng), scream(rng)
         if want("NOM_EstaladorClick"):
             write("NOM_EstaladorClick", clk)
         if want("NOM_CorredorScream"):
             write("NOM_CorredorScream", scr)
+        if want("NOM_CorredorScream2"):
+            write("NOM_CorredorScream2", scream(np.random.default_rng(SEED + 41)))
+        if want("NOM_CorredorScream3"):
+            write("NOM_CorredorScream3", scream(np.random.default_rng(SEED + 42)))
     # sprint 0005 em diante: um gerador e uma semente por som
     singles = [
         ("NOM_FogDrone", drone, 1), ("NOM_FogMetal", metal, 2), ("NOM_RadioStatic", radio_static, 3),
         ("NOM_CarpideiraSob", sob, 6),        # sprint 0011: Carpideira (4 e 5 eram as sirenes antigas)
         ("NOM_CarpideiraScream", wail, 7),
+        ("NOM_CarpideiraScream2", wail, 43),  # sprint 0048: variantes
+        ("NOM_CarpideiraScream3", wail, 44),
     ]
     for name, fn, k in singles:
         if want(name):
             write(name, fn(np.random.default_rng(SEED + k)))
+    # sprint 0048: gritos ambiente (só cliente; banco de 4)
+    for i in range(1, 5):
+        name = f"NOM_AmbientScream{i}"
+        if want(name):
+            write(name, ambient_scream(np.random.default_rng(SEED + 50 + i)))
     os.makedirs(OUT, exist_ok=True)
     for name, fn, crest in DEVICES:  # sprint 0034: aparelhos do Outro Mundo
         if want(name):

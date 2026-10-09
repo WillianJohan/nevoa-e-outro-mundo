@@ -69,6 +69,8 @@ local function setup(opts)
     end
     function G.worldSound(x, y, z, radius, volume, src) fire("OnWorldSound", x, y, z, radius, volume, src) end
     instanceof = function(o, cls) return type(o) == "table" and o.class == cls end
+    -- FogEvent.state e o banco de gritos (0048) usam ZombRand; sem isso o setup quebra sozinho.
+    ZombRand = function(n) return 0 end
     sendPlaySound = function(name, loop, obj)
         if not isServer() then return end -- bytecode: só no GameServer
         G.played[#G.played + 1] = { name = name, src = obj, loop = loop }
@@ -189,7 +191,7 @@ return {
         assert(G.aiReport, "solo não instalou a IA das variantes")
         local z = G.zombie({ id = idFor("corredor", 1, G.sandbox) })
         G.aiReport(z)
-        assert(#G.played == 1 and G.played[1].name == "NOM_CorredorScream" and G.played[1].local_)
+        assert(#G.played == 1 and G.played[1].name:find("^NOM_CorredorScream") and G.played[1].local_)
         assert(#G.sounds == 1 and G.sounds[1].src == z and G.sounds[1].x == 10 and G.sounds[1].y == 10)
     end,
     -- alcance efetivo = CorredorScreamRadius, com a audição apurada da noite (×3) compensada
@@ -315,7 +317,7 @@ return {
         NOM_Carpideira.still[z] = true
         local p = G.player(12, 10)
         G.carpReport(z, p, "near")
-        assert(z.local_[1] == "NOM_CarpideiraScream", "grito não tocou")
+        assert(z.local_[1]:find("^NOM_CarpideiraScream"), "grito não tocou: " .. tostring(z.local_[1]))
         assert(#G.sounds == 1 and G.sounds[1].src == z and math.abs(G.reach(G.sounds[1]) - 50) <= 1, "horda não chamada a 50: " .. G.reach(G.sounds[1])) -- raio arredondado: 17 × 3 = 51
         assert(z.useless == false and z.target == p and z.forced == true, "não caçou quem a acordou")
         G.carpReport(z, p, "near")

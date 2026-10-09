@@ -115,6 +115,19 @@ public final class RenderContext {
     }
 
     /**
+     * Ripple curto do burst do Estalador (sprint 0048). Mesmo contrato do NOMRender_sonar.
+     */
+    @LuaMethod(name = "NOMRender_sonarRipple", global = true)
+    public static boolean sonarRipple(double x, double y, double z) {
+        try {
+            return Flow.addSonarRipple((float) x, (float) y, (int) Math.floor(z));
+        } catch (Throwable t) {
+            log("sonarRipple: erro, o anel vai pra tela: " + t);
+            return false;
+        }
+    }
+
+    /**
      * A névoa vanilla para antes da borda de baixo da tela (maxYOffset -5) e com zoom afastado vira
      * uma faixa limpa; a nossa cobre a tela toda, com véu de fundo. Se o passe morreu, a vanilla fica.
      */

@@ -412,11 +412,24 @@ final class Flow {
      * tela desenha (fluido desligado ou morto, sem névoa, outro andar, perto da borda da grade, cheio).
      */
     static boolean addSonar(float wx, float wy, int wz) {
+        return addSonarRing(wx, wy, wz, false);
+    }
+
+    /**
+     * Ripple curto no ritmo do burst (sprint 0048, NOMRender_sonarRipple). Mesmas regras de
+     * recusa do anel grande; alcance na grade usa RIPPLE_RANGE.
+     */
+    static boolean addSonarRipple(float wx, float wy, int wz) {
+        return addSonarRing(wx, wy, wz, true);
+    }
+
+    private static boolean addSonarRing(float wx, float wy, int wz, boolean ripple) {
         if (dead || !running || RenderContext.luaParams[PARAM_ON] < 0.5f || wz != z) return false;
         if (ClimateManager.getInstance().getFogIntensity() < 0.05f) return false;
-        float reach = TILES / 2f - Sonar.RANGE - Sonar.AHEAD;
+        float ring = ripple ? Sonar.RIPPLE_RANGE : Sonar.RANGE;
+        float reach = TILES / 2f - ring - Sonar.AHEAD;
         if (Math.abs(wx - camX) > reach || Math.abs(wy - camY) > reach) return false;
-        return sonar.add(wx, wy);
+        return ripple ? sonar.addRipple(wx, wy) : sonar.add(wx, wy);
     }
 
     private static void die(String why, Throwable t) {

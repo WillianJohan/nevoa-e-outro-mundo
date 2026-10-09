@@ -227,8 +227,10 @@ return {
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)
-        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic",
-        "NOM_CarpideiraSob", "NOM_CarpideiraScream" }) do
+        for _, name in ipairs({ "NOM_EstaladorClick", "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3",
+        "NOM_FogDrone", "NOM_FogMetal", "NOM_RadioStatic",
+        "NOM_CarpideiraSob", "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3",
+        "NOM_AmbientScream1", "NOM_AmbientScream2", "NOM_AmbientScream3", "NOM_AmbientScream4" }) do
             assert(declared[name], "som usado no Lua sem declaração: " .. name)
         end
         for _, list in pairs(sirenLists()) do
