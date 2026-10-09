@@ -192,6 +192,26 @@ function ops.sonar(player)
     return NOM_SonarServer.force(player)
 end
 
+-- Ritmo do Estalador (sprint 0056): forçar A/B/C ou auto (rodízio); editar gaps.
+function ops.sonarBurst(_, args)
+    require "NOM_SonarRules"
+    NOM_SonarRules.setForceBurst(args.mode)
+    local f = NOM_SonarRules.forceBurst()
+    return "sonar ritmo " .. NOM_SonarRules.burstStatus() ..
+        (f and (" (forçado " .. NOM_SonarRules.burstId(f) .. ")") or " (rodízio)")
+end
+
+function ops.sonarGaps(_, args)
+    require "NOM_SonarRules"
+    if args.reset then
+        NOM_SonarRules.resetGaps()
+        return "sonar gaps reset " .. NOM_SonarRules.burstStatus()
+    end
+    if not NOM_SonarRules.nudgeGaps(args.delta) then return "sonar gaps: delta inválido" end
+    return "sonar gaps " .. (args.delta > 0 and "+" or "") .. tostring(args.delta) ..
+        " alvo=" .. NOM_SonarRules.burstId(NOM_SonarRules.gapTarget()) .. " " .. NOM_SonarRules.burstStatus()
+end
+
 -- Repor almas agora (sprint 0055; NOM_AlmaServer). Qualquer névoa com a cor ligada.
 function ops.alma()
     if not NOM_AlmaServer then return "almas não carregaram" end

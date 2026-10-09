@@ -262,6 +262,39 @@ end
 -- de você (na névoa, até 60 tiles) ou solta o anel nos seus pés; o anel faz o resto.
 function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
 
+-- Ritmo do burst (sprint 0056): "auto" rodízio A→B→C; "A"/"B"/"C" ou 1/2/3 força.
+-- Sem argumento só mostra o estado. Aplica local e manda pro servidor.
+function NOM.sonarBurst(mode)
+    require "NOM_SonarRules"
+    if mode == nil then
+        NOM_DebugLog.say("[NOM] sonarBurst " .. NOM_SonarRules.burstStatus())
+        return
+    end
+    NOM_SonarRules.setForceBurst(mode)
+    NOM_Debug.send({ op = "sonarBurst", mode = mode })
+    local f = NOM_SonarRules.forceBurst()
+    NOM_DebugLog.say("[NOM] sonarBurst " .. NOM_SonarRules.burstStatus() ..
+        (f and (" forçado=" .. NOM_SonarRules.burstId(f)) or " rodízio"))
+end
+
+-- Gaps do ritmo alvo (forçado, ou B no auto): delta ms em todos os gaps, ou "reset".
+function NOM.sonarGaps(delta)
+    require "NOM_SonarRules"
+    if delta == "reset" or delta == true then
+        NOM_SonarRules.resetGaps()
+        NOM_Debug.send({ op = "sonarGaps", reset = true })
+        NOM_DebugLog.say("[NOM] sonarGaps reset " .. NOM_SonarRules.burstStatus())
+        return
+    end
+    if type(delta) ~= "number" then
+        NOM_DebugLog.say("[NOM] sonarGaps " .. NOM_SonarRules.burstStatus())
+        return
+    end
+    NOM_SonarRules.nudgeGaps(delta)
+    NOM_Debug.send({ op = "sonarGaps", delta = delta })
+    NOM_DebugLog.say("[NOM] sonarGaps " .. tostring(delta) .. " " .. NOM_SonarRules.burstStatus())
+end
+
 -- Grito ambiente agora (sprint 0048): só neste cliente; zero horda.
 function NOM.ambientScream()
     if not NOM_AmbientScream then
@@ -352,6 +385,8 @@ NOM.HELP = {
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
     { "NOM.carpWalk()", "próxima Gritadora/Screamer calma (dona neste processo) anda chorando agora — piloto Witch (0052)" },
     { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
+    { "NOM.sonarBurst(mode)", "ritmo do Estalador: \"auto\" (rodízio A→B→C), \"A\", \"B\", \"C\" (ou 1/2/3) força a variação; sem argumento mostra o estado" },
+    { "NOM.sonarGaps(delta)", "gaps do ritmo alvo (forçado, ou B no auto): +50/−50 ms em todos; \"reset\" devolve o padrão; sem argumento mostra" },
     { "NOM.ambientScream()", "grito ambiente distante agora (só neste cliente; zero horda; precisa névoa + FogAmbience; preta = off)" },
     { "NOM.thunder()", "relâmpago e trovão agora perto de você (na preta, o clarão congela os Tições por 1 s)" },
     { "NOM.flickerLamp()", "um poste aceso de fora perto de você (até 25 tiles) pisca agora" },

@@ -92,6 +92,18 @@ function NOM_DebugRules.parse(args)
             return nil
         end
         return { op = op, field = field, value = v }
+    elseif op == "sonarBurst" then
+        -- mode: nil/"auto"/1/2/3/"A"/"B"/"C" (sprint 0056)
+        local mode = args.mode
+        if mode ~= nil and type(mode) ~= "string" and type(mode) ~= "number" then return nil end
+        if type(mode) == "number" and (mode ~= mode or mode == math.huge or mode == -math.huge) then return nil end
+        return { op = op, mode = mode }
+    elseif op == "sonarGaps" then
+        -- reset=true devolve defaults; senão delta ms (inteiro) nos gaps do alvo
+        if args.reset == true then return { op = op, reset = true } end
+        local d = args.delta
+        if type(d) ~= "number" or d ~= d or d == math.huge or d == -math.huge or d == 0 then return nil end
+        return { op = op, delta = math.floor(d), reset = false }
     end
     return nil
 end

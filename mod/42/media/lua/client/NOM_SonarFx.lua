@@ -1,7 +1,8 @@
--- Sonar do Estalador (sprint 0037 + 0048 + 0053), o desenho. Cada estalo (NOM_Sonar.onRing)
--- agenda N ripples curtos nos BEAT_MS do burst. Em cada batida tenta o mod3
--- (NOMRender_sonarRipple). Sprint 0053: SCREEN_DRAW=false — sem anéis brancos na tela
--- (quebravam imersão); se o mod3 recusar, o ripple some. O achado continua no servidor.
+-- Sonar do Estalador (sprint 0037 + 0048 + 0053 + 0056), o desenho e os tacs atrasados.
+-- Cada estalo (NOM_Sonar.onRing) agenda ripples (e tacs com offset > 0) no ritmo A/B/C.
+-- Em cada batida tenta o mod3 (NOMRender_sonarRipple). Sprint 0053: SCREEN_DRAW=false —
+-- sem anéis brancos na tela (quebravam imersão); se o mod3 recusar, o ripple some.
+-- O achado continua no servidor (um anel RANGE); aqui só presença.
 if isServer() then return end
 
 require "NOM_SonarRules"
@@ -29,13 +30,20 @@ local function mod3(x, y, z)
 end
 
 -- Agenda um ripple por batida do burst (presença). Cap = MAX_RIPPLES.
-function F.add(x, y, z)
+-- burst: 1=A, 2=B, 3=C (sprint 0056). O tac em 0 já tocou em NOM_Sonar.ring; os outros
+-- tocam aqui no instante da batida (gaps editáveis do painel entram via burstBeats).
+function F.add(x, y, z, burst)
     local now = getTimestampMs()
     local rings = F.rings
-    local beats = R.BEAT_MS
+    local beats = R.burstBeats(burst or 1)
     for i = 1, #beats do
         while #rings >= R.MAX_RIPPLES do table.remove(rings, 1) end
-        rings[#rings + 1] = { x = x, y = y, z = z, born = now + beats[i], sent = false }
+        rings[#rings + 1] = {
+            x = x, y = y, z = z,
+            born = now + beats[i],
+            sent = false,
+            click = beats[i] > 0, -- beat 0 já tocou no ring()
+        }
     end
 end
 
@@ -48,13 +56,14 @@ local function prune(now)
     end
 end
 
--- Dispara o mod3 no instante da batida; se pegou (ou SCREEN_DRAW off), some da lista.
+-- Dispara tac atrasado + mod3 no instante da batida; se pegou (ou SCREEN_DRAW off), some.
 local function fire(now)
     local rings = F.rings
     for i = #rings, 1, -1 do
         local g = rings[i]
         if not g.sent and now >= g.born then
             g.sent = true
+            if g.click then NOM_Sonar.playClick(g.x, g.y, g.z) end
             if mod3(g.x, g.y, g.z) then
                 F.mod3 = F.mod3 + 1
                 table.remove(rings, i)

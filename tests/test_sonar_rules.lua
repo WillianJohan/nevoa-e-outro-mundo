@@ -167,20 +167,89 @@ return {
         assert(R.FOUND_MS >= R.RANGE * 1000, "janela curta demais: " .. R.FOUND_MS)
     end,
 
-    -- sprint 0048: burst clicker — 6–12 batidas em ~1–2 s, irregular, espelho do OGG
+    -- sprint 0048/0056: variação A — 6–12 batidas em ~1–2 s, irregular (legado BEAT_MS)
     sonar_burst_beats = function()
-        local n = R.beatCount()
-        assert(n >= 6 and n <= 12, "batidas: " .. n)
-        assert(R.BEAT_MS[1] == 0, "primeira batida no zero")
-        local last = R.BEAT_MS[n]
-        assert(last >= 1000 and last <= 2000, "burst em ~1–2 s: " .. last)
+        local a = R.burstBeats(1)
+        local n = #a
+        assert(n >= 6 and n <= 12, "batidas A: " .. n)
+        assert(a[1] == 0, "primeira batida no zero")
+        local last = a[n]
+        assert(last >= 1000 and last <= 2000, "burst A em ~1–2 s: " .. last)
         for i = 2, n do
-            assert(R.BEAT_MS[i] > R.BEAT_MS[i - 1], "batidas fora de ordem em " .. i)
-            local gap = R.BEAT_MS[i] - R.BEAT_MS[i - 1]
+            assert(a[i] > a[i - 1], "batidas fora de ordem em " .. i)
+            local gap = a[i] - a[i - 1]
             assert(gap >= 40 and gap <= 400, "intervalo interno " .. gap)
         end
+        assert(R.BEAT_MS == a or (#R.BEAT_MS == n and R.BEAT_MS[n] == last), "BEAT_MS espelha A")
+        assert(R.beatCount() == n)
         assert(R.MAX_RIPPLES >= n * 3, "teto curto pra vários Estaladores")
         assert(R.MAX_RINGS == 8, "find ainda é um anel por burst no servidor")
+    end,
+
+    -- sprint 0056: três ritmos — A atual, B 500/500/800, C irregular com double
+    sonar_burst_patterns_abc = function()
+        assert(R.burstCount() == 3, "três variações")
+        local a, b, c = R.burstBeats(1), R.burstBeats(2), R.burstBeats(3)
+        assert(#a >= 6 and a[1] == 0)
+        assert(#b == 4 and b[1] == 0)
+        assert(b[2] - b[1] == 500 and b[3] - b[2] == 500 and b[4] - b[3] == 800)
+        assert(#c == 6 and c[1] == 0)
+        assert(c[2] - c[1] == 1000 and c[3] - c[2] == 1000)
+        local dbl = c[4] - c[3]
+        assert(dbl >= 50 and dbl <= 80, "double C: " .. dbl)
+        assert(c[5] - c[4] == 2000 and c[6] - c[5] == 3000)
+        assert(R.burstId(1) == "A" and R.burstId(2) == "B" and R.burstId(3) == "C")
+        assert(R.clampBurst(0) == 1 and R.clampBurst(99) == 3 and R.clampBurst(2) == 2)
+        assert(R.burstBeats(nil) == a, "nil = A")
+    end,
+
+    -- rodízio A→B→C→A (cada estalo do servidor avança; force corta o rodízio)
+    sonar_burst_rotate_and_force = function()
+        R.setForceBurst(nil)
+        assert(R.forceBurst() == nil)
+        assert(R.nextBurst(0) == 1 and R.nextBurst(1) == 2 and R.nextBurst(2) == 3 and R.nextBurst(3) == 1)
+        R.setForceBurst("B")
+        assert(R.forceBurst() == 2)
+        assert(R.nextBurst(1) == 2, "force B ignora prev")
+        R.setForceBurst(3)
+        assert(R.forceBurst() == 3 and R.burstId(R.forceBurst()) == "C")
+        R.setForceBurst("auto")
+        assert(R.forceBurst() == nil)
+        R.setForceBurst("A")
+        assert(R.forceBurst() == 1)
+        R.setForceBurst(nil)
+    end,
+
+    -- gaps editáveis (debug): B/C a partir de gaps; nudge e reset
+    sonar_burst_gaps_override = function()
+        R.resetGaps()
+        local b0 = { unpack(R.burstBeats(2)) }
+        assert(R.nudgeGaps(50) == true)
+        local b1 = R.burstBeats(2)
+        assert(b1[2] - b1[1] == 550, "nudge +50 no 1º gap de B (ou do forçado)")
+        R.setForceBurst("C")
+        R.resetGaps()
+        R.nudgeGaps(-10)
+        local c = R.burstBeats(3)
+        assert(c[2] - c[1] == 990, "nudge no forçado C")
+        R.setGaps(2, { 400, 400, 700 })
+        local b = R.burstBeats(2)
+        assert(b[2] == 400 and b[3] == 800 and b[4] == 1500)
+        R.resetGaps()
+        R.setForceBurst(nil)
+        local b2 = R.burstBeats(2)
+        assert(b2[2] == b0[2] and b2[4] == b0[4], "reset devolve defaults")
+    end,
+
+    -- mensagem sonar leva o índice do burst (b); inválido vira A
+    sonar_valid_burst_field = function()
+        local m = R.valid({ x = 1, y = 2, z = 0, id = 7, b = 2 })
+        assert(m and m.b == 2)
+        assert(R.valid({ x = 1, y = 2, z = 0, b = 1 }).b == 1)
+        assert(R.valid({ x = 1, y = 2, z = 0 }).b == 1, "sem b: A")
+        assert(R.valid({ x = 1, y = 2, z = 0, b = 0 }).b == 1)
+        assert(R.valid({ x = 1, y = 2, z = 0, b = 9 }).b == 3)
+        assert(R.valid({ x = 1, y = 2, z = 0, b = "A" }) == nil, "b não numérico")
     end,
 
     -- ripples curtos de presença (não substituem o anel de achado)
@@ -197,18 +266,22 @@ return {
         assert(R.SCREEN_DRAW == false, "0053: sem anel na tela por padrão")
     end,
 
-    -- gen_sounds.py declara os mesmos offsets (CLICK_BEATS_MS)
+    -- gen_sounds.py declara CLICK_BURSTS A/B/C iguais às regras
     sonar_beats_match_gen_sounds = function()
         local f = assert(io.open("scripts/gen_sounds.py"))
         local s = f:read("*a")
         f:close()
-        local list = s:match("CLICK_BEATS_MS%s*=%s*%[([^%]]+)%]")
-        assert(list, "gen_sounds sem CLICK_BEATS_MS")
-        local beats = {}
-        for n in list:gmatch("%d+") do beats[#beats + 1] = tonumber(n) end
-        assert(#beats == #R.BEAT_MS, "contagem: lua=" .. #R.BEAT_MS .. " py=" .. #beats)
-        for i = 1, #beats do
-            assert(beats[i] == R.BEAT_MS[i], "beat " .. i .. ": " .. beats[i] .. " ≠ " .. R.BEAT_MS[i])
+        for _, id in ipairs({ "A", "B", "C" }) do
+            local list = s:match('"' .. id .. '"%s*:%s*%[([^%]]+)%]')
+            assert(list, "gen_sounds sem CLICK_BURSTS[\"" .. id .. "\"]")
+            local beats = {}
+            for n in list:gmatch("%d+") do beats[#beats + 1] = tonumber(n) end
+            local i = id == "A" and 1 or (id == "B" and 2 or 3)
+            local lua = R.burstBeats(i)
+            assert(#beats == #lua, id .. " contagem: lua=" .. #lua .. " py=" .. #beats)
+            for j = 1, #beats do
+                assert(beats[j] == lua[j], id .. " beat " .. j .. ": " .. beats[j] .. " ≠ " .. lua[j])
+            end
         end
     end,
 }

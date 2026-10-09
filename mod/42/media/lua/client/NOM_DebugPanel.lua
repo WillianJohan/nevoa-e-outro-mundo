@@ -172,7 +172,14 @@ P.SECTIONS = {
             { title = "UI_NOM_Debug_C_Rain", desc = "UI_NOM_Debug_C_Rain_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.rain() end) } },
             { title = "UI_NOM_Debug_C_Sonar", desc = "UI_NOM_Debug_C_Sonar_Desc", choices = {
-                c("UI_NOM_Debug_B_Now", function() NOM.sonar() end) } },
+                c("UI_NOM_Debug_B_Now", function() NOM.sonar() end),
+                c("UI_NOM_Debug_BurstAuto", function() NOM.sonarBurst("auto") end),
+                c("UI_NOM_Debug_BurstA", function() NOM.sonarBurst("A") end),
+                c("UI_NOM_Debug_BurstB", function() NOM.sonarBurst("B") end),
+                c("UI_NOM_Debug_BurstC", function() NOM.sonarBurst("C") end),
+                c("UI_NOM_Debug_GapMinus", function() NOM.sonarGaps(-50) end),
+                c("UI_NOM_Debug_GapPlus", function() NOM.sonarGaps(50) end),
+                c("UI_NOM_Debug_GapReset", function() NOM.sonarGaps("reset") end) } },
             { title = "UI_NOM_Debug_C_Ambient", desc = "UI_NOM_Debug_C_Ambient_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.ambientScream() end) } },
             { title = "UI_NOM_Debug_C_Wander", desc = "UI_NOM_Debug_C_Wander_Desc", choices = {

@@ -31,9 +31,10 @@ local ECO_OUTFIT = "NOM_Eco"
 local MAX_STEP_MS = 250 -- um engasgo não pula o anel inteiro
 local R = NOM_SonarRules
 
--- rings: { x, y, z, age, r = raio do tick anterior (nil antes do primeiro), zombie, id }.
+-- rings: { x, y, z, age, r = raio do tick anterior (nil antes do primeiro), zombie, id, b }.
 -- next[z] = { at = S.clock do próximo estalo, pid = persistentOutfitID, seen = passada }.
-NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, sheltered = 0, dropped = 0, clock = 0, next = {} }
+-- burstIdx: último índice do rodízio A→B→C (sprint 0056); forceBurst() corta o rodízio.
+NOM_SonarServer = { rings = {}, emitted = 0, found = 0, passed = 0, sheltered = 0, dropped = 0, clock = 0, next = {}, burstIdx = 0 }
 local S = NOM_SonarServer
 -- samples[p] = { x0, y0 = amostra anterior, x1, y1 = a última, lx, ly = posição do último tick
 -- lido (o anel não é pulado entre ticks) }. ponytail: chave é o objeto do jogador; quem sai
@@ -107,14 +108,17 @@ end
 
 -- Um anel agora em (x, y, z). z: o Estalador (nil: anel de debug, só visual). why: log.
 -- players: o read() deste tick (nil: lê). Devolve false se lotado (nada é anunciado).
+-- Escolhe a variação de burst (rodízio ou force de debug) e manda o índice `b` no pacote.
 function S.emit(z, x, y, zz, why, players)
     if not room(x, y, zz, players) then
         S.dropped = S.dropped + 1
         debugLog("lotado, estalo descartado por=" .. tostring(why) .. " x=" .. math.floor(x) .. " y=" .. math.floor(y))
         return false
     end
+    local b = R.nextBurst(S.burstIdx)
+    if R.forceBurst() == nil then S.burstIdx = b end
     local id = z and z:getOnlineID() or -1
-    local ring = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {} }
+    local ring = { x = x, y = y, z = zz, age = 0, zombie = z, id = id, hit = {}, b = b }
     if z then
         ring.pid = z:getPersistentOutfitID() -- conferido antes de aplicar (objeto reaproveitado)
         ring.inside, ring.building = where(z) -- onde o Estalador estalou
@@ -124,15 +128,15 @@ function S.emit(z, x, y, zz, why, players)
     if isServer() then
         -- só a quem está perto: sendServerCommand(jogador, módulo, comando, args)
         -- (server/ClientCommands.lua:477, pz-api-notes §7)
-        local args = { x = x, y = y, z = zz, id = id }
+        local args = { x = x, y = y, z = zz, id = id, b = b }
         for _, e in ipairs(players or read()) do
             if R.hears(x, y, e.x, e.y) then sendServerCommand(e.p, MODULE, "sonar", args) end
         end
     else
-        NOM_Sonar.ring(x, y, zz)
+        NOM_Sonar.ring(x, y, zz, b)
     end
     debugLog("estalo por=" .. tostring(why) .. " x=" .. math.floor(x) .. " y=" .. math.floor(y) .. " z=" .. zz ..
-        " estalador=" .. tostring(z ~= nil))
+        " estalador=" .. tostring(z ~= nil) .. " burst=" .. R.burstId(b))
     return true
 end
 
