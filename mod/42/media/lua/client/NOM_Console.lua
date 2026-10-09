@@ -258,6 +258,40 @@ function NOM.blackPressure()
         p.holdMs, p.huntMinutes, p.huntReach, p.huntOnFlickerReach, p.fastBias, p.lampCheckMs, p.lampChance))
 end
 
+-- Sprint 0058: knobs live do painel (Almas / Estalador / Cinzas / Look).
+function NOM.params()
+    require "NOM_PanelParams"
+    local s = NOM_PanelParams.snapshot()
+    NOM_DebugLog.say("[NOM] debug params:")
+    for i = 1, #NOM_PanelParams.KEYS do
+        local k = NOM_PanelParams.KEYS[i]
+        local mark = NOM_PanelParams.isLive(k) and "*" or " "
+        NOM_DebugLog.say(string.format("[NOM] debug params %s %s = %s", mark, k, NOM_PanelParams.format(k, s[k])))
+    end
+end
+
+function NOM.param(key, value)
+    require "NOM_PanelParams"
+    if key == nil or key == "" then
+        NOM.params()
+        return
+    end
+    if key == "reset" then
+        NOM_PanelParams.reset(value) -- value opcional: chave ou nil = tudo
+        NOM_DebugLog.say("[NOM] debug param reset " .. (value and tostring(value) or "all"))
+        return NOM_PanelParams.snapshot()
+    end
+    if value == nil then
+        local v = NOM_PanelParams.get(key)
+        NOM_DebugLog.say("[NOM] debug param " .. tostring(key) .. " = " .. NOM_PanelParams.format(key, v))
+        return v
+    end
+    local v = NOM_PanelParams.set(key, value)
+    NOM_DebugLog.say("[NOM] debug param " .. tostring(key) .. " = " .. NOM_PanelParams.format(key, v) ..
+        (NOM_PanelParams.isLive(key) and " (live)" or ""))
+    return v
+end
+
 function NOM.blind()
     if not NOM_VariantAI then
         NOM_DebugLog.say("[NOM] debug visão curta: NOM_VariantAI não carregou")
@@ -308,6 +342,8 @@ NOM.HELP = {
     { "NOM.ticao()", "névoa preta: quantos Tições este processo simula e quantos a luz congela agora" },
     { "NOM.blackPressure()", "névoa preta: nível de pressão do sandbox (Leve/Padrão/Pesadelo) e números ativos" },
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
+    { "NOM.params()", "lista os knobs live do painel (Almas, Estalador, Cinzas, Look); * = override da sessão" },
+    { "NOM.param(key, value)", "lê ou grava um knob live; NOM.param(\"reset\") limpa tudo; NOM.param(\"reset\", chave) limpa uma" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },
 }

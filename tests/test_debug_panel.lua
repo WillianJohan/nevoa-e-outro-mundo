@@ -160,7 +160,8 @@ local function setup(opts)
     NOM = {}
     for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
-        "ownSprites", "wander", "carpWalk", "blind", "sonar", "ambientScream", "ticao", "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
+        "ownSprites", "wander", "carpWalk", "blind", "sonar", "ambientScream", "ticao", "blackPressure", "thunder", "flickerLamp",
+        "rain", "help", "params", "param" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
@@ -168,11 +169,14 @@ local function setup(opts)
     NOM_FogState = { on = false, red = false }
     NOM_ScreenFxOptions = { debugPanelKey = function() if G.debug then return G.key end end }
     require "NOM_Math"
+    package.loaded["NOM_PanelParams"] = nil
+    require "NOM_PanelParams"
+    NOM_PanelParams.reset()
     NOM_DebugLog = nil
     package.loaded["NOM_DebugLog"] = nil
     require "NOM_DebugLog"
     for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math",
-        "ISUI/ISCollapsableWindow", "ISUI/ISButton", "ISUI/ISPanel" }) do
+        "NOM_PanelParams", "ISUI/ISCollapsableWindow", "ISUI/ISButton", "ISUI/ISPanel" }) do
         package.loaded[m] = true
     end
     NOM_DebugPanel = nil
@@ -282,8 +286,9 @@ return {
         local w = open()
         assert(w.resizable ~= false, "não redimensiona")
         assert(w.width >= 800 and w.height >= 600, "pequena: " .. w.width .. "x" .. w.height)
-        assert(w.minimumWidth and w.minimumHeight and w.minimumWidth <= 640 and w.minimumHeight <= 480,
-            "sem mínimo razoável")
+        -- 0058: mais seções (Almas/Estalador/Cinzas/Look) sobem o mínimo pela altura da lateral
+        assert(w.minimumWidth and w.minimumHeight and w.minimumWidth <= 640 and w.minimumHeight <= 720,
+            "sem mínimo razoável: " .. tostring(w.minimumWidth) .. "x" .. tostring(w.minimumHeight))
         assert(#G.layouts == 1 and G.layouts[1].funcs == ISCollapsableWindow and G.layouts[1].win == w)
     end,
     -- o leiaute salvo pelo painel da 0020 (nome NOM_DebugPanel, 440 de largura) não vale pro novo:
@@ -389,11 +394,21 @@ return {
             UI_NOM_Debug_C_BlackPressure = { "blackPressure()" },
             UI_NOM_Debug_C_Blind = { "blind()" },
             UI_NOM_Debug_C_OwnSprites = { "ownSprites()" },
+            UI_NOM_Debug_C_Params = { "params()", "param(reset)" },
             UI_NOM_Debug_C_Help = { "help()" },
         }
         local n, want = 0, 0
         for _, calls in pairs(expect) do want = want + #calls end
         eachChoice(w, function(_, h)
+            -- 0058: knobs live chamam NOM.param (slider/toggle/enum); não entram no mapa fixo
+            if h.card.slider or h.card.param or (h.card.compact and h.card.state) then
+                G.calls = {}
+                clickHit(w, h)
+                assert(G.calls[1] and G.calls[1]:match("^param%("),
+                    h.card.title .. " #" .. h.index .. " chamou " .. tostring(G.calls[1]))
+                n = n + 1
+                return
+            end
             local calls = expect[h.card.title]
             assert(calls, "cartão sem teste: " .. h.card.title)
             G.calls = {}
@@ -402,7 +417,8 @@ return {
                 h.card.title .. " #" .. h.index .. " chamou " .. tostring(G.calls[1]) .. ", esperado " .. tostring(calls[h.index]))
             n = n + 1
         end)
-        assert(n == want, "botões " .. n .. ", esperados " .. want)
+        -- want = só os cartões do mapa; n inclui também os knobs live
+        assert(n >= want, "botões " .. n .. ", esperados >= " .. want)
         -- cada botão e cada troca de seção (a primeira já abre escolhida) toca o clique
         assert(#G.sounds == n + #NOM_DebugPanel.SECTIONS - 1 and G.sounds[1] == "UIActivateButton",
             "cliques com som: " .. #G.sounds)
