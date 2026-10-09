@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` (PR draft → staging; **não mergear** até o Johan ouvir e jogar) |
+| Status | `em teste` na `staging` — **ritmo/cores supersedidos pela [0055](../sprint-0055-almas-ciclo/README.md)** (ciclo 4–20, 3 cores, 68% crawler) |
 | Branch | `sprint/0050-almas-esqueletos` (saiu da `staging`; independente da 0048 Sons II e da 0049 transform) |
 | Origem | refinamento §3.9.1 (Agent Store); prefs Johan ~70% crawler, gap 45–120 s, vida baixa, só rua, TTL 10 s–1 min |
 | Plano | [plan.md](plan.md) |

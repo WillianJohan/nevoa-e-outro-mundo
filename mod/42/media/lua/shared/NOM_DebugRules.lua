@@ -75,8 +75,23 @@ function NOM_DebugRules.parse(args)
         end
         return { op = op, id = args.id, x = math.floor(args.x), y = math.floor(args.y), z = math.floor(args.z) }
     elseif op == "spawnEco" or op == "status" or op == "wander" or op == "sonar" or op == "thunder"
-        or op == "lampFlicker" or op == "rain" or op == "alma" then
+        or op == "lampFlicker" or op == "rain" or op == "alma" or op == "almaStatus"
+        or op == "almaReset" then
         return { op = op }
+    elseif op == "almaCfg" then
+        -- params das almas (sprint 0055): popMin/popMax/crawler/white/red/black
+        local field = args.field
+        if field ~= "popMin" and field ~= "popMax" and field ~= "crawler"
+            and field ~= "white" and field ~= "red" and field ~= "black" then
+            return nil
+        end
+        local v = args.value
+        if field == "popMin" or field == "popMax" or field == "crawler" then
+            if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return nil end
+        elseif v ~= nil and type(v) ~= "boolean" then
+            return nil
+        end
+        return { op = op, field = field, value = v }
     end
     return nil
 end

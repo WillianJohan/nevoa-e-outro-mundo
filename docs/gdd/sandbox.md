@@ -11,7 +11,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
-- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
+- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`) · Almas (`AlmaEnabled`, sprint 0055: ciclo 4–20 em qualquer névoa), todos padrão ligado
 - Névoa vermelha (`RedFogEnabled`, padrão ligado): parte das névoas vem vermelha, com sirene própria, e todo zumbi nela é monstro ([monsters.md](monsters.md#regra-geral))
 - Curva de tensão (`FogEscalation`, padrão ligado, sprint 0019): a névoa começa mais rara e a vermelha mais fraca, e as duas apertam com os dias do save ([abaixo](#curva-de-tensão-sprint-0019))
 - Névoa (evento com sirene, sem toggle: `FogDailyChance` baixa e `FogMaxDaysWithout` alto deixam rara): som ambiente (`FogAmbience`) · sangue e erosão no chão e nas paredes (`FogOverlays`; a quantidade é opção de cada jogador, Opções > Mods, sprint 0015; anexado ao mapa e tirado antes do save desde a 0023) · vinheta (`FogVignette`), todos padrão ligado

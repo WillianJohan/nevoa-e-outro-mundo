@@ -197,8 +197,34 @@ function NOM.ownSprites()
     for _, m in ipairs(NOM_OwnSprites.missing()) do NOM_DebugLog.say("[NOM] debug sem textura: " .. m) end
 end
 
--- Almas esqueléticas (sprint 0050): uma leva agora na névoa branca (rua, ~70% crawler).
+-- Almas esqueléticas (sprint 0055): repor / status / reset / cfg (pop, crawler, cores).
+require "NOM_AlmaRules"
 function NOM.alma() NOM_Debug.send({ op = "alma" }) end
+function NOM.almaStatus() NOM_Debug.send({ op = "almaStatus" }) end
+function NOM.almaReset()
+    NOM_AlmaRules.apply("reset") -- painel atualiza na hora (solo)
+    NOM_Debug.send({ op = "almaReset" })
+end
+-- field: "popMin"|"popMax"|"crawler"|"white"|"red"|"black"; value nil nas cores = toggle.
+-- Aplica local (rótulo do painel) e manda valor absoluto ao servidor (evita toggle duplo no solo).
+function NOM.almaCfg(field, value)
+    if field ~= "popMin" and field ~= "popMax" and field ~= "crawler"
+        and field ~= "white" and field ~= "red" and field ~= "black" then
+        NOM_DebugLog.say("[NOM] debug uso: NOM.almaCfg(campo, valor) — popMin/popMax/crawler/white/red/black")
+        return
+    end
+    NOM_AlmaRules.apply(field, value)
+    if field == "white" or field == "red" or field == "black" then
+        value = NOM_AlmaRules.colorEnabled(field)
+    elseif field == "popMin" then
+        value = NOM_AlmaRules.POP_MIN
+    elseif field == "popMax" then
+        value = NOM_AlmaRules.POP_MAX
+    elseif field == "crawler" then
+        value = NOM_AlmaRules.CRAWLER_CHANCE
+    end
+    NOM_Debug.send({ op = "almaCfg", field = field, value = value })
+end
 
 -- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
@@ -292,7 +318,10 @@ NOM.HELP = {
     { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
-    { "NOM.alma()", "uma leva de almas esqueléticas agora (só névoa branca): rua, maioria crawler, TTL curto" },
+    { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
+    { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
+    { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão (4–20, 68%, 3 cores)" },
+    { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },

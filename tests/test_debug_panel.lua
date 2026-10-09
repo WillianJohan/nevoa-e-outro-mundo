@@ -158,7 +158,8 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "god", "noclip", "invisible",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "almaStatus", "almaReset",
+        "almaCfg", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "ambientScream", "ticao", "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
         NOM[n] = rec(n)
@@ -168,10 +169,16 @@ local function setup(opts)
     NOM_FogState = { on = false, red = false }
     NOM_ScreenFxOptions = { debugPanelKey = function() if G.debug then return G.key end end }
     require "NOM_Math"
+    package.loaded["NOM_FlakeRules"] = nil
+    package.loaded["NOM_AlmaRules"] = nil
+    dofile("mod/42/media/lua/shared/NOM_FlakeRules.lua")
+    dofile("mod/42/media/lua/shared/NOM_AlmaRules.lua")
+    NOM_AlmaRules.reset()
     NOM_DebugLog = nil
     package.loaded["NOM_DebugLog"] = nil
     require "NOM_DebugLog"
     for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math",
+        "NOM_AlmaRules", "NOM_FlakeRules",
         "ISUI/ISCollapsableWindow", "ISUI/ISButton", "ISUI/ISPanel" }) do
         package.loaded[m] = true
     end
@@ -368,7 +375,21 @@ return {
             UI_NOM_Debug_C_Hour = { "time(0)", "time(6)", "time(12)", "time(18)", "time(22)" },
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
-            UI_NOM_Debug_C_Alma = { "alma()" },
+            UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()" },
+            UI_NOM_Debug_C_AlmaPop = {
+                "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN - 1) .. ")",
+                "almaStatus()",
+                "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN + 1) .. ")",
+                "almaCfg(popMax," .. (NOM_AlmaRules.POP_MAX - 1) .. ")",
+                "almaStatus()",
+                "almaCfg(popMax," .. (NOM_AlmaRules.POP_MAX + 1) .. ")",
+            },
+            UI_NOM_Debug_C_AlmaCrawler = {
+                "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE - 0.05) .. ")",
+                "almaStatus()",
+                "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE + 0.05) .. ")",
+            },
+            UI_NOM_Debug_C_AlmaColors = { "almaCfg(white)", "almaCfg(red)", "almaCfg(black)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
                 "variant(carpideira)", "turnZombie(0)" },
