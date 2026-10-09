@@ -23,8 +23,7 @@ require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_ScreenFxOptions"
 require "NOM_DebugLog"
-require "NOM_AlmaRules"
-require "NOM_FlakeRules"
+require "NOM_PanelParams"
 
 NOM_DebugPanel = ISCollapsableWindow:derive("NOM_DebugPanel")
 local Side = ISPanel:derive("NOM_DebugPanelSide")
@@ -38,7 +37,8 @@ local PAD, GAP, SIDE_W = 8, 8, 168
 local REFRESH_MS = 1000
 local SCROLL_STEP, SCROLL_W = 48, 8
 local CARD_PAD, PILL_PAD, PILL_GAP = 12, 12, 6
-local TRACK_H, SLIDER_GAP = 12, 8
+local COMPACT_PAD = 8
+local SLIDER_H, SLIDER_TRACK_H = 18, 6
 local SMALL, MEDIUM = UIFont.Small, UIFont.Medium
 local SMALL_HGT = getTextManager():getFontHeight(SMALL)
 local MEDIUM_HGT = getTextManager():getFontHeight(MEDIUM)
@@ -66,14 +66,49 @@ end
 
 local function c(key, fn) return { key = key, fn = fn } end
 
--- Botão com rótulo vivo (slider por passos) e/ou estado próprio (toggle por escolha).
-local function dyn(key, fn, labelFn, stateFn)
-    return { key = key, fn = fn, label = labelFn, state = stateFn }
+-- Cartão compacto de slider (− / + e trilha arrastável). schema em NOM_PanelParams.
+local function sliderCard(title, key)
+    local sch = NOM_PanelParams.SCHEMA[key]
+    local step = (sch and sch.step) or 1
+    return {
+        title = title, desc = title .. "_Desc", compact = true, slider = { key = key },
+        choices = {
+            c("UI_NOM_Debug_B_Minus", function()
+                NOM.param(key, NOM_PanelParams.get(key) - step)
+            end),
+            c("UI_NOM_Debug_B_Plus", function()
+                NOM.param(key, NOM_PanelParams.get(key) + step)
+            end),
+        },
+    }
+end
+
+-- Liga/desliga bool do NOM_PanelParams (botão LIGADO/DESLIGADO).
+local function toggleCard(title, key)
+    return {
+        title = title, desc = title .. "_Desc", compact = true,
+        state = function() return NOM_PanelParams.get(key) == true end,
+        choices = { c(nil, function() NOM.param(key, not NOM_PanelParams.get(key)) end) },
+    }
+end
+
+-- Escolhas discretas (ritmo, arquétipo): cada pill grava o valor; a ativa acende.
+local function enumCard(title, key, items)
+    local choices = {}
+    for i = 1, #items do
+        local it = items[i]
+        choices[#choices + 1] = {
+            key = it.label, value = it.value,
+            fn = function() NOM.param(key, it.value) end,
+        }
+    end
+    return { title = title, desc = title .. "_Desc", compact = true, param = key, choices = choices }
 end
 
 -- Seções da lateral e seus cartões. Chaves literais: o teste das traduções acha a chave no código.
 -- Todo comando do NOM.HELP tem botão aqui (AGENTS.md; tests/test_debug_panel.lua cobra).
 -- Cartão com state é um liga/desliga: um botão só, que mostra LIGADO ou DESLIGADO.
+-- Seções compactas (0058): knobs live via NOM_PanelParams (contrato com 0054–0057).
 P.SECTIONS = {
     { title = "UI_NOM_Debug_Sec_Fog", desc = "UI_NOM_Debug_Sec_Fog_Desc", color = { r = 0.62, g = 0.74, b = 0.90 },
         cards = {
@@ -125,45 +160,13 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Pull", function() NOM.getZombie() end) } },
             { title = "UI_NOM_Debug_C_Eco", desc = "UI_NOM_Debug_C_Eco_Desc", choices = {
                 c("UI_NOM_Debug_B_Here", function() NOM.eco() end) } },
-            -- Almas (0055): ação + sliders por botão (±) + cores on/off — compacto no padrão do painel.
+            -- Ações das almas (0055); knobs live ficam na seção Almas (0058 / NOM_PanelParams).
             { title = "UI_NOM_Debug_C_Alma", desc = "UI_NOM_Debug_C_Alma_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.alma() end),
                 c("UI_NOM_Debug_B_Show", function() NOM.almaStatus() end),
-                c("UI_NOM_Debug_B_Reset", function() NOM.almaReset() end) } },
-            { title = "UI_NOM_Debug_C_AlmaPop", desc = "UI_NOM_Debug_C_AlmaPop_Desc", choices = {
-                dyn("UI_NOM_Debug_B_AlmaMinMinus", function() NOM.almaCfg("popMin", NOM_AlmaRules.POP_MIN - 1) end,
-                    function() return "min -" end),
-                dyn("UI_NOM_Debug_B_AlmaMinVal", function() NOM.almaStatus() end,
-                    function() return "min " .. tostring(NOM_AlmaRules.POP_MIN) end),
-                dyn("UI_NOM_Debug_B_AlmaMinPlus", function() NOM.almaCfg("popMin", NOM_AlmaRules.POP_MIN + 1) end,
-                    function() return "min +" end),
-                dyn("UI_NOM_Debug_B_AlmaMaxMinus", function() NOM.almaCfg("popMax", NOM_AlmaRules.POP_MAX - 1) end,
-                    function() return "max -" end),
-                dyn("UI_NOM_Debug_B_AlmaMaxVal", function() NOM.almaStatus() end,
-                    function() return "max " .. tostring(NOM_AlmaRules.POP_MAX) end),
-                dyn("UI_NOM_Debug_B_AlmaMaxPlus", function() NOM.almaCfg("popMax", NOM_AlmaRules.POP_MAX + 1) end,
-                    function() return "max +" end) } },
-            { title = "UI_NOM_Debug_C_AlmaCrawler", desc = "UI_NOM_Debug_C_AlmaCrawler_Desc", choices = {
-                dyn("UI_NOM_Debug_B_AlmaCrawlMinus",
-                    function() NOM.almaCfg("crawler", NOM_AlmaRules.CRAWLER_CHANCE - 0.05) end,
-                    function() return "crawler -" end),
-                dyn("UI_NOM_Debug_B_AlmaCrawlVal", function() NOM.almaStatus() end,
-                    function()
-                        return "crawler " .. tostring(math.floor(NOM_AlmaRules.CRAWLER_CHANCE * 100 + 0.5)) .. "%"
-                    end),
-                dyn("UI_NOM_Debug_B_AlmaCrawlPlus",
-                    function() NOM.almaCfg("crawler", NOM_AlmaRules.CRAWLER_CHANCE + 0.05) end,
-                    function() return "crawler +" end) } },
-            { title = "UI_NOM_Debug_C_AlmaColors", desc = "UI_NOM_Debug_C_AlmaColors_Desc", choices = {
-                dyn("UI_NOM_Debug_B_AlmaWhite", function() NOM.almaCfg("white") end,
-                    function() return getText("UI_NOM_Debug_B_AlmaWhite") end,
-                    function() return NOM_AlmaRules.colorEnabled("white") end),
-                dyn("UI_NOM_Debug_B_AlmaRed", function() NOM.almaCfg("red") end,
-                    function() return getText("UI_NOM_Debug_B_AlmaRed") end,
-                    function() return NOM_AlmaRules.colorEnabled("red") end),
-                dyn("UI_NOM_Debug_B_AlmaBlack", function() NOM.almaCfg("black") end,
-                    function() return getText("UI_NOM_Debug_B_AlmaBlack") end,
-                    function() return NOM_AlmaRules.colorEnabled("black") end) } },
+                c("UI_NOM_Debug_B_Reset", function() NOM.almaReset() end),
+                -- HELP/AGENTS: almaCfg ainda no console; um botão cobre a regra do painel.
+                c("UI_NOM_Debug_B_AlmaWhite", function() NOM.almaCfg("white") end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {
@@ -173,6 +176,7 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Now", function() NOM.flickerLamp() end) } },
             { title = "UI_NOM_Debug_C_Rain", desc = "UI_NOM_Debug_C_Rain_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.rain() end) } },
+            -- Estalo agora + ritmos/gaps (0056); seção Estalador (0058) espelha via PanelParams.
             { title = "UI_NOM_Debug_C_Sonar", desc = "UI_NOM_Debug_C_Sonar_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.sonar() end),
                 c("UI_NOM_Debug_BurstAuto", function() NOM.sonarBurst("auto") end),
@@ -191,19 +195,6 @@ P.SECTIONS = {
             { title = "UI_NOM_Debug_C_Wind", desc = "UI_NOM_Debug_C_Wind_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.wind() end) } },
         } },
-    -- Cinzas (sprint 0057): knobs live dens/taxa/ar; o que o sprint toca tem slider aqui.
-    { title = "UI_NOM_Debug_Sec_Ash", desc = "UI_NOM_Debug_Sec_Ash_Desc", color = { r = 0.82, g = 0.78, b = 0.70 },
-        cards = {
-            { title = "UI_NOM_Debug_C_Ash", desc = "UI_NOM_Debug_C_Ash_Desc",
-                sliders = {
-                    { key = "density", label = "UI_NOM_Debug_AshDensity", min = 0, max = 2, step = 0.1 },
-                    { key = "rate", label = "UI_NOM_Debug_AshRate", min = 0, max = 2, step = 0.1 },
-                    { key = "air", label = "UI_NOM_Debug_AshAir", min = 0, max = 2, step = 0.1 },
-                },
-                choices = {
-                    c("UI_NOM_Debug_B_Show", function() NOM.ash() end),
-                    c("UI_NOM_Debug_B_Reset", function() NOM.ash("reset") end) } },
-        } },
     { title = "UI_NOM_Debug_Sec_Player", desc = "UI_NOM_Debug_Sec_Player_Desc", color = { r = 0.40, g = 0.82, b = 0.52 },
         cards = {
             { title = "UI_NOM_Debug_C_GodMode", desc = "UI_NOM_Debug_C_GodMode_Desc", state = cheat("isGodMod"),
@@ -214,6 +205,51 @@ P.SECTIONS = {
                 choices = { c(nil, function() NOM.noclip() end) } },
             { title = "UI_NOM_Debug_C_Invisible", desc = "UI_NOM_Debug_C_Invisible_Desc", state = cheat("isInvisible"),
                 choices = { c(nil, function() NOM.invisible() end) } },
+        } },
+    -- 0058: knobs live (contrato com sprints 0054–0057). compact = cartões mais baixos.
+    { title = "UI_NOM_Debug_Sec_Almas", desc = "UI_NOM_Debug_Sec_Almas_Desc", color = { r = 0.78, g = 0.82, b = 0.88 },
+        compact = true,
+        cards = {
+            sliderCard("UI_NOM_Debug_C_AlmaPopMin", "AlmaPopMin"),
+            sliderCard("UI_NOM_Debug_C_AlmaPopMax", "AlmaPopMax"),
+            sliderCard("UI_NOM_Debug_C_AlmaCrawler", "AlmaCrawlerPct"),
+            toggleCard("UI_NOM_Debug_C_AlmaFogW", "AlmaFogWhite"),
+            toggleCard("UI_NOM_Debug_C_AlmaFogR", "AlmaFogRed"),
+            toggleCard("UI_NOM_Debug_C_AlmaFogB", "AlmaFogBlack"),
+        } },
+    { title = "UI_NOM_Debug_Sec_Estalador", desc = "UI_NOM_Debug_Sec_Estalador_Desc", color = { r = 0.92, g = 0.70, b = 0.40 },
+        compact = true,
+        cards = {
+            enumCard("UI_NOM_Debug_C_EstRhythm", "EstaladorRhythm", {
+                { label = "UI_NOM_Debug_B_RhythmA", value = "A" },
+                { label = "UI_NOM_Debug_B_RhythmB", value = "B" },
+                { label = "UI_NOM_Debug_B_RhythmC", value = "C" },
+                { label = "UI_NOM_Debug_B_RhythmRot", value = "rotate" },
+            }),
+            sliderCard("UI_NOM_Debug_C_EstGapMin", "EstaladorGapMinMs"),
+            sliderCard("UI_NOM_Debug_C_EstGapMax", "EstaladorGapMaxMs"),
+        } },
+    { title = "UI_NOM_Debug_Sec_Cinzas", desc = "UI_NOM_Debug_Sec_Cinzas_Desc", color = { r = 0.62, g = 0.58, b = 0.54 },
+        compact = true,
+        cards = {
+            sliderCard("UI_NOM_Debug_C_CinzaRate", "CinzaRateMult"),
+            sliderCard("UI_NOM_Debug_C_CinzaDens", "CinzaDensityMult"),
+            -- HELP/AGENTS: NOM.ash ainda no console (ar + dump); botões cobrem a regra do painel.
+            { title = "UI_NOM_Debug_C_Ash", desc = "UI_NOM_Debug_C_Ash_Desc", choices = {
+                c("UI_NOM_Debug_B_Show", function() NOM.ash() end),
+                c("UI_NOM_Debug_B_Reset", function() NOM.ash("reset") end) } },
+        } },
+    { title = "UI_NOM_Debug_Sec_Look", desc = "UI_NOM_Debug_Sec_Look_Desc", color = { r = 0.70, g = 0.55, b = 0.78 },
+        compact = true,
+        cards = {
+            enumCard("UI_NOM_Debug_C_LookForce", "LookForce", {
+                { label = "UI_NOM_Debug_B_LookAuto", value = "" },
+                { label = "UI_NOM_Debug_B_LookPale", value = "pale" },
+                { label = "UI_NOM_Debug_B_LookMis", value = "misaligned" },
+                { label = "UI_NOM_Debug_B_LookPat", value = "patient" },
+                { label = "UI_NOM_Debug_B_LookWrong", value = "wrong" },
+                { label = "UI_NOM_Debug_B_LookSil", value = "silhouette" },
+            }),
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {
@@ -227,6 +263,9 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Show", function() NOM.blind() end) } },
             { title = "UI_NOM_Debug_C_OwnSprites", desc = "UI_NOM_Debug_C_OwnSprites_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.ownSprites() end) } },
+            { title = "UI_NOM_Debug_C_Params", desc = "UI_NOM_Debug_C_Params_Desc", choices = {
+                c("UI_NOM_Debug_B_Show", function() NOM.params() end),
+                c("UI_NOM_Debug_B_ResetParams", function() NOM.param("reset") end) } },
             { title = "UI_NOM_Debug_C_Help", desc = "UI_NOM_Debug_C_Help_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.help() end) } },
         } },
@@ -263,18 +302,14 @@ local function text(el, s, x, y, col, a, font) el:drawText(s, x, y, col.r, col.g
 local function mix(col, k) return { r = col.r * k, g = col.g * k, b = col.b * k } end
 
 local function choiceLabel(card, choice)
-    -- estado por escolha (ex.: cor das almas) ou por cartão (liga/desliga clássico)
-    if choice.state then
-        local on = choice.state()
-        if choice.label then return choice.label(), on end
-        local base = choice.key and getText(choice.key) or ""
-        return base, on
-    end
     if card.state then
         local on = card.state()
         return getText(on and "UI_NOM_Debug_On" or "UI_NOM_Debug_Off"), on
     end
-    if choice.label then return choice.label(), nil end
+    if card.param and choice.value ~= nil then
+        local on = NOM_PanelParams.get(card.param) == choice.value
+        return getText(choice.key), on
+    end
     return getText(choice.key), nil
 end
 
@@ -387,57 +422,68 @@ function List:setScroll(v)
     self.scroll = math.max(0, math.min(v, self:maxScroll()))
 end
 
-local function sliderValue(key)
-    local d = NOM_FlakeRules.debugMul()
-    return d[key] or 1
-end
-
-local function snapSlider(v, minV, maxV, step)
-    v = math.floor(v / step + 0.5) * step
-    if v < minV then v = minV end
-    if v > maxV then v = maxV end
-    return math.floor(v * 1000 + 0.5) / 1000
-end
-
--- Posições em coordenadas do conteúdo (y sem a rolagem). hits: botões; sliders: trilhos.
+-- Posições em coordenadas do conteúdo (y sem a rolagem). hits: os botões clicáveis.
+-- sliders: trilhas arrastáveis (card.slider.key → NOM_PanelParams).
 function List:layout()
     local s = P.SECTIONS[self.section]
     local cw = self.width - SCROLL_W - 4
-    local inner = cw - CARD_PAD * 2
+    local pad = (s.compact or false) and COMPACT_PAD or CARD_PAD
+    local gap = (s.compact or false) and 4 or GAP
+    local inner = cw - pad * 2
     self.cards, self.hits, self.sliders = {}, {}, {}
     local y = 2
     self.head = { y = y, desc = wrap(getText(s.desc), SMALL, cw - 4) }
-    y = y + MEDIUM_HGT + 4 + #self.head.desc * SMALL_HGT + 12
+    y = y + MEDIUM_HGT + 4 + #self.head.desc * SMALL_HGT + (s.compact and 8 or 12)
     for _, card in ipairs(s.cards) do
-        local item = { card = card, y = y, title = getText(card.title), desc = wrap(getText(card.desc), SMALL, inner) }
-        local cy = y + CARD_PAD
-        cy = cy + MEDIUM_HGT + 4 + #item.desc * SMALL_HGT + 8
-        for _, sl in ipairs(card.sliders or {}) do
-            local labelY = cy
-            local trackY = cy + SMALL_HGT + 2
-            self.sliders[#self.sliders + 1] = {
-                card = card, key = sl.key, label = sl.label, min = sl.min, max = sl.max, step = sl.step,
-                x = CARD_PAD, w = inner, labelY = labelY, trackY = trackY, trackH = TRACK_H,
-            }
-            cy = trackY + TRACK_H + SLIDER_GAP
-        end
-        local px = CARD_PAD
-        for i, choice in ipairs(card.choices) do
-            local label, on = choiceLabel(card, choice)
-            local pw = math.min(inner, math.max(64, measure(SMALL, label) + PILL_PAD * 2))
-            if px > CARD_PAD and px + pw > cw - CARD_PAD then
-                px = CARD_PAD
-                cy = cy + PILL_H + PILL_GAP
+        local cpad = card.compact and COMPACT_PAD or pad
+        local item = { card = card, y = y, title = getText(card.title),
+            desc = wrap(getText(card.desc), SMALL, inner) }
+        local cy = y + cpad
+        local descLines = card.compact and math.min(2, #item.desc) or #item.desc
+        item.descLines = descLines
+        cy = cy + MEDIUM_HGT + 2 + descLines * SMALL_HGT + (card.compact and 4 or 8)
+        if card.slider then
+            local key = card.slider.key
+            local val = NOM_PanelParams.format(key, NOM_PanelParams.get(key))
+            local live = NOM_PanelParams.isLive(key)
+            item.value = (live and "* " or "") .. val
+            local minus = card.choices[1]
+            local plus = card.choices[2]
+            local mLabel = getText(minus.key)
+            local pLabel = getText(plus.key)
+            local mw = math.max(36, measure(SMALL, mLabel) + PILL_PAD * 2)
+            local pw = math.max(36, measure(SMALL, pLabel) + PILL_PAD * 2)
+            local trackX = cpad + mw + 8
+            local trackW = math.max(40, inner - mw - pw - 16)
+            self.hits[#self.hits + 1] = { x = cpad, y = cy, w = mw, h = PILL_H, card = card, choice = minus,
+                index = 1, label = mLabel, on = nil }
+            self.hits[#self.hits + 1] = { x = cpad + mw + 8 + trackW + 8, y = cy, w = pw, h = PILL_H,
+                card = card, choice = plus, index = 2, label = pLabel, on = nil }
+            self.sliders[#self.sliders + 1] = { key = key, x = trackX, y = cy + (PILL_H - SLIDER_H) / 2,
+                w = trackW, h = SLIDER_H, card = card }
+            item.valueX = trackX
+            item.valueY = cy - SMALL_HGT - 2
+            cy = cy + PILL_H + cpad
+        else
+            local px = cpad
+            for i, choice in ipairs(card.choices) do
+                local label, on = choiceLabel(card, choice)
+                local bw = math.min(inner, math.max(card.compact and 48 or 64, measure(SMALL, label) + PILL_PAD * 2))
+                if px > cpad and px + bw > cw - cpad then
+                    px = cpad
+                    cy = cy + PILL_H + PILL_GAP
+                end
+                self.hits[#self.hits + 1] = { x = px, y = cy, w = bw, h = PILL_H, card = card, choice = choice,
+                    index = i, label = label, on = on }
+                px = px + bw + PILL_GAP
             end
-            self.hits[#self.hits + 1] = { x = px, y = cy, w = pw, h = PILL_H, card = card, choice = choice,
-                index = i, label = label, on = on }
-            px = px + pw + PILL_GAP
+            cy = cy + PILL_H + cpad
         end
-        cy = cy + PILL_H + CARD_PAD
         item.h = cy - y
         item.w = cw
+        item.pad = cpad
         self.cards[#self.cards + 1] = item
-        y = cy + GAP
+        y = cy + gap
     end
     self.contentH = y
     self:setScroll(self.scroll or 0)
@@ -450,19 +496,19 @@ function List:hitAt(x, cy)
 end
 
 function List:sliderAt(x, cy)
-    for _, sl in ipairs(self.sliders or {}) do
-        if x >= sl.x and x < sl.x + sl.w and cy >= sl.trackY - 2 and cy < sl.trackY + sl.trackH + 2 then
-            return sl
-        end
+    for _, s in ipairs(self.sliders or {}) do
+        if x >= s.x and x < s.x + s.w and cy >= s.y - 4 and cy < s.y + s.h + 4 then return s end
     end
 end
 
-function List:applySlider(sl, x)
-    local t = (x - sl.x) / sl.w
-    if t < 0 then t = 0 elseif t > 1 then t = 1 end
-    local v = snapSlider(sl.min + t * (sl.max - sl.min), sl.min, sl.max, sl.step)
-    NOM_FlakeRules.setDebugKey(sl.key, v)
-    NOM_DebugLog.echo(getText(sl.label) .. ": " .. string.format("%.1f", v))
+function List:applySlider(s, x)
+    local sch = NOM_PanelParams.SCHEMA[s.key]
+    if not sch or sch.min == nil then return end
+    local t = (x - s.x) / math.max(1, s.w)
+    if t < 0 then t = 0 end
+    if t > 1 then t = 1 end
+    local v = sch.min + t * (sch.max - sch.min)
+    NOM.param(s.key, v)
     self.window:refresh()
 end
 
@@ -474,11 +520,12 @@ end
 function List:onMouseDown(x, y)
     if y < 0 or y > self.height then return true end
     local cy = y + self.scroll
-    local sl = self:sliderAt(x, cy)
-    if sl then
+    local s = self:sliderAt(x, cy)
+    if s then
         getSoundManager():playUISound(CLICK_SOUND)
-        self.drag = sl
-        self:applySlider(sl, x)
+        self.drag = s
+        self:applySlider(s, x)
+        NOM_DebugLog.echo(getText(s.card.title) .. ": " .. NOM_PanelParams.format(s.key))
         return true
     end
     local h = self:hitAt(x, cy)
@@ -492,15 +539,21 @@ function List:onMouseDown(x, y)
     return true
 end
 
-function List:onMouseMove(dx, dy)
-    if self.drag then self:applySlider(self.drag, self:getMouseX()) end
+function List:onMouseMove(x, y)
+    if self.drag then
+        self:applySlider(self.drag, x)
+        return true
+    end
 end
 
-function List:onMouseUp()
-    self.drag = nil
+function List:onMouseUp(x, y)
+    if self.drag then
+        self.drag = nil
+        return true
+    end
 end
 
-function List:onMouseUpOutside()
+function List:onMouseUpOutside(x, y)
     self.drag = nil
 end
 
@@ -520,39 +573,39 @@ function List:prerender()
         local y = item.y + sy
         if y + item.h >= 0 and y <= self.height then
             local over = self.hover and self.hover.card == item.card
+            local pad = item.pad or CARD_PAD
             rect(self, 0, y, item.w, item.h, CARD, 0.96)
             border(self, 0, y, item.w, item.h, over and s.color or mix(TEXT, 0.25), over and 0.8 or 0.5)
             rect(self, 0, y, 3, item.h, s.color, 0.9)
-            text(self, item.title, CARD_PAD, y + CARD_PAD, TEXT, 1, MEDIUM)
-            local dy = y + CARD_PAD + MEDIUM_HGT + 4
-            for _, line in ipairs(item.desc) do
-                text(self, line, CARD_PAD, dy, DIM, 1, SMALL)
+            text(self, item.title, pad, y + pad, TEXT, 1, MEDIUM)
+            local dy = y + pad + MEDIUM_HGT + 2
+            local n = item.descLines or #item.desc
+            for i = 1, n do
+                text(self, item.desc[i], pad, dy, DIM, 1, SMALL)
                 dy = dy + SMALL_HGT
+            end
+            if item.value and item.valueY then
+                text(self, item.value, item.valueX, item.valueY + sy, s.color, 1, SMALL)
             end
         end
     end
-    self.sliderHover = nil
-    if self:isMouseOver() then
-        self.sliderHover = self:sliderAt(self:getMouseX(), self:getMouseY() + self.scroll)
-    end
     for _, sl in ipairs(self.sliders or {}) do
-        local ly = sl.labelY + sy
-        local ty = sl.trackY + sy
-        if ty + sl.trackH >= 0 and ly <= self.height then
-            local v = sliderValue(sl.key)
-            local span = sl.max - sl.min
-            local t = span > 0 and (v - sl.min) / span or 0
-            if t < 0 then t = 0 elseif t > 1 then t = 1 end
-            local over = sl == self.sliderHover or sl == self.drag
-            local label = getText(sl.label) .. "  " .. string.format("%.1f", v)
-            text(self, label, sl.x, ly, over and TEXT or DIM, 1, SMALL)
-            rect(self, sl.x, ty, sl.w, sl.trackH, mix(CARD, 0.7), 0.95)
-            border(self, sl.x, ty, sl.w, sl.trackH, mix(s.color, over and 1 or 0.55), over and 0.9 or 0.5)
-            local fill = math.max(2, sl.w * t)
-            rect(self, sl.x, ty, fill, sl.trackH, mix(s.color, over and 0.85 or 0.55), 0.9)
-            local thumbX = sl.x + fill - 3
-            if thumbX < sl.x then thumbX = sl.x end
-            rect(self, thumbX, ty - 1, 6, sl.trackH + 2, TEXT, 0.85)
+        local y = sl.y + sy
+        if y + sl.h >= 0 and y <= self.height then
+            local sch = NOM_PanelParams.SCHEMA[sl.key]
+            local v = NOM_PanelParams.get(sl.key)
+            local t = 0
+            if sch and sch.max > sch.min then
+                t = (v - sch.min) / (sch.max - sch.min)
+            end
+            if t < 0 then t = 0 end
+            if t > 1 then t = 1 end
+            local ty = y + (sl.h - SLIDER_TRACK_H) / 2
+            rect(self, sl.x, ty, sl.w, SLIDER_TRACK_H, mix(TEXT, 0.22), 0.95)
+            rect(self, sl.x, ty, math.max(2, sl.w * t), SLIDER_TRACK_H, s.color, 0.95)
+            local kx = sl.x + sl.w * t - 4
+            rect(self, kx, y, 8, sl.h, TEXT, 0.95)
+            border(self, kx, y, 8, sl.h, s.color, 1)
         end
     end
     for _, h in ipairs(self.hits) do

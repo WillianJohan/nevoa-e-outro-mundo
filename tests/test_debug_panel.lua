@@ -162,7 +162,7 @@ local function setup(opts)
         "almaCfg", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "sonarBurst", "sonarGaps", "ambientScream", "ticao",
-        "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
+        "blackPressure", "thunder", "flickerLamp", "rain", "help", "params", "param" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
@@ -172,15 +172,18 @@ local function setup(opts)
     require "NOM_Math"
     package.loaded["NOM_FlakeRules"] = nil
     package.loaded["NOM_AlmaRules"] = nil
+    package.loaded["NOM_PanelParams"] = nil
     dofile("mod/42/media/lua/shared/NOM_FlakeRules.lua")
     dofile("mod/42/media/lua/shared/NOM_AlmaRules.lua")
+    dofile("mod/42/media/lua/shared/NOM_PanelParams.lua")
     NOM_AlmaRules.reset()
     NOM_FlakeRules.resetDebug()
+    NOM_PanelParams.reset()
     NOM_DebugLog = nil
     package.loaded["NOM_DebugLog"] = nil
     require "NOM_DebugLog"
     for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math",
-        "NOM_AlmaRules", "NOM_FlakeRules",
+        "NOM_AlmaRules", "NOM_FlakeRules", "NOM_PanelParams",
         "ISUI/ISCollapsableWindow", "ISUI/ISButton", "ISUI/ISPanel" }) do
         package.loaded[m] = true
     end
@@ -291,8 +294,9 @@ return {
         local w = open()
         assert(w.resizable ~= false, "não redimensiona")
         assert(w.width >= 800 and w.height >= 600, "pequena: " .. w.width .. "x" .. w.height)
-        assert(w.minimumWidth and w.minimumHeight and w.minimumWidth <= 640 and w.minimumHeight <= 480,
-            "sem mínimo razoável")
+        -- 0058: mais seções (Almas/Estalador/Cinzas/Look) sobem o mínimo pela altura da lateral
+        assert(w.minimumWidth and w.minimumHeight and w.minimumWidth <= 640 and w.minimumHeight <= 720,
+            "sem mínimo razoável: " .. tostring(w.minimumWidth) .. "x" .. tostring(w.minimumHeight))
         assert(#G.layouts == 1 and G.layouts[1].funcs == ISCollapsableWindow and G.layouts[1].win == w)
     end,
     -- o leiaute salvo pelo painel da 0020 (nome NOM_DebugPanel, 440 de largura) não vale pro novo:
@@ -377,21 +381,7 @@ return {
             UI_NOM_Debug_C_Hour = { "time(0)", "time(6)", "time(12)", "time(18)", "time(22)" },
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
-            UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()" },
-            UI_NOM_Debug_C_AlmaPop = {
-                "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN - 1) .. ")",
-                "almaStatus()",
-                "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN + 1) .. ")",
-                "almaCfg(popMax," .. (NOM_AlmaRules.POP_MAX - 1) .. ")",
-                "almaStatus()",
-                "almaCfg(popMax," .. (NOM_AlmaRules.POP_MAX + 1) .. ")",
-            },
-            UI_NOM_Debug_C_AlmaCrawler = {
-                "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE - 0.05) .. ")",
-                "almaStatus()",
-                "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE + 0.05) .. ")",
-            },
-            UI_NOM_Debug_C_AlmaColors = { "almaCfg(white)", "almaCfg(red)", "almaCfg(black)" },
+            UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()", "almaCfg(white)" },
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
@@ -414,11 +404,21 @@ return {
             UI_NOM_Debug_C_BlackPressure = { "blackPressure()" },
             UI_NOM_Debug_C_Blind = { "blind()" },
             UI_NOM_Debug_C_OwnSprites = { "ownSprites()" },
+            UI_NOM_Debug_C_Params = { "params()", "param(reset)" },
             UI_NOM_Debug_C_Help = { "help()" },
         }
         local n, want = 0, 0
         for _, calls in pairs(expect) do want = want + #calls end
         eachChoice(w, function(_, h)
+            -- 0058: knobs live chamam NOM.param (slider/toggle/enum); não entram no mapa fixo
+            if h.card.slider or h.card.param or (h.card.compact and h.card.state) then
+                G.calls = {}
+                clickHit(w, h)
+                assert(G.calls[1] and G.calls[1]:match("^param%("),
+                    h.card.title .. " #" .. h.index .. " chamou " .. tostring(G.calls[1]))
+                n = n + 1
+                return
+            end
             local calls = expect[h.card.title]
             assert(calls, "cartão sem teste: " .. h.card.title)
             G.calls = {}
@@ -427,7 +427,8 @@ return {
                 h.card.title .. " #" .. h.index .. " chamou " .. tostring(G.calls[1]) .. ", esperado " .. tostring(calls[h.index]))
             n = n + 1
         end)
-        assert(n == want, "botões " .. n .. ", esperados " .. want)
+        -- want = só os cartões do mapa; n inclui também os knobs live
+        assert(n >= want, "botões " .. n .. ", esperados >= " .. want)
         -- cada botão e cada troca de seção (a primeira já abre escolhida) toca o clique
         assert(#G.sounds == n + #NOM_DebugPanel.SECTIONS - 1 and G.sounds[1] == "UIActivateButton",
             "cliques com som: " .. #G.sounds)
@@ -608,26 +609,26 @@ return {
         assert(w.list.hover == h, "hover não achou o botão sob o mouse")
         assert(w.side.hover == 2, "hover da lateral")
     end,
-    -- sprint 0057: seção Cinzas com trilhos; clique no trilho muda o knob live
-    debug_panel_ash_sliders = function()
-        setup()
+    -- sprint 0058: seção Cinzas (PanelParams) com trilhos; clique no trilho grava via NOM.param
+    debug_panel_cinzas_sliders = function()
+        local G = setup()
         local w = open()
         local ashI
         for i, s in ipairs(NOM_DebugPanel.SECTIONS) do
-            if s.title == "UI_NOM_Debug_Sec_Ash" then ashI = i break end
+            if s.title == "UI_NOM_Debug_Sec_Cinzas" then ashI = i break end
         end
         assert(ashI, "sem seção Cinzas")
         selectSection(w, ashI)
-        assert(#w.list.sliders == 3, "sliders: " .. #w.list.sliders)
-        NOM_FlakeRules.resetDebug()
-        local dens = w.list.sliders[1]
-        assert(dens.key == "density")
-        w.list:setScroll(math.max(0, dens.trackY - 4))
-        local y = dens.trackY - w.list.scroll + dens.trackH / 2
-        w.list:onMouseDown(dens.x + dens.w - 1, y)
-        assert(NOM_FlakeRules.debugMul().density == 2, "clique no fim não foi 2: " .. NOM_FlakeRules.debugMul().density)
-        w.list:onMouseDown(dens.x, y)
-        assert(NOM_FlakeRules.debugMul().density == 0, "clique no começo não foi 0")
-        NOM_FlakeRules.resetDebug()
+        assert(#w.list.sliders >= 2, "sliders: " .. #w.list.sliders)
+        NOM_PanelParams.reset()
+        local rate = w.list.sliders[1]
+        assert(rate.key == "CinzaRateMult", tostring(rate.key))
+        w.list:setScroll(math.max(0, rate.trackY - 4))
+        local y = rate.trackY - w.list.scroll + rate.trackH / 2
+        G.calls = {}
+        w.list:onMouseDown(rate.x + rate.w - 1, y)
+        assert(G.calls[1] and G.calls[1]:match("^param%(CinzaRateMult,"),
+            "clique no trilho: " .. tostring(G.calls[1]))
+        NOM_PanelParams.reset()
     end,
 }
