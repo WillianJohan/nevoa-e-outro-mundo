@@ -124,4 +124,18 @@ return {
         assert(math.abs(sent(calls, 7) - 0.8) < 1e-4, "véu branco de novo")
         assert(math.abs(sent(calls, 14) - 0.1) < 1e-4, "cov branca de novo")
     end,
+
+    -- preta: altura 1,2 / véu 1 / cov 1 / boost 1,2
+    fog_quality_sync_black_look_on_color_change = function()
+        local o = { quality = 2, res = 3 }
+        local _, h, calls = load(o, true)
+        fire(h, "OnGameStart")
+        NOM_FogState.set(true, 3, false, true)
+        assert(math.abs(sent(calls, 2) - 1.2) < 1e-4, "altura preta: " .. tostring(sent(calls, 2)))
+        assert(math.abs(sent(calls, 3) - 1.1) < 1e-4, "pocketH preta")
+        assert(math.abs(sent(calls, 7) - 1.0) < 1e-4, "véu preto")
+        assert(math.abs(sent(calls, 14) - 1.0) < 1e-4, "cov preta")
+        assert(math.abs(sent(calls, 15) - 1.2) < 1e-4, "boost preto: " .. tostring(sent(calls, 15)))
+        assert(sent(calls, 12) == 1, "param preta (luz) também")
+    end,
 }

@@ -3,7 +3,7 @@
 -- NOMRender_setParam(6, q) e NOMRender_setParam(9, s). Névoa preta (sprint 0039):
 -- NOMRender_setParam(12, 1|0). Clímax fog (sprint 0047g): altura (2), bolsão (3), véu (7),
 -- cobertura (14) e boost (15) por cor (NOM_FogClimaxRules.fromConfig) — branca do sandbox,
--- vermelha tabela fixa do playtest.
+-- vermelha/preta tabelas fixas do playtest.
 -- O global vem do mod3 (RenderContext.setParam, @LuaMethod registrado pelo ZombieBuddy);
 -- sem o mod3, nada. A opção pode mudar no "Aplicar" a qualquer hora: confere a cada minuto
 -- de jogo e só manda o que mudou (trocar a resolução recria a grade da névoa). Preta e look

@@ -1,5 +1,5 @@
 -- Névoa clímax (sprint 0047): base + bolsões. Defaults por cor = playtest Johan (0047g).
--- Puro (sem API do jogo). Branca: sandbox (altura + aggression). Vermelha: tabela fixa.
+-- Puro (sem API do jogo). Branca: sandbox (altura + aggression). Vermelha/preta: tabelas fixas.
 -- O cliente empurra params pro mod3 (NOM_FogQualitySync); fallback sem mod3 usa vinheta.
 NOM_FogClimaxRules = {}
 local R = NOM_FogClimaxRules
@@ -27,6 +27,20 @@ R.RED = {
     pocketAggression = 1,
     fallbackBaseVignette = 0.28,
     fallbackPocketVignette = 0.84,
+}
+
+-- Preta (playtest Johan): altura 1,2, bolsão 1,1, véu 1, cov 1, boost 1,2
+R.BLACK = {
+    baseHeight = 1.2,
+    baseHaze = 1.0,
+    pocketHeight = 1.1,
+    pocketCoverage = 1.0,
+    pocketBoost = 1.2,
+    pocketScale = 50,
+    pocketSpeedMul = 1.0,
+    pocketAggression = 1,
+    fallbackBaseVignette = 0.32,
+    fallbackPocketVignette = 0.90,
 }
 
 local function clamp(v, lo, hi)
@@ -79,10 +93,17 @@ function R.lookRed()
     return L
 end
 
--- color: "white" | "red" | "black" (preta usa look branco até haver playtest próprio).
+function R.lookBlack()
+    local L = copy(R.BLACK)
+    L.color = "black"
+    return L
+end
+
+-- color: "white" | "red" | "black".
 function R.fromConfig(color)
     require "NOM_Config"
     if color == "red" then return R.lookRed() end
+    if color == "black" then return R.lookBlack() end
     return R.look(NOM_Config.get("FogBaseHeight"), NOM_Config.get("FogPocketAggression"))
 end
 

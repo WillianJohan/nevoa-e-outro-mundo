@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em andamento` — produto A + C-lite no shader; falta playtest do Johan |
-| Branch | `sprint/0047-fog-climax` (saiu da `staging`) |
+| Status | `em teste` — 0047g na staging; looks por cor aprovados (Johan) |
+| Branch | `sprint/0047g-fog-primeira` (merge na `staging`) |
 | Go | Johan, 2026-10-08 |
 | Design | [proximos-passos-refinamento.md](../../proximos-passos-refinamento.md) §3.4 |
 | Plano | [plan.md](plan.md) |
@@ -43,23 +43,22 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 - **Look shader** = 1ª 0047 (`b012989`: HAZE 0,18 / fall 8 / sigma 0,9; sem FLOOR_MIN; ScreenFx sem gate).
 - **Defaults playtest Johan (0047g), por cor** — sync / `NOM.fogLook()` / `onColorChange`:
 
-  | Param | Branca | Vermelha |
-  |-------|--------|----------|
-  | 2 altura | **1,0** (sandbox) | **1,0** (fixo) |
-  | 3 bolsão H | **1,2** | **1,1** |
-  | 7 véu | **0,8** | **1,0** |
-  | 9 res | **3** | **3** |
-  | 14 cov | **0,1** | **1,0** |
-  | 15 boost | **1,1** | **1,0** |
+  | Param | Branca | Vermelha | Preta |
+  |-------|--------|----------|-------|
+  | 2 altura | **1,0** (sandbox) | **1,0** | **1,2** |
+  | 3 bolsão H | **1,2** | **1,1** | **1,1** |
+  | 7 véu | **0,8** | **1,0** | **1,0** |
+  | 9 res | **3** | **3** | **3** |
+  | 14 cov | **0,1** | **1,0** | **1,0** |
+  | 15 boost | **1,1** | **1,0** | **1,2** |
 
-  Branca: sandbox `FogBaseHeight` + aggression. Vermelha: `lookRed()` tabela fixa. Preta: look branco até playtest.
+  Branca: sandbox. Vermelha/preta: `lookRed()` / `lookBlack()` fixos.
 - Histórico rejeitado: tempero 0047b → 0047c–f. Docs de design α ficam; código do look visual não.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Confirmar no jogo que os defaults batem o look da branca que o Johan aprovou (reiniciar após sync).
-- B' / B só se A+C-lite falharem de novo no playtest.
+- Nada do P0 fog — looks branca/vermelha/preta gravados. Próximo: Sons II (refinamento §3.1).
 
 ## Critérios (§3.4.3 / §3.4.3a)
 
