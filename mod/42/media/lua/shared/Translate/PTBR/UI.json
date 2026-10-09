@@ -118,7 +118,7 @@
     "UI_NOM_Debug_C_CinzaDens": "Densidade das cinzas",
     "UI_NOM_Debug_C_CinzaDens_Desc": "Multiplicador da densidade visual das cinzas.",
     "UI_NOM_Debug_C_LookForce": "Forçar arquétipo",
-    "UI_NOM_Debug_C_LookForce_Desc": "Próximo look usa este arquétipo; Auto deixa o sorteio. Com força ≠ Auto: ScreenFx/shader glitch off e camisa/calça coloridas (look limpo).",
+    "UI_NOM_Debug_C_LookForce_Desc": "Força o arquétipo do monstro (Pale/Misaligned/…). Auto deixa o sorteio. Horror soft: roupa legível + FX suave — não é Look limpo.",
     "UI_NOM_Debug_B_Minus": "−",
     "UI_NOM_Debug_B_Plus": "+",
     "UI_NOM_Debug_B_RhythmA": "A",

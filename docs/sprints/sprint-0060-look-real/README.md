@@ -16,19 +16,17 @@ Body P&B + strip + ScreenFx/shader (scanline/tear/aberração) + SemRostoEstatic
 - **Look Clean OK** (Johan): roupa vanilla legível, sem glitch.
 - Staging tip = #16; `lookClean` no console com `screenFxClean=true`.
 
-## 0060d — produto
+## 0060d/e — produto
 
-- **lookClean** = flag de debug (`NOM.lookClean()`), não = LookForce.
-- **LookForce**: ScreenFx/shader **suaves** (vinheta/grain baixos; `lines=0`; hiss/`radius=0`).
-- **Sempre**: sem scanlines; sem tear por chiado do Sem-rosto.
-- **SemRosto**: não veste mais `NOM_SemRostoEstatica` (cobria cabeça/corpo).
-- Corpo: KEEP camisa/calça vanilla; prova Sport+White só no look limpo.
-- Sem Body custom (exceto Tição).
+- **Look limpo** = só o botão/flag (`NOM.lookClean()`). Mudar LookForce **desliga** o limpo.
+- **LookForce**: horror soft (roupa legível + FX suave) — **não** é clean.
+- Texto do painel alinhado (0060e; antes dizia Force = clean).
+- SemRosto sem `NOM_SemRostoEstatica`; KEEP camisa/calça; Sport+White só no limpo.
 
 ## Roteiro
 
 1. `scripts/dev-sync.sh`; reiniciar; só Staging.
-2. Isolamento: **Look limpo** → print sem glitch + Sport/White (já OK).
-3. Produto: LookForce Misaligned/Pale/Wrong **sem** Look limpo → roupa legível + vinheta leve, sem TV quebrada / sem estática na cara.
-4. `NOM.lookInspect()`: `clean=false force=misaligned` + camisa/calça (+ peça NOM se houver).
-5. **Não sucesso** até Johan confirmar print do produto.
+2. Isolamento: botão **Look limpo** → Sport/White + FX off.
+3. Produto: LookForce Misaligned **sem** Look limpo → roupa do outfit + vinheta leve.
+4. `lookInspect`: `clean=false force=misaligned` (+ peça NOM se houver).
+5. **Não sucesso produto** até print do Johan.

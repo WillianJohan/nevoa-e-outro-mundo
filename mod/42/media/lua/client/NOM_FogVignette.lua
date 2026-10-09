@@ -123,7 +123,7 @@ local function releaseChannel(pn)
 end
 
 local function channelWanted(now)
-    -- 0060c: LookForce → solta o canal do shader (senão bloom/fog mantêm tear/aberração)
+    -- 0060e: só a flag lookClean solta o canal (LookForce = soft, não clean)
     if NOM_ScreenFxRules.lookClean() then return false end
     if NOM_ScreenFxOptions.bloom() > 0 then return true end
     local c = channelValues(now)

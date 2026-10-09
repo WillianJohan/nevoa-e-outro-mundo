@@ -112,7 +112,7 @@ local function hide(list, w)
     for _, iv in ipairs(gone) do list:remove(iv) end
 end
 
--- 0060c LookForce: troca camisa/calça por vanilla colorida (prova legível no print).
+-- 0060c/e: só com flag lookClean — prova camisa/calça coloridas (não é LookForce).
 -- Carpideira com manto: só calça (o manto já é o torso).
 local function proofBody(list, w)
     if not NOM_ScreenFxRules.lookClean() then return end
@@ -150,6 +150,24 @@ end
 -- ID cru: o bit é o que se quer ler (o sorteio e o worn.id usam o ID sem ele).
 local function hatFallen(id)
     return id ~= nil and NOM_VariantRules.baseId(id) ~= id
+end
+
+-- Sai do look limpo: tira prova e devolve camisa/calça de w.all.
+local function clearProof(z, list, w)
+    if not w.proof then return end
+    for _, iv in ipairs(w.proof) do list:remove(iv) end
+    w.proof = nil
+    if not w.all then return end
+    local fallen = hatFallen(z:getPersistentOutfitID())
+    for _, iv in ipairs(w.all) do
+        local t = iv:getItemType()
+        if isProofStrip(t) and keep(t) then
+            local item = fallen and iv:getScriptItem()
+            if not (item and item:getChanceToFall() > 0) and not list:contains(iv) then
+                list:add(iv)
+            end
+        end
+    end
 end
 
 -- Devolve a lista original, na ordem. Se a peça do mod já não está lá, o jogo vestiu
@@ -276,8 +294,10 @@ function NOM_VariantLook.sync(z, kind, id)
                 NOM_Dissolve.stop(z) -- a peça se forma de novo
             end
         elseif NOM_ScreenFxRules.lookClean() and not w.proof then
-            -- LookForce ligado depois da mutação: aplica prova colorida sem re-strip
             proofBody(z:getItemVisuals(), w)
+            z:resetModelNextFrame()
+        elseif w.proof and not NOM_ScreenFxRules.lookClean() then
+            clearProof(z, z:getItemVisuals(), w)
             z:resetModelNextFrame()
         end
         return
@@ -286,6 +306,25 @@ function NOM_VariantLook.sync(z, kind, id)
     if w and kind == nil then return leave(z) end
     strip(z)
     if kind and LOOKS[kind] then put(z, kind, id) end
+end
+
+-- Aplica/remove prova Sport+White em quem já está na variante (toggle lookClean).
+function NOM_VariantLook.refreshClean()
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        local w = worn[z]
+        if w and not w.leaving then
+            local ivs = z:getItemVisuals()
+            if NOM_ScreenFxRules.lookClean() and not w.proof then
+                proofBody(ivs, w)
+                z:resetModelNextFrame()
+            elseif w.proof and not NOM_ScreenFxRules.lookClean() then
+                clearProof(z, ivs, w)
+                z:resetModelNextFrame()
+            end
+        end
+    end
 end
 
 -- Pro status do debug: só os zumbis carregados nesta tela. Quem saiu do mundo fica na

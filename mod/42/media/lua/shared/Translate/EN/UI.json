@@ -118,7 +118,7 @@
     "UI_NOM_Debug_C_CinzaDens": "Ash density",
     "UI_NOM_Debug_C_CinzaDens_Desc": "Multiplier on ash visual density.",
     "UI_NOM_Debug_C_LookForce": "Force archetype",
-    "UI_NOM_Debug_C_LookForce_Desc": "Next look uses this archetype; Auto keeps the roll. Non-Auto: ScreenFx/shader glitch off + bright shirt/pants (clean look).",
+    "UI_NOM_Debug_C_LookForce_Desc": "Force the monster archetype (Pale/Misaligned/...). Auto keeps the roll. Soft horror: legible clothes + light FX - not Clean look.",
     "UI_NOM_Debug_B_Minus": "-",
     "UI_NOM_Debug_B_Plus": "+",
     "UI_NOM_Debug_B_RhythmA": "A",

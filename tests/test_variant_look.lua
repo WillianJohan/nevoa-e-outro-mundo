@@ -377,22 +377,27 @@ return {
         assert(NOM_VariantLook.count() == 1)
     end,
 
-    -- 0060c/d: flag lookClean → prova camisa/calça coloridas (isolamento)
+    -- 0060e: flag lookClean → prova; LookForce sozinho NÃO é clean
     look_clean_proof_colored_body = function()
         local G = setup()
-        NOM_ScreenFxRules.setLookClean(true)
+        NOM_PanelParams = { lookForce = function() return "misaligned" end, lookKind = function() return nil end }
+        assert(NOM_ScreenFxRules.lookForceOn() and not NOM_ScreenFxRules.lookClean())
         local z = G.spawn({ id = idFor("estalador", 3) })
         fogOn(3)
         G.converge()
         local look = NOM_VariantLook.LOOKS.estalador
-        assert(hasItem(z, look.item), "sem peça: " .. types(z))
-        assert(hasItem(z, PROOF[1]) and hasItem(z, PROOF[2]), "sem prova colorida: " .. types(z))
-        assert(not hasItem(z, OUTFIT[1]) and not hasItem(z, OUTFIT[2]), "roupa escura ficou: " .. types(z))
-        assert(z.hv.name == nil)
+        assert(hasItem(z, look.item) and hasItem(z, OUTFIT[1]), "Force não deve ser clean: " .. types(z))
+        assert(not hasItem(z, PROOF[1]), "prova com LookForce só: " .. types(z))
+        NOM_ScreenFxRules.setLookClean(true)
+        NOM_VariantLook.refreshClean()
+        assert(hasItem(z, PROOF[1]) and hasItem(z, PROOF[2]), "sem prova: " .. types(z))
+        assert(not hasItem(z, OUTFIT[1]), "roupa escura ficou: " .. types(z))
+        NOM_ScreenFxRules.setLookClean(false)
+        NOM_VariantLook.refreshClean()
+        assert(hasItem(z, OUTFIT[1]) and not hasItem(z, PROOF[1]), "não saiu do clean: " .. types(z))
         fogOff()
         G.converge()
-        assert(hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), "não devolveu outfit: " .. types(z))
-        assert(not hasItem(z, PROOF[1]) and not hasItem(z, look.item), "prova/peça ficaram: " .. types(z))
+        NOM_PanelParams = nil
         NOM_ScreenFxRules.setLookClean(false)
     end,
 

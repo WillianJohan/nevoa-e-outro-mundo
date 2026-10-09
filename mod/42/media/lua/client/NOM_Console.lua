@@ -98,23 +98,19 @@ function NOM.lookInspect()
     return s
 end
 
--- Sprint 0060c/d: isola look (flag própria) — ScreenFx/shader off + prova camisa/calça.
--- on=false desliga o isolamento (LookForce do painel continua).
+-- Sprint 0060d/e: isolamento debug — SÓ a flag lookClean (não mexer em LookForce).
+-- Sem args: liga/desliga. on=false desliga. Prova Sport+White só com a flag ligada.
 function NOM.lookClean(on)
     require "NOM_PanelParams"
     require "NOM_ScreenFxRules"
-    if on == false then
-        NOM_ScreenFxRules.setLookClean(false)
-    else
-        NOM_ScreenFxRules.setLookClean(true)
-        if NOM_PanelParams.lookForce() == "" then
-            NOM_PanelParams.set("LookForce", "misaligned")
-        end
-    end
+    require "NOM_VariantLook"
+    if on == nil then on = not NOM_ScreenFxRules.lookClean() end
+    NOM_ScreenFxRules.setLookClean(on == true)
+    if NOM_VariantLook.refreshClean then NOM_VariantLook.refreshClean() end
     local lf = NOM_PanelParams.lookForce()
     if lf == "" then lf = "auto" end
-    local s = string.format("LookForce=%s screenFxClean=%s (Tshirt_Sport+Trousers_White)",
-        tostring(lf), tostring(NOM_ScreenFxRules.lookClean()))
+    local s = string.format("clean=%s LookForce=%s (prova só se clean)",
+        tostring(NOM_ScreenFxRules.lookClean()), tostring(lf))
     NOM_DebugLog.say("[NOM] lookClean " .. s)
     return s
 end
@@ -482,6 +478,16 @@ function NOM.param(key, value)
         return v
     end
     local v = NOM_PanelParams.set(key, value)
+    -- 0060e: mudar LookForce sai do isolamento (Look limpo ≠ Force)
+    if key == "LookForce" then
+        require "NOM_ScreenFxRules"
+        if NOM_ScreenFxRules.lookClean() then
+            NOM_ScreenFxRules.setLookClean(false)
+            require "NOM_VariantLook"
+            if NOM_VariantLook.refreshClean then NOM_VariantLook.refreshClean() end
+            NOM_DebugLog.say("[NOM] lookClean off (LookForce mudou)")
+        end
+    end
     syncPanelToSystems(sectionOfParam(key))
     NOM_DebugLog.say("[NOM] debug param " .. tostring(key) .. " = " .. NOM_PanelParams.format(key, v) ..
         (NOM_PanelParams.isLive(key) and " (live)" or ""))
@@ -569,7 +575,7 @@ NOM.HELP = {
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
-    { "NOM.lookClean()", "isola look: LookForce + zera ScreenFx/shader glitch (0060c)" },
+    { "NOM.lookClean()", "liga/desliga isolamento (FX off + Sport/White); não muda LookForce" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
