@@ -23,7 +23,8 @@
 1. **`shared/NOM_BlackPressureRules.lua`** (puro): `level(raw)`, `profile(level)`, `current()` via `NOM_Config.get("BlackFogPressure")`. Perfis com piscar, hold, caça, caça-no-piscar, bias de velocidade, poste.
 2. **Consumidores** leem o perfil atual (não constantes mortas):
    - `NOM_LightRules.flicker` / `holdMs` / intervalo de check;
-   - `NOM_TicaoLight` (hold, flicker check, **caça no piscar** via `NOM_Night.call`);
+   - `NOM_TicaoLight` (hold, flicker check, **caça no piscar** via `NOM_Night.call` se o módulo
+     já carregou; senão a mesma conta + `addSound` — evita `require` do Night puxar NightStats nos testes);
    - `NOM_Night.ticaoHunt` (intervalo e alcance);
    - `NOM_TicaoRules.speed` (bias);
    - `NOM_LampFlicker` + `NOM_FlickerRules.lamp` **só na preta** (chance/intervalo/escuro).
@@ -43,3 +44,17 @@
 - Leve ainda jogável; Pesadelo aperta mais.
 - Preta continua só Tição; sem mecânica de horda/agitação da vermelha.
 - Playtest do Johan decide se falta “reaquecer” ou bateria.
+
+## Rollback (números 0038/0045)
+
+| Constante | Antes | Padrão 0051 |
+|-----------|-------|-------------|
+| HOLD_MS | 500 | 280 |
+| FLICKER_CHECK_MS | 10000 | 7000 |
+| FLICKER_CHANCE | 25 | 40 |
+| FLICKER_MIN/MAX | 700–1600 | 900–2000 |
+| HUNT_MINUTES | 20 | 12 |
+| HUNT_REACH | 40 | 40 |
+| LAMP_CHECK/CHANCE (preta) | 2000 / 30 | 1500 / 40 |
+
+Leve (1) afrouxa postes vs a 0045 de propósito (`lampCheckMs=2500`, `lampChance=25`) pra o preset “Leve” ser jogável.

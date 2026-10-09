@@ -416,7 +416,7 @@ function W.new(opts)
     addSound = function(src, x, y, z, radius, volume)
         G.worldSounds[#G.worldSounds + 1] = { src = src, x = x, y = y, z = z, radius = radius, volume = volume }
     end
-    -- Lore do zumbi (NOM_NightStats via NOM_Night, puxado pela caça no piscar da 0051).
+    -- Lore do zumbi (NOM_NightStats quando NOM_Night carrega com a caça no piscar da 0051).
     G.lore = { speed = 2, sight = 2, hearing = 2 }
     getSandboxOptions = function()
         return {

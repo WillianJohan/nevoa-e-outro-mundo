@@ -3,7 +3,7 @@
 local W = dofile("tests/fog_world.lua")
 
 local MODS = { "NOM_TicaoLight", "NOM_TicaoFreeze", "NOM_LightRules", "NOM_FlickerRules", "NOM_World", "NOM_Players", "NOM_FogState",
-    "NOM_SirenFreeze", "NOM_Carpideira", "NOM_VariantAI", "NOM_NightStats" }
+    "NOM_SirenFreeze", "NOM_Carpideira", "NOM_VariantAI", "NOM_NightStats", "NOM_BlackPressureRules" }
 
 -- rand 99: nenhuma lanterna pisca (ZombRand(100) = 99), salvo o teste do flicker
 local function setup(opts)
