@@ -1,12 +1,14 @@
 # Créditos
 
-**Nada de terceiros.** Todo arquivo de som, imagem e textura do mod é original, gerado por
-script deste repositório, menos a **arte de lançamento, que é do Johan** (pôster, preview, ícone
-e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)) e só é redimensionada e
-tingida por script; o resto do que o mod mostra é conteúdo vanilla do Project
-Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum
-código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
-[MIT](LICENSE), a mesma do mod.
+**Nada de terceiros (com duas exceções do autor).** Todo arquivo de som, imagem e textura do
+mod é original, gerado por script deste repositório, menos: (1) a **arte de lançamento, que é
+do Johan** (pôster, preview, ícone e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md))
+e só é redimensionada e tingida por script; (2) os **gritos Corredor / Carpideira / Ambient da
+sprint 0048**, gerados pelo Johan com ElevenLabs Sound Effects e convertidos por
+[`scripts/import_elevenlabs_screams.py`](scripts/import_elevenlabs_screams.py) (MP3 fonte fora do
+repo). O resto do que o mod mostra é conteúdo vanilla do Project Zomboid **referenciado por
+nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum código, som ou imagem de outro mod
+foi usado. Licença de tudo que está aqui: [MIT](LICENSE), a mesma do mod.
 
 `tests/test_credits.lua` falha se aparecer no mod qualquer arquivo que não seja
 código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
@@ -14,17 +16,22 @@ código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
 
 ## Sons
 
-Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/gen_sounds.py)
-(numpy + ffmpeg, semente fixa). Nenhuma amostra de terceiros, do jogo ou de outro mod. A
-síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Johan aprovou); o
-`gen_sounds.py` as encurta sem mudar o tom e põe a distância e o eco de cidade.
+A maior parte é síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/gen_sounds.py)
+(numpy + ffmpeg, semente fixa). Nenhuma amostra do jogo ou de outro mod. A síntese das sirenes
+está em `scripts/sirenes/` (os protótipos nossos que o Johan aprovou); o `gen_sounds.py` as
+encurta sem mudar o tom e põe a distância e o eco de cidade.
+
+**Gritos da sprint 0048 (Johan + ElevenLabs Sound Effects):** o autor gerou os SFX; o script
+[`scripts/import_elevenlabs_screams.py`](scripts/import_elevenlabs_screams.py) corta silêncio,
+normaliza e grava ogg mono 44,1 kHz. Os MP3 de origem **não** entram no repo. O
+`gen_sounds.py` não sobrescreve esses slots.
 
 | Arquivo | Som | Uso |
 |---|---|---|
 | `mod/42/media/sound/NOM_EstaladorClick.ogg` | burst clicker rítmico (~12 cliques secos em ~1,4 s; último mais forte) | estalo/sonar do Estalador (sprint 0048) |
-| `mod/42/media/sound/NOM_CorredorScream.ogg` | grito curto humano-morto: pulso glotal + formantes, raspagem e eco de rua (~1,7 s) | grito do Corredor (sprint 0048) |
-| `mod/42/media/sound/NOM_CorredorScream2.ogg` | variante do grito do Corredor | grito do Corredor |
-| `mod/42/media/sound/NOM_CorredorScream3.ogg` | variante do grito do Corredor | grito do Corredor |
+| `mod/42/media/sound/NOM_CorredorScream.ogg` | ElevenLabs (Johan): sudden sharp scream (~1,7 s) | grito do Corredor (sprint 0048) |
+| `mod/42/media/sound/NOM_CorredorScream2.ogg` | ElevenLabs (Johan): fast-moving infected (surto inicial) | grito do Corredor |
+| `mod/42/media/sound/NOM_CorredorScream3.ogg` | ElevenLabs (Johan): feral infected | grito do Corredor |
 | `mod/42/media/sound/NOM_FogDrone.ogg` | drone grave em loop (senos graves + ronco filtrado) | ambiente da névoa |
 | `mod/42/media/sound/NOM_FogMetal.ogg` | pancada metálica distante (parciais inarmônicos + ecos) | ruídos metálicos da névoa |
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
@@ -60,13 +67,13 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_SirenBlack12.ogg` | "o gerador" (11,8 s): sirene ligada num gerador a diesel que tosse três vezes, dá tiros no escapamento e afoga; sobram os tiques do metal esfriando | sirene da névoa preta |
 | `mod/42/media/sound/NOM_SirenBlack13.ogg` | "uma por uma" (11,8 s): três sirenes graves de bairros diferentes; os transformadores estouram de fora pra dentro e o zumbido da rede some | sirene da névoa preta |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
-| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | lamento feminino de pânico (~3,5 s): glotal + formantes, falha de garganta, aspiração (vibe Witch) | grito da Carpideira acordada (sprint 0048) |
-| `mod/42/media/sound/NOM_CarpideiraScream2.ogg` | variante do grito da Carpideira | grito da Carpideira |
-| `mod/42/media/sound/NOM_CarpideiraScream3.ogg` | variante do grito da Carpideira | grito da Carpideira |
-| `mod/42/media/sound/NOM_AmbientScream1.ogg` | grito humano distante + eco de cidade | gritos ambiente da névoa (sprint 0048) |
-| `mod/42/media/sound/NOM_AmbientScream2.ogg` | sofrimento/aflição distante (gemido que sobe e quebra) | gritos ambiente |
-| `mod/42/media/sound/NOM_AmbientScream3.ogg` | choro de desespero distante (soluços em série) | gritos ambiente |
-| `mod/42/media/sound/NOM_AmbientScream4.ogg` | grito de desespero distante (crescendo + queda) | gritos ambiente |
+| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | ElevenLabs (Johan): mysterious female scream (~4 s) | grito da Carpideira acordada (sprint 0048) |
+| `mod/42/media/sound/NOM_CarpideiraScream2.ogg` | ElevenLabs (Johan): distant woman scream | grito da Carpideira |
+| `mod/42/media/sound/NOM_CarpideiraScream3.ogg` | ElevenLabs (Johan): mysterious female (trecho suave) | grito da Carpideira |
+| `mod/42/media/sound/NOM_AmbientScream1.ogg` | ElevenLabs (Johan): distant man scream | gritos ambiente da névoa (sprint 0048) |
+| `mod/42/media/sound/NOM_AmbientScream2.ogg` | ElevenLabs (Johan): exhausted adult suffering | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream3.ogg` | ElevenLabs (Johan): faint distant cry | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream4.ogg` | ElevenLabs (Johan): several distant screams | gritos ambiente |
 | `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
 | `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
 | `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |
@@ -77,7 +84,9 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_DevCar.ogg` | rádio de carro ligando sozinho, ouvido de fora (8 s): relé, busca de estação, contagem de cinco sílabas, abafado pela lataria | rádio de carro na névoa |
 | `mod/42/media/sound/NOM_DevBurst.ogg` | estouro de estática de aparelho (3 s): chiado na banda AM que cresce, crepitação e rajadas de arco, corte seco | presságio da sirene e aparelho perto do Sem-rosto |
 
-Pra regerar: `python3 scripts/gen_sounds.py` (ou só alguns: `python3 scripts/gen_sounds.py NOM_DevTv`).
+Pra regerar a síntese: `python3 scripts/gen_sounds.py` (ou só alguns:
+`python3 scripts/gen_sounds.py NOM_DevTv`). Pra regerar os gritos ElevenLabs (com a pasta de
+MP3 do Johan): `python3 scripts/import_elevenlabs_screams.py /caminho/elevenlabs-refs`.
 A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
 são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
 

@@ -4,6 +4,11 @@
 Saída: mod/42/media/sound/*.ogg (mono, 44.1 kHz), via ffmpeg (libvorbis).
 Semente fixa: rodar de novo dá o mesmo áudio. Uso: python3 scripts/gen_sounds.py, ou com
 nomes pra gerar só alguns (python3 scripts/gen_sounds.py NOM_DevTv NOM_DevBurst).
+
+Exceção (sprint 0048): gritos Corredor / Carpideira / Ambient vêm dos MP3 ElevenLabs
+gerados pelo Johan — converter com `scripts/import_elevenlabs_screams.py` (refs fora do
+repo). Este script não sobrescreve esses slots; as funções `scream`/`wail`/`ambient_scream`
+ficam como referência / fallback histórico.
 """
 import os
 import subprocess
@@ -955,40 +960,42 @@ def sirene_oficial(fn, seed):
     return y * np.clip((d - tsec(len(y))) / 0.6, 0, 1), crest
 
 
+# Gritos oficiais da 0048: Johan + ElevenLabs SFX → import_elevenlabs_screams.py
+ELEVENLABS_SCREAMS = (
+    "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3",
+    "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3",
+    "NOM_AmbientScream1", "NOM_AmbientScream2", "NOM_AmbientScream3", "NOM_AmbientScream4",
+)
+
+
 def main():
     only = set(sys.argv[1:])
 
     def want(*names):
         return not only or any(name in only for name in names)
 
-    if want("NOM_EstaladorClick", "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3"):
-        rng = np.random.default_rng(SEED)  # os dois dividem o rng: um sem o outro mudaria o segundo
-        clk, scr = click(rng), scream(rng)
-        if want("NOM_EstaladorClick"):
-            write("NOM_EstaladorClick", clk)
-        if want("NOM_CorredorScream"):
-            write("NOM_CorredorScream", scr)
-        if want("NOM_CorredorScream2"):
-            write("NOM_CorredorScream2", scream(np.random.default_rng(SEED + 41)))
-        if want("NOM_CorredorScream3"):
-            write("NOM_CorredorScream3", scream(np.random.default_rng(SEED + 42)))
+    if only & set(ELEVENLABS_SCREAMS):
+        print(
+            "slots ElevenLabs (Johan): use "
+            "python3 scripts/import_elevenlabs_screams.py <pasta-refs> "
+            + " ".join(sorted(only & set(ELEVENLABS_SCREAMS))),
+            file=sys.stderr,
+        )
+
+    # click() era o primeiro consumidor do rng compartilhado com scream(); sozinho com SEED
+    # continua byte-igual. CorredorScream* não regenera por síntese (ELEVENLABS_SCREAMS).
+    if want("NOM_EstaladorClick"):
+        write("NOM_EstaladorClick", click(np.random.default_rng(SEED)))
     # sprint 0005 em diante: um gerador e uma semente por som
     singles = [
         ("NOM_FogDrone", drone, 1), ("NOM_FogMetal", metal, 2), ("NOM_RadioStatic", radio_static, 3),
         ("NOM_CarpideiraSob", sob, 6),        # sprint 0011: Carpideira (4 e 5 eram as sirenes antigas)
-        ("NOM_CarpideiraScream", wail, 7),
-        ("NOM_CarpideiraScream2", wail, 43),  # sprint 0048: variantes
-        ("NOM_CarpideiraScream3", wail, 44),
+        # CarpideiraScream* : ElevenLabs (import_elevenlabs_screams.py), não wail()
     ]
     for name, fn, k in singles:
         if want(name):
             write(name, fn(np.random.default_rng(SEED + k)))
-    # sprint 0048: gritos ambiente (só cliente; banco de 4)
-    # 1 grito distante · 2 sofrimento · 3 choro · 4 desespero
-    for i in range(1, 5):
-        name = f"NOM_AmbientScream{i}"
-        if want(name):
-            write(name, ambient_scream(np.random.default_rng(SEED + 50 + i), style=i - 1))
+    # AmbientScream* : ElevenLabs — não regenerar com ambient_scream()
     os.makedirs(OUT, exist_ok=True)
     for name, fn, crest in DEVICES:  # sprint 0034: aparelhos do Outro Mundo
         if want(name):

@@ -22,8 +22,8 @@ choro de alma (§3.9.1), transform 100%, aperto da preta. **Não reabrir fog vis
 
 ## O que entra
 
-- Regenerar `NOM_EstaladorClick`, `NOM_CorredorScream`, `NOM_CarpideiraScream` (+ variantes) em
-  `gen_sounds.py`; banco `NOM_AmbientScream1`…`N`.
+- `NOM_EstaladorClick` por `gen_sounds.py`; gritos Corredor / Carpideira / Ambient a partir dos
+  MP3 ElevenLabs do Johan (`scripts/import_elevenlabs_screams.py`); banco `NOM_AmbientScream1`…`4`.
 - Regras puras: batidas do burst / ripples (`NOM_SonarRules`); agenda ambiente por cor
   (`NOM_AmbientScreamRules`).
 - Cliente: ripples sincronizados aos cliques; agenda de gritos ambiente (`NOM_AmbientScream`).
