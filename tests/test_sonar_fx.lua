@@ -39,7 +39,11 @@ local function setup(opts)
     G.java, G.draws = 0, {}
     NOM_ScreenFx = { extra = {} }
     package.loaded.NOM_ScreenFx = NOM_ScreenFx
-    NOM_Sonar = { onRing = function(fn) G.listener = fn end }
+    G.clicks = {}
+    NOM_Sonar = {
+        onRing = function(fn) G.listener = fn end,
+        playClick = function(x, y, z) G.clicks[#G.clicks + 1] = { x = x, y = y, z = z } end,
+    }
     package.loaded.NOM_Sonar = NOM_Sonar
     require "NOM_FogState"
     G.menu = false
@@ -59,7 +63,7 @@ local function setup(opts)
     G.p = G.player({ x = 100, y = 100 })
     G.pc = calls({ G.p })
     G.el = fakeElement(G)
-    function G.ring(x, y, z) G.listener(x, y, z) end
+    function G.ring(x, y, z, burst) G.listener(x, y, z, burst) end
     function G.frame(ms)
         G.now = G.now + (ms or 16)
         G.draws = {}
@@ -214,6 +218,19 @@ return {
         assert(#NOM_SonarFx.rings == #R.BEAT_MS)
         for i, g in ipairs(NOM_SonarFx.rings) do
             assert(g.born == G.now + R.BEAT_MS[i], "beat " .. i)
+        end
+    end,
+
+    -- sprint 0056: variação B (e C) agenda ripples nos gaps próprios
+    sonar_fx_schedules_pattern_b = function()
+        local G = setup()
+        rules()
+        G.ring(100, 100, 0, 2)
+        local beats = R.burstBeats(2)
+        assert(#NOM_SonarFx.rings == #beats)
+        for i, g in ipairs(NOM_SonarFx.rings) do
+            assert(g.born == G.now + beats[i], "B beat " .. i)
+            assert((g.click == true) == (beats[i] > 0), "tac atrasado só após 0")
         end
     end,
 }

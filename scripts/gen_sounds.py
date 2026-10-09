@@ -45,31 +45,45 @@ def resonator(x, freq, q):
     return y * (1 - r)
 
 
-# Espelho de NOM_SonarRules.BEAT_MS (sprint 0048). Teste: sonar_beats_match_gen_sounds.
-CLICK_BEATS_MS = [0, 90, 165, 250, 320, 410, 490, 600, 720, 880, 1100, 1400]
+# Espelho de NOM_SonarRules (sprint 0056). Teste: sonar_beats_match_gen_sounds.
+# Onsets por variação; o OGG NOM_EstaladorClick é um tac curto — o jogo agenda um por batida.
+CLICK_BURSTS = {
+    "A": [0, 90, 165, 250, 320, 410, 490, 600, 720, 880, 1100, 1400],
+    "B": [0, 500, 1000, 1800],
+    "C": [0, 1000, 2000, 2065, 4065, 7065],
+}
+CLICK_BEATS_MS = CLICK_BURSTS["A"]  # legado 0048
 
 
-def click(rng):
-    """Estalador (0048): burst clicker rítmico — cliques secos de língua/mandíbula em série
-    rápida com micro-variação; último mais forte. Não latido nem garganta animal."""
-    dur = CLICK_BEATS_MS[-1] / 1000.0 + 0.08
+def click_tac(rng):
+    """Um tac seco de língua/mandíbula (~18 ms). Sem grave contínuo (não latido)."""
+    n = int(rng.uniform(0.014, 0.022) * RATE)
+    t = np.arange(n) / RATE
+    burst = rng.standard_normal(n) * np.exp(-t * rng.uniform(220, 320))
+    f_hi = 2100 + rng.uniform(-180, 220)
+    body = resonator(burst, f_hi, 10) + 0.35 * resonator(burst, 850 + rng.uniform(-80, 80), 5)
+    return highpass(body, 400, 1)
+
+
+def click_burst(rng, beats_ms):
+    """Série de tacs nos onsets (referência / preview); o jogo usa click_tac agendado."""
+    dur = beats_ms[-1] / 1000.0 + 0.08
     out = np.zeros(int(dur * RATE) + 1)
-    n_beats = len(CLICK_BEATS_MS)
-    for bi, start_ms in enumerate(CLICK_BEATS_MS):
-        n = int(rng.uniform(0.014, 0.022) * RATE)
-        t = np.arange(n) / RATE
-        burst = rng.standard_normal(n) * np.exp(-t * rng.uniform(220, 320))
-        f_hi = 2100 + rng.uniform(-180, 220)
-        body = resonator(burst, f_hi, 10) + 0.35 * resonator(burst, 850 + rng.uniform(-80, 80), 5)
-        # quase sem grave contínuo: evita ler como rosnado de animal
-        body = highpass(body, 400, 1)
+    n_beats = len(beats_ms)
+    for bi, start_ms in enumerate(beats_ms):
+        body = click_tac(rng)
         gain = 0.55 + 0.35 * (bi / max(1, n_beats - 1))
         if bi == n_beats - 1:
             gain = 1.0
         i = int(start_ms / 1000.0 * RATE)
-        end = min(len(out), i + n)
+        end = min(len(out), i + len(body))
         out[i:end] += gain * body[: end - i]
     return out
+
+
+def click(rng):
+    """Estalador (0056): tac curto único. Ritmos A/B/C vêm da agenda Lua (BURST_GAPS)."""
+    return click_tac(rng)
 
 
 def glottal_source(f0, oq=0.55, tilt=1.35, rough=0.0, rng=None, grit=0.18):
