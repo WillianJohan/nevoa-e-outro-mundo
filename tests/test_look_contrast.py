@@ -156,6 +156,34 @@ def test_contrast_catches_cow_and_lattice():
     assert any("faixas" in e for e in errs), "grade em diagonal passou como atadura"
 
 
+def test_manto_not_wrap_pelicula():
+    # sprint 0054: manto NÃO pode ser grade 8×8 nem costura periódica (y%32) — lia como
+    # película/wrap no playtest (before-wrap-storefront). Capuz escuro orgânico é ok.
+    path = os.path.join(TEX, "NOM/NOM_CarpideiraManto.png")
+    lum, _ = luminance(Image.open(path))
+
+    def grid8_corr(a):
+        tile = a.reshape(8, 32, 8, 32).mean(axis=(1, 3))
+        up = np.kron(tile, np.ones((32, 32), np.float32))
+        return float(np.corrcoef(a.ravel(), up.ravel())[0, 1])
+
+    corr = grid8_corr(lum)
+    assert corr < 0.85, "manto parece grade 8×8 (wrap): corr=%.3f" % corr
+    # costura periódica a cada 32 px (padrão da 0052): linhas seam bem mais escuras
+    rows = lum.mean(axis=1)
+    seam = float(rows[(np.arange(256) % 32) < 5].mean())
+    other = float(rows[(np.arange(256) % 32) >= 5].mean())
+    assert not (seam < other - 0.12), "manto tem faixa periódica (película): seam=%.3f other=%.3f" % (seam, other)
+    # detector: grade 8×8 pura tem corr alta; costura periódica baixa o seam vs other
+    rng = np.random.default_rng(2)
+    fake_grid = np.kron((rng.random((8, 8)) > 0.5).astype(np.float32), np.ones((32, 32), np.float32))
+    assert grid8_corr(fake_grid) >= 0.85, "detector de wrap não pega grade 8×8"
+    y = np.arange(256)
+    fake_seam = np.where((y % 32)[:, None] < 5, 0.05, 0.85).astype(np.float32) * np.ones((256, 256), np.float32)
+    s_rows = fake_seam.mean(axis=1)
+    assert float(s_rows[(y % 32) < 5].mean()) < float(s_rows[(y % 32) >= 5].mean()) - 0.12
+
+
 def test_textures_contrast():
     bad = []
     for name in sorted(LIMITS) + sorted(PALE):

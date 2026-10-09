@@ -9,14 +9,14 @@ chiado, fio), então a peça inteira vira o material. Contraste cheio e formas g
 docs/gdd/art-direction.md; prévia em scripts/preview_textures.py.
 
 Saída (mod/42/media/textures/):
-  Body/NOM_Estalador.png         256  porcelana quase branca, rachaduras grossas pretas
-  Body/NOM_Corredor.png          256  cinza-cinza clara, veias grossas roxo-pretas
-  Body/NOM_Carpideira.png        256  muito pálida, escorridos de fuligem, fuligem nos olhos
+  Body/NOM_Estalador.png         256  The Pale: cera pálida, rachadura esparsa, órbitas fracas (0054)
+  Body/NOM_Corredor.png          256  The Misaligned: pele clara, veias/sombra assimétricas (0054)
+  Body/NOM_Carpideira.png        256  Forgotten Patient: pele clínica fria, órbitas suaves (0054)
   NOM/NOM_EstaladorVenda.png     128  atadura em faixas branco-sujas, dois arames farpados ferrugem, sangue seco (óculos de esqui)
   NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos (máscara cirúrgica)
-  NOM/NOM_SemRostoEstatica.png   128  chiado de TV em blocos preto/branco e faixas rasgadas (balaclava inteira)
+  NOM/NOM_SemRostoEstatica.png   128  Wrong Person: vazios grandes + chiado residual (0054; sem wrap)
   NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
-  NOM/NOM_CarpideiraManto.png    256  manto penitente escuro rasgado, fuligem (camada corpo, sprint 0052)
+  NOM/NOM_CarpideiraManto.png    256  Distorted Silhouette: hospital desbotado orgânico, sem blocos/faixas (0054)
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
@@ -47,7 +47,7 @@ import os
 import numpy as np
 from PIL import Image
 
-SEED = 1203
+SEED = 1203  # texturas legadas byte-iguais; só pele/manto/estática mudam (0054)
 OUT = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textures")
 
 
@@ -84,6 +84,13 @@ def save(rgb, path, alpha=None):
         img = Image.fromarray(np.dstack([rgb, a]), "RGBA")
     full = os.path.join(OUT, path)
     os.makedirs(os.path.dirname(full), exist_ok=True)
+    # Não regrava se os pixels já batem: o optimize do Pillow muda os bytes do PNG
+    # sem mudar a imagem e quebrava look_assets_deterministic / screenfx_assets_deterministic.
+    if os.path.isfile(full):
+        old = Image.open(full).convert(img.mode)
+        if old.size == img.size and np.array_equal(np.asarray(old), np.asarray(img)):
+            print("ok", path, "(igual)")
+            return
     img.save(full, optimize=True)
     print("ok", path)
 
@@ -93,6 +100,8 @@ def save(rgb, path, alpha=None):
 # quase branco, formas de 1/8 da largura pra cima, poucas cores, brilho puxado pra cima.
 # tests/test_look_contrast.py mede cada textura.
 INK = (14, 12, 12)          # o preto de todo desenho
+WAX = (248, 244, 236)       # pele de cera (The Pale)
+CLINIC = (236, 238, 232)    # hospital frio (Forgotten Patient)
 
 
 def mix(rgb, ink, k):
@@ -105,44 +114,63 @@ def blocks(rng, rows, cols, size):
     return np.kron(rng.random((rows, cols)).astype(np.float32), np.ones((size // rows, size // cols), np.float32))
 
 
+def face_hollows(size, left=(0.46, 0.125), right=(0.545, 0.12), rx=0.028, ry=0.038):
+    """Órbitas na UV da pele de zumbi (olhos ~47%/53%, y~12%). Assimetria de propósito."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    k = np.zeros((size, size), np.float32)
+    for (ex, ey), srx, sry in ((left, rx, ry), (right, rx * 0.85, ry * 1.15)):
+        eye = ((xx - ex) / srx) ** 2 + ((yy - ey) / sry) ** 2
+        k = np.maximum(k, np.clip(1.15 - eye, 0, 1))
+    return k
+
+
 def estalador_skin(rng, size=256):
-    # porcelana quase branca, rachaduras GROSSAS pretas em placas grandes; o Estalador
-    # lê como um boneco trincado
-    rgb = color((246, 242, 234), 0.97 + 0.03 * fbm(rng, size))
-    c = cracks(rng, size, 22)                             # poucas placas, ~50 px cada
-    k = np.clip((5.0 - c) / 1.5, 0, 1)                    # rachadura de ~8 px, borda dura
-    fine = cracks(rng, size, 60)
-    k = np.maximum(k, np.clip((2.2 - fine) / 1.0, 0, 1) * (noise(rng, size, 5) > 0.55))
+    # The Pale (0054): cera quase branca, rachadura esparsa, órbitas fracas — boneco errado,
+    # não Jeff. Contraste 0014: preto × branco, formas grandes; sem sangue.
+    rgb = color(WAX, 0.98 + 0.02 * fbm(rng, size))
+    c = cracks(rng, size, 14)
+    k = np.clip((5.5 - c) / 1.6, 0, 1)
+    fine = cracks(rng, size, 36)
+    k = np.maximum(k, np.clip((2.0 - fine) / 0.95, 0, 1) * (noise(rng, size, 4) > 0.62))
+    # manchas de cera seca (quase pretas) irregulares — não grade
+    mott = (fbm(rng, size, (3, 5), (0.7, 0.3)) > 0.78).astype(np.float32)
+    k = np.maximum(k, mott * 0.9)
+    k = np.maximum(k, face_hollows(size, left=(0.455, 0.12), right=(0.55, 0.135)) * 0.95)
     return mix(rgb, INK, k)
 
 
 def corredor_skin(rng, size=256):
-    # cinza de cinza claro (brilho alto contra a névoa), veias grossas quase pretas
-    rgb = color((200, 197, 190), 0.96 + 0.04 * fbm(rng, size))
-    k = np.zeros((size, size), np.float32)
-    for cells, width in ((4, 0.06), (7, 0.045), (11, 0.03)):
+    # The Misaligned (0054): pele clara + veias grossas puxadas pra UM lado; sombra facial
+    # deslocada. Bordas duras (k 0/1) pra mid baixo — 0014.
+    rgb = color((230, 224, 214), 0.97 + 0.03 * fbm(rng, size))
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    side = (xx < 0.46) & (fbm(rng, size, (2, 4), (0.75, 0.25)) > 0.50)
+    k = side.astype(np.float32)
+    for cells, width in ((3, 0.07), (5, 0.05), (8, 0.035)):
         v = fbm(rng, size, (cells, cells * 2), (0.8, 0.2))
-        k = np.maximum(k, np.clip((width - np.abs(v - 0.5)) / 0.012, 0, 1))
-    return mix(rgb, (24, 10, 26), k)                     # roxo-preto
+        # veia binária (sem rampa cinza)
+        vein = (np.abs(v - 0.5) < width) & (xx > 0.35)
+        k = np.maximum(k, vein.astype(np.float32))
+    hollow = face_hollows(size, left=(0.44, 0.13), right=(0.56, 0.11), rx=0.032, ry=0.042)
+    k = np.maximum(k, (hollow > 0.35).astype(np.float32))
+    return mix(rgb, INK, k)
 
 
 def carpideira_skin(rng, size=256):
-    # muito pálida; escorridos grossos de fuligem de cima pra baixo e o rosto sujo onde
-    # ela enxugou as lágrimas
-    rgb = color((242, 242, 246), 0.97 + 0.03 * fbm(rng, size))
-    cols = blocks(rng, 1, 32, size)[0]                    # colunas de 8 px
-    streak = (cols > 0.8).astype(np.float32)
-    y = np.linspace(0, 1, size, dtype=np.float32)[:, None]
-    stop = 0.2 + 0.5 * blocks(rng, 1, 32, size)            # cada escorrido acaba numa altura
-    k = streak[None, :] * (y < stop)
-    k = np.maximum(k, (fbm(rng, size, (3, 6), (0.7, 0.3)) > 0.8).astype(np.float32))   # onde esfregou
-    # fuligem debaixo dos olhos: o rosto da pele de zumbi vanilla fica no alto e no meio
-    # (M e F iguais, visto pelo layout: rosto em x 44–56%, olhos em x ~47% e ~53%,
-    # y ~12%). Uma mancha por olho que escorre até ~24%.
+    # Forgotten Patient (0054): pele clínica fria; órbitas profundas (não Jeff sangrento);
+    # manchas grandes de deterioração. Sem sangue na boca.
+    rgb = color(CLINIC, 0.98 + 0.02 * fbm(rng, size))
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    for ex in (0.47, 0.53):
-        eye = (np.abs(xx - ex) < 0.022) & (yy > 0.11) & (yy < 0.17 + 0.07 * (np.abs(xx - ex) < 0.008))
-        k = np.maximum(k, eye.astype(np.float32))
+    k = face_hollows(size, left=(0.47, 0.122), right=(0.535, 0.128), rx=0.032, ry=0.048)
+    # escorridos mais largos (lêem de longe)
+    for ex, w, stop in ((0.47, 0.02, 0.36), (0.535, 0.018, 0.42), (0.50, 0.014, 0.28)):
+        drip = (np.abs(xx - ex) < w) & (yy > 0.11) & (yy < stop)
+        k = np.maximum(k, drip.astype(np.float32))
+    blot = (fbm(rng, size, (2, 4), (0.7, 0.3)) > 0.70).astype(np.float32)
+    k = np.maximum(k, blot)
+    # placa escura no ombro/peito (UV corpo) — deterioração clínica
+    plaque = ((xx - 0.72) / 0.18) ** 2 + ((yy - 0.55) / 0.22) ** 2 < 1.0
+    k = np.maximum(k, plaque.astype(np.float32) * 0.95)
     return mix(rgb, INK, k)
 
 
@@ -179,22 +207,25 @@ def corredor_boca(rng, size=128):
 
 
 def semrosto_estatica(rng, size=128):
-    # TV fora do ar visto de longe: blocos grandes preto/branco, faixas de varredura e a
-    # imagem rasgada na horizontal. Quase nada de cinza. Vale em qualquer ponto (a
-    # balaclava vanilla é um tricô uniforme: o layout não mostra onde fica o rosto).
-    b = (blocks(rng, 16, 8, size) > 0.45).astype(np.float32)   # 16×8 px, mais branco
-    rows = size // 8
-    shift = (rng.integers(-3, 4, rows) * 8)               # cada faixa de 8 px escorrega
+    # Wrong Person (0054): head shell — grandes vazios claros (rosto ausente) + blocos
+    # pretos irregulares e pouco chiado residual. std≥0.40 / mid≈0 / far alto (0014).
+    # Sem película/listra e sem sal-e-pimenta fino.
+    b = np.ones((size, size), np.float32)                  # base branca “rosto vazio”
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    blot = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
+    b = np.where(blot < 0.48, 0.0, b)                      # ~metade preta orgânica
+    # “olho” deslocado: buraco escuro assimétrico (imitação falha)
+    eye = ((xx - 0.36) / 0.14) ** 2 + ((yy - 0.40) / 0.12) ** 2
+    b = np.where(eye < 1.0, 0.0, b)
+    # faixa preta larga (silhueta errada), não grade
+    band = (yy > 0.62) & (yy < 0.78) & (fbm(rng, size, (2, 3), (0.8, 0.2)) > 0.35)
+    b = np.where(band, 0.0, b)
+    # 1–2 faixas de varredura branca (chiado residual)
+    rows = size // 16
     for r in range(rows):
-        b[r * 8:(r + 1) * 8] = np.roll(b[r * 8:(r + 1) * 8], int(shift[r]), axis=1)
-    band = rng.random(rows)
-    for r in range(rows):
-        if band[r] > 0.82:
-            b[r * 8:r * 8 + 4] = 1.0                      # faixa de varredura branca
-        elif band[r] < 0.12:
-            b[r * 8:r * 8 + 3] = 0.0                      # faixa preta
-    v = 0.05 + 0.92 * b
-    return color((255, 255, 255), v)
+        if rng.random() > 0.85:
+            b[r * 16:r * 16 + 4] = 1.0
+    return color((255, 255, 255), b)
 
 
 def carpideira_cabelo(rng, size=128):
@@ -209,21 +240,25 @@ def carpideira_cabelo(rng, size=128):
 
 
 def carpideira_manto(rng, size=256):
-    # sprint 0052: manto penitente — metade preto cheio, metade bege rasgado em blocos
-    # grandes (contraste 0014: std alto, pouco cinza médio).
-    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    # blocos 8×8 (~32 px): preto ou bege — lê de longe como manto rasgado
-    tile = blocks(rng, 8, 8, size)
-    light = (tile > 0.5).astype(np.float32)
-    rgb = mix(color(INK, np.ones((size, size), np.float32)), (228, 218, 204), light)
-    # faixas horizontais escuras (costura / rasgo)
-    seam = ((y % 32) < 5).astype(np.float32)
-    rgb = mix(rgb, INK, seam)
-    # escorridos pretos
-    cols = (blocks(rng, 1, 32, size)[0] > 0.7).astype(np.float32)
-    yy = y / size
-    drip = cols[None, :] * (yy < 0.25 + 0.6 * blocks(rng, 1, 32, size))
-    return mix(rgb, INK, drip * 0.9)
+    # Distorted Silhouette / Forgotten Patient (0054): avental hospitalar desbotado —
+    # branco sujo × preto de luto em manchas orgânicas. Capuz escuro grande distorce a
+    # silhueta. SEM blocos 8×8 e SEM faixas horizontais (isso lia como película wrap).
+    tile = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
+    light = (tile > 0.46).astype(np.float32)
+    rgb = mix(color(INK, np.ones((size, size), np.float32)), (232, 228, 218), light)
+    # toque clínico: manchas verde-acinzentadas grandes (não cinza médio fino)
+    clinic = (fbm(rng, size, (2, 4), (0.7, 0.3)) > 0.72).astype(np.float32)
+    rgb = mix(rgb, (48, 56, 50), clinic * 0.55)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    hood = (np.hypot(xx - 0.5, yy - 0.14) < 0.40).astype(np.float32)
+    rgb = mix(rgb, INK, hood * 0.82)
+    # rasgos irregulares (Voronoi), não costura em faixa
+    c = cracks(rng, size, 18)
+    tear = np.clip((4.2 - c) / 1.4, 0, 1) * (noise(rng, size, 3) > 0.4)
+    rgb = mix(rgb, INK, tear)
+    # sujeira orgânica (sem sangue saturado)
+    stain = (fbm(rng, size, (4, 8), (0.65, 0.35)) > 0.74).astype(np.float32)
+    return mix(rgb, (28, 22, 20), stain * 0.7)
 
 
 # O Eco fica fora da regra das formas grandes: lê por ser muito mais claro que qualquer
@@ -546,7 +581,7 @@ def main():
     save(corredor_boca(rng(5)), "NOM/NOM_CorredorBoca.png")
     save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")
     save(carpideira_cabelo(rng(7)), "NOM/NOM_CarpideiraCabelo.png")
-    # manto penitente (sprint 0052): camada no corpo, opaca como a cinza do Eco
+    # manto hospitalar desbotado (0054; era penitente em blocos na 0052 — lia como wrap)
     save(carpideira_manto(rng(21)), "NOM/NOM_CarpideiraManto.png", alpha=np.ones((256, 256), np.float32))
     # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
