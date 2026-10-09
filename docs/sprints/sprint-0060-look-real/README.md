@@ -2,37 +2,33 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` (0060c: look limpo — pós-fail 0060b) |
+| Status | `em teste` (0060d: produto soft pós Look Clean OK) |
 | Branch | `feature/0060-look-real-ca41` |
 | PR | [#16](https://github.com/WillianJohan/nevoa-e-outro-mundo/pull/16) |
-| Origem | playtest fail; prints 03/04 ainda glitch (ScreenFx + silhueta) |
+| Origem | playtest fail → isolamento OK (`06-look-clean-OK`) → produto |
 
-## Root cause (0060)
+## Root cause
 
-Body PNGs da 0054 eram **P&B binário**. Strip ADR-012 + corpo nu = grade. Sync OK.
+Body P&B + strip + ScreenFx/shader (scanline/tear/aberração) + SemRostoEstatica na cara.
 
-## Fail playtest
+## O que foi confirmado
 
-- Pós-0060: `03-ainda-listras.png` — manequim P&B + ScreenFx.
-- Pós-0060b: `04-vermelho-glitch.png` — Scanlines/tear/aberração (shader) + silhuetas
-  sem roupa legível. Damp `0.12` **não** tocava o canal do `screen.frag`.
+- **Look Clean OK** (Johan): roupa vanilla legível, sem glitch.
+- Staging tip = #16; `lookClean` no console com `screenFxClean=true`.
 
-## O que mudou (0060 → 0060c)
+## 0060d — produto
 
-- **0060:** peles midtones + `NOM_*Roupa` + grain/lines baixos.
-- **0060b:** sem Body/`NOM_*Roupa`; KEEP corpo; STRIP_HEAD; damp ScreenFx (insuficiente).
-- **0060c (look limpo):** com `LookForce ≠ Auto`:
-  - overlay grain/lines/vinheta/flash/fogStatic = 0;
-  - canal shader blur/radius/desat/darkness/gradient = 0 (solta SearchMode);
-  - prova ItemVisual `Tshirt_Sport` + `Trousers_WhiteTEXTURE`;
-  - `NOM.lookClean()` + botão no painel.
+- **lookClean** = flag de debug (`NOM.lookClean()`), não = LookForce.
+- **LookForce**: ScreenFx/shader **suaves** (vinheta/grain baixos; `lines=0`; hiss/`radius=0`).
+- **Sempre**: sem scanlines; sem tear por chiado do Sem-rosto.
+- **SemRosto**: não veste mais `NOM_SemRostoEstatica` (cobria cabeça/corpo).
+- Corpo: KEEP camisa/calça vanilla; prova Sport+White só no look limpo.
+- Sem Body custom (exceto Tição).
 
-Tição ainda usa pele carvão (próximo lote se falhar).
+## Roteiro
 
-## Roteiro no jogo
-
-1. `scripts/dev-sync.sh` nesta branch; reiniciar; **só** Staging.
-2. `NOM.panel()` → **Look limpo** (ou LookForce Misaligned) → névoa vermelha.
-3. `NOM.lookInspect()`: `skin=nil` + `Tshirt_Sport` + `Trousers_WhiteTEXTURE` + peça NOM.
-4. Critério: **sem** scanline/tear/aberração; camisa esportiva + calça branca legíveis.
-5. **Não declarar sucesso** até o Johan confirmar com print.
+1. `scripts/dev-sync.sh`; reiniciar; só Staging.
+2. Isolamento: **Look limpo** → print sem glitch + Sport/White (já OK).
+3. Produto: LookForce Misaligned/Pale/Wrong **sem** Look limpo → roupa legível + vinheta leve, sem TV quebrada / sem estática na cara.
+4. `NOM.lookInspect()`: `clean=false force=misaligned` + camisa/calça (+ peça NOM se houver).
+5. **Não sucesso** até Johan confirmar print do produto.

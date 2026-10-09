@@ -2,13 +2,13 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Em teste (PR, ainda não na staging): sprint 0060c — look limpo
+## Em teste (PR, ainda não na staging): sprint 0060d — look produto soft
 
 PR draft [#16](https://github.com/WillianJohan/nevoa-e-outro-mundo/pull/16) · branch
-`feature/0060-look-real-ca41`. **0060 e 0060b falharam** (prints 03/04: glitch +
-silhueta). 0060c: com LookForce, **zera** overlay e canal do shader; prova
-`Tshirt_Sport`+`Trousers_WhiteTEXTURE`; `NOM.lookClean()`. Sync + reiniciar; **não
-sucesso** sem print do Johan. [README](sprints/sprint-0060-look-real/README.md).
+`feature/0060-look-real-ca41`. **Look Clean OK** (Johan). 0060d: LookForce ≠ lookClean;
+FX suave (sem scanline/tear); SemRosto sem peça estática; KEEP roupa vanilla. Sync +
+reiniciar; pedir print **produto** (LookForce sem Look limpo). **Não sucesso** sem
+confirmação. [README](sprints/sprint-0060-look-real/README.md).
 
 ## Em teste na staging: sprint 0059 — Arrasto / Rastejante
 
