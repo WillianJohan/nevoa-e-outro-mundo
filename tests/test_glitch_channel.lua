@@ -98,44 +98,103 @@ return {
         p.reset()
     end,
 
-    -- write() aplica setAll(radius) no mesmo frame; 0% vs 200% muda o valor escrito.
+    -- FogVignette de verdade: slider → channel → setAll(radius) no mesmo tick; lastChannel
+    -- guarda mode/intensity (log "[NOM] glitch apply …"). Sem reload.
     glitch_write_applies_radius_to_searchmode_same_frame = function()
+        local W = dofile("tests/fog_world.lua")
+        local G = W.new({ shader = true })
+        G.reload({
+            "NOM_FogState", "NOM_FogVignette", "NOM_ScreenFx", "NOM_ScreenFxOptions",
+            "NOM_ScreenFxRules", "NOM_SemRosto", "NOM_Carpideira", "NOM_NightStats",
+            "NOM_DressingRules", "NOM_PanelParams",
+        })
+        NOM_ShaderMod = true
+        require "NOM_FogState"
+        require "NOM_ScreenFxOptions"
+        if NOM_ScreenFxOptions then NOM_ScreenFxOptions.bloom = function() return 0 end end
         local p = P()
         p.reset()
-        R.setLookClean(false)
         NOM_PanelParams = p
+        package.loaded["NOM_PanelParams"] = p
+        R.setLookClean(false)
         p.set("GlitchMode", "original")
-        local written = {}
-        local float = function(name)
-            return { setAll = function(_, v) written[name] = v end }
+
+        G.enabled, G.targets, G.managers, G.override, G.fading, G.all = {}, {}, {}, {}, {}, {}
+        G.FADE_TICKS = 30
+        local function float(pn, name)
+            return {
+                setAll = function(_, v)
+                    G.all[pn] = G.all[pn] or {}
+                    G.all[pn][name] = v
+                end,
+                setTargets = function(_, ext, int)
+                    G.targets[pn] = G.targets[pn] or {}
+                    G.targets[pn][name] = { ext, int }
+                end,
+            }
         end
-        local psm = {
-            getBlur = function() return float("blur") end,
-            getRadius = function() return float("radius") end,
-            getDesat = function() return float("desat") end,
-            getDarkness = function() return float("darkness") end,
-            getGradientWidth = function() return float("gradient") end,
+        getSearchMode = function()
+            return {
+                setEnabled = function(_, pn, b)
+                    if not b and G.enabled[pn] then G.fading[pn] = G.FADE_TICKS end
+                    G.enabled[pn] = b
+                end,
+                setOverride = function(_, pn, b) G.override[pn] = b end,
+                isOverride = function(_, pn) return G.override[pn] == true end,
+                isEnabled = function(_, pn) return G.enabled[pn] == true end,
+                getSearchModeForPlayer = function(_, pn)
+                    return {
+                        isShaderEnabled = function()
+                            return G.enabled[pn] == true or G.fading[pn] ~= nil
+                        end,
+                        getBlur = function() return float(pn, "blur") end,
+                        getDesat = function() return float(pn, "desat") end,
+                        getRadius = function() return float(pn, "radius") end,
+                        getDarkness = function() return float(pn, "darkness") end,
+                        getGradientWidth = function() return float(pn, "gradient") end,
+                    }
+                end,
+            }
+        end
+        ISSearchManager = {
+            getManager = function(pl)
+                if not G.managers[pl] then
+                    G.managers[pl] = {
+                        isOverride = false, isSearchMode = false, isEffectOverlay = false,
+                        pn = pl:getPlayerNum(),
+                        updateOverlay = function() end,
+                    }
+                end
+                return G.managers[pl]
+            end,
         }
-        local function apply(pct)
-            p.set("GlitchIntensity", pct)
-            local c = R.channel(foggedStatic(1), 0, 1, 0, 0)
-            -- Espelho de FogVignette.write (client/NOM_FogVignette.lua): setAll síncrono.
-            psm:getBlur():setAll(c.blur)
-            psm:getRadius():setAll(c.radius)
-            psm:getDesat():setAll(c.desat)
-            psm:getDarkness():setAll(c.darkness)
-            psm:getGradientWidth():setAll(c.gradient)
-            return c
+        dofile("mod/42/media/lua/client/NOM_FogVignette.lua")
+        G.p = G.player({ x = 100, y = 100 })
+
+        -- sampleSeen devolve fog+static=1; o que importa é write→setAll→lastChannel
+        -- (updateStatic zeraria sem Sem-rosto no mundo falso).
+        require "NOM_ScreenFx"
+        NOM_ScreenFx.sampleSeen = function()
+            return foggedStatic(1)
         end
-        local c0 = apply(0)
-        assert(written.radius == 0, "setAll(0) falhou: " .. tostring(written.radius))
-        local c200 = apply(200)
-        assert(written.radius == c200.radius and written.radius > 1,
-            "setAll(200%) falhou: " .. tostring(written.radius))
-        assert(c0.radius == 0 and c200.radius > c0.radius * 1.5)
-        -- Shader: SearchMode.y = hiss (mod2 screen.frag). O float escrito É o uniform.
-        assert(written.radius == c200.radius)
+        NOM_FogState.set(true, 1)
+
+        p.set("GlitchIntensity", 0)
+        G.seconds(2)
+        assert(G.override[0] == true, "não tomou canal com static+fog")
+        assert(G.all[0] and G.all[0].radius == 0, "0%: radius=" .. tostring(G.all[0] and G.all[0].radius))
+        local lc0 = NOM_FogVignette.lastChannel()
+        assert(lc0 and lc0.intensity == 0 and lc0.mode == "original", "lastChannel 0%")
+
+        p.set("GlitchIntensity", 200)
+        G.tick(1) -- writeChannels todo tick com shader — mesmo frame seguinte
+        assert(G.all[0].radius == 2, "200%: radius=" .. tostring(G.all[0].radius) .. " (quer 2)")
+        local lc200 = NOM_FogVignette.lastChannel()
+        assert(lc200 and lc200.intensity == 2 and lc200.radius == 2,
+            string.format("lastChannel 200%%: int=%s r=%s",
+                tostring(lc200 and lc200.intensity), tostring(lc200 and lc200.radius)))
         p.reset()
+        R.setLookClean(false)
     end,
 
     glitch_shader_reads_searchmode_y_as_hiss = function()
