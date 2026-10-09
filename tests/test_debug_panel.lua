@@ -158,7 +158,7 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "almaStatus", "almaReset",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "eco", "alma", "almaStatus", "almaReset",
         "almaCfg", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "ambientScream", "ticao", "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
@@ -392,7 +392,7 @@ return {
             UI_NOM_Debug_C_AlmaColors = { "almaCfg(white)", "almaCfg(red)", "almaCfg(black)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
-                "variant(carpideira)", "turnZombie(0)" },
+                "variant(carpideira)", "lookCycle()", "turnZombie(0)" },
             UI_NOM_Debug_C_Thunder = { "thunder()" },
             UI_NOM_Debug_C_Lamp = { "flickerLamp()" },
             UI_NOM_Debug_C_Rain = { "rain()" },

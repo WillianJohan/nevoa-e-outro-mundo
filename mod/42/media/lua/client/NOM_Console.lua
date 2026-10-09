@@ -69,6 +69,27 @@ function NOM.variant(kind) NOM_Debug.variant(kind) end
 function NOM.eco() NOM_Debug.spawnEco() end
 function NOM.status() NOM_Debug.status() end
 
+-- Sprint 0054: cicla o look horror no zumbi mais perto (Pale→Misaligned→Wrong→Patient→desfaz).
+-- Forçar um arquétipo isolado já é NOM.variant / os botões do painel; aqui é só o ciclo compacto.
+local LOOK_CYCLE = { "estalador", "corredor", "semrosto", "carpideira" }
+local LOOK_LABEL = { estalador = "Pale", corredor = "Misaligned", semrosto = "Wrong", carpideira = "Patient" }
+local lookCycleI = 0
+
+function NOM.lookCycle()
+    lookCycleI = lookCycleI + 1
+    if lookCycleI > #LOOK_CYCLE then lookCycleI = 0 end
+    local kind = lookCycleI > 0 and LOOK_CYCLE[lookCycleI] or nil
+    if kind and not NOM_FogState.on then
+        NOM_DebugLog.say("[NOM] debug look só aparece com névoa (NOM.setFog(true))")
+    end
+    if kind then
+        NOM_DebugLog.say("[NOM] debug lookCycle → " .. LOOK_LABEL[kind] .. " (" .. kind .. ")")
+    else
+        NOM_DebugLog.say("[NOM] debug lookCycle → desfazer")
+    end
+    NOM_Debug.variant(kind)
+end
+
 -- Truques do jogador local (ISAdminPowerUI.lua:31-53): muda e manda pro servidor
 -- (sendPlayerExtraInfo, :403); no MP o servidor aplica as regras dele.
 local function cheat(name, getter, setter)
@@ -317,6 +338,7 @@ NOM.HELP = {
     { "NOM.time(hora)", "muda a hora do relógio do jogo, sempre pra frente (hora que já passou é a de amanhã), ex.: NOM.time(22)" },
     { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
+    { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
