@@ -14,10 +14,10 @@ return {
 
     ambient_gap_white_and_red = function()
         local w, r = A.GAP.white, A.GAP.red
-        -- playtest 2026-10-09: metade da frequência da 0053 (branca 60–180 s → média 120 s)
-        assert(w.min == 60000 and w.max == 180000)
-        assert(r.min == 40000 and r.max == 140000)
-        assert((w.min + w.max) / 2 == 120000, "média branca ~1/2 min")
+        -- playtest: −40% frequência sobre o ×2 (branca 100–300 s → média 200 s)
+        assert(w.min == 100000 and w.max == 300000)
+        assert(r.min == 67000 and r.max == 233000)
+        assert((w.min + w.max) / 2 == 200000, "média branca ~200 s")
         assert(r.max < w.max, "vermelha um pouco mais apertada")
         assert(A.gap("white", 0) == w.min)
         assert(A.gap("white", w.max - w.min) == w.max)
@@ -34,6 +34,8 @@ return {
     end,
 
     ambient_distance_farther_on_white = function()
+        assert(A.DIST.white.min == 50 and A.DIST.white.max == 110)
+        assert(A.DIST.red.min == 36 and A.DIST.red.max == 85)
         assert(A.DIST.white.min > A.DIST.red.min)
         assert(A.distance("white", 0) == A.DIST.white.min)
         assert(A.distance("red", A.DIST.red.max - A.DIST.red.min) == A.DIST.red.max)
