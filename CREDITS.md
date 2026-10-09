@@ -140,19 +140,12 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
-| `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador (0060): cera legível com midtones, rachadura suave |
-| `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor (0060): pele clara, veias/sombra assimétricas suaves |
-| `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira (0060): clínica fria legível, órbitas e manchas |
-| `mod/42/media/textures/Body/NOM_SemRosto.png` | 256×256 | pele do Sem-rosto (0060): cotidiana pálida sob a casca |
-| `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (sprint 0038): carvão em placas pequenas, rachaduras finas de brasa viva e apagando |
+| `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (I5/0060f): carvão quase liso; brasa na crosta 3D |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
 | `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor até a 0041 (na máscara cirúrgica vanilla): vermelho escuro, rasgo preto, dentes brancos. Fica pra voltar a boca 3D da 0042 pelo XML |
-| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto (0060): vazios suaves + chiado residual (na casca 3D desde a 0042) |
+| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (I2/0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto (no véu de noiva vanilla até a 0041). Fica pra voltar o cabelo 3D da 0042 pelo XML |
-| `mod/42/media/textures/NOM/NOM_CarpideiraManto.png` | 256×256 | manto hospitalar desbotado (0054/0060; camada corpo da Carpideira; caminho `Gown_Hospital` / Eco cinza) |
-| `mod/42/media/textures/NOM/NOM_EstaladorRoupa.png` | 256×256 | roupa cotidiana suja do Estalador (sprint 0060; camada corpo) |
-| `mod/42/media/textures/NOM/NOM_CorredorRoupa.png` | 256×256 | roupa assimétrica/errada do Corredor (sprint 0060; camada corpo) |
-| `mod/42/media/textures/NOM/NOM_SemRostoRoupa.png` | 256×256 | roupa banal do Sem-rosto (sprint 0060; camada corpo) |
+| `mod/42/media/textures/NOM/NOM_CarpideiraManto.png` | 256×256 | manto (C2/0060f): tecido escuro; alfa 0 em rosto/mãos/pés (K1; K2–K5 usam roupa vanilla) |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
 | `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco do Eco, salpicado, mais escuro nas bordas |
 | `mod/42/media/textures/NOM/NOM_Brasa.png` | 256×256 | casca de brasa da mutação (sprint 0022): carvão quase preto em placas, rachaduras largas em brasa laranja |

@@ -2,10 +2,10 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` (0060d: produto soft pós Look Clean OK) |
+| Status | `em teste` (0060f: lote A wardrobe + I6 glitch) |
 | Branch | `feature/0060-look-real-ca41` |
 | PR | [#16](https://github.com/WillianJohan/nevoa-e-outro-mundo/pull/16) |
-| Origem | playtest fail → isolamento OK (`06-look-clean-OK`) → produto |
+| Origem | playtest fail → isolamento OK → produto soft → guarda-roupa vanilla |
 
 ## Root cause
 
@@ -23,18 +23,20 @@ Body P&B + strip + ScreenFx/shader (scanline/tear/aberração) + SemRostoEstatic
 - Texto do painel alinhado (0060e; antes dizia Force = clean).
 - SemRosto sem `NOM_SemRostoEstatica`; KEEP camisa/calça; Sport+White só no limpo.
 
-## I6 — Glitch de tela (modo + intensidade)
+## 0060f — lote A + I6
 
-Trilha live (sem reload): painel → `NOM.param` → `NOM_PanelParams` → `NOM_ScreenFxRules.channel` → `NOM_FogVignette.write` (`SearchMode.y`) → `mod2/.../screen.frag` `hiss`.
+- **Guarda-roupa** E1–E5 / K1–K5 (`NOM_VariantWardrobe`): roupa vanilla + tint/dirt/blood; `NOM.lookVariant()`.
+- **I2–I4:** Sem-rosto com sentinela `NOM_SemRostoEstatica` (casca lisa).
+- **I5:** Tição pele carvão lisa; **C2:** manto com alfa 0 em rosto/mãos (K1); K2–K5 sem manto.
+- **I7:** assets `*Roupa` / `MantoFx` / Body mortas removidos.
+- **I6 glitch:** trilha panel → `SearchMode.y` → `hiss`; teste unitário OK; prints in-game com o Johan.
 
-- Teste: `tests/test_glitch_channel.lua` (0% radius=0; 200% radius=2 no mesmo tick; log `[NOM] glitch apply …`).
-- **Prints bluefin ainda faltam:** mesmo lugar, intensidade 0% e 200%, + linha do `console.txt`.
+## Roteiro (Johan)
 
-## Roteiro
-
-1. `scripts/dev-sync.sh`; reiniciar; só Staging (+ Shader pra I6).
-2. Isolamento: botão **Look limpo** → Sport/White + FX off.
-3. Produto: LookForce Misaligned **sem** Look limpo → roupa do outfit + vinheta leve.
-4. `lookInspect`: `clean=false force=misaligned` (+ peça NOM se houver).
-5. I6: névoa + Sem-rosto perto → Glitch original 0% e 200% no mesmo frame → 2 prints + log `glitch apply`.
-6. **Não sucesso produto** até print do Johan.
+1. `git pull` na branch do PR + `scripts/dev-sync.sh` + **reiniciar** (Staging + Shader).
+2. Névoa (`NOM.setFog(true)`); Sem-rosto perto.
+3. **Glitch:** painel Look → modo original → intensidade **0%** (print) → **200%** mesmo lugar (print); `console.txt` com `[NOM] glitch apply … intensity=…%`.
+4. **Estalador:** `NOM.variant("estalador")` + `NOM.lookVariant()` cicla E1–E5 (bata/pijama/avental…).
+5. **Carpideira:** `NOM.variant("carpideira")` + `lookVariant` K1–K5; K1 manto+saia (rosto visível); K2+ vestido/capa sem manto.
+6. **Sem-rosto / Tição / Corredor:** `lookInspect` → sentinela / pele carvão / boca; sem Body P&B.
+7. Prints à distância normal, FX produto ligado, `lookClean` off.

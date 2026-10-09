@@ -28,27 +28,27 @@ if isServer() then return end
 
 require "NOM_NightStats"
 require "NOM_VariantRules"
+require "NOM_VariantWardrobe"
+require "NOM_Math"
 require "NOM_Dissolve"
 require "NOM_EmberShell"
 require "NOM_ScreenFxRules"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
--- Direção de arte: docs/gdd/art-direction.md.
+-- Direção de arte: bíblia look (store) + docs/gdd/art-direction.md.
 NOM_VariantLook = {
     LOOKS = {
-        -- Sprint 0060b: NÃO troca Body (UNKNOWN/RGB → manequim P&B no playtest). Peça de
-        -- cabeça + roupa vanilla do corpo. Roupa NOM_*Roupa da 0060 fica fora do look.
+        -- 0060f lote A: peça de cabeça + guarda-roupa vanilla por variante (C1).
         estalador = { item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
         corredor = { item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
-        -- 0060d: SemRostoEstatica cobria cabeça/corpo com textura de chiado — fora do look.
-        -- Wrong Person = roupa vanilla + strip de cabeça (sem peça NOM na cara).
-        semrosto = {},
-        -- Carpideira: manto hospitalar do mod no corpo (caminho Eco/Gown); sem pele Body.
+        -- I2–I4: sentinela de cabeça (casca lisa; textura sem chiado). Censor.ITEMS aponta pra ela.
+        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        -- Carpideira: mechas + manto (K1) ou roupa longa vanilla (K2–K5 via wardrobe).
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
-            body = "Base.NOM_CarpideiraManto", bodyFx = "Base.NOM_CarpideiraMantoFx",
+            body = "Base.NOM_CarpideiraManto",
         },
-        -- Tição: ainda usa pele carvão (preta); se falhar no playtest, sai no próximo lote.
+        -- I5: pele carvão lisa (gen_textures); crosta 3D leva a brasa.
         ticao = { skin = "NOM_Ticao", item = "Base.NOM_TicaoCrosta", fx = "Base.NOM_TicaoCrostaFx" },
     },
     -- 0060b: roupa do CORPO fica (camisa/calça/…). Só some acessório de cabeça que tapa a
@@ -110,6 +110,53 @@ local function hide(list, w)
     if #gone == 0 then return end
     w.all = all
     for _, iv in ipairs(gone) do list:remove(iv) end
+end
+
+-- Guarda-roupa da variante (lote A): tira slot conflitante, põe peças vanilla + tratamento.
+local function applyWardrobe(list, w, id)
+    local variant, idx = NOM_VariantWardrobe.pick(w.kind, id)
+    if not variant then return end
+    w.wardVar = variant.id
+    w.wardIdx = idx
+    if not w.all then
+        local all = {}
+        for i = 0, list:size() - 1 do
+            local iv = list:get(i)
+            if iv ~= w.iv and iv ~= w.bodyIv then all[#all + 1] = iv end
+        end
+        w.all = all
+    end
+    local gone = {}
+    local patterns = variant.strip
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        if iv ~= w.iv and iv ~= w.bodyIv and NOM_VariantWardrobe.isStrip(iv:getItemType(), patterns) then
+            gone[#gone + 1] = iv
+        end
+    end
+    for _, iv in ipairs(gone) do list:remove(iv) end
+    -- K2–K5: vestido/capa/roupão longos — tira o manto 2D (C2: evita pintar rosto).
+    if w.bodyIv and variant.keepBody == false then
+        list:remove(w.bodyIv)
+        w.bodyIv = nil
+        w.body = nil
+    end
+    w.wardrobe = {}
+    for _, piece in ipairs(variant.pieces) do
+        local iv = ItemVisual.new()
+        iv:setItemType(piece.type)
+        NOM_VariantWardrobe.treat(iv, piece, variant)
+        list:add(iv)
+        w.wardrobe[#w.wardrobe + 1] = iv
+    end
+end
+
+local function clearWardrobe(list, w)
+    if not w.wardrobe then return end
+    for _, iv in ipairs(w.wardrobe) do list:remove(iv) end
+    w.wardrobe = nil
+    w.wardVar = nil
+    w.wardIdx = nil
 end
 
 -- 0060c/e: só com flag lookClean — prova camisa/calça coloridas (não é LookForce).
@@ -224,6 +271,7 @@ local function put(z, kind, id)
         w.bodyIv = biv
     end
     hide(list, w)
+    applyWardrobe(list, w, id)
     proofBody(list, w)
     z:resetModelNextFrame()
     if w.item and shell then
@@ -243,6 +291,7 @@ local function strip(z)
     if w.proof then
         for _, iv in ipairs(w.proof) do list:remove(iv) end
     end
+    clearWardrobe(list, w)
     if w.iv or w.all or w.bodyIv then unhide(z, list, w) end
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
@@ -365,8 +414,27 @@ function NOM_VariantLook.inspect(z)
     local lf = "-"
     if NOM_PanelParams and NOM_PanelParams.lookForce then lf = tostring(NOM_PanelParams.lookForce()) end
     if lf == "" then lf = "auto" end
-    return string.format("kind=%s skin=%s clean=%s force=%s items=%s",
-        kinds, tostring(skin), tostring(NOM_ScreenFxRules.lookClean()), lf, table.concat(parts, ","))
+    local ward = (w and w.wardVar) or "-"
+    return string.format("kind=%s var=%s skin=%s clean=%s force=%s items=%s",
+        kinds, ward, tostring(skin), tostring(NOM_ScreenFxRules.lookClean()), lf, table.concat(parts, ","))
+end
+
+-- Debug: força monstro + índice de variante (1-based). Bíblia §11.
+function NOM_VariantLook.forceVariant(z, kind, idx)
+    if not z or not kind or not LOOKS[kind] then return nil end
+    local n = NOM_VariantWardrobe.count(kind)
+    if n == 0 then
+        NOM_VariantLook.sync(z, kind, z:getPersistentOutfitID())
+        return kind
+    end
+    idx = math.floor(tonumber(idx) or 1)
+    if idx < 1 then idx = 1 end
+    if idx > n then idx = n end
+    -- pick usa mod(id, n)+1; escolher id ≡ idx-1 (mod n)
+    local base = NOM_VariantRules.baseId(z:getPersistentOutfitID())
+    local id = base - NOM_Math.mod(base, n) + (idx - 1)
+    NOM_VariantLook.sync(z, kind, id)
+    return kind, idx
 end
 
 -- Morte. Solo (IsoZombie.onKilled 38–52): o DoZombieInventory já fez vestidos e

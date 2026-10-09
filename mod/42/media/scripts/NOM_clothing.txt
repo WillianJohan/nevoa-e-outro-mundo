@@ -51,7 +51,7 @@ module Base
         ClothingItem = NOM_CarpideiraCabelo,
     }
 
-    /* Sprint 0052: manto penitente (camada no corpo todo, como NOM_EcoCinza / Gown_Hospital). */
+    /* Sprint 0052: manto penitente (camada corpo; K1 com saia; K2–K5 saem pelo wardrobe). */
     item NOM_CarpideiraManto
     {
         DisplayCategory = Clothing,
@@ -60,37 +60,6 @@ module Base
         Icon = HospitalGown,
         BodyLocation = base:boilersuit,
         ClothingItem = NOM_CarpideiraManto,
-    }
-
-    /* Sprint 0060: roupa cotidiana no corpo (strip ADR-012 + pele legível). */
-    item NOM_EstaladorRoupa
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_EstaladorRoupa,
-    }
-
-    item NOM_CorredorRoupa
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_CorredorRoupa,
-    }
-
-    item NOM_SemRostoRoupa
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_SemRostoRoupa,
     }
 
     /* Tição (sprint 0043): crosta de carvão 3D no lugar do véu do Eco que usava desde a 0038. */
@@ -171,45 +140,7 @@ module Base
         ClothingItem = NOM_CarpideiraCabeloFx,
     }
 
-    item NOM_CarpideiraMantoFx
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_CarpideiraMantoFx,
-    }
-
-    item NOM_EstaladorRoupaFx
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_EstaladorRoupaFx,
-    }
-
-    item NOM_CorredorRoupaFx
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_CorredorRoupaFx,
-    }
-
-    item NOM_SemRostoRoupaFx
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_SemRostoRoupaFx,
-    }
+    /* I1/I7: sem *Fx 2D (manto/roupa) — dissolve só em peça com modelo. */
 
     item NOM_TicaoCrostaFx
     {

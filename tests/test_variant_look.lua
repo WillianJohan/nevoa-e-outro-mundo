@@ -45,7 +45,14 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Tshirt_Sport"] = "tshirt", ["Base.Trousers_WhiteTEXTURE"] = "pants",
     ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask",
     ["Base.ZedDmg_BACK_Slash"] = "zeddmg", ["Base.Wound_Chest_Bite_Male"] = "wound",
-    ["Base.Bandage_Chest"] = "bandage" }
+    ["Base.Bandage_Chest"] = "bandage",
+    -- guarda-roupa lote A (clothing.txt B42)
+    ["Base.HospitalGown"] = "longdress", ["Base.Shirt_FormalWhite"] = "shirt",
+    ["Base.Trousers_SuitWhite"] = "pants", ["Base.Apron_White"] = "torsoextra",
+    ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
+    ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
+    ["Base.Dress_SatinNegligee"] = "dress", ["Base.PonchoGarbageBag"] = "jacket",
+    ["Base.LongCoat_Bathrobe"] = "bathrobe" }
 do
     local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
     for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
@@ -106,9 +113,14 @@ local function setup(opts)
 
     -- ItemVisual: o do mod (ItemVisual.new) e os do outfit, mesma classe
     local function mkiv(t)
-        local iv = { type = t }
+        local iv = { type = t, tint = nil, dirt = {}, blood = {}, holes = {} }
         function iv:setItemType(x) vc(); self.type = x end
         function iv:getItemType() vc(); return self.type end
+        function iv:setTint(c) vc(); self.tint = c end
+        function iv:getTint() vc(); return self.tint end
+        function iv:setDirt(part, a) vc(); self.dirt[part] = a end
+        function iv:setBlood(part, a) vc(); self.blood[part] = a end
+        function iv:setHole(part) vc(); self.holes[part] = true end
         function iv:getScriptItem()
             vc()
             local t = self.type
@@ -121,6 +133,13 @@ local function setup(opts)
         if G.throwNew then error("ItemVisual.new falhou") end
         return mkiv(nil)
     end }
+    ImmutableColor = { new = function(r, g, b, a) return { r = r, g = g, b = b, a = a or 1 } end }
+    BloodBodyPartType = {
+        Torso_Upper = "Torso_Upper", Torso_Lower = "Torso_Lower",
+        UpperArm_L = "UpperArm_L", UpperArm_R = "UpperArm_R",
+        UpperLeg_L = "UpperLeg_L", UpperLeg_R = "UpperLeg_R",
+        LowerLeg_L = "LowerLeg_L", LowerLeg_R = "LowerLeg_R", Groin = "Groin",
+    }
     -- WornItems.setItem: lugar comum expulsa quem já está nele
     local function setItem(list, it)
         if not MULTI[it.loc] then
@@ -320,7 +339,8 @@ local function setup(opts)
             return e
         end,
     })
-    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook", "NOM_Dissolve", "NOM_EmberShell" }) do
+    for _, m in ipairs({ "NOM_NightStats", "NOM_FogState", "NOM_VariantLook", "NOM_VariantWardrobe",
+        "NOM_Dissolve", "NOM_EmberShell" }) do
         _G[m] = nil
         package.loaded[m] = nil
     end
@@ -371,7 +391,11 @@ return {
         local look = NOM_VariantLook.LOOKS.estalador
         assert(z.hv.name == nil, "0060b: sem Body custom: " .. tostring(z.hv.name))
         assert(hasItem(z, look.item), "sem a peça: " .. types(z))
-        assert(hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), "0060b: roupa do corpo someu: " .. types(z))
+        -- lote A: slot-assinatura vanilla (E1–E5) + peça de cabeça
+        local ward = hasItem(z, "Base.HospitalGown") or hasItem(z, "Base.Shirt_FormalWhite")
+            or hasItem(z, "Base.Apron_White") or hasItem(z, "Base.Tshirt_WhiteTINT")
+            or hasItem(z, "Base.Vest_DefaultTEXTURE_TINT")
+        assert(ward, "sem wardrobe: " .. types(z))
         assert(z.outfitID == idFor("estalador", 3), "o ID do outfit mudou")
         assert(z.resets >= 1, "sem resetModelNextFrame")
         assert(NOM_VariantLook.count() == 1)
@@ -386,15 +410,15 @@ return {
         fogOn(3)
         G.converge()
         local look = NOM_VariantLook.LOOKS.estalador
-        assert(hasItem(z, look.item) and hasItem(z, OUTFIT[1]), "Force não deve ser clean: " .. types(z))
+        assert(hasItem(z, look.item), "Force não deve ser clean: " .. types(z))
         assert(not hasItem(z, PROOF[1]), "prova com LookForce só: " .. types(z))
         NOM_ScreenFxRules.setLookClean(true)
         NOM_VariantLook.refreshClean()
         assert(hasItem(z, PROOF[1]) and hasItem(z, PROOF[2]), "sem prova: " .. types(z))
-        assert(not hasItem(z, OUTFIT[1]), "roupa escura ficou: " .. types(z))
         NOM_ScreenFxRules.setLookClean(false)
         NOM_VariantLook.refreshClean()
-        assert(hasItem(z, OUTFIT[1]) and not hasItem(z, PROOF[1]), "não saiu do clean: " .. types(z))
+        assert(not hasItem(z, PROOF[1]), "não saiu do clean: " .. types(z))
+        assert(hasItem(z, look.item), "peça sumiu ao sair do clean: " .. types(z))
         fogOff()
         G.converge()
         NOM_PanelParams = nil
@@ -410,15 +434,12 @@ return {
         for _, k in ipairs(KINDS) do
             local look = NOM_VariantLook.LOOKS[k]
             assert(look, "sem LOOKS pra " .. k)
+            assert(look.item, "sem visual pra " .. k)
+            assert(not seen[look.item], "peça repetida " .. look.item)
+            seen[look.item] = true
+            assert(hasItem(zs[k], look.item), k .. " sem a peça: " .. types(zs[k]))
             if k == "semrosto" then
-                assert(not look.item, "0060d: Sem-rosto não deve ter peça estática")
-                assert(not hasItem(zs[k], "Base.NOM_SemRostoEstatica"), "estática na cara: " .. types(zs[k]))
-                assert(hasItem(zs[k], OUTFIT[1]) and hasItem(zs[k], OUTFIT[2]), "roupa someu: " .. types(zs[k]))
-            else
-                assert(look.item, "sem visual pra " .. k)
-                assert(not seen[look.item], "peça repetida " .. look.item)
-                seen[look.item] = true
-                assert(hasItem(zs[k], look.item), k .. " sem a peça")
+                assert(look.item == "Base.NOM_SemRostoEstatica", "I2: sentinela Sem-rosto")
             end
             if k == "ticao" then
                 assert(zs[k].hv.name == look.skin, k .. " com a pele errada")
@@ -449,14 +470,18 @@ return {
         end
     end,
 
-    -- sprint 0052: Carpideira veste manto + mechas
+    -- 0060f: Carpideira — mechas + (K1 manto+saia | K2–K5 roupa longa vanilla)
     look_carpideira_wears_manto = function()
         local G = setup()
         local z = G.spawn({ id = idFor("carpideira", 52) })
         fogOn(52)
         G.converge()
         local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.item) and hasItem(z, look.body), "sem manto/mechas: " .. types(z))
+        assert(hasItem(z, look.item), "sem mechas: " .. types(z))
+        local long = hasItem(z, look.body) or hasItem(z, "Base.Dress_Long")
+            or hasItem(z, "Base.Dress_SatinNegligee") or hasItem(z, "Base.PonchoGarbageBag")
+            or hasItem(z, "Base.LongCoat_Bathrobe") or hasItem(z, "Base.Skirt_Long")
+        assert(long, "sem coluna longa: " .. types(z))
         assert(z.hv.name == nil, "0060b: Carpideira sem Body")
         fogOff()
         G.converge()
@@ -488,11 +513,12 @@ return {
         G.converge()
         assert(NOM_VariantLook.count() == 1, "Sem-rosto não entrou na tabela")
         assert(not hasItem(z, "Base.Hat_Army"), "chapéu deveria sumir na variante")
-        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"))
+        assert(hasItem(z, "Base.NOM_SemRostoEstatica"), "I2: sentinela na cara")
         fogOff()
         G.converge()
         assert(NOM_VariantLook.count() == 0, "Sem-rosto ficou marcado")
         assert(hasItem(z, "Base.Hat_Army"), "chapéu não voltou: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "sentinela ficou")
     end,
 
     look_common_zombie_untouched = function()
@@ -584,8 +610,8 @@ return {
         fogOn(12, true)
         G.converge()
         for _, z in ipairs(G.zombies) do
-            assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "vermelha: estática na cara")
-            assert(hasItem(z, OUTFIT[1]), "vermelha: camisa sumiu (0060b): " .. types(z))
+            -- vermelha: todo mundo vira variante; Sem-rosto usa sentinela (I2)
+            assert(z.hv.name == nil or z.hv.name == "NOM_Ticao", "vermelha Body: " .. tostring(z.hv.name))
         end
         assert(NOM_VariantLook.count() == 40)
     end,
@@ -599,8 +625,8 @@ return {
         G.converge()
         NOM_VariantRules.forced[id] = "semrosto"
         G.converge()
-        assert(not hasItem(z, "Base.Hat_Army") and not hasItem(z, "Base.NOM_SemRostoEstatica"),
-            "forçado Sem-rosto: " .. types(z))
+        assert(not hasItem(z, "Base.Hat_Army"), "chapéu no Sem-rosto: " .. types(z))
+        assert(hasItem(z, "Base.NOM_SemRostoEstatica"), "I2 sentinela: " .. types(z))
         assert(hasItem(z, OUTFIT[1]), "roupa someu no Sem-rosto: " .. types(z))
         NOM_VariantRules.forced[id] = "estalador"
         G.converge()
@@ -694,9 +720,7 @@ return {
             "re-vestido ficou sem visual: " .. types(z))
     end,
 
-    -- orçamento (docs/architecture/README.md): por zumbi com N peças vanilla escondidas,
-    -- pôr ≤ 17 + 3·N chamadas (0060: +roupa no corpo = 2º ItemVisual), tirar ≤ 5 + 2·N,
-    -- passada sem troca 0. G.vcalls conta toda chamada de visual nos objetos falsos.
+    -- orçamento: 0060f +guarda-roupa (1–2 ItemVisual + treat). pôr ≤ 30 + 3·N; tirar ≤ 12 + 2·N.
     look_budget = function()
         local G = setup()
         local z = G.spawn({ id = idFor("estalador", 16), extra = { "Base.Hat_Army" } })
@@ -704,18 +728,18 @@ return {
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 17 + 3 * n, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 30 + 3 * n, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
         fogOff()
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 8 + 2 * n, "tirar custou " .. G.vcalls)
+        assert(G.vcalls <= 12 + 2 * n, "tirar custou " .. G.vcalls)
         assert(z.hv.name == nil)
     end,
 
-    -- sprint 0016: só a pele e a peça do mod (e as feridas do corpo, KEEP) aparecem
+    -- sprint 0016/0060f: feridas + peça + wardrobe; chapéu some
     nude_hidden_on_variant_start = function()
         local G = setup()
         local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash", "Base.Wound_Chest_Bite_Male", "Base.Bandage_Chest" }
@@ -723,9 +747,12 @@ return {
         local z = G.spawn({ id = id, extra = extra })
         fogOn(21)
         G.converge()
-        -- 0060b: feridas + camisa/calça + peça; chapéu/bandage somem (cabeça); sem Roupa/Body
         assert(hasItem(z, "Base.ZedDmg_BACK_Slash") and hasItem(z, "Base.Wound_Chest_Bite_Male"), types(z))
-        assert(hasItem(z, "Base.NOM_EstaladorVenda") and hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), types(z))
+        assert(hasItem(z, "Base.NOM_EstaladorVenda"), types(z))
+        local ward = hasItem(z, "Base.HospitalGown") or hasItem(z, "Base.Shirt_FormalWhite")
+            or hasItem(z, "Base.Apron_White") or hasItem(z, "Base.Tshirt_WhiteTINT")
+            or hasItem(z, "Base.Vest_DefaultTEXTURE_TINT")
+        assert(ward, "sem wardrobe: " .. types(z))
         assert(not hasItem(z, "Base.Hat_Army"), "chapéu deveria sumir: " .. types(z))
         assert(z.hv.name == nil)
         assert(z.outfitID == id and z.resets >= 1)
@@ -765,7 +792,7 @@ return {
         G.converge()
         z:dressInPersistentOutfitID(id2)
         G.converge()
-        assert(hasItem(z, "Base.NOM_EstaladorVenda") and hasItem(z, OUTFIT[1]), "re-vestido: " .. types(z))
+        assert(hasItem(z, "Base.NOM_EstaladorVenda"), "re-vestido sem peça: " .. types(z))
         fogOff()
         G.converge()
         assert(types(z) == table.concat(OUTFIT, ","), "roupa duplicada ou velha: " .. types(z))
@@ -976,7 +1003,7 @@ return {
         G.converge()
         local look = NOM_VariantLook.LOOKS.estalador
         assert(hasItem(z, look.fx) and not hasItem(z, look.item), "sem o gêmeo: " .. types(z))
-        assert(hasItem(z, OUTFIT[1]) and z.hv.name == nil, "0060b: " .. types(z))
+        assert(z.hv.name == nil, "0060b Body: " .. types(z))
         assert(NOM_Dissolve.busy(z), "sem efeito na mutação")
         G.minAlpha = {}
         G.ms(NOM_DissolveRules.MS + 100)
@@ -1016,7 +1043,6 @@ return {
         G.ms(NOM_DissolveRules.MS * 2)
         local look = NOM_VariantLook.LOOKS.carpideira
         assert(hasItem(z, look.fx) and z.hv.name == nil, "a peça sumiu: " .. types(z))
-        assert(hasItem(z, OUTFIT[1]), "0060b: camisa deveria ficar: " .. types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z))
         fogOff()
         G.converge()
@@ -1118,7 +1144,7 @@ return {
         local look = NOM_VariantLook.LOOKS.estalador
         assert(hasItem(z, SHELL), "sem a casca: " .. types(z))
         assert(hasItem(z, look.item) and not hasItem(z, look.fx), "com casca a peça é a sem shader: " .. types(z))
-        assert(hasItem(z, OUTFIT[1]) and z.hv.name == nil, "0060b monstro+roupa: " .. types(z))
+        assert(z.hv.name == nil, "0060b Body: " .. types(z))
         assert(NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 1)
         assert(z.alpha > 0.97, "a casca começa inteira (desfaz): alfa " .. z.alpha)
         G.minAlpha = {}
@@ -1364,8 +1390,7 @@ return {
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and #G.bursts == 0)
     end,
 
-    -- orçamento: N vanilla + 1 jogador local (driver alfa = 3/tick). 0060: +roupa corpo.
-    -- pôr com casca ≤ 28 + 3·N; casca sair ≤ 6; passada 0; cobrir ≤ 12; revelar ≤ 14 + 2·N
+    -- orçamento: 0060f +wardrobe. pôr com casca ≤ 45 + 3·N + alfa.
     ember_budget = function()
         local G = setup({ dissolve = true, body = true })
         local z = G.spawn({ id = idFor("estalador", 73), extra = { "Base.Hat_Army" } })
@@ -1375,7 +1400,7 @@ return {
         G.vcalls = 0
         G.converge()
         local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
-        assert(G.vcalls <= 28 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        assert(G.vcalls <= 45 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
         G.vcalls = 0
         local ms = NOM_DissolveRules.MS + 50
         G.ms(ms)

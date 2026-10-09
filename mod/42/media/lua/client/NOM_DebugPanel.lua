@@ -156,6 +156,7 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end),
                 c("UI_NOM_Debug_LookCycle", function() NOM.lookCycle() end),
                 c("UI_NOM_Debug_LookInspect", function() NOM.lookInspect() end),
+                c("UI_NOM_Debug_LookVariant", function() NOM.lookVariant() end),
                 c("UI_NOM_Debug_LookClean", function() NOM.lookClean() end),
                 c("UI_NOM_Debug_UndoVariant", function() NOM.turnZombie(0) end) } },
             { title = "UI_NOM_Debug_C_Pull", desc = "UI_NOM_Debug_C_Pull_Desc", choices = {

@@ -98,6 +98,49 @@ function NOM.lookInspect()
     return s
 end
 
+-- 0060f: força kind + índice de guarda-roupa (1–5 Estalador/Carpideira) no mais perto.
+-- Sem args: cicla o índice da variante atual. kind omitido → kind do zumbi (ou estalador).
+function NOM.lookVariant(kind, idx)
+    require "NOM_VariantLook"
+    require "NOM_VariantWardrobe"
+    local p = player()
+    if not p then
+        NOM_DebugLog.say("[NOM] lookVariant: sem jogador")
+        return nil
+    end
+    local z, bestD
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local cand = list:get(i)
+        local d = cand:DistToProper(p)
+        if not bestD or d < bestD then z, bestD = cand, d end
+    end
+    if not z then
+        NOM_DebugLog.say("[NOM] lookVariant: sem zumbi")
+        return nil
+    end
+    local info = NOM_VariantLook.inspect(z)
+    local curKind = kind
+    if curKind == nil or curKind == "" then
+        local k = info:match("kind=([%w_]+)")
+        curKind = (k and k ~= "-") and k or "estalador"
+    end
+    local n = NOM_VariantWardrobe.count(curKind)
+    if n == 0 then
+        NOM_VariantLook.forceVariant(z, curKind, 1)
+        NOM_DebugLog.say("[NOM] lookVariant " .. curKind .. " → " .. NOM_VariantLook.inspect(z))
+        return curKind
+    end
+    if idx == nil then
+        local cur = tonumber(info:match("var=[EK](%d+)")) or 0
+        idx = NOM_Math.mod(cur, n) + 1
+    end
+    local k, i = NOM_VariantLook.forceVariant(z, curKind, idx)
+    NOM_DebugLog.say(string.format("[NOM] lookVariant %s #%s → %s",
+        tostring(k), tostring(i), NOM_VariantLook.inspect(z)))
+    return k, i
+end
+
 -- Sprint 0060d/e: isolamento debug — SÓ a flag lookClean (não mexer em LookForce).
 -- Sem args: liga/desliga. on=false desliga. Prova Sport+White só com a flag ligada.
 function NOM.lookClean(on)
@@ -600,6 +643,7 @@ NOM.HELP = {
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
+    { "NOM.lookVariant(kind, idx)", "guarda-roupa E1–E5 / K1–K5 no mais perto; sem args cicla o índice" },
     { "NOM.lookClean()", "liga/desliga isolamento (FX off + Sport/White); não muda LookForce" },
     { "NOM.glitch(mode)", "Glitch de tela: \"off\" / \"original\" / \"bordas\"; sem args cicla; live no canal do shader" },
     { "NOM.glitchIntensity(pct)", "intensidade do glitch 0–200% (padrão 100); multiplica tear/scanline/static do modo" },
