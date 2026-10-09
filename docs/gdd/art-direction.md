@@ -35,18 +35,13 @@
   olhos da Carpideira, posta onde fica o rosto na pele de zumbi vanilla (o layout, visto a
   olho, é o mesmo no masculino e no feminino). A balaclava vanilla é um tricô uniforme, sem
   região de rosto visível: o chiado do Sem-rosto vale na cabeça inteira.
-- **Uma pele e uma peça por variante, e nada da roupa comum (sprint 0016).** ~~A roupa do
-  zumbi fica.~~ Visto no jogo pelo Johan (05/10/2026): "os zombies quando se transformam
-  devem ficar sem roupa ... tudo que contribui pro monstro fica, mas de resto não ... tem
-  monstro que tem coisa na cabeça e fica estranho". Enquanto é variante, a roupa vanilla
-  (camiseta, calça, chapéu, óculos, atadura) some do desenho; ficam a pele e a peça do mod
-  e as feridas do corpo (camadas `ZedDmg_*` e `Wound_*`, que são carne, não roupa). Quando
-  a variante acaba (fim da névoa, troca de tipo, reaproveitamento, morte), a roupa volta, e
-  o corpo e o loot são os do zumbi comum. Exceção de roupa (o Johan gostou de "uma saia
-  estranha", sem saber qual): um padrão na lista `NOM_VariantLook.KEEP`. O Eco não muda (já
-  só veste itens do mod). **O monstro larga tudo** (Johan, 05/10/2026): a roupa escondida
-  também não vale no jogo (morde através de máscara e capacete, sem armadura nem modificador
-  de visão/audição, chapéu não cai), até a variante acabar.
+- **Uma pele e peças do mod por variante, e nada da roupa comum vanilla (sprint 0016;
+  emenda 0060).** Enquanto é variante, a roupa vanilla some; ficam a pele do mod, a peça
+  de cabeça e **a roupa cotidiana/hospitalar do mod** no corpo (`NOM_*Roupa` / manto),
+  mais feridas `ZedDmg_*`/`Wound_*`. A 0054 deixou o corpo nu com pele P&B binária e leu
+  como grade UV no playtest — a 0060 corrige com midtones + camada de tecido. Quando a
+  variante acaba, a roupa vanilla volta. **O monstro larga tudo** no sentido de combate
+  (Johan, 05/10/2026): a roupa vanilla escondida não vale (morde através de máscara, etc.).
 - Texturas: `scripts/gen_textures.py`. Técnica: [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Os monstros

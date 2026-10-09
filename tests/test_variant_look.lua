@@ -386,7 +386,9 @@ return {
             assert(hasItem(zs[k], look.item), k .. " sem a peça")
             assert(zs[k].hv.name == look.skin, k .. " com a pele errada")
         end
-        assert(NOM_VariantLook.LOOKS.semrosto.skin == nil, "o Sem-rosto é zumbi comum fora do rosto")
+        assert(NOM_VariantLook.LOOKS.semrosto.skin == "NOM_SemRosto", "0060: Sem-rosto tem pele própria")
+        assert(NOM_VariantLook.LOOKS.estalador.body and NOM_VariantLook.LOOKS.corredor.body
+            and NOM_VariantLook.LOOKS.semrosto.body, "0060: variantes com roupa no corpo")
     end,
 
     look_items_exist_in_script = function()
@@ -648,9 +650,8 @@ return {
     end,
 
     -- orçamento (docs/architecture/README.md): por zumbi com N peças vanilla escondidas,
-    -- pôr ≤ 11 + 3·N chamadas, tirar ≤ 5 + 2·N (na passada), passada sem troca 0.
-    -- G.vcalls conta toda chamada de visual nos objetos falsos (zumbi, HumanVisual, lista,
-    -- cada ItemVisual), inclusive os criados no meio da chamada.
+    -- pôr ≤ 17 + 3·N chamadas (0060: +roupa no corpo = 2º ItemVisual), tirar ≤ 5 + 2·N,
+    -- passada sem troca 0. G.vcalls conta toda chamada de visual nos objetos falsos.
     look_budget = function()
         local G = setup()
         local z = G.spawn({ id = idFor("estalador", 16), extra = { "Base.Hat_Army" } })
@@ -658,14 +659,14 @@ return {
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 11 + 3 * n, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 17 + 3 * n, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
         fogOff()
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 5 + 2 * n, "tirar custou " .. G.vcalls)
+        assert(G.vcalls <= 8 + 2 * n, "tirar custou " .. G.vcalls)
         assert(z.hv.name == nil)
     end,
 
@@ -677,7 +678,7 @@ return {
         local z = G.spawn({ id = id, extra = extra })
         fogOn(21)
         G.converge()
-        assert(types(z) == "Base.ZedDmg_BACK_Slash,Base.Wound_Chest_Bite_Male,Base.NOM_EstaladorVenda",
+        assert(types(z) == "Base.ZedDmg_BACK_Slash,Base.Wound_Chest_Bite_Male,Base.NOM_EstaladorVenda,Base.NOM_EstaladorRoupa",
             "lista na variante: " .. types(z))
         assert(z.hv.name == NOM_VariantLook.LOOKS.estalador.skin)
         assert(z.outfitID == id and z.resets >= 1)
@@ -717,7 +718,7 @@ return {
         G.converge()
         z:dressInPersistentOutfitID(id2)
         G.converge()
-        assert(types(z) == "Base.NOM_EstaladorVenda", "re-vestido não escondeu: " .. types(z))
+        assert(types(z) == "Base.NOM_EstaladorVenda,Base.NOM_EstaladorRoupa", "re-vestido não escondeu: " .. types(z))
         fogOff()
         G.converge()
         assert(types(z) == table.concat(OUTFIT, ","), "roupa duplicada ou velha: " .. types(z))
@@ -854,7 +855,7 @@ return {
         local z = G.spawn({ id = idFor("corredor", 31), extra = { "Base.Tshirt_NOM_Fake" } })
         fogOn(31)
         G.converge()
-        assert(types(z) == "Base.NOM_CorredorBoca", "sobrou: " .. types(z))
+        assert(types(z) == "Base.NOM_CorredorBoca,Base.NOM_CorredorRoupa", "sobrou: " .. types(z))
     end,
 
     -- status do debug: só quem está na lista da célula conta (step 4 do roteiro)
@@ -1314,10 +1315,8 @@ return {
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and #G.bursts == 0)
     end,
 
-    -- orçamento (docs/architecture/README.md), com N peças vanilla escondidas e 1 jogador
-    -- local (o driver do alfa custa 3 por tick com efeito: getCurrentSquare, getAlpha,
-    -- setAlpha): pôr com casca ≤ 22 + 3·N; a casca sair no fim ≤ 6; passada sem troca 0;
-    -- cobrir ≤ 12; trocar embaixo e revelar ≤ 14 + 2·N
+    -- orçamento: N vanilla + 1 jogador local (driver alfa = 3/tick). 0060: +roupa corpo.
+    -- pôr com casca ≤ 28 + 3·N; casca sair ≤ 6; passada 0; cobrir ≤ 12; revelar ≤ 14 + 2·N
     ember_budget = function()
         local G = setup({ dissolve = true, body = true })
         local z = G.spawn({ id = idFor("estalador", 73), extra = { "Base.Hat_Army" } })
@@ -1327,7 +1326,7 @@ return {
         G.vcalls = 0
         G.converge()
         local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
-        assert(G.vcalls <= 22 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        assert(G.vcalls <= 28 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
         G.vcalls = 0
         local ms = NOM_DissolveRules.MS + 50
         G.ms(ms)

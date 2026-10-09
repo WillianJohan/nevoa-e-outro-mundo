@@ -24,17 +24,19 @@ TEX = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textu
 # caso da lã); a boca folga no mid (o vermelho saturado é o desenho). A venda era
 # laranja vivo (mid 0,45); virou atadura com arame ferrugem-escuro, sem cinza médio.
 LIMITS = {
-    "NOM/NOM_SemRostoEstatica.png": (0.40, 0.08, 0.20),
-    "Body/NOM_Estalador.png": (0.25, 0.15, 0.10),
+    # casca Wrong Person (0060): contraste alto, midtones permitidos (não P&B binário)
+    "NOM/NOM_SemRostoEstatica.png": (0.22, 0.55, 0.12),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
     # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
     "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
-    "Body/NOM_Corredor.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
-    "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
-    # manto penitente (sprint 0052): tecido escuro com rasgos — contraste alto, pouco cinza médio
-    "NOM/NOM_CarpideiraManto.png": (0.20, 0.25, 0.08),
+    # manto hospitalar (0060): tecido legível — mid mais folgado que a 0052
+    "NOM/NOM_CarpideiraManto.png": (0.12, 0.70, 0.06),
+    # roupas cotidianas no corpo (0060): contraste de tecido, mid folgado (não é peça de cabeça)
+    "NOM/NOM_EstaladorRoupa.png": (0.05, 0.95, 0.04),
+    "NOM/NOM_CorredorRoupa.png": (0.05, 0.95, 0.04),
+    "NOM/NOM_SemRostoRoupa.png": (0.05, 0.95, 0.04),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
     "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
@@ -54,6 +56,15 @@ LIMITS = {
 PALE = {
     "NOM/NOM_EcoCinza.png": (0.82, 0.12, 0.08),
     "NOM/NOM_EcoVeu.png": (0.78, 0.15, 0.12),   # escurece pras bordas do véu
+}
+
+# Peles Body (0060): midtones OBRIGATÓRIOS — binário P&B lia como grade UV no strip.
+# nome → (média mínima, mid mínimo, mid máximo, fração escura máxima)
+SKIN = {
+    "Body/NOM_Estalador.png": (0.55, 0.20, 0.90, 0.25),
+    "Body/NOM_Corredor.png": (0.45, 0.20, 0.95, 0.35),
+    "Body/NOM_Carpideira.png": (0.55, 0.20, 0.90, 0.25),
+    "Body/NOM_SemRosto.png": (0.40, 0.20, 0.98, 0.35),
 }
 
 # Atadura: faixas horizontais. A luminância tem que variar muito mais de linha pra
@@ -93,6 +104,25 @@ def check_pale(name, img):
     return errs, (mean, mid, dark)
 
 
+def check_skin(name, img):
+    lum, opaque = luminance(img)
+    vals = lum[opaque]
+    mean = float(vals.mean())
+    mid = float(((vals > 0.3) & (vals < 0.7)).mean())
+    dark = float((vals < 0.3).mean())
+    mmin, midmin, midmax, dmax = SKIN[name]
+    errs = []
+    if mean < mmin:
+        errs.append("média %.3f < %.2f (pele apagada)" % (mean, mmin))
+    if mid < midmin:
+        errs.append("mid %.3f < %.2f (pele binária/P&B — grade no jogo)" % (mid, midmin))
+    if mid > midmax:
+        errs.append("mid %.3f > %.2f (lã)" % (mid, midmax))
+    if dark > dmax:
+        errs.append("escuro %.3f > %.2f (mancha demais)" % (dark, dmax))
+    return errs, (mean, mid, dark)
+
+
 def horizontal_ratio(img):
     lum, _ = luminance(img)
     return float(lum.mean(axis=1).std() / max(lum.mean(axis=0).std(), 1e-6))
@@ -101,6 +131,8 @@ def horizontal_ratio(img):
 def check(name, img):
     if name in PALE:
         return check_pale(name, img)
+    if name in SKIN:
+        return check_skin(name, img)
     std, mid, far = metrics(img)
     smin, mmax, fmin = LIMITS[name]
     errs = []
@@ -129,8 +161,16 @@ def test_every_look_texture_has_limits():
         for f in os.listdir(os.path.join(TEX, sub)):
             if f.startswith("NOM_") and f.endswith(".png"):
                 found.add(sub + "/" + f)
-    missing = found - set(LIMITS) - set(PALE) - PARTICLES
+    missing = found - set(LIMITS) - set(PALE) - set(SKIN) - PARTICLES
     assert not missing, "textura de visual sem limite de contraste: %s" % sorted(missing)
+
+
+def test_body_skin_not_binary_pb():
+    # regressão do playtest 0060: Body binário (mid≈0) + strip = grade UV no jogo
+    for name in sorted(SKIN):
+        errs, m = check(name, Image.open(os.path.join(TEX, name)))
+        assert not errs, "%s: %s (métricas %s)" % (name, errs, m)
+        assert m[1] >= SKIN[name][1], "%s mid baixo demais: %.3f" % (name, m[1])
 
 
 def test_contrast_catches_wool():
@@ -186,9 +226,12 @@ def test_manto_not_wrap_pelicula():
 
 def test_textures_contrast():
     bad = []
-    for name in sorted(LIMITS) + sorted(PALE):
+    for name in sorted(LIMITS) + sorted(PALE) + sorted(SKIN):
         errs, m = check(name, Image.open(os.path.join(TEX, name)))
-        fmt = "média=%.3f mid=%.3f escuro=%.3f" if name in PALE else "std=%.3f mid=%.3f far=%.3f"
+        if name in PALE or name in SKIN:
+            fmt = "média=%.3f mid=%.3f escuro=%.3f"
+        else:
+            fmt = "std=%.3f mid=%.3f far=%.3f"
         print("  %-30s " % name + fmt % m)
         if errs:
             bad.append(name + ": " + "; ".join(errs))

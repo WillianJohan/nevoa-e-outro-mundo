@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gêmeo de NOM_EstaladorRoupa com dissolve (sprint 0018 / 0060). -->
+<clothingItem>
+	<m_MaleModel></m_MaleModel>
+	<m_FemaleModel></m_FemaleModel>
+	<m_GUID>a0d4e281-0060-4b2e-8c1d-11a22b33c44e</m_GUID>
+	<m_Static>false</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone></m_AttachBone>
+	<m_BaseTextures>NOM\NOM_EstaladorRoupa</m_BaseTextures>
+	<m_Shader>NOM_Dissolve</m_Shader>
+</clothingItem>

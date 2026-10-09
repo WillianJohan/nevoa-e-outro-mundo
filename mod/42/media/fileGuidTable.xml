@@ -69,4 +69,28 @@
 		<path>media/clothing/clothingItems/NOM_TicaoCrostaFx.xml</path>
 		<guid>0c92c5ac-fa4b-4b81-8cc3-571b6f1e4c02</guid>
 	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EstaladorRoupa.xml</path>
+		<guid>9f3c1a70-0060-4b2e-8c1d-11a22b33c44d</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EstaladorRoupaFx.xml</path>
+		<guid>a0d4e281-0060-4b2e-8c1d-11a22b33c44e</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CorredorRoupa.xml</path>
+		<guid>b1e5f392-0060-4b2e-8c1d-11a22b33c44f</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CorredorRoupaFx.xml</path>
+		<guid>c2f604a3-0060-4b2e-8c1d-11a22b33c450</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoRoupa.xml</path>
+		<guid>d30715b4-0060-4b2e-8c1d-11a22b33c451</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoRoupaFx.xml</path>
+		<guid>e41826c5-0060-4b2e-8c1d-11a22b33c452</guid>
+	</files>
 </fileGuidTable>

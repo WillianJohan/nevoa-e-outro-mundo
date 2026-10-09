@@ -35,9 +35,19 @@ require "NOM_EmberShell"
 -- Direção de arte: docs/gdd/art-direction.md.
 NOM_VariantLook = {
     LOOKS = {
-        estalador = { skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
-        corredor = { skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
-        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        -- Sprint 0060: pele legível + roupa cotidiana no corpo (além da peça de cabeça).
+        estalador = {
+            skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx",
+            body = "Base.NOM_EstaladorRoupa", bodyFx = "Base.NOM_EstaladorRoupaFx",
+        },
+        corredor = {
+            skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx",
+            body = "Base.NOM_CorredorRoupa", bodyFx = "Base.NOM_CorredorRoupaFx",
+        },
+        semrosto = {
+            skin = "NOM_SemRosto", item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx",
+            body = "Base.NOM_SemRostoRoupa", bodyFx = "Base.NOM_SemRostoRoupaFx",
+        },
         -- Sprint 0052: mechas + manto penitente (corpo, camada como Eco cinza).
         carpideira = {
             skin = "NOM_Carpideira",

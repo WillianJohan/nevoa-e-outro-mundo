@@ -15,8 +15,12 @@ return {
     -- o Java acha o Sem-rosto pela peça que o NOM_VariantLook veste: os nomes têm de bater
     mod3_censor_items_match_look = function()
         local look = read("mod/42/media/lua/client/NOM_VariantLook.lua")
-        local item, fx = look:match('semrosto = { item = "([%w%._]+)", fx = "([%w%._]+)" }')
-        assert(item and fx, "LOOKS.semrosto não achado")
+        -- 0060: LOOKS.semrosto ganhou skin/body; a peça de cabeça ainda é o que o Censor acha
+        local block = look:match("semrosto = %b{}")
+        assert(block, "LOOKS.semrosto não achado")
+        local item = block:match('item = "([%w%._]+)"')
+        local fx = block:match('fx = "([%w%._]+)"')
+        assert(item and fx, "LOOKS.semrosto sem item/fx")
         local java = read(JAVA .. "Censor.java")
         assert(java:find('"' .. item .. '"', 1, true), "Censor.java sem " .. item)
         assert(java:find('"' .. fx .. '"', 1, true), "Censor.java sem " .. fx)
