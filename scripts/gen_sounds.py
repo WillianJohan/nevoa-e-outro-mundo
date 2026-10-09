@@ -16,9 +16,10 @@ import numpy as np
 import nom_synth as ns
 import sirenes
 from nom_synth import (alto_falante, bandpass, bipe, canal_am, chiado_radio, crepitar, desvanecimento,
-                       estalo, estatica, highpass, lowpass, lowpass_ctrl, motivo, norm, nsamp, peak, peaking,
-                       phase_of, put, quase_voz, ramp_out, respiracao, reverb_wet, rms, sirene_invertida,
-                       smooth_noise, smoothstep, tsec, window, zumbido_rede)
+                       estalo, estatica, h_bandpass, harm, highpass, lowpass, lowpass_ctrl, motivo, norm,
+                       nsamp, peak, peaking, phase_of, put, quase_voz, ramp_out, respiracao, reverb_wet,
+                       rms, sirene_invertida, smooth_noise, smoothstep, tsec, tv_filter, window,
+                       zumbido_rede)
 from sirenes import (v1 as sv1, v2 as sv2, v3 as sv3, v4 as sv4, v5 as sv5, v6 as sv6, v7 as sv7, v8 as sv8,
                      v9 as sv9)
 
@@ -66,28 +67,147 @@ def click(rng):
     return out
 
 
-def scream(rng):
-    """Corredor (0048): raspagem + ar + eco curto de rua; menos serra aguda 'blehhh'."""
-    dur = 1.85
-    t = np.arange(int(dur * RATE)) / RATE
-    # antecipação: sopro/raspagem antes da voz
-    f0 = np.interp(t, [0, 0.18, 0.45, 1.1, 1.85], [180, 240, 620, 540, 280])
-    f0 = f0 * (1 + 0.02 * np.sin(2 * np.pi * 5.5 * t))
-    f0 = f0 * (1 + 0.012 * np.cumsum(rng.standard_normal(len(t))) / 400)
-    phase = 2 * np.pi * np.cumsum(f0) / RATE
-    # menos harmônicos agudos que a serra antiga (1..18)
-    voice = sum(np.sin(k * phase) / (k ** 1.15) for k in range(1, 11))
-    breath = highpass(rng.standard_normal(len(t)), 800, 1)
-    scrape = resonator(rng.standard_normal(len(t)), 1400, 2) * np.interp(t, [0, 0.12, 0.35, 1.85], [0.9, 0.7, 0.25, 0.1])
-    mixed = 0.55 * voice + 0.45 * breath + 0.35 * scrape
-    formants = resonator(mixed, 900, 5) + 0.55 * resonator(mixed, 1800, 6) + 0.25 * resonator(mixed, 2800, 7)
-    env = np.interp(t, [0, 0.1, 0.35, 1.35, 1.85], [0, 0.45, 1, 0.75, 0])
-    dry = np.tanh(1.1 * formants / (np.max(np.abs(formants)) + 1e-9) * env)
+def glottal_source(f0, oq=0.55, tilt=1.35, rough=0.0, rng=None, grit=0.18):
+    """Fonte glotal estilo Rosenberg/LF: fluxo que sobe e fecha seco + radiação (derivada).
+
+    Harmônicos com tilt alto soam garganta, não serra FM. `rough` (0..1, escalar ou array)
+    soma subharmônico e shimmer; `grit` mistura ruído na fonte (aperiodicidade entre
+    harmônicos — o que falta pro ouvido ler "pessoa", não oscilador limpo)."""
+    n = len(f0)
+    if rng is None:
+        rng = np.random.default_rng(0)
+    f0 = np.maximum(f0, 40.0)
+    rough = np.asarray(rough, dtype=float)
+    if rough.ndim == 0:
+        rough = np.full(n, float(rough))
+    # jitter de período humano (mais forte que LFO de synth) + micro-deriva
+    f = f0 * (1
+              + 0.014 * smooth_noise(rng, n, 28)
+              + 0.008 * rough * smooth_noise(rng, n, 70)
+              + 0.004 * smooth_noise(rng, n, 9))
+    ph = np.cumsum(f) / RATE  # ciclos
+    frac = ph % 1.0
+    open_m = frac < oq
+    x = np.zeros(n)
+    u = frac / oq
+    # fluxo glotal: sobe em ~t²(1-t), fecha abrupto (borda = brilho natural)
+    x[open_m] = (u[open_m] ** 2) * (1.0 - u[open_m])
+    # radiação labial ≈ 1ª diferença; lowpass tira o click digital do fecho
+    flow = lowpass(np.diff(x, prepend=x[0]), 6000, 2)
+    # harmônicos suaves por cima (corpo da vogal) com tilt forte — sem chirp
+    body = harm(phase_of(f), f, range(1, 22), tilt)
+    src = 0.55 * peak(flow) + 0.45 * peak(body)
+    # subharmônico + shimmer onde rough > 0
+    sub = harm(phase_of(f * 0.5), f * 0.5, (1, 3, 5), 1.1)
+    shimmer = 1.0 - rough * 0.35 * (0.5 + 0.5 * np.sin(phase_of(f * 0.5))) ** 2
+    src = (1.0 - 0.45 * rough) * src + 0.45 * rough * peak(sub)
+    src = src * shimmer
+    # grit: ruído moldado pelo envelope da voz (preenche entre harmônicos)
+    grit = np.asarray(grit, dtype=float)
+    if grit.ndim == 0:
+        grit = np.full(n, float(grit))
+    if np.any(grit > 0):
+        env = np.abs(lowpass(np.abs(src), 80, 2))
+        env = env / (np.max(env) + 1e-12)
+        noise = bandpass(rng.standard_normal(n), 1200, 0.7) + 0.5 * bandpass(
+            rng.standard_normal(n), 2800, 1.0)
+        src = (1.0 - 0.55 * grit) * src + grit * peak(noise) * env
+    return src
+
+
+def voice_tract(src, rng, f1, f2, f3, bw_mul=1.0, aspir=0.22, drift=1.0):
+    """Trato vocal paralelo (Klatt-lite): 3 formantes que derivam + aspiração/turbulência."""
+    n = len(src)
+    dur = n / RATE
+    d1 = smooth_noise(rng, int(dur * 40) + 2, 0.7)
+    d2 = smooth_noise(rng, int(dur * 40) + 2, 0.55)
+    d3 = smooth_noise(rng, int(dur * 40) + 2, 0.4)
+    # bases podem ser escalares ou arrays (envelope de vogal no tempo)
+    if np.isscalar(f1):
+        f1 = np.full(n, float(f1))
+        f2 = np.full(n, float(f2))
+        f3 = np.full(n, float(f3))
+
+    def formants(fr, tc):
+        i = int(np.clip(tc * 40, 0, len(d1) - 1))
+        j = int(np.clip(tc * RATE, 0, n - 1))
+        # bandas mais largas = menos "picos de synth", mais garganta
+        q1, q2, q3 = 2.4 / bw_mul, 3.0 / bw_mul, 3.8 / bw_mul
+        a = f1[j] + 55 * drift * d1[i]
+        b = f2[j] + 120 * drift * d2[i]
+        c = f3[j] + 90 * drift * d3[i]
+        # F1/F2 dominam (corpo da vogal); F3 e brilho só coloram — evita "chip" agudo
+        return (1.35 * h_bandpass(fr, a, q1)
+                + 0.95 * h_bandpass(fr, b, q2)
+                + 0.28 * h_bandpass(fr, c, q3)
+                + 0.06 * h_bandpass(fr, 3400, 5.5))
+
+    # aspiração: ruído de glote aberta (grito = muito ar) — escalar ou array
+    aspir = np.asarray(aspir, dtype=float)
+    if aspir.ndim == 0:
+        aspir = np.full(n, float(aspir))
+    noise = highpass(rng.standard_normal(n), 500, 1)
+    asp = bandpass(noise, 1800, 0.9) + 0.45 * bandpass(noise, 3200, 1.2)
+    mix = peak(src) + aspir * peak(asp)
+    y = tv_filter(np.concatenate([mix, np.zeros(4096)]), formants)[:n]
+    return y
+
+
+def room_echo(dry, taps, seed, lp=2400):
+    """Ecos curtos de rua/galpão + cauda molhada leve."""
     wet = dry.copy()
-    for delay, gain in ((0.09, 0.22), (0.21, 0.12)):
+    for delay, gain in taps:
         k = int(delay * RATE)
-        wet[k:] += gain * lowpass(dry, 2200, 1)[:-k]
+        if 0 < k < len(wet):
+            wet[k:] += gain * lowpass(dry, lp, 1)[: len(wet) - k]
+    wet = wet + 0.12 * reverb_wet(dry, 1.4, 0.05, min(lp, 1600), seed)
     return wet
+
+
+def scream(rng):
+    """Corredor (0048→redo): grito curto humano-morto — pulso glotal + formantes, raspagem.
+
+    Anticipação de ar, pico de pânico, quebra de registro; eco curto. Sem serra 'blehhh'.
+    """
+    dur = rng.uniform(1.55, 1.95)
+    t = tsec(nsamp(dur))
+    # contorno F0: antecipação baixa → pico → queda (pessoa, não sirene)
+    f_lo = rng.uniform(140, 190)
+    f_peak = rng.uniform(380, 520)
+    f_end = rng.uniform(160, 240)
+    knots_t = [0, 0.12, 0.28, 0.55, 1.0, dur]
+    knots_f = [f_lo, f_lo * 1.15, f_peak, f_peak * rng.uniform(0.88, 0.98),
+               f_peak * 0.7, f_end]
+    f0 = np.exp(lowpass(np.interp(t, knots_t, np.log(knots_f)), 8.0, 2))
+    # vibrato irregular fraco + uma quebra de registro no meio
+    vib = 0.018 * np.sin(2 * np.pi * (5.0 + 1.2 * smooth_noise(rng, len(t), 0.8)) * t)
+    f0 = f0 * (1 + vib)
+    brk = 0.55 + rng.uniform(-0.08, 0.12)
+    g = smoothstep((t - brk) / 0.015) * (1 - smoothstep((t - brk - 0.09) / 0.04))
+    f0 = f0 * (1 + (0.78 - 1) * g)
+    rough = 0.55 + 0.25 * smoothstep((t - 0.2) / 0.4)
+    src = glottal_source(f0, oq=0.48, tilt=1.4, rough=rough, rng=rng, grit=0.28)
+    # vogal aberta /a/–/ɛ/: formantes acompanham F0 (grito real sobe F1 com o pitch)
+    f1 = np.maximum(np.interp(t, [0, 0.3, dur], [620, 780, 680]), 1.15 * f0)
+    f2 = np.maximum(np.interp(t, [0, 0.3, dur], [1250, 1480, 1320]), f1 + 450)
+    f3 = np.clip(f2 + 900, 2200, 2900)
+    voiced = voice_tract(src, rng, f1, f2, f3, bw_mul=1.15, aspir=0.22, drift=0.85)
+    voiced = peaking(voiced, 700, 1.8, 5.0)  # peito / corpo
+    # voz manda; raspagem/ar só coloram (evita chiado de synth no agudo)
+    scrape = resonator(rng.standard_normal(len(t)), 1100, 2.2) * np.interp(
+        t, [0, 0.1, 0.35, dur], [0.55, 0.35, 0.12, 0.04])
+    breath_in = bandpass(rng.standard_normal(len(t)), 1400, 1.0) * np.interp(
+        t, [0, 0.08, 0.2, dur], [0.7, 0.35, 0.08, 0.03])
+    mixed = peak(voiced) + 0.16 * peak(scrape) + 0.12 * peak(breath_in)
+    mixed = lowpass(mixed, 4200, 2)
+    env = np.interp(t, [0, 0.06, 0.22, 0.9, dur - 0.15, dur], [0, 0.35, 1.0, 0.85, 0.35, 0])
+    # micro-soluços de pânico (envelope, não pitch chirp)
+    for _ in range(int(rng.integers(1, 3))):
+        tc = rng.uniform(0.35, max(0.4, dur - 0.4))
+        w = np.exp(-((t - tc) / 0.045) ** 2)
+        env = env * (1.0 - 0.28 * w)
+    dry = np.tanh(1.25 * peak(mixed) * env)
+    return room_echo(dry, ((0.08, 0.2), (0.19, 0.1)), int(rng.integers(1, 9999)), lp=2100)
 
 
 def loopable(signal, fade):
@@ -167,54 +287,164 @@ def sob(rng):
 
 
 def wail(rng):
-    """Carpideira acordada (0048): lamento que desafina e falha, ~3,6 s.
+    """Carpideira acordada (0048→redo): lamento feminino de pânico (vibe Witch L4D).
 
-    Sobe sem virar guincho de serra; uma voz quebra no meio; eco de rua curto.
+    Pulso glotal + formantes abertos; sobe, desafina, falha a voz, volta em aflição.
+    Sem chip/serra — aspiração e quebra de garganta carregam o terror.
     """
-    dur = 3.6
-    t = np.arange(int(dur * RATE)) / RATE
-    f0 = np.interp(t, [0, 0.4, 1.0, 2.0, 2.8, 3.6], [380, 520, 780, 720, 480, 320])
-    # falha de garganta: afina pra baixo num trecho
-    fail = (t > 1.6) & (t < 2.1)
-    f0 = f0 * (1 + 0.03 * np.sin(2 * np.pi * 6.5 * t))
-    f0[fail] *= np.linspace(1.0, 0.82, fail.sum())
-    out = np.zeros_like(t)
-    for detune, gain in ((1.0, 1.0), (1.018, 0.55), (0.985, 0.35)):
-        phase = 2 * np.pi * np.cumsum(f0 * detune) / RATE + rng.uniform(0, 2 * np.pi)
-        out += gain * sum(np.sin(k * phase) / (k ** 1.2) for k in range(1, 10))
-    breath = highpass(rng.standard_normal(len(t)), 600, 1) * 0.45
-    formants = resonator(out + breath, 950, 5) + 0.55 * resonator(out, 2100, 6) + 0.2 * resonator(out, 3200, 7)
-    env = np.interp(t, [0, 0.12, 0.5, 2.6, 3.6], [0, 0.55, 1, 0.7, 0])
-    env[fail] *= np.linspace(0.7, 0.4, fail.sum())  # falha: volume cai no trecho
-    dry = np.tanh(1.4 * formants / (np.max(np.abs(formants)) + 1e-9) * env)
-    wet = dry.copy()
-    for delay, gain in ((0.14, 0.25), (0.33, 0.14), (0.58, 0.08)):
-        k = int(delay * RATE)
-        wet[k:] += gain * lowpass(dry, 2400, 1)[:-k]
-    return wet
+    dur = rng.uniform(3.3, 4.0)
+    t = tsec(nsamp(dur))
+    # F0 feminino alto, contorno de lamento (não glissando de synth)
+    f_start = rng.uniform(300, 380)
+    f_hi = rng.uniform(560, 720)   # lamento aflito, não guincho de sirene
+    f_mid = rng.uniform(480, 600)
+    f_end = rng.uniform(260, 340)
+    fail_t = rng.uniform(1.45, 1.9)
+    knots_t = [0, 0.25, 0.7, fail_t, fail_t + 0.35, 2.6, dur]
+    knots_f = [f_start, f_start * 1.2, f_hi, f_hi * 0.92, f_mid * 0.7, f_mid, f_end]
+    f0 = np.exp(lowpass(np.interp(t, knots_t, np.log(knots_f)), 6.0, 2))
+    # tremor de choro (vibrato irregular ~6 Hz) + flutter de pânico
+    cry = 0.028 * np.sin(2 * np.pi * (5.8 + 1.5 * smooth_noise(rng, len(t), 0.6)) * t)
+    cry = cry + 0.012 * smooth_noise(rng, len(t), 12)
+    f0 = f0 * (1 + cry)
+    # falha: F0 cai e a voz vira quase sopro
+    fail = (t > fail_t) & (t < fail_t + 0.45)
+    f0 = f0.copy()
+    f0[fail] *= np.linspace(1.0, 0.72, fail.sum())
+    src = glottal_source(f0, oq=0.58, tilt=1.25, rough=0.15 + 0.55 * fail.astype(float),
+                         rng=rng, grit=0.22 + 0.25 * fail.astype(float))
+    # formantes /a/ aflita (Witch): F1 acompanha F0 pra manter corpo de voz humana
+    f1 = np.maximum(np.interp(t, [0, 0.8, fail_t, dur], [750, 900, 680, 800]), 1.1 * f0)
+    f2 = np.maximum(np.interp(t, [0, 0.8, fail_t, dur], [1450, 1680, 1350, 1550]), f1 + 500)
+    f3 = np.clip(f2 + 1000, 2400, 3100)
+    aspir = 0.18 + 0.35 * fail.astype(float) + 0.1 * smoothstep((t - 0.1) / 0.5)
+    voiced = voice_tract(src, rng, f1, f2, f3, bw_mul=1.25, aspir=aspir, drift=1.0)
+    voiced = peaking(voiced, 850, 1.6, 6.0)  # peito feminino
+    # inspiração chiada antes do pico e no fail (banda média — não hiss branco)
+    gasp = bandpass(rng.standard_normal(len(t)), 1600, 1.1)
+    gasp_env = np.exp(-((t - 0.08) / 0.06) ** 2) + 0.7 * np.exp(-((t - fail_t) / 0.08) ** 2)
+    mixed = peak(voiced) + 0.18 * peak(gasp) * gasp_env
+    mixed = lowpass(mixed, 4800, 2)
+    env = np.interp(t, [0, 0.1, 0.45, fail_t, fail_t + 0.25, 2.8, dur],
+                    [0, 0.5, 1.0, 0.55, 0.4, 0.75, 0])
+    # soluços curtos no lamento (aflição, não metrônomo)
+    for _ in range(int(rng.integers(2, 4))):
+        tc = rng.uniform(0.5, dur - 0.5)
+        env = env * (1.0 - 0.35 * np.exp(-((t - tc) / 0.05) ** 2))
+    dry = np.tanh(1.35 * peak(mixed) * env)
+    return room_echo(dry, ((0.12, 0.22), (0.28, 0.12), (0.52, 0.07)),
+                     int(rng.integers(1, 9999)), lp=2600)
 
 
-def ambient_scream(rng):
-    """Grito humano distante (0048, spec §5): longe, passa-baixa, eco de cidade; sem horda."""
-    dur = rng.uniform(1.4, 2.4)
-    t = np.arange(int(dur * RATE)) / RATE
-    f0 = np.interp(t, [0, 0.15, 0.5, dur], [280, 520 + rng.uniform(-40, 60), 480, 220])
-    f0 = f0 * (1 + 0.04 * np.sin(2 * np.pi * rng.uniform(5, 8) * t))
-    phase = 2 * np.pi * np.cumsum(f0) / RATE
-    voice = sum(np.sin(k * phase) / (k ** 1.3) for k in range(1, 9))
-    breath = rng.standard_normal(len(t)) * 0.35
-    formants = resonator(voice + breath, 800, 4) + 0.4 * resonator(voice, 1600, 5)
-    env = np.interp(t, [0, 0.08, 0.35, dur - 0.25, dur], [0, 0.7, 1, 0.5, 0])
-    dry = formants * env
-    dry = lowpass(dry, 1600, 2)  # longe: come o agudo
-    wet = dry.copy()
-    for delay, gain in ((0.28, 0.35), (0.55, 0.2), (0.95, 0.1)):
-        k = int(delay * RATE)
-        if k < len(wet):
-            wet[k:] += gain * lowpass(dry, 1200, 1)[: len(wet) - k]
-    # cauda de reverb distante
-    wet = wet + 0.15 * reverb_wet(wet, 1.8, 0.1, 900, int(rng.integers(1, 9999)))
-    return wet
+def ambient_scream(rng, style=None):
+    """Grito/sofrimento humano distante (0048→redo).
+
+    Referências de vibe (recriadas, sem sample): grito longe, sofrimento, choro, desespero.
+    Variantes estruturais reais — não pitch shift. Passa-baixa + reverb = cidade/névoa.
+    `style`: 0 grito distante · 1 sofrimento · 2 choro · 3 desespero (None = sorteia).
+    """
+    if style is None:
+        style = int(rng.integers(0, 4))
+    style = int(style) % 4
+    sex = "f" if rng.random() > (0.4 if style in (2, 3) else 0.5) else "m"
+    f_mul = rng.uniform(1.18, 1.38) if sex == "f" else 1.0
+
+    if style == 0:  # grito humano distante (shriek curto)
+        dur = rng.uniform(1.15, 1.65)
+        f_lo, f_hi = rng.uniform(200, 270) * f_mul, rng.uniform(560, 720) * f_mul
+        knots_t = [0, 0.07, 0.32, dur]
+        knots_f = [f_lo, f_hi, f_hi * 0.88, f_lo * 0.92]
+        env_k = ([0, 0.04, 0.18, dur - 0.22, dur], [0, 0.9, 1.0, 0.35, 0])
+        rough0, grit0, aspir0 = 0.2, 0.24, 0.22
+        sobs = 0
+    elif style == 1:  # sofrimento: gemido/aflição que sobe e quebra
+        dur = rng.uniform(2.2, 3.1)
+        f_lo, f_hi = rng.uniform(160, 230) * f_mul, rng.uniform(360, 480) * f_mul
+        knots_t = [0, 0.35, 0.9, 1.7, 2.3, dur]
+        knots_f = [f_lo * 0.85, f_lo, f_hi, f_hi * 0.75, f_lo * 1.05, f_lo * 0.7]
+        env_k = ([0, 0.2, 0.7, 1.5, dur - 0.45, dur], [0, 0.45, 0.85, 1.0, 0.4, 0])
+        rough0, grit0, aspir0 = 0.35, 0.32, 0.28
+        sobs = int(rng.integers(1, 3))
+    elif style == 2:  # choro de desespero: soluços em série (F0 cai em cada um)
+        dur = rng.uniform(2.4, 3.4)
+        f_base = rng.uniform(240, 340) * f_mul
+        # monta fraseado de soluços
+        t = tsec(nsamp(dur))
+        f0 = np.full_like(t, f_base * 0.7)
+        env = np.zeros_like(t)
+        tc = rng.uniform(0.05, 0.15)
+        while tc < dur - 0.25:
+            length = rng.uniform(0.28, 0.55)
+            k = (t >= tc) & (t < tc + length)
+            u = (t[k] - tc) / length
+            env[k] = np.maximum(env[k], (np.sin(np.pi * u) ** 1.35) * rng.uniform(0.55, 1.0))
+            f0[k] = f_base * rng.uniform(0.92, 1.12) * (1.0 - 0.22 * u)
+            # inspiração chiada entre soluços
+            gap = rng.uniform(0.08, 0.2)
+            g = (t >= tc + length) & (t < tc + length + gap * 0.7)
+            env[g] = np.maximum(env[g], 0.22 * np.sin(np.pi * (t[g] - tc - length) / (gap * 0.7 + 1e-9)))
+            tc += length + gap
+        f0 = f0 * (1 + 0.03 * smooth_noise(rng, len(t), 8) + 0.015 * smooth_noise(rng, len(t), 22))
+        cry = 0.035 * np.sin(2 * np.pi * (6.2 + smooth_noise(rng, len(t), 0.7)) * t)
+        f0 = f0 * (1 + cry)
+        rough = 0.2 + 0.25 * (1.0 - env)  # mais rachado nos buracos
+        src = glottal_source(f0, oq=0.56, tilt=1.28, rough=rough, rng=rng, grit=0.3)
+        f1 = np.maximum(780 * f_mul / 1.2, 1.05 * f0)
+        f2 = f1 + rng.uniform(550, 750)
+        f3 = np.clip(f2 + 950, 2300, 3000)
+        voiced = voice_tract(src, rng, f1, f2, np.full_like(t, f3), bw_mul=1.45,
+                             aspir=0.3 + 0.2 * (1.0 - env), drift=1.15)
+        gasp = bandpass(rng.standard_normal(len(t)), 1500, 1.0)
+        mixed = peak(voiced) + 0.2 * peak(gasp) * (1.0 - env) * 0.5
+        dry = peak(mixed) * np.clip(env, 0, 1)
+        dry = lowpass(dry, rng.uniform(1000, 1400), 3)
+        dry = highpass(dry, 100, 1)
+        wet = room_echo(dry, ((0.35, 0.42), (0.7, 0.24), (1.15, 0.12)),
+                        int(rng.integers(1, 9999)), lp=1000)
+        return wet + 0.25 * reverb_wet(wet, 2.6, 0.18, 750, int(rng.integers(1, 9999)))
+    else:  # desespero: crescendo longo, pico de pânico, queda quebrada
+        dur = rng.uniform(2.0, 2.9)
+        f_lo, f_hi = rng.uniform(190, 260) * f_mul, rng.uniform(520, 700) * f_mul
+        peak_t = rng.uniform(0.9, 1.35)
+        knots_t = [0, 0.25, peak_t, peak_t + 0.2, dur]
+        knots_f = [f_lo * 0.8, f_lo * 1.1, f_hi, f_hi * 0.65, f_lo * 0.75]
+        env_k = ([0, 0.15, peak_t, peak_t + 0.15, dur - 0.35, dur],
+                 [0, 0.4, 1.0, 0.7, 0.35, 0])
+        rough0, grit0, aspir0 = 0.3, 0.34, 0.26
+        sobs = int(rng.integers(2, 4))
+
+    if style != 2:
+        t = tsec(nsamp(dur))
+        f0 = np.exp(lowpass(np.interp(t, knots_t, np.log(knots_f)), 6.5, 2))
+        # tremor irregular (não LFO limpo) + flutter de aflição
+        f0 = f0 * (1
+                   + 0.022 * smooth_noise(rng, len(t), 7)
+                   + 0.012 * smooth_noise(rng, len(t), 18)
+                   + 0.01 * np.sin(2 * np.pi * (5.5 + 1.8 * smooth_noise(rng, len(t), 0.5)) * t))
+        rough = rough0 + 0.15 * smoothstep((t - 0.3) / max(0.4, dur - 0.6))
+        src = glottal_source(f0, oq=0.52, tilt=1.3, rough=rough, rng=rng, grit=grit0)
+        if sex == "f":
+            f1b, f2b, f3b = 820.0, 1580.0, 2800.0
+        else:
+            f1b, f2b, f3b = 680.0, 1280.0, 2350.0
+        f1a = np.maximum(np.full_like(t, f1b), 1.05 * f0) * (1 + 0.1 * smooth_noise(rng, len(t), 0.5))
+        f2a = np.maximum(np.full_like(t, f2b), f1a + 480) * (1 + 0.07 * smooth_noise(rng, len(t), 0.4))
+        f3a = np.full_like(t, f3b)
+        voiced = voice_tract(src, rng, f1a, f2a, f3a, bw_mul=1.4, aspir=aspir0, drift=1.05)
+        env = np.interp(t, env_k[0], env_k[1])
+        for _ in range(sobs):
+            tc = rng.uniform(0.35, max(0.5, dur - 0.45))
+            env = env * (1.0 - 0.4 * np.exp(-((t - tc) / 0.055) ** 2))
+        # ar de boca nos buracos do envelope (sofrimento/choro)
+        breath = bandpass(rng.standard_normal(len(t)), 1400, 1.0)
+        mixed = peak(voiced) + 0.16 * peak(breath) * (1.0 - np.clip(env, 0, 1))
+        dry = peak(mixed) * env
+        dry = lowpass(dry, rng.uniform(1050, 1450), 3)
+        dry = highpass(dry, 110, 1)
+        wet = room_echo(dry, ((0.32, 0.4), (0.65, 0.22), (1.1, 0.12)),
+                        int(rng.integers(1, 9999)), lp=1050)
+        wet = wet + 0.24 * reverb_wet(wet, 2.5, 0.16, 780, int(rng.integers(1, 9999)))
+        return wet
 
 
 def write(name, signal):
@@ -754,10 +984,11 @@ def main():
         if want(name):
             write(name, fn(np.random.default_rng(SEED + k)))
     # sprint 0048: gritos ambiente (só cliente; banco de 4)
+    # 1 grito distante · 2 sofrimento · 3 choro · 4 desespero
     for i in range(1, 5):
         name = f"NOM_AmbientScream{i}"
         if want(name):
-            write(name, ambient_scream(np.random.default_rng(SEED + 50 + i)))
+            write(name, ambient_scream(np.random.default_rng(SEED + 50 + i), style=i - 1))
     os.makedirs(OUT, exist_ok=True)
     for name, fn, crest in DEVICES:  # sprint 0034: aparelhos do Outro Mundo
         if want(name):
