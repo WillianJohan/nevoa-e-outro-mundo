@@ -192,8 +192,7 @@ function R.layers(s, now, i, dz)
     end
     local sob = clamp(s.sob or 0, 0, 1)
     local sobVig = sob * R.SOB_VIGNETTE * i * (0.7 + 0.3 * breath(now))
-    -- 0060c: LookForce = look limpo — zera glitch (0060b damp 0.12 ainda deixava
-    -- scanline/vinheta; o canal do shader seguia com aberração/tear).
+    -- 0060c/d: look limpo (flag de debug) — zera tudo pra isolar o ItemVisual.
     if R.lookClean() then
         return {
             grain = 0, vignette = 0, vr = 0, vg = 0, vb = 0,
@@ -201,21 +200,36 @@ function R.layers(s, now, i, dz)
             sr = sr, sg = sg, sb = sb, dark = 0,
         }
     end
+    -- 0060d: scanlines sempre off (TV quebrada). Com LookForce: vinheta/grain suaves.
+    local force = R.lookForceOn()
+    local gMul = force and 0.4 or 1
+    local vMul = force and 0.45 or 1
+    local fMul = force and 0.35 or 1
+    local sMul = force and 0.12 or 1
     return {
-        -- Sprint 0060: grain/lines baixos pra não comer pele/roupa.
-        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i, 0, 1),
-        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
-        vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
-        lines = clamp(s.static * f * 0.12 * i, 0, 1),
-        flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
-        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
+        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i * gMul, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i * vMul
+            + dz * R.DIZZY_VIGNETTE * pulse * (force and 0.35 or 1) + sobVig * (force and 0.35 or 1), 0, 1),
+        vr = 0.42 * r * (1 - b) * (force and 0.65 or 1), vg = 0, vb = 0,
+        lines = 0,
+        flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i * fMul, 0, 1),
+        fogStatic = clamp((s.fogStatic or 0) * i * sMul, 0, 1),
         sr = sr, sg = sg, sb = sb,
-        dark = dz * R.DIZZY_DARK,
+        dark = dz * R.DIZZY_DARK * (force and 0.4 or 1),
     }
 end
 
--- LookForce do painel ≠ Auto → isola o look (sem grain/lines/aberração/tear).
+-- Isolamento debug (NOM.lookClean): não confundir com LookForce do painel.
+function R.setLookClean(on)
+    R._lookClean = on == true
+end
+
 function R.lookClean()
+    return R._lookClean == true
+end
+
+-- LookForce ≠ Auto (horror forçado no painel).
+function R.lookForceOn()
     if not NOM_PanelParams or not NOM_PanelParams.lookForce then return false end
     local lf = NOM_PanelParams.lookForce()
     return lf ~= nil and lf ~= ""
@@ -243,13 +257,17 @@ function R.channel(s, now, i, bloom, dz)
         return { blur = 0, radius = 0, desat = 0, darkness = 0, gradient = 0 }
     end
     i = clamp(i or 1, 0, 2)
-    local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i, 0, 2)
+    local force = R.lookForceOn()
+    -- 0060d: hiss (radius) sempre 0 → sem tear no screen.frag; LookForce suaviza o resto.
+    local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i * (force and 0.12 or 1), 0, 2)
+    local bloomV = clamp(bloom or 0, 0, 2) * (force and 0.35 or 1)
+    local soft = force and 0.4 or 1
     return {
-        blur = s.fog * i,
-        radius = s.static * s.fog * i,
-        desat = s.red * i,
+        blur = s.fog * i * soft,
+        radius = 0,
+        desat = s.red * i * (force and 0.3 or 1),
         darkness = pulse + R.DIZZY_BASE * math.floor(clamp(dz or 0, 0, 1) * R.DIZZY_STEPS + 0.5),
-        gradient = R.MARKER + clamp(bloom or 0, 0, 2) * R.BLOOM_SCALE,
+        gradient = R.MARKER + bloomV * R.BLOOM_SCALE,
     }
 end
 

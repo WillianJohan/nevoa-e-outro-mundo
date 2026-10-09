@@ -324,7 +324,9 @@ local function setup(opts)
         _G[m] = nil
         package.loaded[m] = nil
     end
-    NOM_PanelParams = nil -- lookClean off salvo se o teste setar
+    NOM_PanelParams = nil
+    require "NOM_ScreenFxRules"
+    NOM_ScreenFxRules.setLookClean(false)
     require "NOM_Config"
     require "NOM_VariantRules"
     NOM_VariantRules.forced = {}
@@ -375,14 +377,10 @@ return {
         assert(NOM_VariantLook.count() == 1)
     end,
 
-    -- 0060c: LookForce → prova camisa/calça coloridas vanilla no ItemVisual
+    -- 0060c/d: flag lookClean → prova camisa/calça coloridas (isolamento)
     look_clean_proof_colored_body = function()
         local G = setup()
-        -- lookKind nil: não força kind; lookForce ≠ "" liga lookClean/prova
-        NOM_PanelParams = {
-            lookForce = function() return "misaligned" end,
-            lookKind = function() return nil end,
-        }
+        NOM_ScreenFxRules.setLookClean(true)
         local z = G.spawn({ id = idFor("estalador", 3) })
         fogOn(3)
         G.converge()
@@ -395,7 +393,7 @@ return {
         G.converge()
         assert(hasItem(z, OUTFIT[1]) and hasItem(z, OUTFIT[2]), "não devolveu outfit: " .. types(z))
         assert(not hasItem(z, PROOF[1]) and not hasItem(z, look.item), "prova/peça ficaram: " .. types(z))
-        NOM_PanelParams = nil
+        NOM_ScreenFxRules.setLookClean(false)
     end,
 
     look_each_kind_distinct = function()
@@ -406,10 +404,17 @@ return {
         G.converge()
         for _, k in ipairs(KINDS) do
             local look = NOM_VariantLook.LOOKS[k]
-            assert(look and look.item, "sem visual pra " .. k)
-            assert(not seen[look.item], "peça repetida " .. look.item)
-            seen[look.item] = true
-            assert(hasItem(zs[k], look.item), k .. " sem a peça")
+            assert(look, "sem LOOKS pra " .. k)
+            if k == "semrosto" then
+                assert(not look.item, "0060d: Sem-rosto não deve ter peça estática")
+                assert(not hasItem(zs[k], "Base.NOM_SemRostoEstatica"), "estática na cara: " .. types(zs[k]))
+                assert(hasItem(zs[k], OUTFIT[1]) and hasItem(zs[k], OUTFIT[2]), "roupa someu: " .. types(zs[k]))
+            else
+                assert(look.item, "sem visual pra " .. k)
+                assert(not seen[look.item], "peça repetida " .. look.item)
+                seen[look.item] = true
+                assert(hasItem(zs[k], look.item), k .. " sem a peça")
+            end
             if k == "ticao" then
                 assert(zs[k].hv.name == look.skin, k .. " com a pele errada")
             else
@@ -428,8 +433,10 @@ return {
         for _, k in ipairs(KINDS) do
             setup()
             local look = NOM_VariantLook.LOOKS[k]
-            local name = look.item:match("^Base%.(.+)$")
-            assert(name and s:find("item " .. name .. "\n", 1, true), k .. ": item fora do script")
+            if look.item then
+                local name = look.item:match("^Base%.(.+)$")
+                assert(name and s:find("item " .. name .. "\n", 1, true), k .. ": item fora do script")
+            end
             if look.body then
                 local body = look.body:match("^Base%.(.+)$")
                 assert(body and s:find("item " .. body .. "\n", 1, true), k .. ": manto fora do script")
@@ -471,13 +478,16 @@ return {
     -- de dia, o Sem-rosto não tem stats: a passada do NightStats sai cedo nele
     look_semrosto_removed_at_day = function()
         local G = setup()
-        local z = G.spawn({ id = idFor("semrosto", 6) })
+        local z = G.spawn({ id = idFor("semrosto", 6), extra = { "Base.Hat_Army" } })
         fogOn(6)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.semrosto.item))
+        assert(NOM_VariantLook.count() == 1, "Sem-rosto não entrou na tabela")
+        assert(not hasItem(z, "Base.Hat_Army"), "chapéu deveria sumir na variante")
+        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"))
         fogOff()
         G.converge()
-        assert(not hasItem(z, NOM_VariantLook.LOOKS.semrosto.item), "Sem-rosto ficou com o rosto de chiado")
+        assert(NOM_VariantLook.count() == 0, "Sem-rosto ficou marcado")
+        assert(hasItem(z, "Base.Hat_Army"), "chapéu não voltou: " .. types(z))
     end,
 
     look_common_zombie_untouched = function()
@@ -551,10 +561,10 @@ return {
     -- MP: cada cliente pinta a própria cópia, dona ou remota, sem rede
     look_remote_copy_gets_it_and_nothing_sent = function()
         local G = setup({ client = true })
-        local z = G.spawn({ id = idFor("semrosto", 11), remote = true })
+        local z = G.spawn({ id = idFor("estalador", 11), remote = true })
         fogOn(11)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.semrosto.item), "cópia remota sem visual")
+        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.item), "cópia remota sem visual")
     end,
 
     look_not_on_dedicated_server = function()
@@ -569,11 +579,7 @@ return {
         fogOn(12, true)
         G.converge()
         for _, z in ipairs(G.zombies) do
-            local hasNom = false
-            for _, iv in ipairs(z.ivs.items) do
-                if iv.type:find("%.NOM_", 1) or iv.type:find("^Base%.NOM_", 1) then hasNom = true end
-            end
-            assert(hasNom, "vermelha: zumbi sem peça NOM: " .. types(z))
+            assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "vermelha: estática na cara")
             assert(hasItem(z, OUTFIT[1]), "vermelha: camisa sumiu (0060b): " .. types(z))
         end
         assert(NOM_VariantLook.count() == 40)
@@ -583,16 +589,18 @@ return {
         -- sprint 0049: ID 0 nunca é variante (nem forçado); usa um Corredor e força por cima
         local G = setup()
         local id = idFor("corredor", 13)
-        local z = G.spawn({ id = id })
+        local z = G.spawn({ id = id, extra = { "Base.Hat_Army" } })
         fogOn(13)
         G.converge()
         NOM_VariantRules.forced[id] = "semrosto"
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.semrosto.item), "forçado sem visual")
+        assert(not hasItem(z, "Base.Hat_Army") and not hasItem(z, "Base.NOM_SemRostoEstatica"),
+            "forçado Sem-rosto: " .. types(z))
+        assert(hasItem(z, OUTFIT[1]), "roupa someu no Sem-rosto: " .. types(z))
         NOM_VariantRules.forced[id] = "estalador"
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.item) and not hasItem(z, NOM_VariantLook.LOOKS.semrosto.item),
-            "trocou de tipo e ficou com as duas: " .. types(z))
+        assert(hasItem(z, NOM_VariantLook.LOOKS.estalador.item),
+            "trocou de tipo: " .. types(z))
         NOM_VariantRules.forced[id] = nil
         G.converge()
         -- desfeito: volta ao sorteio (Corredor), não a Knox
@@ -948,8 +956,10 @@ return {
         setup()
         for _, k in ipairs(KINDS) do
             local look = NOM_VariantLook.LOOKS[k]
-            assert(look.fx == look.item .. "Fx", k .. ": gêmeo " .. tostring(look.fx))
-            assert(src:find("item " .. look.fx:match("^Base%.(.+)$") .. "\n", 1, true), k .. ": gêmeo fora do script")
+            if look.item then
+                assert(look.fx == look.item .. "Fx", k .. ": gêmeo " .. tostring(look.fx))
+                assert(src:find("item " .. look.fx:match("^Base%.(.+)$") .. "\n", 1, true), k .. ": gêmeo fora do script")
+            end
         end
     end,
 
@@ -1027,7 +1037,7 @@ return {
     dissolve_look_dead_mid_leave_loot_exact = function()
         local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash" }
         local G = setup({ dissolve = true })
-        local id = idFor("semrosto", 44)
+        local id = idFor("estalador", 44)
         local want = G.kill(G.spawn({ id = id, extra = extra }))
         local z = G.spawn({ id = id, extra = extra })
         fogOn(44)
@@ -1167,7 +1177,7 @@ return {
     ember_dead_mid_mutation_loot_exact = function()
         local extra = { "Base.Hat_Army", "Base.ZedDmg_BACK_Slash" }
         local G = setup({ dissolve = true, body = true })
-        local id = idFor("semrosto", 63)
+        local id = idFor("estalador", 63)
         local want = G.kill(G.spawn({ id = id, extra = extra }))
         local z = G.spawn({ id = id, extra = extra })
         fogOn(63)
@@ -1327,7 +1337,7 @@ return {
     -- brasas do overlay no pé do zumbi, uma no começo de cada transição
     ember_bursts_at_each_transition = function()
         local G = setup({ dissolve = true, body = true })
-        local z = G.spawn({ id = idFor("semrosto", 71), x = 33.5, y = 44.5 })
+        local z = G.spawn({ id = idFor("estalador", 71), x = 33.5, y = 44.5 })
         fogOn(71)
         G.converge()
         assert(#G.bursts == 1 and G.bursts[1].x == 33.5 and G.bursts[1].y == 44.5 and G.bursts[1].z == 0)

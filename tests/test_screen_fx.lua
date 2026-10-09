@@ -399,7 +399,7 @@ return {
         assert(alpha(v) > normal * 1.2, "vermelha não é mais forte")
     end,
 
-    -- linhas pela distância do Sem-rosto mais perto (o mesmo do rádio, sprint 0005)
+    -- 0060d: scanlines off (antes cresciam com o Sem-rosto / rádio)
     screenfx_lines_with_semrosto_distance = function()
         local G = setup()
         local tex = T()
@@ -407,16 +407,10 @@ return {
         assert(byTex(G.frameDraws(), tex.lines) == nil, "linhas sem Sem-rosto")
         local z = G.zombie({ x = 125, y = 100, id = W.semRostoID(1, true) })
         G.frame(30)
-        local far = byTex(G.frameDraws(), tex.lines)
-        assert(far and alpha(far) > 0, "Sem-rosto a 25 tiles sem linhas")
+        assert(byTex(G.frameDraws(), tex.lines) == nil, "0060d: lines longe")
         z.x = 105.5
         G.frame(30)
-        local near = byTex(G.frameDraws(), tex.lines)
-        assert(alpha(near) > alpha(far), "perto não é mais forte")
-        assert(near.x <= 0 and near.x + near.w >= 1920 and near.y <= 0 and near.y + near.h >= 1080)
-        SandboxVars.NevoaEOutroMundo.SemRostoEnabled = false
-        G.frame(30)
-        assert(byTex(G.frameDraws(), tex.lines) == nil, "linhas com o Sem-rosto desligado")
+        assert(byTex(G.frameDraws(), tex.lines) == nil, "0060d: lines perto")
     end,
 
     screenfx_carpideira_scream_flash = function()

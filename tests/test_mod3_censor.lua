@@ -12,18 +12,16 @@ local JAVA = "mod3/java/nom/render/"
 local SH = "mod3/42/media/shaders/"
 
 return {
-    -- o Java acha o Sem-rosto pela peça que o NOM_VariantLook veste: os nomes têm de bater
+    -- 0060d: look do Sem-rosto não veste mais a estática (cobria o corpo). Censor.java
+    -- ainda reconhece as peças legadas se aparecerem no inventário/lista.
     mod3_censor_items_match_look = function()
         local look = read("mod/42/media/lua/client/NOM_VariantLook.lua")
-        -- 0060: LOOKS.semrosto ganhou skin/body; a peça de cabeça ainda é o que o Censor acha
         local block = look:match("semrosto = %b{}")
         assert(block, "LOOKS.semrosto não achado")
-        local item = block:match('item = "([%w%._]+)"')
-        local fx = block:match('fx = "([%w%._]+)"')
-        assert(item and fx, "LOOKS.semrosto sem item/fx")
+        assert(not block:match('item = "'), "0060d: Sem-rosto não deve vestir peça estática")
         local java = read(JAVA .. "Censor.java")
-        assert(java:find('"' .. item .. '"', 1, true), "Censor.java sem " .. item)
-        assert(java:find('"' .. fx .. '"', 1, true), "Censor.java sem " .. fx)
+        assert(java:find('"Base.NOM_SemRostoEstatica"', 1, true), "Censor.java sem peça legada")
+        assert(java:find('"Base.NOM_SemRostoEstaticaFx"', 1, true), "Censor.java sem gêmeo legado")
     end,
 
     -- o quadrado vem antes da névoa: a névoa cobre ele (senão o Sem-rosto acende no meio da névoa)

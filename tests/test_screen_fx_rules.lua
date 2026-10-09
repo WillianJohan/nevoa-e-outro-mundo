@@ -58,12 +58,11 @@ return {
         assert(sr < 0.4 and sr > 0.15 and math.abs(sr - sg) < 0.05 and sb >= sr, "estática preta não é cinza-escura")
     end,
 
-    -- linhas pela distância do Sem-rosto (o mesmo volume do rádio, sprint 0005)
-    screenfx_rules_lines_grow_near_semrosto = function()
+    -- 0060d: scanlines mortas (antes cresciam com o Sem-rosto / rádio)
+    screenfx_rules_lines_off_product = function()
         local far = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(28)), 0, 1).lines
         local near = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(5)), 0, 1).lines
-        local none = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(nil)), 0, 1).lines
-        assert(none == 0 and far > 0 and near > far, "linhas: " .. none .. " " .. far .. " " .. near)
+        assert(far == 0 and near == 0, "linhas voltaram: " .. far .. " " .. near)
     end,
 
     -- sprint 0052: vinheta sobe perto do soluço da Carpideira (ZB-free)
@@ -102,9 +101,10 @@ return {
         local zero = R.layers(s, 0, 0)
         assert(not R.visible(zero), "intensidade 0 desenha")
         local one, two = R.layers(s, 0, 1), R.layers(s, 0, 2)
-        for _, k in ipairs({ "grain", "vignette", "lines", "flash" }) do
+        for _, k in ipairs({ "grain", "vignette", "flash" }) do
             assert(two[k] >= one[k] and two[k] <= 1, k)
         end
+        assert(one.lines == 0 and two.lines == 0, "0060d: lines devem ficar 0")
         assert(R.layers(s, 0, 9).vignette <= 1)
     end,
 
@@ -136,9 +136,10 @@ return {
         local s = fogged(true, 0.5)
         s.flashAt, s.flashStrength = 0, 1
         c = R.channel(s, 0, 1)
-        assert(c.blur == 1 and c.desat == 1 and c.radius == 0.5 and c.darkness == 1)
+        -- 0060d: radius (hiss/tear) sempre 0
+        assert(c.blur == 1 and c.desat == 1 and c.radius == 0 and c.darkness == 1)
         local c2 = R.channel(s, 0, 2)
-        assert(c2.blur == 2 and c2.radius == 1)
+        assert(c2.blur == 2 and c2.radius == 0)
         assert(R.channel(s, 0, 0).blur == 0)
     end,
 
@@ -304,11 +305,12 @@ return {
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 
-    -- 0060c: LookForce → look limpo (overlay + canal shader zerados)
+    -- 0060c/d: flag lookClean zera; LookForce suaviza; lines/hiss sempre off
     screenfx_rules_look_clean_kills_glitch = function()
-        assert(not R.lookClean(), "sem PanelParams não é limpo")
-        NOM_PanelParams = { lookForce = function() return "misaligned" end }
-        assert(R.lookClean())
+        R.setLookClean(false)
+        NOM_PanelParams = nil
+        assert(not R.lookClean() and not R.lookForceOn())
+        R.setLookClean(true)
         local s = fogged(true, 1)
         s.flashAt, s.flashStrength = 0, 1
         s.fogStatic = 0.5
@@ -319,9 +321,15 @@ return {
         local c = R.channel(s, 0, 1, 2, 1)
         assert(c.blur == 0 and c.radius == 0 and c.desat == 0 and c.darkness == 0
             and c.gradient == 0, "canal shader ainda suja")
-        NOM_PanelParams = { lookForce = function() return "" end }
-        assert(not R.lookClean())
-        assert(R.layers(fogged(true), 0, 1).grain > 0, "Auto não deve zerar")
+        R.setLookClean(false)
+        local auto = R.layers(fogged(true, 1), 0, 1)
+        assert(auto.lines == 0 and auto.grain > 0, "Auto: sem lines")
+        assert(R.channel(fogged(true, 1), 0, 1, 1, 0).radius == 0, "hiss/tear deve morrer")
+        NOM_PanelParams = { lookForce = function() return "misaligned" end }
+        assert(R.lookForceOn())
+        local soft = R.layers(fogged(true), 0, 1)
+        local full = auto
+        assert(soft.vignette < full.vignette and soft.grain < full.grain, "LookForce não suavizou")
         NOM_PanelParams = nil
     end,
 

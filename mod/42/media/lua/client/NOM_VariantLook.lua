@@ -40,7 +40,9 @@ NOM_VariantLook = {
         -- cabeça + roupa vanilla do corpo. Roupa NOM_*Roupa da 0060 fica fora do look.
         estalador = { item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
         corredor = { item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
-        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        -- 0060d: SemRostoEstatica cobria cabeça/corpo com textura de chiado — fora do look.
+        -- Wrong Person = roupa vanilla + strip de cabeça (sem peça NOM na cara).
+        semrosto = {},
         -- Carpideira: manto hospitalar do mod no corpo (caminho Eco/Gown); sem pele Body.
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
@@ -57,7 +59,7 @@ NOM_VariantLook = {
         "Hat_", "Glasses_", "Balaclava", "Bandana", "Scarf", "WeddingVeil",
         "Mask", "MakeUp_", "Nose", "Earrings", "EarRing",
     },
-    -- 0060c: com LookForce, prova no print — camisa esportiva colorida + calça branca.
+    -- 0060c: só no look limpo (debug) — camisa esportiva + calça branca pra provar no print.
     PROOF_BODY = { "Base.Tshirt_Sport", "Base.Trousers_WhiteTEXTURE" },
     -- Tipos de corpo que a prova substitui (pra não empilhar tshirt+shirt).
     PROOF_STRIP = { "Tshirt_", "Shirt_", "Trousers_", "Skirt_", "Dress_", "Shorts_" },
@@ -157,7 +159,8 @@ end
 -- o que tem ChanceToFall > 0 não volta, como o PersistentOutfits.removeFallenHat faz
 -- (18–92) ao vestir.
 local function unhide(z, list, w)
-    if not list:remove(w.iv) then return end
+    -- Sem peça (ex.: Sem-rosto 0060d): ainda devolve a lista escondida.
+    if w.iv and not list:remove(w.iv) then return end
     if w.bodyIv then list:remove(w.bodyIv) end
     if not w.all then return end
     local fallen = hatFallen(z:getPersistentOutfitID())
@@ -178,7 +181,8 @@ local function put(z, kind, id)
     local look = LOOKS[kind]
     local fx = NOM_Dissolve.enabled()
     local shell = fx and NOM_EmberShell.can(z)
-    local w = { kind = kind, id = id, item = (fx and not shell) and look.fx or look.item }
+    local piece = look.item and ((fx and not shell and look.fx) and look.fx or look.item) or nil
+    local w = { kind = kind, id = id, item = piece }
     if look.body then
         w.body = (fx and not shell and look.bodyFx) and look.bodyFx or look.body
     end
@@ -187,11 +191,13 @@ local function put(z, kind, id)
     -- guardada); o efeito dela segue e o reveal abaixo continua do limiar em que estava
     NOM_EmberShell.remove(z)
     if look.skin then z:getHumanVisual():setSkinTextureName(look.skin) end
-    local iv = ItemVisual.new()
-    iv:setItemType(w.item)
     local list = z:getItemVisuals()
-    list:add(iv)
-    w.iv = iv
+    if w.item then
+        local iv = ItemVisual.new()
+        iv:setItemType(w.item)
+        list:add(iv)
+        w.iv = iv
+    end
     -- Corpo (sprint 0052): segundo ItemVisual; KEEP já deixa %.NOM_ à mostra.
     if w.body then
         local biv = ItemVisual.new()
@@ -202,9 +208,9 @@ local function put(z, kind, id)
     hide(list, w)
     proofBody(list, w)
     z:resetModelNextFrame()
-    if shell then
+    if w.item and shell then
         if NOM_EmberShell.reveal(z) then NOM_EmberShell.burst(z) end
-    elseif fx then
+    elseif w.item and fx then
         NOM_Dissolve.run(z, "in") -- no teto, a peça já vem inteira
     end
 end
@@ -219,7 +225,7 @@ local function strip(z)
     if w.proof then
         for _, iv in ipairs(w.proof) do list:remove(iv) end
     end
-    if w.iv then unhide(z, list, w) end -- remove(Object): os objetos que este processo tirou e pôs
+    if w.iv or w.all or w.bodyIv then unhide(z, list, w) end
     if LOOKS[w.kind].skin then z:getHumanVisual():setSkinTextureName(nil) end
     z:resetModelNextFrame()
     return w
@@ -236,7 +242,7 @@ local function leave(z)
     local function done(x)
         if worn[x] == w and w.leaving then strip(x) end
     end
-    if w.item == LOOKS[w.kind].item and NOM_EmberShell.can(z) then
+    if w.item and w.item == LOOKS[w.kind].item and NOM_EmberShell.can(z) then
         local function swap(x)
             if worn[x] == w and w.leaving then
                 strip(x)
@@ -249,7 +255,7 @@ local function leave(z)
             return
         end
     end
-    if w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
+    if w.item and w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
         w.leaving = true
         return
     end
@@ -293,7 +299,7 @@ function NOM_VariantLook.count()
     return n
 end
 
--- 0060b: prova runtime — pele e ItemVisuals do zumbi mais perto (ou o passado).
+-- 0060b/d: prova runtime — pele, ItemVisuals, lookClean/LookForce.
 function NOM_VariantLook.inspect(z)
     if not z then
         local p = getPlayer()
@@ -317,7 +323,11 @@ function NOM_VariantLook.inspect(z)
     for i = 0, list:size() - 1 do
         parts[#parts + 1] = tostring(list:get(i):getItemType())
     end
-    return string.format("kind=%s skin=%s items=%s", kinds, tostring(skin), table.concat(parts, ","))
+    local lf = "-"
+    if NOM_PanelParams and NOM_PanelParams.lookForce then lf = tostring(NOM_PanelParams.lookForce()) end
+    if lf == "" then lf = "auto" end
+    return string.format("kind=%s skin=%s clean=%s force=%s items=%s",
+        kinds, tostring(skin), tostring(NOM_ScreenFxRules.lookClean()), lf, table.concat(parts, ","))
 end
 
 -- Morte. Solo (IsoZombie.onKilled 38–52): o DoZombieInventory já fez vestidos e
@@ -335,9 +345,11 @@ local function dead(z)
     local w = worn[z]
     if not w then return end
     local inv = z:getInventory()
-    local ran = inv:FindAndReturn(w.item)
+    -- Sem peça (Sem-rosto 0060d): DoZombieInventory já rodou sem o que estava escondido;
+    -- devolve a lista e refaz vestidos/loot como no caminho com peça.
+    local ran = w.item and inv:FindAndReturn(w.item)
     strip(z)
-    if not ran then return end
+    if w.item and not ran then return end
     local wi = z:getWornItems()
     for i = 0, wi:size() - 1 do inv:Remove(wi:get(i):getItem()) end
     wi:setFromItemVisuals(z:getItemVisuals())

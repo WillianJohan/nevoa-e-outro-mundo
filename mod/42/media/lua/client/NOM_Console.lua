@@ -98,18 +98,23 @@ function NOM.lookInspect()
     return s
 end
 
--- Sprint 0060c: isola look — LookForce Misaligned + ScreenFx/shader glitch off + prova
--- camisa/calça coloridas no próximo sync da variante.
-function NOM.lookClean()
+-- Sprint 0060c/d: isola look (flag própria) — ScreenFx/shader off + prova camisa/calça.
+-- on=false desliga o isolamento (LookForce do painel continua).
+function NOM.lookClean(on)
     require "NOM_PanelParams"
     require "NOM_ScreenFxRules"
-    if NOM_PanelParams.lookForce() == "" then
-        NOM_PanelParams.set("LookForce", "misaligned")
+    if on == false then
+        NOM_ScreenFxRules.setLookClean(false)
+    else
+        NOM_ScreenFxRules.setLookClean(true)
+        if NOM_PanelParams.lookForce() == "" then
+            NOM_PanelParams.set("LookForce", "misaligned")
+        end
     end
     local lf = NOM_PanelParams.lookForce()
-    local clean = NOM_ScreenFxRules.lookClean()
+    if lf == "" then lf = "auto" end
     local s = string.format("LookForce=%s screenFxClean=%s (Tshirt_Sport+Trousers_White)",
-        tostring(lf), tostring(clean))
+        tostring(lf), tostring(NOM_ScreenFxRules.lookClean()))
     NOM_DebugLog.say("[NOM] lookClean " .. s)
     return s
 end
