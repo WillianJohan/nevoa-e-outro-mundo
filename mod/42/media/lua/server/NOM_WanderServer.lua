@@ -11,6 +11,7 @@ require "NOM_World"
 require "NOM_Config"
 require "NOM_WanderRules"
 require "NOM_Wander"
+require "NOM_ColorIdentityRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -33,7 +34,9 @@ function S.wave(why)
 end
 
 function S.minute()
-    if not NOM_World.fog or not NOM_Config.get("FogWander") then
+    local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
+    if not NOM_World.fog or not NOM_Config.get("FogWander")
+        or not NOM_ColorIdentityRules.wanderAllowed(mood) then
         S.left = nil
         return
     end

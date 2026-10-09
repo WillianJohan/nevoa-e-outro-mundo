@@ -558,12 +558,17 @@ function W.semRostoID(period, want, chance, redOnly)
     require "NOM_Config"
     local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
     c.semRostoChance = chance or c.semRostoChance
-    for seed = 1, 500 do
+    -- sprint 0049: branca 100%. Comum (want false) = ID 0.
+    -- redOnly: não é Sem-rosto na branca (pesos), mas é na vermelha (split 1/4).
+    if not want and not redOnly then return 0 end
+    for seed = 1, 20000 do
         local id = 7 * 65536 + seed
         local v = NOM_VariantRules.variant(id, period, c)
         if redOnly then
-            if v == nil and NOM_VariantRules.variant(id, period, c, true) == "semrosto" then return id end
-        elseif (want and v == "semrosto") or (not want and v == nil) then
+            if v ~= "semrosto" and NOM_VariantRules.variant(id, period, c, true) == "semrosto" then
+                return id
+            end
+        elseif want and v == "semrosto" then
             return id
         end
     end

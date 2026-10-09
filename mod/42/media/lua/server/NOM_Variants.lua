@@ -10,6 +10,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_VariantAI"
 require "NOM_CarpideiraRules"
 require "NOM_Carpideira"
@@ -45,7 +46,8 @@ local function scream(z)
     if not NOM_World.fog or not isKind(z, "corredor") then return end
     local md = z:getModData()
     local now = getGameTime():getWorldAgeHours()
-    if not NOM_VariantRules.screamReady(md.NOM_screamAt, now) then return end
+    local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
+    if not NOM_VariantRules.screamReady(md.NOM_screamAt, now, mood) then return end
     md.NOM_screamAt = now
     local sound = corredorScream()
     if isServer() then

@@ -30,6 +30,7 @@ local FILES = {
     "tests/test_night.lua",
     "tests/test_night_client.lua",
     "tests/test_variant_rules.lua",
+    "tests/test_color_identity_rules.lua",
     "tests/test_carpideira_rules.lua",
     "tests/test_variant_ai.lua",
     "tests/test_wander_rules.lua",

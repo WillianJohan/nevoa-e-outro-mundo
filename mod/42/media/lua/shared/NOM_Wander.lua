@@ -9,9 +9,11 @@
 -- põe o destino no PathFindBehavior2 e o pathToAux (0–274) liga bPathfind ou bMoving
 -- sozinho. Uso vanilla no zumbi: client/DebugUIs/DebugContextMenu.lua:640 (pathToLocation,
 -- a versão de tile inteiro do mesmo caminho, IsoGameCharacter.pathToLocation 0–28).
--- Fora: variantes (comportamento delas), Sem-rostos, Ecos, cegos e vigiados da visão curta, Carpideira
--- parada, congelados da sirene e todo useless; sem névoa, com a sirene ou com a opção
--- FogWander desligada, não sai onda.
+-- Fora: Corredor/Carpideira/Sem-rosto/Tição (regra própria), Ecos, cegos e vigiados da
+-- visão curta, Carpideira parada, congelados da sirene e todo useless. Sprint 0049: só na
+-- névoa branca (identidade cotidiano); na branca o Estalador pode perambular (com 100%
+-- variantes, senão a onda morria). Sem névoa, sirene, opção FogWander off ou vermelha/
+-- preta: não sai onda.
 require "NOM_WanderRules"
 require "NOM_Math"
 require "NOM_Config"
@@ -22,6 +24,7 @@ require "NOM_SirenFreeze"
 require "NOM_VariantAI"
 require "NOM_SemRosto"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 
 NOM_Wander = { last = nil }
 local R = NOM_WanderRules
@@ -58,9 +61,15 @@ local function nearAny(ps, x, y)
 end
 
 -- Regra própria lida em tabela Lua, antes de qualquer chamada no zumbi.
+-- Identidade (0049): na branca o Estalador (e o comum, se sobrar) pode andar;
+-- Corredor/Carpideira etc. continuam fora.
 local function ruled(z)
-    return NOM_NightStats.variants[z] ~= nil or NOM_VariantAI.blinded[z] ~= nil or NOM_VariantAI.watched[z] ~= nil
-        or NOM_Carpideira.still[z] ~= nil or NOM_SirenFreeze.frozen[z] ~= nil
+    if NOM_VariantAI.blinded[z] ~= nil or NOM_VariantAI.watched[z] ~= nil
+        or NOM_Carpideira.still[z] ~= nil or NOM_SirenFreeze.frozen[z] ~= nil then
+        return true
+    end
+    local mood = NOM_ColorIdentityRules.mood(NOM_FogState.red, NOM_FogState.black)
+    return not NOM_ColorIdentityRules.canWanderKind(NOM_NightStats.variants[z], mood)
 end
 
 -- Parado e livre: sem alvo, perto de algum jogador, local, vivo, sem useless, sem andar, nem
@@ -145,6 +154,9 @@ end
 function NOM_Wander.wave(seed)
     job = nil
     if not NOM_FogState.on or NOM_SirenFreeze.active or not NOM_Config.get("FogWander") then return nil end
+    -- Identidade por cor (0049): perambular é da branca (cotidiano), não da agitação.
+    local mood = NOM_ColorIdentityRules.mood(NOM_FogState.red, NOM_FogState.black)
+    if not NOM_ColorIdentityRules.wanderAllowed(mood) then return nil end
     local ps, all = players()
     if #ps == 0 then return nil end
     local rand = R.rng(seed)
