@@ -14,6 +14,16 @@ P.RHYTHMS = {
 
 P.LOOK_ARCHETYPES = { "", "pale", "misaligned", "patient", "wrong", "silhouette" }
 
+-- Arquétipo do painel (0054/0058) → kind de NOM_VariantRules (runtime).
+-- silhouette = Distorted Silhouette (manto) → mesma casca da Carpideira/Patient.
+P.LOOK_TO_KIND = {
+    pale = "estalador",
+    misaligned = "corredor",
+    patient = "carpideira",
+    wrong = "semrosto",
+    silhouette = "carpideira",
+}
+
 P.DEFAULTS = {
     AlmaPopMin = 4,
     AlmaPopMax = 20,
@@ -170,6 +180,13 @@ end
 
 function P.lookForce()
     return P.get("LookForce")
+end
+
+-- Kind de variante forçado pelo knob LookForce, ou nil se auto ("").
+function P.lookKind()
+    local f = P.lookForce()
+    if f == nil or f == "" then return nil end
+    return P.LOOK_TO_KIND[f]
 end
 
 -- Texto plain chave=valor pra colar no chat (sprint 0058b). Sem JSON (Kahlua sem

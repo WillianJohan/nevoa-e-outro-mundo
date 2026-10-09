@@ -107,12 +107,22 @@ end
 -- black: névoa preta (sprint 0038): todo zumbi é Tição, nem o forçado do debug vale (o
 -- Tição não está em KINDS: as faixas de sempre não andam).
 -- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | "ticao" | nil.
+-- LookForce do NOM.panel (0058): arquétipo live. Sem require fixo — o módulo
+-- shared/NOM_PanelParams.lua pode não estar carregado nos testes puros.
+local function panelLookKind()
+    if NOM_PanelParams == nil or NOM_PanelParams.lookKind == nil then return nil end
+    return NOM_PanelParams.lookKind()
+end
+
 function NOM_VariantRules.variant(id, period, cfg, red, black)
     id = NOM_VariantRules.baseId(id)
     if not id or id == 0 or not period then return nil end
     if black then return "ticao" end
     local f = NOM_VariantRules.forced[id]
     if f then return f end
+    -- Sessão de debug: força o look em todo assign (exceto forçado por ID / Tição).
+    local look = panelLookKind()
+    if look then return look end
     if red then
         local kinds = NOM_VariantRules.KINDS
         local kind = kinds[math.floor(hash(id, period, SPLIT_SALT) / Q * #kinds) + 1]
