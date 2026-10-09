@@ -58,11 +58,19 @@ return {
         assert(sr < 0.4 and sr > 0.15 and math.abs(sr - sg) < 0.05 and sb >= sr, "estática preta não é cinza-escura")
     end,
 
-    -- 0060d: scanlines mortas (antes cresciam com o Sem-rosto / rádio)
+    -- I6: default original — lines sobem com o Sem-rosto; off zera
     screenfx_rules_lines_off_product = function()
+        NOM_PanelParams = nil
         local far = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(28)), 0, 1).lines
         local near = R.layers(fogged(false, NOM_SemRostoRules.staticVolume(5)), 0, 1).lines
-        assert(far == 0 and near == 0, "linhas voltaram: " .. far .. " " .. near)
+        assert(near > far and near > 0, "original sem lines: " .. far .. " " .. near)
+        NOM_PanelParams = {
+            glitchMode = function() return "off" end,
+            glitchIntensity = function() return 1 end,
+            lookForce = function() return "" end,
+        }
+        assert(R.layers(fogged(false, NOM_SemRostoRules.staticVolume(5)), 0, 1).lines == 0)
+        NOM_PanelParams = nil
     end,
 
     -- sprint 0052: vinheta sobe perto do soluço da Carpideira (ZB-free)
@@ -104,7 +112,14 @@ return {
         for _, k in ipairs({ "grain", "vignette", "flash" }) do
             assert(two[k] >= one[k] and two[k] <= 1, k)
         end
-        assert(one.lines == 0 and two.lines == 0, "0060d: lines devem ficar 0")
+        assert(two.lines >= one.lines, "I6 original: lines devem escalar")
+        NOM_PanelParams = {
+            glitchMode = function() return "off" end,
+            glitchIntensity = function() return 1 end,
+            lookForce = function() return "" end,
+        }
+        assert(R.layers(s, 0, 1).lines == 0 and R.layers(s, 0, 2).lines == 0, "off: lines")
+        NOM_PanelParams = nil
         assert(R.layers(s, 0, 9).vignette <= 1)
     end,
 
@@ -136,11 +151,18 @@ return {
         local s = fogged(true, 0.5)
         s.flashAt, s.flashStrength = 0, 1
         c = R.channel(s, 0, 1)
-        -- 0060d: radius (hiss/tear) sempre 0
-        assert(c.blur == 1 and c.desat == 1 and c.radius == 0 and c.darkness == 1)
+        -- I6 default original: radius = static * fog * i (= 0.5)
+        assert(c.blur == 1 and c.desat == 1 and math.abs(c.radius - 0.5) < 1e-9 and c.darkness == 1)
         local c2 = R.channel(s, 0, 2)
-        assert(c2.blur == 2 and c2.radius == 0)
+        assert(c2.blur == 2 and math.abs(c2.radius - 1) < 1e-9)
         assert(R.channel(s, 0, 0).blur == 0)
+        NOM_PanelParams = {
+            glitchMode = function() return "off" end,
+            glitchIntensity = function() return 1 end,
+            lookForce = function() return "" end,
+        }
+        assert(R.channel(s, 0, 1).radius == 0, "off: radius")
+        NOM_PanelParams = nil
     end,
 
     -- sprint 0035: tontura de ~5 s na revelação do Outro Mundo. Sobe rápido (~0,6 s), segura e
@@ -305,11 +327,12 @@ return {
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 
-    -- 0060c/d: flag lookClean zera; LookForce suaviza; lines/hiss sempre off
+    -- 0060c/e + I6: lookClean zera; LookForce suaviza; GlitchMode default=original com lines/hiss
     screenfx_rules_look_clean_kills_glitch = function()
         R.setLookClean(false)
         NOM_PanelParams = nil
         assert(not R.lookClean() and not R.lookForceOn())
+        assert(R.glitchMode() == "original")
         R.setLookClean(true)
         local s = fogged(true, 1)
         s.flashAt, s.flashStrength = 0, 1
@@ -322,12 +345,25 @@ return {
         assert(c.blur == 0 and c.radius == 0 and c.desat == 0 and c.darkness == 0
             and c.gradient == 0, "canal shader ainda suja")
         R.setLookClean(false)
+        -- Default original: lines e radius voltam (pré-#16), escalados pela intensidade.
         local auto = R.layers(fogged(true, 1), 0, 1)
-        assert(auto.lines == 0 and auto.grain > 0, "Auto: sem lines")
-        assert(R.channel(fogged(true, 1), 0, 1, 1, 0).radius == 0, "hiss/tear deve morrer")
-        NOM_PanelParams = { lookForce = function() return "misaligned" end }
-        assert(R.lookForceOn())
+        assert(auto.lines > 0 and auto.grain > 0, "original sem lines: " .. tostring(auto.lines))
+        assert(R.channel(fogged(true, 1), 0, 1, 1, 0).radius > 0, "original sem hiss")
+        NOM_PanelParams = {
+            lookForce = function() return "misaligned" end,
+            glitchMode = function() return "off" end,
+            glitchIntensity = function() return 1 end,
+        }
+        assert(R.lookForceOn() and R.glitchMode() == "off")
+        assert(R.channel(fogged(true, 1), 0, 1, 1, 0).radius == 0, "off ainda tem tear")
         local soft = R.layers(fogged(true), 0, 1)
+        assert(soft.lines == 0)
+        NOM_PanelParams = {
+            lookForce = function() return "misaligned" end,
+            glitchMode = function() return "original" end,
+            glitchIntensity = function() return 1 end,
+        }
+        soft = R.layers(fogged(true), 0, 1)
         local full = auto
         assert(soft.vignette < full.vignette and soft.grain < full.grain, "LookForce não suavizou")
         NOM_PanelParams = nil

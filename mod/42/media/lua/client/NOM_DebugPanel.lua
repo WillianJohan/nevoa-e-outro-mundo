@@ -255,6 +255,17 @@ P.SECTIONS = {
                 { label = "UI_NOM_Debug_B_LookWrong", value = "wrong" },
                 { label = "UI_NOM_Debug_B_LookSil", value = "silhouette" },
             }),
+            -- I6: knobs live (Copiar definições) + botões dos NOM.glitch* (AGENTS.md / HELP).
+            enumCard("UI_NOM_Debug_C_GlitchMode", "GlitchMode", {
+                { label = "UI_NOM_Debug_B_GlitchOff", value = "off" },
+                { label = "UI_NOM_Debug_B_GlitchOrig", value = "original" },
+                { label = "UI_NOM_Debug_B_GlitchEdge", value = "bordas" },
+            }),
+            sliderCard("UI_NOM_Debug_C_GlitchInt", "GlitchIntensity"),
+            { title = "UI_NOM_Debug_C_GlitchAct", desc = "UI_NOM_Debug_C_GlitchAct_Desc", choices = {
+                c("UI_NOM_Debug_B_GlitchCycle", function() NOM.glitch() end),
+                c("UI_NOM_Debug_B_Show", function() NOM.glitchIntensity() end),
+            } },
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {

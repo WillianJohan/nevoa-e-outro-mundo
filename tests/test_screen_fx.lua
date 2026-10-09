@@ -399,18 +399,28 @@ return {
         assert(alpha(v) > normal * 1.2, "vermelha não é mais forte")
     end,
 
-    -- 0060d: scanlines off (antes cresciam com o Sem-rosto / rádio)
+    -- I6: default original — lines sobem perto do Sem-rosto; GlitchMode=off zera
     screenfx_lines_with_semrosto_distance = function()
         local G = setup()
         local tex = T()
+        package.loaded["NOM_PanelParams"] = nil
+        local PP = require "NOM_PanelParams"
+        PP.reset()
+        PP.set("GlitchMode", "original")
         fogOn(G)
         assert(byTex(G.frameDraws(), tex.lines) == nil, "linhas sem Sem-rosto")
         local z = G.zombie({ x = 125, y = 100, id = W.semRostoID(1, true) })
         G.frame(30)
-        assert(byTex(G.frameDraws(), tex.lines) == nil, "0060d: lines longe")
+        local far = byTex(G.frameDraws(), tex.lines)
         z.x = 105.5
         G.frame(30)
-        assert(byTex(G.frameDraws(), tex.lines) == nil, "0060d: lines perto")
+        local near = byTex(G.frameDraws(), tex.lines)
+        assert(near and alpha(near) > 0, "original: lines perto")
+        if far then assert(alpha(near) >= alpha(far) - 1e-6, "perto >= longe") end
+        PP.set("GlitchMode", "off")
+        G.frame(2)
+        assert(byTex(G.frameDraws(), tex.lines) == nil, "off: lines")
+        PP.reset()
     end,
 
     screenfx_carpideira_scream_flash = function()

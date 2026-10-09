@@ -115,6 +115,31 @@ function NOM.lookClean(on)
     return s
 end
 
+-- I6: seletor Glitch de tela (off / original / bordas). Sem args: cicla. Live → canal no próximo tick.
+function NOM.glitch(mode)
+    require "NOM_PanelParams"
+    local modes = NOM_PanelParams.GLITCH_MODES
+    if mode == nil or mode == "" then
+        local cur = NOM_PanelParams.glitchMode()
+        local i = 1
+        for k = 1, #modes do if modes[k] == cur then i = k end end
+        mode = modes[(i % #modes) + 1]
+    end
+    local v = NOM.param("GlitchMode", mode)
+    return v
+end
+
+-- I6: intensidade 0–200% do glitch do modo. Sem args: mostra. Live → SearchMode.y no próximo tick.
+function NOM.glitchIntensity(pct)
+    require "NOM_PanelParams"
+    if pct == nil then
+        local v = NOM_PanelParams.get("GlitchIntensity")
+        NOM_DebugLog.say("[NOM] glitchIntensity " .. NOM_PanelParams.format("GlitchIntensity", v))
+        return v
+    end
+    return NOM.param("GlitchIntensity", pct)
+end
+
 -- Truques do jogador local (ISAdminPowerUI.lua:31-53): muda e manda pro servidor
 -- (sendPlayerExtraInfo, :403); no MP o servidor aplica as regras dele.
 local function cheat(name, getter, setter)
@@ -456,7 +481,7 @@ local function sectionOfParam(key)
     if key:find("^Alma", 1, false) then return "almas" end
     if key:find("^Estalador", 1, false) then return "estalador" end
     if key:find("^Cinza", 1, false) then return "cinzas" end
-    if key == "LookForce" then return "look" end
+    if key == "LookForce" or key == "GlitchMode" or key == "GlitchIntensity" then return "look" end
     return nil
 end
 
@@ -576,6 +601,8 @@ NOM.HELP = {
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
     { "NOM.lookClean()", "liga/desliga isolamento (FX off + Sport/White); não muda LookForce" },
+    { "NOM.glitch(mode)", "Glitch de tela: \"off\" / \"original\" / \"bordas\"; sem args cicla; live no canal do shader" },
+    { "NOM.glitchIntensity(pct)", "intensidade do glitch 0–200% (padrão 100); multiplica tear/scanline/static do modo" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },

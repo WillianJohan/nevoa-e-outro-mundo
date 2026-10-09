@@ -94,13 +94,36 @@ local function channelValues(now)
         NOM_ScreenFx.dizzy(now))
 end
 
+-- Último canal escrito (prova I6: panel → SearchMode → shader). Testes e log leem isto.
+local lastChannel = nil
+local lastLogKey = nil
+
 local function write(pn, c)
     local psm = getSearchMode():getSearchModeForPlayer(pn)
+    -- Elo: FogVignette.write → SearchModeFloat.setAll → WeatherShader lê getShader*
+    -- → screen.frag SearchMode.y = hiss (tear). Sem reload: setAll no mesmo quadro.
     psm:getBlur():setAll(c.blur)
     psm:getRadius():setAll(c.radius)
     psm:getDesat():setAll(c.desat)
     psm:getDarkness():setAll(c.darkness)
     psm:getGradientWidth():setAll(c.gradient)
+    lastChannel = {
+        pn = pn, blur = c.blur, radius = c.radius, desat = c.desat,
+        darkness = c.darkness, gradient = c.gradient,
+        mode = NOM_ScreenFxRules.glitchMode(),
+        intensity = NOM_ScreenFxRules.glitchIntensity(),
+    }
+    local key = string.format("%s|%.0f|%.3f", lastChannel.mode, lastChannel.intensity * 100, c.radius)
+    if key ~= lastLogKey then
+        lastLogKey = key
+        print(string.format(
+            "[NOM] glitch apply mode=%s intensity=%.0f%% radius=%.3f (SearchMode.y→hiss) gradient=%.2f",
+            lastChannel.mode, lastChannel.intensity * 100, c.radius, c.gradient))
+    end
+end
+
+function NOM_FogVignette.lastChannel()
+    return lastChannel
 end
 
 -- Com o fade do forrageamento em andamento, o override congelaria o fade
@@ -127,7 +150,7 @@ local function channelWanted(now)
     if NOM_ScreenFxRules.lookClean() then return false end
     if NOM_ScreenFxOptions.bloom() > 0 then return true end
     local c = channelValues(now)
-    return c.blur > 0 or c.darkness > 0
+    return c.blur > 0 or c.darkness > 0 or c.radius > 0
 end
 
 local function updateChannel()

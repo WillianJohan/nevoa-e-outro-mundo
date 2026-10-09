@@ -197,21 +197,34 @@ function R.layers(s, now, i, dz)
         return {
             grain = 0, vignette = 0, vr = 0, vg = 0, vb = 0,
             lines = 0, flash = 0, fogStatic = 0,
-            sr = sr, sg = sg, sb = sb, dark = 0,
+            sr = sr, sg = sg, sb = sb, dark = 0, edgeLines = false,
         }
     end
-    -- 0060d: scanlines sempre off (TV quebrada). Com LookForce: vinheta/grain suaves.
+    -- I6: GlitchMode (off/original/bordas) + GlitchIntensity (0..200%). LookForce suaviza.
     local force = R.lookForceOn()
-    local gMul = force and 0.4 or 1
+    local mode = R.glitchMode()
+    local gI = R.glitchIntensity()
+    local soft = force and 0.4 or 1
     local vMul = force and 0.45 or 1
     local fMul = force and 0.35 or 1
-    local sMul = force and 0.12 or 1
+    local sMul = (force and 0.12 or 1) * gI
+    local linesBase = 0
+    local edgeLines = false
+    if mode == "original" then
+        linesBase = clamp(s.static * f * 0.2 * i * soft * gI, 0, 1)
+    elseif mode == "bordas" then
+        linesBase = clamp(s.static * f * 0.2 * i * 0.4 * soft * gI, 0, 1)
+        edgeLines = linesBase > 0
+    end
+    -- off: grain/vinheta da #16 (mais baixos); original/bordas: staging (mais altos)
+    local grainK = (mode == "off") and (0.05 + 0.03 * r + 0.03 * b) or (0.09 + 0.05 * r + 0.04 * b)
     return {
-        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i * gMul, 0, 1),
+        grain = clamp(f * grainK * i * soft, 0, 1),
         vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i * vMul
             + dz * R.DIZZY_VIGNETTE * pulse * (force and 0.35 or 1) + sobVig * (force and 0.35 or 1), 0, 1),
         vr = 0.42 * r * (1 - b) * (force and 0.65 or 1), vg = 0, vb = 0,
-        lines = 0,
+        lines = linesBase,
+        edgeLines = edgeLines,
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i * fMul, 0, 1),
         fogStatic = clamp((s.fogStatic or 0) * i * sMul, 0, 1),
         sr = sr, sg = sg, sb = sb,
@@ -234,6 +247,26 @@ function R.lookForceOn()
     local lf = NOM_PanelParams.lookForce()
     return lf ~= nil and lf ~= ""
 end
+
+-- I6: modo do seletor "Glitch de tela" (padrão original até o Johan decidir).
+function R.glitchMode()
+    if NOM_PanelParams and NOM_PanelParams.glitchMode then
+        return NOM_PanelParams.glitchMode()
+    end
+    return "original"
+end
+
+-- Multiplicador 0..2 do slider de intensidade.
+function R.glitchIntensity()
+    if NOM_PanelParams and NOM_PanelParams.glitchIntensity then
+        return NOM_PanelParams.glitchIntensity()
+    end
+    return 1
+end
+
+-- Tag no gradiente (ParamInfo) pra o screen.frag saber que é modo bordas.
+-- bloom fica em MARKER..MARKER+0,5; bordas soma BORDAS_TAG (2).
+R.BORDAS_TAG = 2
 
 function R.visible(l)
     return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0 or l.fogStatic > 0 or l.dark > 0
@@ -258,16 +291,26 @@ function R.channel(s, now, i, bloom, dz)
     end
     i = clamp(i or 1, 0, 2)
     local force = R.lookForceOn()
-    -- 0060d: hiss (radius) sempre 0 → sem tear no screen.frag; LookForce suaviza o resto.
+    local mode = R.glitchMode()
+    local gI = R.glitchIntensity()
+    local soft = force and 0.4 or 1
+    -- radius → SearchMode.y → hiss no screen.frag (tear). off=0; original=staging; bordas=reduzido.
+    local radius = 0
+    if mode == "original" then
+        radius = s.static * s.fog * i * soft * gI
+    elseif mode == "bordas" then
+        radius = s.static * s.fog * i * 0.35 * soft * gI
+    end
     local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i * (force and 0.12 or 1), 0, 2)
     local bloomV = clamp(bloom or 0, 0, 2) * (force and 0.35 or 1)
-    local soft = force and 0.4 or 1
+    local grad = R.MARKER + bloomV * R.BLOOM_SCALE
+    if mode == "bordas" then grad = grad + R.BORDAS_TAG end
     return {
         blur = s.fog * i * soft,
-        radius = 0,
+        radius = clamp(radius, 0, 2),
         desat = s.red * i * (force and 0.3 or 1),
         darkness = pulse + R.DIZZY_BASE * math.floor(clamp(dz or 0, 0, 1) * R.DIZZY_STEPS + 0.5),
-        gradient = R.MARKER + bloomV * R.BLOOM_SCALE,
+        gradient = grad,
     }
 end
 
