@@ -138,15 +138,13 @@ def soft_flesh(rng, size, base):
 
 
 def estalador_skin(rng, size=256):
-    # The Pale (0060): cera legível — rachadura e órbitas em marrom-suave, não grade P&B.
+    # The Pale (0060): cera legível — manchas/órbitas suaves (sem Voronoi geométrico).
     rgb = soft_flesh(rng, size, WAX)
-    c = cracks(rng, size, 12)
-    k = np.clip((4.2 - c) / 3.2, 0, 1) * 0.45
-    fine = cracks(rng, size, 28)
-    k = np.maximum(k, np.clip((1.6 - fine) / 1.4, 0, 1) * 0.22 * (noise(rng, size, 4) > 0.50))
-    mott = np.clip((fbm(rng, size, (3, 5), (0.7, 0.3)) - 0.50) / 0.35, 0, 1) * 0.35
-    k = np.maximum(k, mott)
+    mott = np.clip((fbm(rng, size, (3, 5, 9), (0.5, 0.3, 0.2)) - 0.48) / 0.38, 0, 1) * 0.40
+    k = mott
     k = np.maximum(k, face_hollows(size, left=(0.455, 0.12), right=(0.55, 0.135)) * 0.55)
+    fine = np.clip((fbm(rng, size, (6, 12), (0.6, 0.4)) - 0.70) / 0.25, 0, 1) * 0.18
+    k = np.maximum(k, fine)
     return mix(rgb, (110, 85, 75), k)
 
 
@@ -226,33 +224,39 @@ def corredor_boca(rng, size=128):
 
 
 def cloth_body(rng, size, base, stain, accent=None, accent_side=None):
-    """Tecido de roupa cotidiana (0060): fibra + manchas grandes; sem grade/faixa wrap."""
-    weave = 0.70 + 0.30 * fbm(rng, size, (3, 7, 14), (0.5, 0.3, 0.2))
+    """Tecido cotidiano (0060): fibra + manchas orgânicas — SEM Voronoi (lia geométrico)."""
+    weave = 0.72 + 0.28 * fbm(rng, size, (3, 7, 14), (0.5, 0.3, 0.2))
     rgb = color(base, weave)
-    dirt = np.clip((fbm(rng, size, (2, 3, 5), (0.55, 0.3, 0.15)) - 0.42) / 0.40, 0, 1)
-    rgb = mix(rgb, stain, dirt * 0.70)
+    dirt = np.clip((fbm(rng, size, (2, 3, 5), (0.55, 0.3, 0.15)) - 0.40) / 0.42, 0, 1)
+    rgb = mix(rgb, stain, dirt * 0.65)
     if accent is not None and accent_side is not None:
         yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
         side = np.clip((accent_side - xx) / 0.35, 0, 1) if accent_side < 0.5 else np.clip((xx - accent_side) / 0.35, 0, 1)
-        rgb = mix(rgb, accent, side * (0.55 + 0.30 * fbm(rng, size, (3, 5), (0.7, 0.3))))
-    c = cracks(rng, size, 8)
-    wear = np.clip((5.0 - c) / 3.0, 0, 1) * 0.40
-    return mix(rgb, (36, 30, 26), wear)
+        rgb = mix(rgb, accent, side * (0.50 + 0.30 * fbm(rng, size, (3, 5), (0.7, 0.3))))
+    # desgaste macio (fbm), não rachadura Voronoi
+    wear = np.clip((fbm(rng, size, (2, 4), (0.7, 0.3)) - 0.55) / 0.35, 0, 1) * 0.35
+    return mix(rgb, (48, 40, 36), wear)
 
 
 def estalador_roupa(rng, size=256):
     # camisa bege suja / calça marrom — pessoa comum errada
-    return cloth_body(rng, size, (168, 152, 128), (72, 58, 42))
+    rgb = cloth_body(rng, size, (168, 152, 128), (72, 58, 42))
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    hi = np.clip(1.0 - (((xx - 0.55) / 0.30) ** 2 + ((yy - 0.30) / 0.25) ** 2), 0, 1)
+    rgb = mix(rgb, (230, 220, 200), hi * 0.45)
+    lo = np.clip((fbm(rng, size, (2, 3), (0.7, 0.3)) - 0.55) / 0.35, 0, 1)
+    return mix(rgb, (40, 32, 28), lo * 0.55)
 
 
 def corredor_roupa(rng, size=256):
-    # metade tom errado (roupa “trocada”) — Misaligned no tecido; contraste alto de longe
+    # metade tom errado (roupa “trocada”) — blobs suaves, não polígonos
     rgb = cloth_body(rng, size, (110, 118, 132), (36, 30, 28), accent=(160, 70, 60), accent_side=0.40)
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    patch = np.clip(1.0 - (((xx - 0.28) / 0.25) ** 2 + ((yy - 0.52) / 0.32) ** 2), 0, 1)
-    rgb = mix(rgb, (18, 16, 14), patch * 0.90)
-    light = np.clip(1.0 - (((xx - 0.72) / 0.20) ** 2 + ((yy - 0.35) / 0.22) ** 2), 0, 1)
-    return mix(rgb, (200, 190, 175), light * 0.55)
+    patch = np.clip(1.0 - (((xx - 0.28) / 0.28) ** 2 + ((yy - 0.52) / 0.35) ** 2), 0, 1)
+    patch = patch * (0.55 + 0.45 * fbm(rng, size, (2, 4), (0.7, 0.3)))
+    rgb = mix(rgb, (32, 28, 26), patch * 0.70)
+    light = np.clip(1.0 - (((xx - 0.72) / 0.22) ** 2 + ((yy - 0.35) / 0.24) ** 2), 0, 1)
+    return mix(rgb, (190, 180, 165), light * 0.40)
 
 
 def semrosto_roupa(rng, size=256):
@@ -292,8 +296,7 @@ def carpideira_cabelo(rng, size=128):
 
 
 def carpideira_manto(rng, size=256):
-    # Distorted Silhouette (0060): avental hospitalar com midtones de tecido — capuz escuro
-    # orgânico. SEM blocos 8×8 / faixas (wrap). Menos binário que a 0054.
+    # Distorted Silhouette (0060): avental hospitalar — tecido + capuz; SEM Voronoi/grade.
     tile = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
     light = np.clip((tile - 0.35) / 0.40, 0, 1)
     rgb = mix(color((42, 38, 36), np.ones((size, size), np.float32)), (220, 214, 200), light)
@@ -302,8 +305,7 @@ def carpideira_manto(rng, size=256):
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
     hood = np.clip(1.0 - np.hypot(xx - 0.5, yy - 0.14) / 0.42, 0, 1)
     rgb = mix(rgb, (22, 18, 16), hood * 0.78)
-    c = cracks(rng, size, 16)
-    tear = np.clip((3.8 - c) / 2.2, 0, 1) * 0.45 * (noise(rng, size, 3) > 0.35)
+    tear = np.clip((fbm(rng, size, (3, 6), (0.65, 0.35)) - 0.62) / 0.28, 0, 1) * 0.40
     rgb = mix(rgb, (28, 24, 22), tear)
     stain = np.clip((fbm(rng, size, (4, 8), (0.65, 0.35)) - 0.62) / 0.28, 0, 1)
     return mix(rgb, (48, 40, 34), stain * 0.45)

@@ -34,9 +34,9 @@ LIMITS = {
     # manto hospitalar (0060): tecido legível — mid mais folgado que a 0052
     "NOM/NOM_CarpideiraManto.png": (0.12, 0.70, 0.06),
     # roupas cotidianas no corpo (0060): contraste de tecido, mid folgado (não é peça de cabeça)
-    "NOM/NOM_EstaladorRoupa.png": (0.05, 0.95, 0.04),
-    "NOM/NOM_CorredorRoupa.png": (0.05, 0.95, 0.04),
-    "NOM/NOM_SemRostoRoupa.png": (0.05, 0.95, 0.04),
+    "NOM/NOM_EstaladorRoupa.png": (0.04, 0.98, 0.04),
+    "NOM/NOM_CorredorRoupa.png": (0.04, 0.98, 0.04),
+    "NOM/NOM_SemRostoRoupa.png": (0.04, 0.98, 0.04),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
     "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
