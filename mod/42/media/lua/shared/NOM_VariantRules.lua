@@ -17,8 +17,8 @@ NOM_VariantRules = {}
 -- clientes recebem o mesmo, então concordam (ADR-006).
 NOM_VariantRules.forced = {}
 
--- Grito do Corredor: no máximo um por zumbi a cada meia hora de jogo.
-NOM_VariantRules.SCREAM_COOLDOWN_HOURS = 0.5
+-- Grito do Corredor: alias do cooldown branco (identidade por cor, sprint 0049).
+NOM_VariantRules.SCREAM_COOLDOWN_HOURS = NOM_ColorIdentityRules.SCREAM_WHITE
 
 -- Mistura sem operadores de bit (Kahlua): quadrados módulo um primo Q < 2^26.
 -- Todo produto fica abaixo de 2^53 (h < Q + 31337, h² < 4.6e15), então a conta
@@ -61,11 +61,6 @@ end
 -- O mesmo hash serve o sangue do Outro Mundo (shared/NOM_DressingRules.lua, sprint 0015).
 NOM_VariantRules.Q = Q
 NOM_VariantRules.hash = hash
-
--- Sorteio 0–99 do zumbi no período n.
-local function roll(id, n)
-    return math.floor(hash(id, n, 0) / Q * 100)
-end
 
 -- Sais da névoa vermelha (sprint 0010): o sorteio do período e a divisão dos tipos
 -- não se correlacionam com o sorteio normal.

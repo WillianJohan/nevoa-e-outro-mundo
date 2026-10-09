@@ -98,16 +98,17 @@ exatos de todas as opções da página "Névoa e Outro Mundo":
 
 - **Padrão — "o mundo tem horário":** névoa em 65% dos dias, subindo até 85% no dia 60, sem
   vermelha até o dia 7 (depois, 1 em 5), com garantia no terceiro dia, de 3 a 5 h (vermelha de
-  4 a 6 h) e 2 h de calmaria depois. 14% de monstros por névoa.
+  4 a 6 h) e 2 h de calmaria depois. Na branca, **100% monstros** com pesos 5:3:3:3
+  (sprint 0049).
 - **Leve — "primeira visita":** a noite muda o jeito de jogar sem virar corrida — os zumbis
   não ganham velocidade, a caça vem a cada 2 horas de perto, a névoa vem em 40% dos dias, sem
-  curva, com garantia só no quinto dia, de 2 a 4 horas e 3 de calmaria, com 9% de monstros;
-  vermelha rara (5%) e só depois de duas semanas.
+  curva, com garantia só no quinto dia, de 2 a 4 horas e 3 de calmaria; 100% monstros com
+  pesos mais leves (4:1:2:2); vermelha rara (5%) e só depois de duas semanas.
 - **Pesadelo — "a cidade é proibida":** dois degraus de velocidade e sentidos (arrastado vira
   corredor), caça a cada 45 minutos de longe, névoa em 85% dos dias e 95% já no dia 30,
-  com garantia no segundo dia e segunda névoa em 30% deles, de 4 a 7 horas e só 1 de calmaria,
-  com 21% de monstros (Carpideiras que acordam a 6 tiles e gritam pra 70); vermelha já no dia 3,
-  mais de uma em cada três, de 5 a 8 horas.
+  com garantia no segundo dia e segunda névoa em 30% deles, de 4 a 7 horas e só 1 de calmaria;
+  100% monstros com pesos mais pesados (6:5:5:5; Carpideiras que acordam a 6 tiles e gritam
+  pra 70); vermelha já no dia 3, mais de uma em cada três, de 5 a 8 horas.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -192,5 +193,6 @@ histórico.
 | `FogEscalation` (nova) | — | ligado | 7 |
 | `RedFogGraceDays` (nova) | — | 7 | 7 |
 
-Monstros somados: 14% (5/3/3/3). O resto ficou como estava.
+Pesos padrão 5/3/3/3 (sprint 0019); desde a 0049 renormalizados pra **100%** na branca.
+O resto ficou como estava.
 

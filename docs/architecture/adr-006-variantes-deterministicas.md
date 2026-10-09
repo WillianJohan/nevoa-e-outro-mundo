@@ -10,13 +10,19 @@
 > **Emenda de 2026-10-05.** Decisão do Johan: todo monstro, menos o Eco, só existe na
 > névoa. A entrada do sorteio passou a ser o **número do período de névoa**
 > (`NOM_Fog.period()` no servidor, `NOM_FogState.period` em quem simula e vê), e
-> Estalador, Corredor e Sem-rosto saem de **um sorteio só**: `roll` 0–99, faixas
-> contíguas na ordem de `NOM_VariantRules.KINDS` (`estalador`, `corredor`,
-> `semrosto`, `carpideira`; variante nova entra no fim, sem mexer nas de antes). O tipo desligado
-> mantém a faixa vazia. O perfil vale enquanto a névoa durar (`NOM_FogState.on`), de
-> dia ou de noite; à noite ele vai por cima dos stats da noite. Onde o texto abaixo
-> diz "noite", leia "período de névoa" para as variantes; o contador de noites
-> continua existindo pro Eco.
+> Estalador, Corredor, Sem-rosto e Carpideira saem de **um sorteio só**, faixas
+> contíguas na ordem de `NOM_VariantRules.KINDS` (variante nova entra no fim, sem
+> mexer nas de antes). O tipo desligado mantém a faixa vazia. O perfil vale enquanto
+> a névoa durar (`NOM_FogState.on`), de dia ou de noite; à noite ele vai por cima
+> dos stats da noite. Onde o texto abaixo diz "noite", leia "período de névoa" para
+> as variantes; o contador de noites continua existindo pro Eco.
+>
+> **Emenda de 2026-10-09 (sprint 0049).** Na névoa **branca**, todo zumbi com outfit
+> vira monstro: as chances do sandbox são pesos relativos, selecionados com
+> `floor(hash/Q × soma)` nas faixas (padrão 5:3:3:3 → ~36/21/21/21). Vermelha continua
+> split igual 1/`#KINDS` ([ADR-010](adr-010-nevoa-vermelha.md)); preta, só Tição.
+> Identidade por cor: `NOM_ColorIdentityRules` (perambular só na branca; agitação na
+> vermelha).
 
 ## Contexto
 
@@ -48,10 +54,12 @@ e determinística: mesma entrada, mesma resposta, em qualquer máquina.
   manda o número junto da flag: `sendServerCommand(…, "night", { on, night })`,
   inclusive na resposta ao `nightState`. Sem número (cliente que ainda não ouviu
   o servidor), não há variante.
-- **Sorteio**: mistura não linear do ID com a noite (quadrados módulo um primo
+- **Sorteio**: mistura não linear do ID com o período (quadrados módulo um primo
   < 2^26, exata em double, sem operadores de bit do Kahlua; uma mistura linear
-  correlacionava noites seguidas), `roll` 0–99 contra `EstaladorChance` e depois `CorredorChance`. "Uma vez por
-  noite" sai de graça: a noite seguinte é outra entrada. "Preguiçoso" também: o
+  correlacionava períodos seguidos). Na **branca** (sprint 0049): pesos do sandbox
+  renormalizados (`floor(hash/Q × total)` nas faixas de `KINDS`). Na **vermelha**:
+  split igual por `#KINDS` (sal próprio). Na **preta**: `"ticao"`. "Uma vez por
+  período" sai de graça: o período seguinte é outra entrada. "Preguiçoso" também: o
   zumbi de chunk carregado depois é calculado na primeira passada do laço.
 - **Quem calcula**: quem simula o zumbi, no laço do `NOM_NightStats` (ADR-005),
   a cada passada e com o ID **atual** (o spawn por outfit troca o ID depois do

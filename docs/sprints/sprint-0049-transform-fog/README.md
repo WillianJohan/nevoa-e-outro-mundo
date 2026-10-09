@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em andamento` |
+| Status | `em teste` (PR draft #8) |
 | Branch | `sprint/0049-transform-fog` (saiu da `staging`) |
 | Origem | Johan 2026-10-08: transform universal em toda fog ([refinamento §3.9](../../../proximos-passos-refinamento.md)); fila overnight 1b |
 | Plano | [plan.md](plan.md) |
@@ -74,7 +74,9 @@ Save descartável, `-debug`, `scripts/dev-sync.sh`, reiniciar o jogo. Mod **`[ST
 
 ## Aprendizados
 
-_(preencher no fim)_
+- Com 100% variantes, helpers `idFor(nil)` precisam de ID 0 (não há mais “comum” sob defaults).
+- `while variant ~= nil` em testes de look vira loop infinito — trocar por mudança de tipo.
+- Code review: alinhar GDD/ADR no mesmo commit que a lógica (presets ainda citavam 14%).
 
 ## Pendências que a próxima sprint herda
 
