@@ -109,6 +109,8 @@
     "UI_NOM_Debug_C_Rain_Desc": "Turns rain on or off for every black and red fog. When off, it rains in 30%% of them.",
     "UI_NOM_Debug_C_Sonar": "Estalador sonar",
     "UI_NOM_Debug_C_Sonar_Desc": "The nearest Estalador (in the fog, up to 60 tiles) clicks now; without one, the ring starts at your feet. Standing or walking, the ring finds you; crouched and still, it passes.",
+    "UI_NOM_Debug_C_Ambient": "Ambient scream",
+    "UI_NOM_Debug_C_Ambient_Desc": "Play a distant human scream now (this client only, never a horde). Needs fog up and FogAmbience; silent in black fog.",
     "UI_NOM_Debug_C_Wander": "Wander wave",
     "UI_NOM_Debug_C_Wander_Desc": "Fog open only: groups of 1 to 3 idle zombies near you start walking.",
     "UI_NOM_Debug_C_Wind": "Volumetrica wind",

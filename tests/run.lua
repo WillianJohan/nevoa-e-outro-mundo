@@ -38,6 +38,8 @@ local FILES = {
     "tests/test_sonar.lua",
     "tests/test_sonar_fx.lua",
     "tests/test_mod3_sonar.lua",
+    "tests/test_ambient_scream_rules.lua",
+    "tests/test_ambient_scream.lua",
     "tests/test_mod3_light.lua",
     "tests/test_mod3_censor.lua",
     "tests/test_carpideira.lua",

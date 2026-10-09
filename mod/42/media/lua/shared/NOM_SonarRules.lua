@@ -1,13 +1,15 @@
--- Sonar do Estalador (sprint 0037, spec §6), a regra pura: o estalo solta um anel que
+-- Sonar do Estalador (sprint 0037 + 0048), a regra pura: o estalo solta um anel que
 -- avança RANGE tiles em DURATION_MS reais. O anel que cruza um jogador no mesmo andar, em
 -- pé ou andando, faz o Estalador achá-lo; agachado e parado, o anel passa. Sem API do jogo:
 -- quem decide é o server/NOM_SonarServer.lua; quem desenha, o client/NOM_SonarFx.lua; o
 -- mod3 tem os mesmos números em mod3/java/nom/render/Sonar.java (teste de contrato).
+-- Sprint 0048: o som é um burst rítmico (BEAT_MS); a névoa mostra ripples curtos no ritmo;
+-- o achado continua UM anel RANGE por burst.
 NOM_SonarRules = {
-    RANGE = 8,             -- tiles
+    RANGE = 8,             -- tiles (anel de achado; servidor)
     DURATION_MS = 1500,    -- ms reais até os 8 tiles: ~5,3 tiles/s, mais rápido que qualquer corrida
     FADE_MS = 400,         -- o desenho some nesse tempo depois do fim
-    ALPHA = 0.35,          -- discreto
+    ALPHA = 0.35,          -- discreto (anel grande legado; ripples usam RIPPLE_ALPHA)
     -- Depois de achar, o Estalador não é cegado de novo por FOUND_MS reais: dá tempo de ele
     -- andar os 8 tiles (~1 tile/s) mesmo que o jogador se agache logo depois do anel.
     FOUND_MS = 10000,
@@ -20,7 +22,15 @@ NOM_SonarRules = {
     SEND_RANGE = 40,       -- só estala com jogador a até isso (o som chega a 25, o anel a 8)
     SAMPLE_MS = 250,       -- amostra de posição dos jogadores (o "andando")
     MOVE_EPS = 0.1,        -- tiles entre amostras: ≥ 0,2 tile/s é andar
-    MAX_RINGS = 8,         -- anéis vivos ao mesmo tempo (servidor, tela e mod3)
+    MAX_RINGS = 8,         -- anéis de achado vivos no servidor (um por burst)
+    -- Sprint 0048: offsets do burst no OGG (espelho em scripts/gen_sounds.py CLICK_BEATS_MS).
+    -- 12 cliques irregulares em ~1,4 s — clicker rítmico, não metrônomo nem latido.
+    BEAT_MS = { 0, 90, 165, 250, 320, 410, 490, 600, 720, 880, 1100, 1400 },
+    RIPPLE_RANGE = 3,      -- tiles por ondulação de presença
+    RIPPLE_DURATION_MS = 550,
+    RIPPLE_FADE_MS = 280,
+    RIPPLE_ALPHA = 0.28,
+    MAX_RIPPLES = 36,      -- ripples na tela / mod3 (vários Estaladores × batidas)
     -- Anel sem jogador a até REACH (mesmo andar) não acha ninguém, nem quem corre (~6 tiles/s)
     -- na direção dele: é o que sai quando lota (NOM_SonarServer.emit)
     REACH = 17,
@@ -35,7 +45,7 @@ NOM_SonarRules = {
 }
 local R = NOM_SonarRules
 
--- Raio do anel (tiles) com age ms de vida.
+-- Raio do anel de achado (tiles) com age ms de vida.
 function R.radius(age)
     if age <= 0 then return 0 end
     if age >= R.DURATION_MS then return R.RANGE end
@@ -43,6 +53,30 @@ function R.radius(age)
 end
 
 function R.done(age) return age >= R.DURATION_MS end
+
+-- Raio de um ripple de presença (sprint 0048): curto, no ritmo do clique.
+function R.rippleRadius(age)
+    if age <= 0 then return 0 end
+    if age >= R.RIPPLE_DURATION_MS then return R.RIPPLE_RANGE end
+    return R.RIPPLE_RANGE * age / R.RIPPLE_DURATION_MS
+end
+
+function R.rippleDone(age) return age >= R.RIPPLE_DURATION_MS + R.RIPPLE_FADE_MS end
+
+-- Alfa do ripple: sobe em 80 ms, segura, some em RIPPLE_FADE_MS.
+function R.rippleAlpha(age)
+    if age <= 0 then return 0 end
+    if age < 80 then return R.RIPPLE_ALPHA * age / 80 end
+    if age <= R.RIPPLE_DURATION_MS then return R.RIPPLE_ALPHA end
+    local k = 1 - (age - R.RIPPLE_DURATION_MS) / R.RIPPLE_FADE_MS
+    if k <= 0 then return 0 end
+    return R.RIPPLE_ALPHA * k
+end
+
+-- Quantas batidas o burst tem (espelho do OGG).
+function R.beatCount()
+    return #R.BEAT_MS
+end
 
 -- d2 = distância² ao centro agora; p2 = a do tick anterior (nil: sem posição anterior). O anel
 -- cruzou neste tick se a frente foi de r0 a r1 e o jogador, que estava fora do raio r0, agora

@@ -639,7 +639,7 @@ return {
         G.frame(2)
         NOM_Carpideira.scream(z, p)
         assert(not z.useless and z.target == p, "não soltou ou não pegou o alvo")
-        assert(z.sounds[1] == NOM_Carpideira.SCREAM and #z.netSounds == 0, "grito não tocou local")
+        assert(z.sounds[1]:find("^NOM_CarpideiraScream") and #z.netSounds == 0, "grito não tocou local: " .. tostring(z.sounds[1]))
         G.frame(40)
         assert(p.bitten > 0, "não caçou quem a acordou")
         assert(z.useless == false, "voltou a ficar parada depois do grito")

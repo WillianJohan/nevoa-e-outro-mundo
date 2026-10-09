@@ -205,6 +205,16 @@ function NOM.wander() NOM_Debug.send({ op = "wander" }) end
 -- de você (na névoa, até 60 tiles) ou solta o anel nos seus pés; o anel faz o resto.
 function NOM.sonar() NOM_Debug.send({ op = "sonar" }) end
 
+-- Grito ambiente agora (sprint 0048): só neste cliente; zero horda.
+function NOM.ambientScream()
+    if not NOM_AmbientScream then
+        NOM_DebugLog.say("[NOM] ambient scream: módulo não carregou")
+        return
+    end
+    local msg = NOM_AmbientScream.play(getSpecificPlayer(0))
+    NOM_DebugLog.say("[NOM] ambient scream " .. tostring(msg or "falhou"))
+end
+
 -- Tempestade da preta e da vermelha (sprint 0045): relâmpago já perto de você, um poste de fora
 -- perto pisca já, e a chuva forçada (liga/desliga) em vez do sorteio de 30% por névoa.
 function NOM.thunder() NOM_Debug.send({ op = "thunder" }) end
@@ -267,6 +277,7 @@ NOM.HELP = {
     { "NOM.ownSprites()", "quantas texturas próprias do Outro Mundo (Silent Hill) estão registradas e quais faltam" },
     { "NOM.wander()", "uma onda de perambular agora (só com névoa aberta): grupos de 1 a 3 zumbis parados perto de você saem andando" },
     { "NOM.sonar()", "o Estalador mais perto (na névoa, até 60 tiles) estala agora; sem ele, o anel sai dos seus pés. Em pé ou andando o anel te acha; agachado e parado passa" },
+    { "NOM.ambientScream()", "grito ambiente distante agora (só neste cliente; zero horda; precisa névoa + FogAmbience; preta = off)" },
     { "NOM.thunder()", "relâmpago e trovão agora perto de você (na preta, o clarão congela os Tições por 1 s)" },
     { "NOM.flickerLamp()", "um poste aceso de fora perto de você (até 25 tiles) pisca agora" },
     { "NOM.rain()", "força a chuva nas névoas pretas e vermelhas (liga/desliga); desligado, chove em 30% delas" },

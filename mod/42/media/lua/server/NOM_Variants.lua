@@ -17,9 +17,14 @@ require "NOM_Fog"
 require "NOM_Night"
 
 local MODULE = "NevoaEOutroMundo"
-local SCREAM_SOUND = "NOM_CorredorScream" -- media/scripts/NOM_sounds.txt
+-- Sprint 0048: banco de gritos (timbre novo); o gameplay (horda + cooldown) não muda.
+local SCREAM_SOUNDS = { "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3" }
 local ECO_OUTFIT = "NOM_Eco"
 local CR = NOM_CarpideiraRules
+
+local function corredorScream()
+    return SCREAM_SOUNDS[ZombRand(#SCREAM_SOUNDS) + 1]
+end
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] variantes " .. msg) end
@@ -42,10 +47,11 @@ local function scream(z)
     local now = getGameTime():getWorldAgeHours()
     if not NOM_VariantRules.screamReady(md.NOM_screamAt, now) then return end
     md.NOM_screamAt = now
+    local sound = corredorScream()
     if isServer() then
-        sendPlaySound(SCREAM_SOUND, false, z)
+        sendPlaySound(sound, false, z)
     else
-        z:getEmitter():playSound(SCREAM_SOUND)
+        z:getEmitter():playSound(sound)
     end
     local radius = NOM_Config.get("CorredorScreamRadius")
     NOM_Night.call(z, radius)

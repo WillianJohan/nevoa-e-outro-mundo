@@ -166,4 +166,48 @@ return {
     sonar_found_window_covers_walk = function()
         assert(R.FOUND_MS >= R.RANGE * 1000, "janela curta demais: " .. R.FOUND_MS)
     end,
+
+    -- sprint 0048: burst clicker — 6–12 batidas em ~1–2 s, irregular, espelho do OGG
+    sonar_burst_beats = function()
+        local n = R.beatCount()
+        assert(n >= 6 and n <= 12, "batidas: " .. n)
+        assert(R.BEAT_MS[1] == 0, "primeira batida no zero")
+        local last = R.BEAT_MS[n]
+        assert(last >= 1000 and last <= 2000, "burst em ~1–2 s: " .. last)
+        for i = 2, n do
+            assert(R.BEAT_MS[i] > R.BEAT_MS[i - 1], "batidas fora de ordem em " .. i)
+            local gap = R.BEAT_MS[i] - R.BEAT_MS[i - 1]
+            assert(gap >= 40 and gap <= 400, "intervalo interno " .. gap)
+        end
+        assert(R.MAX_RIPPLES >= n * 3, "teto curto pra vários Estaladores")
+        assert(R.MAX_RINGS == 8, "find ainda é um anel por burst no servidor")
+    end,
+
+    -- ripples curtos de presença (não substituem o anel de achado)
+    sonar_ripple_curve = function()
+        assert(R.RIPPLE_RANGE == 3 and R.RIPPLE_DURATION_MS == 550)
+        assert(R.rippleRadius(0) == 0 and R.rippleRadius(-1) == 0)
+        assert(near(R.rippleRadius(275), 1.5))
+        assert(R.rippleRadius(550) == 3 and R.rippleRadius(9000) == 3)
+        assert(not R.rippleDone(550) and R.rippleDone(550 + R.RIPPLE_FADE_MS))
+        assert(R.rippleAlpha(0) == 0)
+        assert(near(R.rippleAlpha(275), R.RIPPLE_ALPHA))
+        assert(R.rippleAlpha(R.RIPPLE_DURATION_MS + R.RIPPLE_FADE_MS) == 0)
+        assert(R.RIPPLE_ALPHA < R.ALPHA or R.RIPPLE_ALPHA <= 0.3, "ripple discreto")
+    end,
+
+    -- gen_sounds.py declara os mesmos offsets (CLICK_BEATS_MS)
+    sonar_beats_match_gen_sounds = function()
+        local f = assert(io.open("scripts/gen_sounds.py"))
+        local s = f:read("*a")
+        f:close()
+        local list = s:match("CLICK_BEATS_MS%s*=%s*%[([^%]]+)%]")
+        assert(list, "gen_sounds sem CLICK_BEATS_MS")
+        local beats = {}
+        for n in list:gmatch("%d+") do beats[#beats + 1] = tonumber(n) end
+        assert(#beats == #R.BEAT_MS, "contagem: lua=" .. #R.BEAT_MS .. " py=" .. #beats)
+        for i = 1, #beats do
+            assert(beats[i] == R.BEAT_MS[i], "beat " .. i .. ": " .. beats[i] .. " ≠ " .. R.BEAT_MS[i])
+        end
+    end,
 }

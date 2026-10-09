@@ -20,6 +20,26 @@ module Base
         }
     }
 
+    sound NOM_CorredorScream2
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 80,
+        }
+    }
+
+    sound NOM_CorredorScream3
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 80,
+        }
+    }
+
     sound NOM_FogDrone
     {
         category = World,
@@ -416,6 +436,78 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream.ogg,
             distanceMax = 150,
+        }
+    }
+
+    sound NOM_CarpideiraScream2
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 150,
+        }
+    }
+
+    sound NOM_CarpideiraScream3
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 150,
+        }
+    }
+
+    sound NOM_AmbientScream1
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream2
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream3
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream4
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
         }
     }
 
