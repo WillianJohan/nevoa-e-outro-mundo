@@ -377,7 +377,6 @@ return {
             UI_NOM_Debug_C_Hour = { "time(0)", "time(6)", "time(12)", "time(18)", "time(22)" },
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
-<<<<<<< HEAD
             UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()" },
             UI_NOM_Debug_C_AlmaPop = {
                 "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN - 1) .. ")",
@@ -393,10 +392,7 @@ return {
                 "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE + 0.05) .. ")",
             },
             UI_NOM_Debug_C_AlmaColors = { "almaCfg(white)", "almaCfg(red)", "almaCfg(black)" },
-=======
-            UI_NOM_Debug_C_Alma = { "alma()" },
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
->>>>>>> pr-13
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
                 "variant(carpideira)", "lookCycle()", "turnZombie(0)" },
