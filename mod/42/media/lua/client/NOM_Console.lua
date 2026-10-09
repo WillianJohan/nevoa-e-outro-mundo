@@ -267,6 +267,21 @@ function NOM.almaCfg(field, value)
     NOM_Debug.send({ op = "almaCfg", field = field, value = value })
 end
 
+-- Arrasto / Rastejante (sprint 0059, §3.5 caminho A): o zumbi vivo mais perto vira
+-- crawler lento (só névoa vermelha/preta). O servidor marca; no solo é o mesmo processo.
+function NOM.arrasto()
+    local p = player()
+    if not p then return end
+    local z = NOM_Debug.nearest(p)
+    if not z then
+        NOM_DebugLog.say("[NOM] debug nenhum zumbi perto")
+        return
+    end
+    local id = z:getOnlineID()
+    if id == nil then id = -1 end
+    NOM_Debug.send({ op = "arrasto", id = id })
+end
+
 -- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
 function NOM.wander() NOM_Debug.send({ op = "wander" }) end
@@ -529,6 +544,7 @@ NOM.HELP = {
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
     { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão (4–20, 68%, 3 cores)" },
     { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
+    { "NOM.arrasto()", "zumbi mais perto vira Arrasto (crawler lento; só névoa vermelha ou preta) — spike §3.5" },
     { "NOM.ash(dens, taxa, ar)", "cinzas: sem args mostra knobs e vivas; dens/taxa/ar em 0..3 multiplicam (live); ash(\"reset\") volta ao padrão" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },

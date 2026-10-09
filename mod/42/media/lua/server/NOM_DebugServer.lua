@@ -212,6 +212,23 @@ function ops.sonarGaps(_, args)
         " alvo=" .. NOM_SonarRules.burstId(NOM_SonarRules.gapTarget()) .. " " .. NOM_SonarRules.burstStatus()
 end
 
+-- Arrasto / Rastejante (sprint 0059): marca o zumbi mais perto (ou o id) como crawler lento.
+-- Só vermelha/preta, a menos que a.skip. Solo: id -1 = mais perto de quem pede.
+function ops.arrasto(player, a)
+    if not NOM_ArrastoServer then return "arrasto não carregou" end
+    local z
+    if a.id == -1 then
+        if isServer() then return "zumbi sem ID de rede" end
+        z = nearestTo(player)
+    else
+        z = byOnlineId(a.id)
+    end
+    if not z then return "zumbi não achado" end
+    local ok, why = NOM_ArrastoServer.force(z, a.skip)
+    if not ok then return "arrasto: " .. tostring(why) end
+    return "arrasto id=" .. tostring(z:getOnlineID()) .. " crawler lento"
+end
+
 -- Repor almas agora (sprint 0055; NOM_AlmaServer). Qualquer névoa com a cor ligada.
 function ops.alma()
     if not NOM_AlmaServer then return "almas não carregaram" end

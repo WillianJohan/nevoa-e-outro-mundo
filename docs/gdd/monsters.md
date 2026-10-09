@@ -177,6 +177,14 @@ o das mulheres pagas pra chorar em velório.
 
 Presença constante na névoa (sprint 0055): **4–20** vivos, **~68% crawler**, seek lento, TTL curto, só rua. Não substituem as variantes. Debug: `NOM.alma()` / painel (pop, crawler, cores).
 
+## Arrasto (spike)
+
+| Quando | Origem | Sandbox |
+|---|---|---|
+| névoa vermelha ou preta (debug) | forçado no zumbi mais perto | — (spike 0059) |
+
+Protótipo §3.5 caminho A: mesmo `IsoZombie`, **sempre crawler**, `doZombieSpeed(3)`, ModData `NOM_arrasto`. Não spawna sozinho ainda. Debug: `NOM.arrasto()` / painel Monstros → Arrasto. Sons e IA de proximidade ficam pra depois do playtest.
+
 ## Eco
 
 | Quando | Origem | Sandbox |

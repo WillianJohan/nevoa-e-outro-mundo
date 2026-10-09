@@ -800,6 +800,33 @@ return {
             and G.moves[1].zz == 0, "não moveu")
         assert(has(G.printed, "^%[NOM%] debug zumbi puxado x=100 y=100"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0059: Arrasto no zumbi mais perto (servidor marca crawler lento)
+    nom_arrasto_asks_server = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 130, y = 100, id = 1, online = 11 })
+        local near = G.zombie({ x = 103, y = 100, id = 2, online = 12 })
+        local forced = {}
+        NOM_ArrastoServer = {
+            force = function(z, skip)
+                forced[#forced + 1] = { z = z, skip = skip }
+                return true
+            end,
+        }
+        NOM.arrasto()
+        local a = G.sentClient[1].args
+        assert(a.op == "arrasto" and a.id == 12 and a.skip ~= true, "pedido errado")
+        assert(#forced == 1 and forced[1].z == near, "não forçou o mais perto")
+        assert(has(G.printed, "^%[NOM%] debug arrasto id=12"), table.concat(G.printed, "\n"))
+        NOM_ArrastoServer = nil
+    end) end,
+    nom_arrasto_none_near = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        NOM.arrasto()
+        assert(#G.sentClient == 0, "pediu sem zumbi")
+        assert(has(G.printed, "^%[NOM%] debug nenhum zumbi perto"), table.concat(G.printed, "\n"))
+    end) end,
     nom_get_zombie_none_near = function() run(function()
         local G = setup()
         G.player({ x = 100, y = 100 })

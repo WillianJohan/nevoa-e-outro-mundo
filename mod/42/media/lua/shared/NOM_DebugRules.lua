@@ -74,6 +74,12 @@ function NOM_DebugRules.parse(args)
             if type(c) ~= "number" or c ~= c or c == math.huge or c == -math.huge then return nil end
         end
         return { op = op, id = args.id, x = math.floor(args.x), y = math.floor(args.y), z = math.floor(args.z) }
+    elseif op == "arrasto" then
+        -- Arrasto / Rastejante (sprint 0059): id = OnlineID do zumbi (-1 no solo);
+        -- skip = true ignora a cor da névoa (só debug).
+        if type(args.id) ~= "number" or args.id ~= args.id then return nil end
+        if args.skip ~= nil and type(args.skip) ~= "boolean" then return nil end
+        return { op = op, id = args.id, skip = args.skip == true }
     elseif op == "spawnEco" or op == "status" or op == "wander" or op == "sonar" or op == "thunder"
         or op == "lampFlicker" or op == "rain" or op == "alma" or op == "almaStatus"
         or op == "almaReset" then

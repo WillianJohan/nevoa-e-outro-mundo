@@ -167,6 +167,9 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Reset", function() NOM.almaReset() end),
                 -- HELP/AGENTS: almaCfg ainda no console; um botão cobre a regra do painel.
                 c("UI_NOM_Debug_B_AlmaWhite", function() NOM.almaCfg("white") end) } },
+            -- Spike Arrasto / Rastejante (0059, §3.5 caminho A).
+            { title = "UI_NOM_Debug_C_Arrasto", desc = "UI_NOM_Debug_C_Arrasto_Desc", choices = {
+                c("UI_NOM_Debug_B_Now", function() NOM.arrasto() end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {
