@@ -76,13 +76,19 @@ local function scheduleWalk(z, now)
     C.nextWalk[z] = now + R.walkGapMs(u)
 end
 
+-- Locais + (no MP) online: o destino não deve aproximar ninguém conhecido
+-- (mesmo espírito do NOM_Wander.players).
 local function playersNear()
     local out = {}
-    for i = 0, getNumActivePlayers() - 1 do
-        local p = getSpecificPlayer(i)
+    local function add(p)
         if p and not p:isDead() then
             out[#out + 1] = { x = p:getX(), y = p:getY(), z = p:getZ() }
         end
+    end
+    for i = 0, getNumActivePlayers() - 1 do add(getSpecificPlayer(i)) end
+    if isClient() then
+        local list = getOnlinePlayers()
+        for i = 0, list:size() - 1 do add(list:get(i)) end
     end
     return out
 end
@@ -110,7 +116,9 @@ function C.hold(z, md)
         z:setTarget(nil)
         local gx, gy = walk.gx + 0.5, walk.gy + 0.5
         local dx, dy = z:getX() - gx, z:getY() - gy
-        if now >= walk.at or (dx * dx + dy * dy) <= 0.36 or not z:isMoving() then
+        -- Chegou ou timeout. Não usar isMoving(): com pathfind o jogo pode ter
+        -- bPathfind ligado e isMoving falso (review 0052) — abortaria no 1º frame.
+        if now >= walk.at or (dx * dx + dy * dy) <= 0.36 then
             endWalk(z, now)
         else
             C.still[z] = nil
@@ -132,7 +140,6 @@ function C.hold(z, md)
         return
     end
     if C.forceWalk or (C.nextWalk[z] ~= nil and now >= C.nextWalk[z]) or C.still[z] then
-        C.forceWalk = false
         -- Chão: o mesmo critério do Sem-rosto / Wander (isFree + sem água), sem
         -- puxar o módulo inteiro (pz-api-notes §3.4 / §27).
         local dest = R.pickWalk(z:getX(), z:getY(), z:getZ(), playersNear(),
@@ -142,6 +149,7 @@ function C.hold(z, md)
                 return sq ~= nil and sq:isFree(false) and not sq:getProperties():has(IsoFlagType.water)
             end)
         if dest then
+            C.forceWalk = false
             if C.still[z] then
                 C.still[z] = nil
                 if not C.gameUseless(z) then z:setUseless(false) end
@@ -151,7 +159,9 @@ function C.hold(z, md)
             C.walking[z] = { at = now + R.WALK_TIMEOUT_MS, gx = dest.x, gy = dest.y, gz = dest.z }
             return
         end
+        -- pickWalk falhou: mantém forceWalk pra tentar de novo no próximo frame
         scheduleWalk(z, now)
+        if C.still[z] and not C.forceWalk then return end
         if C.still[z] then return end
     end
     if C.still[z] then return end

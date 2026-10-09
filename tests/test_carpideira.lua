@@ -250,11 +250,15 @@ return {
         assert(z.useless ~= true, "useless na caminhada")
         assert(z.target == nil, "caçou durante o choro")
         assert(z.goal, "sem pathToLocationF")
-        local gx = z.goal.x
-        assert(gx <= 0.5 or math.abs(z.goal.y - 0) > 1, "andou na direção do jogador em x+")
+        local before = (20 - 0) * (20 - 0)
+        local after = (20 - z.goal.x) * (20 - z.goal.x) + (0 - z.goal.y) * (0 - z.goal.y)
+        assert(after >= before, "andou na direção do jogador: " .. z.goal.x .. "," .. z.goal.y)
+        -- pathfind em andamento (bPathfind, isMoving pode ser falso no jogo): não aborta
+        z.vars.bMoving, z.vars.bPathfind = false, true
+        NOM_Carpideira.hold(z, z.md)
+        assert(NOM_Carpideira.walking[z], "abortou no pathfind sem isMoving")
         -- chega: para e volta useless
         z.x, z.y = z.goal.x, z.goal.y
-        z.vars.bMoving, z.vars.bPathfind = false, false
         NOM_Carpideira.hold(z, z.md)
         assert(NOM_Carpideira.walking[z] == nil and z.useless == true, "não parou ao chegar")
     end,
