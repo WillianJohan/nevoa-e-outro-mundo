@@ -10,11 +10,12 @@ NOM_AmbientScreamRules = {
         "NOM_AmbientScream3",
         "NOM_AmbientScream4",
     },
-    -- Intervalo entre gritos (ms reais). Sprint 0053: média ~1/min na branca;
-    -- vermelha um pouco mais apertada. Preta off (não compete com Tição).
+    -- Intervalo entre gritos (ms reais). Sprint 0053: ~1/min na branca; playtest
+    -- (dump Johan 2026-10-09): frequência alta demais → corta pela metade (gaps ×2).
+    -- Branca média ~60 s → ~120 s; vermelha um pouco mais apertada. Preta off.
     GAP = {
-        white = { min = 30000, max = 90000 },
-        red = { min = 20000, max = 70000 },
+        white = { min = 60000, max = 180000 },
+        red = { min = 40000, max = 140000 },
         black = nil, -- silêncio: não agenda
     },
     -- Distância do emitter ao jogador (tiles). Longe + passa-baixa no OGG = presença.
