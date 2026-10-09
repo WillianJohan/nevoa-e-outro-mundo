@@ -155,13 +155,16 @@ function NOM.godMode(on)
     NOM_DebugLog.say("[NOM] debug godMode=" .. tostring(on))
 end
 
--- Clímax fog (sprint 0047): imprime altura/véu/bolsões do sandbox e empurra de novo pro mod3.
+-- Clímax fog (sprint 0047g): imprime look da cor ativa e empurra de novo pro mod3.
 function NOM.fogLook()
     require "NOM_FogClimaxRules"
-    local L = NOM_FogClimaxRules.fromConfig()
+    require "NOM_FogState"
+    local color = NOM_FogState.color and NOM_FogState.color() or "white"
+    local L = NOM_FogClimaxRules.fromConfig(color)
     NOM_DebugLog.say(string.format(
-        "[NOM] debug fogLook baseH=%.2f haze=%.2f pocketH=%.2f cov=%.3f boost=%.2f agg=%.2f",
-        L.baseHeight, L.baseHaze, L.pocketHeight, L.pocketCoverage, L.pocketBoost, L.pocketAggression))
+        "[NOM] debug fogLook color=%s baseH=%.2f haze=%.2f pocketH=%.2f cov=%.3f boost=%.2f agg=%.2f",
+        L.color or color, L.baseHeight, L.baseHaze, L.pocketHeight, L.pocketCoverage, L.pocketBoost,
+        L.pocketAggression))
     if NOM_FogQualitySync and NOM_FogQualitySync.push then
         NOM_FogQualitySync.push()
         NOM_DebugLog.say("[NOM] debug fogLook: params empurrados pro mod3 (se houver)")

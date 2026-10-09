@@ -41,12 +41,18 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 - `FogPockets.java` + uniforms `uPocket`/`uPocketShape` (produto mantido).
 - Shader: `layerAt` + C-lite; sync Lua → params 2/3/7/14/15; fallback vinheta; `NOM.fogLook()`.
 - **Look shader** = 1ª 0047 (`b012989`: HAZE 0,18 / fall 8 / sigma 0,9; sem FLOOR_MIN; ScreenFx sem gate).
-- **Defaults playtest Johan (branca, 0047g):** empurrados por sync / `NOM.fogLook()`:
-  - param **2** altura base **1,0** (sandbox `FogBaseHeight`)
-  - param **3** bolsão **1,2**
-  - param **7** véu **0,8** (fixo em `BASE_HAZE_DEFAULT`, não deriva da altura)
-  - param **9** resolução grade **3** (Opções > Mods + Java)
-  - param **14** cobertura **0,1** / **15** boost **1,1** (aggression default 1)
+- **Defaults playtest Johan (0047g), por cor** — sync / `NOM.fogLook()` / `onColorChange`:
+
+  | Param | Branca | Vermelha |
+  |-------|--------|----------|
+  | 2 altura | **1,0** (sandbox) | **1,0** (fixo) |
+  | 3 bolsão H | **1,2** | **1,1** |
+  | 7 véu | **0,8** | **1,0** |
+  | 9 res | **3** | **3** |
+  | 14 cov | **0,1** | **1,0** |
+  | 15 boost | **1,1** | **1,0** |
+
+  Branca: sandbox `FogBaseHeight` + aggression. Vermelha: `lookRed()` tabela fixa. Preta: look branco até playtest.
 - Histórico rejeitado: tempero 0047b → 0047c–f. Docs de design α ficam; código do look visual não.
 - `./run-tests.sh` verde.
 

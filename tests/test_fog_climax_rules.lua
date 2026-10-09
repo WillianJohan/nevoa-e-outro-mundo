@@ -72,10 +72,27 @@ return {
         assert(near(L.baseHeight, R.BASE_HEIGHT_DEFAULT))
         assert(near(L.pocketAggression, R.POCKET_AGGRESSION_DEFAULT))
         assert(near(L.baseHaze, R.BASE_HAZE_DEFAULT))
+        assert(L.color == "white")
         SandboxVars = { NevoaEOutroMundo = { FogBaseHeight = 0.35, FogPocketAggression = 0 } }
         package.loaded.NOM_Config = nil
         local Z = R.fromConfig()
         assert(near(Z.baseHeight, 0.35))
         assert(Z.pocketCoverage == 0)
+    end,
+
+    -- playtest Johan vermelha: 2=1, 3=1.1, 7=1, 14=1, 15=1 (fixo; não usa sandbox)
+    fog_climax_red_look_fixed = function()
+        local L = R.lookRed()
+        assert(L.color == "red")
+        assert(near(L.baseHeight, 1.0))
+        assert(near(L.baseHaze, 1.0))
+        assert(near(L.pocketHeight, 1.1))
+        assert(near(L.pocketCoverage, 1.0))
+        assert(near(L.pocketBoost, 1.0))
+        SandboxVars = { NevoaEOutroMundo = { FogBaseHeight = 0.35, FogPocketAggression = 0 } }
+        package.loaded.NOM_Config = nil
+        local Z = R.fromConfig("red")
+        assert(near(Z.baseHeight, 1.0) and near(Z.pocketCoverage, 1.0), "vermelha não ignora sandbox")
+        assert(R.fromConfig("black").color == "white", "preta cai no look branco")
     end,
 }

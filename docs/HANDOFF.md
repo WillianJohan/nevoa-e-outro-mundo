@@ -10,7 +10,7 @@ Atualizado em 2026-10-08. **Próximo passo = sprint FOG clímax (0047)** — go 
 - Base = mar baixo tipo gelo seco (não engole câmera); bolsões = **viajantes raros/brutais** (fog absurda de hoje só neles).
 - Pipeline **A → C-lite → B' → B** (produto A-first; B 3D só se A+C-lite falharem).
 - Sandbox **2 eixos** (base + bolsão); resolução/qualidade no cliente; fallback sem mod3 = visual fino (clima/overlay).
-- **Defaults branca (playtest):** `setParam(2,1)` `(3,1.2)` `(7,0.8)` `(9,3)` `(14,0.1)` `(15,1.1)`.
+- **Defaults playtest por cor:** branca `2=1,3=1.2,7=0.8,9=3,14=0.1,15=1.1`; vermelha `2=1,3=1.1,7=1,9=3,14=1,15=1`.
 - Fora desta sprint: Sons II, almas, transform 100%, Carpideira Witch/look, aperto da preta.
 
 **Como testar:** `scripts/dev-sync.sh` com a branch no checkout; reiniciar o jogo; ativar `[STAGING] NOM: Noise of Mist` (+ Volumétrica se for volume). Roteiro no README da 0047.
