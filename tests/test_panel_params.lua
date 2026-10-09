@@ -116,4 +116,24 @@ return {
                 "DEFAULTS sem " .. k)
         end
     end,
+
+    -- 0058b: dump plain chave=valor pra colar no chat
+    panel_params_dump_text_chave_valor = function()
+        P.reset()
+        local t = P.dumpText()
+        assert(t:find("# NOM_PanelParams", 1, true), t)
+        assert(t:find("# live: (nenhum)", 1, true), t)
+        assert(t:find("AlmaPopMin=4", 1, true), t)
+        assert(t:find("AlmaFogWhite=true", 1, true), t)
+        assert(t:find("EstaladorRhythm=rotate", 1, true), t)
+        assert(t:find('LookForce=""', 1, true), t)
+        P.set("AlmaPopMin", 7)
+        P.set("CinzaRateMult", 1.5)
+        t = P.dumpText()
+        assert(t:find("AlmaPopMin", 1, true) and t:find("CinzaRateMult", 1, true), t)
+        assert(t:find("# live:", 1, true) and t:find("AlmaPopMin", 1, true), t)
+        assert(t:find("AlmaPopMin=7", 1, true), t)
+        assert(t:find("CinzaRateMult=1.5", 1, true), t)
+        P.reset()
+    end,
 }

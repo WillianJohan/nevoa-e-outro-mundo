@@ -392,6 +392,52 @@ function NOM.param(key, value)
     return v
 end
 
+-- Sprint 0058b: dump plain dos knobs (e extras ash/sonar/alma se carregados) pra colar no chat.
+-- Sem API PZ de clipboard com evidência (pz-api-notes UNKNOWN): imprime no log do painel;
+-- tenta Clipboard.setClipboard / Java AWT só via pcall, sem depender disso.
+function NOM.copyParams()
+    require "NOM_PanelParams"
+    local text = NOM_PanelParams.dumpText()
+    if NOM_AlmaRules and NOM_AlmaRules.describe then
+        text = text .. "\n# AlmaRules\nalma.describe=" .. NOM_AlmaRules.describe()
+    end
+    if NOM_SonarRules and NOM_SonarRules.burstStatus then
+        local force = NOM_SonarRules.forceBurst and NOM_SonarRules.forceBurst()
+        local forceId = force and NOM_SonarRules.burstId(force) or "auto"
+        text = text .. "\n# SonarRules\nsonar.force=" .. forceId
+            .. "\nsonar.status=" .. NOM_SonarRules.burstStatus()
+    end
+    if NOM_FlakeRules and NOM_FlakeRules.debugMul then
+        local d = NOM_FlakeRules.debugMul()
+        text = text .. string.format(
+            "\n# FlakeRules (ash)\nash.density=%.2f\nash.rate=%.2f\nash.air=%.2f",
+            d.density, d.rate, d.air)
+    end
+
+    local via = "log"
+    if Clipboard ~= nil and type(Clipboard.setClipboard) == "function" then
+        local ok = pcall(Clipboard.setClipboard, text)
+        if ok then via = "Clipboard.setClipboard" end
+    end
+    if via == "log" then
+        -- Tentativa Java AWT (desktop): sem evidência no repo; se falhar, fica só o log.
+        local ok = pcall(function()
+            local Toolkit = luajava and luajava.bindClass and luajava.bindClass("java.awt.Toolkit")
+            if not Toolkit then error("sem luajava") end
+            local clip = Toolkit:getDefaultToolkit():getSystemClipboard()
+            local StrSel = luajava.bindClass("java.awt.datatransfer.StringSelection")
+            clip:setContents(StrSel:new(text), nil)
+        end)
+        if ok then via = "java.awt.Clipboard" end
+    end
+
+    NOM_DebugLog.say("[NOM] debug copyParams via=" .. via .. " — cole do log se o clipboard falhar:")
+    for line in string.gmatch(text, "[^\n]+") do
+        NOM_DebugLog.say(line)
+    end
+    return text
+end
+
 function NOM.blind()
     if not NOM_VariantAI then
         NOM_DebugLog.say("[NOM] debug visão curta: NOM_VariantAI não carregou")
@@ -451,6 +497,7 @@ NOM.HELP = {
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.params()", "lista os knobs live do painel (Almas, Estalador, Cinzas, Look); * = override da sessão" },
     { "NOM.param(key, value)", "lê ou grava um knob live; NOM.param(\"reset\") limpa tudo; NOM.param(\"reset\", chave) limpa uma" },
+    { "NOM.copyParams()", "copia as definições live (chave=valor) pro clipboard se der; senão imprime no log do painel pra colar no chat" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },
 }

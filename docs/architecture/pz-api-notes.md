@@ -2058,6 +2058,7 @@ fator de audição do Tição (`NOM_NightRules.HEARING_MULT[1]`), sem pacote ext
 | Som do clique de botão: `getSoundManager():playUISound("UIActivateButton")` | EXISTS | `client/ISUI/ISButton.lua:46, 521` |
 | O clique numa área vazia da janela (cabeçalho) começa a arrastar | EXISTS | `ISCollapsableWindow:onMouseDown` (`:270-280`): os painéis filhos devolvem `true` pra não arrastar a janela |
 | As alças, o recorte e a roda do mouse se comportam no jogo como no vanilla | UNKNOWN | testar no jogo, item 28 |
+| Clipboard Lua oficial (`Clipboard.setClipboard` / similar) pra copiar texto do painel | UNKNOWN | sem uso no vanilla Lua do repo; `NOM.copyParams` (0058b) imprime no `NOM_DebugLog` e tenta `Clipboard.setClipboard` / Java AWT só via `pcall` |
 
 ## Abordagem recomendada por mecânica (resumo)
 

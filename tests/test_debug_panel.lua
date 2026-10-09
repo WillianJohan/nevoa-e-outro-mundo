@@ -162,7 +162,7 @@ local function setup(opts)
         "almaCfg", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "sonarBurst", "sonarGaps", "ambientScream", "ticao",
-        "blackPressure", "thunder", "flickerLamp", "rain", "help", "params", "param" }) do
+        "blackPressure", "thunder", "flickerLamp", "rain", "help", "params", "param", "copyParams" }) do
         NOM[n] = rec(n)
     end
     NOM_Debug = { night = rec("clock") }
@@ -404,7 +404,7 @@ return {
             UI_NOM_Debug_C_BlackPressure = { "blackPressure()" },
             UI_NOM_Debug_C_Blind = { "blind()" },
             UI_NOM_Debug_C_OwnSprites = { "ownSprites()" },
-            UI_NOM_Debug_C_Params = { "params()", "param(reset)" },
+            UI_NOM_Debug_C_Params = { "params()", "param(reset)", "copyParams()" },
             UI_NOM_Debug_C_Help = { "help()" },
         }
         local n, want = 0, 0
@@ -623,8 +623,8 @@ return {
         NOM_PanelParams.reset()
         local rate = w.list.sliders[1]
         assert(rate.key == "CinzaRateMult", tostring(rate.key))
-        w.list:setScroll(math.max(0, rate.trackY - 4))
-        local y = rate.trackY - w.list.scroll + rate.trackH / 2
+        w.list:setScroll(math.max(0, rate.y - 4))
+        local y = rate.y - w.list.scroll + rate.h / 2
         G.calls = {}
         w.list:onMouseDown(rate.x + rate.w - 1, y)
         assert(G.calls[1] and G.calls[1]:match("^param%(CinzaRateMult,"),
