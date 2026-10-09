@@ -13,7 +13,7 @@ public class Main {
         try {
             if (LuaManager.exposer == null || LuaManager.env == null) return;
             LuaManager.exposer.exposeGlobalFunctions(new RenderContext());
-            RenderContext.log("Lua: NOMRender_setParam, NOMRender_isActive, NOMRender_flowInfo, NOMRender_sonar e NOMRender_sonarRipple registrados");
+            RenderContext.log("Lua: NOMRender_setParam, NOMRender_isActive, NOMRender_flowInfo, NOMRender_sonar, NOMRender_sonarRipple e NOMRender_setLightningColor registrados");
         } catch (Throwable t) {
             RenderContext.log("Lua: registro falhou: " + t);
         }

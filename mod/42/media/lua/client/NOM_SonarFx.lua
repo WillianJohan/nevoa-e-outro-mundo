@@ -1,7 +1,7 @@
--- Sonar do Estalador (sprint 0037 + 0048), o desenho. Cada estalo (NOM_Sonar.onRing) agenda
--- N ripples curtos nos BEAT_MS do burst. Em cada batida tenta o mod3
--- (NOMRender_sonarRipple); se recusar, desenha anel discreto na tela (NOM_ScreenFx.extra).
--- O achado continua no servidor (um anel RANGE); aqui só presença na névoa.
+-- Sonar do Estalador (sprint 0037 + 0048 + 0053), o desenho. Cada estalo (NOM_Sonar.onRing)
+-- agenda N ripples curtos nos BEAT_MS do burst. Em cada batida tenta o mod3
+-- (NOMRender_sonarRipple). Sprint 0053: SCREEN_DRAW=false — sem anéis brancos na tela
+-- (quebravam imersão); se o mod3 recusar, o ripple some. O achado continua no servidor.
 if isServer() then return end
 
 require "NOM_SonarRules"
@@ -48,7 +48,7 @@ local function prune(now)
     end
 end
 
--- Dispara o mod3 no instante da batida; se pegou, some da lista da tela.
+-- Dispara o mod3 no instante da batida; se pegou (ou SCREEN_DRAW off), some da lista.
 local function fire(now)
     local rings = F.rings
     for i = #rings, 1, -1 do
@@ -58,6 +58,8 @@ local function fire(now)
             if mod3(g.x, g.y, g.z) then
                 F.mod3 = F.mod3 + 1
                 table.remove(rings, i)
+            elseif not R.SCREEN_DRAW then
+                table.remove(rings, i) -- 0053: sem anel branco na tela
             end
         end
     end
@@ -68,7 +70,7 @@ local function draw(el, now)
     local rings = F.rings
     if #rings == 0 then return end
     prune(now)
-    if #rings == 0 then return end
+    if #rings == 0 or not R.SCREEN_DRAW then return end
     if MainScreen and MainScreen.instance and MainScreen.instance:isReallyVisible() then return end
     local p = getSpecificPlayer(0)
     if not p or p:isDead() then return end

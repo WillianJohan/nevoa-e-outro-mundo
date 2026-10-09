@@ -14,8 +14,10 @@ return {
 
     ambient_gap_white_and_red = function()
         local w, r = A.GAP.white, A.GAP.red
-        assert(w.min == 60000 and w.max == 180000)
-        assert(r.min == 45000 and r.max == 120000)
+        -- sprint 0053: média ~1/min (branca 30–90 s → média 60 s)
+        assert(w.min == 30000 and w.max == 90000)
+        assert(r.min == 20000 and r.max == 70000)
+        assert((w.min + w.max) / 2 == 60000, "média branca ~1/min")
         assert(r.max < w.max, "vermelha um pouco mais apertada")
         assert(A.gap("white", 0) == w.min)
         assert(A.gap("white", w.max - w.min) == w.max)

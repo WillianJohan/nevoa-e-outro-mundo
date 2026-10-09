@@ -5,7 +5,8 @@ if isClient() then return end
 -- caindo: ThunderStorm.triggerThunderEvent(x, y, false, true, true); no servidor o jogo
 -- transmite pros clientes, no solo enfileira direto (pz-api-notes §34; vanilla em
 -- server/ClientCommands.lua:657-664). Na preta o clarão congela os Tições perto dos jogadores
--- (NOM_TicaoLight.flash). A chuva é do server/NOM_ClimateLook.lua. A branca fica como está.
+-- (NOM_TicaoLight.flash) e o cliente pinta o clarão de vermelho (0053, NOM_StormFx).
+-- A chuva é do server/NOM_ClimateLook.lua. A branca fica como está.
 require "NOM_World"
 require "NOM_Players"
 require "NOM_StormRules"
@@ -15,6 +16,7 @@ NOM_Storm = { rainForced = false }
 
 local S = NOM_Storm
 local R = NOM_StormRules
+local MODULE = "NevoaEOutroMundo"
 local nextAt = nil
 
 local function debugLog(msg)
@@ -23,10 +25,23 @@ end
 
 local function rnd() return ZombRand(1000) / 1000 end
 
+-- Avisa o cliente do clarão vermelho (overlay sem mod3). No dedicado, comando de rede; no
+-- solo, chama NOM_StormFx.flash direto se o cliente já carregou.
+local function tellFlash()
+    if isServer() then
+        sendServerCommand(MODULE, "thunderFlash", {})
+    elseif NOM_StormFx then
+        NOM_StormFx.flash()
+    end
+end
+
 local function strike(player, now)
     local x, y = R.thunderPoint(player:getX(), player:getY(), rnd(), rnd())
     getClimateManager():getThunderStorm():triggerThunderEvent(x, y, false, true, true)
-    if NOM_World.black and NOM_TicaoLight then NOM_TicaoLight.flash(now) end
+    if NOM_World.black then
+        if NOM_TicaoLight then NOM_TicaoLight.flash(now) end
+        tellFlash()
+    end
     debugLog("relâmpago em " .. x .. "," .. y)
     return x, y
 end

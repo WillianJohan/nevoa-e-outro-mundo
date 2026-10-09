@@ -1,6 +1,7 @@
--- Regras puras da tempestade da névoa preta e da vermelha (sprint 0045): sem API do jogo,
--- testável com ./run-tests.sh. Quem usa: server/NOM_Storm.lua (relâmpago e trovão) e
--- server/NOM_ClimateLook.lua (chuva). A branca não tem tempestade.
+-- Regras puras da tempestade da névoa preta e da vermelha (sprint 0045; tint da preta
+-- na 0053): sem API do jogo, testável com ./run-tests.sh. Quem usa: server/NOM_Storm.lua
+-- (relâmpago e trovão), server/NOM_ClimateLook.lua (chuva) e client/NOM_StormFx.lua
+-- (cor do clarão na preta). A branca não tem tempestade.
 require "NOM_FogEventRules"
 
 NOM_StormRules = {}
@@ -20,6 +21,12 @@ R.FLASH_MS = 1000
 R.RAIN_CHANCE = 30
 R.RAIN_INTENSITY = 0.55
 R.RAIN_SALT = 104395301 -- sorteio da chuva por período, separado do da preta
+-- Sprint 0053: cor do clarão vanilla (ThunderStorm.PlayerLightningInfo.lightningColor).
+-- Branco = vanilla / vermelha; vermelho sangue só na preta. O som do trovão não tinge.
+R.LIGHTNING_WHITE = { r = 1, g = 1, b = 1 }
+R.LIGHTNING_BLACK = { r = 1, g = 0.12, b = 0.06 }
+-- Pulso de tela (fallback sem mod3): ms do pico ao zero do overlay vermelho.
+R.STORM_FLASH_MS = 450
 
 function R.nextThunder(r)
     r = math.max(0, math.min(r, 0.999999))
@@ -40,6 +47,21 @@ function R.rains(period, seed)
     period = tonumber(period)
     if period == nil then return false end
     return NOM_FogEventRules.frac(seed, math.floor(period), R.RAIN_SALT) * 100 < R.RAIN_CHANCE
+end
+
+-- RGB do clarão: só a névoa preta pinta de vermelho (vermelha e branca ficam brancas).
+function R.lightningTint(black)
+    if black then return R.LIGHTNING_BLACK.r, R.LIGHTNING_BLACK.g, R.LIGHTNING_BLACK.b end
+    return R.LIGHTNING_WHITE.r, R.LIGHTNING_WHITE.g, R.LIGHTNING_WHITE.b
+end
+
+-- Alfa do overlay de tela (fallback): pico em 0, some em STORM_FLASH_MS.
+function R.stormFlash(now, at)
+    if at == nil or now < at then return 0 end
+    local t = (now - at) / R.STORM_FLASH_MS
+    if t >= 1 then return 0 end
+    local k = 1 - t
+    return k * k
 end
 
 return NOM_StormRules
