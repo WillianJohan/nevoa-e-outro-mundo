@@ -384,4 +384,23 @@ return {
         assert(R.variant(0, 5, c, false, true) == nil and R.variant(outfitID(1, 1), nil, c, false, true) == nil)
         assert(not R.semRosto(outfitID(1, 1), 5, cfg({ semRostoChance = 100 }), false, true), "Sem-rosto na preta")
     end,
+    -- LookForce do painel (0058): força o kind no assign; forçado por ID e preta ganham.
+    variant_rules_look_force_from_panel = function()
+        require "NOM_PanelParams"
+        NOM_PanelParams.reset()
+        local off = cfg({ estaladorOn = false, corredorOn = false, semRostoOn = false, carpideiraOn = false,
+            estaladorChance = 0, corredorChance = 0, semRostoChance = 0, carpideiraChance = 0 })
+        local id = outfitID(3, 17)
+        assert(R.variant(id, 1, off) == nil, "sem force, sandbox off")
+        NOM_PanelParams.set("LookForce", "pale")
+        assert(R.variant(id, 1, off) == "estalador")
+        NOM_PanelParams.set("LookForce", "wrong")
+        assert(R.variant(id, 1, off) == "semrosto")
+        R.forced[id] = "corredor"
+        assert(R.variant(id, 1, off) == "corredor", "forced[id] ganha do LookForce")
+        R.forced[id] = nil
+        assert(R.variant(id, 1, off, false, true) == "ticao", "preta ganha do LookForce")
+        NOM_PanelParams.reset()
+        assert(R.variant(id, 1, off) == nil)
+    end,
 }

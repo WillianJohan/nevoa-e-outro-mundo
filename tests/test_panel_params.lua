@@ -136,4 +136,23 @@ return {
         assert(t:find("CinzaRateMult=1.5", 1, true), t)
         P.reset()
     end,
+
+    -- LookForce → kind de variante (runtime)
+    panel_params_look_kind_maps_archetypes = function()
+        P.reset()
+        assert(P.lookKind() == nil)
+        assert(P.set("LookForce", "pale") == "pale")
+        assert(P.lookKind() == "estalador")
+        assert(P.set("LookForce", "misaligned") == "misaligned")
+        assert(P.lookKind() == "corredor")
+        assert(P.set("LookForce", "wrong") == "wrong")
+        assert(P.lookKind() == "semrosto")
+        assert(P.set("LookForce", "patient") == "patient")
+        assert(P.lookKind() == "carpideira")
+        assert(P.set("LookForce", "silhouette") == "silhouette")
+        assert(P.lookKind() == "carpideira")
+        assert(P.set("LookForce", "") == "")
+        assert(P.lookKind() == nil)
+        P.reset()
+    end,
 }

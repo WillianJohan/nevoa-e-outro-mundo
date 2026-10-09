@@ -403,6 +403,12 @@ local function syncPanelToSystems(which)
     if (all or which == "cinzas") and NOM_FlakeRules and NOM_FlakeRules.setDebug then
         NOM_FlakeRules.setDebug(P.get("CinzaDensityMult"), P.get("CinzaRateMult"), nil)
     end
+    -- Look: VariantRules.variant() já lê lookKind(); aqui aplica no zumbi mais perto
+    -- pra feedback imediato no painel (igual lookCycle / NOM.variant).
+    if (all or which == "look") and NOM.variant then
+        local kind = P.lookKind and P.lookKind() or nil
+        NOM.variant(kind)
+    end
 end
 
 local function sectionOfParam(key)
@@ -410,7 +416,8 @@ local function sectionOfParam(key)
     if key:find("^Alma", 1, false) then return "almas" end
     if key:find("^Estalador", 1, false) then return "estalador" end
     if key:find("^Cinza", 1, false) then return "cinzas" end
-    return nil -- LookForce etc.: sem sistema leitor ainda
+    if key == "LookForce" then return "look" end
+    return nil
 end
 
 function NOM.param(key, value)
