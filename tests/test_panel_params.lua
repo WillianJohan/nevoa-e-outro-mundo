@@ -122,7 +122,7 @@ return {
         P.reset()
         local t = P.dumpText()
         assert(t:find("# NOM_PanelParams", 1, true), t)
-        assert(t:find("# live: %(nenhum%)") or t:find("# live: (nenhum)", 1, true), t)
+        assert(t:find("# live: (nenhum)", 1, true), t)
         assert(t:find("AlmaPopMin=4", 1, true), t)
         assert(t:find("AlmaFogWhite=true", 1, true), t)
         assert(t:find("EstaladorRhythm=rotate", 1, true), t)

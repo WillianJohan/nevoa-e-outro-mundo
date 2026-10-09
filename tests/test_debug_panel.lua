@@ -623,8 +623,8 @@ return {
         NOM_PanelParams.reset()
         local rate = w.list.sliders[1]
         assert(rate.key == "CinzaRateMult", tostring(rate.key))
-        w.list:setScroll(math.max(0, rate.trackY - 4))
-        local y = rate.trackY - w.list.scroll + rate.trackH / 2
+        w.list:setScroll(math.max(0, rate.y - 4))
+        local y = rate.y - w.list.scroll + rate.h / 2
         G.calls = {}
         w.list:onMouseDown(rate.x + rate.w - 1, y)
         assert(G.calls[1] and G.calls[1]:match("^param%(CinzaRateMult,"),
