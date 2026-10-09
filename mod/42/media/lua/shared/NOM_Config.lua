@@ -22,6 +22,8 @@ NOM_Config.DEFAULTS = {
     BlackFogGraceDays = 14,
     BlackFogMinHours = 2,
     BlackFogMaxHours = 3,
+    -- 1 Leve / 2 Padrão / 3 Pesadelo (sprint 0051: aperto da preta)
+    BlackFogPressure = 2,
     FogCalmHours = 2,
     FogBaseHeight = 1.0,
     FogPocketAggression = 1.0,

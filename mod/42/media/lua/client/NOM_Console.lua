@@ -226,6 +226,18 @@ function NOM.ticao()
         .. " luzes_fixas=" .. fixed)
 end
 
+-- Pressão da preta (sprint 0051): nível do sandbox e números ativos (piscar, hold, caça).
+function NOM.blackPressure()
+    require "NOM_BlackPressureRules"
+    local lv = NOM_BlackPressureRules.level(NOM_Config.get("BlackFogPressure"))
+    local p = NOM_BlackPressureRules.profile(lv)
+    local names = { "leve", "padrao", "pesadelo" }
+    NOM_DebugLog.say(string.format(
+        "[NOM] debug pressao preta nivel=%d (%s) piscar=%dms chance=%d%% escuro=%d-%dms hold=%dms caca=%dmin/%dtile piscar_caca=%d bias=%.2f poste=%dms/%d%%",
+        lv, names[lv] or "?", p.flickerCheckMs, p.flickerChance, p.flickerMinMs, p.flickerMaxMs,
+        p.holdMs, p.huntMinutes, p.huntReach, p.huntOnFlickerReach, p.fastBias, p.lampCheckMs, p.lampChance))
+end
+
 function NOM.blind()
     if not NOM_VariantAI then
         NOM_DebugLog.say("[NOM] debug visão curta: NOM_VariantAI não carregou")
@@ -271,6 +283,7 @@ NOM.HELP = {
     { "NOM.flickerLamp()", "um poste aceso de fora perto de você (até 25 tiles) pisca agora" },
     { "NOM.rain()", "força a chuva nas névoas pretas e vermelhas (liga/desliga); desligado, chove em 30% delas" },
     { "NOM.ticao()", "névoa preta: quantos Tições este processo simula e quantos a luz congela agora" },
+    { "NOM.blackPressure()", "névoa preta: nível de pressão do sandbox (Leve/Padrão/Pesadelo) e números ativos" },
     { "NOM.blind()", "visão curta da névoa: quantos zumbis estão cegos e vigiados agora, e a última onda de perambular" },
     { "NOM.panel()", "abre ou fecha o painel de debug (tecla nas opções do mod, padrão Insert)" },
     { "NOM.help()", "esta lista" },

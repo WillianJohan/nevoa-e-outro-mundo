@@ -149,6 +149,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Show", function() NOM.status() end) } },
             { title = "UI_NOM_Debug_C_Ticao", desc = "UI_NOM_Debug_C_Ticao_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.ticao() end) } },
+            { title = "UI_NOM_Debug_C_BlackPressure", desc = "UI_NOM_Debug_C_BlackPressure_Desc", choices = {
+                c("UI_NOM_Debug_B_Show", function() NOM.blackPressure() end) } },
             { title = "UI_NOM_Debug_C_Blind", desc = "UI_NOM_Debug_C_Blind_Desc", choices = {
                 c("UI_NOM_Debug_B_Show", function() NOM.blind() end) } },
             { title = "UI_NOM_Debug_C_OwnSprites", desc = "UI_NOM_Debug_C_OwnSprites_Desc", choices = {

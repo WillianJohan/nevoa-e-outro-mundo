@@ -59,11 +59,15 @@ return {
         end
         assert(seen >= 300, "o rodízio não cobre a lista: " .. seen)
     end,
-    -- pisca com FLICKER_CHANCE% e dura entre o mínimo e o máximo
+    -- pisca com a chance da pressão e dura entre o mínimo e o máximo do perfil
     light_rules_flicker = function()
-        assert(R.flicker(R.FLICKER_CHANCE, 0.5) == nil and R.flicker(99, 0) == nil)
-        assert(R.flicker(0, 0) == R.FLICKER_MIN_MS and R.flicker(0, 1) == R.FLICKER_MAX_MS)
-        assert(R.HOLD_MS < R.FLICKER_MIN_MS, "o Tição solto pelo flicker voltaria a congelar antes da luz voltar")
+        require "NOM_Config"
+        SandboxVars = nil
+        local p = require("NOM_BlackPressureRules").current()
+        assert(R.flicker(p.flickerChance, 0.5) == nil and R.flicker(99, 0) == nil)
+        assert(R.flicker(0, 0) == p.flickerMinMs and R.flicker(0, 1) == p.flickerMaxMs)
+        assert(R.holdMs() < p.flickerMinMs, "o Tição solto pelo flicker voltaria a congelar antes da luz voltar")
+        assert(R.HOLD_MS == p.holdMs and R.FLICKER_MIN_MS == p.flickerMinMs, "constantes fora do Padrão")
     end,
     -- luz fixa (sprint 0039): acesa, com força e raio de pelo menos FIXED_MIN; raio preso em FIXED_MAX
     light_rules_fixed = function()

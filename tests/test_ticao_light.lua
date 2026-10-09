@@ -215,6 +215,24 @@ return {
         end
         assert(not lit, "acendeu a lanterna guardada")
     end,
+    -- sprint 0051: no Padrão, o piscar chama caça perto; no Leve, não
+    ticao_light_flicker_hunts_on_pressure = function()
+        require "NOM_BlackPressureRules"
+        local pad = NOM_BlackPressureRules.profile(2)
+        local G = setup({ rand = 0, sandbox = { BlackFogPressure = 2 } })
+        G.player({ x = 0, y = 0, face = 0, light = true })
+        black(true)
+        G.tick(math.floor((pad.flickerCheckMs + NOM_LightRules.SWEEP_MS) / 16) + 2)
+        assert(#G.worldSounds >= 1, "Padrão sem caça no piscar")
+        assert(math.abs(G.worldSounds[1].volume - pad.huntOnFlickerReach) <= 1.5, "alcance do piscar")
+        local leve = NOM_BlackPressureRules.profile(1)
+        local G2 = setup({ rand = 0, sandbox = { BlackFogPressure = 1 } })
+        G2.player({ x = 0, y = 0, face = 0, light = true })
+        black(true)
+        G2.tick(math.floor((leve.flickerCheckMs + NOM_LightRules.SWEEP_MS) / 16) + 2)
+        -- Leve ainda pisca (rand 0), mas sem caça no apagão
+        assert(#G2.worldSounds == 0, "Leve caçou no piscar")
+    end,
     -- quem desliga a lanterna num trecho aceso da gagueira fica com ela desligada
     ticao_light_flicker_player_turns_off = function()
         local G = setup({ rand = 0 })

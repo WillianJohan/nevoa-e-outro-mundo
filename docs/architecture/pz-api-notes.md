@@ -2007,6 +2007,18 @@ jogo mostrou e por que o tiro não aparecia.
 | Cópia da cor da cena: `glBlitFramebuffer(..., GL_COLOR_BUFFER_BIT, GL_NEAREST)` do FBO do jogador (preso como `GL_READ_FRAMEBUFFER`) pra uma textura RGBA8 nossa | EXISTS | o mesmo blit da profundidade (§26, `RenderContext.render`), com outro bit; GL 3.0. Só roda com rosto censurado na tela |
 | O quadrado aparece na cabeça certa, some atrás de parede e com o zumbi fora da vista, e a névoa cobre ele | UNKNOWN | testar no jogo, item 24 da lista abaixo |
 
+## 33b. Pressão da névoa preta (sprint 0051)
+
+Sem API nova: reusa `addSound` (§2 / caça da noite), `setActivated` local da lanterna (§30) e a
+cor do poste (§34). O sandbox `BlackFogPressure` (1–3) só muda números em
+`shared/NOM_BlackPressureRules.lua`. A caça no piscar chama `addSound` no servidor com o mesmo
+fator de audição do Tição (`NOM_NightRules.HEARING_MULT[1]`), sem pacote extra.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `addSound` no servidor com hearing do Tição alcança como a caça periódica da preta | EXISTS | `server/NOM_Night.lua` `NOM_Night.call`; a 0051 repete a conta em `NOM_TicaoLight` no piscar |
+| Sandbox integer 1–3 aparece no menu e no `SandboxVars.NevoaEOutroMundo` | EXISTS | padrão das outras opções; `NOM_Config.get` |
+
 ## 34. Luz que pisca e tempestade da preta e da vermelha (sprint 0045)
 
 | Fato | Status | Evidência |

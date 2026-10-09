@@ -410,6 +410,22 @@ function W.new(opts)
     getTimestampMs = function() return G.now end
     -- GameTime.isGamePaused: solo = velocidade 0; dedicado = vazio com PauseEmpty
     isGamePaused = function() return G.paused == true end
+    -- addSound do mundo (caça, lanterna, gritos; sprint 0051: caça no piscar da preta).
+    -- G.sounds já guarda emitters de personagem — estes vão em G.worldSounds.
+    G.worldSounds = {}
+    addSound = function(src, x, y, z, radius, volume)
+        G.worldSounds[#G.worldSounds + 1] = { src = src, x = x, y = y, z = z, radius = radius, volume = volume }
+    end
+    -- Lore do zumbi (NOM_NightStats via NOM_Night, puxado pela caça no piscar da 0051).
+    G.lore = { speed = 2, sight = 2, hearing = 2 }
+    getSandboxOptions = function()
+        return {
+            getOptionByName = function(_, name)
+                local key = (name:match("ZombieLore%.(%w+)$") or name):lower()
+                return { getValue = function() return G.lore[key] or 2 end }
+            end,
+        }
+    end
     G.rand = opts.rand or 0
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
@@ -505,7 +521,8 @@ function W.new(opts)
     getGameTime = function()
         -- horas de mundo: G.world.hours quando o teste usa (evento de névoa), senão a hora do dia
         return { getTimeOfDay = function() return G.world.tod end,
-            getWorldAgeHours = function() return G.world.hours or G.world.tod end }
+            getWorldAgeHours = function() return G.world.hours or G.world.tod end,
+            isZombieInactivityPhase = function() return false end }
     end
     -- ThunderStorm.triggerThunderEvent(x, y, strike, lightning, rumble) (sprint 0045, §34): no servidor
     -- o jogo transmite sozinho; G.thunders guarda as chamadas.

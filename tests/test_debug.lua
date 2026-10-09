@@ -1091,6 +1091,20 @@ return {
         assert(has(G.printed, "^%[NOM%] debug ticao preta=true ticoes=2 congelados=1 luzes_fixas=%-$"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "luzes_fixas=3$"), table.concat(G.printed, "\n"))
     end) end,
+    -- sprint 0051: pressão da preta (sandbox) no console
+    nom_black_pressure_reports_profile = function() run(function()
+        local G = setup()
+        SandboxVars = nil
+        NOM.blackPressure()
+        assert(has(G.printed, "^%[NOM%] debug pressao preta nivel=2 %(padrao%)"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "piscar_caca=25"), table.concat(G.printed, "\n"))
+        SandboxVars = { NevoaEOutroMundo = { BlackFogPressure = 1 } }
+        G.printed = {}
+        NOM.blackPressure()
+        assert(has(G.printed, "nivel=1 %(leve%)"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "piscar_caca=0"), table.concat(G.printed, "\n"))
+        SandboxVars = nil
+    end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()
         local n = 0

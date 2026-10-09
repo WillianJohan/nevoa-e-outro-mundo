@@ -1,10 +1,19 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-08. **Próximo passo = Sons II** (pós-P0 fog). Clímax fog **0047g** aprovado (looks por cor). A `staging` tem a 0047g; v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Em andamento:** sprint **0051** aperto da névoa preta (PR draft → `staging`, sem merge). Paralelo: Sons II (PR #4, sem merge até escuta); 0049 transform / 0050 almas noutros workers. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+
+## Em andamento: aperto da névoa preta (sprint 0051)
+
+Branch `sprint/0051-aperto-preta`. Sandbox `BlackFogPressure` (1 Leve / 2 Padrão / 3 Pesadelo):
+piscar, hold, caça periódica, **caça no piscar**, postes mais instáveis na preta; só Tição.
+[README](sprints/sprint-0051-aperto-preta/README.md). Playtest do Johan decide reaquecer /
+bateria. **Não mergear** sem playtest de terror.
 
 ## Próximo passo: Sons II (pós-P0)
 
-Fog clímax (0047) fechada no playtest do Johan. Seguir [proximos-passos-refinamento.md](proximos-passos-refinamento.md) §3.1–3.2 (Sons II / Estalador). Fora do P0 fog: almas, transform 100%, Carpideira Witch/look, aperto da preta (terror).
+Fog clímax (0047) fechada no playtest do Johan. Seguir proximos-passos-refinamento §3.1–3.2
+(Sons II / Estalador). Fora do P0: almas, transform 100%, Carpideira Witch/look; aperto preta =
+0051 acima.
 
 ## Em staging: sprint 0047g — FOG clímax (looks por cor)
 
