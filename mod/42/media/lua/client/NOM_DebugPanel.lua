@@ -24,6 +24,7 @@ require "NOM_FogState"
 require "NOM_ScreenFxOptions"
 require "NOM_DebugLog"
 require "NOM_AlmaRules"
+require "NOM_FlakeRules"
 
 NOM_DebugPanel = ISCollapsableWindow:derive("NOM_DebugPanel")
 local Side = ISPanel:derive("NOM_DebugPanelSide")
@@ -37,6 +38,7 @@ local PAD, GAP, SIDE_W = 8, 8, 168
 local REFRESH_MS = 1000
 local SCROLL_STEP, SCROLL_W = 48, 8
 local CARD_PAD, PILL_PAD, PILL_GAP = 12, 12, 6
+local TRACK_H, SLIDER_GAP = 12, 8
 local SMALL, MEDIUM = UIFont.Small, UIFont.Medium
 local SMALL_HGT = getTextManager():getFontHeight(SMALL)
 local MEDIUM_HGT = getTextManager():getFontHeight(MEDIUM)
@@ -188,6 +190,19 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Now", function() NOM.carpWalk() end) } },
             { title = "UI_NOM_Debug_C_Wind", desc = "UI_NOM_Debug_C_Wind_Desc", choices = {
                 c("UI_NOM_Debug_B_Toggle", function() NOM.wind() end) } },
+        } },
+    -- Cinzas (sprint 0057): knobs live dens/taxa/ar; o que o sprint toca tem slider aqui.
+    { title = "UI_NOM_Debug_Sec_Ash", desc = "UI_NOM_Debug_Sec_Ash_Desc", color = { r = 0.82, g = 0.78, b = 0.70 },
+        cards = {
+            { title = "UI_NOM_Debug_C_Ash", desc = "UI_NOM_Debug_C_Ash_Desc",
+                sliders = {
+                    { key = "density", label = "UI_NOM_Debug_AshDensity", min = 0, max = 2, step = 0.1 },
+                    { key = "rate", label = "UI_NOM_Debug_AshRate", min = 0, max = 2, step = 0.1 },
+                    { key = "air", label = "UI_NOM_Debug_AshAir", min = 0, max = 2, step = 0.1 },
+                },
+                choices = {
+                    c("UI_NOM_Debug_B_Show", function() NOM.ash() end),
+                    c("UI_NOM_Debug_B_Reset", function() NOM.ash("reset") end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Player", desc = "UI_NOM_Debug_Sec_Player_Desc", color = { r = 0.40, g = 0.82, b = 0.52 },
         cards = {
@@ -372,12 +387,24 @@ function List:setScroll(v)
     self.scroll = math.max(0, math.min(v, self:maxScroll()))
 end
 
--- Posições em coordenadas do conteúdo (y sem a rolagem). hits: os botões clicáveis.
+local function sliderValue(key)
+    local d = NOM_FlakeRules.debugMul()
+    return d[key] or 1
+end
+
+local function snapSlider(v, minV, maxV, step)
+    v = math.floor(v / step + 0.5) * step
+    if v < minV then v = minV end
+    if v > maxV then v = maxV end
+    return math.floor(v * 1000 + 0.5) / 1000
+end
+
+-- Posições em coordenadas do conteúdo (y sem a rolagem). hits: botões; sliders: trilhos.
 function List:layout()
     local s = P.SECTIONS[self.section]
     local cw = self.width - SCROLL_W - 4
     local inner = cw - CARD_PAD * 2
-    self.cards, self.hits = {}, {}
+    self.cards, self.hits, self.sliders = {}, {}, {}
     local y = 2
     self.head = { y = y, desc = wrap(getText(s.desc), SMALL, cw - 4) }
     y = y + MEDIUM_HGT + 4 + #self.head.desc * SMALL_HGT + 12
@@ -385,6 +412,15 @@ function List:layout()
         local item = { card = card, y = y, title = getText(card.title), desc = wrap(getText(card.desc), SMALL, inner) }
         local cy = y + CARD_PAD
         cy = cy + MEDIUM_HGT + 4 + #item.desc * SMALL_HGT + 8
+        for _, sl in ipairs(card.sliders or {}) do
+            local labelY = cy
+            local trackY = cy + SMALL_HGT + 2
+            self.sliders[#self.sliders + 1] = {
+                card = card, key = sl.key, label = sl.label, min = sl.min, max = sl.max, step = sl.step,
+                x = CARD_PAD, w = inner, labelY = labelY, trackY = trackY, trackH = TRACK_H,
+            }
+            cy = trackY + TRACK_H + SLIDER_GAP
+        end
         local px = CARD_PAD
         for i, choice in ipairs(card.choices) do
             local label, on = choiceLabel(card, choice)
@@ -413,6 +449,23 @@ function List:hitAt(x, cy)
     end
 end
 
+function List:sliderAt(x, cy)
+    for _, sl in ipairs(self.sliders or {}) do
+        if x >= sl.x and x < sl.x + sl.w and cy >= sl.trackY - 2 and cy < sl.trackY + sl.trackH + 2 then
+            return sl
+        end
+    end
+end
+
+function List:applySlider(sl, x)
+    local t = (x - sl.x) / sl.w
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    local v = snapSlider(sl.min + t * (sl.max - sl.min), sl.min, sl.max, sl.step)
+    NOM_FlakeRules.setDebugKey(sl.key, v)
+    NOM_DebugLog.echo(getText(sl.label) .. ": " .. string.format("%.1f", v))
+    self.window:refresh()
+end
+
 function List:onMouseWheel(del)
     self:setScroll(self.scroll + del * SCROLL_STEP)
     return true
@@ -420,7 +473,15 @@ end
 
 function List:onMouseDown(x, y)
     if y < 0 or y > self.height then return true end
-    local h = self:hitAt(x, y + self.scroll)
+    local cy = y + self.scroll
+    local sl = self:sliderAt(x, cy)
+    if sl then
+        getSoundManager():playUISound(CLICK_SOUND)
+        self.drag = sl
+        self:applySlider(sl, x)
+        return true
+    end
+    local h = self:hitAt(x, cy)
     if h then
         getSoundManager():playUISound(CLICK_SOUND)
         -- liga/desliga ecoa só o título: o rótulo é o estado de antes do clique
@@ -429,6 +490,18 @@ function List:onMouseDown(x, y)
         self.window:refresh()
     end
     return true
+end
+
+function List:onMouseMove(dx, dy)
+    if self.drag then self:applySlider(self.drag, self:getMouseX()) end
+end
+
+function List:onMouseUp()
+    self.drag = nil
+end
+
+function List:onMouseUpOutside()
+    self.drag = nil
 end
 
 function List:prerender()
@@ -456,6 +529,30 @@ function List:prerender()
                 text(self, line, CARD_PAD, dy, DIM, 1, SMALL)
                 dy = dy + SMALL_HGT
             end
+        end
+    end
+    self.sliderHover = nil
+    if self:isMouseOver() then
+        self.sliderHover = self:sliderAt(self:getMouseX(), self:getMouseY() + self.scroll)
+    end
+    for _, sl in ipairs(self.sliders or {}) do
+        local ly = sl.labelY + sy
+        local ty = sl.trackY + sy
+        if ty + sl.trackH >= 0 and ly <= self.height then
+            local v = sliderValue(sl.key)
+            local span = sl.max - sl.min
+            local t = span > 0 and (v - sl.min) / span or 0
+            if t < 0 then t = 0 elseif t > 1 then t = 1 end
+            local over = sl == self.sliderHover or sl == self.drag
+            local label = getText(sl.label) .. "  " .. string.format("%.1f", v)
+            text(self, label, sl.x, ly, over and TEXT or DIM, 1, SMALL)
+            rect(self, sl.x, ty, sl.w, sl.trackH, mix(CARD, 0.7), 0.95)
+            border(self, sl.x, ty, sl.w, sl.trackH, mix(s.color, over and 1 or 0.55), over and 0.9 or 0.5)
+            local fill = math.max(2, sl.w * t)
+            rect(self, sl.x, ty, fill, sl.trackH, mix(s.color, over and 0.85 or 0.55), 0.9)
+            local thumbX = sl.x + fill - 3
+            if thumbX < sl.x then thumbX = sl.x end
+            rect(self, thumbX, ty - 1, 6, sl.trackH + 2, TEXT, 0.85)
         end
     end
     for _, h in ipairs(self.hits) do

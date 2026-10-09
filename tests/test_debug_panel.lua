@@ -159,7 +159,7 @@ local function setup(opts)
     end
     NOM = {}
     for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "eco", "alma", "almaStatus", "almaReset",
-        "almaCfg", "god", "noclip", "invisible",
+        "almaCfg", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "sonarBurst", "sonarGaps", "ambientScream", "ticao",
         "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
@@ -175,6 +175,7 @@ local function setup(opts)
     dofile("mod/42/media/lua/shared/NOM_FlakeRules.lua")
     dofile("mod/42/media/lua/shared/NOM_AlmaRules.lua")
     NOM_AlmaRules.reset()
+    NOM_FlakeRules.resetDebug()
     NOM_DebugLog = nil
     package.loaded["NOM_DebugLog"] = nil
     require "NOM_DebugLog"
@@ -376,6 +377,7 @@ return {
             UI_NOM_Debug_C_Hour = { "time(0)", "time(6)", "time(12)", "time(18)", "time(22)" },
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
+<<<<<<< HEAD
             UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()" },
             UI_NOM_Debug_C_AlmaPop = {
                 "almaCfg(popMin," .. (NOM_AlmaRules.POP_MIN - 1) .. ")",
@@ -391,6 +393,10 @@ return {
                 "almaCfg(crawler," .. (NOM_AlmaRules.CRAWLER_CHANCE + 0.05) .. ")",
             },
             UI_NOM_Debug_C_AlmaColors = { "almaCfg(white)", "almaCfg(red)", "almaCfg(black)" },
+=======
+            UI_NOM_Debug_C_Alma = { "alma()" },
+            UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
+>>>>>>> pr-13
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
                 "variant(carpideira)", "lookCycle()", "turnZombie(0)" },
@@ -605,5 +611,27 @@ return {
         end
         assert(w.list.hover == h, "hover não achou o botão sob o mouse")
         assert(w.side.hover == 2, "hover da lateral")
+    end,
+    -- sprint 0057: seção Cinzas com trilhos; clique no trilho muda o knob live
+    debug_panel_ash_sliders = function()
+        setup()
+        local w = open()
+        local ashI
+        for i, s in ipairs(NOM_DebugPanel.SECTIONS) do
+            if s.title == "UI_NOM_Debug_Sec_Ash" then ashI = i break end
+        end
+        assert(ashI, "sem seção Cinzas")
+        selectSection(w, ashI)
+        assert(#w.list.sliders == 3, "sliders: " .. #w.list.sliders)
+        NOM_FlakeRules.resetDebug()
+        local dens = w.list.sliders[1]
+        assert(dens.key == "density")
+        w.list:setScroll(math.max(0, dens.trackY - 4))
+        local y = dens.trackY - w.list.scroll + dens.trackH / 2
+        w.list:onMouseDown(dens.x + dens.w - 1, y)
+        assert(NOM_FlakeRules.debugMul().density == 2, "clique no fim não foi 2: " .. NOM_FlakeRules.debugMul().density)
+        w.list:onMouseDown(dens.x, y)
+        assert(NOM_FlakeRules.debugMul().density == 0, "clique no começo não foi 0")
+        NOM_FlakeRules.resetDebug()
     end,
 }

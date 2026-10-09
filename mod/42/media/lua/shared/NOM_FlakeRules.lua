@@ -4,17 +4,18 @@
 -- (rand() em [0, 1)). Cada lasca guarda o ponto do mundo onde nasceu (x, y, z, em tiles; z em
 -- andares) e anda em pixels de tela no zoom 1 a partir dele (y negativo = pra cima); quem
 -- desenha projeta o ponto e divide o movimento pelo zoom (client/NOM_Flakes.lua).
--- Na vermelha (sprint 0040) também nasce cinza solta no ar em volta do jogador (R.air).
+-- Na névoa ativa (sprint 0040 na vermelha; 0057 nas três cores) também nasce cinza solta no ar
+-- em volta do jogador (R.air). Knobs de debug (densidade / taxa / ar) em R.setDebug.
 require "NOM_Math"
 
 NOM_FlakeRules = {
-    MAX = 160,            -- lascas vivas ao mesmo tempo
-    BIRTHS_PER_S = 48,    -- teto de nascimentos por segundo
-    RATE = 14,            -- nascimentos por segundo com densidade 1 e intensidade 1
+    MAX = 180,            -- lascas vivas ao mesmo tempo (0057: folga com ar nas 3 cores)
+    BIRTHS_PER_S = 56,    -- teto de nascimentos por segundo
+    RATE = 24,            -- nascimentos por segundo com densidade 1 e intensidade 1 (0057: mais constante)
     RADIUS = 14,          -- fontes até aqui do jogador, em tiles (dentro da tela no zoom 1)
     WALL_WEIGHT = 3,      -- uma parede solta tanto quanto 3 squares de chão
     WALL_HEIGHT = 0.5,    -- nasce do pé até meia parede (1 = um andar)
-    ASH_SHARE = 0.7,      -- fração de cinza entre os nascimentos
+    ASH_SHARE = 0.78,     -- fração de cinza entre os nascimentos
     LIFE_MIN_MS = 3000,
     LIFE_MAX_MS = 7000,
     FADE_IN_MS = 500,
@@ -29,12 +30,12 @@ NOM_FlakeRules = {
         lasca = "media/textures/NOM/NOM_Lascas.png",
         cinza = "media/textures/NOM/NOM_Cinza.png",
     },
-    -- Cinza no ar (vermelha, sprint 0040): nasce solta a até AIR_RADIUS tiles do jogador, entre
-    -- AIR_Z_MIN e AIR_Z_MAX andares acima do chão, AIR_PER_RATE do ritmo das lascas, até AIR_MAX
-    -- vivas (lugar reservado dentro de MAX enquanto o ar está ligado). Flutua a até AIR_DRIFT
-    -- px/s pra qualquer lado e aparece devagar.
-    AIR_PER_RATE = 0.3,
-    AIR_MAX = 40,
+    -- Cinza no ar (0040 vermelha; 0057 branca/vermelha/preta): nasce solta a até AIR_RADIUS tiles
+    -- do jogador, entre AIR_Z_MIN e AIR_Z_MAX andares acima do chão, AIR_PER_RATE do ritmo das
+    -- lascas, até AIR_MAX vivas (lugar reservado dentro de MAX enquanto o ar está ligado).
+    -- Flutua a até AIR_DRIFT px/s pra qualquer lado e aparece devagar.
+    AIR_PER_RATE = 0.5,
+    AIR_MAX = 48,
     AIR_RADIUS = 9,
     AIR_Z_MIN = 0.15,
     AIR_Z_MAX = 1.1,
@@ -42,10 +43,47 @@ NOM_FlakeRules = {
     AIR_LIFE_MIN_MS = 5000,
     AIR_LIFE_MAX_MS = 10000,
     AIR_FADE_IN_MS = 1500,
+    -- Multiplicadores de debug (só sessão; NOM.ash / painel). 1 = padrão do jogo.
+    DBG_MIN = 0,
+    DBG_MAX = 3,
 }
 
 local R = NOM_FlakeRules
 local M = 2147483647 -- Park–Miller: s·16807 < 2^46, exato em double (Kahlua e luajit)
+local dbg = { density = 1, rate = 1, air = 1 }
+
+local function clampDbg(v)
+    v = tonumber(v)
+    if not v or v ~= v or v == math.huge or v == -math.huge then return nil end
+    if v < R.DBG_MIN then return R.DBG_MIN end
+    if v > R.DBG_MAX then return R.DBG_MAX end
+    return v
+end
+
+function R.debugMul()
+    return dbg
+end
+
+function R.resetDebug()
+    dbg.density, dbg.rate, dbg.air = 1, 1, 1
+    return dbg
+end
+
+-- Multiplicadores live: densidade, taxa (frequência) e cinza no ar. nil = mantém.
+function R.setDebug(density, rate, air)
+    local d, r, a = clampDbg(density), clampDbg(rate), clampDbg(air)
+    if d ~= nil then dbg.density = d end
+    if r ~= nil then dbg.rate = r end
+    if a ~= nil then dbg.air = a end
+    return dbg
+end
+
+function R.setDebugKey(key, value)
+    if key == "density" then return R.setDebug(value, nil, nil) end
+    if key == "rate" then return R.setDebug(nil, value, nil) end
+    if key == "air" then return R.setDebug(nil, nil, value) end
+    return dbg
+end
 
 -- Sorteio em [0, 1) pela semente. O math do Kahlua não tem random (MathLib, bytecode B42.21).
 function R.rng(seed)
@@ -79,11 +117,13 @@ function R.count(state)
 end
 
 -- Nascimentos por segundo pela densidade da névoa (NOM_DressingRules.density) e pela
--- intensidade dos efeitos de tela (0 com eles desligados).
+-- intensidade dos efeitos de tela (0 com eles desligados). Os knobs de debug (densidade e
+-- taxa) multiplicam; densidade 0 no painel zera o nascimento.
 function R.rate(density, intensity)
     local d, i = tonumber(density) or 0, tonumber(intensity) or 0
-    if d <= 0 or i <= 0 then return 0 end
-    return math.min(R.BIRTHS_PER_S, R.RATE * d * i)
+    d = d * dbg.density
+    if d <= 0 or i <= 0 or dbg.rate <= 0 then return 0 end
+    return math.min(R.BIRTHS_PER_S, R.RATE * dbg.rate * d * i)
 end
 
 local function weight(kind)
@@ -225,16 +265,16 @@ local function airSpawn(x, y, z, t, rand)
     }
 end
 
--- Cinza no ar (vermelha): nascem rate × AIR_PER_RATE por segundo em volta de (x, y, z), até
--- AIR_MAX vivas e o teto MAX. Chamar depois do step do quadro (não anda o relógio). Com rate 0
--- o ar desliga e devolve o lugar reservado. Devolve quantas nasceram.
+-- Cinza no ar (névoa ativa): nascem rate × AIR_PER_RATE × dbg.air por segundo em volta de
+-- (x, y, z), até AIR_MAX vivas e o teto MAX. Chamar depois do step do quadro (não anda o
+-- relógio). Com rate 0 o ar desliga e devolve o lugar reservado. Devolve quantas nasceram.
 function R.air(state, rate, x, y, z, dt, rand)
-    if not rate or rate <= 0 then
+    if not rate or rate <= 0 or dbg.air <= 0 then
         state.airOn, state.airDebt = false, 0
         return 0
     end
     state.airOn = true
-    state.airDebt = (state.airDebt or 0) + rate * R.AIR_PER_RATE * math.max(0, dt) / 1000
+    state.airDebt = (state.airDebt or 0) + rate * R.AIR_PER_RATE * dbg.air * math.max(0, dt) / 1000
     local n = math.floor(state.airDebt)
     state.airDebt = state.airDebt - n
     n = math.max(0, math.min(n, math.min(R.AIR_MAX - (state.air or 0), R.MAX - #state.parts)))
