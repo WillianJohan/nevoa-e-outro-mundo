@@ -64,6 +64,7 @@
     "UI_NOM_Debug_SemRosto": "Sem-rosto",
     "UI_NOM_Debug_Carpideira": "Gritadora",
     "UI_NOM_Debug_LookCycle": "Ciclar look",
+    "UI_NOM_Debug_LookInspect": "Inspecionar look",
     "UI_NOM_Debug_UndoVariant": "Desfazer",
     "UI_NOM_Debug_Sec_Fog": "Névoa",
     "UI_NOM_Debug_Sec_Fog_Desc": "Abre, troca e termina a névoa do mod. A sirene avisa antes; os monstros só soltam com a névoa aberta.",

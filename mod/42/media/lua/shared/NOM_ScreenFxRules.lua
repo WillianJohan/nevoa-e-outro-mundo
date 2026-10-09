@@ -192,14 +192,20 @@ function R.layers(s, now, i, dz)
     end
     local sob = clamp(s.sob or 0, 0, 1)
     local sobVig = sob * R.SOB_VIGNETTE * i * (0.7 + 0.3 * breath(now))
+    -- 0060b: LookForce no painel → abafa glitch pra isolar o look
+    local damp = 1
+    if NOM_PanelParams and NOM_PanelParams.lookForce then
+        local lf = NOM_PanelParams.lookForce()
+        if lf ~= nil and lf ~= "" then damp = 0.12 end
+    end
     return {
-        -- Sprint 0060: grain/lines mais baixos pra não “comer” pele/roupa legíveis.
-        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i, 0, 1),
-        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
+        -- Sprint 0060/0060b: grain/lines baixos; com LookForce, damp isola o look.
+        grain = clamp(f * (0.05 + 0.03 * r + 0.03 * b) * i * damp, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i * (0.35 + 0.65 * damp) + dz * R.DIZZY_VIGNETTE * pulse + sobVig, 0, 1),
         vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
-        lines = clamp(s.static * f * 0.12 * i, 0, 1),
+        lines = clamp(s.static * f * 0.12 * i * damp, 0, 1),
         flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
-        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
+        fogStatic = clamp((s.fogStatic or 0) * i * damp, 0, 1),
         sr = sr, sg = sg, sb = sb,
         dark = dz * R.DIZZY_DARK,
     }

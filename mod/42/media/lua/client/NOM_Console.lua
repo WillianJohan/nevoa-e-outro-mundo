@@ -90,6 +90,14 @@ function NOM.lookCycle()
     NOM_Debug.variant(kind)
 end
 
+-- Sprint 0060b: dump pele + ItemVisuals do zumbi mais perto (prova no console).
+function NOM.lookInspect()
+    require "NOM_VariantLook"
+    local s = NOM_VariantLook.inspect()
+    NOM_DebugLog.say("[NOM] lookInspect " .. s)
+    return s
+end
+
 -- Truques do jogador local (ISAdminPowerUI.lua:31-53): muda e manda pro servidor
 -- (sendPlayerExtraInfo, :403); no MP o servidor aplica as regras dele.
 local function cheat(name, getter, setter)
@@ -539,6 +547,7 @@ NOM.HELP = {
     { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
+    { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },

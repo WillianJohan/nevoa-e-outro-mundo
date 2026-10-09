@@ -35,37 +35,32 @@ require "NOM_EmberShell"
 -- Direção de arte: docs/gdd/art-direction.md.
 NOM_VariantLook = {
     LOOKS = {
-        -- Sprint 0060: pele legível + roupa cotidiana no corpo (além da peça de cabeça).
-        estalador = {
-            skin = "NOM_Estalador", item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx",
-            body = "Base.NOM_EstaladorRoupa", bodyFx = "Base.NOM_EstaladorRoupaFx",
-        },
-        corredor = {
-            skin = "NOM_Corredor", item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx",
-            body = "Base.NOM_CorredorRoupa", bodyFx = "Base.NOM_CorredorRoupaFx",
-        },
-        semrosto = {
-            skin = "NOM_SemRosto", item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx",
-            body = "Base.NOM_SemRostoRoupa", bodyFx = "Base.NOM_SemRostoRoupaFx",
-        },
-        -- Sprint 0052: mechas + manto penitente (corpo, camada como Eco cinza).
+        -- Sprint 0060b: NÃO troca Body (UNKNOWN/RGB → manequim P&B no playtest). Peça de
+        -- cabeça + roupa vanilla do corpo. Roupa NOM_*Roupa da 0060 fica fora do look.
+        estalador = { item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
+        corredor = { item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
+        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        -- Carpideira: manto hospitalar do mod no corpo (caminho Eco/Gown); sem pele Body.
         carpideira = {
-            skin = "NOM_Carpideira",
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
             body = "Base.NOM_CarpideiraManto", bodyFx = "Base.NOM_CarpideiraMantoFx",
         },
-        -- Tição (sprint 0038): carvão com rachaduras de brasa; desde a 0043 a crosta 3D (era o
-        -- véu de fumaça do Eco, Base.NOM_EcoVeu / Base.NOM_EcoVeuFx)
+        -- Tição: ainda usa pele carvão (preta); se falhar no playtest, sai no próximo lote.
         ticao = { skin = "NOM_Ticao", item = "Base.NOM_TicaoCrosta", fx = "Base.NOM_TicaoCrostaFx" },
     },
-    -- Sprint 0016 (Johan, 05/10): na variante, a roupa vanilla some; fica só o que é do
-    -- monstro. Padrões (Lua) de tipo de item que continuam à mostra: as camadas de
-    -- ferida do corpo (não são roupa). Exceção de roupa (a "saia estranha") entra aqui.
+    -- 0060b: roupa do CORPO fica (camisa/calça/…). Só some acessório de cabeça que tapa a
+    -- peça do monstro. Feridas ZedDmg_/Wound_ sempre. Itens %.NOM_ sempre.
     KEEP = { "^Base%.ZedDmg_", "^Base%.Wound_" },
+    -- Padrões de tipo vanilla que SOMEM na variante (chapéu/máscara/óculos).
+    STRIP_HEAD = {
+        "Hat_", "Glasses_", "Balaclava", "Bandana", "Scarf", "WeddingVeil",
+        "Mask", "MakeUp_", "Nose", "Earrings", "EarRing",
+    },
 }
 
 local LOOKS = NOM_VariantLook.LOOKS
 local KEEP = NOM_VariantLook.KEEP
+local STRIP_HEAD = NOM_VariantLook.STRIP_HEAD
 -- [zumbi] = { kind, id, item, iv, all, leaving }: só o que este processo pôs (all = a
 -- lista de ItemVisual original, na ordem, quando alguma roupa foi escondida; leaving = a
 -- peça está se desfazendo e o strip vem no fim do efeito). A tabela evita
@@ -77,17 +72,19 @@ local function keep(t)
     for _, p in ipairs(KEEP) do
         if t:find(p) then return true end
     end
-    return false
+    -- 0060b: corpo vestido; só tira acessório de cabeça que compete com a peça do monstro
+    for _, p in ipairs(STRIP_HEAD) do
+        if t:find(p, 1, true) then return false end
+    end
+    return true
 end
 
--- Esconde a roupa vanilla: ItemVisual não tem flag de esconder (bytecode, pz-api-notes
--- §14.4), então sai da lista e a lista original fica guardada. Só depois da peça do
--- mod estar na lista: ela é a prova, no strip, de que o jogo não vestiu de novo.
+-- Esconde acessórios de cabeça vanilla (não a roupa do corpo). ItemVisual sem flag de
+-- esconder (§14.4): sai da lista e a original fica guardada.
 local function hide(list, w)
     local all, gone = {}, {}
     for i = 0, list:size() - 1 do
         local iv = list:get(i)
-        -- peça da cabeça e manto do mod (0052) ficam; o resto vanilla some
         if iv ~= w.iv and iv ~= w.bodyIv then
             all[#all + 1] = iv
             if not keep(iv:getItemType()) then gone[#gone + 1] = iv end
@@ -237,6 +234,33 @@ function NOM_VariantLook.count()
         if worn[list:get(i)] then n = n + 1 end
     end
     return n
+end
+
+-- 0060b: prova runtime — pele e ItemVisuals do zumbi mais perto (ou o passado).
+function NOM_VariantLook.inspect(z)
+    if not z then
+        local p = getPlayer()
+        if not p then return "sem jogador" end
+        local best, bestD
+        local list = getCell():getZombieList()
+        for i = 0, list:size() - 1 do
+            local cand = list:get(i)
+            local d = cand:DistToProper(p)
+            if not bestD or d < bestD then best, bestD = cand, d end
+        end
+        z = best
+    end
+    if not z then return "sem zumbi" end
+    local hv = z:getHumanVisual()
+    local skin = hv and hv:getSkinTexture() or nil
+    local w = worn[z]
+    local kinds = w and w.kind or "-"
+    local parts = {}
+    local list = z:getItemVisuals()
+    for i = 0, list:size() - 1 do
+        parts[#parts + 1] = tostring(list:get(i):getItemType())
+    end
+    return string.format("kind=%s skin=%s items=%s", kinds, tostring(skin), table.concat(parts, ","))
 end
 
 -- Morte. Solo (IsoZombie.onKilled 38–52): o DoZombieInventory já fez vestidos e

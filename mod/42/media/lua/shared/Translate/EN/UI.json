@@ -64,6 +64,7 @@
     "UI_NOM_Debug_SemRosto": "Sem-rosto",
     "UI_NOM_Debug_Carpideira": "Screamer",
     "UI_NOM_Debug_LookCycle": "Cycle look",
+    "UI_NOM_Debug_LookInspect": "Inspect look",
     "UI_NOM_Debug_UndoVariant": "Undo",
     "UI_NOM_Debug_Sec_Fog": "Fog",
     "UI_NOM_Debug_Sec_Fog_Desc": "Opens, switches and ends the mod's fog. The siren warns first; monsters are only released with the fog open.",

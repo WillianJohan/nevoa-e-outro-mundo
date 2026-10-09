@@ -2,25 +2,34 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em teste` |
+| Status | `em teste` (0060b: pivot pós-fail) |
 | Branch | `feature/0060-look-real-ca41` |
-| Origem | playtest fail (`look-fail-playtest`); prompt store `prompt-look-refazer-urgente.md` |
+| PR | [#16](https://github.com/WillianJohan/nevoa-e-outro-mundo/pull/16) |
+| Origem | playtest fail (`look-fail-playtest`); print pós-0060 ainda listrado |
 
-## Root cause
+## Root cause (0060)
 
-As Body PNGs da 0054 eram **P&B binário** (`mid≈0`). Com o strip ADR-012, o corpo inteiro
-virava grade geométrica no Staging. Sync/bytes OK — o material é que lia como UV.
+Body PNGs da 0054 eram **P&B binário**. Strip ADR-012 + corpo nu = grade. Sync OK.
 
-## O que mudou
+## Fail playtest pós-0060
 
-- Peles Body com midtones (Pale / Misaligned / Patient / Wrong Person).
-- Camada de roupa no corpo (`NOM_*Roupa`) para Estalador, Corredor e Sem-rosto.
-- Casca Sem-rosto e manto Carpideira menos binários.
-- ScreenFx: grain/lines mais baixos pra não comer o look.
-- Contraste: categoria `SKIN` exige mid (anti-regressão do grid).
+Johan: `03-ainda-listras.png` — manequim P&B listrado + ScreenFx. Midtones + `NOM_*Roupa`
+**não** fecharam o critério. Hipótese ativa: `setSkinTextureName` Body do mod (UNKNOWN/RGB)
++ strip ainda leem como manequim; Lines do ScreenFx pintam listra horizontal.
+
+## O que mudou (0060 → 0060b)
+
+- **0060:** peles midtones + `NOM_*Roupa` + grain/lines baixos + contraste `SKIN` mid.
+- **0060b (pivot):** sem `skin` Body em estalador/corredor/semrosto/carpideira; sem
+  `NOM_*Roupa` no look; **KEEP** camisa/calça vanilla; só `STRIP_HEAD`; ScreenFx damp
+  `0.12` se `LookForce ≠ ""`; `NOM.lookInspect()` + botão no painel.
+
+Tição ainda usa pele carvão (próximo lote se falhar).
 
 ## Roteiro no jogo
 
-1. Nesta branch: `scripts/dev-sync.sh`; reiniciar; só Staging.
-2. `NOM.panel()` → Look → forçar Misaligned / Pale / Wrong / Patient.
-3. Zoom normal: deve ler **pessoa com roupa/pele errada**, não checker P&B.
+1. `scripts/dev-sync.sh` nesta branch; reiniciar; **só** Staging.
+2. `NOM.panel()` → Look → Misaligned (ou Pale/Wrong/Patient).
+3. `NOM.lookInspect()` (ou botão): deve mostrar `skin=nil` (ou vanilla) e camisa/calça + peça NOM.
+4. Critério: **pessoa com roupa vanilla + peça do monstro**, não checker/listras P&B.
+5. **Não declarar sucesso** até o Johan confirmar com print.
