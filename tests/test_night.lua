@@ -303,18 +303,19 @@ return {
         G.setTime(22)
         assert(NOM_NightStats.nightNumber == 4, "noite nova com o número da velha: " .. tostring(NOM_NightStats.nightNumber))
     end,
-    -- caça do Tição (sprint 0038): na preta, de dia também, a cada HUNT_MINUTES, alcance HUNT_REACH
+    -- caça do Tição (sprint 0038): na preta, de dia também, a cada huntMinutes(), alcance huntReach()
     -- pra quem ouve como o Tição (audição apurada); fora da preta, nada
     hunt_ticao_in_black_fog = function()
         local G = setup({ tod = 12, zombieHearing = 1, sandbox = { NightHunt = false } })
         NOM_World.setFog(true, false, true)
-        G.minutes(NOM_TicaoRules.HUNT_MINUTES - 1)
+        local minutes, reach = NOM_TicaoRules.huntMinutes(), NOM_TicaoRules.huntReach()
+        G.minutes(minutes - 1)
         assert(#G.sounds == 0, "caçou antes da hora")
         G.minutes(1)
         assert(#G.sounds == 1 and G.sounds[1].x == 100, "chamados: " .. #G.sounds)
-        assert(math.abs(G.reach(G.sounds[1]) - NOM_TicaoRules.HUNT_REACH) <= 1.5, "alcance " .. G.reach(G.sounds[1]))
+        assert(math.abs(G.reach(G.sounds[1]) - reach) <= 1.5, "alcance " .. G.reach(G.sounds[1]))
         NOM_World.setFog(true, false, false)
-        G.minutes(NOM_TicaoRules.HUNT_MINUTES * 3)
+        G.minutes(minutes * 3)
         assert(#G.sounds == 1, "caçou fora da preta")
     end,
 }

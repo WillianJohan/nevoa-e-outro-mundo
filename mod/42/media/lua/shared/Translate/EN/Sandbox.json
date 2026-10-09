@@ -42,6 +42,8 @@
     "Sandbox_NevoaEOutroMundo.BlackFogMinHours_tooltip": "Shortest black fog, in in-game hours.",
     "Sandbox_NevoaEOutroMundo.BlackFogMaxHours": "Black fog: maximum duration (hours)",
     "Sandbox_NevoaEOutroMundo.BlackFogMaxHours_tooltip": "Longest black fog, in in-game hours. Each black fog lasts a random value between the minimum and the maximum.",
+    "Sandbox_NevoaEOutroMundo.BlackFogPressure": "Black fog: pressure",
+    "Sandbox_NevoaEOutroMundo.BlackFogPressure_tooltip": "How hard the black fog pushes. 1 = Light (gentler flicker and hunts); 2 = Standard (islands of light, hunt on flicker); 3 = Nightmare (frequent flicker, faster Cinders, streetlights die longer). Still only Cinders - not the red fog frenzy.",
     "Sandbox_NevoaEOutroMundo.FogCalmHours": "Calm after fog (hours)",
     "Sandbox_NevoaEOutroMundo.FogCalmHours_tooltip": "When fog ends, common zombies move slower and sense less for this many in-game hours. 0 turns it off.",
     "Sandbox_NevoaEOutroMundo.FogBaseHeight": "Fog: base height (floors)",

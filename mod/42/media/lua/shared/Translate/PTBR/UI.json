@@ -129,6 +129,8 @@
     "UI_NOM_Debug_C_Status_Desc": "Noite, névoa, monstros e relógio, deste cliente e do servidor.",
     "UI_NOM_Debug_C_Ticao": "Tições",
     "UI_NOM_Debug_C_Ticao_Desc": "Névoa preta: quantos Tições este processo simula e quantos a luz congela agora.",
+    "UI_NOM_Debug_C_BlackPressure": "Pressão preta",
+    "UI_NOM_Debug_C_BlackPressure_Desc": "Nível de pressão da névoa preta (Leve / Padrão / Pesadelo) e os números ativos: piscar, hold, caça e postes.",
     "UI_NOM_Debug_C_Blind": "Visão curta",
     "UI_NOM_Debug_C_Blind_Desc": "Quantos zumbis estão cegos e vigiados pela névoa agora, e como foi a última onda de perambular.",
     "UI_NOM_Debug_C_OwnSprites": "Texturas próprias",

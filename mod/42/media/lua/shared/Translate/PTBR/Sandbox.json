@@ -42,6 +42,8 @@
     "Sandbox_NevoaEOutroMundo.BlackFogMinHours_tooltip": "A névoa preta mais curta, em horas de jogo.",
     "Sandbox_NevoaEOutroMundo.BlackFogMaxHours": "Névoa preta: duração máxima (horas)",
     "Sandbox_NevoaEOutroMundo.BlackFogMaxHours_tooltip": "A névoa preta mais longa, em horas de jogo. Cada uma dura um valor sorteado entre a mínima e a máxima.",
+    "Sandbox_NevoaEOutroMundo.BlackFogPressure": "Névoa preta: pressão",
+    "Sandbox_NevoaEOutroMundo.BlackFogPressure_tooltip": "Aperto do terror da preta. 1 = Leve (piscar e caça mais brandos); 2 = Padrão (ilhas de luz, caça no piscar); 3 = Pesadelo (piscar frequente, Tições mais rápidos, postes apagam mais). Continua só Tição — não vira a agitação da vermelha.",
     "Sandbox_NevoaEOutroMundo.FogCalmHours": "Calmaria depois da névoa (horas)",
     "Sandbox_NevoaEOutroMundo.FogCalmHours_tooltip": "Quando a névoa acaba, os zumbis comuns ficam mais lentos e com os sentidos mais fracos por tantas horas de jogo. 0 desliga.",
     "Sandbox_NevoaEOutroMundo.FogBaseHeight": "Névoa: altura da base (andares)",

@@ -1,8 +1,8 @@
 -- A luz congela o Tição (sprint 0038), lado do servidor: quem está na luz é decisão daqui
 -- (ADR-002/005). Na preta, a cada tick confere uma fatia dos zumbis (NOM_LightRules.batch: todos a
--- cada SWEEP_MS) contra as luzes dos jogadores; aceso = congelado até HOLD_MS depois de sair da
--- luz. A cada SWEEP_MS a lista vai pro dono: no solo direto (NOM_TicaoFreeze.apply), no dedicado
--- pelo comando "ticaoFrozen" com os onlineIDs.
+-- cada SWEEP_MS) contra as luzes dos jogadores; aceso = congelado até holdMs() (pressão 0051)
+-- depois de sair da luz. A cada SWEEP_MS a lista vai pro dono: no solo direto (NOM_TicaoFreeze.apply),
+-- no dedicado pelo comando "ticaoFrozen" com os onlineIDs.
 --
 -- Luzes (javap de projectzomboid.jar, pz-api-notes §30): IsoPlayer.getActiveLightItem() (o
 -- vanilla sincroniza o liga/desliga: client/ISUI/ISInventoryPaneContextMenu.lua:2883, já usado no
@@ -15,11 +15,11 @@
 -- luzes; o zumbi fora de toda luz confere o cômodo dele (getCurrentSquare():getRoom(), o
 -- interruptor aceso), com a resposta guardada por cômodo a cada leitura.
 --
--- A lanterna pisca (tarefa 5): a cada FLICKER_CHECK_MS, cada lanterna acesa sorteia; a que
--- pisca não congela ninguém na janela inteira e os Tições que ela segurava soltam na hora. Desde
--- a sprint 0045 é uma gagueira (NOM_FlickerRules.torch: liga e desliga rápido, escuro, liga e
--- desliga de volta). O piscar é local no dono da lanterna (NOM_TicaoFreeze.flicker), sem sync:
--- no solo direto, no dedicado pelo comando "torchFlicker" só pra ele, com o padrão.
+-- A lanterna pisca (tarefa 5): a cada flickerCheckMs() (pressão 0051), cada lanterna acesa sorteia;
+-- a que pisca não congela ninguém na janela inteira e os Tições que ela segurava soltam na hora.
+-- Desde a 0045 é gagueira (NOM_FlickerRules.torch). O piscar é local no dono (NOM_TicaoFreeze.flicker),
+-- sem sync: solo direto; dedicado "torchFlicker" só pra ele. No Padrão/Pesadelo, o piscar chama
+-- NOM_Night.call (caça curta).
 if isClient() then return end
 
 require "NOM_World"
@@ -28,6 +28,9 @@ require "NOM_LightRules"
 require "NOM_FlickerRules"
 require "NOM_StormRules"
 require "NOM_TicaoFreeze"
+require "NOM_BlackPressureRules"
+require "NOM_TicaoRules"
+require "NOM_NightRules"
 require "NOM_Math"
 
 local MODULE = "NevoaEOutroMundo"
@@ -166,7 +169,7 @@ local function check(z, now)
             if dx * dx + dy * dy <= reach * reach and not (l.key and (T.lampUntil[l.key] or 0) > now) then
                 zz = zz or z:getZ()
                 if R.lit(l, zx, zy, zz) and not z:isDead() then
-                    T.untilMs[z] = now + R.HOLD_MS
+                    T.untilMs[z] = now + R.holdMs()
                     T.by[z] = l.owner
                     T.byLamp[z] = l.key
                     return
@@ -179,7 +182,7 @@ local function check(z, now)
     local room = sq and sq:getRoom()
     local hold
     if room ~= nil and litRoom(room) then
-        hold = math.max(T.untilMs[z] or 0, now + R.HOLD_MS)
+        hold = math.max(T.untilMs[z] or 0, now + R.holdMs())
     elseif now < flashUntil then
         hold = flashUntil
     end
@@ -231,13 +234,26 @@ local function flickerOne(p, ms, now)
     else
         NOM_TicaoFreeze.flicker(p, segs)
     end
+    -- Caça no piscar (sprint 0051): falha da luz = onda perto; Leve tem reach 0.
+    -- Preferir NOM_Night.call (marca calling=true, mesma audição); sem o módulo (teste /
+    -- ordem de load), a mesma conta + addSound.
+    local hunt = NOM_BlackPressureRules.current().huntOnFlickerReach
+    if hunt and hunt > 0 then
+        if NOM_Night and NOM_Night.call then
+            NOM_Night.call(p, hunt, NOM_TicaoRules.HEARING)
+        else
+            local radius = math.max(1, math.floor(hunt / NOM_NightRules.HEARING_MULT[NOM_TicaoRules.HEARING] + 0.5))
+            addSound(p, math.floor(p:getX()), math.floor(p:getY()), math.floor(p:getZ()), radius, hunt)
+        end
+    end
     debugLog("lanterna piscou por " .. total .. " ms (" .. #segs .. " trechos)")
 end
 
 local function flickers(now)
-    if nextFlicker == nil then nextFlicker = now + R.FLICKER_CHECK_MS end
+    local check = R.flickerCheckMs()
+    if nextFlicker == nil then nextFlicker = now + check end
     if now < nextFlicker then return end
-    nextFlicker = now + R.FLICKER_CHECK_MS
+    nextFlicker = now + check
     for _, l in ipairs(lights) do
         if l.fx ~= nil then -- só lanterna na mão (farol e lampião não piscam)
             local ms = R.flicker(ZombRand(100), ZombRand(1000) / 1000)

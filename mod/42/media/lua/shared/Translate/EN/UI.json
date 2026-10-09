@@ -129,6 +129,8 @@
     "UI_NOM_Debug_C_Status_Desc": "Night, fog, monsters and clock, from this client and from the server.",
     "UI_NOM_Debug_C_Ticao": "Ticoes",
     "UI_NOM_Debug_C_Ticao_Desc": "Black fog: how many Ticoes this process simulates and how many the light freezes right now.",
+    "UI_NOM_Debug_C_BlackPressure": "Black pressure",
+    "UI_NOM_Debug_C_BlackPressure_Desc": "Black fog pressure level (Light / Standard / Nightmare) and the live numbers: flicker, hold, hunt and streetlights.",
     "UI_NOM_Debug_C_Blind": "Short sight",
     "UI_NOM_Debug_C_Blind_Desc": "How many zombies are blind and watched by the fog right now, and how the last wander wave went.",
     "UI_NOM_Debug_C_OwnSprites": "Own textures",

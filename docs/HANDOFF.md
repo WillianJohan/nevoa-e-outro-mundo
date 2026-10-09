@@ -1,12 +1,18 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-08. **Em andamento = sprint 0048 Sons II** (pós-P0 fog). Clímax fog **0047g** aprovado e na `staging`. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Em andamento: sprint 0048 — Sons II
+## Em teste na staging: sprints 0048–0052 (overnight)
 
-Branch `sprint/0048-sons-ii`. [README](sprints/sprint-0048-sons-ii/README.md) · [plan](sprints/sprint-0048-sons-ii/plan.md).
+Merge overnight 2026-10-09, ordem da fila. Reiniciar o jogo e `dev-sync.sh` depois do pull da `staging`.
 
-Gritos monstro + ambiente (obrigatório) + Estalador clicker com ripples. Fora: almas, Carpideira Witch/look, fog visual (salvo blocker). Produto: [proximos-passos-refinamento.md](proximos-passos-refinamento.md) §3.1.
+| Sprint | O quê | README |
+|--------|-------|--------|
+| 0048 | Sons II — gritos + Estalador clicker | [sons-ii](sprints/sprint-0048-sons-ii/README.md) |
+| 0049 | Transform 100% + identidade por cor | [transform](sprints/sprint-0049-transform-fog/README.md) |
+| 0050 | Almas esqueléticas na névoa branca | [almas](sprints/sprint-0050-almas-esqueletos/README.md) |
+| 0051 | Aperto da névoa preta (`BlackFogPressure`) | [aperto](sprints/sprint-0051-aperto-preta/README.md) |
+| 0052 | Carpideira Witch (piloto) | [witch](sprints/sprint-0052-carpideira-witch/README.md) |
 
 ## Em staging: sprint 0047g — FOG clímax (looks por cor)
 

@@ -105,6 +105,11 @@ option NevoaEOutroMundo.BlackFogMaxHours = {
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.BlackFogMaxHours,
 }
 
+option NevoaEOutroMundo.BlackFogPressure = {
+    type = integer, min = 1, max = 3, default = 2,
+    page = NevoaEOutroMundo, translation = NevoaEOutroMundo.BlackFogPressure,
+}
+
 option NevoaEOutroMundo.FogCalmHours = {
     type = double, min = 0.0, max = 24.0, default = 2.0,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.FogCalmHours,

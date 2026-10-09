@@ -182,4 +182,22 @@ return {
         G.tick(5)
         assert(lamp.r == 1)
     end,
+    -- sprint 0051: na preta o Pesadelo usa o perfil (check mais curto); na vermelha, defaults LAMP_*
+    lamp_flicker_black_uses_pressure = function()
+        require "NOM_BlackPressureRules"
+        local pes = NOM_BlackPressureRules.profile(3)
+        assert(pes.lampCheckMs < NOM_FlickerRules.LAMP_CHECK_MS)
+        local G = setup({ sandbox = { BlackFogPressure = 3 }, rand = 0 })
+        G.player({ x = 0, y = 0 })
+        local lamp = G.lamp({ x = 5, y = 0, hydro = true })
+        fog(false, true)
+        local dark = watch(G, lamp, math.floor((pes.lampCheckMs + NOM_FlickerRules.lampMax(pes)) / 16) + 20)
+        assert(dark >= 1, "Pesadelo na preta não piscou o poste")
+        -- vermelha: perfil não manda (mesmo sandbox 3); usa LAMP_CHECK_MS
+        local G2 = setup({ sandbox = { BlackFogPressure = 3 }, rand = 0 })
+        G2.player({ x = 0, y = 0 })
+        local lamp2 = G2.lamp({ x = 5, y = 0, hydro = true })
+        fog(true, false)
+        assert(watch(G2, lamp2, window()) >= 1, "vermelha parou de piscar")
+    end,
 }

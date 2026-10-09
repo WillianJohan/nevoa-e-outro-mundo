@@ -29,6 +29,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `FogCalmHours` (2, faixa 0–24 horas de jogo): calmaria depois da névoa, com o zumbi comum um degrau mais lento e de sentidos reduzidos; 0 desliga | [world-states.md](world-states.md) |
 | `FogBaseHeight` (1,0, faixa 0,2–1,2 andares): altura do mar de névoa no chão (sprint 0047; playtest Johan) | [proximos-passos-refinamento.md](../proximos-passos-refinamento.md) §3.4 |
 | `FogPocketAggression` (1, faixa 0–2): bolsões densos viajantes — 0 off, 1 raros/brutais, 2 Pesadelo (sprint 0047) | [proximos-passos-refinamento.md](../proximos-passos-refinamento.md) §3.4 |
+| `BlackFogPressure` (2, faixa 1–3): aperto da preta — 1 Leve, 2 Padrão, 3 Pesadelo (piscar, hold, caça, postes; sprint 0051) | [sprint-0051-aperto-preta](../sprints/sprint-0051-aperto-preta/README.md) |
 | `RedFogChance` (20, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); **sem subida**: a curva é só da chance do dia (sprint 0033) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
 | `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
