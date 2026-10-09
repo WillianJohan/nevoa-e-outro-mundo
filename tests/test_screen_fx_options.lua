@@ -159,16 +159,16 @@ return {
     flow_resolution_option = function()
         local O = load(true)
         local r = PZAPI.ModOptions:getOptions("NevoaEOutroMundo"):getOption("FlowResolution")
-        assert(r and r.type == "slider" and r.min == 1 and r.max == 3 and r.step == 1 and r.value == 2)
+        assert(r and r.type == "slider" and r.min == 1 and r.max == 3 and r.step == 1 and r.value == 3)
         assert(r.name:find("^UI_NOM_") and r.tooltip:find("^UI_NOM_"))
-        assert(O.flowResolution() == 2)
+        assert(O.flowResolution() == 3)
         r.value = 2.6
         assert(O.flowResolution() == 3, "não arredondou")
         r.value = 0
         assert(O.flowResolution() == 1, "fora da faixa (baixo)")
         r.value = 9
         assert(O.flowResolution() == 3, "fora da faixa (alto)")
-        assert(load(false).flowResolution() == 2, "sem a API: 2")
+        assert(load(false).flowResolution() == 3, "sem a API: 3")
     end,
     -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
     screenfx_options_debug_key_only_in_debug = function()

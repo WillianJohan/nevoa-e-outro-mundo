@@ -1,12 +1,13 @@
 -- Qualidade e resolução da névoa do mod Java opcional (mod3, sprints 0026 e 0030): manda as opções
 -- do jogador (Opções > Mods, NOM_ScreenFxOptions.fogQuality e flowResolution) pro mod3 com
 -- NOMRender_setParam(6, q) e NOMRender_setParam(9, s). Névoa preta (sprint 0039):
--- NOMRender_setParam(12, 1|0). Clímax fog (sprint 0047): altura da base (2), altura do bolsão (3),
--- véu (7), cobertura (14) e boost (15) a partir do sandbox (NOM_FogClimaxRules).
+-- NOMRender_setParam(12, 1|0). Clímax fog (sprint 0047g): altura (2), bolsão (3), véu (7),
+-- cobertura (14) e boost (15) por cor (NOM_FogClimaxRules.fromConfig) — branca do sandbox,
+-- vermelha tabela fixa do playtest.
 -- O global vem do mod3 (RenderContext.setParam, @LuaMethod registrado pelo ZombieBuddy);
 -- sem o mod3, nada. A opção pode mudar no "Aplicar" a qualquer hora: confere a cada minuto
--- de jogo e só manda o que mudou (trocar a resolução recria a grade da névoa). A preta vai
--- também na borda da névoa (NOM_FogState.onChange), sem esperar o minuto.
+-- de jogo e só manda o que mudou (trocar a resolução recria a grade da névoa). Preta e look
+-- por cor vão na borda (onChange / onColorChange), sem esperar o minuto.
 if isServer() then return end
 
 require "NOM_ScreenFxOptions"
@@ -53,7 +54,8 @@ function S.push()
         lastBlack = b
         sent = true
     end
-    local L = NOM_FogClimaxRules.fromConfig()
+    local color = NOM_FogState.color and NOM_FogState.color() or "white"
+    local L = NOM_FogClimaxRules.fromConfig(color)
     local v, ch
     lastHeight, ch = pushOne(S.PARAM_HEIGHT, L.baseHeight, lastHeight)
     if ch then sent = true end
@@ -75,5 +77,6 @@ Events.OnGameStart.Add(function()
 end)
 Events.EveryOneMinute.Add(S.push)
 NOM_FogState.onChange(function() S.push() end)
+NOM_FogState.onColorChange(function() S.push() end)
 
 return NOM_FogQualitySync

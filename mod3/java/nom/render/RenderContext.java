@@ -75,16 +75,16 @@ public final class RenderContext {
     // PARAM 2 = altura da base (andares); PARAM 3 = altura no bolsão (sprint 0047)
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
-        luaParams[PARAM_FLOW_RES] = 2f;
+        luaParams[PARAM_FLOW_RES] = 3f;         // playtest Johan (0047g): setParam(9, 3)
         luaParams[PARAM_VACUUM] = 1f;
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
-        luaParams[2] = 0.68f;                  // base baixa (0047d/e; miolo vem de HAZE+floorMin)
-        luaParams[3] = 1.2f;                   // altura absurda só no bolsão
-        luaParams[PARAM_HAZE] = 0.50f;          // 0047e: HAZE×scale ≈ 0,19 (0,38×0,50)
+        luaParams[2] = 1.0f;                   // altura base (0047g playtest: setParam(2, 1))
+        luaParams[3] = 1.2f;                   // altura no bolsão
+        luaParams[PARAM_HAZE] = 0.8f;           // véu (0047g: setParam(7, 0.8))
         luaParams[PARAM_CENSOR] = 1f;
-        luaParams[PARAM_POCKET_COV] = 0.1f;     // ~10% cobertura (raro)
-        luaParams[PARAM_POCKET_BOOST] = 1.2f;
+        luaParams[PARAM_POCKET_COV] = 0.1f;     // setParam(14, 0.1)
+        luaParams[PARAM_POCKET_BOOST] = 1.1f;   // setParam(15, 1.1)
     }
 
     // ---------- Lua ----------

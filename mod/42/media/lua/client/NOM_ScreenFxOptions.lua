@@ -13,7 +13,7 @@
 if isServer() then return end
 
 NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1,
-    DEFAULT_FOG_QUALITY = 2, DEFAULT_FLOW_RESOLUTION = 2 }
+    DEFAULT_FOG_QUALITY = 2, DEFAULT_FLOW_RESOLUTION = 3 }
 
 local O = NOM_ScreenFxOptions
 local page

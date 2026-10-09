@@ -49,10 +49,11 @@ return {
         fire(h, "OnGameStart")
         assert(sent(calls, 6) == 1, "não mandou a qualidade no início")
         assert(sent(calls, 9) == 3, "não mandou a resolução no início")
-        assert(sent(calls, 2) and sent(calls, 2) < 0.7, "altura da base: " .. tostring(sent(calls, 2)))
-        assert(sent(calls, 7) and sent(calls, 7) < 0.5, "véu da base: " .. tostring(sent(calls, 7)))
-        assert(sent(calls, 14) and sent(calls, 14) > 0, "cobertura dos bolsões")
-        assert(sent(calls, 15) and sent(calls, 15) > 0, "boost dos bolsões")
+        -- playtest Johan: setParam(2,1) (7,0.8) (14,0.1) (15,1.1)
+        assert(sent(calls, 2) and math.abs(sent(calls, 2) - 1.0) < 1e-4, "altura da base: " .. tostring(sent(calls, 2)))
+        assert(sent(calls, 7) and math.abs(sent(calls, 7) - 0.8) < 1e-4, "véu da base: " .. tostring(sent(calls, 7)))
+        assert(sent(calls, 14) and math.abs(sent(calls, 14) - 0.1) < 1e-4, "cobertura: " .. tostring(sent(calls, 14)))
+        assert(sent(calls, 15) and math.abs(sent(calls, 15) - 1.1) < 1e-4, "boost: " .. tostring(sent(calls, 15)))
     end,
 
     fog_quality_sync_follows_option_once = function()
@@ -100,5 +101,27 @@ return {
         fire(h, "OnGameStart")
         assert(math.abs(sent(calls, 2) - 0.35) < 1e-4, "altura sandbox")
         assert(sent(calls, 14) == 0, "aggression 0 não zerou cobertura")
+    end,
+
+    -- branca → vermelha na borda de cor: empurra look vermelho (cov 1, véu 1, pocketH 1.1)
+    fog_quality_sync_red_look_on_color_change = function()
+        local o = { quality = 2, res = 3 }
+        local _, h, calls = load(o, true)
+        fire(h, "OnGameStart")
+        assert(math.abs(sent(calls, 7) - 0.8) < 1e-4, "branca no start")
+        local n = #calls
+        NOM_FogState.set(true, 3, true, false)
+        assert(#calls > n, "não empurrou na borda vermelha")
+        assert(math.abs(sent(calls, 2) - 1.0) < 1e-4, "altura vermelha")
+        assert(math.abs(sent(calls, 3) - 1.1) < 1e-4, "pocketH vermelha: " .. tostring(sent(calls, 3)))
+        assert(math.abs(sent(calls, 7) - 1.0) < 1e-4, "véu vermelho: " .. tostring(sent(calls, 7)))
+        assert(math.abs(sent(calls, 14) - 1.0) < 1e-4, "cov vermelha: " .. tostring(sent(calls, 14)))
+        assert(math.abs(sent(calls, 15) - 1.0) < 1e-4, "boost vermelho: " .. tostring(sent(calls, 15)))
+        -- só troca de cor com névoa já ligada (World "red"): onChange não dispara; onColorChange sim
+        n = #calls
+        NOM_FogState.set(true, 3, false, false)
+        assert(#calls > n, "volta pra branca sem onColorChange")
+        assert(math.abs(sent(calls, 7) - 0.8) < 1e-4, "véu branco de novo")
+        assert(math.abs(sent(calls, 14) - 0.1) < 1e-4, "cov branca de novo")
     end,
 }

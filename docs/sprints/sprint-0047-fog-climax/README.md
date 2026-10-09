@@ -38,25 +38,28 @@ preta, partículas “descamando”, rastejante. Documentados no refinamento com
 ## O que já entrou (código)
 
 - `NOM_FogClimaxRules` + sandbox `FogBaseHeight` / `FogPocketAggression` (2 eixos).
-- `FogPockets.java` + uniforms `uPocket`/`uPocketShape`; defaults altura **0,68** / véu **0,32**
-  (0047d; 0,45/0,2 viraram overlay no piso).
-- Shader: `layerAt` + C-lite (corta peito na base; sobe no bolsão).
-- Sync Lua → params 2/3/7/14/15; fallback vinheta sem mod3; `NOM.fogLook()` + botão no painel.
-- **Tempero 0047b:** aniso no vento do quadro + ridge → flicker e “bolinhas” no piso (rejeitado).
-- **0047c (hotfix):** eixo mundo fixo, warp espacial sem tempo, fbm suave (sem ridge), amp baixa,
-  `ROLL_SOFT` 0,20 — estável, mas rasa demais (playtest).
-- **0047d (playtest rasa):** altura 0,68… ainda overlay no miolo + rosquinha vermelha (vinheta).
-- **0047e (design α):** [fog-viva-integrada-design.md](fog-viva-integrada-design.md) —
-  gate ScreenFx com mod3 (vinheta ×0,25, sem ×1,45/1,8; estática ≤0,05);
-  `HAZE` 0,38 × haze 0,50 ≈ **0,19** no chão; `FLOOR_MIN` 0,62 independente de `fd`;
-  fall **2,1**; sigma 1,15; curl/`FLOW_ADV` por `nomFlowVel` + rampa em sólido —
-  **sem** reancorar eixo em `uDrift.zw`. Prioridade: **volume no centro > tela nas bordas**.
+- `FogPockets.java` + uniforms `uPocket`/`uPocketShape` (produto mantido).
+- Shader: `layerAt` + C-lite; sync Lua → params 2/3/7/14/15; fallback vinheta; `NOM.fogLook()`.
+- **Look shader** = 1ª 0047 (`b012989`: HAZE 0,18 / fall 8 / sigma 0,9; sem FLOOR_MIN; ScreenFx sem gate).
+- **Defaults playtest Johan (0047g), por cor** — sync / `NOM.fogLook()` / `onColorChange`:
+
+  | Param | Branca | Vermelha |
+  |-------|--------|----------|
+  | 2 altura | **1,0** (sandbox) | **1,0** (fixo) |
+  | 3 bolsão H | **1,2** | **1,1** |
+  | 7 véu | **0,8** | **1,0** |
+  | 9 res | **3** | **3** |
+  | 14 cov | **0,1** | **1,0** |
+  | 15 boost | **1,1** | **1,0** |
+
+  Branca: sandbox `FogBaseHeight` + aggression. Vermelha: `lookRed()` tabela fixa. Preta: look branco até playtest.
+- Histórico rejeitado: tempero 0047b → 0047c–f. Docs de design α ficam; código do look visual não.
 - `./run-tests.sh` verde.
 
 ## Ainda falta
 
-- Playtest 0047e no jogo (branca **e** vermelha; critérios §4 do design); calibrar vs foto/vídeo.
-- B' / B só se A+C-lite+Passo 3 falharem no playtest.
+- Confirmar no jogo que os defaults batem o look da branca que o Johan aprovou (reiniciar após sync).
+- B' / B só se A+C-lite falharem de novo no playtest.
 
 ## Critérios (§3.4.3 / §3.4.3a)
 

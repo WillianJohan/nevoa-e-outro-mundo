@@ -2,7 +2,7 @@
 // uParams[0]: x = densidade forçada (0 = usa a névoa do clima), y = modo debug
 //             (1 = grade do mundo, 2 = profundidade, 3 = andar, 4 = erro de andar: chão preto liso,
 //              5 = obstáculos do fluido, 6 = densidade do fluido, 7 = velocidade do fluido),
-//             z = altura da base em andares (sprint 0047d: padrão 0,68; 0 = 0,68),
+//             z = altura da base em andares (sprint 0047: padrão 0,45; 0 = 0,45),
 //             w = altura no bolsão (padrão 1,2)
 // uParams[1].x: simulação de fluido (lida no Java; aqui chega como uFlow.w)
 // uParams[1].y: visual (1 = rolos com sombra própria, padrão; 0 = camada antiga)
@@ -82,14 +82,9 @@ float density(vec3 w, float ground, float top, out float wisp) {
 
 // ---------- visual novo: rolos com silhueta e sombra própria ----------
 const vec3 SUN_STEP = vec3(-0.7, -0.5, 0.3);  // um passo rumo à luz (tiles, tiles, andares)
-const float ROLL_SOFT = 0.22;                 // andares: borda macia
-const float HAZE = 0.38;                      // 0047e: × hazeScale~0,50 ≈ 0,19 no chão (alvo 0,18–0,20)
-const float FLOOR_MIN = 0.62;                 // piso world-space independente de fd (mar no miolo)
-const float PILE = 0.85;                      // sobe/desvia mais contra parede (ref gelo seco)
-const float ROLL_STRETCH = 1.25;              // quase redondo (redemoinhos); eixo ESTÁVEL
-const float ROLL_WARP = 1.05;                 // dobra espacial só (sem morph temporal → sem flicker)
-const float SWIRL_AMP = 2.6;                  // tiles: deslocamento do redemoinho espacial
-const float FLOW_ADV = 0.45;                  // advecção pelo vel da grade (não uDrift.zw)
+const float ROLL_SOFT = 0.22;                 // andares: borda macia do topo do rolo
+const float HAZE = 0.18;                      // véu de fundo: ~40% de cobertura no chão com a névoa cheia
+const float PILE = 0.5;                       // quanto o rolo sobe onde o ar para contra a parede
 
 // Ar mais lento que o vento livre (freando contra a parede) empurra a névoa pra cima; o que acelera
 // na quina, pra baixo (pressão pela velocidade, Bernoulli). Fração de altura a somar no rolo.
@@ -103,42 +98,22 @@ float pileUp(vec2 xy, vec2 vel) {
     if (s <= 0.0) return 0.5 * PILE * s;
     vec2 ahead = uDrift.zw * inversesqrt(w2);
     float block = (nomFlowFlags(xy + ahead) & PILE_BLOCK) != 0 ? 1.0
-                : (nomFlowFlags(xy + 2.5 * ahead) & PILE_BLOCK) != 0 ? 0.65
-                : (nomFlowFlags(xy + 4.0 * ahead) & PILE_BLOCK) != 0 ? 0.35 : 0.0;
+                : (nomFlowFlags(xy + 2.5 * ahead) & PILE_BLOCK) != 0 ? 0.6 : 0.0;
     return PILE * s * block;
 }
 
 // Altura do topo do rolo na coluna xy, em andares acima do chão. Onde o fluido acumula, sobe mais.
 // Em cima do carro, a névoa que passa por cima (a densidade de lá) começa no teto dele (sprint 0032).
 // `q` = ponto do ruído em tiles, pros fiapos reaproveitarem.
-// 0047e: eixo mundo fixo (sem uDrift.zw); curl/advecção por nomFlowVel da grade + potencial espacial.
-// Mar no miolo = FLOOR_MIN em densityLook — rolos são detalhe, não o único corpo.
 float rollTop(vec2 xy, float layer, out vec2 q) {
     float fd = nomFlowDensity(xy);
     vec2 vel = nomFlowVel(xy, uDrift.zw);
     q = driftXY(xy, vel);
-    // redemoinho espacial + curl perpendicular ao fluxo local (vida estável; não eixo do vento)
-    vec2 sc = q * 0.095;
-    float n1 = noise(vec3(sc, 4.2));
-    float n2 = noise(vec3(sc + 23.1, 9.6));
-    vec2 curl = vec2(-vel.y, vel.x) * FLOW_ADV;                   // giro pela grade
-    vec2 adv = vel * (FLOW_ADV * 0.7);                            // advecção suave ao longo do fluxo
-    vec2 qs = q + vec2(n1 - 0.5, n2 - 0.5) * SWIRL_AMP + curl + adv;
-    // rotação local espacial (ângulo fixo por lugar)
-    float ang = (noise(vec3(q * 0.08, 2.9)) - 0.5) * 2.8;
-    float ca = cos(ang), sa = sin(ang);
-    const vec2 along = vec2(0.857, 0.515);
-    vec2 across = vec2(-along.y, along.x);
-    vec2 local = vec2(dot(qs, along), dot(qs, across));
-    vec2 spun = vec2(local.x * ca - local.y * sa, local.x * sa + local.y * ca);
-    vec2 r = vec2(spun.x * 0.26, spun.y * 0.26 * ROLL_STRETCH);
-    vec2 warp = vec2(noise(vec3(r * 0.45, 2.1)), noise(vec3(r * 0.45 + 19.3, 5.7))) - 0.5;
-    r += warp * ROLL_WARP;
-    float n = fbm2(vec3(r, morphZ(r * 0.35, 0.0)));
-    float shape = smoothstep(0.18, 0.82, n);
+    vec2 r = q * 0.28;                                            // ~3,5 tiles por rolo
+    float n = fbm2(vec3(r, morphZ(r, 0.0)));
+    float puff = 1.0 - pow(1.0 - smoothstep(0.2, 0.8, n), 2.0);  // topo arredondado, tipo cúmulo
     float onCar = NOM_FLOW_LOW_H * gLow * smoothstep(0.0, 0.2, fd);
-    // amp: rolos um pouco mais altos (0,85); corpo do mar = floorMin, não só isto
-    return onCar + layer * min(fd, 1.5) * (0.85 + 0.55 * shape) * (1.0 + pileUp(xy, vel));
+    return onCar + layer * min(fd, 1.5) * (0.25 + 0.8 * puff) * (1.0 + pileUp(xy, vel));
 }
 
 // Bolsão no shader: mesmo espírito do FogPockets (offset+morph+limiar), ruído float do
@@ -155,7 +130,7 @@ float pocketSample(vec2 xyRel) {
 }
 
 float baseLayer() {
-    return uParams[0].z > 0.0 ? uParams[0].z : 0.68;
+    return uParams[0].z > 0.0 ? uParams[0].z : 1.0;
 }
 
 float pocketLayer() {
@@ -170,45 +145,23 @@ float layerAt(vec2 xyRel) {
 
 // Densidade em w; `shade` = 0 no topo iluminado, cresce pra dentro e pra baixo do rolo.
 // C-lite (sprint 0047): na base o perfil corta alto (chão denso); no bolsão sobe como antes.
-// 0047e: FLOOR_MIN independente de fd (miolo opaco) + HAZE~0,19 + fall 2,1 + rampa em sólido.
 float densityLook(vec3 w, float ground, float layer, out float shade) {
     float hz = w.z - ground;
     float pk = pocketSample(w.xy);
     float layerEff = mix(baseLayer(), pocketLayer() * max(uPocket.w, 1.0), pk);
     vec2 q, qs;
     float top = rollTop(w.xy, layerEff, q);
-    // fiapos: eixo mundo estável; leve puxão pelo fluxo local (não uDrift.zw)
-    vec2 velF = nomFlowVel(w.xy, uDrift.zw);
-    const vec2 alongW = vec2(0.857, 0.515);
-    vec2 alongF = length(velF) > 0.08 ? normalize(velF) : alongW;
-    vec2 acrossF = vec2(-alongF.y, alongF.x);
-    vec2 fLoc = vec2(dot(q, alongF), dot(q, acrossF));
-    vec2 f = vec2(fLoc.x * 0.65, fLoc.y * 1.05);
-    float fiapo = noise(vec3(f, morphZ(f * 0.5, w.z * LEVEL_TILES * 0.5))) - 0.5;
-    float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.34 * fiapo);
-    // C-lite: fall 2,1 (design α); um pouco mais peito sem sopa
-    float fall = mix(2.1, 1.0, pk);
-    d *= 1.22 - 0.38 * clamp(hz / max(layerEff, 0.01), 0.0, 1.0);
-    d *= mix(exp(-fall * hz / max(layerEff, 0.01)), 1.0, pk);
-    // abraça árvore / tronco
-    d += gTree * 1.15 * exp(-4.2 * hz / max(layerEff, 0.01)) * max(0.0, 1.0 - length(w.xy - gP.xy) / 2.0);
-    // rampa na base de sólido vizinho (cascata visual — densifica o pé, não só pileUp)
-    int flHere = nomFlowFlags(w.xy);
-    float wallNear = 0.0;
-    if ((flHere & (NOM_FLOW_SOLID | NOM_FLOW_INDOOR)) == 0) {
-        wallNear = ((nomFlowFlags(w.xy + vec2(1.0, 0.0)) & NOM_FLOW_SOLID) != 0
-                 || (nomFlowFlags(w.xy + vec2(-1.0, 0.0)) & NOM_FLOW_SOLID) != 0
-                 || (nomFlowFlags(w.xy + vec2(0.0, 1.0)) & NOM_FLOW_SOLID) != 0
-                 || (nomFlowFlags(w.xy + vec2(0.0, -1.0)) & NOM_FLOW_SOLID) != 0) ? 1.0 : 0.0;
-        wallNear = max(wallNear, gLow * 0.7);
-    }
-    d += wallNear * 0.55 * exp(-5.5 * hz / max(layerEff, 0.01));
-    bool indoor = (flHere & NOM_FLOW_INDOOR) != 0;
-    float hazeScale = mix(uParams[1].w, min(uParams[1].w + 0.7, 1.2), pk);
-    // piso mínimo: escavação do fluido não abre buraco no miolo da tela
-    float floorBody = FLOOR_MIN * exp(-9.0 * hz / max(layerEff, 0.01));
-    float hazeBody = HAZE * hazeScale * exp(-1.25 * hz / max(layerEff, 0.01));
-    if (!indoor) d += floorBody + hazeBody;
+    vec2 f = q * 0.9;                                                         // fiapos de ~1 tile
+    float fiapo = noise(vec3(f, morphZ(f, w.z * LEVEL_TILES * 0.9) * 1.7)) - 0.5;
+    float d = smoothstep(0.0, ROLL_SOFT, top - hz + 0.35 * fiapo);
+    // C-lite: base = queda rápida com a altura (mar no piso); bolsão = perfil antigo
+    float fall = mix(8.0, 1.0, pk);
+    d *= 1.15 - 0.45 * clamp(hz / max(layerEff, 0.01), 0.0, 1.0);
+    d *= mix(exp(-fall * hz / max(layerEff, 0.01)), 1.0, pk);              // corta o peito na base
+    d += gTree * 0.9 * exp(-5.0 * hz / max(layerEff, 0.01)) * max(0.0, 1.0 - length(w.xy - gP.xy) / 1.5);
+    bool indoor = (nomFlowFlags(w.xy) & NOM_FLOW_INDOOR) != 0;
+    float hazeScale = mix(uParams[1].w, min(uParams[1].w + 0.7, 1.2), pk); // véu sobe no bolsão
+    d += indoor ? 0.0 : HAZE * hazeScale * exp(-1.5 * hz / max(layerEff, 0.01));
     vec3 s = w + SUN_STEP;
     shade = max(0.0, top - hz) + 0.6 * max(0.0, rollTop(s.xy, layerEff, qs) - (s.z - ground));
     for (int i = 0; i < uCharCount; i++) {
@@ -259,7 +212,7 @@ vec4 fogLook(vec3 P, float amount) {
     vec3 base = uFog.yzw;
     vec3 lit = base * 1.08;
     vec3 dark = mix(base, vec3(dot(base, vec3(0.299, 0.587, 0.114))) * vec3(0.92, 0.96, 1.05), 0.5) * 0.38;
-    float sigma = 1.15 * amount;                        // 0047e: optical depth do mar (teto ~1,2)
+    float sigma = 0.9 * amount;
     float trans = 1.0;
     vec3 light = vec3(0.0);
     for (int i = 0; i < 16; i++) {                      // da câmera pro chão: a frente cobre o fundo
