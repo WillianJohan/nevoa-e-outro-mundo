@@ -13,7 +13,11 @@
 if isServer() then return end
 
 NOM_ScreenFxOptions = { ID = "NevoaEOutroMundo", DEFAULT_INTENSITY = 1, DEFAULT_DENSITY = 1, DEFAULT_BLOOM = 1,
-    DEFAULT_FOG_QUALITY = 2, DEFAULT_FLOW_RESOLUTION = 3 }
+    DEFAULT_FOG_QUALITY = 2, DEFAULT_FLOW_RESOLUTION = 3,
+    -- 0060f: glitch de tela (I6) nas Opções > Mods, grupo Qualidade. Padrão Original/110%.
+    DEFAULT_GLITCH_MODE = 2,          -- índice do combo: 1 off, 2 original, 3 bordas
+    DEFAULT_GLITCH_INTENSITY = 1.1,   -- 0..2 (1 = 100%, 1.1 = 110%)
+    GLITCH_MODES = { "off", "original", "bordas" } }
 
 local O = NOM_ScreenFxOptions
 local page
@@ -30,11 +34,22 @@ if PZAPI and PZAPI.ModOptions then
     page:addTickBox("Dissolve", "UI_NOM_Dissolve", true, "UI_NOM_Dissolve_tooltip")
     page:addTickBox("BodyEmbers", "UI_NOM_BodyEmbers", true, "UI_NOM_BodyEmbers_tooltip")
     page:addSlider("Bloom", "UI_NOM_Bloom", 0, 2, 0.1, O.DEFAULT_BLOOM, "UI_NOM_Bloom_tooltip")
+    -- Qualidade (névoa volumétrica + glitch de tela, 0060f)
+    page:addTitle("UI_NOM_Quality")
     -- qualidade da névoa do mod Java opcional (sprint 0026, client/NOM_FogQualitySync.lua)
     page:addSlider("FogQuality", "UI_NOM_FogQuality", 0, 2, 1, O.DEFAULT_FOG_QUALITY, "UI_NOM_FogQuality_tooltip")
     -- resolução da névoa fluida do mesmo mod (sprint 0030): células por tile
     page:addSlider("FlowResolution", "UI_NOM_FlowResolution", 1, 3, 1, O.DEFAULT_FLOW_RESOLUTION,
         "UI_NOM_FlowResolution_tooltip")
+    -- Glitch de tela (I6): modo + intensidade. Combo devolve índice 1-based (ModOptions.lua:137).
+    do
+        local g = page:addComboBox("GlitchMode", "UI_NOM_GlitchMode", "UI_NOM_GlitchMode_tooltip")
+        g:addItem("UI_NOM_GlitchMode_Off")
+        g:addItem("UI_NOM_GlitchMode_Original", true)
+        g:addItem("UI_NOM_GlitchMode_Bordas")
+    end
+    page:addSlider("GlitchIntensity", "UI_NOM_GlitchIntensity", 0, 2, 0.1, O.DEFAULT_GLITCH_INTENSITY,
+        "UI_NOM_GlitchIntensity_tooltip")
     -- tecla do painel de debug (sprint 0020, client/NOM_DebugPanel.lua), só com -debug:
     -- addKeyBind (ModOptions.lua:182-204), o jogador troca em Opções > Mods. Insert: F7 abre o
     -- editor de veículos do vanilla em -debug (IngameState.updateInternal 547–606), F2/F8/F9
@@ -101,6 +116,19 @@ end
 function O.flowResolution()
     local v = tonumber(value("FlowResolution", O.DEFAULT_FLOW_RESOLUTION)) or O.DEFAULT_FLOW_RESOLUTION
     return math.max(1, math.min(3, math.floor(v + 0.5)))
+end
+
+-- "off" | "original" | "bordas". Combo = índice 1-based.
+function O.glitchMode()
+    local i = tonumber(value("GlitchMode", O.DEFAULT_GLITCH_MODE)) or O.DEFAULT_GLITCH_MODE
+    i = math.floor(i + 0.5)
+    return O.GLITCH_MODES[i] or "original"
+end
+
+-- 0..2: multiplica tear/scanline/static do modo (1 = 100%, 1.1 = 110%).
+function O.glitchIntensity()
+    local v = tonumber(value("GlitchIntensity", O.DEFAULT_GLITCH_INTENSITY)) or O.DEFAULT_GLITCH_INTENSITY
+    return math.max(0, math.min(2, v))
 end
 
 -- Código da tecla do painel de debug; nil fora do -debug. Insert sem a página.

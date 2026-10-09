@@ -465,6 +465,10 @@ function List:layout()
             local val = NOM_PanelParams.format(key, NOM_PanelParams.get(key))
             local live = NOM_PanelParams.isLive(key)
             item.value = (live and "* " or "") .. val
+            -- valor numa linha própria entre a descrição e a trilha (print 10: "110%" cobria o texto)
+            item.valueX = cpad
+            item.valueY = cy
+            cy = cy + SMALL_HGT + 4
             local minus = card.choices[1]
             local plus = card.choices[2]
             local mLabel = getText(minus.key)
@@ -479,8 +483,6 @@ function List:layout()
                 card = card, choice = plus, index = 2, label = pLabel, on = nil }
             self.sliders[#self.sliders + 1] = { key = key, x = trackX, y = cy + (PILL_H - SLIDER_H) / 2,
                 w = trackW, h = SLIDER_H, card = card }
-            item.valueX = trackX
-            item.valueY = cy - SMALL_HGT - 2
             cy = cy + PILL_H + cpad
         else
             local px = cpad

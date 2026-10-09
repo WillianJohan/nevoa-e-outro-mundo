@@ -151,10 +151,11 @@ return {
         local s = fogged(true, 0.5)
         s.flashAt, s.flashStrength = 0, 1
         c = R.channel(s, 0, 1)
-        -- I6 default original: radius = static * fog * i (= 0.5)
-        assert(c.blur == 1 and c.desat == 1 and math.abs(c.radius - 0.5) < 1e-9 and c.darkness == 1)
+        -- I6 default original: radius = static * fog * i * gI (gI padrão 1.1 → 0.55)
+        local gI = R.glitchIntensity()
+        assert(c.blur == 1 and c.desat == 1 and math.abs(c.radius - 0.5 * gI) < 1e-9 and c.darkness == 1)
         local c2 = R.channel(s, 0, 2)
-        assert(c2.blur == 2 and math.abs(c2.radius - 1) < 1e-9)
+        assert(c2.blur == 2 and math.abs(c2.radius - 1 * gI) < 1e-9)
         assert(R.channel(s, 0, 0).blur == 0)
         NOM_PanelParams = {
             glitchMode = function() return "off" end,
@@ -316,14 +317,16 @@ return {
         local C = NOM_Rules.RED_FOG_COLOR
         assert(rr == C[1] and rg == C[2] and rb == C[3] and ra == nil, "vermelha")
         assert(R.staticColor(nil) == F[1], "sem tipo: branca")
-        -- camada: alfa pela intensidade da opção, cor pelo tipo; visível sozinha (fora da névoa)
+        -- camada: alfa pela intensidade da opção × GlitchIntensity (padrão 110%), cor pelo tipo
         local s = R.new()
         R.stepStatic(s, { omenAt = 0, kind = "red" }, NOM_FogEventRules.PRESAGE_MS)
+        local gI = R.glitchIntensity()
         local l = R.layers(s, 0, 1)
-        assert(math.abs(l.fogStatic - 0.6) < 1e-9 and R.visible(l), "presságio não aparece")
+        assert(math.abs(l.fogStatic - 0.6 * gI) < 1e-9 and R.visible(l), "presságio não aparece: " .. l.fogStatic)
         assert(l.grain == 0 and l.vignette == 0 and l.lines == 0, "o presságio ligou o Outro Mundo")
         assert(l.sr == C[1] and l.sg == C[2] and l.sb == C[3])
-        assert(math.abs(R.layers(s, 0, 2).fogStatic - 1) < 1e-9, "o dobro do pico satura em 1")
+        local peak2 = math.min(1, 0.6 * 2 * gI)
+        assert(math.abs(R.layers(s, 0, 2).fogStatic - peak2) < 1e-9, "o dobro do pico satura em 1")
         assert(R.layers(s, 0, 0).fogStatic == 0 and not R.visible(R.layers(s, 0, 0)), "intensidade 0")
     end,
 

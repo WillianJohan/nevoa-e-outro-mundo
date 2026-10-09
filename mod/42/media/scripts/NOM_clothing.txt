@@ -40,6 +40,18 @@ module Base
         ClothingItem = NOM_SemRostoEstatica,
     }
 
+    /* 0060f A′: remendo 2D no rosto (casca-ovo aposentada). Tint por zumbi. */
+    item NOM_SemRostoRosto
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_SemRostoRosto,
+    }
+
     item NOM_CarpideiraCabelo
     {
         DisplayCategory = Accessory,

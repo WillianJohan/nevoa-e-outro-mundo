@@ -14,6 +14,10 @@
 		<guid>412f470a-8cba-4e3b-a9f4-bdca386e6603</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoRosto.xml</path>
+		<guid>b8a23fab-dedd-45ae-9065-6dd02edb41b1</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_CarpideiraCabelo.xml</path>
 		<guid>d6c55e60-188d-4b27-a2aa-3ed9e3902662</guid>
 	</files>

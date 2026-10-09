@@ -29,6 +29,7 @@ if isServer() then return end
 require "NOM_NightStats"
 require "NOM_VariantRules"
 require "NOM_VariantWardrobe"
+require "NOM_SemRostoFace"
 require "NOM_Math"
 require "NOM_Dissolve"
 require "NOM_EmberShell"
@@ -41,8 +42,8 @@ NOM_VariantLook = {
         -- 0060f lote A: peça de cabeça + guarda-roupa vanilla por variante (C1).
         estalador = { item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
         corredor = { item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
-        -- I2–I4: sentinela de cabeça (casca lisa; textura sem chiado). Censor.ITEMS aponta pra ela.
-        semrosto = { item = "Base.NOM_SemRostoEstatica", fx = "Base.NOM_SemRostoEstaticaFx" },
+        -- 0060f A′: remendo 2D no rosto (sem casca-ovo). Censor via ModData NOM_semrosto.
+        semrosto = { item = NOM_SemRostoFace.ITEM },
         -- Carpideira: mechas + manto (K1) ou roupa longa vanilla (K2–K5 via wardrobe).
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
@@ -273,6 +274,19 @@ local function put(z, kind, id)
     hide(list, w)
     applyWardrobe(list, w, id)
     proofBody(list, w)
+    -- Censor (mod3): ModData NOM_semrosto. A′: tint do remendo ANTES do reset (senão
+    -- pickUninitializedValues sorteia; pz-api-notes §14.4a / semrosto-pele-api.md).
+    if kind == "semrosto" then
+        z:getModData().NOM_semrosto = true
+        if w.iv and ImmutableColor and ImmutableColor.new then
+            local base = z:getHumanVisual():getSkinTexture()
+            w.skinBase = base
+            local r, g, b = NOM_SemRostoFace.tintFor(base)
+            w.iv:setTint(ImmutableColor.new(r, g, b, 1))
+        end
+    else
+        z:getModData().NOM_semrosto = nil
+    end
     z:resetModelNextFrame()
     if w.item and shell then
         if NOM_EmberShell.reveal(z) then NOM_EmberShell.burst(z) end
@@ -287,6 +301,9 @@ local function strip(z)
     worn[z] = nil
     NOM_Dissolve.stop(z)
     NOM_EmberShell.remove(z)
+    if w.kind == "semrosto" and z:hasModData() then
+        z:getModData().NOM_semrosto = nil
+    end
     local list = z:getItemVisuals()
     if w.proof then
         for _, iv in ipairs(w.proof) do list:remove(iv) end
@@ -415,8 +432,10 @@ function NOM_VariantLook.inspect(z)
     if NOM_PanelParams and NOM_PanelParams.lookForce then lf = tostring(NOM_PanelParams.lookForce()) end
     if lf == "" then lf = "auto" end
     local ward = (w and w.wardVar) or "-"
-    return string.format("kind=%s var=%s skin=%s clean=%s force=%s items=%s",
-        kinds, ward, tostring(skin), tostring(NOM_ScreenFxRules.lookClean()), lf, table.concat(parts, ","))
+    local skinBase = (w and w.skinBase) or "-"
+    return string.format("kind=%s var=%s skin=%s base=%s clean=%s force=%s items=%s",
+        kinds, ward, tostring(skin), tostring(skinBase), tostring(NOM_ScreenFxRules.lookClean()), lf,
+        table.concat(parts, ","))
 end
 
 -- Debug: força monstro + índice de variante (1-based). Bíblia §11.

@@ -34,12 +34,12 @@ local function foggedStatic(static)
 end
 
 return {
-    glitch_panel_defaults_original_100 = function()
+    glitch_panel_defaults_original_110 = function()
         local p = P()
         p.reset()
         assert(p.get("GlitchMode") == "original")
-        assert(p.get("GlitchIntensity") == 100)
-        assert(p.glitchIntensity() == 1)
+        assert(p.get("GlitchIntensity") == 110)
+        assert(math.abs(p.glitchIntensity() - 1.1) < 1e-6)
         assert(p.format("GlitchIntensity", 200) == "200%")
         assert(p.format("GlitchMode", "off") == "desligado")
     end,

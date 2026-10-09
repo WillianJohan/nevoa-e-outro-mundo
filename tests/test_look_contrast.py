@@ -24,8 +24,10 @@ TEX = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textu
 # caso da lã); a boca folga no mid (o vermelho saturado é o desenho). A venda era
 # laranja vivo (mid 0,45); virou atadura com arame ferrugem-escuro, sem cinza médio.
 LIMITS = {
-    # casca lisa I2: cera suave — midtones altos OK; std/far baixos (sem chiado)
+    # casca lisa I2 (aposentada): cera suave — midtones altos OK; std/far baixos
     "NOM/NOM_SemRostoEstatica.png": (0.02, 1.0, 0.02),
+    # A′ remendo 2D: cera lisa de propósito (bíblia §7); std baixo OK
+    "NOM/NOM_SemRostoRosto.png": (0.015, 1.0, 0.015),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
     # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
     "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),

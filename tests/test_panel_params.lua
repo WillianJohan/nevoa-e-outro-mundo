@@ -19,7 +19,7 @@ return {
         assert(P.get("CinzaDensityMult") == 1.0)
         assert(P.get("LookForce") == "")
         assert(P.get("GlitchMode") == "original")
-        assert(P.get("GlitchIntensity") == 100)
+        assert(P.get("GlitchIntensity") == 110)
     end,
 
     panel_params_set_clamps_and_marks_live = function()
@@ -131,7 +131,7 @@ return {
         assert(t:find("EstaladorRhythm=rotate", 1, true), t)
         assert(t:find('LookForce=""', 1, true), t)
         assert(t:find("GlitchMode=original", 1, true), t)
-        assert(t:find("GlitchIntensity=100", 1, true), t)
+        assert(t:find("GlitchIntensity=110", 1, true), t)
         P.set("AlmaPopMin", 7)
         P.set("CinzaRateMult", 1.5)
         t = P.dumpText()

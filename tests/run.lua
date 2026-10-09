@@ -58,6 +58,7 @@ local FILES = {
     "tests/test_atmosphere_rules.lua",
     "tests/test_screen_fx_rules.lua",
     "tests/test_glitch_channel.lua",
+    "tests/test_semrosto_face.lua",
     "tests/test_screen_fx_assets.lua",
     "tests/test_screen_fx_options.lua",
     "tests/test_fog_quality_sync.lua",

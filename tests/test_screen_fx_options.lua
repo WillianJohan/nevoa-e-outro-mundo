@@ -20,6 +20,19 @@ local function fakeModOptions()
         function o:addSlider(oid, n, min, max, step, value, tip)
             return add({ type = "slider", id = oid, name = n, min = min, max = max, step = step, value = value, tooltip = tip })
         end
+        function o:addTitle(n) o.data[#o.data + 1] = { type = "title", name = n } end
+        -- addComboBox (ModOptions.lua:121-156): getValue = selected (índice 1-based)
+        function o:addComboBox(oid, n, tip)
+            local opt = { type = "combobox", id = oid, name = n, tooltip = tip, values = {}, selected = 1 }
+            opt.addItem = function(self, name, sel)
+                self.values[#self.values + 1] = name
+                if sel then self.selected = #self.values end
+            end
+            opt.getValue = function(self) return self.selected end
+            o.dict[oid] = opt
+            o.data[#o.data + 1] = opt
+            return opt
+        end
         -- addKeyBind(id, nome, tecla, dica) (ModOptions.lua:182-204): getValue devolve
         -- option.key; o load() e a tela de opções trocam option.key (:326-327, :276-280)
         function o:addKeyBind(oid, n, key, tip)
@@ -169,6 +182,29 @@ return {
         r.value = 9
         assert(O.flowResolution() == 3, "fora da faixa (alto)")
         assert(load(false).flowResolution() == 3, "sem a API: 3")
+    end,
+    -- 0060f: GlitchMode + GlitchIntensity no grupo Qualidade; padrão Original / 110%
+    glitch_options_default_original_110 = function()
+        local O = load(true)
+        local opts = PZAPI.ModOptions:getOptions("NevoaEOutroMundo")
+        local title
+        for _, d in ipairs(opts.data) do if d.type == "title" and d.name == "UI_NOM_Quality" then title = d end end
+        assert(title, "falta o título Qualidade")
+        local mode = opts:getOption("GlitchMode")
+        assert(mode and mode.type == "combobox" and mode.selected == 2, "padrão Original (índice 2)")
+        assert(#mode.values == 3 and mode.tooltip:find("^UI_NOM_"))
+        assert(O.glitchMode() == "original")
+        local int = opts:getOption("GlitchIntensity")
+        assert(int and int.type == "slider" and int.min == 0 and int.max == 2 and int.value == 1.1)
+        assert(math.abs(O.glitchIntensity() - 1.1) < 1e-6)
+        mode.selected = 1
+        assert(O.glitchMode() == "off")
+        mode.selected = 3
+        assert(O.glitchMode() == "bordas")
+        int.value = 2
+        assert(O.glitchIntensity() == 2)
+        local O2 = load(false)
+        assert(O2.glitchMode() == "original" and math.abs(O2.glitchIntensity() - 1.1) < 1e-6, "sem API: padrão")
     end,
     -- sprint 0020: tecla do painel de debug na mesma página, só com -debug
     screenfx_options_debug_key_only_in_debug = function()

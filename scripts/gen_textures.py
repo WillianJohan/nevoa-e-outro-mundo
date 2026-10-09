@@ -589,6 +589,28 @@ def flake_sheet(rng):
     return np.concatenate(rows_rgb, 0), np.concatenate(rows_a, 0)
 
 
+def semrosto_rosto(rng, size=256):
+    """Remendo 2D do Sem-rosto (A′ / 0060f): cinza claro com volume suave; alfa só no
+    rosto (caixa P3 u 0,348–0,645 × v 0–0,266) com rampa ~6 px. Tingido por zumbi."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    u0, u1, v0, v1 = 0.348, 0.645, 0.0, 0.266
+    # elipse inscrita na caixa + feather de 6 px
+    cx, cy = (u0 + u1) / 2, (v0 + v1) / 2
+    rx, ry = (u1 - u0) / 2 * 0.98, (v1 - v0) / 2 * 0.98
+    q = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+    feather = 6.0 / size
+    alpha = np.clip((1.0 - q) / (2.0 * feather / max(rx, ry) + 1e-6) + 0.5, 0, 1).astype(np.float32)
+    # volume suave (nariz/bochecha sem abertura): shade amplo pra midtones e std≥0,02
+    shade = 0.82 + 0.18 * fbm(rng, size, (2, 5, 11), (0.55, 0.30, 0.15))
+    # leve relevo no centro (F2 vestígio) — bem abaixo do +8% de cera do tint
+    nose = np.clip(1.0 - (((xx - 0.50) / 0.04) ** 2 + ((yy - 0.14) / 0.06) ** 2), 0, 1) * 0.08
+    cheek = np.clip(1.0 - (((xx - 0.42) / 0.06) ** 2 + ((yy - 0.15) / 0.05) ** 2), 0, 1) * 0.05
+    cheek += np.clip(1.0 - (((xx - 0.58) / 0.06) ** 2 + ((yy - 0.15) / 0.05) ** 2), 0, 1) * 0.05
+    shade = np.clip(shade + nose + cheek, 0, 1)
+    rgb = color((245, 242, 236), shade)
+    return rgb, alpha
+
+
 def ash_flake(rng, size=16, ss=8):
     # cinza (sprint 0035): floco torto e macio, um pouco manchado, tons de cinza (a cor sai do
     # desenho). Não é redondo: harmônicos e serrilhado no raio, como a lasca, com borda suave.
@@ -615,7 +637,9 @@ def main():
     # I7: peles Body de Estalador/Corredor/Carpideira/SemRosto e NOM_*Roupa saíram do look.
     save(estalador_venda(rng(4)), "NOM/NOM_EstaladorVenda.png")
     save(corredor_boca(rng(5)), "NOM/NOM_CorredorBoca.png")
-    save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")
+    save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")  # aposentada do look (casca-ovo)
+    rgb, a = semrosto_rosto(rng(22))
+    save(rgb, "NOM/NOM_SemRostoRosto.png", alpha=a)
     save(carpideira_cabelo(rng(7)), "NOM/NOM_CarpideiraCabelo.png")
     # C2: manto com alfa 0 em rosto/mãos (não pinta a cara)
     manto_rgb, manto_a = carpideira_manto(rng(21))

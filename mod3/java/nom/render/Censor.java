@@ -1,34 +1,61 @@
 package nom.render;
 
 /**
- * Rosto censurado do Sem-rosto (sprint 0044): quais cabeças ganham o quadrado do NOM_Censura.frag.
- * Java puro, sem o jogo: CensorTest. O RenderContext acha o Sem-rosto pela peça que o
- * client/NOM_VariantLook.lua veste (ITEMS) e passa o alfa do zumbi pro jogador local: fora da vista
- * o jogo leva o alfa a 0, e o quadrado não pode entregar quem está atrás da parede ou das costas.
+ * Rosto censurado do Sem-rosto (sprint 0044; 0060f: cabeça pelo osso, sem casca-ovo).
+ * Java puro, sem o jogo: CensorTest. O RenderContext marca o Sem-rosto pelo ModData
+ * {@code NOM_semrosto} (client/NOM_VariantLook.lua) e passa o alfa do zumbi pro jogador
+ * local: fora da vista o jogo leva o alfa a 0, e o quadrado não pode entregar quem está
+ * atrás da parede ou das costas.
+ *
+ * Causa raiz do quadrado flutuando (prints 09/11): {@code offer} usava pés + {@link #HEAD_Z}
+ * fixo, ignorando animação (caído/rastejando a cabeça vai pro chão e pra frente) e o osso
+ * {@code Bip01_Head}. Agora a cabeça chega já em coords de mundo ({@link #offerHead}); o
+ * fallback puro é {@link #estimateHead}.
  */
 public final class Censor {
     public static final int MAX = 4;                // o mesmo tamanho de uCensor no NOM_RenderContext.glsl
     public static final float RANGE = 20f;          // o mesmo alcance dos personagens da névoa
     public static final float MIN_ALPHA = 0.02f;
-    // meio da cabeça, em andares acima dos pés: a lanterna sai em z + 0,4 (RenderContext.collectTorches)
-    // e o medidor da pesca vanilla fica em cima da cabeça, em z + 0,6 (client/Fishing/TensionUI.lua:11)
+    // meio da cabeça em pé, em andares acima dos pés (lanterna 0,4; UI pesca 0,6)
     public static final float HEAD_Z = 0.52f;
-    static final String[] ITEMS = { "Base.NOM_SemRostoEstatica", "Base.NOM_SemRostoEstaticaFx" };
+    // cabeça baixa (prone/crawl/knocked): perto do chão
+    public static final float HEAD_Z_PRONE = 0.12f;
+    // avanço da cabeça no chão ao longo do forward (tiles)
+    public static final float HEAD_XY_PRONE = 0.45f;
+    /** ModData que o VariantLook grava enquanto o Sem-rosto está pintado (sem peça 3D). */
+    public static final String MODDATA_KEY = "NOM_semrosto";
 
     private final float[] best = new float[MAX];
     private final float[] slots = new float[MAX * 4];   // x, y (absolutos), z da cabeça, alfa
     private int count;
 
-    public static boolean isSemRostoItem(String type) {
-        if (type == null) return false;
-        for (String s : ITEMS) if (s.equals(type)) return true;
-        return false;
+    /**
+     * Estimativa pura da cabeça sem o osso: em pé = pés + {@link #HEAD_Z}; baixo =
+     * pés + forward·{@link #HEAD_XY_PRONE} e {@link #HEAD_Z_PRONE}.
+     */
+    public static void estimateHead(float x, float y, float z, boolean low,
+                                    float fwdX, float fwdY, float[] out) {
+        if (!low) {
+            out[0] = x;
+            out[1] = y;
+            out[2] = z + HEAD_Z;
+            return;
+        }
+        float len = (float) Math.sqrt(fwdX * fwdX + fwdY * fwdY);
+        if (len < 1e-4f) {
+            fwdX = 1f;
+            fwdY = 0f;
+            len = 1f;
+        }
+        out[0] = x + fwdX / len * HEAD_XY_PRONE;
+        out[1] = y + fwdY / len * HEAD_XY_PRONE;
+        out[2] = z + HEAD_Z_PRONE;
     }
 
     public void begin() { count = 0; }
 
-    /** Cabeça candidata em (x, y, z dos pés) com o alfa pro jogador e a distância² até a câmera. */
-    public void offer(float x, float y, float z, float alpha, float d2) {
+    /** Cabeça já em coords de mundo (osso Bip01_Head ou {@link #estimateHead}). */
+    public void offerHead(float hx, float hy, float hz, float alpha, float d2) {
         if (alpha < MIN_ALPHA || d2 > RANGE * RANGE) return;
         int slot;
         if (count < MAX) slot = count++;
@@ -39,9 +66,9 @@ public final class Censor {
         }
         best[slot] = d2;
         int k = slot * 4;
-        slots[k] = x;
-        slots[k + 1] = y;
-        slots[k + 2] = z + HEAD_Z;
+        slots[k] = hx;
+        slots[k + 1] = hy;
+        slots[k + 2] = hz;
         slots[k + 3] = Math.min(1f, alpha);
     }
 

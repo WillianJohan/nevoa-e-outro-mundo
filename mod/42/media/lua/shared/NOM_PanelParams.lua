@@ -42,7 +42,7 @@ P.DEFAULTS = {
     CinzaDensityMult = 1.0,
     LookForce = "",
     GlitchMode = "original",
-    GlitchIntensity = 100, -- 0..200 (%); multiplica tear/scanline/static do modo
+    GlitchIntensity = 110, -- 0..200 (%); multiplica tear/scanline/static do modo (Opções = 110%)
 }
 
 -- type: int | float | bool | enum
@@ -86,8 +86,26 @@ local function roundStep(v, step)
     return math.floor(v / step + 0.5) * step
 end
 
+-- Opções do jogo (client/NOM_ScreenFxOptions) quando o painel não sobrescreveu.
+-- Módulo client pode não existir nos testes puros shared/.
+local function optionsGlitch(key)
+    if NOM_ScreenFxOptions == nil then return nil end
+    if key == "GlitchMode" and NOM_ScreenFxOptions.glitchMode then
+        return NOM_ScreenFxOptions.glitchMode()
+    end
+    if key == "GlitchIntensity" and NOM_ScreenFxOptions.glitchIntensity then
+        local v = NOM_ScreenFxOptions.glitchIntensity() -- 0..2
+        return math.floor((tonumber(v) or 1.1) * 100 + 0.5)
+    end
+    return nil
+end
+
 function P.get(key)
     if live[key] ~= nil then return live[key] end
+    if key == "GlitchMode" or key == "GlitchIntensity" then
+        local fromOpts = optionsGlitch(key)
+        if fromOpts ~= nil then return fromOpts end
+    end
     return P.DEFAULTS[key]
 end
 

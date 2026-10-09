@@ -439,7 +439,10 @@ return {
             seen[look.item] = true
             assert(hasItem(zs[k], look.item), k .. " sem a peça: " .. types(zs[k]))
             if k == "semrosto" then
-                assert(look.item == "Base.NOM_SemRostoEstatica", "I2: sentinela Sem-rosto")
+                -- 0060f A′: remendo 2D; ModData pro censor; sem casca-ovo
+                assert(look.item == "Base.NOM_SemRostoRosto", "A′ remendo Sem-rosto")
+                assert(zs[k].md.NOM_semrosto == true, "Sem-rosto sem ModData NOM_semrosto")
+                assert(not hasItem(zs[k], "Base.NOM_SemRostoEstatica"), "casca-ovo ainda vestida")
             end
             if k == "ticao" then
                 assert(zs[k].hv.name == look.skin, k .. " com a pele errada")
@@ -513,12 +516,15 @@ return {
         G.converge()
         assert(NOM_VariantLook.count() == 1, "Sem-rosto não entrou na tabela")
         assert(not hasItem(z, "Base.Hat_Army"), "chapéu deveria sumir na variante")
-        assert(hasItem(z, "Base.NOM_SemRostoEstatica"), "I2: sentinela na cara")
+        assert(z.md.NOM_semrosto == true, "Sem-rosto sem ModData pro censor")
+        assert(hasItem(z, "Base.NOM_SemRostoRosto"), "A′ remendo na cara")
+        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "casca-ovo aposentada ainda vestida")
         fogOff()
         G.converge()
         assert(NOM_VariantLook.count() == 0, "Sem-rosto ficou marcado")
         assert(hasItem(z, "Base.Hat_Army"), "chapéu não voltou: " .. types(z))
-        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "sentinela ficou")
+        assert(z.md.NOM_semrosto == nil, "ModData NOM_semrosto ficou")
+        assert(not hasItem(z, "Base.NOM_SemRostoRosto"), "remendo ficou")
     end,
 
     look_common_zombie_untouched = function()
@@ -626,7 +632,9 @@ return {
         NOM_VariantRules.forced[id] = "semrosto"
         G.converge()
         assert(not hasItem(z, "Base.Hat_Army"), "chapéu no Sem-rosto: " .. types(z))
-        assert(hasItem(z, "Base.NOM_SemRostoEstatica"), "I2 sentinela: " .. types(z))
+        assert(z.md.NOM_semrosto == true, "forçado Sem-rosto sem ModData")
+        assert(hasItem(z, "Base.NOM_SemRostoRosto"), "A′ remendo: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_SemRostoEstatica"), "casca-ovo ainda vestida")
         assert(hasItem(z, OUTFIT[1]), "roupa someu no Sem-rosto: " .. types(z))
         NOM_VariantRules.forced[id] = "estalador"
         G.converge()
@@ -988,7 +996,8 @@ return {
         setup()
         for _, k in ipairs(KINDS) do
             local look = NOM_VariantLook.LOOKS[k]
-            if look.item then
+            -- A′ Sem-rosto: remendo 2D sem gêmeo Fx (I7 / dissolve só em peça com modelo)
+            if look.item and look.fx then
                 assert(look.fx == look.item .. "Fx", k .. ": gêmeo " .. tostring(look.fx))
                 assert(src:find("item " .. look.fx:match("^Base%.(.+)$") .. "\n", 1, true), k .. ": gêmeo fora do script")
             end
@@ -1287,14 +1296,19 @@ return {
         for seed = 1, 40 do G.spawn({ id = 9 * 65536 + seed }) end
         fogOn(67, true)
         G.converge()
-        local shells, plain = 0, 0
+        local shells = 0
         for _, z in ipairs(G.zombies) do
             if hasItem(z, SHELL) then shells = shells + 1 end
-            for _, k in ipairs(KINDS) do if hasItem(z, NOM_VariantLook.LOOKS[k].item) then plain = plain + 1 end end
+            -- peça base (com gêmeo Fx) só aparece sob a casca na mutação; Sem-rosto A′
+            -- não tem Fx e não entra nesta checagem
+            for _, k in ipairs(KINDS) do
+                local look = NOM_VariantLook.LOOKS[k]
+                if look.fx and hasItem(z, look.item) then
+                    assert(hasItem(z, SHELL), "peça sem shader sem casca: " .. k .. " " .. types(z))
+                end
+            end
         end
         assert(shells == NOM_DissolveRules.SHELL_CAP and NOM_EmberShell.count() == shells, "cascas: " .. shells)
-        -- além do teto das cascas, o gêmeo da 0018 (que se forma até o teto do dissolve, ou vem inteiro)
-        assert(plain == shells, "peça sem shader sem casca: " .. plain)
         assert(NOM_Dissolve.count() == NOM_DissolveRules.CAP, "dissolve: " .. NOM_Dissolve.count())
         G.ms(NOM_DissolveRules.MS + 50)
         assert(NOM_EmberShell.count() == 0)

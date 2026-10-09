@@ -1,6 +1,5 @@
--- Contrato do rosto censurado do Sem-rosto entre o Lua, o Java e o shader do mod3 (sprint 0044).
--- O comportamento do Java está em tests/java/CensorTest.java; a compilação do shader e o contrato
--- de uniforms, em tests/test_mod3_flow.sh e tests/test_mod3_depth.py.
+-- Contrato do rosto censurado do Sem-rosto entre o Lua, o Java e o shader do mod3
+-- (sprint 0044; 0060f: ModData + osso/estimativa, sem casca-ovo).
 local function read(path)
     local f = assert(io.open(path, "rb"), "falta " .. path)
     local s = f:read("*a")
@@ -12,16 +11,24 @@ local JAVA = "mod3/java/nom/render/"
 local SH = "mod3/42/media/shaders/"
 
 return {
-    -- I2: Sem-rosto volta a vestir a casca (sentinela); Censor.ITEMS aponta pra ela.
-    mod3_censor_items_match_look = function()
+    -- 0060f: Sem-rosto sem peça 3D; Censor marca via ModData NOM_semrosto (VariantLook).
+    mod3_censor_moddata_matches_look = function()
         local look = read("mod/42/media/lua/client/NOM_VariantLook.lua")
         local block = look:match("semrosto = %b{}")
         assert(block, "LOOKS.semrosto não achado")
-        assert(block:find('item = "Base.NOM_SemRostoEstatica"', 1, true),
-            "I2: Sem-rosto precisa da sentinela pra censura")
+        assert(not block:find("SemRostoEstatica", 1, true), "casca-ovo ainda no LOOKS.semrosto")
+        assert(block:find("SemRostoRosto", 1, true) or look:find("NOM_SemRostoFace.ITEM", 1, true),
+            "A′ remendo fora do LOOKS.semrosto")
+        assert(look:find('NOM_semrosto = true', 1, true), "VariantLook não marca ModData")
+        assert(look:find('NOM_semrosto = nil', 1, true), "VariantLook não limpa ModData")
         local java = read(JAVA .. "Censor.java")
-        assert(java:find('"Base.NOM_SemRostoEstatica"', 1, true), "Censor.java sem peça")
-        assert(java:find('"Base.NOM_SemRostoEstaticaFx"', 1, true), "Censor.java sem gêmeo")
+        assert(java:find('MODDATA_KEY = "NOM_semrosto"', 1, true), "Censor.MODDATA_KEY")
+        assert(java:find("estimateHead", 1, true), "falta estimateHead (fallback prone)")
+        assert(java:find("offerHead", 1, true), "falta offerHead")
+        local ctx = read(JAVA .. "RenderContext.java")
+        assert(ctx:find("Bip01_Head", 1, true), "RenderContext sem osso da cabeça")
+        assert(ctx:find("isSemRostoMarked", 1, true), "sem leitura do ModData")
+        assert(ctx:find("offerHead", 1, true), "collectCensors ainda usa offer(pés)")
     end,
 
     -- o quadrado vem antes da névoa: a névoa cobre ele (senão o Sem-rosto acende no meio da névoa)

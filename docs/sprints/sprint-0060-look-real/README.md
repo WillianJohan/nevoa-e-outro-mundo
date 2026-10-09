@@ -23,20 +23,20 @@ Body P&B + strip + ScreenFx/shader (scanline/tear/aberração) + SemRostoEstatic
 - Texto do painel alinhado (0060e; antes dizia Force = clean).
 - SemRosto sem `NOM_SemRostoEstatica`; KEEP camisa/calça; Sport+White só no limpo.
 
-## 0060f — lote A + I6
+## 0060f — lote A + I6 + censor/glitch/A′
 
 - **Guarda-roupa** E1–E5 / K1–K5 (`NOM_VariantWardrobe`): roupa vanilla + tint/dirt/blood; `NOM.lookVariant()`.
-- **I2–I4:** Sem-rosto com sentinela `NOM_SemRostoEstatica` (casca lisa).
+- **Sem-rosto:** casca-ovo aposentada; remendo 2D A′ (`NOM_SemRostoRosto` + tint por bochecha); censor no osso `Bip01_Head` (fallback prone).
 - **I5:** Tição pele carvão lisa; **C2:** manto com alfa 0 em rosto/mãos (K1); K2–K5 sem manto.
 - **I7:** assets `*Roupa` / `MantoFx` / Body mortas removidos.
-- **I6 glitch:** trilha panel → `SearchMode.y` → `hiss`; teste unitário OK; prints in-game com o Johan.
+- **I6 glitch:** Opções > Mods > Qualidade (Original/110%); painel debug sobrescreve ao vivo; slider sem sobrepor texto.
 
 ## Roteiro (Johan)
 
-1. `git pull` na branch do PR + `scripts/dev-sync.sh` + **reiniciar** (Staging + Shader).
-2. Névoa (`NOM.setFog(true)`); Sem-rosto perto.
-3. **Glitch:** painel Look → modo original → intensidade **0%** (print) → **200%** mesmo lugar (print); `console.txt` com `[NOM] glitch apply … intensity=…%`.
-4. **Estalador:** `NOM.variant("estalador")` + `NOM.lookVariant()` cicla E1–E5 (bata/pijama/avental…).
-5. **Carpideira:** `NOM.variant("carpideira")` + `lookVariant` K1–K5; K1 manto+saia (rosto visível); K2+ vestido/capa sem manto.
-6. **Sem-rosto / Tição / Corredor:** `lookInspect` → sentinela / pele carvão / boca; sem Body P&B.
-7. Prints à distância normal, FX produto ligado, `lookClean` off.
+1. `git pull` na branch do PR + `scripts/dev-sync.sh` + **reiniciar** (Staging + Shader + Volumétrica).
+2. Névoa; `NOM.variant("semrosto")` no mais perto (ou LookForce Wrong).
+3. **Censor:** quadrado colado na cabeça em pé, andando, caído/rastejando; zoom in/out e câmera.
+4. **A′ rosto:** `lookInspect` → `items=…NOM_SemRostoRosto`, `base=M_ZedBody0N_levelN`, sem casca-ovo; zoom normal + máximo.
+5. **Glitch opções:** Opções > Mods > Qualidade → Original / 110%; Aplicar; conferir no jogo. Painel Look sobrescreve ao vivo; valor do slider não cobre a descrição.
+6. **Estalador / Carpideira:** `lookVariant` como antes.
+7. Proporção Sem-rosto: **ainda espera decisão do Johan** (bíblia §7.3).

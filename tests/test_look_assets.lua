@@ -100,7 +100,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 16, "esperava 16 itens (I7 sem Roupa/*Fx 2D), achou " .. n)
+        assert(n == 17, "esperava 17 itens (+SemRostoRosto A′), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -154,7 +154,8 @@ return {
     -- rodar o gerador de novo não muda um byte das texturas do visual (semente fixa)
     look_assets_deterministic = function()
         local paths = { "textures/Body/NOM_Ticao.png" }
-        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "CarpideiraManto", "EcoCinza", "EcoVeu", "Brasa" }) do
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "SemRostoRosto",
+            "CarpideiraCabelo", "CarpideiraManto", "EcoCinza", "EcoVeu", "Brasa" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}

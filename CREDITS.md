@@ -143,7 +143,8 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (I5/0060f): carvão quase liso; brasa na crosta 3D |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
 | `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor até a 0041 (na máscara cirúrgica vanilla): vermelho escuro, rasgo preto, dentes brancos. Fica pra voltar a boca 3D da 0042 pelo XML |
-| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (I2/0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
+| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (aposentada do look 0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto.png` | 256×256 | remendo A′ do Sem-rosto (0060f): cinza claro com alfa só no rosto; tint por zumbi |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto (no véu de noiva vanilla até a 0041). Fica pra voltar o cabelo 3D da 0042 pelo XML |
 | `mod/42/media/textures/NOM/NOM_CarpideiraManto.png` | 256×256 | manto (C2/0060f): tecido escuro; alfa 0 em rosto/mãos/pés (K1; K2–K5 usam roupa vanilla) |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
