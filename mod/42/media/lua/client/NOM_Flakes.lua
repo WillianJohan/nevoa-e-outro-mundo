@@ -3,8 +3,9 @@
 -- e sobem devagar, girando. Desenho pelo overlay de tela da sprint 0013 (NOM_ScreenFx.extra),
 -- como as brasas do Eco (client/NOM_Embers.lua): sem profundidade, passam por cima de parede e
 -- de personagem (limite aceito, spike-dissolve §D). Só o jogador 0, como o resto do overlay.
--- O que nasce, onde e como anda: shared/NOM_FlakeRules.lua. Na vermelha (sprint 0040), também
--- cinza solta no ar em volta do jogador (NOM_FlakeRules.air), desenhada como a cinza.
+-- O que nasce, onde e como anda: shared/NOM_FlakeRules.lua. Com a névoa aberta (sprint 0040 na
+-- vermelha; 0057 nas três cores), também cinza solta no ar em volta do jogador
+-- (NOM_FlakeRules.air), desenhada como a cinza.
 --
 -- Liga com a névoa de jogo (NOM_FogState.on), não na subida da fuga; no fim nada nasce e as
 -- vivas terminam o fade. Respeita o toggle FogOverlays do sandbox, a densidade do Outro Mundo e
@@ -109,8 +110,8 @@ local function draw(el, now)
     end
     if r > 0 and (not srcAt or now - srcAt >= N.SOURCE_MS) then refresh(p, now) end
     R.step(state, dt, r, src, random)
-    -- cinza no ar (sprint 0040): só na vermelha, em volta da última posição lida das fontes
-    if src and NOM_FogState.red then
+    -- cinza no ar (0057): em toda névoa ativa, em volta da última posição lida das fontes
+    if src and NOM_FogState.on then
         R.air(state, r, src.px, src.py, src.pz, dt, random)
     else
         R.air(state, 0)

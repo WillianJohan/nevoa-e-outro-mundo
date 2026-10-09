@@ -1118,6 +1118,26 @@ return {
         assert(has(G.printed, "piscar_caca=0"), table.concat(G.printed, "\n"))
         SandboxVars = nil
     end) end,
+    -- sprint 0057: knobs de cinza no console
+    nom_ash_sets_and_resets_debug_knobs = function() run(function()
+        local G = setup()
+        require "NOM_FlakeRules"
+        NOM_FlakeRules.resetDebug()
+        NOM.ash(1.5, 2, 0.5)
+        local d = NOM_FlakeRules.debugMul()
+        assert(d.density == 1.5 and d.rate == 2 and d.air == 0.5, "set incompleto")
+        assert(has(G.printed, "^%[NOM%] debug cinzas dens=1%.50 taxa=2%.00 ar=0%.50"), table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.ash("reset")
+        d = NOM_FlakeRules.debugMul()
+        assert(d.density == 1 and d.rate == 1 and d.air == 1)
+        assert(has(G.printed, "reset dens=1"), table.concat(G.printed, "\n"))
+        local found = false
+        for _, h in ipairs(NOM.HELP) do
+            if h[1]:find("^NOM%.ash%(") then found = true break end
+        end
+        assert(found, "HELP sem NOM.ash")
+    end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()
         local n = 0

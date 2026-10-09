@@ -155,6 +155,26 @@ function NOM.godMode(on)
     NOM_DebugLog.say("[NOM] debug godMode=" .. tostring(on))
 end
 
+-- Cinzas / lascas (sprint 0057): sem args imprime; dens,taxa,ar em 0..3 multiplicam o padrão;
+-- "reset" volta aos 1. Live só nesta sessão (-debug).
+function NOM.ash(density, rate, air)
+    require "NOM_FlakeRules"
+    local R = NOM_FlakeRules
+    if density == "reset" then
+        R.resetDebug()
+        NOM_DebugLog.say("[NOM] debug cinzas: reset dens=1 taxa=1 ar=1")
+        return
+    end
+    if density ~= nil or rate ~= nil or air ~= nil then
+        R.setDebug(density, rate, air)
+    end
+    local d = R.debugMul()
+    local n = (NOM_Flakes and NOM_Flakes.count and NOM_Flakes.count()) or 0
+    NOM_DebugLog.say(string.format(
+        "[NOM] debug cinzas dens=%.2f taxa=%.2f ar=%.2f vivas=%d baseRate=%d airPer=%.2f",
+        d.density, d.rate, d.air, n, R.RATE, R.AIR_PER_RATE))
+end
+
 -- Clímax fog (sprint 0047g): imprime look da cor ativa e empurra de novo pro mod3.
 function NOM.fogLook()
     require "NOM_FogClimaxRules"
@@ -293,6 +313,7 @@ NOM.HELP = {
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "uma leva de almas esqueléticas agora (só névoa branca): rua, maioria crawler, TTL curto" },
+    { "NOM.ash(dens, taxa, ar)", "cinzas: sem args mostra knobs e vivas; dens/taxa/ar em 0..3 multiplicam (live); ash(\"reset\") volta ao padrão" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },
     { "NOM.invisible(on)", "zumbis não te veem; sem argumento inverte" },

@@ -158,7 +158,7 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "god", "noclip", "invisible",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "eco", "alma", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "ambientScream", "ticao", "blackPressure", "thunder", "flickerLamp", "rain", "help" }) do
         NOM[n] = rec(n)
@@ -168,10 +168,12 @@ local function setup(opts)
     NOM_FogState = { on = false, red = false }
     NOM_ScreenFxOptions = { debugPanelKey = function() if G.debug then return G.key end end }
     require "NOM_Math"
+    require "NOM_FlakeRules"
+    NOM_FlakeRules.resetDebug()
     NOM_DebugLog = nil
     package.loaded["NOM_DebugLog"] = nil
     require "NOM_DebugLog"
-    for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math",
+    for _, m in ipairs({ "NOM_Console", "NOM_NightStats", "NOM_FogState", "NOM_ScreenFxOptions", "NOM_Math", "NOM_FlakeRules",
         "ISUI/ISCollapsableWindow", "ISUI/ISButton", "ISUI/ISPanel" }) do
         package.loaded[m] = true
     end
@@ -369,6 +371,7 @@ return {
             UI_NOM_Debug_C_Spawn = { "spawn(1)", "spawn(5)", "spawn(10)" },
             UI_NOM_Debug_C_Eco = { "eco()" },
             UI_NOM_Debug_C_Alma = { "alma()" },
+            UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
                 "variant(carpideira)", "turnZombie(0)" },
@@ -582,5 +585,27 @@ return {
         end
         assert(w.list.hover == h, "hover não achou o botão sob o mouse")
         assert(w.side.hover == 2, "hover da lateral")
+    end,
+    -- sprint 0057: seção Cinzas com trilhos; clique no trilho muda o knob live
+    debug_panel_ash_sliders = function()
+        setup()
+        local w = open()
+        local ashI
+        for i, s in ipairs(NOM_DebugPanel.SECTIONS) do
+            if s.title == "UI_NOM_Debug_Sec_Ash" then ashI = i break end
+        end
+        assert(ashI, "sem seção Cinzas")
+        selectSection(w, ashI)
+        assert(#w.list.sliders == 3, "sliders: " .. #w.list.sliders)
+        NOM_FlakeRules.resetDebug()
+        local dens = w.list.sliders[1]
+        assert(dens.key == "density")
+        w.list:setScroll(math.max(0, dens.trackY - 4))
+        local y = dens.trackY - w.list.scroll + dens.trackH / 2
+        w.list:onMouseDown(dens.x + dens.w - 1, y)
+        assert(NOM_FlakeRules.debugMul().density == 2, "clique no fim não foi 2: " .. NOM_FlakeRules.debugMul().density)
+        w.list:onMouseDown(dens.x, y)
+        assert(NOM_FlakeRules.debugMul().density == 0, "clique no começo não foi 0")
+        NOM_FlakeRules.resetDebug()
     end,
 }
