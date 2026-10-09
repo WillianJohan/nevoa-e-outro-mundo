@@ -36,16 +36,20 @@ cabelo”) e a tela **respira a vinheta** perto do soluço — tudo no mod princ
 
 ## Code review (fim da entrega)
 
-- **OK:** sem asset de terceiro; manto = camada + textura gerada; API = useless / pathToLocationF / ItemVisual / setVolume já usadas.
-- **OK:** `hide` exclui `bodyIv` do snapshot vanilla; unhide remove os dois ItemVisual do mod.
-- **OK:** calma parada ainda sai cedo no `hold` (orçamento); agenda só no 1º frame / ao vencer o gap.
-- **Risco aceito:** silhueta ainda é camada (sem malha 3D) — A/B do Johan decide se precisa `gen_models`.
+- **Corrigido:** não terminar caminhada com `not isMoving()` (pathfind pode ter `bPathfind` sem
+  `isMoving` — abortava no 1º frame). Só distância/timeout.
+- **Corrigido:** `playersNear` inclui `getOnlinePlayers` no MP (como o Wander).
+- **Corrigido:** `forceWalk` só limpa quando `pickWalk` devolve destino.
+- **OK:** sem asset de terceiro; manto = camada + textura gerada; APIs já evidenciadas.
+- **Risco aceito:** silhueta ainda é camada (sem malha 3D) — A/B do Johan.
 - **Ambiente:** build Workshop / `dev-sync` não rodaram aqui (sem Flatpak Zomboid / JDK 25).
 
 ## Aprendizados
 
 - `hold` que chama `furious` (e `getPersistentOutfitID`) **antes** do early-return da calma
   estoura o orçamento da vermelha; a ordem da 0011 (still primeiro) tem de ser preservada.
+- `isMoving()` ≠ “ainda pathfindando”: no jogo `bPathfind` pode ficar ligado com
+  `isMoving` falso — não dá pra usar como fim de caminhada.
 
 ## Pendências que a próxima sprint herda
 
