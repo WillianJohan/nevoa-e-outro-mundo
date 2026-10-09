@@ -1,19 +1,25 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-08. **Próximo passo = sprint FOG clímax (0047)** — go do Johan 2026-10-08. Design fechado em [proximos-passos-refinamento.md](proximos-passos-refinamento.md). A `staging` tem até a 0046 (v1.0.0 lançada na `main`; 0045/0046 aprovadas no jogo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-08. **Próximo passo = Sons II** (pós-P0 fog). Clímax fog **0047g** aprovado (looks por cor). A `staging` tem a 0047g; v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Próximo passo: sprint 0047 — FOG clímax (P0)
+## Próximo passo: Sons II (pós-P0)
 
-**Go 2026-10-08.** Branch `sprint/0047g-fog-primeira` (PR). [README](sprints/sprint-0047-fog-climax/README.md) · [plano](sprints/sprint-0047-fog-climax/plan.md) · [refinamento](proximos-passos-refinamento.md).
+Fog clímax (0047) fechada no playtest do Johan. Seguir [proximos-passos-refinamento.md](proximos-passos-refinamento.md) §3.1–3.2 (Sons II / Estalador). Fora do P0 fog: almas, transform 100%, Carpideira Witch/look, aperto da preta (terror).
 
-**Decisões fechadas (Johan):**
-- Base = mar baixo tipo gelo seco (não engole câmera); bolsões = **viajantes raros/brutais** (fog absurda de hoje só neles).
-- Pipeline **A → C-lite → B' → B** (produto A-first; B 3D só se A+C-lite falharem).
-- Sandbox **2 eixos** (base + bolsão); resolução/qualidade no cliente; fallback sem mod3 = visual fino (clima/overlay).
-- **Defaults playtest por cor:** branca `2=1,3=1.2,7=0.8,9=3,14=0.1,15=1.1`; vermelha `2=1,3=1.1,7=1,9=3,14=1,15=1`.
-- Fora desta sprint: Sons II, almas, transform 100%, Carpideira Witch/look, aperto da preta.
+## Em staging: sprint 0047g — FOG clímax (looks por cor)
 
-**Como testar:** `scripts/dev-sync.sh` com a branch no checkout; reiniciar o jogo; ativar `[STAGING] NOM: Noise of Mist` (+ Volumétrica se for volume). Roteiro no README da 0047.
+[README](sprints/sprint-0047-fog-climax/README.md) · shader da 1ª 0047 (`b012989`) + defaults playtest.
+
+| Param | Branca | Vermelha | Preta |
+|-------|--------|----------|-------|
+| 2 altura | 1,0 | 1,0 | 1,2 |
+| 3 bolsão H | 1,2 | 1,1 | 1,1 |
+| 7 véu | 0,8 | 1,0 | 1,0 |
+| 9 res | 3 | 3 | 3 |
+| 14 cov | 0,1 | 1,0 | 1,0 |
+| 15 boost | 1,1 | 1,0 | 1,2 |
+
+Sync: `NOM_FogClimaxRules.fromConfig(color)` + `onColorChange`. `scripts/dev-sync.sh` na `staging`; reiniciar o jogo.
 
 ## Lançamento v1.0.0 (2026-10-07)
 
@@ -110,14 +116,14 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 5)` | fluido: obstáculos (sólido vermelho, árvore verde, interior azul, parede fechada branca) |
 | `NOMRender_setParam(1, 6)` | fluido: densidade |
 | `NOMRender_setParam(1, 7)` | fluido: velocidade |
-| `NOMRender_setParam(2, h)` | altura da **base** em andares (padrão **1**, playtest Johan 0047g) |
-| `NOMRender_setParam(3, h)` | altura no **bolsão** (padrão 1,2, sprint 0047) |
-| `NOMRender_setParam(14, c)` | cobertura dos bolsões (0 = off; **0,1** padrão) |
-| `NOMRender_setParam(15, b)` | boost dos bolsões (padrão **1,1**, playtest Johan 0047g) |
+| `NOMRender_setParam(2, h)` | altura da **base** (branca **1** / vermelha **1** / preta **1,2**; sync por cor) |
+| `NOMRender_setParam(3, h)` | altura no **bolsão** (branca **1,2** / vermelha·preta **1,1**) |
+| `NOMRender_setParam(14, c)` | cobertura dos bolsões (branca **0,1** / vermelha·preta **1**) |
+| `NOMRender_setParam(15, b)` | boost dos bolsões (branca **1,1** / vermelha **1** / preta **1,2**) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 | `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
 | `NOMRender_setParam(6, q)` | qualidade: 0 baixa, 1 média, 2 alta (padrão; Opções > Mods manda sozinho, sprint 0026) |
-| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão **0,8**, playtest Johan 0047g; 0 = só rolos) |
+| `NOMRender_setParam(7, v)` | escala do véu (branca **0,8** / vermelha·preta **1**; 0 = só rolos) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
 | `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão **3**; Opções > Mods manda sozinho) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |

@@ -93,6 +93,21 @@ return {
         package.loaded.NOM_Config = nil
         local Z = R.fromConfig("red")
         assert(near(Z.baseHeight, 1.0) and near(Z.pocketCoverage, 1.0), "vermelha não ignora sandbox")
-        assert(R.fromConfig("black").color == "white", "preta cai no look branco")
+    end,
+
+    -- playtest Johan preta: 2=1.2, 3=1.1, 7=1, 14=1, 15=1.2
+    fog_climax_black_look_fixed = function()
+        local L = R.lookBlack()
+        assert(L.color == "black")
+        assert(near(L.baseHeight, 1.2))
+        assert(near(L.baseHaze, 1.0))
+        assert(near(L.pocketHeight, 1.1))
+        assert(near(L.pocketCoverage, 1.0))
+        assert(near(L.pocketBoost, 1.2))
+        SandboxVars = { NevoaEOutroMundo = { FogBaseHeight = 0.35, FogPocketAggression = 0 } }
+        package.loaded.NOM_Config = nil
+        local Z = R.fromConfig("black")
+        assert(Z.color == "black")
+        assert(near(Z.baseHeight, 1.2) and near(Z.pocketBoost, 1.2), "preta não ignora sandbox")
     end,
 }
