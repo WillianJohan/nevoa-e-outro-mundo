@@ -153,7 +153,10 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_Estalador", function() NOM.variant("estalador") end),
                 c("UI_NOM_Debug_Corredor", function() NOM.variant("corredor") end),
                 c("UI_NOM_Debug_SemRosto", function() NOM.variant("semrosto") end),
-                c("UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end),
+                -- 0064: Screamer precisa de lookVariant (guarda-roupa). variant() só força o tipo
+                -- (forcada=carpideira) e o Johan via vestido/capuz não aparecer — prints 05/06.
+                c("UI_NOM_Debug_Carpideira", function() NOM.lookVariant("carpideira", 1) end),
+                c("UI_NOM_Debug_CarpideiraK2", function() NOM.lookVariant("carpideira", 2) end),
                 c("UI_NOM_Debug_LookCycle", function() NOM.lookCycle() end),
                 c("UI_NOM_Debug_LookInspect", function() NOM.lookInspect() end),
                 c("UI_NOM_Debug_LookVariant", function() NOM.lookVariant() end),

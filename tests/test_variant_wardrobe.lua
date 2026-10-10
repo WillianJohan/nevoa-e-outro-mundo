@@ -164,7 +164,8 @@ return {
         assert(k2.headItem == "Base.NOM_CarpideiraCapuz")
         assert(k2.headFx == "Base.NOM_CarpideiraCapuzFx")
         assert(k2.keepBody == false)
-        assert(k2.pieces and #k2.pieces == 0, "corpo Hazmat só depois do print do capuz")
+        assert(k2.pieces and #k2.pieces == 1 and k2.pieces[1].type == "Base.HospitalGown",
+            "prova: bata clara até o Hazmat")
         assert(W.isLightMass(k2))
         assert((k2.weight or 1) == 0, "prova: fora do sorteio até o corpo")
         for id = 0, 39 do

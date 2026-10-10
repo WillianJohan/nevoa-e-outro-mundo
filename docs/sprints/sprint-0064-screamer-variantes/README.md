@@ -55,14 +55,15 @@ Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 - Peça estática `NOM_CarpideiraCapuz` (Bip01_Head, `nohairnobeard`), ≤ capacete vanilla +5%
 - Relevo de boca aberta sob o pano (sem buraco de olhos); barbante no pescoço
 - Wardrobe `K2` com `headItem` (substitui mechas); corpo Hazmat + rasgo no grito **depois** do print
-- `keepBody=false`; `pieces={}` nesta prova (só o capuz); `weight=0` (só via `lookVariant`/force até o corpo)
+- `keepBody=false`; bata `HospitalGown` provisória + capuz; `weight=0` (só via botão/`lookVariant` até o Hazmat)
+- Painel: **Screamer K1 (vestido)** / **Screamer K2 (capuz)** — o botão antigo `variant(carpideira)` só forçava o tipo e **não** vestia o guarda-roupa (prints 05/06)
 
 ### Roteiro de print (Johan)
 
-1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar**.
-2. Névoa → `NOM.lookVariant("carpideira", 2)` (ou ciclar até `var=K2` no `lookInspect`).
-3. Close + médio + longe; colar `lookInspect` + print.
-4. Conferir: capuz de lençol sujo ≤ cabeça; relevo de boca; sem mechas; sem manto; escala ok.
+1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar** (Lua/clothing não hot-reload).
+2. Névoa aberta → painel Monstros → **Screamer K1 (vestido)** ou **Screamer K2 (capuz)** (não o botão genérico antigo).
+3. Close + médio + longe; `lookInspect` deve mostrar `var=K1` ou `var=K2`; colar + print.
+4. K1: vestido marinho + meias + mechas. K2: capuz ≤ cabeça + bata clara; sem mechas.
 
 ## Fora de escopo agora
 

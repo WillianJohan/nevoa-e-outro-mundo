@@ -515,6 +515,7 @@ return {
         local info = NOM_VariantLook.inspect(z)
         assert(info:find("var=K2", 1, true), "inspect: " .. info)
         assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz: " .. types(z))
+        assert(hasItem(z, "Base.HospitalGown"), "sem bata provisória: " .. types(z))
         assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
         assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
         fogOff()

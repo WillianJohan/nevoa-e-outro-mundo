@@ -88,12 +88,13 @@ W.CATALOG = {
             holes = { "Torso_Upper", "UpperArm_L" },
             keepBody = false, -- sem manto
         },
-        -- Prova do capuz (≤ cabeça+5%): só a peça de cabeça; corpo Hazmat + rasgo no grito depois.
+        -- Prova do capuz (≤ cabeça+5%): cabeça nossa + bata clara provisória (Hazmat/rasgo depois).
         -- weight=0: não entra no sorteio da névoa até o corpo; forceVariant(2) / lookVariant ainda pega.
+        -- pieces vazias liam como "não atualizou" (print 06: só cueca).
         { id = "K2", name = "embrulhada", lightMass = true, weight = 0,
             headItem = "Base.NOM_CarpideiraCapuz",
             headFx = "Base.NOM_CarpideiraCapuzFx",
-            pieces = {},
+            pieces = { { type = "Base.HospitalGown" } },
             strip = FULL,
             keepBody = false,
             dirt = { parts = TORSO, amount = 0.55 },
