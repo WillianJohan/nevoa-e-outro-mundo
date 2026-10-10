@@ -455,8 +455,9 @@ def test_textures_mirrored():
 # parte → (o que a cor tem de ser, descrição)
 def rust(c): return (luminance(c) < 0.4) & (c[:, 0] > c[:, 1])
 def bright(c): return luminance(c) > 0.6
-def dark(c): return luminance(c) < 0.12
+def dark(c): return luminance(c) < 0.22  # lote 2: buraco carvão (~L 0,05–0,21), não tinta preta pura
 def red(c): return (c[:, 0] > 2 * c[:, 1]) & (c[:, 0] > 60) & (luminance(c) < 0.4)
+def pale(c): return (luminance(c) > 0.45) & (luminance(c) < 0.90) & ((c.max(axis=1) - c.min(axis=1)) < 90)
 def cloth(c): return np.ones(len(c), bool)
 def ember(c): return (c[:, 0] > 170) & (c[:, 0] > 1.3 * c[:, 1]) & (c[:, 1] > c[:, 2])
 def smoke(c): return (luminance(c) > 0.55) & (c.max(axis=1) - c.min(axis=1) < 40)
@@ -470,7 +471,8 @@ def not_rust(c):
 
 COLOURS = {
     "EstaladorVenda": {"wire": rust, "barb": rust, "band": not_rust},
-    "CorredorBoca": {"teeth": bright, "cavity": dark, "tear": dark, "lips": red},
+    # lote 2: dentes na malha leem buraco escuro; lábio pálido (não vermelho vivo)
+    "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": pale},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
     "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},

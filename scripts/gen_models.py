@@ -89,10 +89,10 @@ FACES = {
 # Boca do Corredor
 MOUTH_PHI = 0.8        # meia abertura em ângulo em volta do rosto (~7 cm de canto a canto)
 LIP_R = 0.0030         # raio do lábio rasgado (mais o serrilhado)
-TEETH = 8              # dentes em cima e embaixo
+TEETH = 8              # dentes na malha; UV no buraco (lote 2: sem dentes de longe)
 TEAR_PHI = 0.42        # quanto o rasgo segue do canto pra orelha
-TEETH_V, LIPS_V, HOLE_V = 0.07, 0.26, 0.5
-TEETH_U = 0.53         # no meio de um dente da textura (o vão escuro fica a cada 1/8)
+TEETH_V, LIPS_V, HOLE_V = 0.55, 0.28, 0.55
+TEETH_U = 0.50
 
 # Casca do Sem-rosto: superelipsoide em volta da cabeça inteira, com folga
 SHELL_GAP = 0.008      # além do crânio
