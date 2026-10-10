@@ -570,13 +570,20 @@ local function syncPanelToSystems(which)
             NOM_SonarRules.GAP_ROLL = gmax - gmin + 1
         end
     end
-    -- 0063: intervalo dos gritos ambiente (60–500 s padrão).
-    if (all or which == "sons") and NOM_AmbientScreamRules then
+    -- Gritos ambiente 30–500 s; Carpideira/Screamer gap global 45–180 s (padrão).
+    if all or which == "sons" then
+        require "NOM_AmbientScreamRules"
         local amin, amax = P.get("AmbientGapMinMs"), P.get("AmbientGapMaxMs")
         if type(amin) == "number" and type(amax) == "number" and amax >= amin then
             NOM_AmbientScreamRules.GAP_MIN_MS = amin
             NOM_AmbientScreamRules.GAP_MAX_MS = amax
             NOM_AmbientScreamRules.GAP_ROLL = amax - amin + 1
+        end
+        require "NOM_CarpideiraRules"
+        local cmin, cmax = P.get("CarpideiraScreamGapMinMs"), P.get("CarpideiraScreamGapMaxMs")
+        if type(cmin) == "number" and type(cmax) == "number" and cmax >= cmin then
+            NOM_CarpideiraRules.SCREAM_GAP_MIN_MS = cmin
+            NOM_CarpideiraRules.SCREAM_GAP_MAX_MS = cmax
         end
     end
     if (all or which == "cinzas") and NOM_FlakeRules and NOM_FlakeRules.setDebug then
@@ -595,6 +602,7 @@ local function sectionOfParam(key)
     if key:find("^Alma", 1, false) then return "almas" end
     if key:find("^Estalador", 1, false) then return "estalador" end
     if key:find("^Ambient", 1, false) then return "sons" end
+    if key:find("^CarpideiraScreamGap", 1, false) then return "sons" end
     if key:find("^Cinza", 1, false) then return "cinzas" end
     if key == "LookForce" or key == "GlitchMode" or key == "GlitchIntensity" then return "look" end
     return nil

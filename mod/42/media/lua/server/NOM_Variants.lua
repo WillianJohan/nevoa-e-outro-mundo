@@ -70,15 +70,24 @@ local function screamedNow()
     return CR.screamed(ModData.getOrCreate(MODULE), NOM_Fog.period())
 end
 
--- p acordou a Carpideira z (why: "near", "light" ou "noise"). Um grito por névoa:
--- marca, chama a horda (alcance CarpideiraScreamRadius, audição compensada) e
--- espalha. O grito toca local em cada cliente que a tem carregada (o comando vai a
--- todos; sendPlaySound só alcança os perto), e o dono solta e caça p.
+-- p acordou a Carpideira z (why: "near", "light" ou "noise"). Um grito por névoa
+-- por PID + gap global entre qualquer grito (playtest 2026-10-10: evita clusters).
+-- Marca, chama a horda (CarpideiraScreamRadius) e espalha. O grito toca local em
+-- cada cliente que a tem carregada; o dono solta e caça p.
 local function carpideira(z, p, why)
     if not NOM_World.fog or not isKind(z, "carpideira") then return false end
-    local pids, pid = screamedNow(), NOM_VariantRules.baseId(z:getPersistentOutfitID())
-    if pids[pid] then return false end
-    pids[pid] = true
+    local data = ModData.getOrCreate(MODULE)
+    local state = CR.screamState(data, NOM_Fog.period())
+    local pid = NOM_VariantRules.baseId(z:getPersistentOutfitID())
+    if state.pids[pid] then return false end
+    local now = getTimestampMs()
+    if not CR.globalScreamReady(state, now) then
+        debugLog("carpideira gap x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
+            .. " nextAt=" .. tostring(state.nextAt))
+        return false
+    end
+    state.pids[pid] = true
+    local gap = CR.scheduleNextScream(state, now, ZombRand(10001) / 10000)
     local radius = NOM_Config.get("CarpideiraScreamRadius")
     NOM_Night.call(z, radius)
     if isServer() then
@@ -87,7 +96,8 @@ local function carpideira(z, p, why)
         NOM_Carpideira.screamed[pid] = true
         NOM_Carpideira.scream(z, p)
     end
-    debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " raio=" .. radius)
+    debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
+        .. " raio=" .. radius .. " gapMs=" .. gap)
     return true
 end
 
