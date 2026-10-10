@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `pronta pro playtest` |
+| Status | `em teste` — K1/K2 aprovadas; K3 removida na 0065 |
 | Branch | `feature/0064-screamer-variantes-ca41` |
 | Origem | Johan escolheu opções 2, 3 e 4 de `screamer-opcoes.md` (store) |
 | Base | `staging` (lote 2 + gritos) |

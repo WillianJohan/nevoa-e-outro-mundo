@@ -368,13 +368,12 @@ local function setup(opts)
     require "NOM_Config"
     require "NOM_VariantRules"
     NOM_VariantRules.forced = {}
-    -- 0064: testes genéricos pinam K1; K2/K3 têm testes próprios (forceVariant / pesos).
+    -- 0064/0065: testes genéricos pinam K1; K2 tem teste próprio (forceVariant).
     package.loaded.NOM_PanelParams = nil
     _G.NOM_PanelParams = nil
     require "NOM_PanelParams"
     NOM_PanelParams.reset()
     NOM_PanelParams.set("ScreamerK2Weight", 0)
-    NOM_PanelParams.set("ScreamerK3Weight", 0)
     dofile(FILE_STATS)
     NOM_NightStats.install()
     dofile(FILE_LOOK)
@@ -578,27 +577,6 @@ return {
         G.converge()
         assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
         assert(not hasItem(z, "Base.NOM_EmbrulhadaCasca"), "casca ficou: " .. types(z))
-    end,
-
-    -- 0064: K3 Rastejante — HospitalGown + setCrawler(canWalk=true)
-    look_carpideira_rastejante_crawler = function()
-        local G = setup()
-        NOM_PanelParams.reset()
-        local z = G.spawn({ id = idFor("carpideira", 54) })
-        fogOn(54)
-        G.converge()
-        NOM_VariantLook.forceVariant(z, "carpideira", 3)
-        local info = NOM_VariantLook.inspect(z)
-        assert(info:find("var=K3", 1, true), "inspect: " .. info)
-        assert(hasItem(z, "Base.HospitalGown"), "sem bata: " .. types(z))
-        assert(z.crawler == true, "não virou crawler")
-        assert(z.canWalk == true, "canWalk=false (alma) — K3 nunca")
-        assert(z.md.NOM_screamerCrawler == true, "ModData crawler")
-        assert(z.md.NOM_screamerVar == "K3", "ModData var")
-        fogOff()
-        G.converge()
-        assert(z.crawler == false, "crawler ficou após strip")
-        assert(z.md.NOM_screamerCrawler == nil, "ModData crawler ficou")
     end,
 
     -- 0064 print 07: alma (SkeletonMuscle + EcoVeu) forçada a Screamer lia como

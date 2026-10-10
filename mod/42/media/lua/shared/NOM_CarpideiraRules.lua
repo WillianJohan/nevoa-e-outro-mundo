@@ -74,26 +74,6 @@ function R.sobVolume(d)
     return (R.SOB_FAR - d) / (R.SOB_FAR - R.SOB_NEAR)
 end
 
--- 0064 K3 Rastejante: grito depois do getup (caminho 2c) ou timeout (fallback B).
-R.GETUP_TIMEOUT_MS = 2000
-
--- Pronto pra gritar: já de pé (não crawl e fora de OnGround/Getup/Fall) OU timeout.
--- Devolve ready, reason ("stood"|"timeout"|nil).
-function R.getupDone(stateName, crawling, elapsedMs, timeoutMs)
-    timeoutMs = timeoutMs or R.GETUP_TIMEOUT_MS
-    elapsedMs = tonumber(elapsedMs) or 0
-    if elapsedMs >= timeoutMs then return true, "timeout" end
-    if crawling == true then return false, nil end
-    local st = tostring(stateName or "")
-    if st == "" or st == "?" then return false, nil end
-    local low = string.lower(st)
-    if string.find(low, "onground", 1, true) or string.find(low, "getup", 1, true)
-        or string.find(low, "fall", 1, true) then
-        return false, nil
-    end
-    return true, "stood"
-end
-
 local function d2(ax, ay, bx, by)
     return (ax - bx) * (ax - bx) + (ay - by) * (ay - by)
 end

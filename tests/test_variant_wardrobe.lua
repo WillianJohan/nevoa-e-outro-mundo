@@ -6,7 +6,7 @@ local W = NOM_VariantWardrobe
 return {
     wardrobe_catalog_five_each = function()
         assert(W.count("estalador") == 5)
-        assert(W.count("carpideira") == 3, "Screamer: K1 + K2 + K3")
+        assert(W.count("carpideira") == 2, "Screamer: K1 + K2 (sem K3)")
         assert(W.count("corredor") == 5)
         assert(W.count("ticao") == 5)
         assert(W.count("semrosto") == 5)
@@ -159,7 +159,7 @@ return {
         end
     end,
 
-    -- 0064: K2 Embrulhada — balaclava + casca BoilerSuit; K3 crawler; pesos 1/1/1
+    -- 0064/0065: K2 Embrulhada — balaclava + casca; só K1+K2 no sorteio
     wardrobe_carpideira_embrulhada_capuz = function()
         require "NOM_PanelParams"
         NOM_PanelParams.reset()
@@ -173,32 +173,30 @@ return {
         assert(k2.pieces[2] and k2.pieces[2].type == "Base.Scarf_White", "nó lenço")
         assert(W.isLightMass(k2))
         assert((k2.weight or 1) == 1, "peso padrão K2")
-        local k3 = W.CATALOG.carpideira[3]
-        assert(k3 and k3.id == "K3" and k3.crawler == true)
-        assert((k3.weight or 1) == 1)
+        assert(W.CATALOG.carpideira[3] == nil, "K3 ainda no catálogo")
         local seen = {}
         for id = 0, 29 do
             local v = W.pick("carpideira", id)
             seen[v.id] = (seen[v.id] or 0) + 1
+            assert(v.id == "K1" or v.id == "K2", "sorteio só K1/K2: " .. v.id)
         end
-        assert(seen.K1 and seen.K2 and seen.K3, "sorteio precisa das 3: "
-            .. tostring(seen.K1) .. "/" .. tostring(seen.K2) .. "/" .. tostring(seen.K3))
+        assert(seen.K1 and seen.K2, "sorteio precisa das 2: "
+            .. tostring(seen.K1) .. "/" .. tostring(seen.K2))
     end,
 
-    -- 0064: ScreamerK*Weight do painel zera variantes do sorteio
+    -- 0065: ScreamerK*Weight do painel zera variantes do sorteio
     wardrobe_carpideira_panel_weights = function()
         require "NOM_PanelParams"
         NOM_PanelParams.reset()
         NOM_PanelParams.set("ScreamerK2Weight", 0)
-        NOM_PanelParams.set("ScreamerK3Weight", 0)
         for id = 0, 19 do
             local v = W.pick("carpideira", id)
-            assert(v.id == "K1", "só K1 com K2/K3=0: " .. v.id)
+            assert(v.id == "K1", "só K1 com K2=0: " .. v.id)
         end
         NOM_PanelParams.set("ScreamerK1Weight", 0)
-        NOM_PanelParams.set("ScreamerK3Weight", 2)
+        NOM_PanelParams.set("ScreamerK2Weight", 2)
         local v = W.pick("carpideira", 0)
-        assert(v.id == "K3", "só K3 com peso: " .. tostring(v and v.id))
+        assert(v.id == "K2", "só K2 com peso: " .. tostring(v and v.id))
         NOM_PanelParams.reset()
     end,
 

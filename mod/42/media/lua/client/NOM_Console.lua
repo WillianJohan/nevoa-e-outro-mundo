@@ -428,94 +428,6 @@ function NOM.arrasto()
     NOM_Debug.send({ op = "arrasto", id = id })
 end
 
--- Spike Screamer Rastejante (0064): comparar setCrawler(false) / toggleCrawling / caminho 2c.
--- Loga state/crawl/floor/canWalk a cada ~0,5 s por 3 s (internal/screamer-rastejante-spike.md).
-local rastejaWatch -- { z, untilMs, tag, nextMs }
-
-local function rastejaSnap(z, tag)
-    if not z then return end
-    local st = (z.getCurrentStateName and z:getCurrentStateName()) or "?"
-    local crawl = z.isCrawling and z:isCrawling()
-    local floor = z.isOnFloor and z:isOnFloor()
-    local walk = z.isCanWalk and z:isCanWalk()
-    local front = z.isFallOnFront and z:isFallOnFront()
-    NOM_DebugLog.say(string.format(
-        "[NOM] rasteja %s state=%s crawl=%s floor=%s fallFront=%s canWalk=%s",
-        tostring(tag), tostring(st), tostring(crawl), tostring(floor),
-        tostring(front), tostring(walk)))
-end
-
-local function rastejaStartWatch(z, tag)
-    rastejaSnap(z, tag .. "/t0")
-    local now = getTimestampMs()
-    rastejaWatch = { z = z, untilMs = now + 3000, nextMs = now + 500, tag = tag }
-end
-
-local function rastejaOnTick()
-    local w = rastejaWatch
-    if not w then return end
-    local now = getTimestampMs()
-    if now >= w.nextMs then
-        rastejaSnap(w.z, w.tag .. "/t" .. tostring(math.floor((3000 - (w.untilMs - now)) / 500)))
-        w.nextMs = now + 500
-    end
-    if now >= w.untilMs then
-        rastejaSnap(w.z, w.tag .. "/fim")
-        rastejaWatch = nil
-    end
-end
-
-Events.OnTick.Add(rastejaOnTick)
-
-local function rastejaTarget()
-    local p = player()
-    if not p then return nil end
-    local z = NOM_Debug.nearest(p)
-    if not z then
-        NOM_DebugLog.say("[NOM] rasteja: nenhum zumbi perto")
-        return nil
-    end
-    -- Garante rastejo + canWalk (nunca setCanWalk(false) na Rastejante).
-    if z.setCanWalk then z:setCanWalk(true) end
-    if z.setCrawler and not (z.isCrawling and z:isCrawling()) then
-        z:setCrawler(true)
-        if z.setOnFloor then z:setOnFloor(true) end
-    end
-    return z
-end
-
--- setCrawler(false) puro (hipótese: troca de pose sem anim).
-function NOM.rastejaToggle()
-    local z = rastejaTarget()
-    if not z then return end
-    z:setCrawler(false)
-    rastejaStartWatch(z, "setCrawler(false)")
-end
-
--- toggleCrawling() (vanilla DebugContextMenu; limpa knockedDown/fallOnFront/onFloor).
-function NOM.rastejaToggle2()
-    local z = rastejaTarget()
-    if not z then return end
-    if z.toggleCrawling then
-        z:toggleCrawling()
-    else
-        NOM_DebugLog.say("[NOM] rasteja: toggleCrawling indisponível")
-        return
-    end
-    rastejaStartWatch(z, "toggleCrawling")
-end
-
--- Caminho 2c: cair de bruços e deixar o motor levantar (OnGround→Getup).
-function NOM.rastejaLevanta()
-    local z = rastejaTarget()
-    if not z then return end
-    if z.setFallOnFront then z:setFallOnFront(true) end
-    if z.setOnFloor then z:setOnFloor(true) end
-    if z.setKnockedDown then z:setKnockedDown(true) end
-    z:setCrawler(false)
-    rastejaStartWatch(z, "2c-fall+getup")
-end
-
 -- Perambular (sprint 0036): uma onda agora. O servidor decide (névoa aberta) e quem simula
 -- manda os grupos andarem; com -debug, o log diz quantos saíram.
 function NOM.wander() NOM_Debug.send({ op = "wander" }) end
@@ -805,9 +717,6 @@ NOM.HELP = {
     { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão (4–20, 68%, 3 cores)" },
     { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
     { "NOM.arrasto()", "zumbi mais perto vira Arrasto (crawler lento; só névoa vermelha ou preta) — spike §3.5" },
-    { "NOM.rastejaToggle()", "spike Screamer: setCrawler(false) no mais perto + log 3 s (state/crawl/floor)" },
-    { "NOM.rastejaToggle2()", "spike Screamer: toggleCrawling() no mais perto + log 3 s" },
-    { "NOM.rastejaLevanta()", "spike Screamer: caminho 2c (fallOnFront+knockedDown+setCrawler false) + log 3 s" },
     { "NOM.ash(dens, taxa, ar)", "cinzas: sem args mostra knobs e vivas; dens/taxa/ar em 0..3 multiplicam (live); ash(\"reset\") volta ao padrão" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },
     { "NOM.noclip(on)", "atravessa paredes; sem argumento inverte" },

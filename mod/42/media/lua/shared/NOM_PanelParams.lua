@@ -46,10 +46,9 @@ P.DEFAULTS = {
     GlitchMode = "original",
     GlitchIntensity = 110, -- 0..200 (%); multiplica tear/scanline/static do modo (Opções = 110%)
     SemRostoPct = 12, -- bíblia §7.3; live remapeia peso branco (sandbox 10:6:3:6)
-    -- 0064 Screamer: pesos relativos K1/K2/K3 (0 = fora do sorteio).
+    -- 0064/0065 Screamer: pesos relativos K1/K2 (0 = fora do sorteio).
     ScreamerK1Weight = 1,
     ScreamerK2Weight = 1,
-    ScreamerK3Weight = 1,
 }
 
 -- type: int | float | bool | enum
@@ -73,7 +72,6 @@ P.SCHEMA = {
     SemRostoPct = { type = "int", min = 0, max = 40, step = 1, section = "look" },
     ScreamerK1Weight = { type = "int", min = 0, max = 10, step = 1, section = "look" },
     ScreamerK2Weight = { type = "int", min = 0, max = 10, step = 1, section = "look" },
-    ScreamerK3Weight = { type = "int", min = 0, max = 10, step = 1, section = "look" },
 }
 
 local live = {}
@@ -86,7 +84,7 @@ P.KEYS = {
     "AmbientGapMinMs", "AmbientGapMaxMs",
     "CinzaRateMult", "CinzaDensityMult", "LookForce",
     "GlitchMode", "GlitchIntensity", "SemRostoPct",
-    "ScreamerK1Weight", "ScreamerK2Weight", "ScreamerK3Weight",
+    "ScreamerK1Weight", "ScreamerK2Weight",
 }
 
 local function inList(list, v)

@@ -72,8 +72,8 @@ W.CATALOG = {
             dirt = { parts = TORSO, amount = 0.3 },
         },
     },
-    -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
-    -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada (prova capuz). K3 Rastejante — depois.
+    -- Screamer (kind carpideira). 0064/0065: K1 + K2 (K3 Rastejante removida no playtest).
+    -- Pesos live: ScreamerK1Weight / ScreamerK2Weight no NOM_PanelParams.
     carpideira = {
         -- K1 Que Nunca Cresceu: laço + pinafore (alças) + gola branca + meias + cabelo escuro longo.
         { id = "K1", name = "nunca_cresceu", lightMass = true, weight = 1,
@@ -94,7 +94,6 @@ W.CATALOG = {
         },
         -- K2 Embrulhada caminho A (diretor v3): balaclava vanilla + lençol; sem capuz 3D.
         -- Scarf nó #5A4A38; casca BoilerSuit + máscaras Hazmat (sem gola/estampa).
-        -- Pesos live: ScreamerK*Weight no NOM_PanelParams (padrão 1/1/1).
         { id = "K2", name = "embrulhada", lightMass = true, weight = 1,
             headItem = "Base.NOM_CarpideiraCapuz",
             headFx = "Base.NOM_CarpideiraCapuzFx",
@@ -111,16 +110,6 @@ W.CATALOG = {
             },
             keepBody = false,
             dirt = { parts = TORSO, amount = 0.55 },
-        },
-        -- K3 Rastejante: HospitalGown + setCrawler (canWalk=true). Grito = getup 2c.
-        { id = "K3", name = "rastejante", lightMass = true, weight = 1,
-            crawler = true,
-            pieces = {
-                { type = "Base.HospitalGown", tint = rgb("BDB5A6") },
-            },
-            strip = FULL,
-            keepBody = false,
-            dirt = { parts = TORSO, amount = 0.45 },
         },
     },
     -- Corredor C1–C5: tronco escuro N3 + risco claro N4 (LOOKS.corredor.body).
