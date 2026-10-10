@@ -153,11 +153,10 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_Estalador", function() NOM.variant("estalador") end),
                 c("UI_NOM_Debug_Corredor", function() NOM.variant("corredor") end),
                 c("UI_NOM_Debug_SemRosto", function() NOM.variant("semrosto") end),
-                -- 0064: Screamer K1/K2/K3 (pesos live ScreamerK*Weight).
+                -- 0064/0065: Screamer K1/K2 (pesos live ScreamerK*Weight).
                 c("UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end),
                 c("UI_NOM_Debug_CarpideiraK1", function() NOM.lookVariant("carpideira", 1) end),
                 c("UI_NOM_Debug_CarpideiraK2", function() NOM.lookVariant("carpideira", 2) end),
-                c("UI_NOM_Debug_CarpideiraK3", function() NOM.lookVariant("carpideira", 3) end),
                 c("UI_NOM_Debug_LookCycle", function() NOM.lookCycle() end),
                 c("UI_NOM_Debug_LookInspect", function() NOM.lookInspect() end),
                 c("UI_NOM_Debug_LookVariant", function() NOM.lookVariant() end),
@@ -175,14 +174,9 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_Reset", function() NOM.almaReset() end),
                 -- HELP/AGENTS: almaCfg ainda no console; um botão cobre a regra do painel.
                 c("UI_NOM_Debug_B_AlmaWhite", function() NOM.almaCfg("white") end) } },
-            -- Spike Arrasto / Rastejante (0059, §3.5 caminho A).
+            -- Spike Arrasto (0059, §3.5 caminho A).
             { title = "UI_NOM_Debug_C_Arrasto", desc = "UI_NOM_Debug_C_Arrasto_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.arrasto() end) } },
-            -- Spike Screamer Rastejante (0064): setCrawler vs toggle vs caminho 2c.
-            { title = "UI_NOM_Debug_C_RastejaSpike", desc = "UI_NOM_Debug_C_RastejaSpike_Desc", choices = {
-                c("UI_NOM_Debug_B_Rasteja1", function() NOM.rastejaToggle() end),
-                c("UI_NOM_Debug_B_Rasteja2", function() NOM.rastejaToggle2() end),
-                c("UI_NOM_Debug_B_Rasteja3", function() NOM.rastejaLevanta() end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {
@@ -282,10 +276,9 @@ P.SECTIONS = {
             } },
             -- bíblia §7.3: proporção Sem-rosto (~12%); live + Copiar definições.
             sliderCard("UI_NOM_Debug_C_SemRostoPct", "SemRostoPct"),
-            -- 0064: pesos relativos das 3 variantes Screamer (0 = fora do sorteio).
+            -- 0064/0065: pesos relativos K1/K2 (0 = fora do sorteio).
             sliderCard("UI_NOM_Debug_C_ScreamerK1", "ScreamerK1Weight"),
             sliderCard("UI_NOM_Debug_C_ScreamerK2", "ScreamerK2Weight"),
-            sliderCard("UI_NOM_Debug_C_ScreamerK3", "ScreamerK3Weight"),
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {
