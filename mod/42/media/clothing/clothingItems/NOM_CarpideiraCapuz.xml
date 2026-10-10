@@ -10,6 +10,7 @@
 	<m_AllowRandomTint>false</m_AllowRandomTint>
 	<m_AttachBone>Bip01_Head</m_AttachBone>
 	<m_HatCategory>nohairnobeard</m_HatCategory>
-	<m_MasksFolder>none</m_MasksFolder>
+	<!-- Como CrashHelmetFULL / Sem-rosto: esconde cabelo por baixo (senão o volume sobe). -->
+	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
 	<textureChoices>NOM\NOM_CarpideiraCapuz3D</textureChoices>
 </clothingItem>

@@ -432,27 +432,31 @@ def test_cabelo_close_to_head():
 
 def test_capuz_within_head_plus_5pct():
     """0064 Embrulhada: capuz ≤ SKULL+5% (não capacete-ovo); topo caído; boca na frente.
-    Pontos internos do crânio ficam dentro; os de orelha do HELMET ficam de fora de propósito."""
+    Pontos internos do crânio ficam dentro; o pano (cloth) respeita o elipsoide;
+    boca/barbante podem sair um pouco na frente (relevo)."""
     g = generator()
     for sex in SEXES:
         verts, faces, _, _, _ = load("CarpideiraCapuz", sex)
         sk = SKULL[sex]
         c, r = np.array(sk["c"]), np.array(sk["r"])
-        # amostra o elipsoide do crânio (90% do raio) — tem que estar coberta
         for th in (0.3, 0.8, 1.2, 1.6):
             for ps in (0.0, 1.0, 2.0, 3.5):
                 p = c + 0.9 * r * np.array([math.cos(th), math.sin(th) * math.sin(ps),
                                            math.sin(th) * math.cos(ps)])
                 assert inside_mesh(verts, faces, p), "%s: crânio %s fora" % (sex, p)
         h = HELMET[sex]
-        x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
-        assert np.abs(y).max() < sk["r"][1] * 1.05 + 0.006, "%s: capuz largo demais vs SKULL %.3f" % (
-            sex, np.abs(y).max())
-        assert x.max() < h["x"][1] * 1.05 + 0.008, "%s: capuz alto demais %.3f" % (sex, x.max())
-        assert x.min() > h["x"][0] - 0.055, "%s: capuz baixo demais %.3f" % (sex, x.min())
-        top = verts[verts[:, 0] > 0.14]
-        assert len(top) > 20 and top[:, 2].mean() < 0.01, "%s: topo não caiu pra trás" % sex
         m = g.build("CarpideiraCapuz", sex)
+        cloth = np.array(m.verts)[sorted({q for f, p in zip(m.faces, m.parts) if p == "cloth" for q in f})]
+        x, y, z = cloth[:, 0], cloth[:, 1], cloth[:, 2]
+        assert np.abs(y).max() <= sk["r"][1] * 1.05 + 0.001, "%s: capuz largo demais vs SKULL %.3f" % (
+            sex, np.abs(y).max())
+        assert z.max() <= sk["c"][2] + sk["r"][2] * 1.05 + 0.002, "%s: capuz fundo demais %.3f" % (
+            sex, z.max())
+        assert x.max() <= sk["c"][0] + sk["r"][0] * 1.05 + 0.002, "%s: capuz alto demais %.3f" % (
+            sex, x.max())
+        assert x.min() > h["x"][0] - 0.055, "%s: capuz baixo demais %.3f" % (sex, x.min())
+        top = cloth[cloth[:, 0] > 0.14]
+        assert len(top) > 20 and top[:, 2].mean() < 0.01, "%s: topo não caiu pra trás" % sex
         assert "cloth" in m.parts and "rope" in m.parts and "mouth" in m.parts, \
             "%s: falta pano/boca/barbante" % sex
         mouth = [np.array(m.verts)[list(f)].mean(axis=0)
@@ -469,8 +473,8 @@ def test_laco_on_crown():
         h = HELMET[sex]
         assert verts[:, 0].min() > 0.12, "%s: laço baixo demais" % sex
         assert verts[:, 0].max() < h["x"][1] + 0.04, "%s: laço alto demais" % sex
-        assert np.abs(verts[:, 1]).max() < 0.045, "%s: laço largo demais" % sex
-        assert np.abs(verts[:, 1]).max() > 0.020, "%s: laço estreito demais" % sex
+        assert np.abs(verts[:, 1]).max() < 0.060, "%s: laço largo demais" % sex
+        assert np.abs(verts[:, 1]).max() > 0.035, "%s: laço estreito demais (precisa ~cabeça)" % sex
 
 
 def test_cabelo_hides_face():

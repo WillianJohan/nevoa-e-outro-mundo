@@ -27,11 +27,12 @@ return {
         assert(k1.keepBody == false, "sem manto")
         local types = {}
         for i = 1, #k1.pieces do types[k1.pieces[i].type] = k1.pieces[i] end
-        assert(types["Base.Dress_Normal"] and types["Base.Dress_Normal"].tint, "vestido marinho tintável")
-        assert(types["Base.Shirt_FormalTINT"] and types["Base.Shirt_FormalTINT"].tint, "blusa")
-        assert(types["Base.Socks_Long_White"], "meias brancas")
+        assert(types["Base.Dress_Straps"] and types["Base.Dress_Straps"].tint, "pinafore marinho tintável")
+        assert(types["Base.Shirt_FormalTINT"] and types["Base.Shirt_FormalTINT"].tint, "blusa/gola")
+        assert(types["Base.Socks_Long"] and types["Base.Socks_Long"].tint, "meias tingidas")
         assert(types["Base.Shoes_Black"], "sapato")
         assert(k1.headItem == "Base.NOM_CarpideiraLaco", "laço no alto")
+        assert(k1.hairModel == "Long" and k1.hairColor, "cabelo escuro comprido")
         assert(not types["Base.Dress_Long"] and not types["Base.Skirt_Long"], "viúva fora")
         assert(W.CATALOG.corredor[1].id == "C1")
         assert(W.CATALOG.corredor[1].pieces[1].type == "Base.Shirt_Lumberjack_TINT")
@@ -106,7 +107,7 @@ return {
         assert(W.CATALOG.estalador[1].pieces[1].tint == nil)
         assert(W.CATALOG.estalador[2].pieces[2].tint ~= nil)
         assert(W.CATALOG.estalador[4].pieces[1].tint ~= nil)
-        assert(W.CATALOG.carpideira[1].pieces[1].tint ~= nil, "Dress_Normal tint")
+        assert(W.CATALOG.carpideira[1].pieces[2].tint ~= nil, "Dress_Straps tint")
     end,
 
     wardrobe_treat_sets_dirt_blood_tint = function()
@@ -145,7 +146,7 @@ return {
         local k1 = W.CATALOG.carpideira[1]
         assert(k1.name == "nunca_cresceu")
         assert(k1.keepBody == false)
-        local navy = k1.pieces[1].tint
+        local navy = k1.pieces[2].tint  -- Dress_Straps
         assert(navy and navy[1] < 0.25 and navy[3] > navy[1], "marinho apagado")
         for i = 1, #W.CATALOG.carpideira do
             local v = W.CATALOG.carpideira[i]
@@ -158,13 +159,14 @@ return {
         end
     end,
 
-    -- 0064: K2 Embrulhada — capuz + casca Hazmat (fora do sorteio até aceite)
+    -- 0064: K2 Embrulhada — capuz + casca BoilerSuit (fora do sorteio até aceite)
     wardrobe_carpideira_embrulhada_capuz = function()
         local k2 = W.CATALOG.carpideira[2]
         assert(k2 and k2.id == "K2" and k2.name == "embrulhada")
         assert(k2.headItem == "Base.NOM_CarpideiraCapuz")
         assert(k2.headFx == "Base.NOM_CarpideiraCapuzFx")
         assert(k2.keepBody == false)
+        assert(k2.skinColor, "pés acinzentados")
         assert(k2.pieces and #k2.pieces == 1 and k2.pieces[1].type == "Base.NOM_EmbrulhadaCasca",
             "casca Embrulhada: " .. tostring(k2.pieces and k2.pieces[1] and k2.pieces[1].type))
         assert(W.isLightMass(k2))
@@ -179,8 +181,11 @@ return {
         local k1 = W.CATALOG.carpideira[1]
         assert(k1 and k1.id == "K1")
         assert(k1.headItem == "Base.NOM_CarpideiraLaco")
-        assert(k1.pieces[1].type == "Base.Dress_Normal")
-        assert(k1.pieces[2].type == "Base.Shirt_FormalTINT")
-        assert(k1.pieces[3].type == "Base.Socks_Long_White")
+        assert(k1.hairModel == "Long", "cabelo comprido")
+        assert(k1.hairColor and k1.hairColor[1] < 0.15, "cabelo escuro")
+        assert(k1.pieces[1].type == "Base.Shirt_FormalTINT")
+        assert(k1.pieces[2].type == "Base.Dress_Straps", "pinafore com alças")
+        assert(k1.pieces[3].type == "Base.Socks_Long")
+        assert(k1.pieces[3].tint, "meias tingidas (≠ pele)")
     end,
 }

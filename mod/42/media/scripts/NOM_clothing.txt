@@ -87,13 +87,13 @@ module Base
         ClothingItem = NOM_CarpideiraLaco,
     }
 
-    /* 0064 K2: casca Hazmat vanilla + textura lençol (corpo embrulhado). */
+    /* 0064 K2: casca BoilerSuit vanilla (sem hood) + textura lençol (corpo embrulhado). */
     item NOM_EmbrulhadaCasca
     {
         DisplayCategory = Clothing,
         ItemType = base:clothing,
         Weight = 0.1,
-        Icon = Hazmatsuit,
+        Icon = BoilerSuitBlack,
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_EmbrulhadaCasca,

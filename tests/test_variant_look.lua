@@ -53,8 +53,10 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
     ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
     ["Base.Dress_SatinNegligee"] = "dress", ["Base.Dress_Normal"] = "longdress",
-    ["Base.Dress_Knees"] = "dress", ["Base.Shirt_FormalTINT"] = "shirt",
-    ["Base.Socks_Long_White"] = "socks", ["Base.Shoes_Black"] = "shoes",
+    ["Base.Dress_Straps"] = "longdress", ["Base.Dress_Knees"] = "dress",
+    ["Base.Shirt_FormalTINT"] = "shirt",
+    ["Base.Socks_Long_White"] = "socks", ["Base.Socks_Long"] = "socks",
+    ["Base.Shoes_Black"] = "shoes",
     ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
     ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
     ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
@@ -167,6 +169,10 @@ local function setup(opts)
         z.hv = {}
         function z.hv:setSkinTextureName(n) vc(); self.name = n end
         function z.hv:getSkinTexture() vc(); return self.name or "M_ZedBody01_level1" end
+        function z.hv:setHairModel(n) vc(); self.hairModel = n end
+        function z.hv:setHairColor(c) vc(); self.hairColor = c end
+        function z.hv:setNaturalHairColor(c) vc(); self.naturalHairColor = c end
+        function z.hv:setSkinColor(c) vc(); self.skinColor = c end
         z.ivs = jlist(G)
         z.inv, z.worn = {}, {}
         function z:getHumanVisual() vc(); return self.hv end
@@ -434,8 +440,8 @@ return {
             "Base.Shirt_Lumberjack_TINT", "Base.HoodieDOWN_WhiteTINT", "Base.Jacket_Black",
             "Base.Jacket_Shellsuit_TINT",
         }), "Corredor natural sem wardrobe: " .. types(zs.corredor))
-        assert(hasItem(zs.carpideira, "Base.Dress_Normal")
-            and hasItem(zs.carpideira, "Base.Socks_Long_White")
+        assert(hasItem(zs.carpideira, "Base.Dress_Straps")
+            and hasItem(zs.carpideira, "Base.Socks_Long")
             and hasItem(zs.carpideira, "Base.NOM_CarpideiraLaco"),
             "Screamer natural sem K1: " .. types(zs.carpideira))
         assert(hasWard(zs.semrosto, {
@@ -520,7 +526,7 @@ return {
         end
     end,
 
-    -- 0064: Screamer K1 Que Nunca Cresceu — laço + vestido médio + meias (sem mechas/manto)
+    -- 0064: Screamer K1 Que Nunca Cresceu — laço + pinafore + meias + cabelo escuro
     look_carpideira_nunca_cresceu = function()
         local G = setup()
         local z = G.spawn({ id = idFor("carpideira", 52) })
@@ -530,10 +536,12 @@ return {
         assert(hasItem(z, "Base.NOM_CarpideiraLaco"), "sem laço: " .. types(z))
         assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
         assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
-        assert(hasItem(z, "Base.Dress_Normal"), "sem vestido até o joelho: " .. types(z))
-        assert(hasItem(z, "Base.Shirt_FormalTINT"), "sem blusa manga longa: " .. types(z))
-        assert(hasItem(z, "Base.Socks_Long_White"), "sem meias brancas: " .. types(z))
+        assert(hasItem(z, "Base.Dress_Straps"), "sem pinafore (alças): " .. types(z))
+        assert(hasItem(z, "Base.Shirt_FormalTINT"), "sem blusa/gola: " .. types(z))
+        assert(hasItem(z, "Base.Socks_Long"), "sem meias: " .. types(z))
         assert(hasItem(z, "Base.Shoes_Black"), "sem sapato: " .. types(z))
+        assert(z.hv.hairModel == "Long", "cabelo comprido: " .. tostring(z.hv.hairModel))
+        assert(z.hv.hairColor and z.hv.hairColor.r < 0.15, "cabelo escuro")
         assert(z.hv.name == nil, "0060b: Carpideira sem Body")
         NOM_VariantLook.forceVariant(z, "carpideira", 1)
         local info = NOM_VariantLook.inspect(z)
@@ -1309,7 +1317,7 @@ return {
         G.ms(NOM_DissolveRules.MS * 2)
         assert(hasItem(z, "Base.NOM_CarpideiraLaco") and z.hv.name == nil, "o monstro sumiu: " .. types(z))
         -- 0064 K1: FULL strip tira a camisa vanilla; o monstro fica com wardrobe K1
-        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Normal"), types(z))
+        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Straps"), types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
         fogOff()
         G.converge()

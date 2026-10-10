@@ -115,18 +115,23 @@ STREAKS = (-0.28, 0.06, 0.34)   # ângulos das três mechas brancas (0 = meio da
 HAIR_V, STREAK_V = (0.05, 0.30), (0.42, 0.58)
 
 # Capuz da Embrulhada (0064): justo no crânio (SKULL+5%), não no capacete-ovo; topo caído.
-CAPUZ_GAP = 0.0015     # folga mínima (~+2% sobre side)
-CAPUZ_WRINKLE = 0.0035
-CAPUZ_DROOP = 0.012    # topo puxado pra trás (pano molhado)
-CAPUZ_CINCH = 0.12     # estrangulamento do pescoço (fração do raio)
+# Clamp duro no elipsoide SKULL*1.05 DEPOIS de dobras/relevo (senão wrinkle estoura o teto).
+CAPUZ_GAP = 0.0008     # folga mínima
+CAPUZ_WRINKLE = 0.0025
+CAPUZ_DROOP = 0.010    # topo puxado pra trás (pano molhado)
+CAPUZ_CINCH = 0.16     # estrangulamento do pescoço (fração do raio)
+CAPUZ_SKULL = {        # = tests/test_models.SKULL (touca/hóquei)
+    "M": {"c": (0.085, 0.0, -0.004), "r": (0.092, 0.066, 0.084)},
+    "F": {"c": (0.082, 0.0, 0.0), "r": (0.088, 0.062, 0.080)},
+}
 CAPUZ_V = (0.02, 0.38)  # faixa do pano na textura
 CAPUZ_MOUTH_V = (0.42, 0.50)
 CAPUZ_ROPE_V = (0.54, 0.62)
 CAPUZ_PLASTIC_V = (0.66, 0.78)
-# Laço K1: ponto claro no alto da cabeça (marca de longe)
+# Laço K1: dois loops legíveis, largura ≈ cabeça, branco-sujo (marca de longe)
 LACO_V = (0.10, 0.45)
-LACO_HALF_W = 0.028
-LACO_HALF_H = 0.016
+LACO_HALF_W = 0.048    # ≈ meia-largura da cabeça (loops leem contra cabelo escuro)
+LACO_HALF_H = 0.022
 LACO_TOP = 0.188
 
 # Crosta do Tição: ≤ cabeça vanilla +5%; contorno irregular (lascas), sem cúpula lisa
@@ -612,68 +617,78 @@ def capuz(sex):
     """Capuz/pano da Embrulhada: lençol justo no crânio (≤ SKULL+5%), topo caído pra trás,
     relevo de testa/nariz/queixo/boca, barbante no pescoço com duas pontas (anti cabeça-ovo)."""
     m = Mesh("NOM_CarpideiraCapuz3D")
-    # gap menor que o Sem-rosto: SKULL+folga, não capacete fechado
     verts, uvs, faces, cx = shell_grid(sex, CAPUZ_GAP, CAPUZ_V)
     centre = np.array([cx, 0.0, 0.0])
     f = FACES[sex]
-    skull_ry = {"M": 0.066, "F": 0.062}[sex] * 1.05
-    mouth_c = np.array([f["mouth"], 0.0, f["nose"] * 0.92])
-    mouth_r = np.array([f["mouth_half"] * 2.4, 0.032, 0.038])
-    nose_c = np.array([0.055, 0.0, f["nose"] * 0.88])
-    brow_c = np.array([0.11, 0.0, f["nose"] * 0.70])
-    chin_c = np.array([f["chin"][0] + 0.012, 0.0, f["chin"][1] * 0.85])
+    sk = CAPUZ_SKULL[sex]
+    sk_c = np.array(sk["c"])
+    sk_r = np.array(sk["r"]) * 1.05   # teto duro: SKULL+5%
+    mouth_c = np.array([f["mouth"], 0.0, f["nose"] * 0.88])
+    mouth_r = np.array([f["mouth_half"] * 2.0, 0.028, 0.032])
+    nose_c = np.array([0.055, 0.0, f["nose"] * 0.85])
+    brow_c = np.array([0.11, 0.0, f["nose"] * 0.66])
+    chin_c = np.array([f["chin"][0] + 0.012, 0.0, f["chin"][1] * 0.80])
 
     def ell_dist(p, c, r):
         rel = (p - c) / r
         return math.sqrt(max(0.0, (rel ** 2).sum()))
 
+    def clamp_skull(p):
+        """Puxa pro elipsoide SKULL+5% (exceto nó do pescoço, um pouco abaixo)."""
+        rel = (p - sk_c) / sk_r
+        n2 = float((rel ** 2).sum())
+        if n2 <= 1.0:
+            return p
+        # abaixo do queixo: deixa o cincho / barbante um pouco mais baixo
+        if p[0] < sk_c[0] - sk_r[0] * 0.55:
+            rel2 = np.array([rel[0], rel[1], rel[2]])
+            # aperta só YZ
+            lat = math.sqrt(max(1e-9, rel2[1] ** 2 + rel2[2] ** 2))
+            if lat > 1.0:
+                return np.array([p[0], sk_c[1] + sk_r[1] * rel2[1] / lat,
+                                 sk_c[2] + sk_r[2] * rel2[2] / lat])
+            return p
+        return sk_c + rel / math.sqrt(n2) * sk_r
+
     for k, p in enumerate(verts):
-        # aperta pro crânio (SKULL+5%): nada de capacete-ovo
-        hy = abs(p[1])
-        if hy > skull_ry:
-            p = np.array([p[0], math.copysign(skull_ry * 0.98, p[1]), p[2]])
-        if abs(p[2]) > skull_ry * 1.35:
-            p = np.array([p[0], p[1], math.copysign(skull_ry * 1.30, p[2])])
+        # pré-aperto pro crânio (antes das dobras)
+        p = clamp_skull(p)
         d = unit(p - centre)
         hx, hy, hz = round(p[0], 5), round(p[1], 5), round(p[2], 5)
         wrinkle = CAPUZ_WRINKLE * (0.4 + 1.1 * (hash01(hx * 17.1 + hy * 3.7, hz * 11.3, 51) - 0.3))
-        # dobras radiais saindo do nó do pescoço
         neck_t = max(0.0, min(1.0, (0.06 - p[0]) / 0.10))
-        fold = 0.004 * neck_t * math.sin(8.0 * math.atan2(p[1], p[2] + 1e-6))
-        # cincho forte no pescoço (estrangulamento visível)
+        fold = 0.003 * neck_t * math.sin(8.0 * math.atan2(p[1], p[2] + 1e-6))
         chin_t = max(0.0, min(1.0, (f["chin"][0] + 0.05 - p[0]) / 0.07))
         cinch = 1.0 - CAPUZ_CINCH * chin_t ** 1.2
         q = centre + (p - centre) * cinch + d * (wrinkle + fold)
-        # topo caído pra trás (nunca cúpula)
         top_t = max(0.0, min(1.0, (p[0] - 0.12) / 0.07))
         q = q + np.array([-0.004 * top_t, 0.0, -CAPUZ_DROOP * top_t ** 1.4])
-        # relevo do rosto empurrando o pano (testa, nariz, queixo, boca)
         for c, r, push, dent in (
-            (brow_c, np.array([0.025, 0.040, 0.030]), 0.005, 0.0),
-            (nose_c, np.array([0.035, 0.018, 0.028]), 0.007, 0.0),
-            (chin_c, np.array([0.020, 0.028, 0.022]), 0.004, 0.0),
-            (mouth_c, mouth_r, 0.005, 0.011),
+            (brow_c, np.array([0.022, 0.036, 0.026]), 0.0035, 0.0),
+            (nose_c, np.array([0.030, 0.016, 0.024]), 0.005, 0.0),
+            (chin_c, np.array([0.018, 0.024, 0.020]), 0.003, 0.0),
+            (mouth_c, mouth_r, 0.004, 0.009),
         ):
             dist = ell_dist(q, c, r)
             if q[2] > 0.01 and dist < 1.5:
                 t = max(0.0, 1.0 - dist / 1.5)
                 q = q + d * (push * t) - d * (dent * t ** 1.4)
-        verts[k] = q
+        verts[k] = clamp_skull(q)
     m.add_shell(verts, uvs, faces, "cloth")
-    # boca: saliência oval escura (sem olhos)
     best, best_d = None, 1e9
     for p in verts:
         d = ell_dist(p, mouth_c, mouth_r)
         if d < best_d and p[2] > 0.03:
             best, best_d = p, d
-    mouth_pt = (best + unit(best - centre) * 0.002) if best is not None else mouth_c
-    blob(m, mouth_pt, (0.011, 0.016, 0.008), "mouth", 0,
+    mouth_pt = (best + unit(best - centre) * 0.0015) if best is not None else mouth_c
+    mouth_pt = clamp_skull(mouth_pt)
+    blob(m, mouth_pt, (0.009, 0.013, 0.006), "mouth", 0,
          (0.5, (CAPUZ_MOUTH_V[0] + CAPUZ_MOUTH_V[1]) / 2), lat=6, lon=10)
-    # barbante no pescoço (toro elíptico estável) + pontas tetra (como farpas da venda)
-    neck_x = f["chin"][0] + 0.010
-    ry = f["side"] * 0.85 + CAPUZ_GAP
-    rz = f["nose"] * 0.68
-    nseg, r_rope = 24, 0.0020
+    # barbante no pescoço (mais grosso pra ler) + nó com pontas
+    neck_x = f["chin"][0] + 0.008
+    ry = sk_r[1] * 0.78
+    rz = sk_r[2] * 0.72
+    nseg, r_rope = 24, 0.0032
     pts, frames, prof = [], [], []
     for i in range(nseg):
         th = 2 * math.pi * i / nseg
@@ -693,14 +708,17 @@ def capuz(sex):
     m.add_shell(rv, ruv, rfc, "rope")
     knot = np.array([neck_x - 0.002, 0.0, rz * 0.95])
     rope_v = (CAPUZ_ROPE_V[0] + CAPUZ_ROPE_V[1]) / 2
-    for sgn, length in ((1, 0.040), (-1, 0.036)):
-        d = unit(np.array([-0.75, sgn * 0.5, 0.2]))
+    # nó visível (bolinha) + duas pontas caindo
+    blob(m, knot, (0.005, 0.006, 0.006), "rope", 1,
+         (0.5, rope_v), lat=5, lon=6)
+    for sgn, length in ((1, 0.048), (-1, 0.044)):
+        d = unit(np.array([-0.85, sgn * 0.45, 0.15]))
         e1 = unit(np.cross(d, [0.0, 0.0, 1.0]))
         e2 = np.cross(d, e1)
-        base = [knot + 0.0032 * (math.cos(t) * e1 + math.sin(t) * e2) for t in (0, 2.0944, 4.1888)]
+        base = [knot + 0.0040 * (math.cos(t) * e1 + math.sin(t) * e2) for t in (0, 2.0944, 4.1888)]
         tip = knot + d * length
-        uvs = [(0.5, rope_v)] * 4
-        m.add_shell(base + [tip], uvs, [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]], "rope", flat=True)
+        uvs_t = [(0.5, rope_v)] * 4
+        m.add_shell(base + [tip], uvs_t, [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]], "rope", flat=True)
     return m
 
 
@@ -726,25 +744,25 @@ def laco(sex):
             up = unit(np.cross(out, tang))
             out = unit(np.cross(tang, up))
             frames.append((out, up))
-            r = 0.0035
+            r = 0.0055
             prof.append([(r * math.cos(2 * math.pi * j / 5), r * math.sin(2 * math.pi * j / 5)) for j in range(5)])
         uv_of = lambda u, j, pa, pb, i: (u, LACO_V[0] + (LACO_V[1] - LACO_V[0]) * (0.5 + 0.5 * math.copysign(1, pb)))
         v, uv, fc = sweep(pts, frames, prof, uv_of, closed=True)
         m.add_shell(v, uv, fc, "bow")
     # pontas caindo
-    for sgn, length in ((1, 0.04), (-1, 0.036)):
+    for sgn, length in ((1, 0.05), (-1, 0.045)):
         n = 5
         pts, frames, prof = [], [], []
         for i in range(n):
             t = i / (n - 1)
-            pts.append(knot + np.array([-0.005 - length * t, sgn * (0.006 + 0.01 * t), 0.002 * t]))
-            tang = unit(np.array([-length, sgn * 0.01, 0.002]))
+            pts.append(knot + np.array([-0.005 - length * t, sgn * (0.008 + 0.014 * t), 0.002 * t]))
+            tang = unit(np.array([-length, sgn * 0.014, 0.002]))
             side = unit(np.array([0.0, 1.0, 0.0]))
             up = unit(np.cross(tang, side))
             side = unit(np.cross(up, tang))
             frames.append((side, up))
-            w = 0.004 * (1 - 0.4 * t)
-            prof.append([(0.001, w), (-0.001, w), (-0.001, -w), (0.001, -w)])
+            w = 0.0055 * (1 - 0.4 * t)
+            prof.append([(0.0012, w), (-0.0012, w), (-0.0012, -w), (0.0012, -w)])
         uv_of = lambda u, j, pa, pb, i: (u, LACO_V[0] + (LACO_V[1] - LACO_V[0]) * 0.5)
         v, uv, fc = sweep(pts, frames, prof, uv_of, closed=False)
         m.add_shell(v, uv, fc, "bow")

@@ -316,6 +316,27 @@ local function applyWardrobe(list, w, id)
         w.lookFx = variant.headFx or variant.headItem
     end
     w.wardrobe = {}
+    -- Cabelo / pele da variante (K1 cabelo escuro longo; K2 pés acinzentados).
+    -- Evidência: HumanVisual.setHairModel/setHairColor/setSkinColor (javap projectzomboid.jar).
+    local z = w._z
+    if z and z.getHumanVisual then
+        local hv = z:getHumanVisual()
+        if hv then
+            if variant.hairModel and hv.setHairModel then
+                hv:setHairModel(variant.hairModel)
+            end
+            if variant.hairColor and hv.setHairColor and ImmutableColor and ImmutableColor.new then
+                local c = variant.hairColor
+                local col = ImmutableColor.new(c[1], c[2], c[3], 1)
+                hv:setHairColor(col)
+                if hv.setNaturalHairColor then hv:setNaturalHairColor(col) end
+            end
+            if variant.skinColor and hv.setSkinColor and ImmutableColor and ImmutableColor.new then
+                local c = variant.skinColor
+                hv:setSkinColor(ImmutableColor.new(c[1], c[2], c[3], 1))
+            end
+        end
+    end
     if not variant.pieces then return end
     for _, piece in ipairs(variant.pieces) do
         local iv = ItemVisual.new()

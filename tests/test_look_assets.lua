@@ -51,6 +51,7 @@ local SIZE = {
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
+    ["skinned\\clothes\\bob_boilersuit"] = 256,               -- Clothes/BolierSuit/Boilersuit_Grey.png
     -- modelos nossos (scripts/gen_models.py, sprints 0041 e 0042): textura nossa, 128 como as outras peças
     ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
@@ -235,15 +236,21 @@ return {
         assert(not body:find("Defense", 1, true), "casca com defesa")
     end,
 
-    -- 0064 K2: casca Embrulhada = Hazmat + máscaras (como EcoCasca) + textura lençol
+    -- 0064 K2: casca Embrulhada = BoilerSuit (SEM hood Hazmat) + máscaras do Boilersuit + lençol
     look_assets_embrulhada_shell = function()
         local x = xmlOf("NOM_EmbrulhadaCasca")
-        assert(tag(x, "m_MaleModel") == "media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X")
-        assert(tag(x, "m_FemaleModel") == "media\\models_X\\Skinned\\Clothes\\Kate_Hazmat.X")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
+            "corpo tem que ser BoilerSuit (Hazmat tem hood 1,6×)")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
+        assert(not tag(x, "m_MaleModel"):lower():find("hazmat", 1, true), "Hazmat hood voltou pra casca")
         assert(tag(x, "textureChoices") == "NOM\\NOM_EmbrulhadaCasca")
         local masks = {}
         for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
-        assert(#masks == 14, "máscaras do corpo: " .. #masks)
+        assert(table.concat(masks, ",") == "2,3,5,7,9", "máscaras Boilersuit: " .. table.concat(masks, ","))
         assert(items().NOM_EmbrulhadaCasca:find("BodyLocation = base:zeddmg", 1, true))
+        -- Capuz esconde cabelo (máscaras de chapéu), senão volume sobe
+        local cap = xmlOf("NOM_CarpideiraCapuz")
+        assert(tag(cap, "m_HatCategory") == "nohairnobeard")
+        assert(tag(cap, "m_MasksFolder") == "media/textures/Clothes/Hat/Masks")
     end,
 }

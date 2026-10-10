@@ -75,15 +75,16 @@ W.CATALOG = {
     -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
     -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada (prova capuz). K3 Rastejante — depois.
     carpideira = {
-        -- K1 Que Nunca Cresceu: laço nosso + vestido médio + manga longa + meias joelho.
-        -- Sem mechas 3D (cabelo vanilla aparece); headItem=laço.
+        -- K1 Que Nunca Cresceu: laço + pinafore (alças) + gola branca + meias + cabelo escuro longo.
         { id = "K1", name = "nunca_cresceu", lightMass = true,
             headItem = "Base.NOM_CarpideiraLaco",
             headFx = "Base.NOM_CarpideiraLacoFx",
+            hairModel = "Long",
+            hairColor = rgb("1A1512"),  -- #2B2420–#14110F
             pieces = {
-                { type = "Base.Dress_Normal", tint = rgb("2E3442") },
-                { type = "Base.Shirt_FormalTINT", tint = rgb("D9D2C3") },
-                { type = "Base.Socks_Long_White" },
+                { type = "Base.Shirt_FormalTINT", tint = rgb("F0EBE0") },  -- gola/blusa clara
+                { type = "Base.Dress_Straps", tint = rgb("2E3442") },      -- pinafore alças
+                { type = "Base.Socks_Long", tint = rgb("C8C2B4") },        -- meias ≠ pele
                 { type = "Base.Shoes_Black" },
             },
             strip = FULL,
@@ -91,10 +92,11 @@ W.CATALOG = {
             holes = { "Torso_Upper", "UpperArm_L" },
             keepBody = false,
         },
-        -- K2 Embrulhada: capuz ≤ SKULL+5% + casca Hazmat (lençol). weight=0 até aceite.
+        -- K2 Embrulhada: capuz ≤ SKULL+5% + casca BoilerSuit (sem hood Hazmat). weight=0 até aceite.
         { id = "K2", name = "embrulhada", lightMass = true, weight = 0,
             headItem = "Base.NOM_CarpideiraCapuz",
             headFx = "Base.NOM_CarpideiraCapuzFx",
+            skinColor = rgb("8A8680"),  -- pés descalços acinzentados
             pieces = { { type = "Base.NOM_EmbrulhadaCasca" } },
             strip = {
                 "Dress_", "LongCoat_", "Poncho", "Boilersuit", "HospitalGown",

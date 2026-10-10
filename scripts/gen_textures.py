@@ -366,25 +366,28 @@ def eco_veu(rng, size=128):
 
 
 def embrulhada_casca(rng, size=256):
-    # 0064 K2: lençol #BDB5A6 + plástico #8E8A82 + manchas #6E5E4C + 3 amarras de barbante
+    # 0064 K2: lençol #BDB5A6 + plástico #8E8A82 (30–40%) + manchas + 3 amarras #5A4A38 ≥3% altura
     y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
     sheet = color((189, 181, 166), 0.92 + 0.08 * fbm(rng, size))
-    dirt = np.clip((y - 0.1) / 0.75, 0, 1)
-    rgb = mix(sheet, (150, 140, 125), dirt * 0.25)
-    # manchas grandes esparsas (contraste alto pra ler de longe)
+    dirt = np.clip((y - 0.08) / 0.75, 0, 1)
+    rgb = mix(sheet, (140, 130, 115), dirt * 0.35)  # barra mais escura embaixo
     blot = np.zeros((size, size), np.float32)
     for i, (cx, cy) in enumerate(((0.25, 0.35), (0.7, 0.55), (0.45, 0.75), (0.15, 0.65), (0.85, 0.3), (0.55, 0.2))):
         d = np.sqrt(((x - cx + 0.5) % 1 - 0.5) ** 2 * 1.1 + (y - cy) ** 2)
         blot = np.maximum(blot, np.clip(1.0 - d / (0.16 + 0.02 * (i % 3)), 0, 1) ** 1.2)
-    rgb = mix(rgb, (90, 74, 56), blot * 0.8)
-    # plástico ~35%
-    plast = (fbm(rng, size, (2, 3), (0.6, 0.4)) > 0.52).astype(np.float32) * 0.65
-    shine = 0.85 + 0.15 * fbm(rng, size, (4, 5), (0.5, 0.5))
-    rgb = mix(rgb, (120, 116, 108), plast * shine)
-    # três amarras horizontais (peito, cintura, joelhos) — faixas escuras largas
+    rgb = mix(rgb, (110, 94, 76), blot * 0.85)
+    # plástico #8E8A82 ~35% com leve brilho
+    plast = (fbm(rng, size, (2, 3), (0.6, 0.4)) > 0.50).astype(np.float32) * 0.70
+    shine = 0.88 + 0.12 * fbm(rng, size, (4, 5), (0.5, 0.5))
+    rgb = mix(rgb, (142, 138, 130), plast * shine)
+    # três amarras (peito, cintura, joelhos): ≈ 3% da altura, borda suave (contraste mid)
+    rope = (90, 74, 56)  # #5A4A38
     for cy in (0.28, 0.48, 0.72):
-        band = np.exp(-((y - cy) * 22) ** 2)
-        rgb = mix(rgb, (70, 56, 42), band * 0.95)
+        band = np.exp(-((y - cy) / 0.022) ** 2) ** 1.4
+        twist = 0.90 + 0.10 * np.sin(x * 28 + cy * 17)
+        rgb = mix(rgb, rope, band * 0.88 * twist)
+        knot = np.exp(-(((x - (0.35 + 0.15 * cy)) / 0.05) ** 2 + ((y - cy) / 0.035) ** 2))
+        rgb = mix(rgb, (70, 56, 40), knot * 0.75)
     return rgb
 
 

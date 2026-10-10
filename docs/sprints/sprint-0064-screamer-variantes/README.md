@@ -15,16 +15,16 @@ Substitui o visual de manto/viúva (K1–K5) por três identidades sorteadas. Co
 
 | # | Variante | id | Escopo técnico | Aceite |
 |---|----------|-----|----------------|--------|
-| 1 | **Que Nunca Cresceu** | `K1` | laço nosso + vestido médio + manga longa + meias joelho (sem mechas) | checklist §13 + print |
-| 2 | **Embrulhada** | `K2` | capuz ≤ SKULL+5% + casca Hazmat (lençol); rasgo no grito depois | spike visual → resto |
+| 1 | **Que Nunca Cresceu** | `K1` | laço + pinafore (alças) + gola + meias + cabelo escuro longo | checklist §13 + print |
+| 2 | **Embrulhada** | `K2` | capuz ≤ SKULL+5% + casca BoilerSuit (sem hood Hazmat); rasgo no grito depois | spike visual → resto |
 | 3 | **Rastejante** | `K3` | spike `setCrawler`→ficar de pé (`internal/screamer-rastejante-spike.md`) **antes** de implementar; botões `NOM.rasteja*` no painel | spike no jogo → resto |
 
 ## K1 — Que Nunca Cresceu (esta entrega)
 
-- Laço estático `NOM_CarpideiraLaco` no alto (sem mechas; cabelo vanilla aparece)
-- `Dress_Normal` tinta `#2E3442` (até o joelho, não saia curta)
-- `Shirt_FormalTINT` `#D9D2C3` (manga longa + gola)
-- `Socks_Long_White` + `Shoes_Black`
+- Laço estático `NOM_CarpideiraLaco` (dois loops ≈ largura da cabeça)
+- Cabelo vanilla `Long` + `setHairColor` escuro `#1A1512`
+- `Dress_Straps` tinta `#2E3442` (pinafore com alças) + `Shirt_FormalTINT` gola clara
+- `Socks_Long` tinta `#C8C2B4` (≠ pele) + `Shoes_Black`
 - `keepBody=false` (sem manto)
 
 ### Roteiro de print (Johan)
@@ -52,9 +52,9 @@ Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 
 ## K2 — Embrulhada (esta entrega)
 
-- Capuz `NOM_CarpideiraCapuz`: ≤ **SKULL+5%** (não capacete-ovo), topo caído, boca úmida, barbante com pontas
-- Corpo `NOM_EmbrulhadaCasca` (Hazmat vanilla + máscaras + textura lençol/plástico/amarras)
-- `weight=0` (só botão / `lookVariant(..., 2)` até aceite); Turn the nearest limpa alma/esqueleto
+- Capuz `NOM_CarpideiraCapuz`: ≤ **SKULL+5%** (clamp duro), `nohairnobeard` + máscaras de chapéu
+- Corpo `NOM_EmbrulhadaCasca` = **BoilerSuit** vanilla (sem hood; Hazmat empilhava capuz ~1,6×) + lençol/plástico/amarras
+- Pés descalços acinzentados (`setSkinColor`); `weight=0` até aceite; Turn the nearest limpa alma
 - Rasgo no grito (`setTextureChoice`) depois do aceite visual
 
 ### Roteiro de print (Johan)
