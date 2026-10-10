@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 0067: casca de brasa permanente na preta — BoilerSuit (sem hood Hazmat: hood
      empilha na crosta/K2 e infla a silhueta). Textura ≥70% transparente (só fissuras);
-     shader NOM_Brasa pulsa via Alpha. Máscaras como EmbrulhadaCasca (esconde gola vanilla). -->
+     shader NOM_Brasa pulsa via TintColour.r (AllowRandomTint). Máscaras como
+     EmbrulhadaCasca (esconde gola vanilla). -->
 <clothingItem>
 	<m_MaleModel>skinned\clothes\bob_boilersuit</m_MaleModel>
 	<m_FemaleModel>skinned\clothes\kate_boilersuit</m_FemaleModel>
 	<m_GUID>b7a6c5d4-e3f2-41a0-9b8c-7d6e5f4a3b21</m_GUID>
 	<m_Static>false</m_Static>
 	<m_AllowRandomHue>false</m_AllowRandomHue>
-	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AllowRandomTint>true</m_AllowRandomTint>
 	<m_AttachBone></m_AttachBone>
 	<m_Masks>0</m_Masks>
 	<m_Masks>12</m_Masks>

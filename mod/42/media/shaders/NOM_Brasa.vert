@@ -1,6 +1,6 @@
 #version 330
 // NOM: Noise of Mist — brasa permanente (sprint 0067), vértice skinned.
-// Tremida de ar quente ≤ 0,6% da altura, só cintura pra cima; fase via Alpha.
+// Tremida de ar quente ≤ 0,6% da altura, só cintura pra cima; fase via TintColour.r.
 // Código original, licença MIT. Interface idêntica ao NOM_Dissolve.vert.
 
 layout (location = 0) in vec4 vertex;
@@ -19,6 +19,7 @@ uniform float FinalScale = 1.0;
 uniform float targetDepth = 0.5;
 uniform float HighResDepthMultiplier = 0.0;
 uniform float Alpha;
+uniform vec3 TintColour;
 
 mat4 nomBone(float index, float weight)
 {
@@ -41,7 +42,7 @@ void main()
     vec4 local = vec4(vertex.xyz, 1.0);
     // y local alto = torso/cabeça; 0,006 ≈ 0,6% da altura do corpo
     float upper = smoothstep(0.35, 0.75, clamp(vertex.y * 0.5 + 0.5, 0.0, 1.0));
-    float wave = sin(uv.y * 38.0 + Alpha * 62.0) * 0.006 * upper;
+    float wave = sin(uv.y * 38.0 + TintColour.r * 62.0) * 0.006 * upper;
     local.xyz += normalize(normal.xyz + vec3(0.001)) * wave;
     nomNormal = (skin * vec4(normal.xyz, 0.0)).xyz;
     gl_Position = nomProject(skin * local);

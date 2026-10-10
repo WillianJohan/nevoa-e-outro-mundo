@@ -1,6 +1,7 @@
 -- Brasa permanente nos Tições na névoa preta (sprint 0067): casca BoilerSuit com
--- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa), pulso via Alpha. Só cliente.
--- Com efeitos desligados veste o gêmeo estático. Cede o Alpha ao dissolve (mutação).
+-- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). Pulso via TintColour.r /
+-- ModelInstance.tintR — Alpha do personagem fica pro dissolve e pra visibilidade
+-- do jogo (ADR-016). Só cliente. Efeitos off → gêmeo estático.
 if isServer() then return end
 
 require "NOM_BrasaRules"
@@ -85,6 +86,11 @@ local function wear(z)
     local iv = ItemVisual.new()
     local item = itemType()
     iv:setItemType(item)
+    -- canal de pulso começa no meio do range escuro (AllowRandomTint na casca)
+    if iv.setTint and ImmutableColor and ImmutableColor.new then
+        local mid = R.pulseChannel((R.INTENSITY_MIN + R.INTENSITY_MAX) * 0.5)
+        iv:setTint(ImmutableColor.new(mid, 1, 1, 1))
+    end
     z:getItemVisuals():add(iv)
     local seed = seedOf(z)
     worn[z] = {
@@ -105,6 +111,10 @@ local function syncItem(z, e)
     removeIv(z, e)
     local iv = ItemVisual.new()
     iv:setItemType(want)
+    if want == R.ITEM and iv.setTint and ImmutableColor and ImmutableColor.new then
+        local mid = R.pulseChannel((R.INTENSITY_MIN + R.INTENSITY_MAX) * 0.5)
+        iv:setTint(ImmutableColor.new(mid, 1, 1, 1))
+    end
     z:getItemVisuals():add(iv)
     e.iv = iv
     e.item = want
@@ -115,8 +125,33 @@ local function lightHold(z)
     return NOM_TicaoFreeze and NOM_TicaoFreeze.frozen and NOM_TicaoFreeze.frozen[z] == true
 end
 
-local function pulseTick(z, e, now, players)
+-- Escreve o canal de pulso no ModelInstance (RenderCharacter relê tintR/G/B a cada
+-- quadro — spike-dissolve). Fallback: ItemVisual:setTint pro próximo rebuild.
+-- Evidência: ModelInstance.tintR public; getReadyModelData() EXISTS (IsoGameCharacter).
+local function applyPulseChannel(z, e, channel)
+    local list = z.getReadyModelData and z:getReadyModelData()
+    if list then
+        for i = 0, list:size() - 1 do
+            local mi = list:get(i)
+            if mi then
+                local iv = mi.getItemVisual and mi:getItemVisual()
+                if iv == e.iv then
+                    mi.tintR = channel
+                    mi.tintG = 1
+                    mi.tintB = 1
+                    return
+                end
+            end
+        end
+    end
+    if e.iv and e.iv.setTint and ImmutableColor and ImmutableColor.new then
+        e.iv:setTint(ImmutableColor.new(channel, 1, 1, 1))
+    end
+end
+
+local function pulseTick(z, e, now)
     if not wantFx() then return end
+    -- Dissolve.busy: Alpha é do dissolve; não competir e não tocar setAlpha.
     if NOM_Dissolve.busy and NOM_Dissolve.busy(z) then return end
     if NOM_EmberShell.has and NOM_EmberShell.has(z) then return end
     local hunting = false
@@ -126,10 +161,7 @@ local function pulseTick(z, e, now, players)
     end
     local period = R.periodMs(e.seed, hunting)
     local pulse = R.pulse(now, period, e.phase0, lightHold(z))
-    local a = R.alpha(pulse)
-    for pn = 0, players - 1 do
-        z:setAlpha(pn, math.min(a, z:getAlpha(pn)))
-    end
+    applyPulseChannel(z, e, R.pulseChannel(pulse))
 end
 
 -- EmberShell vai vestir NOM_Brasa: tira a casca permanente pra não empilhar BoilerSuit.
@@ -140,7 +172,6 @@ end
 Events.OnTick.Add(function()
     if isGamePaused and isGamePaused() then return end
     local now = getTimestampMs()
-    local players = getNumActivePlayers()
     if not active() then
         if count > 0 then
             local zs = {}
@@ -164,7 +195,7 @@ Events.OnTick.Add(function()
                 syncItem(z, worn[z])
             end
             local e = worn[z]
-            if e then pulseTick(z, e, now, players) end
+            if e then pulseTick(z, e, now) end
         end
     end
     local gone = {}

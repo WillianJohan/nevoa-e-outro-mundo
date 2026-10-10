@@ -38,12 +38,22 @@ return {
         assert(math.abs(a - p) < 1e-6, "não deve respirar na luz")
     end,
 
-    brasa_alpha_keeps_dissolve_solid = function()
-        local a0 = R.alpha(R.INTENSITY_MIN)
-        local a1 = R.alpha(R.INTENSITY_MAX)
-        assert(a0 >= R.ALPHA_LO - 1e-6 and a1 <= R.ALPHA_HI + 1e-6)
-        assert(a0 >= 0.92, "crosta dissolve precisa Alpha >= 0.92: " .. a0)
-        assert(a1 >= a0)
+    -- Canal próprio 0..1 pro TintColour.r; shader faz 0.30 + 0.70*channel.
+    brasa_pulse_channel_maps_intensity = function()
+        assert(math.abs(R.pulseChannel(R.INTENSITY_FLOOR) - 0) < 1e-6)
+        assert(math.abs(R.pulseChannel(1.0) - 1) < 1e-6)
+        local mid = R.pulseChannel(0.55)
+        local inten = R.INTENSITY_FLOOR + R.INTENSITY_SPAN * mid
+        assert(math.abs(inten - 0.55) < 1e-5, "remap " .. inten)
+        local light = R.pulseChannel(0.30)
+        assert(light <= 0.01, "luz no canal: " .. light)
+        local lightHi = R.pulseChannel(0.45)
+        assert(lightHi > 0.2 and lightHi < 0.25, "luz teto canal: " .. lightHi)
+    end,
+
+    brasa_no_alpha_pulse_api = function()
+        assert(R.alpha == nil, "Alpha do personagem não é canal de pulso")
+        assert(R.ALPHA_LO == nil and R.ALPHA_HI == nil)
     end,
 
     brasa_core_only_at_peak = function()

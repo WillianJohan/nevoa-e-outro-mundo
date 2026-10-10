@@ -1,4 +1,5 @@
 -- Shader NOM_Brasa (sprint 0067): mesma interface do item-model que NOM_Dissolve.
+-- Pulso em TintColour.r; Alpha só visibilidade (tex.a * Alpha).
 local DIR = "mod/42/media/shaders/"
 
 local function read(path)
@@ -38,14 +39,35 @@ return {
         assert(read(DIR .. "NOM_Brasa.frag"))
     end,
 
-    brasa_shader_reads_alpha = function()
+    brasa_frag_alpha_times_visibility = function()
         local frag = assert(read(DIR .. "NOM_Brasa.frag"))
         assert(uniforms(frag).Alpha == "float")
+        assert(uniforms(frag).TintColour == "vec3")
         assert(frag:find("discard", 1, true))
-        assert(frag:find("0.92", 1, true), "faixa Alpha alinhada às regras")
+        -- saída respeita Alpha do jogo (zumbi escondido / dissolve)
+        assert(frag:find("tex.a * Alpha", 1, true)
+            or frag:find("tex.a*Alpha", 1, true),
+            "alpha de saída deve ser tex.a * Alpha")
+        assert(not frag:find("vec4(clamp(col, 0.0, 1.0), tex.a)", 1, true),
+            "não pode ignorar Alpha na saída")
+    end,
+
+    brasa_frag_pulse_via_tint_remap = function()
+        local frag = assert(read(DIR .. "NOM_Brasa.frag"))
+        assert(frag:find("TintColour.r", 1, true), "pulso no canal TintColour.r")
+        assert(frag:find("0.30", 1, true) and frag:find("0.70", 1, true),
+            "inten = 0.30 + 0.70 * pulse")
+        assert(not frag:find("0.55 + 0.45", 1, true), "piso antigo 55% removido")
+        assert(not frag:find("0.92", 1, true), "faixa Alpha 0.92 não é mais pulso")
+    end,
+
+    brasa_vert_wobble_from_tint = function()
         local vert = assert(read(DIR .. "NOM_Brasa.vert"))
-        assert(uniforms(vert).Alpha == "float", "vert usa Alpha na tremida")
+        assert(uniforms(vert).TintColour == "vec3", "vert lê TintColour na tremida")
+        assert(vert:find("TintColour.r", 1, true), "fase da tremida via TintColour.r")
         assert(vert:find("0.006", 1, true), "deslocamento ≤ 0,6%")
+        local st = assert(read(DIR .. "NOM_Brasa_static.vert"))
+        assert(st:find("0.006", 1, true))
     end,
 
     brasa_shader_compiles = function()

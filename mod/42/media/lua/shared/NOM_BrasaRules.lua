@@ -1,21 +1,21 @@
 -- Regras puras da brasa permanente na névoa preta (sprint 0067, direção
--- look-brasa-nevoa-preta): pulso lento por zumbi, Alpha na faixa que mantém a
--- crosta Dissolve sólida, e "prende a respiração" na luz. Sem API do jogo.
+-- look-brasa-nevoa-preta): pulso lento por zumbi e "prende a respiração" na luz.
+-- Intensidade vai pro canal TintColour.r (não no Alpha — esse fica pro dissolve /
+-- visibilidade do jogo). Sem API do jogo.
 require "NOM_Math"
 
 NOM_BrasaRules = {
     PERIOD_MIN_MS = 2400,
     PERIOD_MAX_MS = 3200,
     HUNT_PERIOD_MS = 1600,
+    -- Shader: inten = INTENSITY_FLOOR + INTENSITY_SPAN * pulseChannel
+    INTENSITY_FLOOR = 0.30,
+    INTENSITY_SPAN = 0.70,
     INTENSITY_MIN = 0.55,
     INTENSITY_MAX = 1.0,
     CORE_GATE = 0.85,
     LIGHT_HOLD_MIN = 0.30,
     LIGHT_HOLD_MAX = 0.45,
-    -- Alpha do personagem: crosta NOM_Dissolve fica sólida acima de 0,85;
-    -- pulso mora em 0,92–1,0 pra não abrir buraco na crosta.
-    ALPHA_LO = 0.92,
-    ALPHA_HI = 1.0,
     ITEM = "Base.NOM_BrasaCasca",
     ITEM_STATIC = "Base.NOM_BrasaCascaStatic",
 }
@@ -57,11 +57,10 @@ function R.pulse(nowMs, periodMs, phase0, lightHold)
     return lo + (hi - lo) * clamp(u, 0, 1)
 end
 
--- Mapeia pulso → Alpha do personagem (faixa ALPHA_LO..ALPHA_HI).
-function R.alpha(pulse)
-    pulse = clamp(tonumber(pulse) or R.INTENSITY_MIN, R.INTENSITY_MIN, R.INTENSITY_MAX)
-    local k = (pulse - R.INTENSITY_MIN) / (R.INTENSITY_MAX - R.INTENSITY_MIN)
-    return R.ALPHA_LO + (R.ALPHA_HI - R.ALPHA_LO) * k
+-- Canal 0..1 pro TintColour.r / ModelInstance.tintR (shader remapeia).
+function R.pulseChannel(intensity)
+    intensity = tonumber(intensity) or R.INTENSITY_MIN
+    return clamp((intensity - R.INTENSITY_FLOOR) / R.INTENSITY_SPAN, 0, 1)
 end
 
 function R.coreOn(pulse)

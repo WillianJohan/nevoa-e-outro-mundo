@@ -16,6 +16,7 @@ uniform float FinalScale = 1.0;
 uniform float targetDepth = 0.5;
 uniform float HighResDepthMultiplier = 0.0;
 uniform float Alpha;
+uniform vec3 TintColour;
 
 vec4 nomProject(vec4 p)
 {
@@ -30,7 +31,7 @@ void main()
     nomUv = uv * UVScale;
     vec4 local = vec4(vertex.xyz, 1.0);
     float upper = smoothstep(0.35, 0.75, clamp(vertex.y * 0.5 + 0.5, 0.0, 1.0));
-    float wave = sin(uv.y * 38.0 + Alpha * 62.0) * 0.006 * upper;
+    float wave = sin(uv.y * 38.0 + TintColour.r * 62.0) * 0.006 * upper;
     local.xyz += normalize(normal.xyz + vec3(0.001)) * wave;
     nomNormal = (transform * vec4(normal.xyz, 0.0)).xyz;
     gl_Position = nomProject(transform * local);

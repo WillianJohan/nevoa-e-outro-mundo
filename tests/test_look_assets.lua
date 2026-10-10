@@ -244,6 +244,7 @@ return {
         assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
         assert(tag(x, "m_Shader") == "NOM_Brasa")
         assert(tag(x, "textureChoices") == "NOM\\NOM_BrasaCasca")
+        assert(tag(x, "m_AllowRandomTint") == "true", "pulso via TintColour precisa AllowRandomTint")
         local masks = {}
         for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
         assert(#masks == 14, "máscaras corpo: " .. #masks)
