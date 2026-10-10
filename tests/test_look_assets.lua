@@ -71,7 +71,11 @@ end
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
 -- pra opção desligada e pro shader que não compila) e a casca do Eco.
-local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_CarpideiraManto", "NOM_TicaoCrosta", "NOM_EcoVeu" }
+-- I1/I7: só gêmeos *Fx de peça com modelo (sem Manto/Roupa 2D).
+local FX = {
+    "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo",
+    "NOM_TicaoCrosta", "NOM_EcoVeu",
+}
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
 local function xmlOf(name) return read(MEDIA .. "clothing/clothingItems/" .. name .. ".xml") end
@@ -96,7 +100,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 17, "esperava 17 itens, achou " .. n)
+        assert(n == 17, "esperava 17 itens (+SemRostoRosto A′), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -127,11 +131,14 @@ return {
         end
     end,
 
-    -- pele: mesmo tamanho da pele de zumbi vanilla (Body/M_ZedBody01_level1.png, 256)
+    -- pele em uso (I7): só Tição; mesmo tamanho da pele vanilla (256)
     look_assets_skins = function()
-        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira", "NOM_Ticao" }) do
-            local w, h = pngSize(MEDIA .. "textures/Body/" .. skin .. ".png")
-            assert(w == 256 and h == 256, skin .. " " .. w .. "x" .. h)
+        local w, h = pngSize(MEDIA .. "textures/Body/NOM_Ticao.png")
+        assert(w == 256 and h == 256, "NOM_Ticao " .. w .. "x" .. h)
+        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira", "NOM_SemRosto" }) do
+            local f = io.open(MEDIA .. "textures/Body/" .. skin .. ".png", "rb")
+            assert(f == nil, skin .. " morta ainda no repo (I7)")
+            if f then f:close() end
         end
     end,
 
@@ -146,9 +153,9 @@ return {
 
     -- rodar o gerador de novo não muda um byte das texturas do visual (semente fixa)
     look_assets_deterministic = function()
-        local paths = {}
-        for _, n in ipairs({ "Estalador", "Corredor", "Carpideira", "Ticao" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
-        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "CarpideiraManto", "EcoCinza", "EcoVeu", "Brasa" }) do
+        local paths = { "textures/Body/NOM_Ticao.png" }
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "SemRostoRosto",
+            "CarpideiraCabelo", "CarpideiraManto", "EcoCinza", "EcoVeu", "Brasa" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}

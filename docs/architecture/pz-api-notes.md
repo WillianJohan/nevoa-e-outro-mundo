@@ -997,6 +997,19 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
 - Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
   (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
 
+### 14.4a Tinta / sujeira / sangue / buraco no `ItemVisual` (0060f lote A)
+
+Evidência `javap` B42 + `clothing.txt` (2026-10-09):
+
+- `ItemVisual.setTint(ImmutableColor)` EXISTS. `getTint(ClothingItem)` só devolve a tinta
+  se `ClothingItem.m_AllowRandomTint` / script `AllowRandomTint=true`; senão força branco.
+  **U1:** só chamar `setTint` em itens `*TINT` / `AllowRandomTint` (ex.: `Tshirt_WhiteTINT`,
+  `Vest_DefaultTEXTURE_TINT`, `Trousers_SuitWhite`, `Dress_Long`). `HospitalGown` /
+  `Apron_White` / `PonchoGarbageBag` sem tint no catálogo (`NOM_VariantWardrobe`).
+- `setDirt(BloodBodyPartType, float)`, `setBlood(BloodBodyPartType, float)`,
+  `setHole(BloodBodyPartType)` EXISTS (`ItemVisual` no Exposer).
+- Guarda-roupa: `shared/NOM_VariantWardrobe.lua` + `client/NOM_VariantLook.applyWardrobe`.
+
 ### 14.4 Esconder a roupa (sprint 0016)
 
 Bytecode do B42.21. Decisão na [emenda da ADR-012](adr-012-visual-das-variantes.md#emenda-de-2026-10-05--sprint-0016-a-roupa-comum-some-na-variante).

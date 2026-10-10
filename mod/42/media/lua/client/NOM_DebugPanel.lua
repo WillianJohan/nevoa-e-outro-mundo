@@ -155,6 +155,9 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_SemRosto", function() NOM.variant("semrosto") end),
                 c("UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end),
                 c("UI_NOM_Debug_LookCycle", function() NOM.lookCycle() end),
+                c("UI_NOM_Debug_LookInspect", function() NOM.lookInspect() end),
+                c("UI_NOM_Debug_LookVariant", function() NOM.lookVariant() end),
+                c("UI_NOM_Debug_LookClean", function() NOM.lookClean() end),
                 c("UI_NOM_Debug_UndoVariant", function() NOM.turnZombie(0) end) } },
             { title = "UI_NOM_Debug_C_Pull", desc = "UI_NOM_Debug_C_Pull_Desc", choices = {
                 c("UI_NOM_Debug_B_Pull", function() NOM.getZombie() end) } },
@@ -253,6 +256,17 @@ P.SECTIONS = {
                 { label = "UI_NOM_Debug_B_LookWrong", value = "wrong" },
                 { label = "UI_NOM_Debug_B_LookSil", value = "silhouette" },
             }),
+            -- I6: knobs live (Copiar definições) + botões dos NOM.glitch* (AGENTS.md / HELP).
+            enumCard("UI_NOM_Debug_C_GlitchMode", "GlitchMode", {
+                { label = "UI_NOM_Debug_B_GlitchOff", value = "off" },
+                { label = "UI_NOM_Debug_B_GlitchOrig", value = "original" },
+                { label = "UI_NOM_Debug_B_GlitchEdge", value = "bordas" },
+            }),
+            sliderCard("UI_NOM_Debug_C_GlitchInt", "GlitchIntensity"),
+            { title = "UI_NOM_Debug_C_GlitchAct", desc = "UI_NOM_Debug_C_GlitchAct_Desc", choices = {
+                c("UI_NOM_Debug_B_GlitchCycle", function() NOM.glitch() end),
+                c("UI_NOM_Debug_B_Show", function() NOM.glitchIntensity() end),
+            } },
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {
@@ -451,6 +465,10 @@ function List:layout()
             local val = NOM_PanelParams.format(key, NOM_PanelParams.get(key))
             local live = NOM_PanelParams.isLive(key)
             item.value = (live and "* " or "") .. val
+            -- valor numa linha própria entre a descrição e a trilha (print 10: "110%" cobria o texto)
+            item.valueX = cpad
+            item.valueY = cy
+            cy = cy + SMALL_HGT + 4
             local minus = card.choices[1]
             local plus = card.choices[2]
             local mLabel = getText(minus.key)
@@ -465,8 +483,6 @@ function List:layout()
                 card = card, choice = plus, index = 2, label = pLabel, on = nil }
             self.sliders[#self.sliders + 1] = { key = key, x = trackX, y = cy + (PILL_H - SLIDER_H) / 2,
                 w = trackW, h = SLIDER_H, card = card }
-            item.valueX = trackX
-            item.valueY = cy - SMALL_HGT - 2
             cy = cy + PILL_H + cpad
         else
             local px = cpad

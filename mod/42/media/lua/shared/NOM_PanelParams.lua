@@ -24,6 +24,10 @@ P.LOOK_TO_KIND = {
     silhouette = "carpideira",
 }
 
+-- GlitchMode: comparação I6 (tear/scanline) até o Johan decidir o produto.
+-- off = #16 atual; original = staging pré-#16; bordas = reduzido + só nas bordas.
+P.GLITCH_MODES = { "off", "original", "bordas" }
+
 P.DEFAULTS = {
     AlmaPopMin = 4,
     AlmaPopMax = 20,
@@ -37,6 +41,8 @@ P.DEFAULTS = {
     CinzaRateMult = 1.0,
     CinzaDensityMult = 1.0,
     LookForce = "",
+    GlitchMode = "original",
+    GlitchIntensity = 110, -- 0..200 (%); multiplica tear/scanline/static do modo (Opções = 110%)
 }
 
 -- type: int | float | bool | enum
@@ -53,6 +59,8 @@ P.SCHEMA = {
     CinzaRateMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     CinzaDensityMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     LookForce = { type = "enum", values = P.LOOK_ARCHETYPES, section = "look" },
+    GlitchMode = { type = "enum", values = P.GLITCH_MODES, section = "look" },
+    GlitchIntensity = { type = "int", min = 0, max = 200, step = 10, section = "look" },
 }
 
 local live = {}
@@ -63,6 +71,7 @@ P.KEYS = {
     "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
     "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
     "CinzaRateMult", "CinzaDensityMult", "LookForce",
+    "GlitchMode", "GlitchIntensity",
 }
 
 local function inList(list, v)
@@ -77,8 +86,26 @@ local function roundStep(v, step)
     return math.floor(v / step + 0.5) * step
 end
 
+-- Opções do jogo (client/NOM_ScreenFxOptions) quando o painel não sobrescreveu.
+-- Módulo client pode não existir nos testes puros shared/.
+local function optionsGlitch(key)
+    if NOM_ScreenFxOptions == nil then return nil end
+    if key == "GlitchMode" and NOM_ScreenFxOptions.glitchMode then
+        return NOM_ScreenFxOptions.glitchMode()
+    end
+    if key == "GlitchIntensity" and NOM_ScreenFxOptions.glitchIntensity then
+        local v = NOM_ScreenFxOptions.glitchIntensity() -- 0..2
+        return math.floor((tonumber(v) or 1.1) * 100 + 0.5)
+    end
+    return nil
+end
+
 function P.get(key)
     if live[key] ~= nil then return live[key] end
+    if key == "GlitchMode" or key == "GlitchIntensity" then
+        local fromOpts = optionsGlitch(key)
+        if fromOpts ~= nil then return fromOpts end
+    end
     return P.DEFAULTS[key]
 end
 
@@ -149,12 +176,17 @@ function P.format(key, value)
     if value == nil then value = P.get(key) end
     if not sch then return tostring(value) end
     if sch.type == "bool" then return value and "on" or "off" end
-    if key == "AlmaCrawlerPct" then return tostring(value) .. "%" end
+    if key == "AlmaCrawlerPct" or key == "GlitchIntensity" then return tostring(value) .. "%" end
     if key == "CinzaRateMult" or key == "CinzaDensityMult" then
         return string.format("%.1f", value) .. "×"
     end
     if key == "EstaladorGapMinMs" or key == "EstaladorGapMaxMs" then
         return tostring(value) .. " ms"
+    end
+    if key == "GlitchMode" then
+        if value == "off" then return "desligado" end
+        if value == "bordas" then return "bordas" end
+        return "original"
     end
     if value == "" then return "auto" end
     return tostring(value)
@@ -187,6 +219,15 @@ function P.lookKind()
     local f = P.lookForce()
     if f == nil or f == "" then return nil end
     return P.LOOK_TO_KIND[f]
+end
+
+function P.glitchMode()
+    return P.get("GlitchMode")
+end
+
+-- Multiplicador 0..2 (slider 0..200%).
+function P.glitchIntensity()
+    return (tonumber(P.get("GlitchIntensity")) or 100) / 100
 end
 
 -- Texto plain chave=valor pra colar no chat (sprint 0058b). Sem JSON (Kahlua sem

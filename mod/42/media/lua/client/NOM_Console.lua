@@ -90,6 +90,99 @@ function NOM.lookCycle()
     NOM_Debug.variant(kind)
 end
 
+-- Sprint 0060b: dump pele + ItemVisuals do zumbi mais perto (prova no console).
+function NOM.lookInspect()
+    require "NOM_VariantLook"
+    local s = NOM_VariantLook.inspect()
+    NOM_DebugLog.say("[NOM] lookInspect " .. s)
+    return s
+end
+
+-- 0060f: força kind + índice de guarda-roupa (1–5 Estalador/Carpideira) no mais perto.
+-- Sem args: cicla o índice da variante atual. kind omitido → kind do zumbi (ou estalador).
+function NOM.lookVariant(kind, idx)
+    require "NOM_VariantLook"
+    require "NOM_VariantWardrobe"
+    local p = player()
+    if not p then
+        NOM_DebugLog.say("[NOM] lookVariant: sem jogador")
+        return nil
+    end
+    local z, bestD
+    local list = getCell():getZombieList()
+    for i = 0, list:size() - 1 do
+        local cand = list:get(i)
+        local d = cand:DistToProper(p)
+        if not bestD or d < bestD then z, bestD = cand, d end
+    end
+    if not z then
+        NOM_DebugLog.say("[NOM] lookVariant: sem zumbi")
+        return nil
+    end
+    local info = NOM_VariantLook.inspect(z)
+    local curKind = kind
+    if curKind == nil or curKind == "" then
+        local k = info:match("kind=([%w_]+)")
+        curKind = (k and k ~= "-") and k or "estalador"
+    end
+    local n = NOM_VariantWardrobe.count(curKind)
+    if n == 0 then
+        NOM_VariantLook.forceVariant(z, curKind, 1)
+        NOM_DebugLog.say("[NOM] lookVariant " .. curKind .. " → " .. NOM_VariantLook.inspect(z))
+        return curKind
+    end
+    if idx == nil then
+        local cur = tonumber(info:match("var=[EK](%d+)")) or 0
+        idx = NOM_Math.mod(cur, n) + 1
+    end
+    local k, i = NOM_VariantLook.forceVariant(z, curKind, idx)
+    NOM_DebugLog.say(string.format("[NOM] lookVariant %s #%s → %s",
+        tostring(k), tostring(i), NOM_VariantLook.inspect(z)))
+    return k, i
+end
+
+-- Sprint 0060d/e: isolamento debug — SÓ a flag lookClean (não mexer em LookForce).
+-- Sem args: liga/desliga. on=false desliga. Prova Sport+White só com a flag ligada.
+function NOM.lookClean(on)
+    require "NOM_PanelParams"
+    require "NOM_ScreenFxRules"
+    require "NOM_VariantLook"
+    if on == nil then on = not NOM_ScreenFxRules.lookClean() end
+    NOM_ScreenFxRules.setLookClean(on == true)
+    if NOM_VariantLook.refreshClean then NOM_VariantLook.refreshClean() end
+    local lf = NOM_PanelParams.lookForce()
+    if lf == "" then lf = "auto" end
+    local s = string.format("clean=%s LookForce=%s (prova só se clean)",
+        tostring(NOM_ScreenFxRules.lookClean()), tostring(lf))
+    NOM_DebugLog.say("[NOM] lookClean " .. s)
+    return s
+end
+
+-- I6: seletor Glitch de tela (off / original / bordas). Sem args: cicla. Live → canal no próximo tick.
+function NOM.glitch(mode)
+    require "NOM_PanelParams"
+    local modes = NOM_PanelParams.GLITCH_MODES
+    if mode == nil or mode == "" then
+        local cur = NOM_PanelParams.glitchMode()
+        local i = 1
+        for k = 1, #modes do if modes[k] == cur then i = k end end
+        mode = modes[(i % #modes) + 1]
+    end
+    local v = NOM.param("GlitchMode", mode)
+    return v
+end
+
+-- I6: intensidade 0–200% do glitch do modo. Sem args: mostra. Live → SearchMode.y no próximo tick.
+function NOM.glitchIntensity(pct)
+    require "NOM_PanelParams"
+    if pct == nil then
+        local v = NOM_PanelParams.get("GlitchIntensity")
+        NOM_DebugLog.say("[NOM] glitchIntensity " .. NOM_PanelParams.format("GlitchIntensity", v))
+        return v
+    end
+    return NOM.param("GlitchIntensity", pct)
+end
+
 -- Truques do jogador local (ISAdminPowerUI.lua:31-53): muda e manda pro servidor
 -- (sendPlayerExtraInfo, :403); no MP o servidor aplica as regras dele.
 local function cheat(name, getter, setter)
@@ -431,7 +524,7 @@ local function sectionOfParam(key)
     if key:find("^Alma", 1, false) then return "almas" end
     if key:find("^Estalador", 1, false) then return "estalador" end
     if key:find("^Cinza", 1, false) then return "cinzas" end
-    if key == "LookForce" then return "look" end
+    if key == "LookForce" or key == "GlitchMode" or key == "GlitchIntensity" then return "look" end
     return nil
 end
 
@@ -453,6 +546,16 @@ function NOM.param(key, value)
         return v
     end
     local v = NOM_PanelParams.set(key, value)
+    -- 0060e: mudar LookForce sai do isolamento (Look limpo ≠ Force)
+    if key == "LookForce" then
+        require "NOM_ScreenFxRules"
+        if NOM_ScreenFxRules.lookClean() then
+            NOM_ScreenFxRules.setLookClean(false)
+            require "NOM_VariantLook"
+            if NOM_VariantLook.refreshClean then NOM_VariantLook.refreshClean() end
+            NOM_DebugLog.say("[NOM] lookClean off (LookForce mudou)")
+        end
+    end
     syncPanelToSystems(sectionOfParam(key))
     NOM_DebugLog.say("[NOM] debug param " .. tostring(key) .. " = " .. NOM_PanelParams.format(key, v) ..
         (NOM_PanelParams.isLive(key) and " (live)" or ""))
@@ -539,6 +642,11 @@ NOM.HELP = {
     { "NOM.spawn(n, outfit)", "n zumbis (até 50) espalhados 3 tiles na sua frente; outfit opcional, ex.: NOM.spawn(5, \"Police\")" },
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
+    { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
+    { "NOM.lookVariant(kind, idx)", "guarda-roupa E1–E5 / K1–K5 no mais perto; sem args cicla o índice" },
+    { "NOM.lookClean()", "liga/desliga isolamento (FX off + Sport/White); não muda LookForce" },
+    { "NOM.glitch(mode)", "Glitch de tela: \"off\" / \"original\" / \"bordas\"; sem args cicla; live no canal do shader" },
+    { "NOM.glitchIntensity(pct)", "intensidade do glitch 0–200% (padrão 100); multiplica tear/scanline/static do modo" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },

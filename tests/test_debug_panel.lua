@@ -158,7 +158,8 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "eco", "alma", "almaStatus", "almaReset",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "lookInspect", "lookVariant", "lookClean",
+        "glitch", "glitchIntensity", "eco", "alma", "almaStatus", "almaReset",
         "almaCfg", "arrasto", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "sonarBurst", "sonarGaps", "ambientScream", "ticao",
@@ -386,7 +387,7 @@ return {
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
-                "variant(carpideira)", "lookCycle()", "turnZombie(0)" },
+                "variant(carpideira)", "lookCycle()", "lookInspect()", "lookVariant()", "lookClean()", "turnZombie(0)" },
             UI_NOM_Debug_C_Thunder = { "thunder()" },
             UI_NOM_Debug_C_Lamp = { "flickerLamp()" },
             UI_NOM_Debug_C_Rain = { "rain()" },
@@ -406,6 +407,7 @@ return {
             UI_NOM_Debug_C_Blind = { "blind()" },
             UI_NOM_Debug_C_OwnSprites = { "ownSprites()" },
             UI_NOM_Debug_C_Params = { "params()", "param(reset)", "copyParams()" },
+            UI_NOM_Debug_C_GlitchAct = { "glitch()", "glitchIntensity()" },
             UI_NOM_Debug_C_Help = { "help()" },
         }
         local n, want = 0, 0

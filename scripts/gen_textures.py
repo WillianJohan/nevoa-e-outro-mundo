@@ -2,25 +2,22 @@
 """Gera as texturas do visual dos monstros (sprint 0012), procedurais e originais.
 
 Cada textura veste um modelo VANILLA citado por nome (nada do jogo é copiado; da
-textura vanilla só se usa o tamanho e, na pele, onde fica o rosto). Os desenhos não
-dependem do mapa UV do modelo: padrões que valem em qualquer ponto (rachadura, veia,
-chiado, fio), então a peça inteira vira o material. Contraste cheio e formas grandes
-(sprint 0014): a 0012 tinha ruído fino que virava "lã" no jogo. Direção de arte em
-docs/gdd/art-direction.md; prévia em scripts/preview_textures.py.
+textura vanilla só se usa o tamanho e, na pele/manto 2D, ilhas conhecidas da UV do
+corpo: rosto ≈ x 0,4–0,6 y 0,05–0,20). Peças de cabeça 3D: padrões que leem de longe
+(atadura, boca, cabelo). Roupa do corpo das variantes: guarda-roupa vanilla por nome
+(NOM_VariantWardrobe), não textura 2D nossa. Contraste: sprint 0014. Direção de arte
+em docs/gdd/art-direction.md; prévia em scripts/preview_textures.py.
 
 Saída (mod/42/media/textures/):
-  Body/NOM_Estalador.png         256  The Pale: cera pálida, rachadura esparsa, órbitas fracas (0054)
-  Body/NOM_Corredor.png          256  The Misaligned: pele clara, veias/sombra assimétricas (0054)
-  Body/NOM_Carpideira.png        256  Forgotten Patient: pele clínica fria, órbitas suaves (0054)
-  NOM/NOM_EstaladorVenda.png     128  atadura em faixas branco-sujas, dois arames farpados ferrugem, sangue seco (óculos de esqui)
-  NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos (máscara cirúrgica)
-  NOM/NOM_SemRostoEstatica.png   128  Wrong Person: vazios grandes + chiado residual (0054; sem wrap)
-  NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas (véu)
-  NOM/NOM_CarpideiraManto.png    256  Distorted Silhouette: hospital desbotado orgânico, sem blocos/faixas (0054)
-  NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza (camada sem modelo)
+  NOM/NOM_EstaladorVenda.png     128  atadura em faixas branco-sujas, dois arames farpados ferrugem, sangue seco
+  NOM/NOM_CorredorBoca.png       128  vermelho escuro, rasgo preto com dentes brancos
+  NOM/NOM_SemRostoEstatica.png   128  I2: casca cerosa lisa sem feição (sem chiado)
+  NOM/NOM_CarpideiraCabelo.png   128  cabelo preto de piche com três mechas brancas
+  NOM/NOM_CarpideiraManto.png    256  C2: tecido escuro; alfa 0 em rosto/mãos/pés
+  NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
-  NOM/NOM_Brasa.png              256  carvão quase preto em placas, rachaduras largas em brasa laranja (casca Hazmat, sprint 0022)
-  Body/NOM_Ticao.png             256  carvão em placas pequenas, rachaduras finas de brasa apagando (Tição, sprint 0038)
+  NOM/NOM_Brasa.png              256  carvão em placas, rachaduras largas em brasa (casca Hazmat)
+  Body/NOM_Ticao.png             256  I5: carvão quase liso (brasa na crosta 3D)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
   NOM/ScreenFx/NOM_Grain1..4.png 256  grão de filme em blocos de 2 px, um quadro cada
@@ -126,54 +123,65 @@ def face_hollows(size, left=(0.46, 0.125), right=(0.545, 0.12), rx=0.028, ry=0.0
     return k
 
 
+def soft_flesh(rng, size, base):
+    """Pele legível com midtones (0060): shade amplo (não só branco), sem P&B binário."""
+    # 0.55..0.95 → luminância cai no intervalo mid (0,3–0,7) em boa parte da UV
+    shade = 0.55 + 0.40 * fbm(rng, size, (2, 5, 11), (0.55, 0.30, 0.15))
+    return color(base, shade)
+
+
 def estalador_skin(rng, size=256):
-    # The Pale (0054): cera quase branca, rachadura esparsa, órbitas fracas — boneco errado,
-    # não Jeff. Contraste 0014: preto × branco, formas grandes; sem sangue.
-    rgb = color(WAX, 0.98 + 0.02 * fbm(rng, size))
-    c = cracks(rng, size, 14)
-    k = np.clip((5.5 - c) / 1.6, 0, 1)
-    fine = cracks(rng, size, 36)
-    k = np.maximum(k, np.clip((2.0 - fine) / 0.95, 0, 1) * (noise(rng, size, 4) > 0.62))
-    # manchas de cera seca (quase pretas) irregulares — não grade
-    mott = (fbm(rng, size, (3, 5), (0.7, 0.3)) > 0.78).astype(np.float32)
-    k = np.maximum(k, mott * 0.9)
-    k = np.maximum(k, face_hollows(size, left=(0.455, 0.12), right=(0.55, 0.135)) * 0.95)
-    return mix(rgb, INK, k)
+    # The Pale (0060): cera legível — manchas/órbitas suaves (sem Voronoi geométrico).
+    rgb = soft_flesh(rng, size, WAX)
+    mott = np.clip((fbm(rng, size, (3, 5, 9), (0.5, 0.3, 0.2)) - 0.48) / 0.38, 0, 1) * 0.40
+    k = mott
+    k = np.maximum(k, face_hollows(size, left=(0.455, 0.12), right=(0.55, 0.135)) * 0.55)
+    fine = np.clip((fbm(rng, size, (6, 12), (0.6, 0.4)) - 0.70) / 0.25, 0, 1) * 0.18
+    k = np.maximum(k, fine)
+    return mix(rgb, (110, 85, 75), k)
 
 
 def corredor_skin(rng, size=256):
-    # The Misaligned (0054): pele clara + veias grossas puxadas pra UM lado; sombra facial
-    # deslocada. Bordas duras (k 0/1) pra mid baixo — 0014.
-    rgb = color((230, 224, 214), 0.97 + 0.03 * fbm(rng, size))
+    # The Misaligned (0060): pele clara + veias/sombra assimétricas em rampa (não binário).
+    rgb = soft_flesh(rng, size, (232, 220, 208))
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    side = (xx < 0.46) & (fbm(rng, size, (2, 4), (0.75, 0.25)) > 0.50)
-    k = side.astype(np.float32)
-    for cells, width in ((3, 0.07), (5, 0.05), (8, 0.035)):
+    side = np.clip((0.50 - xx) / 0.18, 0, 1) * (0.40 + 0.50 * fbm(rng, size, (2, 4), (0.75, 0.25)))
+    k = side * 0.65
+    for cells, width in ((3, 0.06), (5, 0.04), (8, 0.028)):
         v = fbm(rng, size, (cells, cells * 2), (0.8, 0.2))
-        # veia binária (sem rampa cinza)
-        vein = (np.abs(v - 0.5) < width) & (xx > 0.35)
-        k = np.maximum(k, vein.astype(np.float32))
+        vein = np.clip(1.0 - np.abs(v - 0.5) / width, 0, 1) * np.clip((xx - 0.28) / 0.2, 0, 1)
+        k = np.maximum(k, vein * 0.50)
     hollow = face_hollows(size, left=(0.44, 0.13), right=(0.56, 0.11), rx=0.032, ry=0.042)
-    k = np.maximum(k, (hollow > 0.35).astype(np.float32))
-    return mix(rgb, INK, k)
+    k = np.maximum(k, hollow * 0.55)
+    return mix(rgb, (90, 60, 65), k)
 
 
 def carpideira_skin(rng, size=256):
-    # Forgotten Patient (0054): pele clínica fria; órbitas profundas (não Jeff sangrento);
-    # manchas grandes de deterioração. Sem sangue na boca.
-    rgb = color(CLINIC, 0.98 + 0.02 * fbm(rng, size))
+    # Forgotten Patient (0060): pele clínica fria legível; órbitas e manchas em midtones.
+    rgb = soft_flesh(rng, size, CLINIC)
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    k = face_hollows(size, left=(0.47, 0.122), right=(0.535, 0.128), rx=0.032, ry=0.048)
-    # escorridos mais largos (lêem de longe)
-    for ex, w, stop in ((0.47, 0.02, 0.36), (0.535, 0.018, 0.42), (0.50, 0.014, 0.28)):
+    k = face_hollows(size, left=(0.47, 0.122), right=(0.535, 0.128), rx=0.032, ry=0.048) * 0.60
+    for ex, w, stop in ((0.47, 0.018, 0.34), (0.535, 0.016, 0.40), (0.50, 0.012, 0.26)):
         drip = (np.abs(xx - ex) < w) & (yy > 0.11) & (yy < stop)
-        k = np.maximum(k, drip.astype(np.float32))
-    blot = (fbm(rng, size, (2, 4), (0.7, 0.3)) > 0.70).astype(np.float32)
+        k = np.maximum(k, drip.astype(np.float32) * 0.45)
+    blot = np.clip((fbm(rng, size, (2, 4), (0.7, 0.3)) - 0.48) / 0.35, 0, 1) * 0.40
     k = np.maximum(k, blot)
-    # placa escura no ombro/peito (UV corpo) — deterioração clínica
-    plaque = ((xx - 0.72) / 0.18) ** 2 + ((yy - 0.55) / 0.22) ** 2 < 1.0
-    k = np.maximum(k, plaque.astype(np.float32) * 0.95)
-    return mix(rgb, INK, k)
+    plaque = np.clip(1.0 - (((xx - 0.72) / 0.20) ** 2 + ((yy - 0.55) / 0.24) ** 2), 0, 1)
+    k = np.maximum(k, plaque * 0.45)
+    return mix(rgb, (85, 95, 88), k)
+
+
+def semrosto_skin(rng, size=256):
+    # Wrong Person (0060): pele cotidiana pálida sob a casca — parece gente, não UV.
+    rgb = soft_flesh(rng, size, (220, 198, 180))
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    flush = np.clip((fbm(rng, size, (2, 4), (0.7, 0.3)) - 0.40) / 0.4, 0, 1) * 0.35
+    rgb = mix(rgb, (175, 120, 110), flush)
+    # frente clara + sombra no torso: puxa fora do mid-cinza puro (anti-lã 0014)
+    highlight = np.clip(1.0 - np.hypot(xx - 0.5, yy - 0.22) / 0.28, 0, 1) * 0.85
+    rgb = mix(rgb, (250, 240, 228), highlight)
+    shadow = np.clip((yy - 0.40) / 0.45, 0, 1) * (0.55 + 0.40 * fbm(rng, size, (3, 5), (0.6, 0.4)))
+    return mix(rgb, (55, 42, 38), shadow)
 
 
 def estalador_venda(rng, size=128):
@@ -208,26 +216,58 @@ def corredor_boca(rng, size=128):
     return mix(rgb, (240, 232, 210), teeth.astype(np.float32))
 
 
-def semrosto_estatica(rng, size=128):
-    # Wrong Person (0054): head shell — grandes vazios claros (rosto ausente) + blocos
-    # pretos irregulares e pouco chiado residual. std≥0.40 / mid≈0 / far alto (0014).
-    # Sem película/listra e sem sal-e-pimenta fino.
-    b = np.ones((size, size), np.float32)                  # base branca “rosto vazio”
+def cloth_body(rng, size, base, stain, accent=None, accent_side=None):
+    """Tecido cotidiano (0060): fibra + manchas orgânicas — SEM Voronoi (lia geométrico)."""
+    weave = 0.72 + 0.28 * fbm(rng, size, (3, 7, 14), (0.5, 0.3, 0.2))
+    rgb = color(base, weave)
+    dirt = np.clip((fbm(rng, size, (2, 3, 5), (0.55, 0.3, 0.15)) - 0.40) / 0.42, 0, 1)
+    rgb = mix(rgb, stain, dirt * 0.65)
+    if accent is not None and accent_side is not None:
+        yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+        side = np.clip((accent_side - xx) / 0.35, 0, 1) if accent_side < 0.5 else np.clip((xx - accent_side) / 0.35, 0, 1)
+        rgb = mix(rgb, accent, side * (0.50 + 0.30 * fbm(rng, size, (3, 5), (0.7, 0.3))))
+    # desgaste macio (fbm), não rachadura Voronoi
+    wear = np.clip((fbm(rng, size, (2, 4), (0.7, 0.3)) - 0.55) / 0.35, 0, 1) * 0.35
+    return mix(rgb, (48, 40, 36), wear)
+
+
+def estalador_roupa(rng, size=256):
+    # camisa bege suja / calça marrom — pessoa comum errada
+    rgb = cloth_body(rng, size, (168, 152, 128), (72, 58, 42))
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    blot = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
-    b = np.where(blot < 0.48, 0.0, b)                      # ~metade preta orgânica
-    # “olho” deslocado: buraco escuro assimétrico (imitação falha)
-    eye = ((xx - 0.36) / 0.14) ** 2 + ((yy - 0.40) / 0.12) ** 2
-    b = np.where(eye < 1.0, 0.0, b)
-    # faixa preta larga (silhueta errada), não grade
-    band = (yy > 0.62) & (yy < 0.78) & (fbm(rng, size, (2, 3), (0.8, 0.2)) > 0.35)
-    b = np.where(band, 0.0, b)
-    # 1–2 faixas de varredura branca (chiado residual)
-    rows = size // 16
-    for r in range(rows):
-        if rng.random() > 0.85:
-            b[r * 16:r * 16 + 4] = 1.0
-    return color((255, 255, 255), b)
+    hi = np.clip(1.0 - (((xx - 0.55) / 0.30) ** 2 + ((yy - 0.30) / 0.25) ** 2), 0, 1)
+    rgb = mix(rgb, (230, 220, 200), hi * 0.45)
+    lo = np.clip((fbm(rng, size, (2, 3), (0.7, 0.3)) - 0.55) / 0.35, 0, 1)
+    return mix(rgb, (40, 32, 28), lo * 0.55)
+
+
+def corredor_roupa(rng, size=256):
+    # metade tom errado (roupa “trocada”) — blobs suaves, não polígonos
+    rgb = cloth_body(rng, size, (110, 118, 132), (36, 30, 28), accent=(160, 70, 60), accent_side=0.40)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    patch = np.clip(1.0 - (((xx - 0.28) / 0.28) ** 2 + ((yy - 0.52) / 0.35) ** 2), 0, 1)
+    patch = patch * (0.55 + 0.45 * fbm(rng, size, (2, 4), (0.7, 0.3)))
+    rgb = mix(rgb, (32, 28, 26), patch * 0.70)
+    light = np.clip(1.0 - (((xx - 0.72) / 0.22) ** 2 + ((yy - 0.35) / 0.24) ** 2), 0, 1)
+    return mix(rgb, (190, 180, 165), light * 0.40)
+
+
+def semrosto_roupa(rng, size=256):
+    # jeans + camiseta desbotada — Wrong Person vestido de gente
+    return cloth_body(rng, size, (78, 92, 118), (50, 44, 40), accent=(180, 176, 168), accent_side=0.55)
+
+
+def semrosto_estatica(rng, size=128):
+    # I2/bíblia §7: casca cerosa lisa sem feição — sem chiado/quadriculado (0054/0060 glitch).
+    # Oval claro #CDB8A4→#BFA994 com sombreado suave; contraste de longe pela cabeça clara.
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    base = soft_flesh(rng, size, (205, 184, 164))
+    shade = np.clip((((xx - 0.5) / 0.55) ** 2 + ((yy - 0.48) / 0.62) ** 2), 0, 1)
+    rgb = mix(base, (140, 120, 105), shade * 0.35)
+    # sem órbitas/boca: só um leve afundamento central (cera), sem pontos escuros
+    dent = np.clip(1.0 - np.hypot(xx - 0.5, yy - 0.42) / 0.22, 0, 1) * 0.12
+    rgb = mix(rgb, (180, 160, 145), dent)
+    return rgb
 
 
 def carpideira_cabelo(rng, size=128):
@@ -242,25 +282,27 @@ def carpideira_cabelo(rng, size=128):
 
 
 def carpideira_manto(rng, size=256):
-    # Distorted Silhouette / Forgotten Patient (0054): avental hospitalar desbotado —
-    # branco sujo × preto de luto em manchas orgânicas. Capuz escuro grande distorce a
-    # silhueta. SEM blocos 8×8 e SEM faixas horizontais (isso lia como película wrap).
+    # Distorted Silhouette: tecido escuro com dobras; C2 — alfa 0 em rosto/mãos/pés (UV corpo).
     tile = fbm(rng, size, (3, 5, 9), (0.55, 0.3, 0.15))
-    light = (tile > 0.46).astype(np.float32)
-    rgb = mix(color(INK, np.ones((size, size), np.float32)), (232, 228, 218), light)
-    # toque clínico: manchas verde-acinzentadas grandes (não cinza médio fino)
-    clinic = (fbm(rng, size, (2, 4), (0.7, 0.3)) > 0.72).astype(np.float32)
-    rgb = mix(rgb, (48, 56, 50), clinic * 0.55)
+    light = np.clip((tile - 0.35) / 0.40, 0, 1)
+    rgb = mix(color((42, 38, 36), np.ones((size, size), np.float32)), (220, 214, 200), light)
+    clinic = np.clip((fbm(rng, size, (2, 4), (0.7, 0.3)) - 0.58) / 0.30, 0, 1)
+    rgb = mix(rgb, (70, 86, 78), clinic * 0.40)
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
-    hood = (np.hypot(xx - 0.5, yy - 0.14) < 0.40).astype(np.float32)
-    rgb = mix(rgb, INK, hood * 0.82)
-    # rasgos irregulares (Voronoi), não costura em faixa
-    c = cracks(rng, size, 18)
-    tear = np.clip((4.2 - c) / 1.4, 0, 1) * (noise(rng, size, 3) > 0.4)
-    rgb = mix(rgb, INK, tear)
-    # sujeira orgânica (sem sangue saturado)
-    stain = (fbm(rng, size, (4, 8), (0.65, 0.35)) > 0.74).astype(np.float32)
-    return mix(rgb, (28, 22, 20), stain * 0.7)
+    # fuligem nos ombros (não “capuz” no rosto — review C2)
+    soot = np.clip(1.0 - np.hypot(xx - 0.5, yy - 0.28) / 0.35, 0, 1) * 0.45
+    rgb = mix(rgb, (22, 18, 16), soot)
+    tear = np.clip((fbm(rng, size, (3, 6), (0.65, 0.35)) - 0.62) / 0.28, 0, 1) * 0.40
+    rgb = mix(rgb, (28, 24, 22), tear)
+    stain = np.clip((fbm(rng, size, (4, 8), (0.65, 0.35)) - 0.62) / 0.28, 0, 1)
+    rgb = mix(rgb, (48, 40, 34), stain * 0.45)
+    # máscara de cobertura: torso/pernas; buraco no rosto (x≈0,4–0,6 y≈0,05–0,20) e mãos
+    cover = np.ones((size, size), np.float32)
+    face = ((xx > 0.38) & (xx < 0.62) & (yy > 0.04) & (yy < 0.22)).astype(np.float32)
+    hands = (((xx < 0.18) | (xx > 0.82)) & (yy > 0.35) & (yy < 0.55)).astype(np.float32)
+    feet = ((yy > 0.88) & ((xx < 0.35) | (xx > 0.65))).astype(np.float32)
+    cover = np.clip(cover - face - hands * 0.85 - feet * 0.7, 0, 1)
+    return rgb, cover
 
 
 # O Eco fica fora da regra das formas grandes: lê por ser muito mais claro que qualquer
@@ -304,20 +346,15 @@ def ember_shell(rng, size=256):
 
 
 def ticao_skin(rng, size=256):
-    # Tição (sprint 0038): o corpo queimado da névoa preta. Carvão em placas menores que as da
-    # casca (lê como pele, não como roupa) e rachaduras finas de brasa que apagam em vermelho
-    # escuro em parte delas: no escuro, o que se vê de longe é a brasa.
-    rgb = color((30, 24, 21), 0.8 + 0.4 * fbm(rng, size))
-    g = 8
-    pts = (np.stack(np.mgrid[0:g, 0:g], -1).reshape(-1, 2) + 0.2 + 0.6 * rng.random((g * g, 2))) * size / g
-    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    d = np.sort(np.stack([np.hypot(x - px, y - py) for py, px in pts]), axis=0)
-    c = d[1] - d[0]
-    crack = np.clip((5.0 - c) / 2.0, 0, 1)
-    hot = noise(rng, size, 4) > 0.45                                     # brasa viva ou apagada
-    rgb = mix(rgb, (120, 22, 10), crack * ~hot)                          # brasa apagando
-    rgb = mix(rgb, (255, 120, 24), crack * hot)                          # brasa viva
-    return mix(rgb, (255, 210, 110), np.clip((2.0 - c) / 1.0, 0, 1) * hot)
+    # I5: carvão quase liso (variação baixa); brasa fica na crosta 3D, não na pele binária.
+    weave = 0.92 + 0.08 * fbm(rng, size, (2, 3), (0.7, 0.3))
+    rgb = color((32, 30, 28), weave)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    cool = np.clip((fbm(rng, size, (2, 4), (0.65, 0.35)) - 0.45) / 0.4, 0, 1) * 0.18
+    rgb = mix(rgb, (55, 52, 50), cool)
+    # sombra suave no torso — sem placas Voronoi
+    shade = np.clip((yy - 0.25) / 0.7, 0, 1) * 0.2
+    return mix(rgb, (18, 16, 15), shade)
 
 
 def screen_grain(rng, size=256):
@@ -552,6 +589,28 @@ def flake_sheet(rng):
     return np.concatenate(rows_rgb, 0), np.concatenate(rows_a, 0)
 
 
+def semrosto_rosto(rng, size=256):
+    """Remendo 2D do Sem-rosto (A′ / 0060f): cinza claro com volume suave; alfa só no
+    rosto (caixa P3 u 0,348–0,645 × v 0–0,266) com rampa ~6 px. Tingido por zumbi."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    u0, u1, v0, v1 = 0.348, 0.645, 0.0, 0.266
+    # elipse inscrita na caixa + feather de 6 px
+    cx, cy = (u0 + u1) / 2, (v0 + v1) / 2
+    rx, ry = (u1 - u0) / 2 * 0.98, (v1 - v0) / 2 * 0.98
+    q = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+    feather = 6.0 / size
+    alpha = np.clip((1.0 - q) / (2.0 * feather / max(rx, ry) + 1e-6) + 0.5, 0, 1).astype(np.float32)
+    # volume suave (nariz/bochecha sem abertura): shade amplo pra midtones e std≥0,02
+    shade = 0.82 + 0.18 * fbm(rng, size, (2, 5, 11), (0.55, 0.30, 0.15))
+    # leve relevo no centro (F2 vestígio) — bem abaixo do +8% de cera do tint
+    nose = np.clip(1.0 - (((xx - 0.50) / 0.04) ** 2 + ((yy - 0.14) / 0.06) ** 2), 0, 1) * 0.08
+    cheek = np.clip(1.0 - (((xx - 0.42) / 0.06) ** 2 + ((yy - 0.15) / 0.05) ** 2), 0, 1) * 0.05
+    cheek += np.clip(1.0 - (((xx - 0.58) / 0.06) ** 2 + ((yy - 0.15) / 0.05) ** 2), 0, 1) * 0.05
+    shade = np.clip(shade + nose + cheek, 0, 1)
+    rgb = color((245, 242, 236), shade)
+    return rgb, alpha
+
+
 def ash_flake(rng, size=16, ss=8):
     # cinza (sprint 0035): floco torto e macio, um pouco manchado, tons de cinza (a cor sai do
     # desenho). Não é redondo: harmônicos e serrilhado no raio, como a lasca, com borda suave.
@@ -575,19 +634,18 @@ def main():
     # um gerador por textura: mexer no desenho de uma não sorteia as outras de novo
     def rng(i):
         return np.random.default_rng((SEED, i))
-    save(estalador_skin(rng(1)), "Body/NOM_Estalador.png")
-    save(corredor_skin(rng(2)), "Body/NOM_Corredor.png")
-    save(carpideira_skin(rng(3)), "Body/NOM_Carpideira.png")
+    # I7: peles Body de Estalador/Corredor/Carpideira/SemRosto e NOM_*Roupa saíram do look.
     save(estalador_venda(rng(4)), "NOM/NOM_EstaladorVenda.png")
     save(corredor_boca(rng(5)), "NOM/NOM_CorredorBoca.png")
-    save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")
+    save(semrosto_estatica(rng(6)), "NOM/NOM_SemRostoEstatica.png")  # aposentada do look (casca-ovo)
+    rgb, a = semrosto_rosto(rng(22))
+    save(rgb, "NOM/NOM_SemRostoRosto.png", alpha=a)
     save(carpideira_cabelo(rng(7)), "NOM/NOM_CarpideiraCabelo.png")
-    # manto hospitalar desbotado (0054; era penitente em blocos na 0052 — lia como wrap)
-    save(carpideira_manto(rng(21)), "NOM/NOM_CarpideiraManto.png", alpha=np.ones((256, 256), np.float32))
-    # camada no corpo todo, como o Gown_Hospital vanilla (RGBA): opaca, cobre a pele
+    # C2: manto com alfa 0 em rosto/mãos (não pinta a cara)
+    manto_rgb, manto_a = carpideira_manto(rng(21))
+    save(manto_rgb, "NOM/NOM_CarpideiraManto.png", alpha=manto_a)
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
-    # casca de brasa: corpo inteiro (malha Hazmat), opaca como a cinza
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
     save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima

@@ -172,10 +172,17 @@ void main()
     float clock = timer / 30.0;
 
     float tag = ParamInfo.z * 2.0 / max(ParamInfo.y, 1.0);
-    bool ours = VarInfo.x == 0.0 && tag > NOM_MARKER - 0.01 && tag < NOM_MARKER + 2.0 * NOM_BLOOM_SCALE + 0.01;
-    float bloom = ours ? clamp((tag - NOM_MARKER) / NOM_BLOOM_SCALE, 0.0, 2.0) : 0.0;
+    // I6: bordas soma +2 no gradiente (além do bloom ≤0,5). Tag até ~15,5 ainda é nosso.
+    const float NOM_BORDAS_TAG = 2.0;
+    bool ours = VarInfo.x == 0.0 && tag > NOM_MARKER - 0.01 && tag < NOM_MARKER + NOM_BORDAS_TAG + 2.0 * NOM_BLOOM_SCALE + 0.01;
+    bool bordas = ours && tag >= NOM_MARKER + 1.5;
+    float bloomTag = bordas ? (tag - NOM_BORDAS_TAG) : tag;
+    float bloom = ours ? clamp((bloomTag - NOM_MARKER) / NOM_BLOOM_SCALE, 0.0, 2.0) : 0.0;
     float fog = ours ? clamp(SearchMode.x, 0.0, 2.0) : 0.0;
     float hiss = ours ? clamp(SearchMode.y, 0.0, 2.0) : 0.0;
+    // Modo bordas: tear/chiado só na vinheta (centro limpo).
+    float edgeW = bordas ? smoothstep(0.30, 0.85, nomEdge(vUV)) : 1.0;
+    float hissEff = hiss * edgeW;
     float red = ours ? clamp(ParamInfo.w, 0.0, 2.0) : 0.0;
     float dark = ours ? max(VarInfo.y, 0.0) : 0.0;
     float dizzyStep = floor(dark / NOM_DIZZY_BASE);
@@ -185,7 +192,7 @@ void main()
     // distorção: faixas de 3 px que escorregam com o chiado; onda lenta na névoa
     float band = floor(gl_FragCoord.y / 3.0);
     float slip = (nomHash(vec2(band, frame)) - 0.5) * step(0.93, nomHash(vec2(band * 0.37, floor(frame * 0.5))));
-    uv.x += slip * 0.006 * hiss + sin(uv.y * 23.0 + clock * 1.7) * 0.0012 * fog;
+    uv.x += slip * 0.006 * hissEff + sin(uv.y * 23.0 + clock * 1.7) * 0.0012 * fog;
 
     // tontura: ondas largas e lentas que cruzam a tela e um balanço da cena inteira
     if (dizzy > 0.0) {
@@ -203,7 +210,7 @@ void main()
     }
 
     // aberração cromática: vermelho pra fora, azul pra dentro, maior nas bordas
-    float split = 0.0025 * fog + 0.005 * hiss + 0.002 * red + 0.006 * pulse;
+    float split = 0.0025 * fog + 0.005 * hissEff + 0.002 * red + 0.006 * pulse;
     vec3 col;
     if (split > 0.0) {
         vec2 away = (uv - 0.5) * split;
@@ -261,7 +268,7 @@ void main()
 
     col = nomPunch(nomGrey(clamp(col, 0.0, 1.0), 0.1), 1.2);
     float shade = 1.0 - clamp(dot(col, NOM_REC709), 0.0, 1.0);
-    col += grain * (0.0015 + 0.06 * min(fog, 1.0) + 0.03 * min(hiss, 1.0)) * (0.4 + shade * shade);
+    col += grain * (0.0015 + 0.06 * min(fog, 1.0) + 0.03 * min(hissEff, 1.0)) * (0.4 + shade * shade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }

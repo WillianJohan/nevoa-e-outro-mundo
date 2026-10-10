@@ -40,6 +40,18 @@ module Base
         ClothingItem = NOM_SemRostoEstatica,
     }
 
+    /* 0060f A′: remendo 2D no rosto (casca-ovo aposentada). Tint por zumbi. */
+    item NOM_SemRostoRosto
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_SemRostoRosto,
+    }
+
     item NOM_CarpideiraCabelo
     {
         DisplayCategory = Accessory,
@@ -51,7 +63,7 @@ module Base
         ClothingItem = NOM_CarpideiraCabelo,
     }
 
-    /* Sprint 0052: manto penitente (camada no corpo todo, como NOM_EcoCinza / Gown_Hospital). */
+    /* Sprint 0052: manto penitente (camada corpo; K1 com saia; K2–K5 saem pelo wardrobe). */
     item NOM_CarpideiraManto
     {
         DisplayCategory = Clothing,
@@ -140,15 +152,7 @@ module Base
         ClothingItem = NOM_CarpideiraCabeloFx,
     }
 
-    item NOM_CarpideiraMantoFx
-    {
-        DisplayCategory = Clothing,
-        ItemType = base:clothing,
-        Weight = 0.1,
-        Icon = HospitalGown,
-        BodyLocation = base:boilersuit,
-        ClothingItem = NOM_CarpideiraMantoFx,
-    }
+    /* I1/I7: sem *Fx 2D (manto/roupa) — dissolve só em peça com modelo. */
 
     item NOM_TicaoCrostaFx
     {

@@ -18,8 +18,11 @@ import zombie.characters.IsoZombie;
 import zombie.core.Color;
 import zombie.core.Core;
 import zombie.core.SpriteRenderer;
-import zombie.core.skinnedmodel.visual.ItemVisual;
-import zombie.core.skinnedmodel.visual.ItemVisuals;
+import zombie.core.skinnedmodel.animation.AnimationPlayer;
+import zombie.core.skinnedmodel.model.Model;
+import zombie.core.skinnedmodel.model.SkeletonBone;
+import zombie.core.skinnedmodel.model.SkinningBone;
+import zombie.core.skinnedmodel.model.SkinningBoneHierarchy;
 import zombie.core.textures.TextureDraw;
 import zombie.core.textures.TextureFBO;
 import zombie.gameStates.IngameState;
@@ -29,7 +32,9 @@ import zombie.iso.IsoCell;
 import zombie.iso.IsoDepthHelper;
 import zombie.iso.IsoWorld;
 import zombie.iso.Vector2;
+import zombie.iso.Vector3;
 import zombie.iso.weather.ClimateColorInfo;
+import se.krka.kahlua.vm.KahluaTable;
 import zombie.iso.weather.ClimateManager;
 import zombie.iso.weather.ThunderStorm;
 import zombie.iso.weather.fog.ImprovedFog;
@@ -305,12 +310,15 @@ public final class RenderContext {
 
     private static final Censor censor = new Censor();
     private static boolean censorFailed;
+    private static final Vector3 headBone = new Vector3();
+    private static final float[] headEst = new float[3];
 
     /**
-     * Cabeças do Sem-rosto pro quadrado censurado: o zumbi com a peça do visual (a lista de ItemVisual que o
-     * client/NOM_VariantLook.lua preenche; IsoZombie.getItemVisuals, ItemVisual.getItemType, bytecode em
-     * pz-api-notes §33) e o alfa dele pra este jogador (IsoObject.getAlpha(int): 0 fora da vista).
-     * Erro aqui só apaga o quadrado; a névoa segue.
+     * Cabeças do Sem-rosto pro quadrado censurado: ModData {@link Censor#MODDATA_KEY} (o
+     * client/NOM_VariantLook.lua marca ao pintar, sem peça 3D/casca-ovo) e o alfa dele pra
+     * este jogador (IsoObject.getAlpha(int): 0 fora da vista). Posição: osso Bip01_Head
+     * (Model.boneToWorldCoords) quando o AnimationPlayer está pronto; senão estimativa
+     * em pé/prone ({@link Censor#estimateHead}). Erro aqui só apaga o quadrado; a névoa segue.
      */
     private static void collectCensors(Frame f, IsoCell cell, float cx, float cy, int playerIndex) {
         try {
@@ -320,19 +328,61 @@ public final class RenderContext {
                 IsoZombie z = zs.get(i);
                 float dx = z.getX() - cx, dy = z.getY() - cy, d2 = dx * dx + dy * dy;
                 if (d2 > Censor.RANGE * Censor.RANGE) continue;
-                ItemVisuals ivs = z.getItemVisuals();
-                boolean semRosto = false;
-                for (int k = 0; ivs != null && k < ivs.size() && !semRosto; k++) {
-                    ItemVisual iv = ivs.get(k);
-                    semRosto = iv != null && Censor.isSemRostoItem(iv.getItemType());
+                if (!isSemRostoMarked(z)) continue;
+                float hx, hy, hz;
+                if (headFromBone(z)) {
+                    hx = headBone.x;
+                    hy = headBone.y;
+                    hz = headBone.z;
+                } else {
+                    boolean low = z.isProne() || z.isCrawling() || z.isKnockedDown();
+                    Censor.estimateHead(z.getX(), z.getY(), z.getZ(), low,
+                            z.getForwardDirectionX(), z.getForwardDirectionY(), headEst);
+                    hx = headEst[0];
+                    hy = headEst[1];
+                    hz = headEst[2];
                 }
-                if (semRosto) censor.offer(z.getX(), z.getY(), z.getZ(), z.getAlpha(playerIndex), d2);
+                censor.offerHead(hx, hy, hz, z.getAlpha(playerIndex), d2);
             }
             f.censorCount = censor.fill(f.censors, f.originX, f.originY);
         } catch (Throwable t) {
             f.censorCount = 0;
             if (!censorFailed) log("rosto censurado: erro, sem quadrado neste quadro: " + t);
             censorFailed = true;
+        }
+    }
+
+    /** true se o VariantLook marcou este zumbi como Sem-rosto (sem depender da casca 3D). */
+    private static boolean isSemRostoMarked(IsoZombie z) {
+        try {
+            if (!z.hasModData()) return false;
+            KahluaTable md = z.getModData();
+            if (md == null) return false;
+            Object v = md.rawget(Censor.MODDATA_KEY);
+            if (v instanceof Boolean) return (Boolean) v;
+            return v != null && "true".equalsIgnoreCase(String.valueOf(v));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Osso Bip01_Head em coords de mundo; false se o AnimationPlayer ainda não está pronto. */
+    private static boolean headFromBone(IsoZombie z) {
+        try {
+            if (!z.hasAnimationPlayer()) return false;
+            AnimationPlayer ap = z.getAnimationPlayer();
+            if (ap == null) return false;
+            SkinningBoneHierarchy hier = ap.getSkeletonBoneHierarchy();
+            if (hier == null || !hier.isValid()) return false;
+            SkinningBone bone = hier.getBone(SkeletonBone.Bip01_Head);
+            if (bone == null) bone = hier.getBone("Bip01_Head");
+            if (bone == null) return false;
+            Model.boneToWorldCoords(z, bone, headBone);
+            // (0,0,0) absoluto quase nunca é cabeça válida perto da câmera; evita lixo pré-pose
+            if (headBone.x == 0f && headBone.y == 0f && headBone.z == 0f) return false;
+            return true;
+        } catch (Throwable t) {
+            return false;
         }
     }
 

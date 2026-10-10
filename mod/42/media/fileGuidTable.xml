@@ -14,6 +14,10 @@
 		<guid>412f470a-8cba-4e3b-a9f4-bdca386e6603</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_SemRostoRosto.xml</path>
+		<guid>b8a23fab-dedd-45ae-9065-6dd02edb41b1</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_CarpideiraCabelo.xml</path>
 		<guid>d6c55e60-188d-4b27-a2aa-3ed9e3902662</guid>
 	</files>
@@ -44,10 +48,6 @@
 	<files>
 		<path>media/clothing/clothingItems/NOM_CarpideiraManto.xml</path>
 		<guid>7c4e9f2a-1b83-4d6e-9f01-a2b3c4d5e6f7</guid>
-	</files>
-	<files>
-		<path>media/clothing/clothingItems/NOM_CarpideiraMantoFx.xml</path>
-		<guid>8d5f0a3b-2c94-5e7f-a012-b3c4d5e6f708</guid>
 	</files>
 	<files>
 		<path>media/clothing/clothingItems/NOM_EcoVeuFx.xml</path>

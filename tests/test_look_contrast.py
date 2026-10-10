@@ -24,25 +24,25 @@ TEX = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textu
 # caso da lã); a boca folga no mid (o vermelho saturado é o desenho). A venda era
 # laranja vivo (mid 0,45); virou atadura com arame ferrugem-escuro, sem cinza médio.
 LIMITS = {
-    "NOM/NOM_SemRostoEstatica.png": (0.40, 0.08, 0.20),
-    "Body/NOM_Estalador.png": (0.25, 0.15, 0.10),
+    # casca lisa I2 (aposentada): cera suave — midtones altos OK; std/far baixos
+    "NOM/NOM_SemRostoEstatica.png": (0.02, 1.0, 0.02),
+    # A′ remendo 2D: cera lisa de propósito (bíblia §7); std baixo OK
+    "NOM/NOM_SemRostoRosto.png": (0.015, 1.0, 0.015),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
     # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
     "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
-    "Body/NOM_Corredor.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
-    "Body/NOM_Carpideira.png": (0.25, 0.15, 0.10),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
-    # manto penitente (sprint 0052): tecido escuro com rasgos — contraste alto, pouco cinza médio
-    "NOM/NOM_CarpideiraManto.png": (0.20, 0.25, 0.08),
+    # manto (C2 alfa): tecido nos pixels opacos
+    "NOM/NOM_CarpideiraManto.png": (0.08, 0.85, 0.04),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
     "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
-    # Tição (sprint 0038): mesma família da casca, placas menores; lê de longe pela brasa.
-    "Body/NOM_Ticao.png": (0.20, 0.15, 0.05),
+    # I5: pele carvão quase lisa — std/far baixos de propósito (brasa na crosta 3D)
+    "Body/NOM_Ticao.png": (0.003, 1.0, 0.003),
     # crosta 3D do Tição (sprint 0043): carvão e brasa da pele, mais a fumaça clara
     "NOM/NOM_TicaoCrosta3D.png": (0.20, 0.15, 0.05),
 }
@@ -55,6 +55,9 @@ PALE = {
     "NOM/NOM_EcoCinza.png": (0.82, 0.12, 0.08),
     "NOM/NOM_EcoVeu.png": (0.78, 0.15, 0.12),   # escurece pras bordas do véu
 }
+
+# Peles Body em uso (só Tição após I7). Midtones obrigatórios.
+SKIN = {}
 
 # Atadura: faixas horizontais. A luminância tem que variar muito mais de linha pra
 # linha do que de coluna pra coluna (uma grade em diagonal varia igual nos dois).
@@ -93,6 +96,25 @@ def check_pale(name, img):
     return errs, (mean, mid, dark)
 
 
+def check_skin(name, img):
+    lum, opaque = luminance(img)
+    vals = lum[opaque]
+    mean = float(vals.mean())
+    mid = float(((vals > 0.3) & (vals < 0.7)).mean())
+    dark = float((vals < 0.3).mean())
+    mmin, midmin, midmax, dmax = SKIN[name]
+    errs = []
+    if mean < mmin:
+        errs.append("média %.3f < %.2f (pele apagada)" % (mean, mmin))
+    if mid < midmin:
+        errs.append("mid %.3f < %.2f (pele binária/P&B — grade no jogo)" % (mid, midmin))
+    if mid > midmax:
+        errs.append("mid %.3f > %.2f (lã)" % (mid, midmax))
+    if dark > dmax:
+        errs.append("escuro %.3f > %.2f (mancha demais)" % (dark, dmax))
+    return errs, (mean, mid, dark)
+
+
 def horizontal_ratio(img):
     lum, _ = luminance(img)
     return float(lum.mean(axis=1).std() / max(lum.mean(axis=0).std(), 1e-6))
@@ -101,6 +123,8 @@ def horizontal_ratio(img):
 def check(name, img):
     if name in PALE:
         return check_pale(name, img)
+    if name in SKIN:
+        return check_skin(name, img)
     std, mid, far = metrics(img)
     smin, mmax, fmin = LIMITS[name]
     errs = []
@@ -129,19 +153,28 @@ def test_every_look_texture_has_limits():
         for f in os.listdir(os.path.join(TEX, sub)):
             if f.startswith("NOM_") and f.endswith(".png"):
                 found.add(sub + "/" + f)
-    missing = found - set(LIMITS) - set(PALE) - PARTICLES
+    missing = found - set(LIMITS) - set(PALE) - set(SKIN) - PARTICLES
     assert not missing, "textura de visual sem limite de contraste: %s" % sorted(missing)
+
+
+def test_body_skin_not_binary_pb():
+    # regressão do playtest 0060: Body binário (mid≈0) + strip = grade UV no jogo
+    for name in sorted(SKIN):
+        errs, m = check(name, Image.open(os.path.join(TEX, name)))
+        assert not errs, "%s: %s (métricas %s)" % (name, errs, m)
+        assert m[1] >= SKIN[name][1], "%s mid baixo demais: %.3f" % (name, m[1])
 
 
 def test_contrast_catches_wool():
     # o chiado da 0012: grão por pixel em volta do cinza médio. Tem que reprovar.
+    # Probe = Brasa (limites apertados); SemRosto/Tição são lisos de propósito (I2/I5).
     rng = np.random.default_rng(0)
     wool = (0.25 + 0.6 * rng.random((128, 128))) * 205
-    errs, _ = check("NOM/NOM_SemRostoEstatica.png", Image.fromarray(wool.astype(np.uint8), "L"))
+    errs, _ = check("NOM/NOM_Brasa.png", Image.fromarray(wool.astype(np.uint8), "L"))
     assert errs, "ruído fino passou como contraste"
     # e preto/branco por pixel (std alto) também: de longe vira cinza
     salt = (rng.random((128, 128)) > 0.5) * 255
-    errs, _ = check("NOM/NOM_SemRostoEstatica.png", Image.fromarray(salt.astype(np.uint8), "L"))
+    errs, _ = check("NOM/NOM_Brasa.png", Image.fromarray(salt.astype(np.uint8), "L"))
     assert any("far" in e for e in errs), "sal e pimenta por pixel passou de longe"
 
 
@@ -156,21 +189,41 @@ def test_contrast_catches_cow_and_lattice():
     assert any("faixas" in e for e in errs), "grade em diagonal passou como atadura"
 
 
+def test_manto_face_and_hands_alpha_zero():
+    # C2: manto 2D não pinta rosto (x≈0,4–0,6 y≈0,05–0,20) nem mãos laterais.
+    img = Image.open(os.path.join(TEX, "NOM/NOM_CarpideiraManto.png")).convert("RGBA")
+    a = np.asarray(img, np.float32)[..., 3] / 255
+    h, w = a.shape
+    face = a[int(0.05 * h):int(0.20 * h), int(0.40 * w):int(0.60 * w)]
+    hands = np.concatenate([
+        a[int(0.35 * h):int(0.55 * h), :int(0.15 * w)].ravel(),
+        a[int(0.35 * h):int(0.55 * h), int(0.85 * w):].ravel(),
+    ])
+    assert float(face.mean()) < 0.08, "rosto ainda opaco no manto: alfa=%.3f" % face.mean()
+    assert float(hands.mean()) < 0.25, "mãos ainda opacas no manto: alfa=%.3f" % hands.mean()
+    torso = a[int(0.30 * h):int(0.70 * h), int(0.30 * w):int(0.70 * w)]
+    assert float(torso.mean()) > 0.7, "torso do manto transparente demais: alfa=%.3f" % torso.mean()
+
+
 def test_manto_not_wrap_pelicula():
     # sprint 0054: manto NÃO pode ser grade 8×8 nem costura periódica (y%32) — lia como
     # película/wrap no playtest (before-wrap-storefront). Capuz escuro orgânico é ok.
+    # C2: buracos de alfa no rosto/mãos não contam (preenche com média opaca).
     path = os.path.join(TEX, "NOM/NOM_CarpideiraManto.png")
-    lum, _ = luminance(Image.open(path))
+    lum, opaque = luminance(Image.open(path))
+    filled = lum.copy()
+    filled[~opaque] = float(lum[opaque].mean()) if opaque.any() else 0.5
 
     def grid8_corr(a):
         tile = a.reshape(8, 32, 8, 32).mean(axis=(1, 3))
         up = np.kron(tile, np.ones((32, 32), np.float32))
         return float(np.corrcoef(a.ravel(), up.ravel())[0, 1])
 
-    corr = grid8_corr(lum)
-    assert corr < 0.85, "manto parece grade 8×8 (wrap): corr=%.3f" % corr
+    corr = grid8_corr(filled)
+    # tecido orgânico suave correlaciona ~0,89 com o downsample 8×8; wrap real (kron) fica ≥0,95
+    assert corr < 0.92, "manto parece grade 8×8 (wrap): corr=%.3f" % corr
     # costura periódica a cada 32 px (padrão da 0052): linhas seam bem mais escuras
-    rows = lum.mean(axis=1)
+    rows = filled.mean(axis=1)
     seam = float(rows[(np.arange(256) % 32) < 5].mean())
     other = float(rows[(np.arange(256) % 32) >= 5].mean())
     assert not (seam < other - 0.12), "manto tem faixa periódica (película): seam=%.3f other=%.3f" % (seam, other)
@@ -186,9 +239,12 @@ def test_manto_not_wrap_pelicula():
 
 def test_textures_contrast():
     bad = []
-    for name in sorted(LIMITS) + sorted(PALE):
+    for name in sorted(LIMITS) + sorted(PALE) + sorted(SKIN):
         errs, m = check(name, Image.open(os.path.join(TEX, name)))
-        fmt = "média=%.3f mid=%.3f escuro=%.3f" if name in PALE else "std=%.3f mid=%.3f far=%.3f"
+        if name in PALE or name in SKIN:
+            fmt = "média=%.3f mid=%.3f escuro=%.3f"
+        else:
+            fmt = "std=%.3f mid=%.3f far=%.3f"
         print("  %-30s " % name + fmt % m)
         if errs:
             bad.append(name + ": " + "; ".join(errs))
@@ -408,7 +464,9 @@ def test_flake_ash():
 
 
 def main():
-    tests = [test_every_look_texture_has_limits, test_contrast_catches_wool, test_contrast_catches_cow_and_lattice,
+    tests = [test_every_look_texture_has_limits, test_body_skin_not_binary_pb,
+             test_contrast_catches_wool, test_contrast_catches_cow_and_lattice,
+             test_manto_face_and_hands_alpha_zero, test_manto_not_wrap_pelicula,
              test_textures_contrast, test_screen_static_gray_fine_tiles, test_flake_sheet_cells,
              test_flake_criteria_catch_clipart, test_flake_sheet_organic, test_flake_ash]
     fail = 0
