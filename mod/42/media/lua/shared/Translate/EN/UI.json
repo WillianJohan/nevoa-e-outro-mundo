@@ -132,6 +132,8 @@
     "UI_NOM_Debug_C_GlitchMode_Desc": "Compare tear/scanline before picking a product. Off = #16 state; Original = pre-#16; Edges = reduced, vignette only. Live switch.",
     "UI_NOM_Debug_C_GlitchInt": "Glitch intensity",
     "UI_NOM_Debug_C_GlitchInt_Desc": "0-200%% (default 110, same as Options). Multiplies tear, scanline and static for the chosen mode. Live into SearchMode.y -> shader hiss.",
+    "UI_NOM_Debug_C_SemRostoPct": "Faceless proportion",
+    "UI_NOM_Debug_C_SemRostoPct_Desc": "%% of Faceless in white fog (default 12, art bible 7.3). Live remaps the weight; other types keep their ratio. Copy definitions includes SemRostoPct. Red fog stays at a fixed 1/8 split.",
     "UI_NOM_Debug_C_GlitchAct": "Glitch (console)",
     "UI_NOM_Debug_C_GlitchAct_Desc": "Cycles the mode (NOM.glitch) or shows intensity (NOM.glitchIntensity). The knobs above already apply live.",
     "UI_NOM_Debug_B_GlitchCycle": "Cycle mode",

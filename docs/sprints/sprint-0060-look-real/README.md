@@ -39,4 +39,4 @@ Body P&B + strip + ScreenFx/shader (scanline/tear/aberração) + SemRostoEstatic
 4. **A′ rosto:** `lookInspect` → `items=…NOM_SemRostoRosto`, `base=M_ZedBody0N_levelN`, sem casca-ovo; zoom normal + máximo.
 5. **Glitch opções:** Opções > Mods > Qualidade → Original / 110%; Aplicar; conferir no jogo. Painel Look sobrescreve ao vivo; valor do slider não cobre a descrição.
 6. **Estalador / Carpideira:** `lookVariant` como antes.
-7. Proporção Sem-rosto: **ainda espera decisão do Johan** (bíblia §7.3).
+7. Proporção Sem-rosto: proposta da bíblia §7.3 aplicada em `feature/0061-semrosto-proporcao-ca41` (padrão ~12% / vermelha 1/8; slider `SemRostoPct` + Copiar).

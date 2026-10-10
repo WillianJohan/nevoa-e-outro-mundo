@@ -141,13 +141,17 @@ return {
         end
         assert(R.KINDS[1] == "estalador" and R.KINDS[2] == "corredor" and R.KINDS[3] == "semrosto")
     end,
-    -- sprint 0049: defaults 5:3:3:3 renormalizados pra 100% (~35,7 / 21,4 / 21,4 / 21,4)
+    -- bíblia §7.3: defaults 10:6:3:6 (= 5:3:1,5:3) → Sem-rosto ≈ 12%
     variant_rules_default_chances = function()
         require "NOM_Config"
         SandboxVars = nil
+        if NOM_PanelParams then NOM_PanelParams.reset() end
         local ids = realIDs()
         local c = R.config(NOM_Config.get)
-        local want = { estalador = 5 / 14 * 100, corredor = 3 / 14 * 100, semrosto = 3 / 14 * 100, carpideira = 3 / 14 * 100 }
+        local want = {
+            estalador = 10 / 25 * 100, corredor = 6 / 25 * 100,
+            semrosto = 3 / 25 * 100, carpideira = 6 / 25 * 100,
+        }
         for period = 1, 3 do
             local n = count(ids, period, c)
             for kind, w in pairs(want) do
@@ -155,6 +159,7 @@ return {
                 assert(math.abs(got - w) < 1.5, kind .. " " .. got .. "%")
             end
         end
+        assert(math.abs(want.semrosto - 12) < 0.01, "bíblia ~12%")
     end,
     -- sprint 0049: branca 100%; Carpideira no fim de KINDS; com peso 0 a faixa some do total
     -- (quem tinha peso nas três primeiras continua nas mesmas razões entre si)
@@ -226,8 +231,8 @@ return {
         end
         assert(R.redFog(nil, c) == false, "sem período")
     end,
-    -- na vermelha todo zumbi é variante, dividido por igual entre KINDS
-    variant_rules_red_fog_splits_evenly = function()
+    -- bíblia §7.3: vermelha 2:3:1:2 (E:C:S:K) → Sem-rosto 1/8, sobra pro Corredor
+    variant_rules_red_fog_weighted_split = function()
         local count = {}
         for _, k in ipairs(R.KINDS) do count[k] = 0 end
         local ids = realIDs()
@@ -236,19 +241,39 @@ return {
             assert(k, "zumbi comum na névoa vermelha: " .. id)
             count[k] = count[k] + 1
         end
-        for k, v in pairs(count) do
-            assert(math.abs(v / #ids - 1 / #R.KINDS) < 0.02, string.format("%s %.3f", k, v / #ids))
+        local want = { estalador = 2 / 8, corredor = 3 / 8, semrosto = 1 / 8, carpideira = 2 / 8 }
+        for k, w in pairs(want) do
+            assert(math.abs(count[k] / #ids - w) < 0.02, string.format("%s %.3f want %.3f", k, count[k] / #ids, w))
         end
-        -- sprint 0011: os quatro tipos, 1/4 cada
         assert(#R.KINDS == 4 and count.carpideira and count.carpideira > 0, "Carpideira fora da vermelha")
-        -- mesmo zumbi, mesmo período: mesma resposta (recarga); período novo re-divide
-        local same, diff = 0, 0
+        local same = 0
         for i = 1, 3000 do
             local id = ids[i]
             assert(R.variant(id, 7, cfg(), true) == R.variant(id, 7, cfg(), true))
-            if R.variant(id, 7, cfg(), true) == R.variant(id, 8, cfg(), true) then same = same + 1 else diff = diff + 1 end
+            if R.variant(id, 7, cfg(), true) == R.variant(id, 8, cfg(), true) then same = same + 1 end
         end
         assert(same / 3000 < 0.45, "períodos seguidos correlacionados: " .. same / 3000)
+    end,
+
+    -- Painel SemRostoPct live remapeia o peso branco (outros mantêm razão).
+    variant_rules_panel_semrosto_pct_live = function()
+        require "NOM_PanelParams"
+        NOM_PanelParams.reset()
+        require "NOM_Config"
+        SandboxVars = nil
+        local ids = realIDs()
+        NOM_PanelParams.set("SemRostoPct", 20)
+        local ok, err = pcall(function()
+            local c = R.config(NOM_Config.get)
+            local n = count(ids, 2, c)
+            local got = n.semrosto / #ids * 100
+            assert(math.abs(got - 20) < 1.5, "painel 20%: " .. got)
+            -- os outros guardam a razão 10:6:6 entre si nos 80% restantes
+            local others = n.estalador + n.corredor + n.carpideira
+            assert(math.abs(n.estalador / others - 10 / 22) < 0.02, "estalador razão")
+        end)
+        NOM_PanelParams.reset()
+        assert(ok, err)
     end,
     -- tipo desligado: a fatia dele fica comum, as outras não mudam
     variant_rules_red_fog_disabled_kind_stays_normal = function()

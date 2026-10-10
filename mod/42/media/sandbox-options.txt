@@ -201,12 +201,12 @@ option NevoaEOutroMundo.CorredorEnabled = {
 }
 
 option NevoaEOutroMundo.EstaladorChance = {
-    type = integer, min = 0, max = 100, default = 5,
+    type = integer, min = 0, max = 100, default = 10,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.EstaladorChance,
 }
 
 option NevoaEOutroMundo.CorredorChance = {
-    type = integer, min = 0, max = 100, default = 3,
+    type = integer, min = 0, max = 100, default = 6,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CorredorChance,
 }
 
@@ -231,7 +231,7 @@ option NevoaEOutroMundo.CarpideiraEnabled = {
 }
 
 option NevoaEOutroMundo.CarpideiraChance = {
-    type = integer, min = 0, max = 100, default = 3,
+    type = integer, min = 0, max = 100, default = 6,
     page = NevoaEOutroMundo, translation = NevoaEOutroMundo.CarpideiraChance,
 }
 

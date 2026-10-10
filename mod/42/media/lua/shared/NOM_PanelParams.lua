@@ -43,6 +43,7 @@ P.DEFAULTS = {
     LookForce = "",
     GlitchMode = "original",
     GlitchIntensity = 110, -- 0..200 (%); multiplica tear/scanline/static do modo (Opções = 110%)
+    SemRostoPct = 12, -- bíblia §7.3; live remapeia peso branco (sandbox 10:6:3:6)
 }
 
 -- type: int | float | bool | enum
@@ -61,6 +62,7 @@ P.SCHEMA = {
     LookForce = { type = "enum", values = P.LOOK_ARCHETYPES, section = "look" },
     GlitchMode = { type = "enum", values = P.GLITCH_MODES, section = "look" },
     GlitchIntensity = { type = "int", min = 0, max = 200, step = 10, section = "look" },
+    SemRostoPct = { type = "int", min = 0, max = 40, step = 1, section = "look" },
 }
 
 local live = {}
@@ -71,7 +73,7 @@ P.KEYS = {
     "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
     "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
     "CinzaRateMult", "CinzaDensityMult", "LookForce",
-    "GlitchMode", "GlitchIntensity",
+    "GlitchMode", "GlitchIntensity", "SemRostoPct",
 }
 
 local function inList(list, v)
@@ -176,7 +178,9 @@ function P.format(key, value)
     if value == nil then value = P.get(key) end
     if not sch then return tostring(value) end
     if sch.type == "bool" then return value and "on" or "off" end
-    if key == "AlmaCrawlerPct" or key == "GlitchIntensity" then return tostring(value) .. "%" end
+    if key == "AlmaCrawlerPct" or key == "GlitchIntensity" or key == "SemRostoPct" then
+        return tostring(value) .. "%"
+    end
     if key == "CinzaRateMult" or key == "CinzaDensityMult" then
         return string.format("%.1f", value) .. "×"
     end

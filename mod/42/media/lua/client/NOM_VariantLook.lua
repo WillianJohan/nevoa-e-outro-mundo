@@ -30,6 +30,7 @@ require "NOM_NightStats"
 require "NOM_VariantRules"
 require "NOM_VariantWardrobe"
 require "NOM_SemRostoFace"
+require "NOM_SemRostoCap"
 require "NOM_Math"
 require "NOM_Dissolve"
 require "NOM_EmberShell"
@@ -113,9 +114,57 @@ local function hide(list, w)
     for _, iv in ipairs(gone) do list:remove(iv) end
 end
 
+-- Bíblia §7.3: teto visual — excedentes Sem-rosto usam F1+S5 (gameplay intacto).
+local function semrostoCapped(z, id)
+    local cell = getCell and getCell()
+    if not cell or not cell.getZombieList then return false end
+    local zlist = cell:getZombieList()
+    if not zlist then return false end
+    local entries, crowd = {}, {}
+    local seen = {}
+    for i = 0, zlist:size() - 1 do
+        local o = zlist:get(i)
+        if o and (not o.isAlive or o:isAlive()) then
+            local x, y = o:getX(), o:getY()
+            crowd[#crowd + 1] = { x = x, y = y }
+            local oid = 0
+            if o.getPersistentOutfitID then oid = o:getPersistentOutfitID() or 0 end
+            oid = NOM_VariantRules.baseId(oid)
+            local w = worn[o]
+            local marked = false
+            if o.hasModData and o:hasModData() then
+                marked = o:getModData().NOM_semrosto
+            end
+            if o == z or (w and w.kind == "semrosto") or marked then
+                if oid and oid ~= 0 and not seen[oid] then
+                    seen[oid] = true
+                    entries[#entries + 1] = { id = oid, x = x, y = y }
+                end
+            end
+        end
+    end
+    if not seen[id] then
+        entries[#entries + 1] = { id = id, x = z:getX(), y = z:getY() }
+    end
+    local full = NOM_SemRostoCap.fullLook(entries, crowd)
+    return NOM_SemRostoCap.isCapped(id, full)
+end
+
 -- Guarda-roupa da variante (lote A): tira slot conflitante, põe peças vanilla + tratamento.
+-- Sem-rosto capped: força S5 (roupa própria lavada) quando o catálogo existir.
 local function applyWardrobe(list, w, id)
-    local variant, idx = NOM_VariantWardrobe.pick(w.kind, id)
+    local variant, idx
+    if w.kind == "semrosto" and w.capped then
+        local cat = NOM_VariantWardrobe.CATALOG.semrosto
+        if cat then
+            for i = 1, #cat do
+                if cat[i].id == "S5" then variant, idx = cat[i], i break end
+            end
+        end
+        if not variant then return end -- sem catálogo: look atual = S5 implícito
+    else
+        variant, idx = NOM_VariantWardrobe.pick(w.kind, id)
+    end
     if not variant then return end
     w.wardVar = variant.id
     w.wardIdx = idx
@@ -272,21 +321,25 @@ local function put(z, kind, id)
         w.bodyIv = biv
     end
     hide(list, w)
-    applyWardrobe(list, w, id)
-    proofBody(list, w)
     -- Censor (mod3): ModData NOM_semrosto. A′: tint do remendo ANTES do reset (senão
     -- pickUninitializedValues sorteia; pz-api-notes §14.4a).
     if kind == "semrosto" then
         z:getModData().NOM_semrosto = true
+        w.capped = semrostoCapped(z, id)
+        z:getModData().NOM_semrosto_capped = w.capped or nil
         if w.iv and ImmutableColor and ImmutableColor.new then
             local base = z:getHumanVisual():getSkinTexture()
             w.skinBase = base
+            -- F1 = tom medido; variantes F2–F4 entram no lote 2.
             local r, g, b = NOM_SemRostoFace.tintFor(base)
             w.iv:setTint(ImmutableColor.new(r, g, b, 1))
         end
     else
         z:getModData().NOM_semrosto = nil
+        z:getModData().NOM_semrosto_capped = nil
     end
+    applyWardrobe(list, w, id)
+    proofBody(list, w)
     z:resetModelNextFrame()
     if w.item and shell then
         if NOM_EmberShell.reveal(z) then NOM_EmberShell.burst(z) end
@@ -303,6 +356,7 @@ local function strip(z)
     NOM_EmberShell.remove(z)
     if w.kind == "semrosto" and z:hasModData() then
         z:getModData().NOM_semrosto = nil
+        z:getModData().NOM_semrosto_capped = nil
     end
     local list = z:getItemVisuals()
     if w.proof then
