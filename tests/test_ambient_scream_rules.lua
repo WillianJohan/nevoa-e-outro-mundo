@@ -12,9 +12,9 @@ return {
         assert(not A.enabled(true, nil) and not A.enabled(true, "purple"))
     end,
 
-    -- 0063: intervalo único 60–500 s (uniforme), branca e vermelha iguais; preta off.
-    ambient_gap_uniform_60_to_500s = function()
-        assert(A.GAP_MIN_MS == 60000, "mínimo 60 s")
+    -- Playtest Johan 2026-10-10: intervalo único 30–500 s (uniforme); preta off.
+    ambient_gap_uniform_30_to_500s = function()
+        assert(A.GAP_MIN_MS == 30000, "mínimo 30 s")
         assert(A.GAP_MAX_MS == 500000, "máximo 500 s")
         assert(A.GAP_ROLL == A.GAP_MAX_MS - A.GAP_MIN_MS + 1)
         assert(A.gap("white", 0) == A.GAP_MIN_MS)

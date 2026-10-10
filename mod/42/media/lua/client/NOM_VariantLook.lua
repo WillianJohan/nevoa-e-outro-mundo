@@ -34,6 +34,7 @@ require "NOM_SemRostoCap"
 require "NOM_Math"
 require "NOM_Dissolve"
 require "NOM_EmberShell"
+require "NOM_BrasaLook"
 require "NOM_ScreenFxRules"
 
 -- Itens em media/scripts/NOM_clothing.txt; peles em media/textures/Body/.
@@ -192,12 +193,14 @@ local function treatOwnClothes(list, w, variant)
 end
 
 -- Casca NOM_Brasa órfã (dissolve parado / mid-reveal) lê como almofada branca/rosa.
+-- NOM_BrasaCasca* fica com NOM_BrasaLook (0067); não é órfã da mutação.
 local function stripOrphanBrasa(list, w)
     if not list then return end
     local gone = {}
     for i = 0, list:size() - 1 do
         local iv = list:get(i)
-        if iv and iv:getItemType() == "Base.NOM_Brasa" then
+        local t = iv and iv:getItemType()
+        if t == "Base.NOM_Brasa" then
             if not (NOM_EmberShell.has and NOM_EmberShell.has(w and w._z)) then
                 gone[#gone + 1] = iv
             end

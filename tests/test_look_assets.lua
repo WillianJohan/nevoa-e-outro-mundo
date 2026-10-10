@@ -105,7 +105,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 23, "esperava 23 itens (+Laco/Casca Embrulhada), achou " .. n)
+        assert(n == 25, "esperava 25 itens (+BrasaCasca×2), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -219,15 +219,14 @@ return {
         assert(items().NOM_EcoCasca:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a cinza)")
     end,
 
-    -- sprint 0022: a casca de brasa do corpo inteiro na mutação. A mesma malha Hazmat da casca do
-    -- Eco, mas SEM máscara (o buraco da queima tem de mostrar o monstro embaixo, não o fundo),
-    -- textura de carvão e brasa do mod, o shader do dissolve, no lugar multi-item (não expulsa
-    -- nada no DoZombieInventory) e sem BloodLocation (getBodyPartClothingDefense e o som de
-    -- armadura pulam o item: nenhum efeito de jogo enquanto queima).
+    -- sprint 0022 / 0067: casca de brasa da mutação em BoilerSuit (sem hood Hazmat —
+    -- hood empilhava na crosta e inflava a silhueta). SEM máscara (buraco mostra o monstro),
+    -- shader dissolve, zeddmg multi-item, sem BloodLocation.
     look_assets_ember_shell = function()
         local x = xmlOf("NOM_Brasa")
-        assert(tag(x, "m_MaleModel") == "media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X")
-        assert(tag(x, "m_FemaleModel") == "media\\models_X\\Skinned\\Clothes\\Kate_Hazmat.X")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
+            "mutação também BoilerSuit (sem hood)")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
         assert(tag(x, "m_Shader") == "NOM_Dissolve", "casca sem o shader")
         assert(tag(x, "textureChoices") == "NOM\\NOM_Brasa")
         assert(not x:find("<m_Masks>", 1, true), "máscara esconderia o monstro embaixo da casca")
@@ -236,6 +235,30 @@ return {
         assert(body:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a peça)")
         assert(not body:find("BloodLocation", 1, true), "casca com BloodLocation viraria armadura")
         assert(not body:find("Defense", 1, true), "casca com defesa")
+    end,
+
+    -- 0067: casca permanente BoilerSuit + fissuras α + shader NOM_Brasa (+ gêmeo estático).
+    look_assets_brasa_casca = function()
+        local x = xmlOf("NOM_BrasaCasca")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
+        assert(tag(x, "m_Shader") == "NOM_Brasa")
+        assert(tag(x, "textureChoices") == "NOM\\NOM_BrasaCasca")
+        assert(tag(x, "m_AllowRandomTint") == "true", "pulso via TintColour precisa AllowRandomTint")
+        -- Sobreposição (look-brasa): textura ≥70% α0; máscara de corpo furaria o monstro
+        -- (playtest 01/03 transparente). Igual NOM_Brasa da mutação: sem m_Masks.
+        assert(not x:find("<m_Masks>", 1, true),
+            "máscara + fissuras transparentes = monstro vazado")
+        local st = xmlOf("NOM_BrasaCascaStatic")
+        assert(tag(st, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit")
+        assert(not st:find("<m_Shader>", 1, true), "estático não leva shader")
+        assert(not st:find("<m_Masks>", 1, true), "estático também sem máscara")
+        assert(items().NOM_BrasaCasca:find("BodyLocation = base:zeddmg", 1, true))
+        assert(items().NOM_BrasaCascaStatic:find("BodyLocation = base:zeddmg", 1, true))
+        assert(io.open("mod/42/media/textures/NOM/NOM_BrasaCasca.png", "rb"), "textura casca")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa.frag", "r"), "frag")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa.vert", "r"), "vert")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa_static.vert", "r"), "static vert")
     end,
 
     -- 0064 K2 caminho A: balaclava vanilla + casca BoilerSuit com máscaras Hazmat (sem hood)

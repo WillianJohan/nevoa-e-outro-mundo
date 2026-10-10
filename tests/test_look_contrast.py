@@ -53,6 +53,8 @@ LIMITS = {
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
+    # 0067: overlay α — só fissuras opacas; midtones de brasa ok; far frouxo (não é silhueta)
+    "NOM/NOM_BrasaCasca.png": (0.10, 0.55, 0.0),
     # I5: pele carvão quase lisa — std/far baixos de propósito (brasa na crosta 3D)
     "Body/NOM_Ticao.png": (0.003, 1.0, 0.003),
     # crosta: rachaduras finas → mais midtones; brilho só nos olhos

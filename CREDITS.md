@@ -154,6 +154,7 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
 | `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco do Eco, salpicado, mais escuro nas bordas |
 | `mod/42/media/textures/NOM/NOM_Brasa.png` | 256×256 | casca de brasa da mutação (sprint 0022): carvão quase preto em placas, rachaduras largas em brasa laranja |
+| `mod/42/media/textures/NOM/NOM_BrasaCasca.png` | 256×256 | 0067: fissuras de brasa ≥70% transparentes (casca BoilerSuit permanente na preta) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
@@ -243,6 +244,7 @@ Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_
 |---|---|
 | `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
 | `mod/42/media/shaders/NOM_Dissolve.vert`, `mod/42/media/shaders/NOM_Dissolve_static.vert`, `mod/42/media/shaders/NOM_Dissolve.frag` | dissolve das peças do mod (sprint 0018, ADR-016), pelo `<m_Shader>` dos itens `*Fx`, da casca do Eco e da casca de brasa (sprint 0022): **código original**, escrito pro mod (MIT). Do jogo só a interface: atributos pelo índice, paleta de ossos, nomes e tipos dos uniforms que o Java do `skinnedmodel.Shader` manda e a saída `gl_FragColor`. Nenhuma linha do `basicEffect*.vert/.frag` da The Indie Stone (`tests/test_dissolve_shader.lua` confere contra os arquivos instalados) |
+| `mod/42/media/shaders/NOM_Brasa.vert`, `mod/42/media/shaders/NOM_Brasa_static.vert`, `mod/42/media/shaders/NOM_Brasa.frag` | brasa permanente na casca BoilerSuit (sprint 0067): **código original** (MIT). Mesma interface do item-model; Alpha modula pulso e tremida ≤0,6%; fissuras na textura com alfa |
 
 ## Conteúdo vanilla referenciado (nada copiado)
 
@@ -252,7 +254,8 @@ Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_
 | `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | véu de fumaça (item do mod) | GUID `82f80e18-a7cf-4312-949c-23879a1e3820` (`NOM_EcoVeu`, do mod) |
 | `clothingItems/NOM_EcoVeu.xml` | modelo do véu de noiva (`Hat_WeddingVeil`) | `skinned\clothes\m_weddingveil`, `skinned\clothes\f_weddingveil` |
 | `clothingItems/NOM_EcoVeuFx.xml` (sprint 0018) | gêmeo do véu do Eco com o shader do dissolve | o mesmo modelo vanilla do véu, pelo nome (as peças dos monstros usam modelos do mod desde a 0041 e a 0042) |
-| `clothingItems/NOM_Brasa.xml` (sprint 0022) | modelo da roupa de proteção (`HazmatSuit`), casca de brasa do corpo inteiro na mutação, sem máscara | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
+| `clothingItems/NOM_Brasa.xml` (sprint 0022; 0067 BoilerSuit) | macacão (`Boilersuit`) sem hood — casca de brasa da mutação (Hazmat hood inflava silhueta) | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
+| `clothingItems/NOM_BrasaCasca.xml` / `NOM_BrasaCascaStatic.xml` (0067) | mesmo macacão + fissuras α; shader `NOM_Brasa` ou estático | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_EmbrulhadaCasca.xml` (0064) | macacão (`Boilersuit`) sem hood — corpo embrulhado da Screamer K2 (Hazmat tem capuz ~1,6×) | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
 | `clothingItems/NOM_CarpideiraCapuz.xml` (0064 caminho A) | balaclava justa + textura nossa (capuz 3D aposentado: ovo/urso) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
