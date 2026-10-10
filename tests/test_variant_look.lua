@@ -235,6 +235,10 @@ local function setup(opts)
         function z:doZombieSpeed(t) if t and t > 0 then self.speedType = t end end
         function z:DoZombieStats() end
         function z:isReanimatedPlayer() vc(); return self.reanimated end
+        function z:setSkeleton(v) self.skeleton = v == true end
+        function z:setCrawler(v) self.crawler = v == true end
+        function z:setCanWalk(v) self.canWalk = v == true end
+        z.skeleton, z.crawler, z.canWalk = false, false, true
         z.alpha, z.seen = 1, true
         function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
         function z:getAlpha(pn) vc(); assert(pn == 0); if self.alphaThrows then error("getAlpha falhou") end; return self.alpha end
@@ -545,12 +549,37 @@ return {
         local info = NOM_VariantLook.inspect(z)
         assert(info:find("var=K2", 1, true), "inspect: " .. info)
         assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz: " .. types(z))
-        assert(hasItem(z, "Base.HospitalGown"), "sem bata provisória: " .. types(z))
+        assert(hasItem(z, "Base.HospitalGown") or hasItem(z, "Base.NOM_EmbrulhadaCasca"),
+            "sem corpo embrulhado: " .. types(z))
         assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
         assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
         fogOff()
         G.converge()
         assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
+    end,
+
+    -- 0064 print 07: alma (SkeletonMuscle + EcoVeu) forçada a Screamer lia como
+    -- "boneco vermelho de palito" com cúpula branca. forceVariant tem que desfazer o esqueleto.
+    look_force_variant_clears_alma_skeleton = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 71), extra = { "Base.NOM_EcoVeu" } })
+        z.md.NOM_alma = true
+        z.md.NOM_almaCrawler = true
+        z.hv.name = "SkeletonMuscle"
+        z.skeleton = true
+        z.crawler = true
+        function z:setSkeleton(v) self.skeleton = v == true end
+        function z:setCrawler(v) self.crawler = v == true end
+        function z:setCanWalk(v) self.canWalk = v == true end
+        NOM_VariantLook.forceVariant(z, "carpideira", 2)
+        assert(z.skeleton == false, "esqueleto ficou")
+        assert(z.md.NOM_alma == nil, "NOM_alma ficou")
+        assert(z.md.NOM_almaCrawler == nil, "NOM_almaCrawler ficou")
+        assert(z.hv.name ~= "SkeletonMuscle", "skin SkeletonMuscle ficou: " .. tostring(z.hv.name))
+        assert(not hasItem(z, "Base.NOM_EcoVeu"), "EcoVeu ficou: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz após limpar alma: " .. types(z))
+        local info = NOM_VariantLook.inspect(z)
+        assert(not info:find("SkeletonMuscle", 1, true), "inspect ainda skeleton: " .. info)
     end,
 
     look_removed_when_fog_ends = function()

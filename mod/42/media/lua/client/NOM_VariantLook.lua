@@ -206,6 +206,44 @@ local function stripOrphanBrasa(list, w)
     for _, iv in ipairs(gone) do list:remove(iv) end
 end
 
+-- Peças da alma (véu/casca) que sobram se só tirarmos o setSkeleton.
+local ALMA_STRIP = { ["Base.NOM_EcoVeu"] = true, ["Base.NOM_EcoVeuFx"] = true,
+    ["Base.NOM_EcoCasca"] = true, ["Base.NOM_EcoCinza"] = true }
+
+local function stripAlmaItems(list)
+    if not list then return end
+    local gone = {}
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        local t = iv and iv:getItemType()
+        if t and ALMA_STRIP[t] then gone[#gone + 1] = iv end
+    end
+    for _, iv in ipairs(gone) do list:remove(iv) end
+end
+
+-- Print 07: Turn the nearest / lookVariant em alma (SkeletonMuscle) + Capuz = boneco
+-- vermelho de palito. Desfaz esqueleto/crawler e tira o véu da alma antes do look.
+local function clearAlmaBody(z)
+    if not z then return end
+    local md = z.getModData and z:getModData() or nil
+    local alma = md and (md.NOM_alma or md.NOM_almaCrawler)
+    local hv = z.getHumanVisual and z:getHumanVisual()
+    local skin = hv and hv.getSkinTexture and hv:getSkinTexture()
+    local skeletonSkin = skin == "SkeletonMuscle" or skin == "Skeleton"
+    if not alma and not skeletonSkin then return end
+    if md then
+        md.NOM_alma = nil
+        md.NOM_almaCrawler = nil
+    end
+    pcall(function() if z.setSkeleton then z:setSkeleton(false) end end)
+    pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+    pcall(function() if z.setCanWalk then z:setCanWalk(true) end end)
+    if hv and skeletonSkin and hv.setSkinTextureName then
+        hv:setSkinTextureName(nil)
+    end
+    stripAlmaItems(z.getItemVisuals and z:getItemVisuals())
+end
+
 -- Guarda-roupa da variante (lote A/2): tira slot conflitante, põe peças vanilla + tratamento.
 -- Sem-rosto capped: força S5 (roupa própria lavada). NOM_wardForce: índice debug sticky.
 local function applyWardrobe(list, w, id)
@@ -603,6 +641,7 @@ end
 -- NOM_wardForce gruda o índice no ModData (NightStats re-sync não sorteia outra).
 function NOM_VariantLook.forceVariant(z, kind, idx)
     if not z or not kind or not LOOKS[kind] then return nil end
+    clearAlmaBody(z)
     local n = NOM_VariantWardrobe.count(kind)
     if n == 0 then
         NOM_VariantLook.sync(z, kind, z:getPersistentOutfitID())
