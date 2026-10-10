@@ -1,8 +1,8 @@
 -- Brasa permanente nos Tições na névoa preta (sprint 0067): casca BoilerSuit com
 -- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). TintColour só no vestir /
 -- transição de luz (ModelInstance fora do Exposer: setTint no tick exigiria
--- resetModelNextFrame e congelava o andar — playtest 01/03). Pulso temporal fica
--- no shader (NOM_Brasa.frag). Alpha = visibilidade/dissolve. Só cliente.
+-- resetModelNextFrame e congelava o andar — playtest 01/03). Intensidade vive
+-- no TintColour.r + variação espacial no frag. Alpha = visibilidade/dissolve.
 if isServer() then return end
 
 require "NOM_BrasaRules"
