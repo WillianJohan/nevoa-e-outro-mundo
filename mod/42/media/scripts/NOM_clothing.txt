@@ -63,7 +63,7 @@ module Base
         ClothingItem = NOM_CarpideiraCabelo,
     }
 
-    /* 0064 Embrulhada: capuz/pano estático (prova ≤ cabeça+5% antes do corpo Hazmat). */
+    /* 0064 Embrulhada: capuz/pano estático (≤ SKULL+5%, anti cabeça-ovo). */
     item NOM_CarpideiraCapuz
     {
         DisplayCategory = Accessory,
@@ -73,6 +73,30 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCapuz,
+    }
+
+    /* 0064 K1: laço branco grande no alto (não há laço de cabelo vanilla). */
+    item NOM_CarpideiraLaco
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = TieBowBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraLaco,
+    }
+
+    /* 0064 K2: casca Hazmat vanilla + textura lençol (corpo embrulhado). */
+    item NOM_EmbrulhadaCasca
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Hazmatsuit,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_EmbrulhadaCasca,
     }
 
     /* Sprint 0052: manto penitente (camada corpo; K1 com saia; K2–K5 saem pelo wardrobe). */
@@ -185,6 +209,17 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCapuzFx,
+    }
+
+    item NOM_CarpideiraLacoFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = TieBowBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraLacoFx,
     }
 
     /* I1/I7: sem *Fx 2D (manto/roupa) — dissolve só em peça com modelo. */

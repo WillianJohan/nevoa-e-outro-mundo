@@ -44,8 +44,10 @@ LIMITS = {
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
     "NOM/NOM_CorredorBoca3D.png": (0.03, 0.70, 0.02),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
-    # 0064 Embrulhada: lençol sujo + boca escura + barbante (massa clara; mid ok no pano)
-    "NOM/NOM_CarpideiraCapuz3D.png": (0.12, 0.55, 0.08),
+    # 0064 Embrulhada: lençol #BDB5A6 + plástico + boca (massa clara; manchas grandes)
+    "NOM/NOM_CarpideiraCapuz3D.png": (0.08, 0.95, 0.05),
+    "NOM/NOM_CarpideiraLaco3D.png": (0.05, 0.85, 0.02),
+    "NOM/NOM_EmbrulhadaCasca.png": (0.08, 0.95, 0.05),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),

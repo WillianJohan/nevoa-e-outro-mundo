@@ -15,24 +15,24 @@ Substitui o visual de manto/viúva (K1–K5) por três identidades sorteadas. Co
 
 | # | Variante | id | Escopo técnico | Aceite |
 |---|----------|-----|----------------|--------|
-| 1 | **Que Nunca Cresceu** | `K1` | só roupa vanilla + tinta (+ mechas existentes) | checklist §13 + print |
-| 2 | **Embrulhada** | `K2` | provar **capuz/pano** estático (≤ cabeça+5%) com print **antes** do resto + rasgo no grito | spike visual → resto |
+| 1 | **Que Nunca Cresceu** | `K1` | laço nosso + vestido médio + manga longa + meias joelho (sem mechas) | checklist §13 + print |
+| 2 | **Embrulhada** | `K2` | capuz ≤ SKULL+5% + casca Hazmat (lençol); rasgo no grito depois | spike visual → resto |
 | 3 | **Rastejante** | `K3` | spike `setCrawler`→ficar de pé (`internal/screamer-rastejante-spike.md`) **antes** de implementar; botões `NOM.rasteja*` no painel | spike no jogo → resto |
 
 ## K1 — Que Nunca Cresceu (esta entrega)
 
-- `Dress_Knees` tinta `#2E3442` (AllowRandomTint no ClothingItem)
-- `Shirt_FormalTINT` `#D9D2C3` (blusa)
+- Laço estático `NOM_CarpideiraLaco` no alto (sem mechas; cabelo vanilla aparece)
+- `Dress_Normal` tinta `#2E3442` (até o joelho, não saia curta)
+- `Shirt_FormalTINT` `#D9D2C3` (manga longa + gola)
 - `Socks_Long_White` + `Shoes_Black`
-- `keepBody=false` (sem manto); mechas `NOM_CarpideiraCabelo` ficam
-- Laço branco: **não há** acessório vanilla de cabelo; 1ª entrega sem peça nossa (assinatura = laço faltando; meias claras + vestido curto). Laço estático fica pra follow-up se o print pedir.
+- `keepBody=false` (sem manto)
 
 ### Roteiro de print (Johan)
 
-1. `git pull` na branch (ou staging depois do merge) + `scripts/dev-sync.sh` + **reiniciar**.
-2. Névoa branca/vermelha → `NOM.lookVariant("carpideira", 1)` ou `NOM.lookGroup()`.
-3. Close + médio + longe; colar `lookInspect` + print.
-4. Conferir: sem manto preto; vestido curto marinho; meias brancas; mechas; proporção “roupa pequena em corpo adulto”.
+1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar**.
+2. Névoa → **Screamer** / `NOM.lookVariant("carpideira", 1)`; preferir **rua no zoom padrão**.
+3. Close + médio + longe; colar `lookInspect` (`var=K1`, `NOM_CarpideiraLaco`) + print.
+4. Conferir: laço branco no alto, vestido marinho até o joelho, meias claras, sem mechas/Samara.
 
 ## Spike Rastejante (antes de K3)
 
@@ -50,24 +50,23 @@ Cada um loga `state/crawl/floor/canWalk` ~3 s. Johan prova no bluefin (SP; MP se
 
 Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 
-## K2 — Embrulhada: prova do capuz (esta entrega)
+## K2 — Embrulhada (esta entrega)
 
-- Peça estática `NOM_CarpideiraCapuz` (Bip01_Head, `nohairnobeard`), ≤ capacete vanilla +5%
-- Relevo de boca aberta sob o pano (sem buraco de olhos); barbante no pescoço
-- Wardrobe `K2` com `headItem` (substitui mechas); corpo Hazmat + rasgo no grito **depois** do print
-- `keepBody=false`; bata `HospitalGown` provisória + capuz; `weight=0` (só via botão/`lookVariant` até o Hazmat)
-- Painel: **Turn the nearest** (`variant`) força tipo **+** guarda-roupa sorteado; **Screamer K2 (capuz)** força a prova do hood (`weight=0`)
+- Capuz `NOM_CarpideiraCapuz`: ≤ **SKULL+5%** (não capacete-ovo), topo caído, boca úmida, barbante com pontas
+- Corpo `NOM_EmbrulhadaCasca` (Hazmat vanilla + máscaras + textura lençol/plástico/amarras)
+- `weight=0` (só botão / `lookVariant(..., 2)` até aceite); Turn the nearest limpa alma/esqueleto
+- Rasgo no grito (`setTextureChoice`) depois do aceite visual
 
 ### Roteiro de print (Johan)
 
-1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar** (Lua/clothing não hot-reload).
-2. Névoa → **Screamer** (K1 sorteada) ou **Screamer K2 (capuz)**; `lookInspect` com `var=K1`/`K2`.
-3. Close + médio + longe; colar + print.
-4. K1: vestido marinho + meias + mechas. K2: capuz ≤ cabeça + bata clara; sem mechas.
+1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar**.
+2. Névoa → **Screamer K2 (capuz)** ou `NOM.lookVariant("carpideira", 2)`; `lookInspect` → `var=K2`, `NOM_CarpideiraCapuz` + `NOM_EmbrulhadaCasca`, **sem** `SkeletonMuscle`.
+3. Close de frente (boca no pano) + zoom padrão na rua + grupo na vermelha.
+4. Conferir: sem cúpula branca 2×; coluna clara encaroçada; sem membros vermelhos de palito.
 
 ## Fora de escopo agora
 
 - Opção 1 (Sirene)
-- Corpo Hazmat + rasgo no grito da Embrulhada (depois do aceite do capuz)
+- Rasgo no grito da Embrulhada (depois do aceite visual)
 - Redesign de som (ninar / birra) — depois do visual aprovado
 - Merge na staging só depois do aceite de cada variante (avisar o coordenador a cada uma pronta)

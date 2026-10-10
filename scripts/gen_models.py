@@ -11,8 +11,9 @@ sexo (NOM_M_/NOM_F_<peça>.x):
                     chiado é a de scripts/gen_textures.py)
   CarpideiraCabelo  cortina de mechas pretas caindo da cabeça, densa na frente do rosto, três
                     mechas brancas (0042)
-  CarpideiraCapuz   capuz/pano da Embrulhada (0064): casca de lençol ≤ cabeça+5%, relevo de
-                    boca aberta sob o tecido, barbante no pescoço (sem buraco de olhos)
+  CarpideiraCapuz   capuz/pano da Embrulhada (0064): lençol justo no crânio (≤ SKULL+5%),
+                    topo caído, nó no pescoço com pontas, relevo de rosto (sem ovo/cúpula)
+  CarpideiraLaco    laço branco grande no alto da cabeça (K1 Que Nunca Cresceu)
   TicaoCrosta       crosta de carvão em placas na cabeça inteira, dois olhos de brasa, lascas
                     no alto e atrás, três fitas de fumaça subindo (0043, a versão por script do
                     teste de IA)
@@ -113,12 +114,20 @@ STRANDS = 36
 STREAKS = (-0.28, 0.06, 0.34)   # ângulos das três mechas brancas (0 = meio da testa)
 HAIR_V, STREAK_V = (0.05, 0.30), (0.42, 0.58)
 
-# Capuz da Embrulhada (0064): lençol justo ≤ capacete+5%; relevo de boca; barbante no pescoço
-CAPUZ_GAP = 0.0035     # folga ~+4–5% sobre side/nose
-CAPUZ_WRINKLE = 0.0025
-CAPUZ_V = (0.02, 0.40)  # faixa do pano na textura
-CAPUZ_MOUTH_V = (0.44, 0.52)
-CAPUZ_ROPE_V = (0.56, 0.64)
+# Capuz da Embrulhada (0064): justo no crânio (SKULL+5%), não no capacete-ovo; topo caído.
+CAPUZ_GAP = 0.0015     # folga mínima (~+2% sobre side)
+CAPUZ_WRINKLE = 0.0035
+CAPUZ_DROOP = 0.012    # topo puxado pra trás (pano molhado)
+CAPUZ_CINCH = 0.12     # estrangulamento do pescoço (fração do raio)
+CAPUZ_V = (0.02, 0.38)  # faixa do pano na textura
+CAPUZ_MOUTH_V = (0.42, 0.50)
+CAPUZ_ROPE_V = (0.54, 0.62)
+CAPUZ_PLASTIC_V = (0.66, 0.78)
+# Laço K1: ponto claro no alto da cabeça (marca de longe)
+LACO_V = (0.10, 0.45)
+LACO_HALF_W = 0.028
+LACO_HALF_H = 0.016
+LACO_TOP = 0.188
 
 # Crosta do Tição: ≤ cabeça vanilla +5%; contorno irregular (lascas), sem cúpula lisa
 CRUST_GAP = 0.003      # folga máx. ~+4–5% sobre side/nose (anti bola de basquete)
@@ -600,75 +609,145 @@ def crosta(sex):
 
 
 def capuz(sex):
-    """Capuz/pano da Embrulhada: casca de lençol rente à cabeça (≤+5%), relevo de boca aberta
-    empurrando o tecido (sem olhos), barbante apertando o pescoço."""
+    """Capuz/pano da Embrulhada: lençol justo no crânio (≤ SKULL+5%), topo caído pra trás,
+    relevo de testa/nariz/queixo/boca, barbante no pescoço com duas pontas (anti cabeça-ovo)."""
     m = Mesh("NOM_CarpideiraCapuz3D")
+    # gap menor que o Sem-rosto: SKULL+folga, não capacete fechado
     verts, uvs, faces, cx = shell_grid(sex, CAPUZ_GAP, CAPUZ_V)
     centre = np.array([cx, 0.0, 0.0])
     f = FACES[sex]
-    # oval da boca na superfície da frente (raios largos o bastante pra pegar faces da grade)
-    mouth_c = np.array([f["mouth"], 0.0, f["nose"] * 0.95])
-    mouth_r = np.array([f["mouth_half"] * 2.2, 0.038, 0.045])
+    skull_ry = {"M": 0.066, "F": 0.062}[sex] * 1.05
+    mouth_c = np.array([f["mouth"], 0.0, f["nose"] * 0.92])
+    mouth_r = np.array([f["mouth_half"] * 2.4, 0.032, 0.038])
+    nose_c = np.array([0.055, 0.0, f["nose"] * 0.88])
+    brow_c = np.array([0.11, 0.0, f["nose"] * 0.70])
+    chin_c = np.array([f["chin"][0] + 0.012, 0.0, f["chin"][1] * 0.85])
 
-    def mouth_dist(p):
-        rel = (p - mouth_c) / mouth_r
+    def ell_dist(p, c, r):
+        rel = (p - c) / r
         return math.sqrt(max(0.0, (rel ** 2).sum()))
 
-    # ruga por posição (não por índice): a costura do UV tem o mesmo xyz duas vezes
     for k, p in enumerate(verts):
+        # aperta pro crânio (SKULL+5%): nada de capacete-ovo
+        hy = abs(p[1])
+        if hy > skull_ry:
+            p = np.array([p[0], math.copysign(skull_ry * 0.98, p[1]), p[2]])
+        if abs(p[2]) > skull_ry * 1.35:
+            p = np.array([p[0], p[1], math.copysign(skull_ry * 1.30, p[2])])
         d = unit(p - centre)
         hx, hy, hz = round(p[0], 5), round(p[1], 5), round(p[2], 5)
-        wrinkle = CAPUZ_WRINKLE * (0.55 + 0.9 * (hash01(hx * 17.1 + hy * 3.7, hz * 11.3, 51) - 0.35))
-        # cincho perto do queixo (amarra no pescoço)
-        chin_t = max(0.0, min(1.0, (f["chin"][0] + 0.04 - p[0]) / 0.06))
-        cinch = 1.0 - 0.035 * chin_t
-        q = centre + (p - centre) * cinch + d * wrinkle
-        dist = mouth_dist(q)
-        if q[2] > 0.02 and dist < 1.6:
-            stretch = 0.006 * max(0.0, 1.0 - dist / 1.6)
-            dent = 0.010 * max(0.0, 1.0 - dist / 0.9) ** 1.3
-            q = q + d * stretch - d * dent
+        wrinkle = CAPUZ_WRINKLE * (0.4 + 1.1 * (hash01(hx * 17.1 + hy * 3.7, hz * 11.3, 51) - 0.3))
+        # dobras radiais saindo do nó do pescoço
+        neck_t = max(0.0, min(1.0, (0.06 - p[0]) / 0.10))
+        fold = 0.004 * neck_t * math.sin(8.0 * math.atan2(p[1], p[2] + 1e-6))
+        # cincho forte no pescoço (estrangulamento visível)
+        chin_t = max(0.0, min(1.0, (f["chin"][0] + 0.05 - p[0]) / 0.07))
+        cinch = 1.0 - CAPUZ_CINCH * chin_t ** 1.2
+        q = centre + (p - centre) * cinch + d * (wrinkle + fold)
+        # topo caído pra trás (nunca cúpula)
+        top_t = max(0.0, min(1.0, (p[0] - 0.12) / 0.07))
+        q = q + np.array([-0.004 * top_t, 0.0, -CAPUZ_DROOP * top_t ** 1.4])
+        # relevo do rosto empurrando o pano (testa, nariz, queixo, boca)
+        for c, r, push, dent in (
+            (brow_c, np.array([0.025, 0.040, 0.030]), 0.005, 0.0),
+            (nose_c, np.array([0.035, 0.018, 0.028]), 0.007, 0.0),
+            (chin_c, np.array([0.020, 0.028, 0.022]), 0.004, 0.0),
+            (mouth_c, mouth_r, 0.005, 0.011),
+        ):
+            dist = ell_dist(q, c, r)
+            if q[2] > 0.01 and dist < 1.5:
+                t = max(0.0, 1.0 - dist / 1.5)
+                q = q + d * (push * t) - d * (dent * t ** 1.4)
         verts[k] = q
     m.add_shell(verts, uvs, faces, "cloth")
-    # relevo escuro da boca: elipsoide fechado no afundamento (sem buraco de olhos)
-    mouth_pt = mouth_c + unit(np.array([0.0, 0.0, 1.0])) * 0.002
-    # projeta na casca deformada: pega o vértice de pano mais perto do oval
+    # boca: saliência oval escura (sem olhos)
     best, best_d = None, 1e9
     for p in verts:
-        d = mouth_dist(p)
+        d = ell_dist(p, mouth_c, mouth_r)
         if d < best_d and p[2] > 0.03:
             best, best_d = p, d
-    if best is not None:
-        mouth_pt = best + unit(best - centre) * 0.0015
-    blob(m, mouth_pt, (0.010, 0.018, 0.007), "mouth", 0,
+    mouth_pt = (best + unit(best - centre) * 0.002) if best is not None else mouth_c
+    blob(m, mouth_pt, (0.011, 0.016, 0.008), "mouth", 0,
          (0.5, (CAPUZ_MOUTH_V[0] + CAPUZ_MOUTH_V[1]) / 2), lat=6, lon=10)
-    # barbante: toro fechado (sweep closed) sob o queixo
+    # barbante no pescoço (toro elíptico estável) + pontas tetra (como farpas da venda)
     neck_x = f["chin"][0] + 0.010
-    ry = f["side"] * 0.88 + CAPUZ_GAP
-    rz_front, rz_back = f["nose"] * 0.72, -f["back"] * 0.72
-    nseg = 24
-    r_rope = 0.0020
+    ry = f["side"] * 0.85 + CAPUZ_GAP
+    rz = f["nose"] * 0.68
+    nseg, r_rope = 24, 0.0020
     pts, frames, prof = [], [], []
     for i in range(nseg):
         th = 2 * math.pi * i / nseg
         cth, sth = math.cos(th), math.sin(th)
-        rz = rz_front if cth > 0 else rz_back
         center = np.array([neck_x, ry * sth, rz * cth])
-        out = unit(np.array([0.0, sth / max(ry, 1e-6), cth / max(abs(rz), 1e-6)]))
+        out = unit(np.array([0.0, sth, cth]))
         tang = unit(np.array([0.0, ry * cth, -rz * sth]))
         up = unit(np.cross(out, tang))
         out = unit(np.cross(tang, up))
         pts.append(center)
         frames.append((out, up))
-        ring = []
-        for j in range(6):
-            phi = 2 * math.pi * j / 6
-            ring.append((r_rope * math.cos(phi), r_rope * math.sin(phi)))
-        prof.append(ring)
+        prof.append([(r_rope * math.cos(2 * math.pi * j / 6), r_rope * math.sin(2 * math.pi * j / 6))
+                     for j in range(6)])
     uv_of = lambda u, j, pa, pb, i: (
         u, CAPUZ_ROPE_V[0] + (CAPUZ_ROPE_V[1] - CAPUZ_ROPE_V[0]) * (0.5 + 0.5 * math.copysign(1, pb)))
     rv, ruv, rfc = sweep(pts, frames, prof, uv_of, closed=True)
     m.add_shell(rv, ruv, rfc, "rope")
+    knot = np.array([neck_x - 0.002, 0.0, rz * 0.95])
+    rope_v = (CAPUZ_ROPE_V[0] + CAPUZ_ROPE_V[1]) / 2
+    for sgn, length in ((1, 0.040), (-1, 0.036)):
+        d = unit(np.array([-0.75, sgn * 0.5, 0.2]))
+        e1 = unit(np.cross(d, [0.0, 0.0, 1.0]))
+        e2 = np.cross(d, e1)
+        base = [knot + 0.0032 * (math.cos(t) * e1 + math.sin(t) * e2) for t in (0, 2.0944, 4.1888)]
+        tip = knot + d * length
+        uvs = [(0.5, rope_v)] * 4
+        m.add_shell(base + [tip], uvs, [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]], "rope", flat=True)
+    return m
+
+
+def laco(sex):
+    """Laço branco grande no alto da cabeça (K1): duas laçadas + nó + duas pontas."""
+    m = Mesh("NOM_CarpideiraLaco3D")
+    top = LACO_TOP if sex == "M" else LACO_TOP - 0.006
+    knot = np.array([top - 0.004, 0.0, 0.01])
+    # nó central
+    blob(m, knot, (0.006, 0.007, 0.006), "bow", 0, (0.5, (LACO_V[0] + LACO_V[1]) / 2), lat=6, lon=8)
+    # duas laçadas (toros achatados)
+    for sgn in (-1, 1):
+        nseg = 16
+        pts, frames, prof = [], [], []
+        for i in range(nseg):
+            th = 2 * math.pi * i / nseg
+            cy = sgn * (LACO_HALF_W * 0.55 + LACO_HALF_W * 0.45 * math.cos(th))
+            cx = knot[0] + LACO_HALF_H * math.sin(th)
+            cz = knot[2] + 0.004 * math.sin(th)
+            pts.append(np.array([cx, cy, cz]))
+            out = unit(np.array([math.sin(th), sgn * math.cos(th), 0.2 * math.sin(th)]))
+            tang = unit(np.array([LACO_HALF_H * math.cos(th), -sgn * LACO_HALF_W * 0.45 * math.sin(th), 0.0]))
+            up = unit(np.cross(out, tang))
+            out = unit(np.cross(tang, up))
+            frames.append((out, up))
+            r = 0.0035
+            prof.append([(r * math.cos(2 * math.pi * j / 5), r * math.sin(2 * math.pi * j / 5)) for j in range(5)])
+        uv_of = lambda u, j, pa, pb, i: (u, LACO_V[0] + (LACO_V[1] - LACO_V[0]) * (0.5 + 0.5 * math.copysign(1, pb)))
+        v, uv, fc = sweep(pts, frames, prof, uv_of, closed=True)
+        m.add_shell(v, uv, fc, "bow")
+    # pontas caindo
+    for sgn, length in ((1, 0.04), (-1, 0.036)):
+        n = 5
+        pts, frames, prof = [], [], []
+        for i in range(n):
+            t = i / (n - 1)
+            pts.append(knot + np.array([-0.005 - length * t, sgn * (0.006 + 0.01 * t), 0.002 * t]))
+            tang = unit(np.array([-length, sgn * 0.01, 0.002]))
+            side = unit(np.array([0.0, 1.0, 0.0]))
+            up = unit(np.cross(tang, side))
+            side = unit(np.cross(up, tang))
+            frames.append((side, up))
+            w = 0.004 * (1 - 0.4 * t)
+            prof.append([(0.001, w), (-0.001, w), (-0.001, -w), (0.001, -w)])
+        uv_of = lambda u, j, pa, pb, i: (u, LACO_V[0] + (LACO_V[1] - LACO_V[0]) * 0.5)
+        v, uv, fc = sweep(pts, frames, prof, uv_of, closed=False)
+        m.add_shell(v, uv, fc, "bow")
     return m
 
 
@@ -732,6 +811,7 @@ BUILDERS = {
     "SemRostoEstatica": semrosto,
     "CarpideiraCabelo": cabelo,
     "CarpideiraCapuz": capuz,
+    "CarpideiraLaco": laco,
     "TicaoCrosta": crosta,
 }
 
@@ -865,23 +945,52 @@ def cabelo_texture(size=128):
 
 
 def capuz_texture(size=128):
-    """Lençol sujo #CFC6B4 com manchas, faixa escura do relevo da boca e barbante no meio."""
+    """Lençol branco-sujo #BDB5A6, plástico cinza, manchas marrons grandes/esparsas, boca úmida.
+    Sem pintas pretas miúdas (liam ovo de codorna)."""
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
     v = y / size
     u = x / size
-    sheet = np.asarray((207, 198, 180), np.float32)
-    stain = np.asarray((110, 94, 76), np.float32)
-    mouth = np.asarray((42, 36, 32), np.float32)
-    rope = np.asarray((90, 74, 56), np.float32)
-    grain = 0.92 + 0.08 * np.sin(u * 41 + 1.7 * np.sin(v * 29))
-    rgb = sheet[None, None, :] * grain[..., None]
-    blot = (0.55 + 0.45 * np.sin(u * 17.3 + 2.1) * np.sin(v * 23.1 + 0.4))
-    blot = np.clip((blot - 0.62) / 0.25, 0, 1)
-    rgb = rgb * (1 - 0.45 * blot[..., None]) + stain[None, None, :] * (0.45 * blot[..., None])
+    sheet = np.asarray((189, 181, 166), np.float32)   # #BDB5A6
+    stain = np.asarray((110, 94, 76), np.float32)     # #6E5E4C
+    plastic = np.asarray((142, 138, 130), np.float32) # #8E8A82
+    mouth = np.asarray((28, 24, 22), np.float32)      # boca úmida escura (L < 0,22 pro teste de cor)
+    rope = np.asarray((90, 74, 56), np.float32)       # #5A4A38
+    # sujeira de baixo pra cima
+    dirt = np.clip((v - 0.15) / 0.7, 0, 1)
+    grain = 0.90 + 0.10 * np.sin(u * 19 + 1.3 * np.sin(v * 14))
+    rgb = sheet[None, None, :] * grain[..., None] * (1.0 - 0.18 * dirt[..., None])
+    # manchas grandes e esparsas (alto contraste — longe não vira lã)
+    blot = np.zeros((size, size), np.float32)
+    for i, (cu, cv) in enumerate(((0.22, 0.55), (0.70, 0.40), (0.45, 0.75), (0.85, 0.65), (0.35, 0.30))):
+        d = np.sqrt(((u - cu + 0.5) % 1 - 0.5) ** 2 * 1.2 + (v - cv) ** 2)
+        blot = np.maximum(blot, np.clip(1.0 - d / (0.18 + 0.03 * i), 0, 1) ** 1.3)
+    rgb = rgb * (1 - 0.75 * blot[..., None]) + stain[None, None, :] * (0.75 * blot[..., None])
+    # plástico ~35% da área (faixa + manchas)
+    plast = ((v >= CAPUZ_PLASTIC_V[0]) & (v < CAPUZ_PLASTIC_V[1])).astype(np.float32)
+    plast = np.maximum(plast, np.clip(1.0 - np.abs(u - 0.5) * 3.5, 0, 1) * 0.45)
+    shine = 0.88 + 0.12 * np.sin(u * 55 + v * 40)
+    rgb = rgb * (1 - 0.70 * plast[..., None]) + plastic[None, None, :] * (0.70 * plast * shine)[..., None]
     in_mouth = (v >= CAPUZ_MOUTH_V[0] - 0.01) & (v < CAPUZ_MOUTH_V[1] + 0.01)
-    rgb[in_mouth] = mouth
+    # oval vertical suave na faixa da boca
+    mouth_w = np.exp(-((u - 0.5) * 6.5) ** 2)
+    rgb[in_mouth] = (rgb[in_mouth] * (1 - 0.75 * mouth_w[in_mouth, None])
+                     + mouth[None, :] * (0.75 * mouth_w[in_mouth, None]))
     in_rope = (v >= CAPUZ_ROPE_V[0] - 0.01) & (v < CAPUZ_ROPE_V[1] + 0.01)
     rgb[in_rope] = rope * (0.9 + 0.1 * np.sin(x[in_rope] * 0.9))[..., None]
+    return mirrored(rgb.astype(np.float32), size)
+
+
+def laco_texture(size=128):
+    """Laço branco-sujo #D9D2C3 com leve sombra de dobra."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    v = y / size
+    u = x / size
+    base = np.asarray((217, 210, 195), np.float32)
+    shade = 0.88 + 0.12 * np.sin(u * 22 + 1.5 * np.sin(v * 18))
+    rgb = base[None, None, :] * shade[..., None]
+    # faixa central um pouco mais escura (nó)
+    mid = np.exp(-((v - 0.28) * 14) ** 2)
+    rgb = rgb * (1 - 0.12 * mid[..., None])
     return mirrored(rgb.astype(np.float32), size)
 
 
@@ -925,6 +1034,7 @@ TEXTURES = {
     "NOM_CorredorBoca3D": boca_texture,
     "NOM_CarpideiraCabelo3D": cabelo_texture,
     "NOM_CarpideiraCapuz3D": capuz_texture,
+    "NOM_CarpideiraLaco3D": laco_texture,
     "NOM_TicaoCrosta3D": crosta_texture,
 }
 

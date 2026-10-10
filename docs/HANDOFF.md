@@ -5,9 +5,9 @@ Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnig
 ## Em curso: sprint 0064 — Screamer variantes (opções 2/3/4)
 
 Branch `feature/0064-screamer-variantes-ca41`. Johan escolheu Embrulhada, Que Nunca
-Cresceu e Rastejante. **K1** pronta (print); **K2 capuz** Embrulhada pronto pra print
-(`lookVariant("carpideira", 2)`); spike Rastejante no painel. Corpo Hazmat/rasgo e K3
-depois dos prints. Código continua `carpideira`.
+Cresceu e Rastejante. Ajuste pós-prints 07–09: K1 com laço+vestido médio (sem mechas);
+K2 capuz ≤ SKULL+5% + casca Hazmat; Turn the nearest limpa alma (print 07 palito).
+Pronto pra print de novo. Rasgo no grito e K3 depois. Código continua `carpideira`.
 [README](sprints/sprint-0064-screamer-variantes/README.md).
 
 ## Em staging: 0062 lote 2 + 0063 gritos

@@ -75,27 +75,33 @@ W.CATALOG = {
     -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
     -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada (prova capuz). K3 Rastejante — depois.
     carpideira = {
+        -- K1 Que Nunca Cresceu: laço nosso + vestido médio + manga longa + meias joelho.
+        -- Sem mechas 3D (cabelo vanilla aparece); headItem=laço.
         { id = "K1", name = "nunca_cresceu", lightMass = true,
-            -- Dress_Knees / Shirt_FormalTINT: m_AllowRandomTint=true (ClothingItem XML).
+            headItem = "Base.NOM_CarpideiraLaco",
+            headFx = "Base.NOM_CarpideiraLacoFx",
             pieces = {
-                { type = "Base.Dress_Knees", tint = rgb("2E3442") },
+                { type = "Base.Dress_Normal", tint = rgb("2E3442") },
                 { type = "Base.Shirt_FormalTINT", tint = rgb("D9D2C3") },
                 { type = "Base.Socks_Long_White" },
                 { type = "Base.Shoes_Black" },
             },
             strip = FULL,
-            dirt = { parts = TORSO, amount = 0.45 },
+            dirt = { parts = TORSO, amount = 0.55 },
             holes = { "Torso_Upper", "UpperArm_L" },
-            keepBody = false, -- sem manto
+            keepBody = false,
         },
-        -- Prova do capuz (≤ cabeça+5%): cabeça nossa + bata clara provisória (Hazmat/rasgo depois).
-        -- weight=0: não entra no sorteio da névoa até o corpo; forceVariant(2) / lookVariant ainda pega.
-        -- pieces vazias liam como "não atualizou" (print 06: só cueca).
+        -- K2 Embrulhada: capuz ≤ SKULL+5% + casca Hazmat (lençol). weight=0 até aceite.
         { id = "K2", name = "embrulhada", lightMass = true, weight = 0,
             headItem = "Base.NOM_CarpideiraCapuz",
             headFx = "Base.NOM_CarpideiraCapuzFx",
-            pieces = { { type = "Base.HospitalGown" } },
-            strip = FULL,
+            pieces = { { type = "Base.NOM_EmbrulhadaCasca" } },
+            strip = {
+                "Dress_", "LongCoat_", "Poncho", "Boilersuit", "HospitalGown",
+                "Tshirt_", "Shirt_", "Sweater", "Hoodie", "Vest_", "Jumper_",
+                "Trousers_", "Skirt_", "Shorts_", "Jacket_", "Apron_",
+                "Socks_", "Shoes_", "Underpants", "Briefs", "Boxers", "Bra_", "Frilly",
+            },
             keepBody = false,
             dirt = { parts = TORSO, amount = 0.55 },
         },

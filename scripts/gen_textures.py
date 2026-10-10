@@ -17,6 +17,7 @@ Saída (mod/42/media/textures/):
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão em placas, rachaduras largas em brasa (casca Hazmat)
+  NOM/NOM_EmbrulhadaCasca.png    256  lençol+plástico+amarras (casca Hazmat da Embrulhada)
   Body/NOM_Ticao.png             256  I5: carvão quase liso (brasa na crosta 3D)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
@@ -364,6 +365,29 @@ def eco_veu(rng, size=128):
     return eco_ash(rng, size, (246, 246, 250), 0.22)                     # borda do véu mais escura
 
 
+def embrulhada_casca(rng, size=256):
+    # 0064 K2: lençol #BDB5A6 + plástico #8E8A82 + manchas #6E5E4C + 3 amarras de barbante
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    sheet = color((189, 181, 166), 0.92 + 0.08 * fbm(rng, size))
+    dirt = np.clip((y - 0.1) / 0.75, 0, 1)
+    rgb = mix(sheet, (150, 140, 125), dirt * 0.25)
+    # manchas grandes esparsas (contraste alto pra ler de longe)
+    blot = np.zeros((size, size), np.float32)
+    for i, (cx, cy) in enumerate(((0.25, 0.35), (0.7, 0.55), (0.45, 0.75), (0.15, 0.65), (0.85, 0.3), (0.55, 0.2))):
+        d = np.sqrt(((x - cx + 0.5) % 1 - 0.5) ** 2 * 1.1 + (y - cy) ** 2)
+        blot = np.maximum(blot, np.clip(1.0 - d / (0.16 + 0.02 * (i % 3)), 0, 1) ** 1.2)
+    rgb = mix(rgb, (90, 74, 56), blot * 0.8)
+    # plástico ~35%
+    plast = (fbm(rng, size, (2, 3), (0.6, 0.4)) > 0.52).astype(np.float32) * 0.65
+    shine = 0.85 + 0.15 * fbm(rng, size, (4, 5), (0.5, 0.5))
+    rgb = mix(rgb, (120, 116, 108), plast * shine)
+    # três amarras horizontais (peito, cintura, joelhos) — faixas escuras largas
+    for cy in (0.28, 0.48, 0.72):
+        band = np.exp(-((y - cy) * 22) ** 2)
+        rgb = mix(rgb, (70, 56, 42), band * 0.95)
+    return rgb
+
+
 def ember_shell(rng, size=256):
     # casca de brasa da mutação (sprint 0022): carvão quase preto em placas grandes,
     # rachaduras largas em laranja de brasa com o miolo amarelado. Vista só por ~1 s, queimando
@@ -698,6 +722,7 @@ def main():
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
+    save(embrulhada_casca(rng(24)), "NOM/NOM_EmbrulhadaCasca.png", alpha=np.ones((256, 256), np.float32))
     save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)

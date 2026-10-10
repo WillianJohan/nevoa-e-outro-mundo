@@ -27,10 +27,11 @@ return {
         assert(k1.keepBody == false, "sem manto")
         local types = {}
         for i = 1, #k1.pieces do types[k1.pieces[i].type] = k1.pieces[i] end
-        assert(types["Base.Dress_Knees"] and types["Base.Dress_Knees"].tint, "vestido marinho tintável")
+        assert(types["Base.Dress_Normal"] and types["Base.Dress_Normal"].tint, "vestido marinho tintável")
         assert(types["Base.Shirt_FormalTINT"] and types["Base.Shirt_FormalTINT"].tint, "blusa")
         assert(types["Base.Socks_Long_White"], "meias brancas")
         assert(types["Base.Shoes_Black"], "sapato")
+        assert(k1.headItem == "Base.NOM_CarpideiraLaco", "laço no alto")
         assert(not types["Base.Dress_Long"] and not types["Base.Skirt_Long"], "viúva fora")
         assert(W.CATALOG.corredor[1].id == "C1")
         assert(W.CATALOG.corredor[1].pieces[1].type == "Base.Shirt_Lumberjack_TINT")
@@ -105,7 +106,7 @@ return {
         assert(W.CATALOG.estalador[1].pieces[1].tint == nil)
         assert(W.CATALOG.estalador[2].pieces[2].tint ~= nil)
         assert(W.CATALOG.estalador[4].pieces[1].tint ~= nil)
-        assert(W.CATALOG.carpideira[1].pieces[1].tint ~= nil, "Dress_Knees tint")
+        assert(W.CATALOG.carpideira[1].pieces[1].tint ~= nil, "Dress_Normal tint")
     end,
 
     wardrobe_treat_sets_dirt_blood_tint = function()
@@ -157,20 +158,29 @@ return {
         end
     end,
 
-    -- 0064: K2 Embrulhada — prova do capuz (headItem) antes do corpo
+    -- 0064: K2 Embrulhada — capuz + casca Hazmat (fora do sorteio até aceite)
     wardrobe_carpideira_embrulhada_capuz = function()
         local k2 = W.CATALOG.carpideira[2]
         assert(k2 and k2.id == "K2" and k2.name == "embrulhada")
         assert(k2.headItem == "Base.NOM_CarpideiraCapuz")
         assert(k2.headFx == "Base.NOM_CarpideiraCapuzFx")
         assert(k2.keepBody == false)
-        assert(k2.pieces and #k2.pieces == 1 and k2.pieces[1].type == "Base.HospitalGown",
-            "prova: bata clara até o Hazmat")
+        assert(k2.pieces and #k2.pieces == 1 and k2.pieces[1].type == "Base.NOM_EmbrulhadaCasca",
+            "casca Embrulhada: " .. tostring(k2.pieces and k2.pieces[1] and k2.pieces[1].type))
         assert(W.isLightMass(k2))
         assert((k2.weight or 1) == 0, "prova: fora do sorteio até o corpo")
         for id = 0, 39 do
             local v = W.pick("carpideira", id)
             assert(v.id == "K1", "sorteio ainda pega K2: " .. v.id)
         end
+    end,
+
+    wardrobe_carpideira_nunca_cresceu_laco = function()
+        local k1 = W.CATALOG.carpideira[1]
+        assert(k1 and k1.id == "K1")
+        assert(k1.headItem == "Base.NOM_CarpideiraLaco")
+        assert(k1.pieces[1].type == "Base.Dress_Normal")
+        assert(k1.pieces[2].type == "Base.Shirt_FormalTINT")
+        assert(k1.pieces[3].type == "Base.Socks_Long_White")
     end,
 }

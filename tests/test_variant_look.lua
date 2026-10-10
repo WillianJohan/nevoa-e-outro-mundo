@@ -434,8 +434,9 @@ return {
             "Base.Shirt_Lumberjack_TINT", "Base.HoodieDOWN_WhiteTINT", "Base.Jacket_Black",
             "Base.Jacket_Shellsuit_TINT",
         }), "Corredor natural sem wardrobe: " .. types(zs.corredor))
-        assert(hasItem(zs.carpideira, "Base.Dress_Knees")
-            and hasItem(zs.carpideira, "Base.Socks_Long_White"),
+        assert(hasItem(zs.carpideira, "Base.Dress_Normal")
+            and hasItem(zs.carpideira, "Base.Socks_Long_White")
+            and hasItem(zs.carpideira, "Base.NOM_CarpideiraLaco"),
             "Screamer natural sem K1: " .. types(zs.carpideira))
         assert(hasWard(zs.semrosto, {
             "Base.Shirt_FormalTINT", "Base.Jumper_RoundNeck", "Base.Dress_Normal", "Base.Shirt_Workman",
@@ -477,9 +478,11 @@ return {
             local look = NOM_VariantLook.LOOKS[k]
             assert(look, "sem LOOKS pra " .. k)
             assert(look.item, "sem visual pra " .. k)
-            assert(not seen[look.item], "peça repetida " .. look.item)
-            seen[look.item] = true
-            assert(hasItem(zs[k], look.item), k .. " sem a peça: " .. types(zs[k]))
+            -- 0064 K1: laço no lugar das mechas (LOOKS.item fica pra K futuras / leave)
+            local sig = (k == "carpideira") and "Base.NOM_CarpideiraLaco" or look.item
+            assert(not seen[sig], "peça repetida " .. sig)
+            seen[sig] = true
+            assert(hasItem(zs[k], sig), k .. " sem a peça: " .. types(zs[k]))
             if k == "semrosto" then
                 -- 0060f A′: remendo 2D; ModData pro censor; sem casca-ovo
                 assert(look.item == "Base.NOM_SemRostoRosto", "A′ remendo Sem-rosto")
@@ -517,16 +520,18 @@ return {
         end
     end,
 
-    -- 0064: Screamer K1 Que Nunca Cresceu — mechas + vestido curto vanilla (sem manto)
+    -- 0064: Screamer K1 Que Nunca Cresceu — laço + vestido médio + meias (sem mechas/manto)
     look_carpideira_nunca_cresceu = function()
         local G = setup()
         local z = G.spawn({ id = idFor("carpideira", 52) })
         fogOn(52)
         G.converge()
         local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.item), "sem mechas: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco"), "sem laço: " .. types(z))
+        assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
         assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
-        assert(hasItem(z, "Base.Dress_Knees"), "sem vestido curto: " .. types(z))
+        assert(hasItem(z, "Base.Dress_Normal"), "sem vestido até o joelho: " .. types(z))
+        assert(hasItem(z, "Base.Shirt_FormalTINT"), "sem blusa manga longa: " .. types(z))
         assert(hasItem(z, "Base.Socks_Long_White"), "sem meias brancas: " .. types(z))
         assert(hasItem(z, "Base.Shoes_Black"), "sem sapato: " .. types(z))
         assert(z.hv.name == nil, "0060b: Carpideira sem Body")
@@ -535,7 +540,7 @@ return {
         assert(info:find("var=K1", 1, true), "inspect: " .. info)
         fogOff()
         G.converge()
-        assert(not hasItem(z, look.item), "mechas ficaram: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_CarpideiraLaco"), "laço ficou: " .. types(z))
     end,
 
     -- 0064: K2 Embrulhada — capuz no lugar das mechas (prova ≤ cabeça+5%)
@@ -549,13 +554,13 @@ return {
         local info = NOM_VariantLook.inspect(z)
         assert(info:find("var=K2", 1, true), "inspect: " .. info)
         assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz: " .. types(z))
-        assert(hasItem(z, "Base.HospitalGown") or hasItem(z, "Base.NOM_EmbrulhadaCasca"),
-            "sem corpo embrulhado: " .. types(z))
+        assert(hasItem(z, "Base.NOM_EmbrulhadaCasca"), "sem casca embrulhada: " .. types(z))
         assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
         assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
         fogOff()
         G.converge()
         assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_EmbrulhadaCasca"), "casca ficou: " .. types(z))
     end,
 
     -- 0064 print 07: alma (SkeletonMuscle + EcoVeu) forçada a Screamer lia como
@@ -661,11 +666,11 @@ return {
         local z = G.spawn({ id = idFor("carpideira", 9) })
         fogOn(9)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.carpideira.item))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco"))
         G.reuse(z, idFor(nil, 9))
         G.render(z)
         G.converge()
-        assert(not hasItem(z, NOM_VariantLook.LOOKS.carpideira.item) and z.hv.name == nil, "objeto reaproveitado com visual: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_CarpideiraLaco") and z.hv.name == nil, "objeto reaproveitado com visual: " .. types(z))
         assert(NOM_VariantLook.count() == 0, "a tabela guardou o objeto reaproveitado")
         -- reaproveitado ainda não vestido: o item velho não pode ficar se o jogo demorar a vestir
         local y = G.spawn({ id = idFor("estalador", 9) })
@@ -756,7 +761,9 @@ return {
         assert(k and k ~= "corredor", "não achou período com outro tipo")
         fogOn(p)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS[k].item), "período novo, visual velho: " .. types(z))
+        local want = NOM_VariantLook.LOOKS[k].item
+        if k == "carpideira" then want = "Base.NOM_CarpideiraLaco" end
+        assert(hasItem(z, want), "período novo, visual velho: " .. types(z))
         assert(not hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "ficou Corredor: " .. types(z))
     end,
 
@@ -1148,8 +1155,7 @@ return {
         fogOn(42)
         G.converge()
         G.ms(NOM_DissolveRules.MS * 2)
-        local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.fx) and z.hv.name == nil, "a peça sumiu: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLacoFx") and z.hv.name == nil, "a peça sumiu: " .. types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z))
         fogOff()
         G.converge()
@@ -1301,10 +1307,9 @@ return {
         fogOn(62)
         G.converge()
         G.ms(NOM_DissolveRules.MS * 2)
-        local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.item) and z.hv.name == nil, "o monstro sumiu: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco") and z.hv.name == nil, "o monstro sumiu: " .. types(z))
         -- 0064 K1: FULL strip tira a camisa vanilla; o monstro fica com wardrobe K1
-        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Knees"), types(z))
+        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Normal"), types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
         fogOff()
         G.converge()
