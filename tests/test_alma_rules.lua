@@ -21,6 +21,31 @@ return {
         assert(R.POP_MIN < R.POP_MAX)
     end,
 
+    -- Playtest 2026-10-10: na preta 20–40; branca/vermelha ficam 4–20.
+    alma_population_black_20_to_40 = function()
+        R.reset()
+        assert(R.POP_MIN_BLACK == 20 and R.POP_MAX_BLACK == 40)
+        local mn, mx = R.popBounds({ fog = true, black = true })
+        assert(mn == 20 and mx == 40, "preta")
+        mn, mx = R.popBounds({ fog = true, red = true })
+        assert(mn == 4 and mx == 20, "vermelha")
+        mn, mx = R.popBounds({ fog = true })
+        assert(mn == 4 and mx == 20, "branca")
+        mn, mx = R.popBounds(nil)
+        assert(mn == 4 and mx == 20)
+    end,
+
+    alma_refill_black_uses_20_40 = function()
+        R.reset()
+        local black = { fog = true, black = true }
+        assert(R.refillCount(0, 0, black) == 20, "piso preta")
+        assert(R.refillCount(0, 0.9999, black) == 40, "teto preta")
+        assert(R.refillCount(19, 0, black) == 1)
+        assert(R.refillCount(20, 0.5, black) == 0)
+        assert(R.refillCount(0, 0) == 4, "sem world: branca/vermelha")
+        assert(R.refillCount(0, 0, { fog = true }) == 4)
+    end,
+
     -- Abaixo do mínimo: repõe até um alvo em [POP_MIN, POP_MAX]; no intervalo: 0.
     alma_refill_when_below_min = function()
         assert(R.refillCount(0, 0) == 4, "piso com u=0")
@@ -142,12 +167,17 @@ return {
         assert(R.apply("popMin", 30) == 12)
         R.apply("popMax", 20)
         R.apply("popMin", 4)
+        assert(R.apply("popMinBlack", 25) == 25)
+        assert(R.POP_MIN_BLACK == 25)
+        assert(R.apply("popMaxBlack", 35) == 35)
+        assert(R.apply("popMinBlack", 50) == 35)
         assert(R.apply("crawler", 0.5) == 0.5)
         assert(R.CRAWLER_CHANCE == 0.5)
         assert(R.apply("crawler", 2) == 1)
         assert(R.apply("crawler", -1) == 0)
         R.reset()
         assert(R.POP_MIN == 4 and R.POP_MAX == 20 and R.CRAWLER_CHANCE == 0.68)
+        assert(R.POP_MIN_BLACK == 20 and R.POP_MAX_BLACK == 40)
     end,
 
     alma_apply_toggle_color_nil = function()

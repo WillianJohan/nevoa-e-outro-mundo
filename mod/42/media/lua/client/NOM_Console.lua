@@ -392,12 +392,15 @@ function NOM.almaReset()
     NOM_AlmaRules.apply("reset") -- painel atualiza na hora (solo)
     NOM_Debug.send({ op = "almaReset" })
 end
--- field: "popMin"|"popMax"|"crawler"|"white"|"red"|"black"; value nil nas cores = toggle.
--- Aplica local (rótulo do painel) e manda valor absoluto ao servidor (evita toggle duplo no solo).
+-- field: popMin|popMax|popMinBlack|popMaxBlack|crawler|white|red|black;
+-- value nil nas cores = toggle. Aplica local (rótulo do painel) e manda valor
+-- absoluto ao servidor (evita toggle duplo no solo).
 function NOM.almaCfg(field, value)
-    if field ~= "popMin" and field ~= "popMax" and field ~= "crawler"
+    if field ~= "popMin" and field ~= "popMax"
+        and field ~= "popMinBlack" and field ~= "popMaxBlack"
+        and field ~= "crawler"
         and field ~= "white" and field ~= "red" and field ~= "black" then
-        NOM_DebugLog.say("[NOM] debug uso: NOM.almaCfg(campo, valor) — popMin/popMax/crawler/white/red/black")
+        NOM_DebugLog.say("[NOM] debug uso: NOM.almaCfg(campo, valor) — popMin/popMax/popMinBlack/popMaxBlack/crawler/white/red/black")
         return
     end
     NOM_AlmaRules.apply(field, value)
@@ -407,6 +410,10 @@ function NOM.almaCfg(field, value)
         value = NOM_AlmaRules.POP_MIN
     elseif field == "popMax" then
         value = NOM_AlmaRules.POP_MAX
+    elseif field == "popMinBlack" then
+        value = NOM_AlmaRules.POP_MIN_BLACK
+    elseif field == "popMaxBlack" then
+        value = NOM_AlmaRules.POP_MAX_BLACK
     elseif field == "crawler" then
         value = NOM_AlmaRules.CRAWLER_CHANCE
     end
@@ -540,6 +547,8 @@ local function syncPanelToSystems(which)
     if (all or which == "almas") and NOM_AlmaRules and NOM_AlmaRules.apply then
         NOM_AlmaRules.apply("popMin", P.get("AlmaPopMin"))
         NOM_AlmaRules.apply("popMax", P.get("AlmaPopMax"))
+        NOM_AlmaRules.apply("popMinBlack", P.get("AlmaPopMinBlack"))
+        NOM_AlmaRules.apply("popMaxBlack", P.get("AlmaPopMaxBlack"))
         NOM_AlmaRules.apply("crawler", P.get("AlmaCrawlerPct") / 100)
         NOM_AlmaRules.apply("white", P.get("AlmaFogWhite") == true)
         NOM_AlmaRules.apply("red", P.get("AlmaFogRed") == true)
@@ -715,7 +724,7 @@ NOM.HELP = {
     { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
     { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
     { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão (4–20, 68%, 3 cores)" },
-    { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
+    { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/popMinBlack/popMaxBlack/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
     { "NOM.arrasto()", "zumbi mais perto vira Arrasto (crawler lento; só névoa vermelha ou preta) — spike §3.5" },
     { "NOM.ash(dens, taxa, ar)", "cinzas: sem args mostra knobs e vivas; dens/taxa/ar em 0..3 multiplicam (live); ash(\"reset\") volta ao padrão" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },

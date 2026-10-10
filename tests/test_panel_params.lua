@@ -8,6 +8,8 @@ return {
         P.reset()
         assert(P.get("AlmaPopMin") == 4)
         assert(P.get("AlmaPopMax") == 20)
+        assert(P.get("AlmaPopMinBlack") == 20)
+        assert(P.get("AlmaPopMaxBlack") == 40)
         assert(P.get("AlmaCrawlerPct") == 68)
         assert(P.get("AlmaFogWhite") == true)
         assert(P.get("AlmaFogRed") == true)
@@ -45,6 +47,10 @@ return {
         assert(P.set("AlmaPopMin", 15) == 10) -- não passa do max
         P.set("AlmaPopMin", 4)
         assert(P.set("AlmaPopMax", 2) == 4) -- não fica abaixo do min
+        P.set("AlmaPopMaxBlack", 30)
+        assert(P.set("AlmaPopMinBlack", 35) == 30)
+        P.set("AlmaPopMinBlack", 20)
+        assert(P.set("AlmaPopMaxBlack", 10) == 20)
     end,
 
     panel_params_gap_min_le_max = function()
@@ -118,7 +124,7 @@ return {
 
     panel_params_schema_covers_ui_keys = function()
         local need = {
-            "AlmaPopMin", "AlmaPopMax", "AlmaCrawlerPct",
+            "AlmaPopMin", "AlmaPopMax", "AlmaPopMinBlack", "AlmaPopMaxBlack", "AlmaCrawlerPct",
             "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
             "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
             "AmbientGapMinMs", "AmbientGapMaxMs",
@@ -140,6 +146,8 @@ return {
         assert(t:find("# NOM_PanelParams", 1, true), t)
         assert(t:find("# live: (nenhum)", 1, true), t)
         assert(t:find("AlmaPopMin=4", 1, true), t)
+        assert(t:find("AlmaPopMinBlack=20", 1, true), t)
+        assert(t:find("AlmaPopMaxBlack=40", 1, true), t)
         assert(t:find("AlmaFogWhite=true", 1, true), t)
         assert(t:find("EstaladorRhythm=rotate", 1, true), t)
         assert(t:find("AmbientGapMinMs=60000", 1, true), t)

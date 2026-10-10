@@ -118,20 +118,21 @@ function S.wave(why)
         return 0, "almas desligadas na opção AlmaEnabled"
     end
     local alive = #S.alive
-    local n = R.refillCount(alive, roll())
+    local popMin, popMax = R.popBounds(NOM_World)
+    local n = R.refillCount(alive, roll(), NOM_World)
     if why == "debug" then
         -- debug: se já está no intervalo, ainda permite um top-up curto até o teto
         if n == 0 then
-            n = math.min(8, R.POP_MAX - alive)
+            n = math.min(8, popMax - alive)
         else
             n = math.min(n, 8)
         end
-        if n <= 0 then return 0, "população no teto (" .. R.POP_MAX .. ")" end
+        if n <= 0 then return 0, "população no teto (" .. popMax .. ")" end
     elseif n <= 0 then
         return 0
     end
     -- nunca passar do máximo (defesa em profundidade)
-    if alive + n > R.POP_MAX then n = R.POP_MAX - alive end
+    if alive + n > popMax then n = popMax - alive end
     if n <= 0 then return 0 end
 
     local spawned = 0
@@ -215,7 +216,8 @@ function S.tick()
     end
     prune(now)
     -- no intervalo: só espera TTL/interior derrubarem; abaixo do mínimo: repor
-    if #S.alive >= R.POP_MIN then
+    local popMin = R.popBounds(NOM_World)
+    if #S.alive >= popMin then
         return
     end
     if S.nextAt == nil then

@@ -1,5 +1,6 @@
 -- Regras puras das almas esqueléticas (sprint 0055): ciclo constante na névoa
--- (branca, vermelha ou preta), população viva 4–20, 68% crawler / 32% shambler.
+-- (branca, vermelha ou preta), população viva 4–20 na branca/vermelha e 20–40
+-- na preta (playtest 2026-10-10), 68% crawler / 32% shambler.
 -- Params ajustáveis em runtime pelo debug/painel (POP_*, CRAWLER_*, cores).
 -- Sem API do jogo; testável com ./run-tests.sh. Rua + TTL curto mantidos da 0050.
 require "NOM_FlakeRules"
@@ -8,6 +9,8 @@ NOM_AlmaRules = {
     CRAWLER_CHANCE = 0.68,
     POP_MIN = 4,
     POP_MAX = 20,
+    POP_MIN_BLACK = 20,
+    POP_MAX_BLACK = 40,
     -- throttle real entre tentativas de repor (quando abaixo do mínimo)
     REFILL_MS = 2000,
     -- TTL real por indivíduo (ms): ~10 s / ~30 s / ~1 min
@@ -38,6 +41,8 @@ R.DEFAULT = {
     CRAWLER_CHANCE = 0.68,
     POP_MIN = 4,
     POP_MAX = 20,
+    POP_MIN_BLACK = 20,
+    POP_MAX_BLACK = 40,
     REFILL_MS = 2000,
     COLOR_WHITE = true,
     COLOR_RED = true,
@@ -73,6 +78,14 @@ function R.active(world)
     return R.COLOR_WHITE == true
 end
 
+-- Piso/teto efetivos pra cor da névoa (preta ≠ branca/vermelha).
+function R.popBounds(world)
+    if world and world.black == true then
+        return R.POP_MIN_BLACK, R.POP_MAX_BLACK
+    end
+    return R.POP_MIN, R.POP_MAX
+end
+
 function R.clampPopMin(n, max)
     n = math.floor(tonumber(n) or 0)
     max = math.floor(tonumber(max) or R.POP_MAX)
@@ -104,14 +117,16 @@ function R.reset()
     R.CRAWLER_CHANCE = d.CRAWLER_CHANCE
     R.POP_MIN = d.POP_MIN
     R.POP_MAX = d.POP_MAX
+    R.POP_MIN_BLACK = d.POP_MIN_BLACK
+    R.POP_MAX_BLACK = d.POP_MAX_BLACK
     R.REFILL_MS = d.REFILL_MS
     R.COLOR_WHITE = d.COLOR_WHITE
     R.COLOR_RED = d.COLOR_RED
     R.COLOR_BLACK = d.COLOR_BLACK
 end
 
--- field: popMin|popMax|crawler|white|red|black|reset. value nil = toggle (cores).
--- Devolve o valor efetivo (número/bool) ou a string do reset.
+-- field: popMin|popMax|popMinBlack|popMaxBlack|crawler|white|red|black|reset.
+-- value nil = toggle (cores). Devolve o valor efetivo (número/bool) ou a string do reset.
 function R.apply(field, value)
     if field == "reset" then
         R.reset()
@@ -122,6 +137,12 @@ function R.apply(field, value)
     elseif field == "popMax" then
         R.POP_MAX = R.clampPopMax(value, R.POP_MIN)
         return R.POP_MAX
+    elseif field == "popMinBlack" then
+        R.POP_MIN_BLACK = R.clampPopMin(value, R.POP_MAX_BLACK)
+        return R.POP_MIN_BLACK
+    elseif field == "popMaxBlack" then
+        R.POP_MAX_BLACK = R.clampPopMax(value, R.POP_MIN_BLACK)
+        return R.POP_MAX_BLACK
     elseif field == "crawler" then
         R.CRAWLER_CHANCE = R.clampCrawler(value)
         return R.CRAWLER_CHANCE
@@ -142,27 +163,30 @@ function R.describe()
     if R.COLOR_BLACK then colors[#colors + 1] = "preta" end
     local cor = #colors > 0 and table.concat(colors, "+") or "nenhuma"
     return "pop=" .. R.POP_MIN .. "-" .. R.POP_MAX
+        .. " pop_preta=" .. R.POP_MIN_BLACK .. "-" .. R.POP_MAX_BLACK
         .. " crawler=" .. pct .. "%"
         .. " cores=" .. cor
         .. " refill_ms=" .. R.REFILL_MS
 end
 
--- Quantas almas spawnar agora pra manter [POP_MIN, POP_MAX].
--- alive < POP_MIN → alvo sorteado em [POP_MIN, POP_MAX]; senão 0. u em [0, 1).
-function R.refillCount(alive, u)
+-- Quantas almas spawnar agora pra manter [popMin, popMax] da cor (world.black → 20–40).
+-- alive < popMin → alvo sorteado em [popMin, popMax]; senão 0. u em [0, 1).
+-- world nil = faixa branca/vermelha (compat dos testes e do debug sem névoa).
+function R.refillCount(alive, u, world)
+    local popMin, popMax = R.popBounds(world)
     alive = math.floor(tonumber(alive) or 0)
     if alive < 0 then alive = 0 end
-    if alive >= R.POP_MIN then return 0 end
-    if alive >= R.POP_MAX then return 0 end
+    if alive >= popMin then return 0 end
+    if alive >= popMax then return 0 end
     u = math.max(0, math.min(tonumber(u) or 0, 0.9999))
-    local span = R.POP_MAX - R.POP_MIN + 1
-    local target = R.POP_MIN + math.floor(u * span)
-    if target < R.POP_MIN then target = R.POP_MIN end
-    if target > R.POP_MAX then target = R.POP_MAX end
+    local span = popMax - popMin + 1
+    local target = popMin + math.floor(u * span)
+    if target < popMin then target = popMin end
+    if target > popMax then target = popMax end
     local need = target - alive
-    local floorNeed = R.POP_MIN - alive
+    local floorNeed = popMin - alive
     if need < floorNeed then need = floorNeed end
-    local room = R.POP_MAX - alive
+    local room = popMax - alive
     if need > room then need = room end
     if need < 0 then need = 0 end
     return need
