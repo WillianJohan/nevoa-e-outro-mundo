@@ -20,6 +20,8 @@
     "Base.NOM_EcoVeuFx": "Smoke Veil",
     "Base.NOM_EcoCasca": "Ash Shell",
     "Base.NOM_Brasa": "Ember Shell",
+    "Base.NOM_BrasaCasca": "Ember Shell (black fog)",
+    "Base.NOM_BrasaCascaStatic": "Ember Shell (static)",
     "Base.NOM_TicaoCrosta": "Charcoal Crust",
     "Base.NOM_TicaoCrostaFx": "Charcoal Crust"
 }

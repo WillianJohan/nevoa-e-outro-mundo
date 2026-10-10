@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 0067: gêmeo sem shader — efeitos desligados: carvão + brasa estática na textura. -->
+<clothingItem>
+	<m_MaleModel>skinned\clothes\bob_boilersuit</m_MaleModel>
+	<m_FemaleModel>skinned\clothes\kate_boilersuit</m_FemaleModel>
+	<m_GUID>c8b7d6e5-f4a3-42b1-0c9d-8e7f6a5b4c32</m_GUID>
+	<m_Static>false</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone></m_AttachBone>
+	<m_Masks>0</m_Masks>
+	<m_Masks>12</m_Masks>
+	<m_Masks>13</m_Masks>
+	<m_Masks>14</m_Masks>
+	<m_Masks>15</m_Masks>
+	<m_Masks>3</m_Masks>
+	<m_Masks>4</m_Masks>
+	<m_Masks>5</m_Masks>
+	<m_Masks>6</m_Masks>
+	<m_Masks>7</m_Masks>
+	<m_Masks>8</m_Masks>
+	<m_Masks>9</m_Masks>
+	<m_Masks>10</m_Masks>
+	<m_Masks>11</m_Masks>
+	<textureChoices>NOM\NOM_BrasaCasca</textureChoices>
+</clothingItem>

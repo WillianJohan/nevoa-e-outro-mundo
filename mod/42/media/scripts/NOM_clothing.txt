@@ -258,15 +258,40 @@ module Base
 
     /* Sprint 0022: casca de brasa do corpo inteiro na mutação e na volta. Em base:zeddmg
        (multi-item: não expulsa a peça nem a roupa no DoZombieInventory) e sem BloodLocation
-       nem defesa (getBodyPartClothingDefense pula o item: nenhum efeito de jogo). */
+       nem defesa (getBodyPartClothingDefense pula o item: nenhum efeito de jogo).
+       0067: malha BoilerSuit (sem hood Hazmat). */
     item NOM_Brasa
     {
         DisplayCategory = Clothing,
         ItemType = base:clothing,
         Weight = 0.1,
-        Icon = Hazmatsuit,
+        Icon = BoilerSuitBlack,
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_Brasa,
+    }
+
+    /* 0067: casca de brasa permanente nos Tições na névoa preta (BoilerSuit + fissuras). */
+    item NOM_BrasaCasca
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = BoilerSuitBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_BrasaCasca,
+    }
+
+    /* 0067: gêmeo sem shader — efeitos desligados (brasa estática na textura). */
+    item NOM_BrasaCascaStatic
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = BoilerSuitBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_BrasaCascaStatic,
     }
 }

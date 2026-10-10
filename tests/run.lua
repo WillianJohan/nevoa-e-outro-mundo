@@ -7,6 +7,8 @@ local FILES = {
     "tests/test_script_comments.lua",
     "tests/test_math.lua",
     "tests/test_dissolve_rules.lua",
+    "tests/test_brasa_rules.lua",
+    "tests/test_brasa_shader.lua",
     "tests/test_ember_rules.lua",
     "tests/test_dissolve.lua",
     "tests/test_dissolve_shader.lua",
