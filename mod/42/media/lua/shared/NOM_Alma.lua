@@ -3,6 +3,7 @@
 -- (isLocal, ADR-005) manda pathToLocationF pro jogador vivo mais perto e mantém
 -- o esqueleto negro. Sem API de rede: o pacote do dono leva a posição.
 require "NOM_AlmaRules"
+require "NOM_VariantWardrobe"
 
 NOM_Alma = {}
 local R = NOM_AlmaRules
@@ -19,6 +20,7 @@ end
 
 -- Look mínimo: esqueleto vanilla (setSkeleton) + vida baixa. Crawler veio no spawn.
 -- Evidência: pz-api-notes (setSkeleton queimado; addZombiesInOutfit longa com crawler).
+-- Lote 2: variantes A1–A5 (bíblia §9). A2–A4 tentam ItemVisual; falha → fica A1.
 function NOM_Alma.dress(z, crawler)
     local md = z:getModData()
     md.NOM_alma = true
@@ -32,6 +34,25 @@ function NOM_Alma.dress(z, crawler)
             if z.setCanWalk then z:setCanWalk(false) end
         end)
         if not ok2 then debugLog("crawler: " .. tostring(err2)) end
+    end
+    local id = z.getPersistentOutfitID and z:getPersistentOutfitID() or 0
+    local variant = NOM_VariantWardrobe.pick("alma", id)
+    if variant then
+        md.NOM_almaVar = variant.id
+        md.NOM_almaTrail = variant.trail == true or nil
+        if variant.pieces and #variant.pieces > 0 and z.getItemVisuals and ItemVisual then
+            local ok3, err3 = pcall(function()
+                local list = z:getItemVisuals()
+                for _, piece in ipairs(variant.pieces) do
+                    local iv = ItemVisual.new()
+                    iv:setItemType(piece.type)
+                    NOM_VariantWardrobe.treat(iv, piece, variant)
+                    list:add(iv)
+                end
+                if z.resetModelNextFrame then z:resetModelNextFrame() end
+            end)
+            if not ok3 then debugLog("alma wardrobe: " .. tostring(err3)) end
+        end
     end
 end
 

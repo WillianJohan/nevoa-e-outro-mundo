@@ -142,9 +142,12 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 |---|---|---|
 | `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (I5/0060f): carvão quase liso; brasa na crosta 3D |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor até a 0041 (na máscara cirúrgica vanilla): vermelho escuro, rasgo preto, dentes brancos. Fica pra voltar a boca 3D da 0042 pelo XML |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca do Corredor (lote 2 / bíblia §5): rasgo escuro sem dentes de longe, lábio pálido |
 | `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (aposentada do look 0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
-| `mod/42/media/textures/NOM/NOM_SemRostoRosto.png` | 256×256 | remendo A′ do Sem-rosto (0060f): cinza claro com alfa só no rosto; tint por zumbi |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto.png` | 256×256 | remendo A′ F1 (liso): cinza claro com alfa só no rosto; tint por zumbi |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F2.png` | 256×256 | remendo A′ F2 (vestígio de nariz) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F3.png` | 256×256 | remendo A′ F3 (pálpebras seladas) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F4.png` | 256×256 | remendo A′ F4 (repuxado) |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto (no véu de noiva vanilla até a 0041). Fica pra voltar o cabelo 3D da 0042 pelo XML |
 | `mod/42/media/textures/NOM/NOM_CarpideiraManto.png` | 256×256 | manto (C2/0060f): tecido escuro; alfa 0 em rosto/mãos/pés (K1; K2–K5 usam roupa vanilla) |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
@@ -217,7 +220,7 @@ Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do reposi
 | `mod/42/media/models_X/Static/Clothes/NOM_M_EstaladorVenda.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_EstaladorVenda.x` | ~1900 vértices | venda do Estalador em 3D: atadura com volume em volta dos olhos, dois arames farpados enrolados por cima, nó atrás com as duas pontas caindo; um por sexo |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda3D.png` | 128×128 | textura da venda 3D: pano em faixas com sangue seco nos olhos (espelhado em cima e embaixo) e a ferrugem do arame numa faixa no meio |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CorredorBoca.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CorredorBoca.x` | ~700 vértices | boca do Corredor em 3D (sprint 0042): cavidade escura em lente colada no rosto, lábio em tubo rasgado e irregular, oito dentes em ponta, dois rasgos subindo pras orelhas; um por sexo |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca3D.png` | 128×128 | textura da boca 3D: dente sujo, lábio vermelho vivo, carne escura e o fundo quase preto em faixas (espelhado em cima e embaixo) |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca3D.png` | 128×128 | textura da boca 3D (lote 2): buraco escuro, lábio pálido, sem dentes de longe (espelhado) |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_SemRostoEstatica.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_SemRostoEstatica.x` | ~500 vértices | casca do Sem-rosto (sprint 0042): superelipsoide liso em volta da cabeça inteira, sem nariz, olho nem boca; usa a textura de chiado `NOM_SemRostoEstatica.png` de cima |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCabelo.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCabelo.x` | ~1650 vértices | cabelo da Carpideira em 3D (sprint 0042): 36 mechas em fita saindo do alto da cabeça e caindo como cortina na frente do rosto, três delas brancas; um por sexo |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo3D.png` | 128×128 | textura do cabelo 3D: fios pretos com brilho fraco e a faixa das mechas brancas no meio (espelhado em cima e embaixo) |

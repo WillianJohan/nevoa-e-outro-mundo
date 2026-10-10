@@ -27,16 +27,20 @@ LIMITS = {
     # casca lisa I2 (aposentada): cera suave — midtones altos OK; std/far baixos
     "NOM/NOM_SemRostoEstatica.png": (0.02, 1.0, 0.02),
     # A′ remendo 2D: cera lisa de propósito (bíblia §7); std baixo OK
-    "NOM/NOM_SemRostoRosto.png": (0.015, 1.0, 0.015),
+    "NOM/NOM_SemRostoRosto.png": (0.012, 1.0, 0.015),
+    "NOM/NOM_SemRostoRosto_F2.png": (0.012, 1.0, 0.015),
+    "NOM/NOM_SemRostoRosto_F3.png": (0.012, 1.0, 0.015),
+    "NOM/NOM_SemRostoRosto_F4.png": (0.012, 1.0, 0.015),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
     # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
     "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
-    "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
+    # lote 2: boca sem dentes — midtones ok (pele + buraco)
+    "NOM/NOM_CorredorBoca.png": (0.10, 0.55, 0.05),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
     # manto (C2 alfa): tecido nos pixels opacos
     "NOM/NOM_CarpideiraManto.png": (0.08, 0.85, 0.04),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
-    "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
+    "NOM/NOM_CorredorBoca3D.png": (0.12, 0.55, 0.08),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).

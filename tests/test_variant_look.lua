@@ -46,13 +46,19 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask",
     ["Base.ZedDmg_BACK_Slash"] = "zeddmg", ["Base.Wound_Chest_Bite_Male"] = "wound",
     ["Base.Bandage_Chest"] = "bandage",
-    -- guarda-roupa lote A (clothing.txt B42)
+    -- guarda-roupa lote A/2 (clothing.txt B42)
     ["Base.HospitalGown"] = "longdress", ["Base.Shirt_FormalWhite"] = "shirt",
-    ["Base.Trousers_SuitWhite"] = "pants", ["Base.Apron_White"] = "torsoextra",
+    ["Base.Shirt_FormalTINT"] = "shirt", ["Base.Trousers_SuitWhite"] = "pants",
+    ["Base.Apron_White"] = "torsoextra",
     ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
     ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
-    ["Base.Dress_SatinNegligee"] = "dress", ["Base.PonchoGarbageBag"] = "jacket",
-    ["Base.LongCoat_Bathrobe"] = "bathrobe" }
+    ["Base.Dress_SatinNegligee"] = "dress", ["Base.Dress_Normal"] = "longdress",
+    ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
+    ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
+    ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
+    ["Base.Shirt_Lumberjack_TINT"] = "shirt", ["Base.Jumper_RoundNeck"] = "sweater",
+    ["Base.Shirt_Workman"] = "shirt", ["Base.Tie_Full"] = "neck",
+    ["Base.Jacket_Fireman"] = "jacket", ["Base.Shoes_Random"] = "shoes" }
 do
     local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
     for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
@@ -557,7 +563,11 @@ return {
         G.converge()
         assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item) and z.hv.name == nil,
             "não pintou depois de vestido")
-        assert(hasItem(z, OUTFIT[1]), "0060b: camisa sumiu: " .. types(z))
+        -- lote 2: C* pode trocar o torso (Boilersuit/Hoodie/…); calça vanilla fica
+        assert(hasItem(z, OUTFIT[2]) or hasItem(z, "Base.Boilersuit")
+            or hasItem(z, "Base.HoodieDOWN_WhiteTINT") or hasItem(z, "Base.Jacket_Black")
+            or hasItem(z, "Base.Jacket_Shellsuit_TINT") or hasItem(z, "Base.Shirt_Lumberjack_TINT"),
+            "corpo sem roupa após wardrobe: " .. types(z))
     end,
 
     look_reused_object_clean = function()

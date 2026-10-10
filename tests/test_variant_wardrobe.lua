@@ -7,7 +7,10 @@ return {
     wardrobe_catalog_five_each = function()
         assert(W.count("estalador") == 5)
         assert(W.count("carpideira") == 5)
-        assert(W.count("corredor") == 0)
+        assert(W.count("corredor") == 5)
+        assert(W.count("ticao") == 5)
+        assert(W.count("semrosto") == 5)
+        assert(W.count("alma") == 5)
         local ids = {}
         for i = 1, 5 do
             local v = W.CATALOG.estalador[i]
@@ -22,6 +25,11 @@ return {
         assert(k[1].keepBody == true and k[1].pieces[1].type == "Base.Skirt_Long")
         assert(k[2].keepBody == false and k[2].pieces[1].type == "Base.Dress_Long")
         assert(k[5].pieces[1].type == "Base.LongCoat_Bathrobe")
+        assert(W.CATALOG.corredor[1].id == "C1")
+        assert(W.CATALOG.corredor[1].pieces[1].type == "Base.Boilersuit")
+        assert(W.CATALOG.semrosto[5].id == "S5" and W.CATALOG.semrosto[5].keepOwn == true)
+        assert(W.CATALOG.ticao[1].id == "T1")
+        assert(W.CATALOG.alma[1].id == "A1" and W.CATALOG.alma[1].pieces == nil)
     end,
 
     wardrobe_pick_stable_by_id = function()

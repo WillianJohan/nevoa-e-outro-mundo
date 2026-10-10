@@ -738,23 +738,29 @@ def mirrored(top_rows, size=128):
 
 
 def boca_texture(size=128):
-    """De cima pro meio: dentes (amarelados, com vão escuro entre eles), lábio vermelho escuro
-    rachado e o buraco quase preto no meio. Espelhado embaixo."""
+    """Lote 2 / bíblia §5: rasgo escuro largo SEM dentes de longe; lábio pálido
+    (não vermelho vivo); buraco quase preto. Transições suaves (evita faixa reta)."""
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
     v = y / size
-    rgb = np.zeros((size, size, 3), np.float32)
-    teeth = v < 0.15
-    stain = 0.92 + 0.08 * np.sin(x * 0.9) * np.sin(y * 1.3)
-    rgb[teeth] = (np.asarray((232, 224, 196), np.float32) * stain[..., None])[teeth]
-    gap = teeth & (((x % 16) < 1.5) | (v > 0.135))
-    rgb[gap] = (60, 20, 18)
-    lips = (v >= 0.15) & (v < 0.38)
-    crack = lips & ((np.abs(np.sin(x * 0.45 + 3 * np.sin(y * 0.3))) < 0.12))
-    rgb[lips] = (np.asarray((122, 14, 16), np.float32) * (0.9 + 0.1 * np.sin(x * 0.31))[..., None])[lips]
-    rgb[crack] = (62, 6, 8)
-    hole = v >= 0.38
-    rgb[hole] = (np.asarray((22, 6, 6), np.float32) * (0.8 + 0.2 * np.sin(x * 0.2))[..., None])[hole]
-    return mirrored(rgb, size)
+    u = x / size
+    # pele → lábio → buraco com rampas (sem bandas duras)
+    skin_c = np.asarray((72, 58, 52), np.float32)
+    lip_c = np.asarray((186, 168, 150), np.float32)
+    hole_c = np.asarray((18, 14, 13), np.float32)
+    # ondula o limiar pra não ler listra horizontal
+    wobble = 0.03 * np.sin(x * 0.35 + 1.2)
+    t_lip = np.clip((v - (0.18 + wobble)) / 0.10, 0, 1)
+    t_hole = np.clip((v - (0.34 + wobble * 0.6)) / 0.12, 0, 1)
+    rgb = skin_c[None, None, :] * (1 - t_lip)[..., None]
+    rgb = rgb + lip_c[None, None, :] * (t_lip * (1 - t_hole))[..., None]
+    rgb = rgb + hole_c[None, None, :] * t_hole[..., None]
+    # micro-variação (quebra faixa)
+    grain = 0.92 + 0.08 * np.sin(x * 0.31) * np.sin(y * 0.27)
+    rgb = rgb * grain[..., None]
+    # rasgos finos irregulares até as orelhas
+    tear = (np.abs(v - (0.36 + wobble)) < 0.015) & (u > 0.06) & (u < 0.94)
+    rgb[tear] = (28, 22, 20)
+    return mirrored(rgb.astype(np.float32), size)
 
 
 def cabelo_texture(size=128):

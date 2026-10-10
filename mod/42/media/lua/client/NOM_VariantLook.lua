@@ -150,8 +150,44 @@ local function semrostoCapped(z, id)
     return NOM_SemRostoCap.isCapped(id, full)
 end
 
--- Guarda-roupa da variante (lote A): tira slot conflitante, põe peças vanilla + tratamento.
--- Sem-rosto capped: força S5 (roupa própria lavada) quando o catálogo existir.
+-- Lava / carboniza a roupa que já está na lista (S5, Tição keepOwn).
+local function treatOwnClothes(list, w, variant)
+    if not list or not variant then return end
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        if iv and iv ~= w.iv and iv ~= w.bodyIv then
+            local t = iv:getItemType()
+            if t and not t:find("%.NOM_", 1, true) then
+                if variant.wash and iv.setDirt and BloodBodyPartType then
+                    for _, partName in ipairs({ "Torso_Upper", "Torso_Lower", "UpperArm_L", "UpperArm_R",
+                        "UpperLeg_L", "UpperLeg_R", "LowerLeg_L", "LowerLeg_R" }) do
+                        local part = BloodBodyPartType[partName]
+                        if part then
+                            iv:setDirt(part, 0)
+                            if iv.setBlood then iv:setBlood(part, 0) end
+                        end
+                    end
+                end
+                if variant.charcoal and ImmutableColor and ImmutableColor.new and iv.setTint then
+                    local c = variant.charcoal
+                    iv:setTint(ImmutableColor.new(c[1], c[2], c[3], 1))
+                end
+                if variant.holes and BloodBodyPartType and iv.setHole then
+                    for hi = 1, #variant.holes do
+                        local part = BloodBodyPartType[variant.holes[hi]]
+                        if part then iv:setHole(part) end
+                    end
+                end
+                if variant.dirt then
+                    NOM_VariantWardrobe.treat(iv, {}, variant)
+                end
+            end
+        end
+    end
+end
+
+-- Guarda-roupa da variante (lote A/2): tira slot conflitante, põe peças vanilla + tratamento.
+-- Sem-rosto capped: força S5 (roupa própria lavada).
 local function applyWardrobe(list, w, id)
     local variant, idx
     if w.kind == "semrosto" and w.capped then
@@ -161,13 +197,17 @@ local function applyWardrobe(list, w, id)
                 if cat[i].id == "S5" then variant, idx = cat[i], i break end
             end
         end
-        if not variant then return end -- sem catálogo: look atual = S5 implícito
+        if not variant then return end
     else
         variant, idx = NOM_VariantWardrobe.pick(w.kind, id)
     end
     if not variant then return end
     w.wardVar = variant.id
     w.wardIdx = idx
+    if variant.keepOwn then
+        treatOwnClothes(list, w, variant)
+        if not variant.pieces or #variant.pieces == 0 then return end
+    end
     if not w.all then
         local all = {}
         for i = 0, list:size() - 1 do
@@ -192,6 +232,7 @@ local function applyWardrobe(list, w, id)
         w.body = nil
     end
     w.wardrobe = {}
+    if not variant.pieces then return end
     for _, piece in ipairs(variant.pieces) do
         local iv = ItemVisual.new()
         iv:setItemType(piece.type)
@@ -327,16 +368,23 @@ local function put(z, kind, id)
         z:getModData().NOM_semrosto = true
         w.capped = semrostoCapped(z, id)
         z:getModData().NOM_semrosto_capped = w.capped or nil
+        local face, faceIdx = NOM_SemRostoFace.pick(id, w.capped)
+        w.face = face
+        w.faceIdx = faceIdx
+        z:getModData().NOM_semrosto_face = face
         if w.iv and ImmutableColor and ImmutableColor.new then
             local base = z:getHumanVisual():getSkinTexture()
             w.skinBase = base
-            -- F1 = tom medido; variantes F2–F4 entram no lote 2.
             local r, g, b = NOM_SemRostoFace.tintFor(base)
             w.iv:setTint(ImmutableColor.new(r, g, b, 1))
+            if w.iv.setTextureChoice then
+                w.iv:setTextureChoice(NOM_SemRostoFace.textureChoice(faceIdx))
+            end
         end
     else
         z:getModData().NOM_semrosto = nil
         z:getModData().NOM_semrosto_capped = nil
+        z:getModData().NOM_semrosto_face = nil
     end
     applyWardrobe(list, w, id)
     proofBody(list, w)
@@ -357,6 +405,7 @@ local function strip(z)
     if w.kind == "semrosto" and z:hasModData() then
         z:getModData().NOM_semrosto = nil
         z:getModData().NOM_semrosto_capped = nil
+        z:getModData().NOM_semrosto_face = nil
     end
     local list = z:getItemVisuals()
     if w.proof then
@@ -486,10 +535,11 @@ function NOM_VariantLook.inspect(z)
     if NOM_PanelParams and NOM_PanelParams.lookForce then lf = tostring(NOM_PanelParams.lookForce()) end
     if lf == "" then lf = "auto" end
     local ward = (w and w.wardVar) or "-"
+    local face = (w and w.face) or (z:hasModData() and z:getModData().NOM_semrosto_face) or "-"
     local skinBase = (w and w.skinBase) or "-"
-    return string.format("kind=%s var=%s skin=%s base=%s clean=%s force=%s items=%s",
-        kinds, ward, tostring(skin), tostring(skinBase), tostring(NOM_ScreenFxRules.lookClean()), lf,
-        table.concat(parts, ","))
+    return string.format("kind=%s var=%s face=%s skin=%s base=%s clean=%s force=%s items=%s",
+        kinds, ward, tostring(face), tostring(skin), tostring(skinBase),
+        tostring(NOM_ScreenFxRules.lookClean()), lf, table.concat(parts, ","))
 end
 
 -- Debug: força monstro + índice de variante (1-based). Bíblia §11.
