@@ -37,7 +37,11 @@ void main()
     if (tex.a < 0.08) {
         discard;
     }
-    float pulse = clamp(TintColour.r, 0.0, 1.0);
+    // TintColour.r = piso da intensidade (vestir / luz). Variação espacial nas
+    // fissuras (sem uniform de tempo; resetModel por tick congelava o andar).
+    float basePulse = clamp(TintColour.r, 0.0, 1.0);
+    float region = 0.5 + 0.5 * sin(nomUv.y * 22.0 + nomUv.x * 9.0);
+    float pulse = clamp(basePulse * (0.82 + 0.18 * region), 0.0, 1.0);
     // escuro 55–100%; sob luz 30–45% (canal vem remapeado do Lua)
     float inten = 0.30 + 0.70 * pulse;
     vec3 nrm = normalize(nomNormal);

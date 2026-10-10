@@ -54,9 +54,10 @@ return {
 
     brasa_frag_pulse_via_tint_remap = function()
         local frag = assert(read(DIR .. "NOM_Brasa.frag"))
-        assert(frag:find("TintColour.r", 1, true), "pulso no canal TintColour.r")
+        assert(frag:find("TintColour.r", 1, true), "intensidade base no TintColour.r")
         assert(frag:find("0.30", 1, true) and frag:find("0.70", 1, true),
             "inten = 0.30 + 0.70 * pulse")
+        assert(frag:find("nomUv", 1, true), "variação espacial nas fissuras")
         assert(not frag:find("0.55 + 0.45", 1, true), "piso antigo 55% removido")
         assert(not frag:find("0.92", 1, true), "faixa Alpha 0.92 não é mais pulso")
     end,

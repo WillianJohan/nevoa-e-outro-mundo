@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 0067: casca de brasa permanente na preta — BoilerSuit (sem hood Hazmat: hood
-     empilha na crosta/K2 e infla a silhueta). Textura ≥70% transparente (só fissuras);
-     shader NOM_Brasa pulsa via TintColour.r (AllowRandomTint). Máscaras como
-     EmbrulhadaCasca (esconde gola vanilla). -->
+<!-- 0067: casca de brasa permanente na preta — BoilerSuit (sem hood Hazmat).
+     Sobreposição: textura ≥70% transparente (só fissuras) + shader NOM_Brasa.
+     SEM m_Masks — máscara + α0 furava o monstro (playtest 01/03). AllowRandomTint
+     pro TintColour no vestir. -->
 <clothingItem>
 	<m_MaleModel>skinned\clothes\bob_boilersuit</m_MaleModel>
 	<m_FemaleModel>skinned\clothes\kate_boilersuit</m_FemaleModel>
@@ -11,20 +11,6 @@
 	<m_AllowRandomHue>false</m_AllowRandomHue>
 	<m_AllowRandomTint>true</m_AllowRandomTint>
 	<m_AttachBone></m_AttachBone>
-	<m_Masks>0</m_Masks>
-	<m_Masks>12</m_Masks>
-	<m_Masks>13</m_Masks>
-	<m_Masks>14</m_Masks>
-	<m_Masks>15</m_Masks>
-	<m_Masks>3</m_Masks>
-	<m_Masks>4</m_Masks>
-	<m_Masks>5</m_Masks>
-	<m_Masks>6</m_Masks>
-	<m_Masks>7</m_Masks>
-	<m_Masks>8</m_Masks>
-	<m_Masks>9</m_Masks>
-	<m_Masks>10</m_Masks>
-	<m_Masks>11</m_Masks>
 	<textureChoices>NOM\NOM_BrasaCasca</textureChoices>
 	<m_Shader>NOM_Brasa</m_Shader>
 </clothingItem>

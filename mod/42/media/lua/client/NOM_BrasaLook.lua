@@ -1,8 +1,8 @@
 -- Brasa permanente nos Tições na névoa preta (sprint 0067): casca BoilerSuit com
--- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). Pulso via ItemVisual:setTint
--- (TintColour.r) + resetModelNextFrame quantizado — a instância de modelo da peça
--- não está no Exposer (console 2026-10-10: index of non-table). Alpha fica pro
--- dissolve / visibilidade (ADR-016). Só cliente. Efeitos off → gêmeo estático.
+-- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). TintColour só no vestir /
+-- transição de luz (ModelInstance fora do Exposer: setTint no tick exigiria
+-- resetModelNextFrame e congelava o andar — playtest 01/03). Pulso temporal fica
+-- no shader (NOM_Brasa.frag). Alpha = visibilidade/dissolve. Só cliente.
 if isServer() then return end
 
 require "NOM_BrasaRules"
@@ -16,7 +16,7 @@ NOM_BrasaLook = {}
 local L = NOM_BrasaLook
 local R = NOM_BrasaRules
 
--- [zumbi] = { iv, seed, period, phase0, item }
+-- [zumbi] = { iv, seed, period, phase0, item, lightHold }
 local worn = {}
 local count = 0
 
@@ -50,7 +50,6 @@ local function isTicao(z)
     if not z or not z.hasModData then return false end
     local md = z:getModData()
     if md and md.NOM_kind == "ticao" then return true end
-    -- fallback: crosta vestida (VariantLook)
     local list = z.getItemVisuals and z:getItemVisuals()
     if not list then return false end
     for i = 0, list:size() - 1 do
@@ -64,6 +63,10 @@ end
 
 local function active()
     return NOM_FogState.on == true and NOM_FogState.black == true
+end
+
+local function lightHold(z)
+    return NOM_TicaoFreeze and NOM_TicaoFreeze.frozen and NOM_TicaoFreeze.frozen[z] == true
 end
 
 local function removeIv(z, e)
@@ -81,17 +84,30 @@ function L.remove(z)
     removeIv(z, e)
 end
 
+local function tintFor(light)
+    local inten
+    if light then
+        inten = (R.LIGHT_HOLD_MIN + R.LIGHT_HOLD_MAX) * 0.5
+    else
+        inten = (R.INTENSITY_MIN + R.INTENSITY_MAX) * 0.5
+    end
+    return R.pulseChannel(inten)
+end
+
+local function setIvTint(iv, channel)
+    if iv and iv.setTint and ImmutableColor and ImmutableColor.new then
+        iv:setTint(ImmutableColor.new(channel, 1, 1, 1))
+    end
+end
+
 local function wear(z)
     if worn[z] then return true end
     if NOM_EmberShell.has and NOM_EmberShell.has(z) then return false end
     local iv = ItemVisual.new()
     local item = itemType()
     iv:setItemType(item)
-    -- canal de pulso começa no meio do range escuro (AllowRandomTint na casca)
-    if iv.setTint and ImmutableColor and ImmutableColor.new then
-        local mid = R.pulseChannel((R.INTENSITY_MIN + R.INTENSITY_MAX) * 0.5)
-        iv:setTint(ImmutableColor.new(mid, 1, 1, 1))
-    end
+    local hold = lightHold(z)
+    setIvTint(iv, tintFor(hold))
     z:getItemVisuals():add(iv)
     local seed = seedOf(z)
     worn[z] = {
@@ -100,6 +116,7 @@ local function wear(z)
         period = R.periodMs(seed, false),
         phase0 = R.phase0(seed),
         item = item,
+        lightHold = hold,
     }
     count = count + 1
     z:resetModelNextFrame()
@@ -112,9 +129,8 @@ local function syncItem(z, e)
     removeIv(z, e)
     local iv = ItemVisual.new()
     iv:setItemType(want)
-    if want == R.ITEM and iv.setTint and ImmutableColor and ImmutableColor.new then
-        local mid = R.pulseChannel((R.INTENSITY_MIN + R.INTENSITY_MAX) * 0.5)
-        iv:setTint(ImmutableColor.new(mid, 1, 1, 1))
+    if want == R.ITEM then
+        setIvTint(iv, tintFor(e.lightHold))
     end
     z:getItemVisuals():add(iv)
     e.iv = iv
@@ -122,46 +138,25 @@ local function syncItem(z, e)
     z:resetModelNextFrame()
 end
 
-local function lightHold(z)
-    return NOM_TicaoFreeze and NOM_TicaoFreeze.frozen and NOM_TicaoFreeze.frozen[z] == true
-end
-
--- TintColour só vai pro ModelInstance no rebuild (postProcessNewItemInstance).
--- Canal 0..1 quantizado em degraus pra não resetar o modelo a cada quadro.
-local function applyPulseChannel(z, e, channel)
-    if not e.iv or not e.iv.setTint or not ImmutableColor or not ImmutableColor.new then
-        return
-    end
-    local q = R.quantizeChannel(channel)
-    if e.tintQ == q then return end
-    e.tintQ = q
-    e.iv:setTint(ImmutableColor.new(q, 1, 1, 1))
+-- TintColour só muda na transição luz/escuro (1 reset). Pulso contínuo no tick
+-- exigiria resetModel e mata a animação de andar (playtest 01/03).
+local function syncLightHold(z, e)
+    if not wantFx() then return end
+    if NOM_Dissolve.busy and NOM_Dissolve.busy(z) then return end
+    if NOM_EmberShell.has and NOM_EmberShell.has(z) then return end
+    local hold = lightHold(z)
+    if e.lightHold == hold then return end
+    e.lightHold = hold
+    setIvTint(e.iv, tintFor(hold))
     z:resetModelNextFrame()
 end
 
-local function pulseTick(z, e, now)
-    if not wantFx() then return end
-    -- Dissolve.busy: Alpha é do dissolve; não competir e não tocar setAlpha.
-    if NOM_Dissolve.busy and NOM_Dissolve.busy(z) then return end
-    if NOM_EmberShell.has and NOM_EmberShell.has(z) then return end
-    local hunting = false
-    if z.hasModData then
-        local md = z:getModData()
-        hunting = md and md.NOM_ticaoHunt == true
-    end
-    local period = R.periodMs(e.seed, hunting)
-    local pulse = R.pulse(now, period, e.phase0, lightHold(z))
-    applyPulseChannel(z, e, R.pulseChannel(pulse))
-end
-
--- EmberShell vai vestir NOM_Brasa: tira a casca permanente pra não empilhar BoilerSuit.
 function L.yieldForShell(z)
     L.remove(z)
 end
 
 Events.OnTick.Add(function()
     if isGamePaused and isGamePaused() then return end
-    local now = getTimestampMs()
     if not active() then
         if count > 0 then
             local zs = {}
@@ -185,7 +180,7 @@ Events.OnTick.Add(function()
                 syncItem(z, worn[z])
             end
             local e = worn[z]
-            if e then pulseTick(z, e, now) end
+            if e then syncLightHold(z, e) end
         end
     end
     local gone = {}

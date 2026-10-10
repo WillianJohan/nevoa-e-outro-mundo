@@ -245,12 +245,14 @@ return {
         assert(tag(x, "m_Shader") == "NOM_Brasa")
         assert(tag(x, "textureChoices") == "NOM\\NOM_BrasaCasca")
         assert(tag(x, "m_AllowRandomTint") == "true", "pulso via TintColour precisa AllowRandomTint")
-        local masks = {}
-        for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
-        assert(#masks == 14, "máscaras corpo: " .. #masks)
+        -- Sobreposição (look-brasa): textura ≥70% α0; máscara de corpo furaria o monstro
+        -- (playtest 01/03 transparente). Igual NOM_Brasa da mutação: sem m_Masks.
+        assert(not x:find("<m_Masks>", 1, true),
+            "máscara + fissuras transparentes = monstro vazado")
         local st = xmlOf("NOM_BrasaCascaStatic")
         assert(tag(st, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit")
         assert(not st:find("<m_Shader>", 1, true), "estático não leva shader")
+        assert(not st:find("<m_Masks>", 1, true), "estático também sem máscara")
         assert(items().NOM_BrasaCasca:find("BodyLocation = base:zeddmg", 1, true))
         assert(items().NOM_BrasaCascaStatic:find("BodyLocation = base:zeddmg", 1, true))
         assert(io.open("mod/42/media/textures/NOM/NOM_BrasaCasca.png", "rb"), "textura casca")
