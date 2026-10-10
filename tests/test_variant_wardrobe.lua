@@ -6,7 +6,7 @@ local W = NOM_VariantWardrobe
 return {
     wardrobe_catalog_five_each = function()
         assert(W.count("estalador") == 5)
-        assert(W.count("carpideira") == 5)
+        assert(W.count("carpideira") >= 1, "Screamer: pelo menos Que Nunca Cresceu")
         assert(W.count("corredor") == 5)
         assert(W.count("ticao") == 5)
         assert(W.count("semrosto") == 5)
@@ -21,10 +21,17 @@ return {
         assert(ids["Base.HospitalGown"] and ids["Base.Apron_White"])
         assert(ids["Base.Tshirt_WhiteTINT"], "E4 fallback pijama")
         assert(ids["Base.Vest_DefaultTEXTURE_TINT"], "E5 TINT")
-        local k = W.CATALOG.carpideira
-        assert(k[1].keepBody == true and k[1].pieces[1].type == "Base.Skirt_Long")
-        assert(k[2].keepBody == false and k[2].pieces[1].type == "Base.Dress_Long")
-        assert(k[5].pieces[1].type == "Base.LongCoat_Bathrobe")
+        -- 0064: K1 Que Nunca Cresceu (vanilla+tint); manto/viúva fora
+        local k1 = W.CATALOG.carpideira[1]
+        assert(k1.id == "K1" and k1.name == "nunca_cresceu")
+        assert(k1.keepBody == false, "sem manto")
+        local types = {}
+        for i = 1, #k1.pieces do types[k1.pieces[i].type] = k1.pieces[i] end
+        assert(types["Base.Dress_Knees"] and types["Base.Dress_Knees"].tint, "vestido marinho tintável")
+        assert(types["Base.Shirt_FormalTINT"] and types["Base.Shirt_FormalTINT"].tint, "blusa")
+        assert(types["Base.Socks_Long_White"], "meias brancas")
+        assert(types["Base.Shoes_Black"], "sapato")
+        assert(not types["Base.Dress_Long"] and not types["Base.Skirt_Long"], "viúva fora")
         assert(W.CATALOG.corredor[1].id == "C1")
         assert(W.CATALOG.corredor[1].pieces[1].type == "Base.Shirt_Lumberjack_TINT")
         assert(W.CATALOG.corredor[1].keepBody == true, "risco N4 fica")
@@ -76,7 +83,7 @@ return {
         assert(W.isLightMass(W.CATALOG.estalador[2]))
         assert(W.isLightMass(W.CATALOG.semrosto[1]))
         assert(W.isLightMass(W.CATALOG.semrosto[3]))
-        assert(W.isLightMass(W.CATALOG.carpideira[3]))
+        assert(W.isLightMass(W.CATALOG.carpideira[1]), "K1 meias/blusa claras")
         assert(not W.isLightMass(W.CATALOG.corredor[1]))
     end,
 
@@ -98,7 +105,7 @@ return {
         assert(W.CATALOG.estalador[1].pieces[1].tint == nil)
         assert(W.CATALOG.estalador[2].pieces[2].tint ~= nil)
         assert(W.CATALOG.estalador[4].pieces[1].tint ~= nil)
-        assert(W.CATALOG.carpideira[2].pieces[1].tint ~= nil)
+        assert(W.CATALOG.carpideira[1].pieces[1].tint ~= nil, "Dress_Knees tint")
     end,
 
     wardrobe_treat_sets_dirt_blood_tint = function()
@@ -127,8 +134,26 @@ return {
         local e3 = W.CATALOG.estalador[3].strip
         assert(W.isStrip("Base.Apron_White", e3))
         assert(not W.isStrip("Base.Tshirt_DefaultTEXTURE", e3), "avental não tira camisa")
-        assert(W.isStrip("Base.Dress_Long", W.CATALOG.carpideira[2].strip))
+        assert(W.isStrip("Base.Dress_Knees", W.CATALOG.carpideira[1].strip))
         assert(not W.isStrip("Base.NOM_EstaladorVenda"))
         assert(not W.isStrip("Base.Hat_Army"))
+    end,
+
+    -- 0064: Screamer K1 não é mais manto/viúva
+    wardrobe_carpideira_nunca_cresceu = function()
+        local k1 = W.CATALOG.carpideira[1]
+        assert(k1.name == "nunca_cresceu")
+        assert(k1.keepBody == false)
+        local navy = k1.pieces[1].tint
+        assert(navy and navy[1] < 0.25 and navy[3] > navy[1], "marinho apagado")
+        for i = 1, #W.CATALOG.carpideira do
+            local v = W.CATALOG.carpideira[i]
+            for j = 1, #(v.pieces or {}) do
+                local t = v.pieces[j].type
+                assert(t ~= "Base.Dress_Long" and t ~= "Base.LongCoat_Bathrobe"
+                    and t ~= "Base.PonchoGarbageBag" and t ~= "Base.Dress_SatinNegligee",
+                    "viúva ainda no catálogo: " .. t)
+            end
+        end
     end,
 }

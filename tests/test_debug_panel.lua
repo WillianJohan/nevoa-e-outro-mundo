@@ -160,7 +160,8 @@ local function setup(opts)
     NOM = {}
     for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "lookInspect", "lookVariant", "lookGroup", "lookClean",
         "glitch", "glitchIntensity", "eco", "alma", "almaStatus", "almaReset",
-        "almaCfg", "arrasto", "ash", "god", "noclip", "invisible",
+        "almaCfg", "arrasto", "rastejaToggle", "rastejaToggle2", "rastejaLevanta",
+        "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
         "ownSprites", "wander", "carpWalk", "blind", "sonar", "sonarBurst", "sonarGaps", "ambientScream", "ticao",
         "blackPressure", "thunder", "flickerLamp", "rain", "help", "params", "param", "copyParams" }) do
@@ -384,6 +385,7 @@ return {
             UI_NOM_Debug_C_Eco = { "eco()" },
             UI_NOM_Debug_C_Alma = { "alma()", "almaStatus()", "almaReset()", "almaCfg(white)" },
             UI_NOM_Debug_C_Arrasto = { "arrasto()" },
+            UI_NOM_Debug_C_RastejaSpike = { "rastejaToggle()", "rastejaToggle2()", "rastejaLevanta()" },
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",

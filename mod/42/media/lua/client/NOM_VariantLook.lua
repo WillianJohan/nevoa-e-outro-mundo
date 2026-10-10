@@ -49,7 +49,8 @@ NOM_VariantLook = {
         },
         -- 0060f A′: remendo 2D no rosto (sem casca-ovo). Censor via ModData NOM_semrosto.
         semrosto = { item = NOM_SemRostoFace.ITEM },
-        -- Carpideira: mechas + manto (K1) ou roupa longa vanilla (K2–K5 via wardrobe).
+        -- Screamer (carpideira): mechas + wardrobe K* (0064: K1 sem manto via keepBody=false).
+        -- body/manto ainda no LOOKS pra K futuras que queiram keepBody; K1 tira.
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
             body = "Base.NOM_CarpideiraManto",

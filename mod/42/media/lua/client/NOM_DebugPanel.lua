@@ -174,6 +174,11 @@ P.SECTIONS = {
             -- Spike Arrasto / Rastejante (0059, §3.5 caminho A).
             { title = "UI_NOM_Debug_C_Arrasto", desc = "UI_NOM_Debug_C_Arrasto_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.arrasto() end) } },
+            -- Spike Screamer Rastejante (0064): setCrawler vs toggle vs caminho 2c.
+            { title = "UI_NOM_Debug_C_RastejaSpike", desc = "UI_NOM_Debug_C_RastejaSpike_Desc", choices = {
+                c("UI_NOM_Debug_B_Rasteja1", function() NOM.rastejaToggle() end),
+                c("UI_NOM_Debug_B_Rasteja2", function() NOM.rastejaToggle2() end),
+                c("UI_NOM_Debug_B_Rasteja3", function() NOM.rastejaLevanta() end) } },
         } },
     { title = "UI_NOM_Debug_Sec_Storm", desc = "UI_NOM_Debug_Sec_Storm_Desc", color = { r = 0.46, g = 0.66, b = 0.98 },
         cards = {

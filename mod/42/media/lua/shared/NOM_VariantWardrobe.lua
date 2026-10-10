@@ -72,40 +72,21 @@ W.CATALOG = {
             dirt = { parts = TORSO, amount = 0.3 },
         },
     },
-    -- Carpideira K1–K5. Skirt_Long OK; Bathrobe → LongCoat_Bathrobe; Nightdress MISS → Dress_SatinNegligee.
+    -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
+    -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada / K3 Rastejante — depois.
     carpideira = {
-        { id = "K1", name = "paciente",
-            pieces = { { type = "Base.Skirt_Long", tint = rgb("1E1C1B") } },
-            strip = SKIRT_LEG,
-            dirt = { parts = LEGS, amount = 0.4 },
-            keepBody = true, -- manto + saia
-        },
-        { id = "K2", name = "velorio",
-            pieces = { { type = "Base.Dress_Long", tint = rgb("1E1C1B") } },
-            strip = FULL,
-            dirt = { parts = TORSO, amount = 0.5 },
-            keepBody = false,
-        },
-        { id = "K3", name = "camisola", lightMass = true, weight = 1,
+        { id = "K1", name = "nunca_cresceu", lightMass = true,
+            -- Dress_Knees / Shirt_FormalTINT: m_AllowRandomTint=true (ClothingItem XML).
             pieces = {
-                { type = "Base.Dress_SatinNegligee", tint = rgb("D9D2C3") },
-                { type = "Base.Skirt_Long", tint = rgb("C9C1B0") },
+                { type = "Base.Dress_Knees", tint = rgb("2E3442") },
+                { type = "Base.Shirt_FormalTINT", tint = rgb("D9D2C3") },
+                { type = "Base.Socks_Long_White" },
+                { type = "Base.Shoes_Black" },
             },
             strip = FULL,
-            dirt = { parts = TORSO, amount = 0.65 },
-            keepBody = false,
-        },
-        { id = "K4", name = "capa",
-            pieces = { { type = "Base.PonchoGarbageBag" } },
-            strip = FULL,
-            dirt = { parts = TORSO, amount = 0.4 },
-            keepBody = false,
-        },
-        { id = "K5", name = "roupao",
-            pieces = { { type = "Base.LongCoat_Bathrobe", tint = rgb("2B2926") } },
-            strip = FULL,
-            dirt = { parts = TORSO, amount = 0.35 },
-            keepBody = false,
+            dirt = { parts = TORSO, amount = 0.45 },
+            holes = { "Torso_Upper", "UpperArm_L" },
+            keepBody = false, -- sem manto
         },
     },
     -- Corredor C1–C5: tronco escuro N3 + risco claro N4 (LOOKS.corredor.body).

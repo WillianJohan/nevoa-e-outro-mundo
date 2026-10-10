@@ -53,6 +53,8 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
     ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
     ["Base.Dress_SatinNegligee"] = "dress", ["Base.Dress_Normal"] = "longdress",
+    ["Base.Dress_Knees"] = "dress", ["Base.Shirt_FormalTINT"] = "shirt",
+    ["Base.Socks_Long_White"] = "socks", ["Base.Shoes_Black"] = "shoes",
     ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
     ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
     ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
@@ -481,22 +483,25 @@ return {
         end
     end,
 
-    -- 0060f: Carpideira — mechas + (K1 manto+saia | K2–K5 roupa longa vanilla)
-    look_carpideira_wears_manto = function()
+    -- 0064: Screamer K1 Que Nunca Cresceu — mechas + vestido curto vanilla (sem manto)
+    look_carpideira_nunca_cresceu = function()
         local G = setup()
         local z = G.spawn({ id = idFor("carpideira", 52) })
         fogOn(52)
         G.converge()
         local look = NOM_VariantLook.LOOKS.carpideira
         assert(hasItem(z, look.item), "sem mechas: " .. types(z))
-        local long = hasItem(z, look.body) or hasItem(z, "Base.Dress_Long")
-            or hasItem(z, "Base.Dress_SatinNegligee") or hasItem(z, "Base.PonchoGarbageBag")
-            or hasItem(z, "Base.LongCoat_Bathrobe") or hasItem(z, "Base.Skirt_Long")
-        assert(long, "sem coluna longa: " .. types(z))
+        assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
+        assert(hasItem(z, "Base.Dress_Knees"), "sem vestido curto: " .. types(z))
+        assert(hasItem(z, "Base.Socks_Long_White"), "sem meias brancas: " .. types(z))
+        assert(hasItem(z, "Base.Shoes_Black"), "sem sapato: " .. types(z))
         assert(z.hv.name == nil, "0060b: Carpideira sem Body")
+        NOM_VariantLook.forceVariant(z, "carpideira", 1)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K1", 1, true), "inspect: " .. info)
         fogOff()
         G.converge()
-        assert(not hasItem(z, look.body) and not hasItem(z, look.item), "manto ficou: " .. types(z))
+        assert(not hasItem(z, look.item), "mechas ficaram: " .. types(z))
     end,
 
     look_removed_when_fog_ends = function()
@@ -1220,7 +1225,8 @@ return {
         G.ms(NOM_DissolveRules.MS * 2)
         local look = NOM_VariantLook.LOOKS.carpideira
         assert(hasItem(z, look.item) and z.hv.name == nil, "o monstro sumiu: " .. types(z))
-        assert(not hasItem(z, SHELL) and hasItem(z, OUTFIT[1]), types(z))
+        -- 0064 K1: FULL strip tira a camisa vanilla; o monstro fica com wardrobe K1
+        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Knees"), types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
         fogOff()
         G.converge()
