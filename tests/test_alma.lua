@@ -202,30 +202,52 @@ return {
             local n, why = NOM_AlmaServer.wave("debug")
             assert(n > 0, "cor deveria spawnar: " .. tostring(why) .. " n=" .. tostring(n))
             assert(#NOM_AlmaServer.alive == n)
-            assert(#NOM_AlmaServer.alive <= NOM_AlmaRules.POP_MAX)
+            local _, popMax = NOM_AlmaRules.popBounds(NOM_World)
+            assert(#NOM_AlmaServer.alive <= popMax)
         end
     end,
 
-    -- Tick repõe quando cai abaixo de POP_MIN; não passa de POP_MAX.
+    -- Tick a cada TICK_MS sorteia alvo na faixa e spawna a diferença.
     alma_tick_keeps_population_in_range = function()
         local G = setup({ fog = true })
         G.player(80, 80, 0)
         G.fillOutside(80, 80, 0)
-        G.fire("OnTick") -- 0 vivas → refill
+        G.fire("OnTick")
         local alive = #NOM_AlmaServer.alive
-        assert(alive >= NOM_AlmaRules.POP_MIN, "mínimo após refill: " .. alive)
-        assert(alive <= NOM_AlmaRules.POP_MAX, "máximo após refill: " .. alive)
-        -- mata até ficar abaixo do mínimo
-        while #NOM_AlmaServer.alive > 2 do
+        assert(alive >= NOM_AlmaRules.POP_MIN, "spawn após tick: " .. alive)
+        assert(alive <= NOM_AlmaRules.POP_MAX, "teto branca: " .. alive)
+        while #NOM_AlmaServer.alive > 0 do
             local e = NOM_AlmaServer.alive[#NOM_AlmaServer.alive]
             e.z.dead = true
             table.remove(NOM_AlmaServer.alive)
         end
-        NOM_AlmaServer.nextAt = G.time -- libera throttle
+        NOM_AlmaServer.nextAt = G.time
         G.fire("OnTick")
         assert(#NOM_AlmaServer.alive >= NOM_AlmaRules.POP_MIN,
-            "repor após queda: " .. #NOM_AlmaServer.alive)
+            "repor após esvaziar: " .. #NOM_AlmaServer.alive)
         assert(#NOM_AlmaServer.alive <= NOM_AlmaRules.POP_MAX)
+    end,
+
+    alma_white_fog_all_crawlers = function()
+        local G = setup({ fog = true })
+        G.player(60, 60, 0)
+        G.fillOutside(60, 60, 0)
+        NOM_AlmaServer.wave("debug")
+        for _, e in ipairs(NOM_AlmaServer.alive) do
+            assert(e.z.md.NOM_almaCrawler == true, "branca só crawler")
+        end
+    end,
+
+    alma_mp_cluster_no_double_pop = function()
+        local G = setup({ fog = true, server = true })
+        G.player(0, 0, 0)
+        G.player(30, 0, 0)
+        G.fillOutside(0, 0, 0)
+        NOM_AlmaServer.wave("debug")
+        local n = #NOM_AlmaServer.alive
+        assert(n <= NOM_AlmaRules.POP_MAX,
+            "dois jogadores juntos não dobram o teto: " .. n)
+        assert(n > 0, "zona repõe almas: " .. n)
     end,
 
     alma_survives_color_switch_white_to_red = function()
@@ -236,6 +258,7 @@ return {
         local before = #NOM_AlmaServer.alive
         assert(before > 0)
         NOM_World.setFog(true, true, false) -- vermelha
+        NOM_AlmaServer.nextAt = G.time + 60000 -- evita wave extra no tick
         G.fire("OnTick")
         assert(#NOM_AlmaServer.alive == before, "troca de cor não limpa almas")
     end,
@@ -262,8 +285,8 @@ return {
         assert(n > 0)
         -- evita refill no mesmo tick (ciclo constante repõe abaixo do mínimo)
         NOM_AlmaServer.nextAt = G.time + 10 * 60 * 1000
-        G.time = G.time + 120000 -- 2 min: todo TTL (≤ 60 s) expirou
-        NOM_AlmaServer.nextAt = G.time + 10 * 60 * 1000 -- ainda longe: só prune
+        G.time = G.time + 20000 -- > TTL máx (15 s)
+        NOM_AlmaServer.nextAt = G.time + 10 * 60 * 1000
         G.fire("OnTick")
         assert(#NOM_AlmaServer.alive == 0, "vivas=" .. #NOM_AlmaServer.alive)
         local despawn = 0

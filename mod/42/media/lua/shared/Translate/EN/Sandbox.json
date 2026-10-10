@@ -55,7 +55,7 @@
     "Sandbox_NevoaEOutroMundo.FogWander": "Zombies wander in fog",
     "Sandbox_NevoaEOutroMundo.FogWander_tooltip": "In white fog, every so often groups of 1 to 3 idle zombies near you (including Clickers) start walking around the area, never toward you: you can run into them at any time, without a horde. They do not wander in red or black fog.",
     "Sandbox_NevoaEOutroMundo.AlmaEnabled": "Skeletal souls in the fog",
-    "Sandbox_NevoaEOutroMundo.AlmaEnabled_tooltip": "In fog (white, red, or black), keeps 4-20 black skeletal souls in the street (~68%% crawling), slowly seeking the player; they fade after seconds to a minute and are topped up. They never enter buildings and do not replace fog monsters.",
+    "Sandbox_NevoaEOutroMundo.AlmaEnabled_tooltip": "In fog, skeletal souls in the street: every 5 s rolls a per-color target (white 5-30 crawlers only; red 25-50; black 30-100, no TTL) within 50 m. They fade in 5-15 s except in black. Never enter buildings.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Echoes",
     "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Bodies near players release Echoes at night, once per body, but only bodies that died before dusk: whoever dies at night waits for the next one. Burn or bury the dead. An Echo's bite infects like any zombie's.",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Max Echoes per player",

@@ -6,11 +6,13 @@ local P = NOM_PanelParams
 return {
     panel_params_defaults_match_produto = function()
         P.reset()
-        assert(P.get("AlmaPopMin") == 4)
-        assert(P.get("AlmaPopMax") == 20)
-        assert(P.get("AlmaPopMinBlack") == 20)
-        assert(P.get("AlmaPopMaxBlack") == 40)
-        assert(P.get("AlmaCrawlerPct") == 68)
+        assert(P.get("AlmaPopMin") == 5)
+        assert(P.get("AlmaPopMax") == 30)
+        assert(P.get("AlmaPopMinRed") == 25)
+        assert(P.get("AlmaPopMaxRed") == 50)
+        assert(P.get("AlmaPopMinBlack") == 30)
+        assert(P.get("AlmaPopMaxBlack") == 100)
+        assert(P.get("AlmaCrawlerPct") == 50)
         assert(P.get("AlmaFogWhite") == true)
         assert(P.get("AlmaFogRed") == true)
         assert(P.get("AlmaFogBlack") == true)
@@ -45,12 +47,14 @@ return {
         P.reset()
         P.set("AlmaPopMax", 10)
         assert(P.set("AlmaPopMin", 15) == 10) -- não passa do max
-        P.set("AlmaPopMin", 4)
-        assert(P.set("AlmaPopMax", 2) == 4) -- não fica abaixo do min
-        P.set("AlmaPopMaxBlack", 30)
-        assert(P.set("AlmaPopMinBlack", 35) == 30)
-        P.set("AlmaPopMinBlack", 20)
-        assert(P.set("AlmaPopMaxBlack", 10) == 20)
+        P.set("AlmaPopMin", 5)
+        assert(P.set("AlmaPopMax", 2) == 5) -- não fica abaixo do min
+        P.set("AlmaPopMaxRed", 40)
+        assert(P.set("AlmaPopMinRed", 45) == 40)
+        P.set("AlmaPopMaxBlack", 80)
+        assert(P.set("AlmaPopMinBlack", 90) == 80)
+        P.set("AlmaPopMinBlack", 30)
+        assert(P.set("AlmaPopMaxBlack", 10) == 30)
     end,
 
     panel_params_gap_min_le_max = function()
@@ -71,7 +75,7 @@ return {
         P.set("AlmaPopMin", 8)
         P.set("LookForce", "wrong")
         P.reset("AlmaPopMin")
-        assert(P.get("AlmaPopMin") == 4 and P.isLive("AlmaPopMin") == false)
+        assert(P.get("AlmaPopMin") == 5 and P.isLive("AlmaPopMin") == false)
         assert(P.get("LookForce") == "wrong")
         P.reset()
         assert(P.get("LookForce") == "")
@@ -79,7 +83,7 @@ return {
 
     panel_params_helpers = function()
         P.reset()
-        assert(math.abs(P.almaCrawlerChance() - 0.68) < 1e-9)
+        assert(math.abs(P.almaCrawlerChance() - 0.5) < 1e-9)
         P.set("AlmaCrawlerPct", 50)
         assert(math.abs(P.almaCrawlerChance() - 0.5) < 1e-9)
         assert(math.abs(P.cinzaRate(14) - 14) < 1e-9)
@@ -115,7 +119,7 @@ return {
         P.reset()
         P.set("AlmaFogRed", false)
         local s = P.snapshot()
-        assert(s.AlmaPopMin == 4 and s.AlmaFogRed == false)
+        assert(s.AlmaPopMin == 5 and s.AlmaFogRed == false)
         assert(P.format("AlmaCrawlerPct", 68) == "68%")
         assert(P.format("AlmaFogWhite", true) == "on")
         assert(P.format("EstaladorRhythm", "B") == "B")
@@ -124,7 +128,8 @@ return {
 
     panel_params_schema_covers_ui_keys = function()
         local need = {
-            "AlmaPopMin", "AlmaPopMax", "AlmaPopMinBlack", "AlmaPopMaxBlack", "AlmaCrawlerPct",
+            "AlmaPopMin", "AlmaPopMax", "AlmaPopMinRed", "AlmaPopMaxRed",
+            "AlmaPopMinBlack", "AlmaPopMaxBlack", "AlmaCrawlerPct",
             "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
             "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
             "AmbientGapMinMs", "AmbientGapMaxMs",
@@ -145,9 +150,10 @@ return {
         local t = P.dumpText()
         assert(t:find("# NOM_PanelParams", 1, true), t)
         assert(t:find("# live: (nenhum)", 1, true), t)
-        assert(t:find("AlmaPopMin=4", 1, true), t)
-        assert(t:find("AlmaPopMinBlack=20", 1, true), t)
-        assert(t:find("AlmaPopMaxBlack=40", 1, true), t)
+        assert(t:find("AlmaPopMin=5", 1, true), t)
+        assert(t:find("AlmaPopMinRed=25", 1, true), t)
+        assert(t:find("AlmaPopMinBlack=30", 1, true), t)
+        assert(t:find("AlmaPopMaxBlack=100", 1, true), t)
         assert(t:find("AlmaFogWhite=true", 1, true), t)
         assert(t:find("EstaladorRhythm=rotate", 1, true), t)
         assert(t:find("AmbientGapMinMs=60000", 1, true), t)

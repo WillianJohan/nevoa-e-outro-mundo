@@ -88,6 +88,7 @@ function NOM_DebugRules.parse(args)
         -- params das almas (0055/0066): pop*/crawler/white/red/black
         local field = args.field
         if field ~= "popMin" and field ~= "popMax"
+            and field ~= "popMinRed" and field ~= "popMaxRed"
             and field ~= "popMinBlack" and field ~= "popMaxBlack"
             and field ~= "crawler"
             and field ~= "white" and field ~= "red" and field ~= "black" then
@@ -95,6 +96,7 @@ function NOM_DebugRules.parse(args)
         end
         local v = args.value
         if field == "popMin" or field == "popMax"
+            or field == "popMinRed" or field == "popMaxRed"
             or field == "popMinBlack" or field == "popMaxBlack"
             or field == "crawler" then
             if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return nil end

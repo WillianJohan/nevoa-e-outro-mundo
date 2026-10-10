@@ -55,7 +55,7 @@
     "Sandbox_NevoaEOutroMundo.FogWander": "Zumbis perambulando na névoa",
     "Sandbox_NevoaEOutroMundo.FogWander_tooltip": "Na névoa branca, de tempos em tempos grupos de 1 a 3 zumbis parados perto de você (incluindo Estaladores) saem andando pela região, nunca na sua direção: dá pra topar com eles a qualquer hora, sem virar horda. Na vermelha e na preta não perambulam.",
     "Sandbox_NevoaEOutroMundo.AlmaEnabled": "Almas esqueléticas na névoa",
-    "Sandbox_NevoaEOutroMundo.AlmaEnabled_tooltip": "Na névoa (branca, vermelha ou preta), mantém de 4 a 20 almas esqueléticas negras na rua (~68%% rastejando), buscando o jogador devagar; somem em segundos a um minuto e são repostas. Não entram em casa e não substituem os monstros da névoa.",
+    "Sandbox_NevoaEOutroMundo.AlmaEnabled_tooltip": "Na névoa, almas esqueléticas na rua: a cada 5 s sorteia alvo por cor (branca 5–30 só rastejando; vermelha 25–50; preta 30–100 sem TTL), num raio de 50 m. Somem em 5–15 s (exceto preta). Não entram em casa.",
     "Sandbox_NevoaEOutroMundo.EcoEnabled": "Ecos",
     "Sandbox_NevoaEOutroMundo.EcoEnabled_tooltip": "Corpos perto dos jogadores soltam Ecos à noite, uma vez por corpo, mas só de quem morreu antes do anoitecer: quem morre de noite espera a próxima. Queime ou enterre os mortos. A mordida do Eco infecta como a de qualquer zumbi.",
     "Sandbox_NevoaEOutroMundo.EcoMaxPerPlayer": "Máximo de Ecos por jogador",

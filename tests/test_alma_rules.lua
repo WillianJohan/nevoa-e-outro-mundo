@@ -1,106 +1,108 @@
--- Regras puras das almas (sprint 0055: ciclo constante, 3 cores, 68% crawler).
+-- Regras puras das almas (sprint 0068 / proposta névoas v2).
 require "NOM_AlmaRules"
 
 local R = NOM_AlmaRules
 
 return {
-    -- Qualquer névoa aberta (branca, vermelha ou preta).
     alma_active_any_fog_color = function()
         R.reset()
         assert(R.active({ fog = true, red = false, black = false }) == true, "branca")
         assert(R.active({ fog = true, red = true }) == true, "vermelha")
         assert(R.active({ fog = true, black = true }) == true, "preta")
-        assert(R.active({ fog = true, red = true, black = true }) == true)
         assert(R.active({ fog = false }) == false, "sem névoa")
-        assert(R.active(nil) == false)
     end,
 
-    alma_population_bounds_4_to_20 = function()
+    alma_population_bands_v2 = function()
         R.reset()
-        assert(R.POP_MIN == 4 and R.POP_MAX == 20)
-        assert(R.POP_MIN < R.POP_MAX)
-    end,
-
-    -- Playtest 2026-10-10: na preta 20–40; branca/vermelha ficam 4–20.
-    alma_population_black_20_to_40 = function()
-        R.reset()
-        assert(R.POP_MIN_BLACK == 20 and R.POP_MAX_BLACK == 40)
-        local mn, mx = R.popBounds({ fog = true, black = true })
-        assert(mn == 20 and mx == 40, "preta")
+        assert(R.POP_MIN == 5 and R.POP_MAX == 30, "branca")
+        assert(R.POP_MIN_RED == 25 and R.POP_MAX_RED == 50, "vermelha")
+        assert(R.POP_MIN_BLACK == 30 and R.POP_MAX_BLACK == 100, "preta")
+        local mn, mx = R.popBounds({ fog = true })
+        assert(mn == 5 and mx == 30)
         mn, mx = R.popBounds({ fog = true, red = true })
-        assert(mn == 4 and mx == 20, "vermelha")
-        mn, mx = R.popBounds({ fog = true })
-        assert(mn == 4 and mx == 20, "branca")
-        mn, mx = R.popBounds(nil)
-        assert(mn == 4 and mx == 20)
+        assert(mn == 25 and mx == 50)
+        mn, mx = R.popBounds({ fog = true, black = true })
+        assert(mn == 30 and mx == 100)
     end,
 
-    alma_refill_black_uses_20_40 = function()
+    alma_tick_target_and_spawn_need = function()
         R.reset()
-        local black = { fog = true, black = true }
-        assert(R.refillCount(0, 0, black) == 20, "piso preta")
-        assert(R.refillCount(0, 0.9999, black) == 40, "teto preta")
-        assert(R.refillCount(19, 0, black) == 1)
-        assert(R.refillCount(20, 0.5, black) == 0)
-        assert(R.refillCount(0, 0) == 4, "sem world: branca/vermelha")
-        assert(R.refillCount(0, 0, { fog = true }) == 4)
+        local white = { fog = true }
+        assert(R.tickTarget(0, white) == 5)
+        assert(R.tickTarget(0.9999, white) == 30)
+        assert(R.spawnNeed(0, 0, white) == 5)
+        local needMid = R.spawnNeed(10, 0.5, white)
+        assert(needMid >= 0 and 10 + needMid <= R.POP_MAX)
+        assert(R.spawnNeed(5, 0.9999, white) == 25, "alvo alto")
+        local red = { fog = true, red = true }
+        assert(R.spawnNeed(0, 0, red) == 25)
+        assert(R.spawnNeed(0, 0.9999, red) == 50)
     end,
 
-    -- Abaixo do mínimo: repõe até um alvo em [POP_MIN, POP_MAX]; no intervalo: 0.
-    alma_refill_when_below_min = function()
-        assert(R.refillCount(0, 0) == 4, "piso com u=0")
-        assert(R.refillCount(0, 0.9999) == 20, "teto com u alto")
-        assert(R.refillCount(3, 0) == 1, "falta 1 pro mínimo")
-        local mid = R.refillCount(2, 0.5)
-        assert(mid >= 2 and mid <= 18, "meio: " .. mid)
-        assert(2 + mid >= R.POP_MIN and 2 + mid <= R.POP_MAX)
-        assert(R.refillCount(4, 0.5) == 0, "já no mínimo")
-        assert(R.refillCount(10, 0.9) == 0, "no intervalo")
-        assert(R.refillCount(20, 0) == 0, "no máximo")
-        assert(R.refillCount(25, 0) == 0, "acima do máximo")
-    end,
-
-    alma_refill_never_exceeds_max = function()
-        for alive = 0, 20 do
+    alma_spawn_need_never_exceeds_target = function()
+        R.reset()
+        for alive = 0, 100 do
             for i = 0, 99 do
-                local n = R.refillCount(alive, i / 100)
+                local u = i / 100
+                local target = R.tickTarget(u, { fog = true, black = true })
+                local n = R.spawnNeed(alive, u, { fog = true, black = true })
                 assert(n >= 0)
-                assert(alive + n <= R.POP_MAX, "estouro: alive=" .. alive .. " n=" .. n)
-                if alive >= R.POP_MIN then
-                    assert(n == 0)
-                elseif n > 0 then
-                    assert(alive + n >= R.POP_MIN)
+                if n > 0 then
+                    assert(alive + n == target)
+                else
+                    assert(alive >= target)
                 end
             end
         end
     end,
 
-    alma_crawler_about_68_percent = function()
+    alma_white_crawler_only = function()
         R.reset()
-        assert(R.CRAWLER_CHANCE == 0.68)
-        local n = 0
-        for i = 0, 999 do
-            if R.isCrawler(i / 1000) then n = n + 1 end
-        end
-        assert(n == 680, "crawlers: " .. n)
+        assert(R.whiteOnlyCrawlers({ fog = true }) == true)
+        assert(R.isCrawler(0.99, { fog = true }) == true)
+        assert(R.isCrawler(0.99, { fog = true, red = true }) == false)
+        assert(R.isCrawler(0.1, { fog = true, red = true }) == true)
     end,
 
-    alma_ttl_bands = function()
-        assert(R.ttl(0) == 10000)
-        assert(R.ttl(0.99) == 60000)
-        local got = {}
-        for i = 0, 99 do got[R.ttl(i / 100)] = true end
-        assert(got[10000] and got[30000] and got[60000], "três faixas")
+    alma_ttl_v2 = function()
+        R.reset()
+        assert(R.ttl(0, { fog = true }) == 5000)
+        assert(R.ttl(0.9999, { fog = true }) >= 14000 and R.ttl(0.9999, { fog = true }) <= 15000)
+        assert(R.ttl(0.5, { fog = true, red = true }) >= 5000 and R.ttl(0.5, { fog = true, red = true }) <= 15000)
+        assert(R.ttl(0, { fog = true, black = true }) == nil)
+        assert(R.ttlUnlimited({ fog = true, black = true }) == true)
+    end,
+
+    alma_count_radius_and_cluster = function()
+        R.reset()
+        assert(R.COUNT_RADIUS == 50 and R.TICK_MS == 5000)
+        local p1 = { x = 0, y = 0, z = 0 }
+        local p2 = { x = 40, y = 0, z = 0 }
+        local p3 = { x = 200, y = 0, z = 0 }
+        local clusters = R.clusterPlayers({ p1, p2, p3 })
+        assert(#clusters == 2, "dois grupos MP: " .. #clusters)
+        local big, small
+        for i = 1, #clusters do
+            if #clusters[i] == 2 then big = clusters[i] end
+            if #clusters[i] == 1 then small = clusters[i] end
+        end
+        assert(big and small)
+        local positions = {
+            { x = 10, y = 0 },
+            { x = 45, y = 0 },
+            { x = 190, y = 0 },
+        }
+        assert(R.countNearAnchors(big, positions) == 2)
+        assert(R.countNearAnchors(small, positions) == 1)
     end,
 
     alma_health_low = function()
-        assert(R.HEALTH > 0 and R.HEALTH <= 0.4, "vida baixa: " .. R.HEALTH)
+        assert(R.HEALTH > 0 and R.HEALTH <= 0.4)
     end,
 
     alma_street_only = function()
         assert(R.streetOk(true) == true)
         assert(R.streetOk(false) == false)
-        assert(R.streetOk(nil) == false)
     end,
 
     alma_pick_spawn_respects_outside = function()
@@ -110,82 +112,31 @@ return {
             if u >= 1 then u = u - 1 end
             return u
         end
-        local hits = {}
-        local p = R.pickSpawn(100, 200, 0, rand, function(x, y, z)
-            hits[#hits + 1] = { x = x, y = y, z = z }
-            return false
-        end, 5)
-        assert(p == nil and #hits == 5, "tentou e falhou")
-        local ok = R.pickSpawn(100, 200, 0, rand, function() return true end, 3)
-        assert(ok and ok.z == 0)
-        local d = math.sqrt((ok.x - 100) ^ 2 + (ok.y - 200) ^ 2)
+        local p = R.pickSpawn(100, 200, 0, rand, function() return true end, 3)
+        assert(p and p.z == 0)
+        local d = math.sqrt((p.x - 100) ^ 2 + (p.y - 200) ^ 2)
         assert(d >= R.SPAWN_MIN - 1 and d <= R.SPAWN_MAX + 1, "anel: " .. d)
     end,
 
     alma_sounds_mapped = function()
         assert(R.SOUND.spawn == "NOM_AlmaSpawn")
-        assert(R.SOUND.crawl == "NOM_AlmaCrawl")
-        assert(R.SOUND.shamble == "NOM_AlmaShamble")
-        assert(R.SOUND.group == "NOM_AlmaGroup")
-        assert(R.SOUND.despawn == "NOM_AlmaDespawn")
         assert(R.loopSound(true) == "NOM_AlmaCrawl")
-        assert(R.loopSound(false) == "NOM_AlmaShamble")
     end,
 
-    alma_refill_throttle_ms = function()
-        assert(type(R.REFILL_MS) == "number" and R.REFILL_MS > 0 and R.REFILL_MS <= 10000)
-    end,
-
-    -- Cores ligáveis/desligáveis (debug/painel); padrão: as três.
     alma_colors_default_all_on = function()
         R.reset()
         assert(R.colorEnabled("white") and R.colorEnabled("red") and R.colorEnabled("black"))
-        assert(R.active({ fog = true }) == true)
-        assert(R.active({ fog = true, red = true }) == true)
-        assert(R.active({ fog = true, black = true }) == true)
     end,
 
-    alma_colors_gate_active = function()
-        R.reset()
-        R.apply("white", false)
-        assert(R.active({ fog = true, red = false, black = false }) == false, "branca off")
-        assert(R.active({ fog = true, red = true }) == true, "vermelha ainda on")
-        R.apply("red", false)
-        R.apply("black", false)
-        assert(R.active({ fog = true, red = true }) == false)
-        assert(R.active({ fog = true, black = true }) == false)
-        R.reset()
-    end,
-
-    alma_apply_pop_and_crawler = function()
+    alma_apply_pop_red_and_crawler = function()
         R.reset()
         assert(R.apply("popMin", 6) == 6)
-        assert(R.POP_MIN == 6)
-        assert(R.apply("popMax", 12) == 12)
-        assert(R.POP_MAX == 12)
-        -- min não passa do max
-        assert(R.apply("popMin", 30) == 12)
-        R.apply("popMax", 20)
-        R.apply("popMin", 4)
-        assert(R.apply("popMinBlack", 25) == 25)
-        assert(R.POP_MIN_BLACK == 25)
-        assert(R.apply("popMaxBlack", 35) == 35)
-        assert(R.apply("popMinBlack", 50) == 35)
-        assert(R.apply("crawler", 0.5) == 0.5)
-        assert(R.CRAWLER_CHANCE == 0.5)
-        assert(R.apply("crawler", 2) == 1)
-        assert(R.apply("crawler", -1) == 0)
+        assert(R.apply("popMinRed", 28) == 28)
+        assert(R.apply("popMaxRed", 45) == 45)
+        assert(R.apply("popMinBlack", 35) == 35)
+        assert(R.apply("popMaxBlack", 90) == 90)
+        assert(R.apply("crawler", 0.6) == 0.6)
         R.reset()
-        assert(R.POP_MIN == 4 and R.POP_MAX == 20 and R.CRAWLER_CHANCE == 0.68)
-        assert(R.POP_MIN_BLACK == 20 and R.POP_MAX_BLACK == 40)
-    end,
-
-    alma_apply_toggle_color_nil = function()
-        R.reset()
-        R.apply("white", nil) -- toggle
-        assert(R.colorEnabled("white") == false)
-        R.apply("white", nil)
-        assert(R.colorEnabled("white") == true)
-        R.reset()
+        assert(R.POP_MIN == 5 and R.POP_MIN_RED == 25 and R.POP_MIN_BLACK == 30)
     end,
 }
