@@ -225,6 +225,8 @@ P.SECTIONS = {
         cards = {
             sliderCard("UI_NOM_Debug_C_AlmaPopMin", "AlmaPopMin"),
             sliderCard("UI_NOM_Debug_C_AlmaPopMax", "AlmaPopMax"),
+            sliderCard("UI_NOM_Debug_C_AlmaPopMinBlack", "AlmaPopMinBlack"),
+            sliderCard("UI_NOM_Debug_C_AlmaPopMaxBlack", "AlmaPopMaxBlack"),
             sliderCard("UI_NOM_Debug_C_AlmaCrawler", "AlmaCrawlerPct"),
             toggleCard("UI_NOM_Debug_C_AlmaFogW", "AlmaFogWhite"),
             toggleCard("UI_NOM_Debug_C_AlmaFogR", "AlmaFogRed"),
