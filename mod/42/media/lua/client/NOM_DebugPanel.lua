@@ -267,6 +267,8 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_B_GlitchCycle", function() NOM.glitch() end),
                 c("UI_NOM_Debug_B_Show", function() NOM.glitchIntensity() end),
             } },
+            -- bíblia §7.3: proporção Sem-rosto (~12%); live + Copiar definições.
+            sliderCard("UI_NOM_Debug_C_SemRostoPct", "SemRostoPct"),
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {

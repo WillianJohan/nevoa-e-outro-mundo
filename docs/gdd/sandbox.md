@@ -38,7 +38,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
 | `HuntIntervalMinutes` (90, faixa 10–720 minutos de jogo), `HuntRadius` (25 tiles, faixa 5–100) | [night.md](night.md) |
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
-| `EstaladorChance` (5), `CorredorChance` (3), `SemRostoChance` (3), `CarpideiraChance` (3), faixa 0–100 cada: **pesos relativos** na névoa branca (sprint 0049), renormalizados pra 100% (padrão ~36/21/21/21). Na vermelha o split é igual 1/4 (ADR-010), independente dos pesos. Tipo desligado → faixa vazia (comum). | [monsters.md](monsters.md#regra-geral) |
+| `EstaladorChance` (10), `CorredorChance` (6), `SemRostoChance` (3), `CarpideiraChance` (6), faixa 0–100 cada: **pesos relativos** na névoa branca (sprint 0049 / bíblia §7.3), renormalizados pra 100% (padrão ~40/24/12/24). Na vermelha o split é 2:3:1:2 (Sem-rosto 1/8; sobra pro Corredor). Tipo desligado → faixa vazia (comum). Painel: `SemRostoPct` live. | [monsters.md](monsters.md#regra-geral) |
 | `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor) |
 | `CarpideiraTriggerRadius` (4 tiles, faixa 1–20): jogador a essa distância acorda, mesmo agachado (lanterna e barulho alto: 10 tiles, fixo); `CarpideiraScreamRadius` (50 tiles, faixa 5–100): alcance do grito | [monsters.md](monsters.md#carpideira) |
 | `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |

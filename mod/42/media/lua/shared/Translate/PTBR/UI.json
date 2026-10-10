@@ -132,6 +132,8 @@
     "UI_NOM_Debug_C_GlitchMode_Desc": "Compara tear/scanline antes de decidir o produto. Desligado = estado #16; Original = pré-#16; Bordas = reduzido só na vinheta. Troca ao vivo.",
     "UI_NOM_Debug_C_GlitchInt": "Intensidade do glitch",
     "UI_NOM_Debug_C_GlitchInt_Desc": "0–200%% (padrão 110, igual às Opções). Multiplica tear, scanline e static do modo escolhido. Live no SearchMode.y → hiss do shader.",
+    "UI_NOM_Debug_C_SemRostoPct": "Proporção Sem-rosto",
+    "UI_NOM_Debug_C_SemRostoPct_Desc": "%% de Sem-rosto na névoa branca (padrão 12, bíblia §7.3). Live remapeia o peso; os outros tipos mantêm a razão. Copiar definições inclui SemRostoPct. Na vermelha o split fica 1/8 fixo.",
     "UI_NOM_Debug_C_GlitchAct": "Glitch (console)",
     "UI_NOM_Debug_C_GlitchAct_Desc": "Cicla o modo (NOM.glitch) ou mostra a intensidade (NOM.glitchIntensity). Os knobs acima já aplicam ao vivo.",
     "UI_NOM_Debug_B_GlitchCycle": "Ciclar modo",

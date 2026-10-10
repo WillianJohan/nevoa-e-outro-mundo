@@ -258,7 +258,8 @@ return {
         NOM_FogState.set(true, PERIOD, true)
         local cs, co = dofile("tests/calls.lua")(sem), dofile("tests/calls.lua")(other)
         G.tick(NOM_SemRosto.SCAN_TICKS * 3)
-        assert(#sem > 70 and #sem < 130, "Sem-rostos: " .. #sem)
+        -- bíblia §7.3: vermelha 1/8 Sem-rosto (antes 1/4 → 70–130)
+        assert(#sem > 25 and #sem < 55, "Sem-rostos: " .. #sem)
         assert(co.n <= #other * 3, "não Sem-rosto: " .. co.n)
         assert(cs.n <= #sem * 3 * 7, string.format("Sem-rosto: %d chamadas em 3 varreduras de %d", cs.n, #sem))
     end,

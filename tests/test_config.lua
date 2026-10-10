@@ -75,15 +75,15 @@ return {
         SandboxVars = nil
         assert(NOM_Config.get("EstaladorEnabled") == true)
         assert(NOM_Config.get("CorredorEnabled") == true)
-        assert(NOM_Config.get("EstaladorChance") == 5)
-        assert(NOM_Config.get("CorredorChance") == 3)
+        assert(NOM_Config.get("EstaladorChance") == 10)
+        assert(NOM_Config.get("CorredorChance") == 6)
         assert(NOM_Config.get("CorredorScreamRadius") == 40)
     end,
-    -- Carpideira (sprint 0011): chance 3 (decisão do Johan, 05/10), raios 4 e 50 (PO, sprint 0019)
+    -- Carpideira: peso 6 no 10:6:3:6 (bíblia §7.3); raios 4 e 50 (PO, sprint 0019)
     config_carpideira_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("CarpideiraEnabled") == true)
-        assert(NOM_Config.get("CarpideiraChance") == 3)
+        assert(NOM_Config.get("CarpideiraChance") == 6)
         assert(NOM_Config.get("CarpideiraTriggerRadius") == 4)
         assert(NOM_Config.get("CarpideiraScreamRadius") == 50)
     end,
@@ -117,7 +117,9 @@ return {
     config_fog_defaults = function()
         SandboxVars = nil
         assert(NOM_Config.get("SemRostoEnabled") == true)
-        assert(NOM_Config.get("SemRostoChance") == 3)
+        assert(NOM_Config.get("SemRostoChance") == 3) -- 10:6:3:6 → ≈12%
+        assert(NOM_Config.get("CorredorChance") == 6)
+        assert(NOM_Config.get("CarpideiraChance") == 6)
         assert(NOM_Config.get("FogAmbience") == true)
         assert(NOM_Config.get("FogOverlays") == true)
         assert(NOM_Config.get("FogVignette") == true)

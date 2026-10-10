@@ -20,6 +20,7 @@ return {
         assert(P.get("LookForce") == "")
         assert(P.get("GlitchMode") == "original")
         assert(P.get("GlitchIntensity") == 110)
+        assert(P.get("SemRostoPct") == 12)
     end,
 
     panel_params_set_clamps_and_marks_live = function()
@@ -114,7 +115,7 @@ return {
             "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
             "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
             "CinzaRateMult", "CinzaDensityMult", "LookForce",
-            "GlitchMode", "GlitchIntensity",
+            "GlitchMode", "GlitchIntensity", "SemRostoPct",
         }
         for _, k in ipairs(need) do
             assert(P.SCHEMA[k], "SCHEMA sem " .. k)
@@ -135,13 +136,16 @@ return {
         assert(t:find('LookForce=""', 1, true), t)
         assert(t:find("GlitchMode=original", 1, true), t)
         assert(t:find("GlitchIntensity=110", 1, true), t)
+        assert(t:find("SemRostoPct=12", 1, true), t)
         P.set("AlmaPopMin", 7)
+        P.set("SemRostoPct", 20)
         P.set("CinzaRateMult", 1.5)
         t = P.dumpText()
         assert(t:find("AlmaPopMin", 1, true) and t:find("CinzaRateMult", 1, true), t)
         assert(t:find("# live:", 1, true) and t:find("AlmaPopMin", 1, true), t)
         assert(t:find("AlmaPopMin=7", 1, true), t)
         assert(t:find("CinzaRateMult=1.5", 1, true), t)
+        assert(t:find("SemRostoPct=20", 1, true), t)
         P.reset()
     end,
 

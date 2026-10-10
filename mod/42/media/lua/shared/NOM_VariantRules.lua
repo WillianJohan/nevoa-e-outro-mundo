@@ -40,9 +40,10 @@ end
 
 -- Ordem das faixas do sorteio. Uma variante nova entra NO FIM (a Carpideira entrou
 -- na sprint 0011): as faixas de antes não andam e cada zumbi continua o que era.
--- Na névoa vermelha (sprint 0010) a divisão é por #KINDS: a Carpideira re-dividiu
--- (1/3 virou 1/4), o que é a regra ("todos os tipos, por igual").
+-- Névoa vermelha (bíblia §7.3): pesos 2:3:1:2 (E:C:S:K) — Sem-rosto 1/8, a fatia
+-- que saiu do 1/4 antigo vai pro Corredor (vermelha = caça).
 NOM_VariantRules.KINDS = { "estalador", "corredor", "semrosto", "carpideira" }
+NOM_VariantRules.RED_WEIGHTS = { estalador = 2, corredor = 3, semrosto = 1, carpideira = 2 }
 local CHANCE = { estalador = "estaladorChance", corredor = "corredorChance", semrosto = "semRostoChance",
     carpideira = "carpideiraChance" }
 local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "semRostoOn", carpideira = "carpideiraOn" }
@@ -102,16 +103,51 @@ end
 -- todos iguais, nenhum vira variante.
 -- white (sprint 0049): 100% monstro; pesos do sandbox renormalizados
 -- (r = floor(hash/Q × soma das chances) nas faixas). Tipo desligado → comum.
--- red: névoa vermelha (sprint 0010): todo zumbi é variante, dividido por igual
--- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
+-- red: bíblia §7.3 — pesos RED_WEIGHTS; tipo desligado → comum.
 -- black: névoa preta (sprint 0038): todo zumbi é Tição, nem o forçado do debug vale (o
 -- Tição não está em KINDS: as faixas de sempre não andam).
 -- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | "ticao" | nil.
--- LookForce do NOM.panel (0058): arquétipo live. Sem require fixo — o módulo
+-- LookForce / SemRostoPct do NOM.panel (0058/0061): live. Sem require fixo — o módulo
 -- shared/NOM_PanelParams.lua pode não estar carregado nos testes puros.
 local function panelLookKind()
     if NOM_PanelParams == nil or NOM_PanelParams.lookKind == nil then return nil end
     return NOM_PanelParams.lookKind()
+end
+
+-- SemRostoPct live: remapeia semRostoChance mantendo a razão dos outros pesos.
+local function whiteChances(cfg)
+    local out = {}
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        out[kind] = cfg[CHANCE[kind]] or 0
+    end
+    if NOM_PanelParams == nil or NOM_PanelParams.isLive == nil
+        or not NOM_PanelParams.isLive("SemRostoPct") then
+        return out
+    end
+    local pct = tonumber(NOM_PanelParams.get("SemRostoPct")) or 12
+    if pct < 0 then pct = 0 end
+    if pct > 100 then pct = 100 end
+    local others = 0
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        if kind ~= "semrosto" then others = others + out[kind] end
+    end
+    if pct >= 100 then
+        out.semrosto = others > 0 and others or 1
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            if kind ~= "semrosto" then out[kind] = 0 end
+        end
+        return out
+    end
+    if others <= 0 then
+        out.semrosto = pct > 0 and 1 or 0
+        return out
+    end
+    -- Escala inteira: others*(100-pct) + others*pct = others*100 → fração exata.
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        if kind ~= "semrosto" then out[kind] = out[kind] * (100 - pct) end
+    end
+    out.semrosto = others * pct
+    return out
 end
 
 function NOM_VariantRules.variant(id, period, cfg, red, black)
@@ -124,19 +160,31 @@ function NOM_VariantRules.variant(id, period, cfg, red, black)
     local look = panelLookKind()
     if look then return look end
     if red then
-        local kinds = NOM_VariantRules.KINDS
-        local kind = kinds[math.floor(hash(id, period, SPLIT_SALT) / Q * #kinds) + 1]
-        return cfg[ON[kind]] and kind or nil
+        local weights = NOM_VariantRules.RED_WEIGHTS
+        local total = 0
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            total = total + (weights[kind] or 0)
+        end
+        if total <= 0 then return nil end
+        local r = math.floor(hash(id, period, SPLIT_SALT) / Q * total)
+        local lo = 0
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            local hi = lo + (weights[kind] or 0)
+            if r < hi then return cfg[ON[kind]] and kind or nil end
+            lo = hi
+        end
+        return nil
     end
     -- Branca: cobertura 100%. Soma 0 → ninguém (sandbox zerado).
+    local chances = whiteChances(cfg)
     local total, lo = 0, 0
     for _, kind in ipairs(NOM_VariantRules.KINDS) do
-        total = total + (cfg[CHANCE[kind]] or 0)
+        total = total + chances[kind]
     end
     if total <= 0 then return nil end
     local r = math.floor(hash(id, period, 0) / Q * total)
     for _, kind in ipairs(NOM_VariantRules.KINDS) do
-        local hi = lo + (cfg[CHANCE[kind]] or 0)
+        local hi = lo + chances[kind]
         if r < hi then return cfg[ON[kind]] and kind or nil end
         lo = hi
     end
