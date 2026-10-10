@@ -275,7 +275,7 @@ local function put(z, kind, id)
     applyWardrobe(list, w, id)
     proofBody(list, w)
     -- Censor (mod3): ModData NOM_semrosto. A′: tint do remendo ANTES do reset (senão
-    -- pickUninitializedValues sorteia; pz-api-notes §14.4a / semrosto-pele-api.md).
+    -- pickUninitializedValues sorteia; pz-api-notes §14.4a).
     if kind == "semrosto" then
         z:getModData().NOM_semrosto = true
         if w.iv and ImmutableColor and ImmutableColor.new then

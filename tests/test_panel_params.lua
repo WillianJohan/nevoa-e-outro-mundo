@@ -76,6 +76,9 @@ return {
         assert(P.lookForce() == "")
         P.set("LookForce", "patient")
         assert(P.lookForce() == "patient")
+        -- Singleton compartilhado: sem reset, LookForce="patient" vaza pra
+        -- test_variant_rules / test_night_stats quando pairs() muda a ordem.
+        P.reset()
     end,
 
     panel_params_rhythms_abc = function()
