@@ -409,6 +409,36 @@ return {
         assert(NOM_VariantLook.count() == 1)
     end,
 
+    -- 0064: monstros que nascem sozinhos na névoa recebem guarda-roupa (sem forceVariant).
+    look_natural_fog_wardrobe_all_kinds = function()
+        local G = setup()
+        local zs = {}
+        for _, k in ipairs(KINDS) do zs[k] = G.spawn({ id = idFor(k, 17) }) end
+        fogOn(17)
+        G.converge()
+        local function hasWard(z, pieces)
+            for i = 1, #pieces do
+                if hasItem(z, pieces[i]) then return true end
+            end
+            return false
+        end
+        assert(hasWard(zs.estalador, {
+            "Base.HospitalGown", "Base.Shirt_FormalWhite", "Base.Apron_White",
+            "Base.Tshirt_WhiteTINT", "Base.Vest_DefaultTEXTURE_TINT",
+        }), "Estalador natural sem wardrobe: " .. types(zs.estalador))
+        assert(hasWard(zs.corredor, {
+            "Base.Shirt_Lumberjack_TINT", "Base.HoodieDOWN_WhiteTINT", "Base.Jacket_Black",
+            "Base.Jacket_Shellsuit_TINT",
+        }), "Corredor natural sem wardrobe: " .. types(zs.corredor))
+        assert(hasItem(zs.carpideira, "Base.Dress_Knees")
+            and hasItem(zs.carpideira, "Base.Socks_Long_White"),
+            "Screamer natural sem K1: " .. types(zs.carpideira))
+        assert(hasWard(zs.semrosto, {
+            "Base.Shirt_FormalTINT", "Base.Jumper_RoundNeck", "Base.Dress_Normal", "Base.Shirt_Workman",
+        }) or (zs.semrosto.md and zs.semrosto.md.NOM_semrosto_capped),
+            "Sem-rosto natural sem wardrobe: " .. types(zs.semrosto))
+    end,
+
     -- 0060e: flag lookClean → prova; LookForce sozinho NÃO é clean
     look_clean_proof_colored_body = function()
         local G = setup()

@@ -56,13 +56,13 @@ Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 - Relevo de boca aberta sob o pano (sem buraco de olhos); barbante no pescoço
 - Wardrobe `K2` com `headItem` (substitui mechas); corpo Hazmat + rasgo no grito **depois** do print
 - `keepBody=false`; bata `HospitalGown` provisória + capuz; `weight=0` (só via botão/`lookVariant` até o Hazmat)
-- Painel: **Screamer K1 (vestido)** / **Screamer K2 (capuz)** — o botão antigo `variant(carpideira)` só forçava o tipo e **não** vestia o guarda-roupa (prints 05/06)
+- Painel: **Turn the nearest** (`variant`) força tipo **+** guarda-roupa sorteado; **Screamer K2 (capuz)** força a prova do hood (`weight=0`)
 
 ### Roteiro de print (Johan)
 
 1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar** (Lua/clothing não hot-reload).
-2. Névoa aberta → painel Monstros → **Screamer K1 (vestido)** ou **Screamer K2 (capuz)** (não o botão genérico antigo).
-3. Close + médio + longe; `lookInspect` deve mostrar `var=K1` ou `var=K2`; colar + print.
+2. Névoa → **Screamer** (K1 sorteada) ou **Screamer K2 (capuz)**; `lookInspect` com `var=K1`/`K2`.
+3. Close + médio + longe; colar + print.
 4. K1: vestido marinho + meias + mechas. K2: capuz ≤ cabeça + bata clara; sem mechas.
 
 ## Fora de escopo agora

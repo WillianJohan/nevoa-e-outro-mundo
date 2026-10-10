@@ -211,6 +211,16 @@ local function has(lines, pattern)
     return false
 end
 
+-- Turn the nearest agora veste o look; testes de rede/alias stubam o VariantLook.
+local function stubLook()
+    package.loaded["NOM_VariantLook"] = {
+        forceVariant = function(_, kind, idx) return kind, idx or 1 end,
+        sync = function() end,
+        inspect = function() return "kind=- var=-" end,
+        count = function() return 0 end,
+    }
+end
+
 local realPrint = print
 
 local function run(fn)
@@ -294,6 +304,12 @@ return {
         G.zombie({ x = 103, y = 100, id = 2 })
         G.zombie({ x = 101, y = 100, id = 3, dead = true })
         G.zombie({ x = 102, y = 100, z = 1, id = 4 }) -- outro andar
+        -- stub: este teste só cobre a rede; o look fica no teste debug_variant_applies_wardrobe
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "estalador", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=estalador var=E1" end,
+        }
         NOM_Debug.variant("estalador")
         local sent = G.sentClient[1]
         assert(sent.command == "debug" and sent.args.op == "variant" and sent.args.id == 2 and sent.args.kind == "estalador",
@@ -312,6 +328,35 @@ return {
         assert(NOM_VariantRules.forced[2] == "estalador", "cliente não gravou")
         G.fire("OnServerCommand", "NevoaEOutroMundo", "debugVariant", { id = 2 })
         assert(NOM_VariantRules.forced[2] == nil, "kind nil não limpou")
+    end) end,
+
+    -- 0064: Turn the nearest veste o guarda-roupa sorteado (não só forcada=kind).
+    debug_variant_applies_picked_wardrobe = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 42 })
+        package.loaded["NOM_VariantWardrobe"] = nil
+        package.loaded["NOM_Math"] = nil
+        require "NOM_Math"
+        require "NOM_VariantWardrobe"
+        local calls, syncs = {}, {}
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function(z, kind, idx)
+                calls[#calls + 1] = { z = z, kind = kind, idx = idx }
+                return kind, idx
+            end,
+            sync = function(z, kind)
+                syncs[#syncs + 1] = { z = z, kind = kind }
+            end,
+            inspect = function() return "kind=corredor var=C1" end,
+        }
+        NOM_Debug.variant("corredor")
+        assert(#calls == 1, "Turn the nearest sem forceVariant")
+        assert(calls[1].kind == "corredor")
+        local _, want = NOM_VariantWardrobe.pick("corredor", 42)
+        assert(calls[1].idx == want, "indice != pick: " .. tostring(calls[1].idx) .. " vs " .. tostring(want))
+        NOM_Debug.variant(nil)
+        assert(#syncs >= 1 and syncs[#syncs].kind == nil, "desfazer não limpou o look")
     end) end,
     debug_spawn_eco_at_player_only_at_night = function() run(function()
         local G = setup()
@@ -459,6 +504,11 @@ return {
         local G = setup({ client = true, loadServer = false })
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 2 + 32768 })
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "corredor", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=corredor var=C1" end,
+        }
         NOM_Debug.variant("corredor")
         assert(G.sentClient[1].args.id == 2, "mandou " .. tostring(G.sentClient[1].args.id))
     end) end,
@@ -632,6 +682,12 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "corredor", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=corredor var=C1" end,
+            count = function() return 0 end,
+        }
         NOM.variant("corredor")
         assert(NOM_VariantRules.forced[7] == "corredor")
         G.world.tod = 23
@@ -735,6 +791,7 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        stubLook()
         NOM_FogState.on = true
         NOM.turnZombie(2)
         assert(G.sentClient[1].args.op == "variant" and G.sentClient[1].args.kind == "corredor")
@@ -763,6 +820,7 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        stubLook()
         NOM.turnZombie(1)
         assert(has(G.printed, "^%[NOM%] debug variante só aparece com névoa %(NOM.setFog%(true%)%)"), table.concat(G.printed, "\n"))
         assert(#G.sentClient == 1 and NOM_VariantRules.forced[7] == "estalador", "não mandou mesmo assim")

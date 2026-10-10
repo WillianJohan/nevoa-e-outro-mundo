@@ -389,7 +389,7 @@ return {
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
-                "lookVariant(carpideira,1)", "lookVariant(carpideira,2)", "lookCycle()", "lookInspect()",
+                "variant(carpideira)", "lookVariant(carpideira,2)", "lookCycle()", "lookInspect()",
                 "lookVariant()", "lookGroup()", "lookClean()", "turnZombie(0)" },
             UI_NOM_Debug_C_Thunder = { "thunder()" },
             UI_NOM_Debug_C_Lamp = { "flickerLamp()" },
