@@ -1484,6 +1484,27 @@ return {
         z.alphaThrows = false
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0, "a casca ficou: " .. types(z))
     end,
+    -- 0062 review: forceVariant / lookVariant cicla o índice no mesmo kind (C1→C3).
+    look_force_variant_rerolls_wardrobe_index = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 90) })
+        fogOn(90)
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "sem Corredor: " .. types(z))
+        NOM_VariantLook.forceVariant(z, "corredor", 1)
+        assert(hasItem(z, "Base.Shirt_Lumberjack_TINT"), "C1 sem camisa: " .. types(z))
+        assert(z.md.NOM_wardForce == 1, "wardForce 1")
+        local info1 = NOM_VariantLook.inspect(z)
+        assert(info1:find("var=C1", 1, true), "inspect C1: " .. info1)
+        NOM_VariantLook.forceVariant(z, "corredor", 3)
+        assert(z.md.NOM_wardForce == 3, "wardForce 3 sticky")
+        local info3 = NOM_VariantLook.inspect(z)
+        assert(info3:find("var=C3", 1, true), "inspect ainda C1 após force 3: " .. info3)
+        assert(hasItem(z, "Base.Jacket_Black"), "C3 sem jaqueta: " .. types(z))
+        assert(not hasItem(z, "Base.Shirt_Lumberjack_TINT") or hasItem(z, "Base.Jacket_Black"),
+            "C1 ficou no lugar do C3: " .. types(z))
+    end,
+
     -- preta (sprint 0038): todo zumbi vira Tição (pele de carvão e, desde a 0043, a crosta 3D com
     -- olhos de brasa e fumaça); no fim volta o zumbi de sempre
     look_black_fog_ticao_and_back = function()

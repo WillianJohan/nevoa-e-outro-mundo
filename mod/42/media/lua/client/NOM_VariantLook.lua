@@ -593,6 +593,9 @@ function NOM_VariantLook.forceVariant(z, kind, idx)
     if idx > n then idx = n end
     if z.getModData then z:getModData().NOM_wardForce = idx end
     local base = NOM_VariantRules.baseId(z:getPersistentOutfitID())
+    -- Mesmo kind+id: sync faz early-return e o índice sticky não troca a roupa
+    -- (lookVariant cicla C1→C3). Strip força put+applyWardrobe de novo.
+    if worn[z] then strip(z) end
     -- id compatível com pick ponderado não é trivial; wardForce manda no applyWardrobe
     NOM_VariantLook.sync(z, kind, base)
     return kind, idx
