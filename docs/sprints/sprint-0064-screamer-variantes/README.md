@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| Status | `em curso` |
+| Status | `pronta pro playtest` |
 | Branch | `feature/0064-screamer-variantes-ca41` |
 | Origem | Johan escolheu opções 2, 3 e 4 de `screamer-opcoes.md` (store) |
 | Base | `staging` (lote 2 + gritos) |
@@ -15,9 +15,9 @@ Substitui o visual de manto/viúva (K1–K5) por três identidades sorteadas. Co
 
 | # | Variante | id | Escopo técnico | Aceite |
 |---|----------|-----|----------------|--------|
-| 1 | **Que Nunca Cresceu** | `K1` | laço + pinafore (alças) + gola + meias + cabelo escuro longo | checklist §13 + print |
-| 2 | **Embrulhada** | `K2` | capuz ≤ SKULL+5% + casca BoilerSuit (sem hood Hazmat); rasgo no grito depois | spike visual → resto |
-| 3 | **Rastejante** | `K3` | spike `setCrawler`→ficar de pé (`internal/screamer-rastejante-spike.md`) **antes** de implementar; botões `NOM.rasteja*` no painel | spike no jogo → resto |
+| 1 | **Que Nunca Cresceu** | `K1` | laço + pinafore (alças) + gola + meias + cabelo escuro longo | print Johan |
+| 2 | **Embrulhada** | `K2` | balaclava vanilla + textura lençol (caminho A; sem capuz 3D); casca BoilerSuit + máscaras Hazmat; Scarf nó | print Johan |
+| 3 | **Rastejante** | `K3` | `setCrawler` + canWalk; grito = getup 2c + fallback B (timeout); botões `NOM.rasteja*` | playtest Johan |
 
 ## K1 — Que Nunca Cresceu (esta entrega)
 
@@ -50,23 +50,32 @@ Cada um loga `state/crawl/floor/canWalk` ~3 s. Johan prova no bluefin (SP; MP se
 
 Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 
-## K2 — Embrulhada (esta entrega)
+## K2 — Embrulhada (caminho A, diretor v3)
 
-- Capuz `NOM_CarpideiraCapuz`: ≤ **SKULL+5%** (clamp duro), `nohairnobeard` + máscaras de chapéu
-- Corpo `NOM_EmbrulhadaCasca` = **BoilerSuit** vanilla (sem hood; Hazmat empilhava capuz ~1,6×) + lençol/plástico/amarras
-- Pés descalços acinzentados (`setSkinColor`); `weight=0` até aceite; Turn the nearest limpa alma
-- Rasgo no grito (`setTextureChoice`) depois do aceite visual
+- Cabeça: malha vanilla `Hat_BalaclavaFull` + textura nossa `NOM_EmbrulhadaBalaclava` (boca úmida)
+- Nó: `Scarf_White` tint `#5A4A38`
+- Corpo: `NOM_EmbrulhadaCasca` = BoilerSuit + máscaras Hazmat (sem hood, sem gola/estampa)
+- Pés descalços acinzentados; Turn the nearest limpa alma
+
+## K3 — Rastejante
+
+- Bata `HospitalGown` tint `#BDB5A6` + `setCrawler(true)` com `canWalk=true`
+- Grito: caminho **2c** (fallOnFront+onFloor+knockedDown+setCrawler false) → espera Getup/timeout 2 s → grito (fallback B = grita deitada)
+- Spike no painel: `NOM.rastejaToggle` / `rastejaToggle2` / `rastejaLevanta`
+
+## Pesos (painel Look)
+
+`ScreamerK1Weight` / `K2` / `K3` (padrão 1/1/1; 0 = fora do sorteio). Botões K1/K2/K3 forçam a variante.
 
 ### Roteiro de print (Johan)
 
-1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar**.
-2. Névoa → **Screamer K2 (capuz)** ou `NOM.lookVariant("carpideira", 2)`; `lookInspect` → `var=K2`, `NOM_CarpideiraCapuz` + `NOM_EmbrulhadaCasca`, **sem** `SkeletonMuscle`.
-3. Close de frente (boca no pano) + zoom padrão na rua + grupo na vermelha.
-4. Conferir: sem cúpula branca 2×; coluna clara encaroçada; sem membros vermelhos de palito.
+1. `git pull` + `scripts/dev-sync.sh` + **reiniciar**.
+2. Névoa → botões **Screamer K1/K2/K3**; `lookInspect` com `var=K*`.
+3. K2: close de frente (boca no pano) + rua; sem ovo/urso; sem gola vanilla.
+4. K3: rasteja calma; ao acordar, levanta (ou grita deitada no timeout) e caça.
 
 ## Fora de escopo agora
 
 - Opção 1 (Sirene)
 - Rasgo no grito da Embrulhada (depois do aceite visual)
 - Redesign de som (ninar / birra) — depois do visual aprovado
-- Merge na staging só depois do aceite de cada variante (avisar o coordenador a cada uma pronta)

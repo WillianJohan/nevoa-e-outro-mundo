@@ -52,6 +52,7 @@ local SIZE = {
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
     ["skinned\\clothes\\bob_boilersuit"] = 256,               -- Clothes/BolierSuit/Boilersuit_Grey.png
+    ["skinned\\hair\\m_balaclavafull"] = 128,                 -- NOM_EmbrulhadaBalaclava (K2 caminho A)
     -- modelos nossos (scripts/gen_models.py, sprints 0041 e 0042): textura nossa, 128 como as outras peças
     ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
@@ -124,7 +125,8 @@ return {
                 end
             end
         end
-        assert(n == 28, "esperava 7 peças e os gêmeos Fx nos dois sexos, achou " .. n)
+        -- Capuz K2 caminho A = balaclava vanilla (não conta como modelo NOM_); 24 = 6×2×2.
+        assert(n == 24, "esperava 6 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
@@ -236,21 +238,23 @@ return {
         assert(not body:find("Defense", 1, true), "casca com defesa")
     end,
 
-    -- 0064 K2: casca Embrulhada = BoilerSuit (SEM hood Hazmat) + máscaras do Boilersuit + lençol
+    -- 0064 K2 caminho A: balaclava vanilla + casca BoilerSuit com máscaras Hazmat (sem hood)
     look_assets_embrulhada_shell = function()
         local x = xmlOf("NOM_EmbrulhadaCasca")
         assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
-            "corpo tem que ser BoilerSuit (Hazmat tem hood 1,6×)")
+            "corpo BoilerSuit (Hazmat hood = ovo)")
         assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
-        assert(not tag(x, "m_MaleModel"):lower():find("hazmat", 1, true), "Hazmat hood voltou pra casca")
         assert(tag(x, "textureChoices") == "NOM\\NOM_EmbrulhadaCasca")
         local masks = {}
         for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
-        assert(table.concat(masks, ",") == "2,3,5,7,9", "máscaras Boilersuit: " .. table.concat(masks, ","))
+        assert(#masks == 14, "máscaras corpo (como Hazmat): " .. #masks)
         assert(items().NOM_EmbrulhadaCasca:find("BodyLocation = base:zeddmg", 1, true))
-        -- Capuz esconde cabelo (máscaras de chapéu), senão volume sobe
         local cap = xmlOf("NOM_CarpideiraCapuz")
+        assert(tag(cap, "m_MaleModel") == "skinned\\hair\\m_balaclavafull", "caminho A: balaclava")
+        assert(tag(cap, "m_FemaleModel") == "skinned\\hair\\f_balaclavafull")
+        assert(tag(cap, "m_Static") == "false", "balaclava é skinned, não static 3D")
+        assert(tag(cap, "textureChoices") == "NOM\\NOM_EmbrulhadaBalaclava")
         assert(tag(cap, "m_HatCategory") == "nohairnobeard")
-        assert(tag(cap, "m_MasksFolder") == "media/textures/Clothes/Hat/Masks")
+        assert(io.open("mod/42/media/textures/NOM/NOM_EmbrulhadaBalaclava.png", "rb"), "textura balaclava")
     end,
 }

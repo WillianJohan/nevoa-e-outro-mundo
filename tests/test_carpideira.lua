@@ -279,4 +279,43 @@ return {
         s = G.playing(NOM_Carpideira.SOB)
         assert(#s == 1 and s[1].volume > farVol, "volume não subiu: " .. farVol .. " -> " .. s[1].volume)
     end,
+
+    -- 0064 K3: grito espera getup 2c; timeout → fallback B (grita deitada)
+    carpideira_k3_scream_after_getup = function()
+        local G = setup()
+        local z = G.carpideira({ x = 0, y = 0, crawler = true })
+        z.md.NOM_screamerCrawler = true
+        local p = G.player({ x = 2, y = 0 })
+        G.scan()
+        NOM_Carpideira.scream(z, p)
+        local screams = 0
+        for _, s in ipairs(NOM_Carpideira.SCREAMS) do screams = screams + G.played(s) end
+        assert(screams == 0, "grito no mesmo tick do getup")
+        assert(NOM_Carpideira.pendingGetup[z], "sem pending")
+        assert(z.crawler == false, "2c não tirou crawler")
+        assert(z.fallOnFront == true and z.knockedDown == true, "2c flags")
+        -- simula motor: de pé
+        z.stateName = "zombie.ai.states.WalkTowardState"
+        G.tick(1)
+        screams = 0
+        for _, s in ipairs(NOM_Carpideira.SCREAMS) do screams = screams + G.played(s) end
+        assert(screams == 1, "grito depois de pe")
+        assert(NOM_Carpideira.pendingGetup[z] == nil)
+        assert(z.target == p, "não caçou depois do getup")
+    end,
+
+    carpideira_k3_scream_timeout_fallback_b = function()
+        local G = setup()
+        local z = G.carpideira({ x = 0, y = 0, crawler = true })
+        z.md.NOM_screamerCrawler = true
+        z.stateName = "zombie.ai.states.ZombieOnGroundState"
+        NOM_Carpideira.scream(z, nil)
+        assert(G.played(NOM_Carpideira.SCREAMS[1]) + G.played(NOM_Carpideira.SCREAMS[2])
+            + G.played(NOM_Carpideira.SCREAMS[3]) == 0)
+        G.seconds(NOM_CarpideiraRules.GETUP_TIMEOUT_MS / 1000)
+        G.tick(1)
+        local screams = 0
+        for _, s in ipairs(NOM_Carpideira.SCREAMS) do screams = screams + G.played(s) end
+        assert(screams == 1, "fallback B não gritou no timeout")
+    end,
 }

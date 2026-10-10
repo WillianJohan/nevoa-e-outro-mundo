@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 0064 Embrulhada: capuz/pano estático ≤ cabeça+5%, relevo de boca, barbante no pescoço.
-     Modelo de scripts/gen_models.py (media/models_X/Static/Clothes/NOM_M_|NOM_F_CarpideiraCapuz.x). -->
+<!-- 0064 K2 Embrulhada caminho A (diretor v3): NÃO é malha nossa.
+     Hat_BalaclavaFull vanilla (justa na cabeça, nohairnobeard) + textura lençol nossa.
+     Três iterações do capuz 3D leram ovo/urso — v4 da malha vetada. -->
 <clothingItem>
-	<m_MaleModel>static\clothes\NOM_M_CarpideiraCapuz</m_MaleModel>
-	<m_FemaleModel>static\clothes\NOM_F_CarpideiraCapuz</m_FemaleModel>
+	<m_MaleModel>skinned\hair\m_balaclavafull</m_MaleModel>
+	<m_FemaleModel>skinned\hair\f_balaclavafull</m_FemaleModel>
 	<m_GUID>e01330b4-b00f-492d-8b48-629be3c6da21</m_GUID>
-	<m_Static>true</m_Static>
+	<m_Static>false</m_Static>
 	<m_AllowRandomHue>false</m_AllowRandomHue>
 	<m_AllowRandomTint>false</m_AllowRandomTint>
-	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_AttachBone></m_AttachBone>
 	<m_HatCategory>nohairnobeard</m_HatCategory>
-	<!-- Como CrashHelmetFULL / Sem-rosto: esconde cabelo por baixo (senão o volume sobe). -->
 	<m_MasksFolder>media/textures/Clothes/Hat/Masks</m_MasksFolder>
-	<textureChoices>NOM\NOM_CarpideiraCapuz3D</textureChoices>
+	<textureChoices>NOM\NOM_EmbrulhadaBalaclava</textureChoices>
 </clothingItem>

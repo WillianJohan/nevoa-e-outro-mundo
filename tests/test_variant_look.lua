@@ -56,7 +56,7 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Dress_Straps"] = "longdress", ["Base.Dress_Knees"] = "dress",
     ["Base.Shirt_FormalTINT"] = "shirt",
     ["Base.Socks_Long_White"] = "socks", ["Base.Socks_Long"] = "socks",
-    ["Base.Shoes_Black"] = "shoes",
+    ["Base.Shoes_Black"] = "shoes", ["Base.Scarf_White"] = "scarf",
     ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
     ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
     ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
@@ -232,7 +232,7 @@ local function setup(opts)
         function z:getModData() return self.md end
         function z:hasModData() return true end
         function z:isDead() return self.dead end
-        function z:isCrawling() return false end
+        function z:isCrawling() return self.crawler == true end
         function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getOutfitName() return self.outfit end
         function z:isCanCrawlUnderVehicle() return true end
@@ -244,7 +244,8 @@ local function setup(opts)
         function z:setSkeleton(v) self.skeleton = v == true end
         function z:setCrawler(v) self.crawler = v == true end
         function z:setCanWalk(v) self.canWalk = v == true end
-        z.skeleton, z.crawler, z.canWalk = false, false, true
+        function z:setOnFloor(v) self.onFloor = v == true end
+        z.skeleton, z.crawler, z.canWalk, z.onFloor = false, false, true, false
         z.alpha, z.seen = 1, true
         function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
         function z:getAlpha(pn) vc(); assert(pn == 0); if self.alphaThrows then error("getAlpha falhou") end; return self.alpha end
@@ -362,12 +363,18 @@ local function setup(opts)
         _G[m] = nil
         package.loaded[m] = nil
     end
-    NOM_PanelParams = nil
     require "NOM_ScreenFxRules"
     NOM_ScreenFxRules.setLookClean(false)
     require "NOM_Config"
     require "NOM_VariantRules"
     NOM_VariantRules.forced = {}
+    -- 0064: testes genéricos pinam K1; K2/K3 têm testes próprios (forceVariant / pesos).
+    package.loaded.NOM_PanelParams = nil
+    _G.NOM_PanelParams = nil
+    require "NOM_PanelParams"
+    NOM_PanelParams.reset()
+    NOM_PanelParams.set("ScreamerK2Weight", 0)
+    NOM_PanelParams.set("ScreamerK3Weight", 0)
     dofile(FILE_STATS)
     NOM_NightStats.install()
     dofile(FILE_LOOK)
@@ -453,6 +460,7 @@ return {
     -- 0060e: flag lookClean → prova; LookForce sozinho NÃO é clean
     look_clean_proof_colored_body = function()
         local G = setup()
+        local savedPP = NOM_PanelParams
         NOM_PanelParams = { lookForce = function() return "misaligned" end, lookKind = function() return nil end }
         assert(NOM_ScreenFxRules.lookForceOn() and not NOM_ScreenFxRules.lookClean())
         local z = G.spawn({ id = idFor("estalador", 3) })
@@ -470,7 +478,7 @@ return {
         assert(hasItem(z, look.item), "peça sumiu ao sair do clean: " .. types(z))
         fogOff()
         G.converge()
-        NOM_PanelParams = nil
+        NOM_PanelParams = savedPP
         NOM_ScreenFxRules.setLookClean(false)
     end,
 
@@ -551,9 +559,10 @@ return {
         assert(not hasItem(z, "Base.NOM_CarpideiraLaco"), "laço ficou: " .. types(z))
     end,
 
-    -- 0064: K2 Embrulhada — capuz no lugar das mechas (prova ≤ cabeça+5%)
+    -- 0064: K2 Embrulhada — balaclava + casca (forceVariant ignora peso 0)
     look_carpideira_embrulhada_capuz = function()
         local G = setup()
+        NOM_PanelParams.reset()
         local z = G.spawn({ id = idFor("carpideira", 53) })
         fogOn(53)
         G.converge()
@@ -569,6 +578,27 @@ return {
         G.converge()
         assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
         assert(not hasItem(z, "Base.NOM_EmbrulhadaCasca"), "casca ficou: " .. types(z))
+    end,
+
+    -- 0064: K3 Rastejante — HospitalGown + setCrawler(canWalk=true)
+    look_carpideira_rastejante_crawler = function()
+        local G = setup()
+        NOM_PanelParams.reset()
+        local z = G.spawn({ id = idFor("carpideira", 54) })
+        fogOn(54)
+        G.converge()
+        NOM_VariantLook.forceVariant(z, "carpideira", 3)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K3", 1, true), "inspect: " .. info)
+        assert(hasItem(z, "Base.HospitalGown"), "sem bata: " .. types(z))
+        assert(z.crawler == true, "não virou crawler")
+        assert(z.canWalk == true, "canWalk=false (alma) — K3 nunca")
+        assert(z.md.NOM_screamerCrawler == true, "ModData crawler")
+        assert(z.md.NOM_screamerVar == "K3", "ModData var")
+        fogOff()
+        G.converge()
+        assert(z.crawler == false, "crawler ficou após strip")
+        assert(z.md.NOM_screamerCrawler == nil, "ModData crawler ficou")
     end,
 
     -- 0064 print 07: alma (SkeletonMuscle + EcoVeu) forçada a Screamer lia como

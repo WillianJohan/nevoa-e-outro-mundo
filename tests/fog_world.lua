@@ -342,6 +342,23 @@ function W.new(opts)
             self.target = p
             self.forcedSpot = forced
         end
+        -- 0064 K3 Rastejante / Arrasto: crawler + getup 2c (setFallOnFront…).
+        z.crawler = o.crawler == true
+        z.onFloor = o.onFloor == true
+        z.fallOnFront = o.fallOnFront == true
+        z.knockedDown = o.knockedDown == true
+        z.canWalk = o.canWalk ~= false
+        z.stateName = o.stateName
+        function z:isCrawling() return self.crawler == true end
+        function z:setCrawler(b) self.crawler = b == true end
+        function z:setOnFloor(b) self.onFloor = b == true end
+        function z:isOnFloor() return self.onFloor == true end
+        function z:setFallOnFront(b) self.fallOnFront = b == true end
+        function z:isFallOnFront() return self.fallOnFront == true end
+        function z:setKnockedDown(b) self.knockedDown = b == true end
+        function z:setCanWalk(b) self.canWalk = b == true end
+        function z:isCanWalk() return self.canWalk == true end
+        function z:getCurrentStateName() return self.stateName end
         G.zombies[#G.zombies + 1] = z
         return z
     end

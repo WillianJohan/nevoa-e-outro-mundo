@@ -153,9 +153,11 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_Estalador", function() NOM.variant("estalador") end),
                 c("UI_NOM_Debug_Corredor", function() NOM.variant("corredor") end),
                 c("UI_NOM_Debug_SemRosto", function() NOM.variant("semrosto") end),
-                -- 0064: variant() força tipo + guarda-roupa sorteado (pick). K2 (weight=0) só no botão Capuz.
+                -- 0064: Screamer K1/K2/K3 (pesos live ScreamerK*Weight).
                 c("UI_NOM_Debug_Carpideira", function() NOM.variant("carpideira") end),
+                c("UI_NOM_Debug_CarpideiraK1", function() NOM.lookVariant("carpideira", 1) end),
                 c("UI_NOM_Debug_CarpideiraK2", function() NOM.lookVariant("carpideira", 2) end),
+                c("UI_NOM_Debug_CarpideiraK3", function() NOM.lookVariant("carpideira", 3) end),
                 c("UI_NOM_Debug_LookCycle", function() NOM.lookCycle() end),
                 c("UI_NOM_Debug_LookInspect", function() NOM.lookInspect() end),
                 c("UI_NOM_Debug_LookVariant", function() NOM.lookVariant() end),
@@ -280,6 +282,10 @@ P.SECTIONS = {
             } },
             -- bíblia §7.3: proporção Sem-rosto (~12%); live + Copiar definições.
             sliderCard("UI_NOM_Debug_C_SemRostoPct", "SemRostoPct"),
+            -- 0064: pesos relativos das 3 variantes Screamer (0 = fora do sorteio).
+            sliderCard("UI_NOM_Debug_C_ScreamerK1", "ScreamerK1Weight"),
+            sliderCard("UI_NOM_Debug_C_ScreamerK2", "ScreamerK2Weight"),
+            sliderCard("UI_NOM_Debug_C_ScreamerK3", "ScreamerK3Weight"),
         } },
     { title = "UI_NOM_Debug_Sec_Diag", desc = "UI_NOM_Debug_Sec_Diag_Desc", color = { r = 0.72, g = 0.62, b = 0.90 },
         cards = {

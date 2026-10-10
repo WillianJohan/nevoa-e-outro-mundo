@@ -47,7 +47,9 @@ LIMITS = {
     # 0064 Embrulhada: lençol claro + plástico + amarras (massa clara → mid alto OK)
     "NOM/NOM_CarpideiraCapuz3D.png": (0.08, 1.0, 0.05),
     "NOM/NOM_CarpideiraLaco3D.png": (0.05, 0.85, 0.02),
-    "NOM/NOM_EmbrulhadaCasca.png": (0.08, 1.0, 0.05),
+    # Lençol mid-grey (L≤0,55 anti-ovo): std um pouco abaixo das peças pretas/brancas.
+    "NOM/NOM_EmbrulhadaCasca.png": (0.07, 1.0, 0.05),
+    "NOM/NOM_EmbrulhadaBalaclava.png": (0.07, 1.0, 0.05),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),

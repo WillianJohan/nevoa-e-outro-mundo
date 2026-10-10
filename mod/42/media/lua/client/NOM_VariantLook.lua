@@ -337,13 +337,30 @@ local function applyWardrobe(list, w, id)
             end
         end
     end
-    if not variant.pieces then return end
-    for _, piece in ipairs(variant.pieces) do
-        local iv = ItemVisual.new()
-        iv:setItemType(piece.type)
-        NOM_VariantWardrobe.treat(iv, piece, variant)
-        list:add(iv)
-        w.wardrobe[#w.wardrobe + 1] = iv
+    if variant.pieces then
+        for _, piece in ipairs(variant.pieces) do
+            local iv = ItemVisual.new()
+            iv:setItemType(piece.type)
+            NOM_VariantWardrobe.treat(iv, piece, variant)
+            list:add(iv)
+            w.wardrobe[#w.wardrobe + 1] = iv
+        end
+    end
+    -- K3 Rastejante: crawler com canWalk=true (nunca setCanWalk false — almas fazem isso).
+    -- ModData pra grito 2c (NOM_Carpideira.scream) mesmo sem a tabela worn no servidor.
+    if z and z.getModData then
+        local md = z:getModData()
+        if variant.crawler then
+            md.NOM_screamerVar = variant.id
+            md.NOM_screamerCrawler = true
+            pcall(function() if z.setCanWalk then z:setCanWalk(true) end end)
+            pcall(function() if z.setCrawler then z:setCrawler(true) end end)
+            pcall(function() if z.setOnFloor then z:setOnFloor(true) end end)
+        elseif md.NOM_screamerCrawler then
+            md.NOM_screamerVar = nil
+            md.NOM_screamerCrawler = nil
+            pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+        end
     end
 end
 
@@ -353,6 +370,12 @@ local function clearWardrobe(list, w)
     w.wardrobe = nil
     w.wardVar = nil
     w.wardIdx = nil
+    local z = w._z
+    if z and z.getModData and z:hasModData() and z:getModData().NOM_screamerCrawler then
+        z:getModData().NOM_screamerVar = nil
+        z:getModData().NOM_screamerCrawler = nil
+        pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+    end
 end
 
 -- 0060c/e: só com flag lookClean — prova camisa/calça coloridas (não é LookForce).
