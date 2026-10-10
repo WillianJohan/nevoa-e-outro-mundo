@@ -74,6 +74,18 @@ module Base
         ClothingItem = NOM_CarpideiraManto,
     }
 
+    /* Lote 2: risco vertical claro do Corredor (N4) sobre tronco escuro.
+       Mesmo caminho do manto (boilersuit + BaseTextures); C1 não usa Boilersuit N3. */
+    item NOM_CorredorRisco
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = ShirtGeneric,
+        BodyLocation = base:boilersuit,
+        ClothingItem = NOM_CorredorRisco,
+    }
+
     /* Tição (sprint 0043): crosta de carvão 3D no lugar do véu do Eco que usava desde a 0038. */
     item NOM_TicaoCrosta
     {

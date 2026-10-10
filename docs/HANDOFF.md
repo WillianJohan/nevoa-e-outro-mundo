@@ -2,12 +2,17 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Em teste (PR, ainda não na staging): sprint 0060e — LookForce ≠ Look limpo
+## Em curso: sprint 0062 — Look lote 2
 
-PR draft [#16](https://github.com/WillianJohan/nevoa-e-outro-mundo/pull/16). Look Clean OK;
-print 07 mostrou UX errada (Force = clean no texto + flag presa). 0060e: Look limpo só
-pelo botão; LookForce = horror soft; mudar Force desliga limpo; texto do painel
-corrigido. Sync + reiniciar; print produto. [README](sprints/sprint-0060-look-real/README.md).
+Branch `feature/0062-look-lote2-ca41`. Corredor C1–C5 + boca revisada, Tição T1–T5,
+Almas A1–A5, Sem-rosto S1–S5 + rostos F1–F4 (A′). Aceite = checklist bíblia §13
+(diretor de arte) com prints in-game. [README](sprints/sprint-0062-look-lote2/README.md).
+
+## Em staging: sprint 0060f + proporção Sem-rosto (§7.3)
+
+Merge `--no-ff` #16 (look real: censor no osso, glitch Opções, remendo A′) e #17
+(proporção ~12% / vermelha 1/8 / teto visual / `SemRostoPct`). `dev-sync` feito.
+[README 0060](sprints/sprint-0060-look-real/README.md).
 
 ## Em teste na staging: sprint 0059 — Arrasto / Rastejante
 

@@ -35,4 +35,21 @@ return {
         assert(F.ITEM == "Base.NOM_SemRostoRosto")
         assert(F.PATCH.u0 < F.PATCH.u1 and F.PATCH.v0 < F.PATCH.v1)
     end,
+
+    -- lote 2: F1–F4 estáveis por outfit id; capped → F1
+    semrosto_face_pick_f1_to_f4 = function()
+        assert(#F.FACES == 4)
+        assert(F.FACES[1] == "F1" and F.FACES[4] == "F4")
+        local a, i = F.pick(42)
+        local b, j = F.pick(42)
+        assert(a == b and i == j and a:match("^F%d$"))
+        assert(F.pick(42, true) == "F1", "capped força F1")
+        local seen = {}
+        for id = 0, 40 do
+            local face, idx = F.pick(id)
+            seen[idx] = true
+            assert(face == ("F" .. idx))
+        end
+        for n = 1, 4 do assert(seen[n], "rosto " .. n .. " nunca saiu") end
+    end,
 }

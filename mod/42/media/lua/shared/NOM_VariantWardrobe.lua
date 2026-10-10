@@ -38,14 +38,15 @@ local SKIRT_LEG = { "Trousers_", "Skirt_", "Shorts_", "Dress_" }
 -- Estalador E1–E5 (clothing.txt B42 confirmado).
 -- E4: Shirt/Trousers_Pyjama MISS → Tshirt_WhiteTINT (AllowRandomTint=true).
 -- E5: Vest_DefaultTEXTURE tint=false → Vest_DefaultTEXTURE_TINT.
+-- lightMass: massa clara (ajuste 6 — ≥1/4 no grupo vermelho). weight sobe a chance.
 W.CATALOG = {
     estalador = {
-        { id = "E1", name = "paciente",
+        { id = "E1", name = "paciente", lightMass = true, weight = 2,
             pieces = { { type = "Base.HospitalGown" } },
             strip = FULL,
             dirt = { parts = TORSO, amount = 0.35 },
         },
-        { id = "E2", name = "missa",
+        { id = "E2", name = "missa", lightMass = true, weight = 2,
             pieces = {
                 { type = "Base.Shirt_FormalWhite" },
                 { type = "Base.Trousers_SuitWhite", tint = rgb("3A3734") },
@@ -85,7 +86,7 @@ W.CATALOG = {
             dirt = { parts = TORSO, amount = 0.5 },
             keepBody = false,
         },
-        { id = "K3", name = "camisola",
+        { id = "K3", name = "camisola", lightMass = true, weight = 1,
             pieces = {
                 { type = "Base.Dress_SatinNegligee", tint = rgb("D9D2C3") },
                 { type = "Base.Skirt_Long", tint = rgb("C9C1B0") },
@@ -107,6 +108,145 @@ W.CATALOG = {
             keepBody = false,
         },
     },
+    -- Corredor C1–C5: tronco escuro N3 + risco claro N4 (LOOKS.corredor.body).
+    corredor = {
+        { id = "C1", name = "mecanico", keepBody = true,
+            -- sem Boilersuit N3: o risco N4 ocupa base:boilersuit (como o manto)
+            pieces = {
+                { type = "Base.Shirt_Lumberjack_TINT", tint = rgb("2E2C2A") },
+                { type = "Base.Trousers_SuitWhite", tint = rgb("2E2C2A") },
+            },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0.55 },
+            holes = { "Torso_Upper" },
+        },
+        { id = "C2", name = "moletom", keepBody = true,
+            pieces = { { type = "Base.HoodieDOWN_WhiteTINT", tint = rgb("2E2C2A") } },
+            strip = TOP,
+            dirt = { parts = TORSO, amount = 0.4 },
+            holes = { "UpperArm_L", "UpperArm_R" },
+        },
+        { id = "C3", name = "jaqueta", keepBody = true,
+            pieces = {
+                { type = "Base.Jacket_Black" },
+                { type = "Base.Tshirt_WhiteTINT", tint = rgb("2E2C2A") },
+            },
+            strip = { "Jacket_", "Hoodie", "LongCoat_", "Tshirt_", "Shirt_" },
+            dirt = { parts = TORSO, amount = 0.35 },
+        },
+        { id = "C4", name = "agasalho", keepBody = true,
+            pieces = { { type = "Base.Jacket_Shellsuit_TINT", tint = rgb("2E2C2A") } },
+            strip = { "Jacket_", "Hoodie", "Track" },
+            dirt = { parts = TORSO, amount = 0.5 },
+        },
+        { id = "C5", name = "lumberjack", keepBody = true,
+            pieces = { { type = "Base.Shirt_Lumberjack_TINT", tint = rgb("2E2C2A") } },
+            strip = TOP,
+            dirt = { parts = TORSO, amount = 0.45 },
+        },
+    },
+    -- Sem-rosto S1–S5 (bíblia §7.3). S5 = roupa própria lavada (keepOwn).
+    semrosto = {
+        { id = "S1", name = "escritorio", lightMass = true, weight = 2,
+            pieces = {
+                { type = "Base.Shirt_FormalTINT", tint = rgb("A89A84") },
+                { type = "Base.Tie_Full" },
+            },
+            strip = { "Tshirt_", "Shirt_", "Sweater", "Hoodie", "Vest_", "Jumper_", "Tie_" },
+            dirt = { parts = TORSO, amount = 0 },
+        },
+        { id = "S2", name = "cardiga",
+            pieces = { { type = "Base.Jumper_RoundNeck", tint = rgb("7D7A74") } },
+            strip = TOP,
+            dirt = { parts = TORSO, amount = 0 },
+        },
+        { id = "S3", name = "igreja", lightMass = true, weight = 2,
+            pieces = { { type = "Base.Dress_Normal", tint = rgb("B7A6A0") } },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0 },
+        },
+        { id = "S4", name = "servidor",
+            pieces = { { type = "Base.Shirt_Workman" } },
+            strip = TOP,
+            dirt = { parts = TORSO, amount = 0 },
+        },
+        { id = "S5", name = "proprio",
+            pieces = {},
+            strip = {},
+            keepOwn = true,
+            wash = true,
+        },
+    },
+    -- Tição T1–T5: N2 setTint falha em TEXTURE (AllowRandomTint=false) → N3 peças *TINT
+    -- carvão. Nenhum Tição com roupa clara intacta. T5 = pijama 70% carbonizado.
+    ticao = {
+        { id = "T1", name = "brasa_viva",
+            pieces = {
+                { type = "Base.Tshirt_WhiteTINT", tint = rgb("1A1817") },
+                { type = "Base.Trousers_SuitWhite", tint = rgb("1A1817") },
+            },
+            strip = FULL,
+            holes = { "Torso_Upper", "Torso_Lower", "UpperArm_L", "UpperArm_R" },
+            dirt = { parts = TORSO, amount = 0.85 },
+        },
+        { id = "T2", name = "apagando",
+            pieces = {
+                { type = "Base.Tshirt_WhiteTINT", tint = rgb("5C5853") },
+                { type = "Base.Trousers_SuitWhite", tint = rgb("3A3734") },
+            },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0.7 },
+            holes = { "Torso_Upper" },
+        },
+        { id = "T3", name = "cinza_fria",
+            pieces = {
+                { type = "Base.HoodieDOWN_WhiteTINT", tint = rgb("5C5853") },
+                { type = "Base.Trousers_SuitWhite", tint = rgb("2E2C2A") },
+            },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0.55 },
+        },
+        { id = "T4", name = "bombeiro",
+            pieces = {
+                { type = "Base.Jacket_Fireman" },
+                { type = "Base.Tshirt_WhiteTINT", tint = rgb("1A1817") },
+            },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0.75 },
+            holes = { "Torso_Upper", "UpperArm_L" },
+        },
+        { id = "T5", name = "pijama",
+            -- 70% carbonizado: resto claro sob carvão #3D3835 (não A8B0B8 intacto)
+            pieces = { { type = "Base.Tshirt_WhiteTINT", tint = rgb("3D3835") } },
+            strip = TOP,
+            dirt = { parts = TORSO, amount = 0.65 },
+            holes = { "Torso_Upper", "Torso_Lower" },
+        },
+    },
+    -- Almas A1–A5. A1 nua ≤20% (weight); A2/A3 padrão (esqueleto não aceita tinta de osso).
+    alma = {
+        { id = "A1", name = "nua", weight = 1, pieces = nil, strip = {} },
+        { id = "A2", name = "farrapo", weight = 3,
+            pieces = { { type = "Base.HospitalGown" } },
+            strip = FULL,
+            dirt = { parts = TORSO, amount = 0.75 },
+            holes = { "Torso_Upper", "Torso_Lower" },
+        },
+        { id = "A3", name = "veu", weight = 3,
+            pieces = { { type = "Base.NOM_EcoVeu" } },
+            strip = { "Hat_", "Scar" },
+            dirt = { parts = TORSO, amount = 0.55 },
+        },
+        { id = "A4", name = "sapato", weight = 1,
+            pieces = { { type = "Base.Shoes_Random" } },
+            strip = { "Shoes_" },
+        },
+        { id = "A5", name = "rastro", weight = 1,
+            pieces = nil,
+            strip = {},
+            trail = true,
+        },
+    },
 }
 
 function W.count(kind)
@@ -115,12 +255,26 @@ function W.count(kind)
 end
 
 -- Sorteio estável: mesmo id → mesma variante (ADR-006).
+-- Se alguma entrada tem .weight, usa faixas ponderadas (A1≤20%, massa clara).
 function W.pick(kind, id)
     local cat = W.CATALOG[kind]
     if not cat or #cat == 0 then return nil, 0 end
-    local n = #cat
-    local idx = NOM_Math.mod(math.floor(tonumber(id) or 0), n) + 1
-    return cat[idx], idx
+    local total = 0
+    for i = 1, #cat do
+        total = total + (cat[i].weight or 1)
+    end
+    if total <= 0 then return nil, 0 end
+    local r = NOM_Math.mod(math.floor(tonumber(id) or 0), total)
+    local acc = 0
+    for i = 1, #cat do
+        acc = acc + (cat[i].weight or 1)
+        if r < acc then return cat[i], i end
+    end
+    return cat[#cat], #cat
+end
+
+function W.isLightMass(variant)
+    return variant ~= nil and variant.lightMass == true
 end
 
 function W.isStrip(t, patterns)

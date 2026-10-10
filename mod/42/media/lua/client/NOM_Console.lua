@@ -98,23 +98,30 @@ function NOM.lookInspect()
     return s
 end
 
--- 0060f: força kind + índice de guarda-roupa (1–5 Estalador/Carpideira) no mais perto.
+local function nearestZombies(n)
+    local p = player()
+    if not p then return {} end
+    local list = getCell():getZombieList()
+    local ranked = {}
+    for i = 0, list:size() - 1 do
+        local cand = list:get(i)
+        ranked[#ranked + 1] = { z = cand, d = cand:DistToProper(p) }
+    end
+    table.sort(ranked, function(a, b) return a.d < b.d end)
+    local out = {}
+    for i = 1, math.min(n or 1, #ranked) do
+        out[#out + 1] = ranked[i].z
+    end
+    return out
+end
+
+-- 0060f: força kind + índice de guarda-roupa (1–5) no mais perto.
 -- Sem args: cicla o índice da variante atual. kind omitido → kind do zumbi (ou estalador).
 function NOM.lookVariant(kind, idx)
     require "NOM_VariantLook"
     require "NOM_VariantWardrobe"
-    local p = player()
-    if not p then
-        NOM_DebugLog.say("[NOM] lookVariant: sem jogador")
-        return nil
-    end
-    local z, bestD
-    local list = getCell():getZombieList()
-    for i = 0, list:size() - 1 do
-        local cand = list:get(i)
-        local d = cand:DistToProper(p)
-        if not bestD or d < bestD then z, bestD = cand, d end
-    end
+    local near = nearestZombies(1)
+    local z = near[1]
     if not z then
         NOM_DebugLog.say("[NOM] lookVariant: sem zumbi")
         return nil
@@ -132,13 +139,59 @@ function NOM.lookVariant(kind, idx)
         return curKind
     end
     if idx == nil then
-        local cur = tonumber(info:match("var=[EK](%d+)")) or 0
+        local cur = tonumber(info:match("var=[A-Z](%d+)")) or 0
         idx = NOM_Math.mod(cur, n) + 1
     end
     local k, i = NOM_VariantLook.forceVariant(z, curKind, idx)
+    NOM_Debug.send({ op = "variant", id = z:getPersistentOutfitID(), kind = k })
     NOM_DebugLog.say(string.format("[NOM] lookVariant %s #%s → %s",
         tostring(k), tostring(i), NOM_VariantLook.inspect(z)))
     return k, i
+end
+
+-- Ajuste 7: grupo forçado um-de-cada + lookInspect de cada. Spawna se faltar gente.
+-- Branca/vermelha: E/C/S/K (+alma). Preta: T1/T2/T3 + alma.
+function NOM.lookGroup()
+    require "NOM_VariantLook"
+    require "NOM_FogState"
+    local plan
+    if NOM_FogState.black then
+        plan = {
+            { "ticao", 1 }, { "ticao", 2 }, { "ticao", 3 },
+        }
+    else
+        plan = {
+            { "estalador", 1 }, -- E1 massa clara
+            { "corredor", 1 },
+            { "semrosto", 1 },
+            { "carpideira", 2 }, -- K2 escura (K3 é rara)
+        }
+    end
+    local need = #plan
+    local zs = nearestZombies(need)
+    if #zs < need then
+        NOM.spawn(need - #zs)
+        zs = nearestZombies(need)
+    end
+    if #zs == 0 then
+        NOM_DebugLog.say("[NOM] lookGroup: sem zumbi")
+        return nil
+    end
+    local lines = {}
+    for i = 1, math.min(need, #zs) do
+        local kind, idx = plan[i][1], plan[i][2]
+        NOM_VariantLook.forceVariant(zs[i], kind, idx)
+        -- força kind no servidor (exceto preta: todo mundo já é ticao)
+        if not NOM_FogState.black then
+            NOM_Debug.send({ op = "variant", id = zs[i]:getPersistentOutfitID(), kind = kind })
+        end
+        local s = NOM_VariantLook.inspect(zs[i])
+        lines[#lines + 1] = s
+        NOM_DebugLog.say("[NOM] lookGroup[" .. i .. "] " .. s)
+    end
+    NOM.alma() -- repor almas (preta: causa do print 04)
+    NOM_DebugLog.say("[NOM] lookGroup pronto — cole o lookInspect acima no print")
+    return lines
 end
 
 -- Sprint 0060d/e: isolamento debug — SÓ a flag lookClean (não mexer em LookForce).
@@ -653,7 +706,8 @@ NOM.HELP = {
     { "NOM.variant(tipo)", "zumbi mais perto vira \"estalador\", \"corredor\", \"semrosto\" ou \"carpideira\" (só na névoa); sem tipo desfaz" },
     { "NOM.lookCycle()", "cicla looks horror 0054 no mais perto: Pale→Misaligned→Wrong→Patient→desfaz (só na névoa)" },
     { "NOM.lookInspect()", "dump pele + ItemVisuals do zumbi mais perto (0060b)" },
-    { "NOM.lookVariant(kind, idx)", "guarda-roupa E1–E5 / K1–K5 no mais perto; sem args cicla o índice" },
+    { "NOM.lookVariant(kind, idx)", "guarda-roupa E1–E5 / C/T/S/K/A no mais perto; sem args cicla o índice" },
+    { "NOM.lookGroup()", "força 1 de cada monstro (+alma) e imprime lookInspect de cada" },
     { "NOM.lookClean()", "liga/desliga isolamento (FX off + Sport/White); não muda LookForce" },
     { "NOM.glitch(mode)", "Glitch de tela: \"off\" / \"original\" / \"bordas\"; sem args cicla; live no canal do shader" },
     { "NOM.glitchIntensity(pct)", "intensidade do glitch 0–200% (padrão 100); multiplica tear/scanline/static do modo" },

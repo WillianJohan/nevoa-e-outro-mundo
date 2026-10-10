@@ -1,4 +1,4 @@
--- shared/NOM_VariantWardrobe.lua: catálogo E1–E5 / K1–K5 e sorteio estável.
+-- shared/NOM_VariantWardrobe.lua: catálogo E/C/T/S/K/A e sorteio estável ponderado.
 require "NOM_VariantWardrobe"
 
 local W = NOM_VariantWardrobe
@@ -7,7 +7,10 @@ return {
     wardrobe_catalog_five_each = function()
         assert(W.count("estalador") == 5)
         assert(W.count("carpideira") == 5)
-        assert(W.count("corredor") == 0)
+        assert(W.count("corredor") == 5)
+        assert(W.count("ticao") == 5)
+        assert(W.count("semrosto") == 5)
+        assert(W.count("alma") == 5)
         local ids = {}
         for i = 1, 5 do
             local v = W.CATALOG.estalador[i]
@@ -22,6 +25,59 @@ return {
         assert(k[1].keepBody == true and k[1].pieces[1].type == "Base.Skirt_Long")
         assert(k[2].keepBody == false and k[2].pieces[1].type == "Base.Dress_Long")
         assert(k[5].pieces[1].type == "Base.LongCoat_Bathrobe")
+        assert(W.CATALOG.corredor[1].id == "C1")
+        assert(W.CATALOG.corredor[1].pieces[1].type == "Base.Shirt_Lumberjack_TINT")
+        assert(W.CATALOG.corredor[1].keepBody == true, "risco N4 fica")
+        assert(W.CATALOG.semrosto[5].id == "S5" and W.CATALOG.semrosto[5].keepOwn == true)
+        assert(W.CATALOG.ticao[1].id == "T1")
+        assert(W.CATALOG.alma[1].id == "A1" and W.CATALOG.alma[1].pieces == nil)
+    end,
+
+    -- ajuste 5: T1–T3 trocam slot (N3 *TINT carvão); sem keepOwn / sem roupa clara intacta
+    wardrobe_ticao_carbonized_tintable = function()
+        for i = 1, 3 do
+            local t = W.CATALOG.ticao[i]
+            assert(not t.keepOwn, t.id .. " não pode keepOwn (setTint falha em TEXTURE)")
+            assert(t.pieces and #t.pieces >= 1, t.id)
+            local top = t.pieces[1]
+            assert(top.tint, t.id .. " precisa tint")
+            assert(top.type:find("TINT", 1, true) or top.type:find("SuitWhite", 1, true)
+                or top.type:find("Hoodie", 1, true), t.id .. " peça tintável: " .. top.type)
+            -- carvão / cinza fria — luminância baixa no canal R do tint
+            assert(top.tint[1] < 0.45, t.id .. " ainda claro: " .. tostring(top.tint[1]))
+        end
+        local t5 = W.CATALOG.ticao[5]
+        assert(t5.pieces[1].tint[1] < 0.35, "T5 70% carbonizado, não pijama claro")
+        assert(not t5.keepOwn)
+    end,
+
+    -- A1 ≤ 20% via weight; A2/A3 dominam
+    wardrobe_alma_a1_at_most_20pct = function()
+        local cat = W.CATALOG.alma
+        local total, a1w = 0, 0
+        for i = 1, #cat do
+            local w = cat[i].weight or 1
+            total = total + w
+            if cat[i].id == "A1" then a1w = w end
+        end
+        assert(a1w / total <= 0.20 + 1e-9, "A1 weight " .. a1w .. "/" .. total)
+        local counts = { A1 = 0, A2 = 0, A3 = 0 }
+        for id = 0, total * 20 - 1 do
+            local v = W.pick("alma", id)
+            if counts[v.id] then counts[v.id] = counts[v.id] + 1 end
+        end
+        local n = total * 20
+        assert(counts.A1 / n <= 0.22, "A1 saiu demais: " .. counts.A1 / n)
+        assert(counts.A2 > counts.A1 and counts.A3 > counts.A1, "A2/A3 devem dominar")
+    end,
+
+    wardrobe_light_mass_flags = function()
+        assert(W.isLightMass(W.CATALOG.estalador[1]))
+        assert(W.isLightMass(W.CATALOG.estalador[2]))
+        assert(W.isLightMass(W.CATALOG.semrosto[1]))
+        assert(W.isLightMass(W.CATALOG.semrosto[3]))
+        assert(W.isLightMass(W.CATALOG.carpideira[3]))
+        assert(not W.isLightMass(W.CATALOG.corredor[1]))
     end,
 
     wardrobe_pick_stable_by_id = function()
@@ -29,7 +85,7 @@ return {
         local b, j = W.pick("estalador", 10)
         assert(a == b and i == j)
         local seen = {}
-        for id = 0, 49 do
+        for id = 0, 199 do
             local v, idx = W.pick("estalador", id)
             seen[idx] = true
             assert(v.id == ("E" .. idx))

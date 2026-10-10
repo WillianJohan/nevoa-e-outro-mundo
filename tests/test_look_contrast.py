@@ -26,25 +26,31 @@ TEX = os.path.join(os.path.dirname(__file__), "..", "mod", "42", "media", "textu
 LIMITS = {
     # casca lisa I2 (aposentada): cera suave — midtones altos OK; std/far baixos
     "NOM/NOM_SemRostoEstatica.png": (0.02, 1.0, 0.02),
-    # A′ remendo 2D: cera lisa de propósito (bíblia §7); std baixo OK
-    "NOM/NOM_SemRostoRosto.png": (0.015, 1.0, 0.015),
+    # A′ remendo 2D: cinza neutro × CHEEK; std baixo OK (bíblia §7 +8%)
+    "NOM/NOM_SemRostoRosto.png": (0.004, 1.0, 0.008),
+    "NOM/NOM_SemRostoRosto_F2.png": (0.004, 1.0, 0.008),
+    "NOM/NOM_SemRostoRosto_F3.png": (0.004, 1.0, 0.008),
+    "NOM/NOM_SemRostoRosto_F4.png": (0.004, 1.0, 0.008),
     "NOM/NOM_EstaladorVenda.png": (0.25, 0.15, 0.10),
     # venda 3D (sprint 0041): o mesmo pano e a ferrugem do arame numa faixa no meio
     "NOM/NOM_EstaladorVenda3D.png": (0.25, 0.15, 0.10),
-    "NOM/NOM_CorredorBoca.png": (0.20, 0.30, 0.10),
+    # ajuste playtest: boca pele−10% + buraco (pouco contraste intencional)
+    "NOM/NOM_CorredorBoca.png": (0.03, 0.70, 0.02),
     "NOM/NOM_CarpideiraCabelo.png": (0.20, 0.10, 0.08),
     # manto (C2 alfa): tecido nos pixels opacos
     "NOM/NOM_CarpideiraManto.png": (0.08, 0.85, 0.04),
+    # risco N4: só a faixa clara opaca (quase uniforme)
+    "NOM/NOM_CorredorRisco.png": (0.001, 1.0, 0.005),
     # peças 3D da 0042: mesmos limites das texturas que elas substituem
-    "NOM/NOM_CorredorBoca3D.png": (0.20, 0.30, 0.10),
+    "NOM/NOM_CorredorBoca3D.png": (0.03, 0.70, 0.02),
     "NOM/NOM_CarpideiraCabelo3D.png": (0.20, 0.10, 0.08),
     # casca de brasa (sprint 0022): vista ~1 s queimando, não precisa ler de longe parada;
     # carvão e brasa sem cinza médio, rachaduras finas entre placas grandes (far baixo).
     "NOM/NOM_Brasa.png": (0.20, 0.15, 0.05),
     # I5: pele carvão quase lisa — std/far baixos de propósito (brasa na crosta 3D)
     "Body/NOM_Ticao.png": (0.003, 1.0, 0.003),
-    # crosta 3D do Tição (sprint 0043): carvão e brasa da pele, mais a fumaça clara
-    "NOM/NOM_TicaoCrosta3D.png": (0.20, 0.15, 0.05),
+    # crosta: rachaduras finas → mais midtones; brilho só nos olhos
+    "NOM/NOM_TicaoCrosta3D.png": (0.18, 0.35, 0.05),
 }
 
 # O Eco fica fora da regra das formas grandes: ele lê por ser muito mais claro que

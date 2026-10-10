@@ -46,13 +46,19 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Hat_Army"] = "hat", ["Base.Glasses_SkiGoggles"] = "eyes", ["Base.Hat_SurgicalMask"] = "mask",
     ["Base.ZedDmg_BACK_Slash"] = "zeddmg", ["Base.Wound_Chest_Bite_Male"] = "wound",
     ["Base.Bandage_Chest"] = "bandage",
-    -- guarda-roupa lote A (clothing.txt B42)
+    -- guarda-roupa lote A/2 (clothing.txt B42)
     ["Base.HospitalGown"] = "longdress", ["Base.Shirt_FormalWhite"] = "shirt",
-    ["Base.Trousers_SuitWhite"] = "pants", ["Base.Apron_White"] = "torsoextra",
+    ["Base.Shirt_FormalTINT"] = "shirt", ["Base.Trousers_SuitWhite"] = "pants",
+    ["Base.Apron_White"] = "torsoextra",
     ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
     ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
-    ["Base.Dress_SatinNegligee"] = "dress", ["Base.PonchoGarbageBag"] = "jacket",
-    ["Base.LongCoat_Bathrobe"] = "bathrobe" }
+    ["Base.Dress_SatinNegligee"] = "dress", ["Base.Dress_Normal"] = "longdress",
+    ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
+    ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
+    ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
+    ["Base.Shirt_Lumberjack_TINT"] = "shirt", ["Base.Jumper_RoundNeck"] = "sweater",
+    ["Base.Shirt_Workman"] = "shirt", ["Base.Tie_Full"] = "neck",
+    ["Base.Jacket_Fireman"] = "jacket", ["Base.Shoes_Random"] = "shoes" }
 do
     local f = assert(io.open("mod/42/media/scripts/NOM_clothing.txt"))
     for name, body in f:read("*a"):gmatch("item%s+([%w_]+)%s*(%b{})") do
@@ -451,8 +457,10 @@ return {
             end
         end
         assert(NOM_VariantLook.LOOKS.semrosto.skin == nil, "0060b: Sem-rosto sem Body")
-        assert(not NOM_VariantLook.LOOKS.estalador.body and not NOM_VariantLook.LOOKS.corredor.body,
-            "0060b: sem NOM_*Roupa no look")
+        assert(not NOM_VariantLook.LOOKS.estalador.body, "0060b: Estalador sem NOM_*Roupa")
+        -- lote 2 ajuste 2: Corredor ganha risco N4 (NOM_CorredorRisco), não roupa 2D antiga
+        assert(NOM_VariantLook.LOOKS.corredor.body == "Base.NOM_CorredorRisco", "risco N4 do Corredor")
+        assert(hasItem(zs.corredor, "Base.NOM_CorredorRisco"), "Corredor sem risco: " .. types(zs.corredor))
     end,
 
     look_items_exist_in_script = function()
@@ -557,7 +565,12 @@ return {
         G.converge()
         assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item) and z.hv.name == nil,
             "não pintou depois de vestido")
-        assert(hasItem(z, OUTFIT[1]), "0060b: camisa sumiu: " .. types(z))
+        -- lote 2: C* pode trocar o torso (Boilersuit/Hoodie/…); calça vanilla fica
+        assert(hasItem(z, OUTFIT[2]) or hasItem(z, "Base.NOM_CorredorRisco")
+            or hasItem(z, "Base.HoodieDOWN_WhiteTINT") or hasItem(z, "Base.Jacket_Black")
+            or hasItem(z, "Base.Jacket_Shellsuit_TINT") or hasItem(z, "Base.Shirt_Lumberjack_TINT")
+            or hasItem(z, "Base.Trousers_SuitWhite"),
+            "corpo sem roupa após wardrobe: " .. types(z))
     end,
 
     look_reused_object_clean = function()
@@ -728,7 +741,7 @@ return {
             "re-vestido ficou sem visual: " .. types(z))
     end,
 
-    -- orçamento: 0060f +guarda-roupa (1–2 ItemVisual + treat). pôr ≤ 30 + 3·N; tirar ≤ 12 + 2·N.
+    -- orçamento: 0060f +guarda-roupa + stripOrphanBrasa. pôr ≤ 40 + 3·N; tirar ≤ 12 + 2·N.
     look_budget = function()
         local G = setup()
         local z = G.spawn({ id = idFor("estalador", 16), extra = { "Base.Hat_Army" } })
@@ -736,7 +749,7 @@ return {
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 30 + 3 * n, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 40 + 3 * n, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
@@ -937,7 +950,9 @@ return {
         local z = G.spawn({ id = idFor("corredor", 31), extra = { "Base.Tshirt_NOM_Fake" } })
         fogOn(31)
         G.converge()
-        assert(hasItem(z, "Base.NOM_CorredorBoca") and hasItem(z, OUTFIT[1]), "sobrou: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CorredorBoca"), "sem boca: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CorredorRisco"), "sem risco N4: " .. types(z))
+        assert(not hasItem(z, "Base.Tshirt_NOM_Fake"), "fake NOM_ ficou: " .. types(z))
     end,
 
     -- status do debug: só quem está na lista da célula conta (step 4 do roteiro)
@@ -1404,7 +1419,7 @@ return {
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and #G.bursts == 0)
     end,
 
-    -- orçamento: 0060f +wardrobe. pôr com casca ≤ 45 + 3·N + alfa.
+    -- orçamento: 0060f +wardrobe + stripOrphanBrasa. pôr com casca ≤ 55 + 3·N + alfa.
     ember_budget = function()
         local G = setup({ dissolve = true, body = true })
         local z = G.spawn({ id = idFor("estalador", 73), extra = { "Base.Hat_Army" } })
@@ -1414,7 +1429,7 @@ return {
         G.vcalls = 0
         G.converge()
         local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
-        assert(G.vcalls <= 45 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        assert(G.vcalls <= 55 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
         G.vcalls = 0
         local ms = NOM_DissolveRules.MS + 50
         G.ms(ms)
@@ -1425,10 +1440,11 @@ return {
         fogOff()
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 12 + per * ticks, "cobrir custou " .. G.vcalls)
+        assert(G.vcalls <= 20 + per * ticks, "cobrir custou " .. G.vcalls)
         G.vcalls = 0
         G.ms(ms)
-        assert(G.vcalls <= per * math.ceil(ms / 16) + 14 + 2 * n, "trocar embaixo custou " .. G.vcalls)
+        -- leave: cover + strip + wardrobe clear + orphan Brasa + reveal
+        assert(G.vcalls <= per * math.ceil(ms / 16) + 80 + 4 * n, "trocar embaixo custou " .. G.vcalls)
         assert(z.hv.name == nil)
     end,
 
@@ -1468,6 +1484,26 @@ return {
         z.alphaThrows = false
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0, "a casca ficou: " .. types(z))
     end,
+    -- 0062 review: forceVariant / lookVariant cicla o índice no mesmo kind (C1→C3).
+    look_force_variant_rerolls_wardrobe_index = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("corredor", 90) })
+        fogOn(90)
+        G.converge()
+        assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "sem Corredor: " .. types(z))
+        NOM_VariantLook.forceVariant(z, "corredor", 1)
+        assert(hasItem(z, "Base.Shirt_Lumberjack_TINT"), "C1 sem camisa: " .. types(z))
+        assert(z.md.NOM_wardForce == 1, "wardForce 1")
+        local info1 = NOM_VariantLook.inspect(z)
+        assert(info1:find("var=C1", 1, true), "inspect C1: " .. info1)
+        NOM_VariantLook.forceVariant(z, "corredor", 3)
+        assert(z.md.NOM_wardForce == 3, "wardForce 3 sticky")
+        local info3 = NOM_VariantLook.inspect(z)
+        assert(info3:find("var=C3", 1, true), "inspect ainda C1 após force 3: " .. info3)
+        assert(hasItem(z, "Base.Jacket_Black"), "C3 sem jaqueta: " .. types(z))
+        assert(not hasItem(z, "Base.Shirt_Lumberjack_TINT"), "C1 ficou no lugar do C3: " .. types(z))
+    end,
+
     -- preta (sprint 0038): todo zumbi vira Tição (pele de carvão e, desde a 0043, a crosta 3D com
     -- olhos de brasa e fumaça); no fim volta o zumbi de sempre
     look_black_fog_ticao_and_back = function()
