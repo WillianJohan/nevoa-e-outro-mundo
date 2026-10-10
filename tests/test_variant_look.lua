@@ -1501,8 +1501,7 @@ return {
         local info3 = NOM_VariantLook.inspect(z)
         assert(info3:find("var=C3", 1, true), "inspect ainda C1 após force 3: " .. info3)
         assert(hasItem(z, "Base.Jacket_Black"), "C3 sem jaqueta: " .. types(z))
-        assert(not hasItem(z, "Base.Shirt_Lumberjack_TINT") or hasItem(z, "Base.Jacket_Black"),
-            "C1 ficou no lugar do C3: " .. types(z))
+        assert(not hasItem(z, "Base.Shirt_Lumberjack_TINT"), "C1 ficou no lugar do C3: " .. types(z))
     end,
 
     -- preta (sprint 0038): todo zumbi vira Tição (pele de carvão e, desde a 0043, a crosta 3D com
