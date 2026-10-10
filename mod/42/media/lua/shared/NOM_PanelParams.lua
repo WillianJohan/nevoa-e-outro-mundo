@@ -42,8 +42,10 @@ P.DEFAULTS = {
     EstaladorRhythm = "rotate",
     EstaladorGapMinMs = 5000,
     EstaladorGapMaxMs = 30000,
-    AmbientGapMinMs = 60000,
+    AmbientGapMinMs = 30000,
     AmbientGapMaxMs = 500000,
+    CarpideiraScreamGapMinMs = 45000,
+    CarpideiraScreamGapMaxMs = 180000,
     CinzaRateMult = 1.0,
     CinzaDensityMult = 1.0,
     LookForce = "",
@@ -72,6 +74,8 @@ P.SCHEMA = {
     EstaladorGapMaxMs = { type = "int", min = 500, max = 120000, step = 100, section = "estalador" },
     AmbientGapMinMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
     AmbientGapMaxMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
+    CarpideiraScreamGapMinMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
+    CarpideiraScreamGapMaxMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
     CinzaRateMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     CinzaDensityMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     LookForce = { type = "enum", values = P.LOOK_ARCHETYPES, section = "look" },
@@ -91,6 +95,7 @@ P.KEYS = {
     "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
     "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
     "AmbientGapMinMs", "AmbientGapMaxMs",
+    "CarpideiraScreamGapMinMs", "CarpideiraScreamGapMaxMs",
     "CinzaRateMult", "CinzaDensityMult", "LookForce",
     "GlitchMode", "GlitchIntensity", "SemRostoPct",
     "ScreamerK1Weight", "ScreamerK2Weight",
@@ -175,6 +180,10 @@ function P.set(key, value)
             live[key] = P.get("AmbientGapMaxMs")
         elseif key == "AmbientGapMaxMs" and n < P.get("AmbientGapMinMs") then
             live[key] = P.get("AmbientGapMinMs")
+        elseif key == "CarpideiraScreamGapMinMs" and n > P.get("CarpideiraScreamGapMaxMs") then
+            live[key] = P.get("CarpideiraScreamGapMaxMs")
+        elseif key == "CarpideiraScreamGapMaxMs" and n < P.get("CarpideiraScreamGapMinMs") then
+            live[key] = P.get("CarpideiraScreamGapMinMs")
         end
     elseif t == "float" then
         local n = tonumber(value) or P.DEFAULTS[key]
@@ -217,7 +226,8 @@ function P.format(key, value)
         return string.format("%.1f", value) .. "×"
     end
     if key == "EstaladorGapMinMs" or key == "EstaladorGapMaxMs"
-        or key == "AmbientGapMinMs" or key == "AmbientGapMaxMs" then
+        or key == "AmbientGapMinMs" or key == "AmbientGapMaxMs"
+        or key == "CarpideiraScreamGapMinMs" or key == "CarpideiraScreamGapMaxMs" then
         return tostring(value) .. " ms"
     end
     if key == "GlitchMode" then

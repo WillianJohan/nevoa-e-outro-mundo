@@ -16,7 +16,8 @@ Saída (mod/42/media/textures/):
   NOM/NOM_CarpideiraManto.png    256  C2: tecido escuro; alfa 0 em rosto/mãos/pés
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
-  NOM/NOM_Brasa.png              256  carvão em placas, rachaduras largas em brasa (casca Hazmat)
+  NOM/NOM_Brasa.png              256  carvão em placas, rachaduras largas em brasa (mutação)
+  NOM/NOM_BrasaCasca.png         256  0067: fissuras α≥70% transparentes (casca BoilerSuit permanente)
   NOM/NOM_EmbrulhadaCasca.png     256  lençol+plástico+amarras (corpo BoilerSuit da Embrulhada)
   NOM/NOM_EmbrulhadaBalaclava.png 128  lençol+boca úmida pra Hat_BalaclavaFull (K2 caminho A)
   Body/NOM_Ticao.png             256  I5: carvão quase liso (brasa na crosta 3D)
@@ -433,6 +434,36 @@ def ember_shell(rng, size=256):
     return mix(rgb, (255, 214, 120), np.clip((3.0 - c) / 1.5, 0, 1))    # miolo quente
 
 
+def brasa_casca(rng, size=256):
+    # 0067: sobreposição permanente — ≥70% alfa 0; só fissuras/costuras orgânicas
+    # (sem grade). Gradiente carvão→funda→viva; núcleo fino no miolo.
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    yy, xx = y / size, x / size
+    # Voronoi fino + ramos (não grade): distância a pontos jitterados
+    g = 7
+    pts = (np.stack(np.mgrid[0:g, 0:g], -1).reshape(-1, 2) + 0.15 + 0.7 * rng.random((g * g, 2))) * size / g
+    d = np.sort(np.stack([np.hypot(x - px, y - py) for py, px in pts]), axis=0)
+    ridge = np.clip((4.5 - (d[1] - d[0])) / 2.2, 0, 1)
+    # rareia pernas (yy alto na UV típica de boilersuit ≈ torso no meio-cima)
+    vert = np.clip(1.15 - yy * 1.1, 0.15, 1.0)
+    # costuras: gola/ombros (faixas horizontais suaves, não grade)
+    seam = np.exp(-((yy - 0.18) ** 2) / 0.0025) * 0.55
+    seam += np.exp(-((yy - 0.42) ** 2) / 0.003) * 0.35
+    seam += np.exp(-((xx - 0.5) ** 2) / 0.004) * 0.25  # zíper
+    branch = np.clip(fbm(rng, size, (3, 6), (0.55, 0.45)) - 0.52, 0, 1) * 1.8
+    mask = np.clip(ridge * 0.85 + seam + branch * 0.45, 0, 1) * vert
+    mask = np.clip(mask ** 1.35, 0, 1)
+    # ≥70% transparente: só os picos da máscara ficam opacos
+    a = np.where(mask > 0.42, np.clip((mask - 0.42) / 0.45, 0, 1), 0.0).astype(np.float32)
+    # cores: carvão borda → #5E1A0E → #C2481C → núcleo
+    shade = np.ones((size, size), np.float32)
+    rgb = color((21, 19, 18), shade)
+    rgb = mix(rgb, (94, 26, 14), np.clip(a * 1.2, 0, 1))
+    rgb = mix(rgb, (194, 72, 28), np.clip((a - 0.35) / 0.45, 0, 1))
+    rgb = mix(rgb, (255, 176, 96), np.clip((a - 0.75) / 0.25, 0, 1) ** 2)
+    return rgb, a
+
+
 def ticao_skin(rng, size=256):
     # I5: carvão quase liso (variação baixa); brasa fica na crosta 3D, não na pele binária.
     weave = 0.92 + 0.08 * fbm(rng, size, (2, 3), (0.7, 0.3))
@@ -751,6 +782,8 @@ def main():
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
+    brasa_rgb, brasa_a = brasa_casca(rng(26))
+    save(brasa_rgb, "NOM/NOM_BrasaCasca.png", alpha=brasa_a)
     save(embrulhada_casca(rng(24)), "NOM/NOM_EmbrulhadaCasca.png", alpha=np.ones((256, 256), np.float32))
     save(embrulhada_balaclava(rng(25)), "NOM/NOM_EmbrulhadaBalaclava.png")
     save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")

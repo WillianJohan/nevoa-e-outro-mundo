@@ -49,6 +49,32 @@ return {
         assert(mid > R.WALK_GAP_MIN_MS and mid < R.WALK_GAP_MAX_MS)
     end,
 
+    -- playtest 2026-10-10: gap global entre gritos (qualquer Carpideira/Screamer)
+    carpideira_rules_scream_gap_ms = function()
+        assert(R.SCREAM_GAP_MIN_MS == 45000, "mínimo 45 s")
+        assert(R.SCREAM_GAP_MAX_MS == 180000, "máximo 180 s")
+        assert(R.screamGapMs(0) == R.SCREAM_GAP_MIN_MS)
+        assert(R.screamGapMs(1) == R.SCREAM_GAP_MAX_MS)
+        local mid = R.screamGapMs(0.5)
+        assert(mid > R.SCREAM_GAP_MIN_MS and mid < R.SCREAM_GAP_MAX_MS)
+    end,
+
+    carpideira_rules_global_scream_ready = function()
+        local data = {}
+        local st = R.screamState(data, 1)
+        assert(R.globalScreamReady(st, 1000), "primeira grito livre")
+        local gap = R.scheduleNextScream(st, 1000, 0)
+        assert(gap == R.SCREAM_GAP_MIN_MS)
+        assert(st.nextAt == 1000 + gap)
+        assert(not R.globalScreamReady(st, 1000 + gap - 1), "ainda no gap")
+        assert(R.globalScreamReady(st, 1000 + gap), "gap acabou")
+        -- nextAt sobrevive à troca de período (espaçamento global)
+        st.pids[99] = true
+        local st2 = R.screamState(data, 2)
+        assert(st2.pids[99] == nil, "pids zeram no período novo")
+        assert(st2.nextAt == 1000 + gap, "nextAt global permanece")
+    end,
+
     -- volume do soluço sobe perto (curva do Sem-rosto)
     carpideira_rules_sob_volume = function()
         assert(R.sobVolume(nil) == 0 and R.sobVolume(R.SOB_FAR) == 0)

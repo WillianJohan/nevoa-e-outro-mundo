@@ -1009,6 +1009,12 @@ Evidência `javap` B42 + `clothing.txt` (2026-10-09):
 - `setDirt(BloodBodyPartType, float)`, `setBlood(BloodBodyPartType, float)`,
   `setHole(BloodBodyPartType)` EXISTS (`ItemVisual` no Exposer).
 - Guarda-roupa: `shared/NOM_VariantWardrobe.lua` + `client/NOM_VariantLook.applyWardrobe`.
+- **0067 / console 2026-10-10:** `ModelInstance` **não** está no `LuaManager$Exposer`.
+  `getReadyModelData()` devolve a lista, mas `mi:getItemVisual()` / `mi.tintR = …` quebram
+  com `attempted index: … of non-table: ModelInstance`. `TintColour` no shader só muda no
+  rebuild (`PopTemplateManager.postProcessNewItemInstance` copia `getTint` → `tintR/G/B`;
+  `RenderCharacter` relê do `ModelInstance`). Canal por quadro da peça: `setTint` +
+  `resetModelNextFrame` (quantizado), ou o `Alpha` do personagem (ADR-016).
 
 ### 14.4 Esconder a roupa (sprint 0016)
 

@@ -3,7 +3,7 @@
 -- preta off (não compete com Tição). Quem toca é client/NOM_AmbientScream.lua; desliga
 -- com FogAmbience.
 --
--- Intervalo (hotfix 0063 / playtest Johan): uniforme 60–500 s reais, sorteado de novo
+-- Intervalo (playtest Johan 2026-10-10): uniforme 30–500 s reais, sorteado de novo
 -- depois de cada grito. Knobs live AmbientGapMinMs/MaxMs no painel (seção de sons).
 NOM_AmbientScreamRules = {
     -- Clips em media/scripts/NOM_sounds.txt (gerados por scripts/gen_sounds.py).
@@ -14,7 +14,7 @@ NOM_AmbientScreamRules = {
         "NOM_AmbientScream4",
     },
     -- Intervalo entre gritos (ms reais). Um único intervalo pra branca e vermelha.
-    GAP_MIN_MS = 60000,
+    GAP_MIN_MS = 30000,
     GAP_MAX_MS = 500000,
     -- Distância do emitter ao jogador (tiles). Longe + passa-baixa no OGG = presença.
     -- Playtest: um pouco mais distante que 40–90 / 28–70.

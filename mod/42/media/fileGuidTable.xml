@@ -86,6 +86,14 @@
 		<guid>fe983ae1-0282-4519-8c3c-b49642d89d42</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_BrasaCasca.xml</path>
+		<guid>b7a6c5d4-e3f2-41a0-9b8c-7d6e5f4a3b21</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_BrasaCascaStatic.xml</path>
+		<guid>c8b7d6e5-f4a3-42b1-0c9d-8e7f6a5b4c32</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_TicaoCrosta.xml</path>
 		<guid>6c2ad766-b8f2-4444-93d7-6cf158416012</guid>
 	</files>

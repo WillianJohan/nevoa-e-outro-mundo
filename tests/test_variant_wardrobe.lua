@@ -42,22 +42,23 @@ return {
         assert(W.CATALOG.alma[1].id == "A1" and W.CATALOG.alma[1].pieces == nil)
     end,
 
-    -- ajuste 5: T1–T3 trocam slot (N3 *TINT carvão); sem keepOwn / sem roupa clara intacta
+    -- ajuste 5 + proposta v2 preta: Tição negro (confunde com a névoa); só a brasa revela.
     wardrobe_ticao_carbonized_tintable = function()
-        for i = 1, 3 do
+        for i = 1, 5 do
             local t = W.CATALOG.ticao[i]
             assert(not t.keepOwn, t.id .. " não pode keepOwn (setTint falha em TEXTURE)")
             assert(t.pieces and #t.pieces >= 1, t.id)
-            local top = t.pieces[1]
-            assert(top.tint, t.id .. " precisa tint")
-            assert(top.type:find("TINT", 1, true) or top.type:find("SuitWhite", 1, true)
-                or top.type:find("Hoodie", 1, true), t.id .. " peça tintável: " .. top.type)
-            -- carvão / cinza fria — luminância baixa no canal R do tint
-            assert(top.tint[1] < 0.45, t.id .. " ainda claro: " .. tostring(top.tint[1]))
+            for _, p in ipairs(t.pieces) do
+                if p.tint then
+                    -- carvão look-brasa (#151312–#2A2623) ≈ R ≤ 0.17
+                    assert(p.tint[1] <= 0.17 + 1e-6,
+                        t.id .. " não é negro o bastante: " .. tostring(p.tint[1]))
+                end
+            end
         end
-        local t5 = W.CATALOG.ticao[5]
-        assert(t5.pieces[1].tint[1] < 0.35, "T5 70% carbonizado, não pijama claro")
-        assert(not t5.keepOwn)
+        local t1 = W.CATALOG.ticao[1]
+        assert(t1.pieces[1].type:find("TINT", 1, true) or t1.pieces[1].type:find("SuitWhite", 1, true)
+            or t1.pieces[1].type:find("Hoodie", 1, true), "T1 peça tintável")
     end,
 
     -- A1 ≤ 20% via weight; A2/A3 dominam

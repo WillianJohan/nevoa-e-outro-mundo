@@ -325,15 +325,34 @@ return {
         G.carpReport(z, p, "near")
         assert(#z.local_ == 1 and #G.sounds == 1, "gritou duas vezes na mesma névoa")
         -- névoa seguinte: outro período, ela pode gritar de novo (se ainda for Carpideira)
+        -- depois do gap global (playtest 2026-10-10)
         G.fog = 0
         G.setTime(23)
         G.fog = 0.9
         G.setTime(23)
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
         if NOM_VariantRules.variant(z.id, NOM_Fog.period(), NOM_VariantRules.config(function(k)
             local v = CARP[k]; if v == nil then v = NOM_Config.DEFAULTS[k] end return v end)) == "carpideira" then
             G.carpReport(z, p, "near")
             assert(#z.local_ == 2, "não gritou na névoa seguinte")
         end
+    end,
+
+    -- gap global: segunda Carpideira não grita até nextAt (ZombRand=0 → GAP_MIN)
+    carpideira_global_scream_gap = function()
+        local G = setup({ sandbox = CARP })
+        local id1 = idFor("carpideira", 1, CARP)
+        local z1 = G.zombie({ id = id1 })
+        local id2 = idFor("carpideira", 1, CARP, id1)
+        local z2 = G.zombie({ id = id2, x = 10, y = 12 })
+        local p = G.player(12, 10)
+        G.carpReport(z1, p, "near")
+        assert(#z1.local_ == 1, "primeira não gritou")
+        G.carpReport(z2, p, "near")
+        assert(#z2.local_ == 0, "segunda gritou dentro do gap")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.carpReport(z2, p, "near")
+        assert(#z2.local_ == 1, "segunda não gritou depois do gap")
     end,
     -- salvar e carregar no meio da névoa não deixa gritar de novo (ModData)
     carpideira_scream_survives_reload = function()
@@ -354,7 +373,9 @@ return {
         local dead = G.zombie({ id = id, onlineID = 3 })
         dead.dead = true
         local far = G.zombie({ id = id, onlineID = 4, x = 10, y = 10 })
-        local function woke(onlineID, why, p) G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = onlineID, why = why }, p) end
+        local function woke(onlineID, why, p, gapMs)
+            G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = onlineID, why = why }, p, gapMs)
+        end
         local function screams() return G.commandsSent("carpideiraScream") end
         woke(2, "near", G.player(11, 10))
         woke(3, "near", G.player(11, 10))
@@ -369,11 +390,11 @@ return {
         local s = screams()
         assert(#s == 1 and s[1].args.pid == id and s[1].args.id == 4 and s[1].args.pl == p.onlineID and s[1].player == nil)
         assert(#G.sounds == 1 and G.sounds[1].src == far, "horda não chamada")
-        -- lanterna acesa a 9 tiles vale (outra Carpideira, outro ID)
+        -- lanterna acesa a 9 tiles vale (outra Carpideira, outro ID) — depois do gap global
         local id2 = idFor("carpideira", 1, CARP, id)
         G.zombie({ id = id2, onlineID = 5, x = 10, y = 10 })
         local lit = G.player(10, 19); lit.light = true
-        woke(5, "light", lit)
+        woke(5, "light", lit, NOM_CarpideiraRules.SCREAM_GAP_MIN_MS)
         assert(#screams() == 2, "lanterna acesa não valeu")
         -- zumbi que não é Carpideira (metade é, com 50%)
         local half = { CarpideiraChance = 50, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
@@ -399,7 +420,9 @@ return {
         assert(#G.commandsSent("carpideiraScream") == 0, "passou do limite")
         G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, b, 0)
         assert(#G.commandsSent("carpideiraScream") == 1, "limite de um travou o outro")
-        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 5, why = "near" }, a, NOM_CarpideiraRules.RATE_MS)
+        -- RATE_MS libera o jogador a; SCREAM_GAP libera a outra Carpideira
+        local wait = math.max(NOM_CarpideiraRules.RATE_MS, NOM_CarpideiraRules.SCREAM_GAP_MIN_MS)
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 5, why = "near" }, a, wait)
         assert(#G.commandsSent("carpideiraScream") == 2, "não liberou depois do intervalo")
     end,
     -- barulho: o servidor ouve sozinho (OnWorldSound). Tiro perto acorda e ela caça

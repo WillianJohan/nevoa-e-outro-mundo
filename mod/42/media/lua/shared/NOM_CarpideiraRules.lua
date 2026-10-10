@@ -24,6 +24,10 @@ NOM_CarpideiraRules = {
     WALK_DIST_MAX = 6,
     WALK_TRIES = 8,
     WALK_TIMEOUT_MS = 15000,
+    -- Playtest 2026-10-10: gap global entre gritos (qualquer Carpideira/Screamer).
+    -- Um grito por PID por período continua; isto evita clusters de várias ao mesmo tempo.
+    SCREAM_GAP_MIN_MS = 45000,
+    SCREAM_GAP_MAX_MS = 180000,
     -- Volume do soluço pela distância (mesmo espírito do rádio do Sem-rosto).
     SOB_NEAR = 3,
     SOB_FAR = 12,
@@ -50,14 +54,34 @@ end
 
 -- Quem já gritou no período: { [persistentOutfitID] = true }, dentro de data (o
 -- ModData global do servidor). Período novo, tabela nova: um grito por névoa, e
--- salvar e carregar no meio não deixa gritar de novo.
+-- salvar e carregar no meio não deixa gritar de novo. nextAt (gap global) fica.
 function R.screamed(data, period)
     local s = data.carpideira
     if not s or s.period ~= period then
-        s = { period = period, pids = {} }
+        local nextAt = s and s.nextAt
+        s = { period = period, pids = {}, nextAt = nextAt }
         data.carpideira = s
     end
     return s.pids
+end
+
+-- Estado completo (pids + nextAt) no ModData; cria/renova período se preciso.
+function R.screamState(data, period)
+    R.screamed(data, period)
+    return data.carpideira
+end
+
+-- Pronto pro próximo grito global? nextAt nil = nunca gritou nesta sessão.
+function R.globalScreamReady(state, nowMs)
+    if state == nil or state.nextAt == nil then return true end
+    return (tonumber(nowMs) or 0) >= state.nextAt
+end
+
+-- Agenda o próximo grito permitido; u em [0, 1]. Devolve o gap aplicado (ms).
+function R.scheduleNextScream(state, nowMs, u)
+    local gap = R.screamGapMs(u)
+    state.nextAt = (tonumber(nowMs) or 0) + gap
+    return gap
 end
 
 -- Milissegundos até a próxima caminhada calma; u em [0, 1].
@@ -65,6 +89,13 @@ function R.walkGapMs(u)
     u = math.max(0, math.min(tonumber(u) or 0, 1))
     local span = R.WALK_GAP_MAX_MS - R.WALK_GAP_MIN_MS
     return R.WALK_GAP_MIN_MS + math.floor(u * span + 0.5)
+end
+
+-- Gap global entre gritos de Carpideira/Screamer; u em [0, 1].
+function R.screamGapMs(u)
+    u = math.max(0, math.min(tonumber(u) or 0, 1))
+    local span = R.SCREAM_GAP_MAX_MS - R.SCREAM_GAP_MIN_MS
+    return R.SCREAM_GAP_MIN_MS + math.floor(u * span + 0.5)
 end
 
 -- Volume do soluço (0..1) pela distância em tiles até o jogador local mais perto.
