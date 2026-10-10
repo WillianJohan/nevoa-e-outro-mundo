@@ -29,11 +29,13 @@ P.LOOK_TO_KIND = {
 P.GLITCH_MODES = { "off", "original", "bordas" }
 
 P.DEFAULTS = {
-    AlmaPopMin = 4,
-    AlmaPopMax = 20,
-    AlmaPopMinBlack = 20,
-    AlmaPopMaxBlack = 40,
-    AlmaCrawlerPct = 68,
+    AlmaPopMin = 5,
+    AlmaPopMax = 30,
+    AlmaPopMinRed = 25,
+    AlmaPopMaxRed = 50,
+    AlmaPopMinBlack = 30,
+    AlmaPopMaxBlack = 100,
+    AlmaCrawlerPct = 50,
     AlmaFogWhite = true,
     AlmaFogRed = true,
     AlmaFogBlack = true,
@@ -57,10 +59,12 @@ P.DEFAULTS = {
 
 -- type: int | float | bool | enum
 P.SCHEMA = {
-    AlmaPopMin = { type = "int", min = 0, max = 40, step = 1, section = "almas" },
-    AlmaPopMax = { type = "int", min = 1, max = 40, step = 1, section = "almas" },
-    AlmaPopMinBlack = { type = "int", min = 0, max = 40, step = 1, section = "almas" },
-    AlmaPopMaxBlack = { type = "int", min = 1, max = 40, step = 1, section = "almas" },
+    AlmaPopMin = { type = "int", min = 0, max = 100, step = 1, section = "almas" },
+    AlmaPopMax = { type = "int", min = 1, max = 100, step = 1, section = "almas" },
+    AlmaPopMinRed = { type = "int", min = 0, max = 100, step = 1, section = "almas" },
+    AlmaPopMaxRed = { type = "int", min = 1, max = 100, step = 1, section = "almas" },
+    AlmaPopMinBlack = { type = "int", min = 0, max = 100, step = 1, section = "almas" },
+    AlmaPopMaxBlack = { type = "int", min = 1, max = 100, step = 1, section = "almas" },
     AlmaCrawlerPct = { type = "int", min = 0, max = 100, step = 1, section = "almas" },
     AlmaFogWhite = { type = "bool", section = "almas" },
     AlmaFogRed = { type = "bool", section = "almas" },
@@ -86,7 +90,8 @@ local live = {}
 
 -- Ordem estável pro snapshot / dump do console (sem depender de pairs).
 P.KEYS = {
-    "AlmaPopMin", "AlmaPopMax", "AlmaPopMinBlack", "AlmaPopMaxBlack", "AlmaCrawlerPct",
+    "AlmaPopMin", "AlmaPopMax", "AlmaPopMinRed", "AlmaPopMaxRed",
+    "AlmaPopMinBlack", "AlmaPopMaxBlack", "AlmaCrawlerPct",
     "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
     "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
     "AmbientGapMinMs", "AmbientGapMaxMs",
@@ -159,6 +164,10 @@ function P.set(key, value)
             live[key] = P.get("AlmaPopMax")
         elseif key == "AlmaPopMax" and n < P.get("AlmaPopMin") then
             live[key] = P.get("AlmaPopMin")
+        elseif key == "AlmaPopMinRed" and n > P.get("AlmaPopMaxRed") then
+            live[key] = P.get("AlmaPopMaxRed")
+        elseif key == "AlmaPopMaxRed" and n < P.get("AlmaPopMinRed") then
+            live[key] = P.get("AlmaPopMinRed")
         elseif key == "AlmaPopMinBlack" and n > P.get("AlmaPopMaxBlack") then
             live[key] = P.get("AlmaPopMaxBlack")
         elseif key == "AlmaPopMaxBlack" and n < P.get("AlmaPopMinBlack") then

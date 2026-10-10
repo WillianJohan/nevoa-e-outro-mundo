@@ -397,10 +397,11 @@ end
 -- absoluto ao servidor (evita toggle duplo no solo).
 function NOM.almaCfg(field, value)
     if field ~= "popMin" and field ~= "popMax"
+        and field ~= "popMinRed" and field ~= "popMaxRed"
         and field ~= "popMinBlack" and field ~= "popMaxBlack"
         and field ~= "crawler"
         and field ~= "white" and field ~= "red" and field ~= "black" then
-        NOM_DebugLog.say("[NOM] debug uso: NOM.almaCfg(campo, valor) — popMin/popMax/popMinBlack/popMaxBlack/crawler/white/red/black")
+        NOM_DebugLog.say("[NOM] debug uso: NOM.almaCfg(campo, valor) — popMin/popMax/popMinRed/popMaxRed/popMinBlack/popMaxBlack/crawler/white/red/black")
         return
     end
     NOM_AlmaRules.apply(field, value)
@@ -410,6 +411,10 @@ function NOM.almaCfg(field, value)
         value = NOM_AlmaRules.POP_MIN
     elseif field == "popMax" then
         value = NOM_AlmaRules.POP_MAX
+    elseif field == "popMinRed" then
+        value = NOM_AlmaRules.POP_MIN_RED
+    elseif field == "popMaxRed" then
+        value = NOM_AlmaRules.POP_MAX_RED
     elseif field == "popMinBlack" then
         value = NOM_AlmaRules.POP_MIN_BLACK
     elseif field == "popMaxBlack" then
@@ -547,6 +552,8 @@ local function syncPanelToSystems(which)
     if (all or which == "almas") and NOM_AlmaRules and NOM_AlmaRules.apply then
         NOM_AlmaRules.apply("popMin", P.get("AlmaPopMin"))
         NOM_AlmaRules.apply("popMax", P.get("AlmaPopMax"))
+        NOM_AlmaRules.apply("popMinRed", P.get("AlmaPopMinRed"))
+        NOM_AlmaRules.apply("popMaxRed", P.get("AlmaPopMaxRed"))
         NOM_AlmaRules.apply("popMinBlack", P.get("AlmaPopMinBlack"))
         NOM_AlmaRules.apply("popMaxBlack", P.get("AlmaPopMaxBlack"))
         NOM_AlmaRules.apply("crawler", P.get("AlmaCrawlerPct") / 100)
@@ -729,10 +736,10 @@ NOM.HELP = {
     { "NOM.glitch(mode)", "Glitch de tela: \"off\" / \"original\" / \"bordas\"; sem args cicla; live no canal do shader" },
     { "NOM.glitchIntensity(pct)", "intensidade do glitch 0–200% (padrão 100); multiplica tear/scanline/static do modo" },
     { "NOM.eco()", "um Eco nos seus pés (só à noite)" },
-    { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): rua, ciclo 4–20, maioria crawler" },
-    { "NOM.almaStatus()", "pop min/max, % crawler, cores ligadas e quantas almas vivas" },
-    { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão (4–20, 68%, 3 cores)" },
-    { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/popMinBlack/popMaxBlack/crawler (0–1) / white|red|black (bool ou nil=toggle)" },
+    { "NOM.alma()", "repor almas esqueléticas agora (névoa com a cor ligada): tick v2, raio 50 m" },
+    { "NOM.almaStatus()", "pop por cor, %% crawler, cores ligadas e quantas almas vivas" },
+    { "NOM.almaReset()", "volta pop/crawler/cores das almas pro padrão v2 (0068)" },
+    { "NOM.almaCfg(campo, valor)", "ajusta almas: popMin/popMax/popMinRed/popMaxRed/popMinBlack/popMaxBlack/crawler (0–1) / white|red|black" },
     { "NOM.arrasto()", "zumbi mais perto vira Arrasto (crawler lento; só névoa vermelha ou preta) — spike §3.5" },
     { "NOM.ash(dens, taxa, ar)", "cinzas: sem args mostra knobs e vivas; dens/taxa/ar em 0..3 multiplicam (live); ash(\"reset\") volta ao padrão" },
     { "NOM.god(on)", "modo deus; sem argumento inverte" },

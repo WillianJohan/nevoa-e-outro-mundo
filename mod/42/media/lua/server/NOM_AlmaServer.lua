@@ -1,6 +1,5 @@
--- Almas esqueléticas (sprint 0055, ADR-002/005): o servidor mantém população
--- viva 4–20 enquanto a névoa estiver aberta (branca/vermelha/preta); quem
--- simula aplica look/seek (shared/NOM_Alma.lua). Rua + TTL em tempo real.
+-- Almas esqueléticas (sprint 0068, ADR-002/005): tick a cada TICK_MS por zona de
+-- jogador (MP sem multiplicar no mesmo raio); quem simula aplica look/seek.
 if isClient() then return end
 
 require "NOM_World"
@@ -27,14 +26,11 @@ local function enabled()
     return NOM_Config.get("AlmaEnabled") ~= false and R.active(NOM_World)
 end
 
--- Avisa clientes perto: FX negro + som (spawn/despawn/group).
 local function fx(kind, x, y, z)
     local args = { kind = kind, x = x, y = y, z = z }
     if isServer() then
         sendServerCommand(MODULE, "almaFx", args)
     else
-        -- solo: o cliente é o mesmo processo; o handler do client também roda se
-        -- carregado. Dispara direto se NOM_AlmaClient existir.
         if NOM_AlmaClient and NOM_AlmaClient.fx then NOM_AlmaClient.fx(args) end
     end
 end
@@ -52,7 +48,6 @@ local function track(z, diesAt)
     S.alive[#S.alive + 1] = { z = z, diesAt = diesAt }
 end
 
--- MP: modData não viaja. Se onlineID ainda é -1 no spawn, reenvia no tick.
 local function announceBorn(z, crawler)
     if not isServer() then return end
     local online = z:getOnlineID()
@@ -81,26 +76,39 @@ local function flushPendingBorn()
     S.pendingBorn = left
 end
 
--- quiet: leva em massa — só FX de group no wave(); despawn individual fica.
-local function spawnOne(px, py, pz, now, quiet)
+local function almaPositions()
+    local out = {}
+    for i = 1, #S.alive do
+        local z = S.alive[i].z
+        if z and not z:isDead() then
+            out[#out + 1] = { x = z:getX(), y = z:getY() }
+        end
+    end
+    return out
+end
+
+local function countNearCluster(cluster)
+    return R.countNearAnchors(cluster, almaPositions())
+end
+
+local function spawnOne(px, py, pz, now, quiet, world)
     local pos = R.pickSpawn(px, py, pz, roll, outsideOk, 16)
     if not pos then return nil end
-    local crawler = R.isCrawler(roll())
-    local ttl = R.ttl(roll())
-    -- versão longa: crawler + health (pz-api-notes § spawn)
+    local crawler = R.isCrawler(roll(), world)
+    local ttl = R.ttl(roll(), world)
+    local diesAt = ttl and (now + ttl) or nil
     local list = addZombiesInOutfit(pos.x, pos.y, pos.z, 1, nil, R.FEMALE_CHANCE,
         crawler, false, false, false, false, false, R.HEALTH)
     if not list or list:size() == 0 then return nil end
     local z = list:get(0)
     NOM_Alma.dress(z, crawler)
     local md = z:getModData()
-    md.NOM_almaUntil = now + ttl
+    md.NOM_almaUntil = diesAt
     md.NOM_almaSeekAt = now
     md.NOM_almaSoundAt = now + math.floor(roll() * R.SOUND_EVENT_MS)
-    -- shambler mancando (speedType 3); crawler já veio no spawn
     local ok, err = pcall(function() z:doZombieSpeed(3) end)
     if not ok then debugLog("speed: " .. tostring(err)) end
-    track(z, now + ttl)
+    track(z, diesAt)
     if not quiet then
         fx("spawn", pos.x, pos.y, pos.z)
     end
@@ -108,7 +116,24 @@ local function spawnOne(px, py, pz, now, quiet)
     return z
 end
 
--- Repõe população perto dos jogadores. why: "tempo" ou "debug".
+local function spawnForCluster(cluster, n, now, world)
+    if n <= 0 or #cluster == 0 then return 0 end
+    local spawned = 0
+    local groupFx = false
+    for i = 1, n do
+        local p = cluster[1 + ((i - 1) % #cluster)]
+        if spawnOne(p.x, p.y, p.z, now, true, world) then
+            spawned = spawned + 1
+            if not groupFx then
+                fx("group", math.floor(p.x), math.floor(p.y), math.floor(p.z))
+                groupFx = true
+            end
+        end
+    end
+    return spawned
+end
+
+-- Repõe população (debug força um tick de spawn). why: "tempo" ou "debug".
 function S.wave(why)
     if not enabled() and why ~= "debug" then return 0 end
     if why == "debug" and not R.active(NOM_World) then
@@ -117,26 +142,7 @@ function S.wave(why)
     if why == "debug" and NOM_Config.get("AlmaEnabled") == false then
         return 0, "almas desligadas na opção AlmaEnabled"
     end
-    local alive = #S.alive
-    local popMin, popMax = R.popBounds(NOM_World)
-    local n = R.refillCount(alive, roll(), NOM_World)
-    if why == "debug" then
-        -- debug: se já está no intervalo, ainda permite um top-up curto até o teto
-        if n == 0 then
-            n = math.min(8, popMax - alive)
-        else
-            n = math.min(n, 8)
-        end
-        if n <= 0 then return 0, "população no teto (" .. popMax .. ")" end
-    elseif n <= 0 then
-        return 0
-    end
-    -- nunca passar do máximo (defesa em profundidade)
-    if alive + n > popMax then n = popMax - alive end
-    if n <= 0 then return 0 end
-
-    local spawned = 0
-    local now = getTimestampMs()
+    local world = NOM_World
     local ps = {}
     for _, p in ipairs(NOM_Players.all()) do
         if not p:isDead() then
@@ -144,22 +150,29 @@ function S.wave(why)
         end
     end
     if #ps == 0 then return 0, "sem jogador" end
-    -- grupo: um FX/som de leva (sem spawn por indivíduo — evita saturar áudio/FPS)
-    local groupFx = false
-    for i = 1, n do
-        local p = ps[1 + ((i - 1) % #ps)]
-        if spawnOne(p.x, p.y, p.z, now, true) then
-            spawned = spawned + 1
-            if not groupFx then
-                fx("group", math.floor(p.x), math.floor(p.y), math.floor(p.z))
-                groupFx = true
-            end
+    local now = getTimestampMs()
+    local clusters = R.clusterPlayers(ps)
+    local spawned = 0
+    for i = 1, #clusters do
+        local cluster = clusters[i]
+        local current = countNearCluster(cluster)
+        local need = R.spawnNeed(current, roll(), world)
+        if why == "debug" and need == 0 then
+            local _, popMax = R.popBounds(world)
+            need = math.min(8, popMax - current)
+        elseif why == "debug" then
+            need = math.min(need, 8)
+        end
+        if need > 0 then
+            spawned = spawned + spawnForCluster(cluster, need, now, world)
         end
     end
-    S.waves = S.waves + 1
-    S.nextAt = now + R.REFILL_MS
-    debugLog("repor por=" .. tostring(why) .. " pedida=" .. n .. " spawn=" .. spawned
-        .. " vivas=" .. #S.alive .. " proxima_ms=" .. R.REFILL_MS)
+    if spawned > 0 then
+        S.waves = S.waves + 1
+    end
+    S.nextAt = now + R.TICK_MS
+    debugLog("repor por=" .. tostring(why) .. " spawn=" .. spawned
+        .. " vivas=" .. #S.alive .. " proxima_ms=" .. R.TICK_MS)
     return spawned
 end
 
@@ -182,7 +195,7 @@ local function prune(now)
         local z = e.z
         if not z or z:isDead() then
             table.remove(S.alive, i)
-        elseif now >= e.diesAt then
+        elseif e.diesAt and now >= e.diesAt then
             removeAlma(z, "ttl")
             table.remove(S.alive, i)
         else
@@ -191,7 +204,6 @@ local function prune(now)
                 removeAlma(z, "interior")
                 table.remove(S.alive, i)
             end
-            -- seek/som: shared/NOM_Alma.install (dono do zumbi, ADR-005)
         end
     end
 end
@@ -215,11 +227,6 @@ function S.tick()
         return
     end
     prune(now)
-    -- no intervalo: só espera TTL/interior derrubarem; abaixo do mínimo: repor
-    local popMin = R.popBounds(NOM_World)
-    if #S.alive >= popMin then
-        return
-    end
     if S.nextAt == nil then
         S.nextAt = now
     end
@@ -233,13 +240,12 @@ NOM_World.onChange(function(flag, on)
         if not R.active(NOM_World) and #S.alive > 0 then
             S.clear("fim")
         elseif R.active(NOM_World) then
-            -- névoa (re)ativou nesta cor — repor na hora (preta: almas sumiam no print 04)
             S.nextAt = getTimestampMs()
         end
     end
 end)
 
 Events.OnTick.Add(S.tick)
-NOM_Alma.install() -- solo: o mesmo processo simula; no dedicado o cliente também instala
+NOM_Alma.install()
 
 return NOM_AlmaServer
