@@ -16,8 +16,10 @@ return {
         local c = F.CHEEK[F.PROOF_SKIN]
         assert(math.abs(r - c[1] / 255) < 1e-6 and math.abs(g - c[2] / 255) < 1e-6)
         assert(math.abs(b - c[3] / 255) < 1e-6)
-        local rw, gw, bw = F.tintFor(F.PROOF_SKIN, 1.08)
-        assert(rw > r and rw <= 1 and gw > g and bw > b, "cera +8%")
+        local rw, gw, bw = F.tintFor(F.PROOF_SKIN, 1.04)
+        assert(rw > r and rw <= 1 and gw > g and bw > b, "cera leve")
+        local rcap = select(1, F.tintFor(F.PROOF_SKIN, 1.08))
+        assert(math.abs(rcap - rw) < 1e-6, "teto 1.04 (anti ovo branco)")
         local r2 = select(1, F.tintFor(nil, 1.0))
         assert(math.abs(r2 - c[1] / 255) < 1e-6, "fallback = tom de prova")
         local r3 = select(1, F.tintFor("lixo", 1.0))

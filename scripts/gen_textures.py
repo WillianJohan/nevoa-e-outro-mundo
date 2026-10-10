@@ -17,6 +17,8 @@ Saída (mod/42/media/textures/):
   NOM/NOM_EcoCinza.png           256  quase branco, salpicos pequenos e escorridos finos de cinza
   NOM/NOM_EcoVeu.png             128  o mesmo, mais escuro nas bordas (véu)
   NOM/NOM_Brasa.png              256  carvão em placas, rachaduras largas em brasa (casca Hazmat)
+  NOM/NOM_EmbrulhadaCasca.png     256  lençol+plástico+amarras (corpo BoilerSuit da Embrulhada)
+  NOM/NOM_EmbrulhadaBalaclava.png 128  lençol+boca úmida pra Hat_BalaclavaFull (K2 caminho A)
   Body/NOM_Ticao.png             256  I5: carvão quase liso (brasa na crosta 3D)
 
 Efeitos de tela (sprint 0013), branco com alfa (a cor sai do desenho):
@@ -364,6 +366,57 @@ def eco_veu(rng, size=128):
     return eco_ash(rng, size, (246, 246, 250), 0.22)                     # borda do véu mais escura
 
 
+def embrulhada_sheet(rng, size, mouth=False, neck_rope=False):
+    """Lençol #BDB5A6 (L≤0,55 após sujeira) + plástico #8E8A82 + manchas grandes.
+    mouth: mancha úmida #6E665C oval vertical + sombras de olho (balaclava).
+    neck_rope: faixa barbante na borda de baixo."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    # base um pouco abaixo de #BDB5A6 pra L média ≤ 0,55 sob luz neutra
+    sheet = color((168, 160, 146), 0.88 + 0.14 * fbm(rng, size))
+    dirt = np.clip((y - 0.05) / 0.70, 0, 1)
+    rgb = mix(sheet, (96, 88, 74), dirt * 0.55)
+    blot = np.zeros((size, size), np.float32)
+    for i, (cx, cy) in enumerate(((0.25, 0.35), (0.7, 0.55), (0.45, 0.75), (0.15, 0.65), (0.85, 0.3), (0.55, 0.2))):
+        d = np.sqrt(((x - cx + 0.5) % 1 - 0.5) ** 2 * 1.1 + (y - cy) ** 2)
+        blot = np.maximum(blot, np.clip(1.0 - d / (0.18 + 0.03 * (i % 3)), 0, 1) ** 1.05)
+    rgb = mix(rgb, (88, 74, 58), blot * 0.95)
+    plast = (fbm(rng, size, (2, 3), (0.6, 0.4)) > 0.48).astype(np.float32) * 0.80
+    shine = 0.82 + 0.18 * fbm(rng, size, (4, 5), (0.5, 0.5))
+    rgb = mix(rgb, (150, 146, 138), plast * shine)
+    if mouth:
+        # UV da balaclava: rosto no miolo; boca oval vertical escura (critério v3)
+        mouth_m = np.exp(-(((x - 0.50) / 0.10) ** 2 + ((y - 0.58) / 0.16) ** 2))
+        rgb = mix(rgb, (110, 102, 92), mouth_m * 0.95)  # #6E665C
+        for sx in (0.38, 0.62):
+            eye = np.exp(-(((x - sx) / 0.07) ** 2 + ((y - 0.38) / 0.045) ** 2))
+            rgb = mix(rgb, (90, 84, 76), eye * 0.55)
+        nose = np.exp(-(((x - 0.50) / 0.05) ** 2 + ((y - 0.48) / 0.07) ** 2))
+        rgb = mix(rgb, (130, 122, 110), nose * 0.35)
+    if neck_rope:
+        band = np.clip((y - 0.82) / 0.12, 0, 1)
+        rgb = mix(rgb, (90, 74, 56), band * 0.90)  # #5A4A38
+    return rgb
+
+
+def embrulhada_casca(rng, size=256):
+    # 0064 K2: lençol + plástico + 3 amarras #5A4A38 ≈ 3% altura (contraste de longe)
+    rgb = embrulhada_sheet(rng, size)
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    rope = (90, 74, 56)
+    for cy in (0.28, 0.48, 0.72):
+        band = np.exp(-((y - cy) / 0.028) ** 2) ** 1.2
+        twist = 0.88 + 0.12 * np.sin(x * 28 + cy * 17)
+        rgb = mix(rgb, rope, band * 0.95 * twist)
+        knot = np.exp(-(((x - (0.35 + 0.15 * cy)) / 0.055) ** 2 + ((y - cy) / 0.04) ** 2))
+        rgb = mix(rgb, (60, 48, 34), knot * 0.90)
+    return rgb
+
+
+def embrulhada_balaclava(rng, size=128):
+    # 0064 K2 caminho A: textura pra Hat_BalaclavaFull (malha vanilla justa)
+    return embrulhada_sheet(rng, size, mouth=True, neck_rope=True)
+
+
 def ember_shell(rng, size=256):
     # casca de brasa da mutação (sprint 0022): carvão quase preto em placas grandes,
     # rachaduras largas em laranja de brasa com o miolo amarelado. Vista só por ~1 s, queimando
@@ -698,6 +751,8 @@ def main():
     save(eco_cinza(rng(8)), "NOM/NOM_EcoCinza.png", alpha=np.ones((256, 256), np.float32))
     save(eco_veu(rng(9)), "NOM/NOM_EcoVeu.png")
     save(ember_shell(rng(10)), "NOM/NOM_Brasa.png", alpha=np.ones((256, 256), np.float32))
+    save(embrulhada_casca(rng(24)), "NOM/NOM_EmbrulhadaCasca.png", alpha=np.ones((256, 256), np.float32))
+    save(embrulhada_balaclava(rng(25)), "NOM/NOM_EmbrulhadaBalaclava.png")
     save(ticao_skin(rng(20)), "Body/NOM_Ticao.png")
     # efeitos de tela: gerador próprio, pra não mudar as texturas acima
     srng = np.random.default_rng(SEED + 13)

@@ -33,6 +33,8 @@ NOM_Carpideira = {
     nextWalk = {},
     -- Debug: força a próxima caminhada no hold seguinte (NOM.carpWalk).
     forceWalk = false,
+    -- 0064 K3: [zumbi] = { p, at, started } enquanto espera getup 2c / timeout B.
+    pendingGetup = {},
 }
 
 local C = NOM_Carpideira
@@ -105,6 +107,8 @@ end
 -- useless ao chegar/timeout. Ligado uma vez por objeto; o pacote leva o useless.
 -- Orçamento: calma parada sai cedo (como na 0011) sem getPersistentOutfitID a cada frame.
 function C.hold(z, md)
+    -- K3 no meio do getup: não reaplica useless (senão cancela o levantar).
+    if C.pendingGetup[z] then return end
     local now = getTimestampMs()
     local walk = C.walking[z]
     if walk then
@@ -193,6 +197,7 @@ end
 -- (NOM_VariantAI chama nos dois eventos).
 function C.forget(z)
     if C.still[z] or C.walking[z] then C.letGo(z) end
+    C.pendingGetup[z] = nil
     stopSob(z)
     lastReport[z] = nil
     C.nextWalk[z] = nil
@@ -205,14 +210,21 @@ end
 -- última posição vista (1909–1950). Só vale sem useless (191–208): solta antes.
 -- fn(z) a cada grito que este processo toca (efeitos de tela, sprint 0013). Em pcall:
 -- um erro de quem ouve não pode parar o grito (no solo quem chama é o servidor).
+-- K3 Rastejante: caminho 2c (getup) antes do som; timeout → fallback B (grita deitada).
 local screamListeners = {}
 function C.onScream(fn)
     screamListeners[#screamListeners + 1] = fn
 end
 
-function C.scream(z, p)
-    z:getModData().NOM_furia = NOM_FogState.period
-    stopSob(z)
+local function beginGetup(z)
+    if z.setFallOnFront then z:setFallOnFront(true) end
+    if z.setOnFloor then z:setOnFloor(true) end
+    if z.setKnockedDown then z:setKnockedDown(true) end
+    if z.setCanWalk then z:setCanWalk(true) end
+    if z.setCrawler then z:setCrawler(false) end
+end
+
+local function finishScream(z, p)
     z:playSoundLocal(C.SCREAMS[ZombRand(#C.SCREAMS) + 1])
     for _, fn in ipairs(screamListeners) do
         local ok, err = pcall(fn, z)
@@ -221,6 +233,44 @@ function C.scream(z, p)
     if not z:isLocal() then return end
     C.letGo(z)
     if p then z:spotted(p, true) end
+end
+
+local function tickPendingGetup()
+    local now = getTimestampMs()
+    for z, e in pairs(C.pendingGetup) do
+        if z:isDead() then
+            C.pendingGetup[z] = nil
+        else
+            local st = z.getCurrentStateName and z:getCurrentStateName() or nil
+            local crawl = z.isCrawling and z:isCrawling()
+            local ready, why = R.getupDone(st, crawl, now - e.started, R.GETUP_TIMEOUT_MS)
+            if ready then
+                C.pendingGetup[z] = nil
+                if getDebug() then
+                    print("[NOM] carpideira getup=" .. tostring(why) .. " state=" .. tostring(st))
+                end
+                finishScream(z, e.p)
+            end
+        end
+    end
+end
+
+function C.scream(z, p)
+    local md = z:getModData()
+    md.NOM_furia = NOM_FogState.period
+    stopSob(z)
+    -- K3 ainda rastejando: dono inicia 2c; todos esperam getup/timeout pra tocar o grito.
+    local crawling = z.isCrawling and z:isCrawling()
+    if md.NOM_screamerCrawler and crawling then
+        if z:isLocal() then
+            C.letGo(z)
+            beginGetup(z)
+        end
+        local now = getTimestampMs()
+        C.pendingGetup[z] = { p = p, started = now, at = now + R.GETUP_TIMEOUT_MS }
+        return
+    end
+    finishScream(z, p)
 end
 
 local function localPlayers()
@@ -331,6 +381,7 @@ end
 function C.install(report)
     local ticks = 0
     Events.OnTick.Add(function()
+        tickPendingGetup()
         ticks = ticks + 1
         if ticks < C.SCAN_TICKS then return end
         ticks = 0
@@ -339,6 +390,7 @@ function C.install(report)
     NOM_FogState.onChange(function(on)
         if not on then
             C.screamed, lastReport = {}, {}
+            C.pendingGetup = {}
         end
     end)
 end

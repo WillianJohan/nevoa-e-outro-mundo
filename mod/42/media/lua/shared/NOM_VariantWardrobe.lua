@@ -72,40 +72,55 @@ W.CATALOG = {
             dirt = { parts = TORSO, amount = 0.3 },
         },
     },
-    -- Carpideira K1–K5. Skirt_Long OK; Bathrobe → LongCoat_Bathrobe; Nightdress MISS → Dress_SatinNegligee.
+    -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
+    -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada (prova capuz). K3 Rastejante — depois.
     carpideira = {
-        { id = "K1", name = "paciente",
-            pieces = { { type = "Base.Skirt_Long", tint = rgb("1E1C1B") } },
-            strip = SKIRT_LEG,
-            dirt = { parts = LEGS, amount = 0.4 },
-            keepBody = true, -- manto + saia
-        },
-        { id = "K2", name = "velorio",
-            pieces = { { type = "Base.Dress_Long", tint = rgb("1E1C1B") } },
-            strip = FULL,
-            dirt = { parts = TORSO, amount = 0.5 },
-            keepBody = false,
-        },
-        { id = "K3", name = "camisola", lightMass = true, weight = 1,
+        -- K1 Que Nunca Cresceu: laço + pinafore (alças) + gola branca + meias + cabelo escuro longo.
+        { id = "K1", name = "nunca_cresceu", lightMass = true, weight = 1,
+            headItem = "Base.NOM_CarpideiraLaco",
+            headFx = "Base.NOM_CarpideiraLacoFx",
+            hairModel = "Long",
+            hairColor = rgb("1A1512"),  -- #2B2420–#14110F
             pieces = {
-                { type = "Base.Dress_SatinNegligee", tint = rgb("D9D2C3") },
-                { type = "Base.Skirt_Long", tint = rgb("C9C1B0") },
+                { type = "Base.Shirt_FormalTINT", tint = rgb("F0EBE0") },  -- gola/blusa clara
+                { type = "Base.Dress_Straps", tint = rgb("2E3442") },      -- pinafore alças
+                { type = "Base.Socks_Long", tint = rgb("C8C2B4") },        -- meias ≠ pele
+                { type = "Base.Shoes_Black" },
             },
             strip = FULL,
-            dirt = { parts = TORSO, amount = 0.65 },
+            dirt = { parts = TORSO, amount = 0.55 },
+            holes = { "Torso_Upper", "UpperArm_L" },
             keepBody = false,
         },
-        { id = "K4", name = "capa",
-            pieces = { { type = "Base.PonchoGarbageBag" } },
-            strip = FULL,
-            dirt = { parts = TORSO, amount = 0.4 },
+        -- K2 Embrulhada caminho A (diretor v3): balaclava vanilla + lençol; sem capuz 3D.
+        -- Scarf nó #5A4A38; casca BoilerSuit + máscaras Hazmat (sem gola/estampa).
+        -- Pesos live: ScreamerK*Weight no NOM_PanelParams (padrão 1/1/1).
+        { id = "K2", name = "embrulhada", lightMass = true, weight = 1,
+            headItem = "Base.NOM_CarpideiraCapuz",
+            headFx = "Base.NOM_CarpideiraCapuzFx",
+            skinColor = rgb("8A8680"),
+            pieces = {
+                { type = "Base.NOM_EmbrulhadaCasca" },
+                { type = "Base.Scarf_White", tint = rgb("5A4A38") },
+            },
+            strip = {
+                "Dress_", "LongCoat_", "Poncho", "Boilersuit", "HospitalGown",
+                "Tshirt_", "Shirt_", "Sweater", "Hoodie", "Vest_", "Jumper_",
+                "Trousers_", "Skirt_", "Shorts_", "Jacket_", "Apron_", "Scarf",
+                "Socks_", "Shoes_", "Underpants", "Briefs", "Boxers", "Bra_", "Frilly",
+            },
             keepBody = false,
+            dirt = { parts = TORSO, amount = 0.55 },
         },
-        { id = "K5", name = "roupao",
-            pieces = { { type = "Base.LongCoat_Bathrobe", tint = rgb("2B2926") } },
+        -- K3 Rastejante: HospitalGown + setCrawler (canWalk=true). Grito = getup 2c.
+        { id = "K3", name = "rastejante", lightMass = true, weight = 1,
+            crawler = true,
+            pieces = {
+                { type = "Base.HospitalGown", tint = rgb("BDB5A6") },
+            },
             strip = FULL,
-            dirt = { parts = TORSO, amount = 0.35 },
             keepBody = false,
+            dirt = { parts = TORSO, amount = 0.45 },
         },
     },
     -- Corredor C1–C5: tronco escuro N3 + risco claro N4 (LOOKS.corredor.body).
@@ -254,6 +269,18 @@ function W.count(kind)
     return cat and #cat or 0
 end
 
+-- Peso efetivo: Screamer K1–K3 leem ScreamerK*Weight do painel (live); senão .weight.
+function W.weightOf(kind, entry)
+    if not entry then return 0 end
+    if kind == "carpideira" and entry.id and NOM_PanelParams and NOM_PanelParams.SCHEMA then
+        local key = "Screamer" .. entry.id .. "Weight"
+        if NOM_PanelParams.SCHEMA[key] then
+            return NOM_PanelParams.get(key)
+        end
+    end
+    return entry.weight or 1
+end
+
 -- Sorteio estável: mesmo id → mesma variante (ADR-006).
 -- Se alguma entrada tem .weight, usa faixas ponderadas (A1≤20%, massa clara).
 function W.pick(kind, id)
@@ -261,13 +288,13 @@ function W.pick(kind, id)
     if not cat or #cat == 0 then return nil, 0 end
     local total = 0
     for i = 1, #cat do
-        total = total + (cat[i].weight or 1)
+        total = total + W.weightOf(kind, cat[i])
     end
     if total <= 0 then return nil, 0 end
     local r = NOM_Math.mod(math.floor(tonumber(id) or 0), total)
     local acc = 0
     for i = 1, #cat do
-        acc = acc + (cat[i].weight or 1)
+        acc = acc + W.weightOf(kind, cat[i])
         if r < acc then return cat[i], i end
     end
     return cat[#cat], #cat

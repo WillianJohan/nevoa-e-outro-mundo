@@ -213,6 +213,7 @@ mesmo script, casada com o UV. Os XML das peças (e os gêmeos `*Fx.xml`) citam 
 `static\clothes\NOM_M_CorredorBoca`, `static\clothes\NOM_F_CorredorBoca` (`NOM_CorredorBoca.xml`),
 `static\clothes\NOM_M_SemRostoEstatica`, `static\clothes\NOM_F_SemRostoEstatica` (`NOM_SemRostoEstatica.xml`),
 `static\clothes\NOM_M_CarpideiraCabelo`, `static\clothes\NOM_F_CarpideiraCabelo` (`NOM_CarpideiraCabelo.xml`),
+`static\clothes\NOM_M_CarpideiraLaco`, `static\clothes\NOM_F_CarpideiraLaco` (`NOM_CarpideiraLaco.xml`),
 `static\clothes\NOM_M_TicaoCrosta`, `static\clothes\NOM_F_TicaoCrosta` (`NOM_TicaoCrosta.xml`).
 Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do repositório; ADR-020).
 
@@ -225,6 +226,12 @@ Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do reposi
 | `mod/42/media/models_X/Static/Clothes/NOM_M_SemRostoEstatica.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_SemRostoEstatica.x` | ~500 vértices | casca do Sem-rosto (sprint 0042): superelipsoide liso em volta da cabeça inteira, sem nariz, olho nem boca; usa a textura de chiado `NOM_SemRostoEstatica.png` de cima |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCabelo.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCabelo.x` | ~1650 vértices | cabelo da Carpideira em 3D (sprint 0042): 36 mechas em fita saindo do alto da cabeça e caindo como cortina na frente do rosto, três delas brancas; um por sexo |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo3D.png` | 128×128 | textura do cabelo 3D: fios pretos com brilho fraco e a faixa das mechas brancas no meio (espelhado em cima e embaixo) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCapuz.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCapuz.x` | ~600 vértices | capuz 3D aposentado (0064 caminho A: balaclava vanilla; v1–v3 leram ovo/urso) |
+| `mod/42/media/textures/NOM/NOM_CarpideiraCapuz3D.png` | 128×128 | textura do capuz 3D aposentado (ainda gerada por `gen_models.py`) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraLaco.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraLaco.x` | ~200 vértices | laço branco da Que Nunca Cresceu (0064); um por sexo |
+| `mod/42/media/textures/NOM/NOM_CarpideiraLaco3D.png` | 128×128 | textura do laço branco-sujo (espelhado) |
+| `mod/42/media/textures/NOM/NOM_EmbrulhadaCasca.png` | 256×256 | casca BoilerSuit da Embrulhada: lençol+plástico+três amarras (sem hood Hazmat) |
+| `mod/42/media/textures/NOM/NOM_EmbrulhadaBalaclava.png` | 128×128 | textura da balaclava vanilla da Embrulhada (caminho A): lençol, boca úmida, nó |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_TicaoCrosta.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_TicaoCrosta.x` | ~1500 vértices | crosta do Tição (sprint 0043): casca de carvão em placas de alturas diferentes na cabeça inteira, dois olhos de brasa saindo da frente, 14 lascas no alto e atrás, três fitas de fumaça subindo; um por sexo |
 | `mod/42/media/textures/NOM/NOM_TicaoCrosta3D.png` | 128×128 | textura da crosta: carvão com rachaduras de brasa (Voronoi que fecha na volta da cabeça), faixa de carvão liso, fumaça clara e brasa no meio (espelhado em cima e embaixo) |
 
@@ -247,6 +254,8 @@ Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_
 | `clothingItems/NOM_EcoVeuFx.xml` (sprint 0018) | gêmeo do véu do Eco com o shader do dissolve | o mesmo modelo vanilla do véu, pelo nome (as peças dos monstros usam modelos do mod desde a 0041 e a 0042) |
 | `clothingItems/NOM_Brasa.xml` (sprint 0022) | modelo da roupa de proteção (`HazmatSuit`), casca de brasa do corpo inteiro na mutação, sem máscara | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
+| `clothingItems/NOM_EmbrulhadaCasca.xml` (0064) | macacão (`Boilersuit`) sem hood — corpo embrulhado da Screamer K2 (Hazmat tem capuz ~1,6×) | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
+| `clothingItems/NOM_CarpideiraCapuz.xml` (0064 caminho A) | balaclava justa + textura nossa (capuz 3D aposentado: ovo/urso) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
 | `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |
 | `scripts/NOM_clothing.txt` | ícones dos itens | `SkiGogglesWhite`, `SurgicalMaskBlue`, `Balaclava`, `VeilWedding`, `HospitalGown`, `Hazmatsuit`, pelo nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |

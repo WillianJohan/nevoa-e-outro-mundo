@@ -65,13 +65,15 @@ function F.parseSkin(name)
     return name:match("^([MF]_ZedBody0%d_level%d)")
 end
 
--- r,g,b em 0..1 pro ItemVisual:setTint. waxBoost ≤ 1.08 (bíblia §7: cera).
+-- r,g,b em 0..1 pro ItemVisual:setTint.
+-- waxBoost default 1.0 (0064: 1.08 + pele clara estourava ovo branco no print 15).
+-- Teto 1.04 (bíblia §7 ainda permite leve cera, sem L>0,60).
 function F.tintFor(skinName, waxBoost)
     local key = F.parseSkin(skinName)
     local rgb = (key and F.CHEEK[key]) or F.DEFAULT
-    local w = tonumber(waxBoost) or 1.08
+    local w = tonumber(waxBoost) or 1.0
     if w < 1 then w = 1 end
-    if w > 1.08 then w = 1.08 end
+    if w > 1.04 then w = 1.04 end
     local function ch(c)
         local v = (c / 255) * w
         if v > 1 then v = 1 end

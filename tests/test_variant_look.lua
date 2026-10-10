@@ -53,6 +53,10 @@ local LOC = { ["Base.Tshirt_DefaultTEXTURE"] = "tshirt", ["Base.Trousers_Denim"]
     ["Base.Tshirt_WhiteTINT"] = "tshirt", ["Base.Vest_DefaultTEXTURE_TINT"] = "sweater",
     ["Base.Skirt_Long"] = "longskirt", ["Base.Dress_Long"] = "dress",
     ["Base.Dress_SatinNegligee"] = "dress", ["Base.Dress_Normal"] = "longdress",
+    ["Base.Dress_Straps"] = "longdress", ["Base.Dress_Knees"] = "dress",
+    ["Base.Shirt_FormalTINT"] = "shirt",
+    ["Base.Socks_Long_White"] = "socks", ["Base.Socks_Long"] = "socks",
+    ["Base.Shoes_Black"] = "shoes", ["Base.Scarf_White"] = "scarf",
     ["Base.PonchoGarbageBag"] = "jacket", ["Base.LongCoat_Bathrobe"] = "bathrobe",
     ["Base.Boilersuit"] = "boilersuit", ["Base.HoodieDOWN_WhiteTINT"] = "sweater",
     ["Base.Jacket_Black"] = "jacket", ["Base.Jacket_Shellsuit_TINT"] = "jacket_bulky",
@@ -165,6 +169,10 @@ local function setup(opts)
         z.hv = {}
         function z.hv:setSkinTextureName(n) vc(); self.name = n end
         function z.hv:getSkinTexture() vc(); return self.name or "M_ZedBody01_level1" end
+        function z.hv:setHairModel(n) vc(); self.hairModel = n end
+        function z.hv:setHairColor(c) vc(); self.hairColor = c end
+        function z.hv:setNaturalHairColor(c) vc(); self.naturalHairColor = c end
+        function z.hv:setSkinColor(c) vc(); self.skinColor = c end
         z.ivs = jlist(G)
         z.inv, z.worn = {}, {}
         function z:getHumanVisual() vc(); return self.hv end
@@ -224,7 +232,7 @@ local function setup(opts)
         function z:getModData() return self.md end
         function z:hasModData() return true end
         function z:isDead() return self.dead end
-        function z:isCrawling() return false end
+        function z:isCrawling() return self.crawler == true end
         function z:isLocal() return (not isClient() and not isServer()) or not self.remote end
         function z:getOutfitName() return self.outfit end
         function z:isCanCrawlUnderVehicle() return true end
@@ -233,6 +241,11 @@ local function setup(opts)
         function z:doZombieSpeed(t) if t and t > 0 then self.speedType = t end end
         function z:DoZombieStats() end
         function z:isReanimatedPlayer() vc(); return self.reanimated end
+        function z:setSkeleton(v) self.skeleton = v == true end
+        function z:setCrawler(v) self.crawler = v == true end
+        function z:setCanWalk(v) self.canWalk = v == true end
+        function z:setOnFloor(v) self.onFloor = v == true end
+        z.skeleton, z.crawler, z.canWalk, z.onFloor = false, false, true, false
         z.alpha, z.seen = 1, true
         function z:setAlpha(pn, a) vc(); assert(pn == 0); self.alpha = math.max(0, math.min(1, a)) end
         function z:getAlpha(pn) vc(); assert(pn == 0); if self.alphaThrows then error("getAlpha falhou") end; return self.alpha end
@@ -350,12 +363,18 @@ local function setup(opts)
         _G[m] = nil
         package.loaded[m] = nil
     end
-    NOM_PanelParams = nil
     require "NOM_ScreenFxRules"
     NOM_ScreenFxRules.setLookClean(false)
     require "NOM_Config"
     require "NOM_VariantRules"
     NOM_VariantRules.forced = {}
+    -- 0064: testes genéricos pinam K1; K2/K3 têm testes próprios (forceVariant / pesos).
+    package.loaded.NOM_PanelParams = nil
+    _G.NOM_PanelParams = nil
+    require "NOM_PanelParams"
+    NOM_PanelParams.reset()
+    NOM_PanelParams.set("ScreamerK2Weight", 0)
+    NOM_PanelParams.set("ScreamerK3Weight", 0)
     dofile(FILE_STATS)
     NOM_NightStats.install()
     dofile(FILE_LOOK)
@@ -407,9 +426,41 @@ return {
         assert(NOM_VariantLook.count() == 1)
     end,
 
+    -- 0064: monstros que nascem sozinhos na névoa recebem guarda-roupa (sem forceVariant).
+    look_natural_fog_wardrobe_all_kinds = function()
+        local G = setup()
+        local zs = {}
+        for _, k in ipairs(KINDS) do zs[k] = G.spawn({ id = idFor(k, 17) }) end
+        fogOn(17)
+        G.converge()
+        local function hasWard(z, pieces)
+            for i = 1, #pieces do
+                if hasItem(z, pieces[i]) then return true end
+            end
+            return false
+        end
+        assert(hasWard(zs.estalador, {
+            "Base.HospitalGown", "Base.Shirt_FormalWhite", "Base.Apron_White",
+            "Base.Tshirt_WhiteTINT", "Base.Vest_DefaultTEXTURE_TINT",
+        }), "Estalador natural sem wardrobe: " .. types(zs.estalador))
+        assert(hasWard(zs.corredor, {
+            "Base.Shirt_Lumberjack_TINT", "Base.HoodieDOWN_WhiteTINT", "Base.Jacket_Black",
+            "Base.Jacket_Shellsuit_TINT",
+        }), "Corredor natural sem wardrobe: " .. types(zs.corredor))
+        assert(hasItem(zs.carpideira, "Base.Dress_Straps")
+            and hasItem(zs.carpideira, "Base.Socks_Long")
+            and hasItem(zs.carpideira, "Base.NOM_CarpideiraLaco"),
+            "Screamer natural sem K1: " .. types(zs.carpideira))
+        assert(hasWard(zs.semrosto, {
+            "Base.Shirt_FormalTINT", "Base.Jumper_RoundNeck", "Base.Dress_Normal", "Base.Shirt_Workman",
+        }) or (zs.semrosto.md and zs.semrosto.md.NOM_semrosto_capped),
+            "Sem-rosto natural sem wardrobe: " .. types(zs.semrosto))
+    end,
+
     -- 0060e: flag lookClean → prova; LookForce sozinho NÃO é clean
     look_clean_proof_colored_body = function()
         local G = setup()
+        local savedPP = NOM_PanelParams
         NOM_PanelParams = { lookForce = function() return "misaligned" end, lookKind = function() return nil end }
         assert(NOM_ScreenFxRules.lookForceOn() and not NOM_ScreenFxRules.lookClean())
         local z = G.spawn({ id = idFor("estalador", 3) })
@@ -427,7 +478,7 @@ return {
         assert(hasItem(z, look.item), "peça sumiu ao sair do clean: " .. types(z))
         fogOff()
         G.converge()
-        NOM_PanelParams = nil
+        NOM_PanelParams = savedPP
         NOM_ScreenFxRules.setLookClean(false)
     end,
 
@@ -441,9 +492,11 @@ return {
             local look = NOM_VariantLook.LOOKS[k]
             assert(look, "sem LOOKS pra " .. k)
             assert(look.item, "sem visual pra " .. k)
-            assert(not seen[look.item], "peça repetida " .. look.item)
-            seen[look.item] = true
-            assert(hasItem(zs[k], look.item), k .. " sem a peça: " .. types(zs[k]))
+            -- 0064 K1: laço no lugar das mechas (LOOKS.item fica pra K futuras / leave)
+            local sig = (k == "carpideira") and "Base.NOM_CarpideiraLaco" or look.item
+            assert(not seen[sig], "peça repetida " .. sig)
+            seen[sig] = true
+            assert(hasItem(zs[k], sig), k .. " sem a peça: " .. types(zs[k]))
             if k == "semrosto" then
                 -- 0060f A′: remendo 2D; ModData pro censor; sem casca-ovo
                 assert(look.item == "Base.NOM_SemRostoRosto", "A′ remendo Sem-rosto")
@@ -481,22 +534,95 @@ return {
         end
     end,
 
-    -- 0060f: Carpideira — mechas + (K1 manto+saia | K2–K5 roupa longa vanilla)
-    look_carpideira_wears_manto = function()
+    -- 0064: Screamer K1 Que Nunca Cresceu — laço + pinafore + meias + cabelo escuro
+    look_carpideira_nunca_cresceu = function()
         local G = setup()
         local z = G.spawn({ id = idFor("carpideira", 52) })
         fogOn(52)
         G.converge()
         local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.item), "sem mechas: " .. types(z))
-        local long = hasItem(z, look.body) or hasItem(z, "Base.Dress_Long")
-            or hasItem(z, "Base.Dress_SatinNegligee") or hasItem(z, "Base.PonchoGarbageBag")
-            or hasItem(z, "Base.LongCoat_Bathrobe") or hasItem(z, "Base.Skirt_Long")
-        assert(long, "sem coluna longa: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco"), "sem laço: " .. types(z))
+        assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
+        assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
+        assert(hasItem(z, "Base.Dress_Straps"), "sem pinafore (alças): " .. types(z))
+        assert(hasItem(z, "Base.Shirt_FormalTINT"), "sem blusa/gola: " .. types(z))
+        assert(hasItem(z, "Base.Socks_Long"), "sem meias: " .. types(z))
+        assert(hasItem(z, "Base.Shoes_Black"), "sem sapato: " .. types(z))
+        assert(z.hv.hairModel == "Long", "cabelo comprido: " .. tostring(z.hv.hairModel))
+        assert(z.hv.hairColor and z.hv.hairColor.r < 0.15, "cabelo escuro")
         assert(z.hv.name == nil, "0060b: Carpideira sem Body")
+        NOM_VariantLook.forceVariant(z, "carpideira", 1)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K1", 1, true), "inspect: " .. info)
         fogOff()
         G.converge()
-        assert(not hasItem(z, look.body) and not hasItem(z, look.item), "manto ficou: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_CarpideiraLaco"), "laço ficou: " .. types(z))
+    end,
+
+    -- 0064: K2 Embrulhada — balaclava + casca (forceVariant ignora peso 0)
+    look_carpideira_embrulhada_capuz = function()
+        local G = setup()
+        NOM_PanelParams.reset()
+        local z = G.spawn({ id = idFor("carpideira", 53) })
+        fogOn(53)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.carpideira
+        NOM_VariantLook.forceVariant(z, "carpideira", 2)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K2", 1, true), "inspect: " .. info)
+        assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz: " .. types(z))
+        assert(hasItem(z, "Base.NOM_EmbrulhadaCasca"), "sem casca embrulhada: " .. types(z))
+        assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
+        assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
+        fogOff()
+        G.converge()
+        assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_EmbrulhadaCasca"), "casca ficou: " .. types(z))
+    end,
+
+    -- 0064: K3 Rastejante — HospitalGown + setCrawler(canWalk=true)
+    look_carpideira_rastejante_crawler = function()
+        local G = setup()
+        NOM_PanelParams.reset()
+        local z = G.spawn({ id = idFor("carpideira", 54) })
+        fogOn(54)
+        G.converge()
+        NOM_VariantLook.forceVariant(z, "carpideira", 3)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K3", 1, true), "inspect: " .. info)
+        assert(hasItem(z, "Base.HospitalGown"), "sem bata: " .. types(z))
+        assert(z.crawler == true, "não virou crawler")
+        assert(z.canWalk == true, "canWalk=false (alma) — K3 nunca")
+        assert(z.md.NOM_screamerCrawler == true, "ModData crawler")
+        assert(z.md.NOM_screamerVar == "K3", "ModData var")
+        fogOff()
+        G.converge()
+        assert(z.crawler == false, "crawler ficou após strip")
+        assert(z.md.NOM_screamerCrawler == nil, "ModData crawler ficou")
+    end,
+
+    -- 0064 print 07: alma (SkeletonMuscle + EcoVeu) forçada a Screamer lia como
+    -- "boneco vermelho de palito" com cúpula branca. forceVariant tem que desfazer o esqueleto.
+    look_force_variant_clears_alma_skeleton = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 71), extra = { "Base.NOM_EcoVeu" } })
+        z.md.NOM_alma = true
+        z.md.NOM_almaCrawler = true
+        z.hv.name = "SkeletonMuscle"
+        z.skeleton = true
+        z.crawler = true
+        function z:setSkeleton(v) self.skeleton = v == true end
+        function z:setCrawler(v) self.crawler = v == true end
+        function z:setCanWalk(v) self.canWalk = v == true end
+        NOM_VariantLook.forceVariant(z, "carpideira", 2)
+        assert(z.skeleton == false, "esqueleto ficou")
+        assert(z.md.NOM_alma == nil, "NOM_alma ficou")
+        assert(z.md.NOM_almaCrawler == nil, "NOM_almaCrawler ficou")
+        assert(z.hv.name ~= "SkeletonMuscle", "skin SkeletonMuscle ficou: " .. tostring(z.hv.name))
+        assert(not hasItem(z, "Base.NOM_EcoVeu"), "EcoVeu ficou: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz após limpar alma: " .. types(z))
+        local info = NOM_VariantLook.inspect(z)
+        assert(not info:find("SkeletonMuscle", 1, true), "inspect ainda skeleton: " .. info)
     end,
 
     look_removed_when_fog_ends = function()
@@ -578,11 +704,11 @@ return {
         local z = G.spawn({ id = idFor("carpideira", 9) })
         fogOn(9)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS.carpideira.item))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco"))
         G.reuse(z, idFor(nil, 9))
         G.render(z)
         G.converge()
-        assert(not hasItem(z, NOM_VariantLook.LOOKS.carpideira.item) and z.hv.name == nil, "objeto reaproveitado com visual: " .. types(z))
+        assert(not hasItem(z, "Base.NOM_CarpideiraLaco") and z.hv.name == nil, "objeto reaproveitado com visual: " .. types(z))
         assert(NOM_VariantLook.count() == 0, "a tabela guardou o objeto reaproveitado")
         -- reaproveitado ainda não vestido: o item velho não pode ficar se o jogo demorar a vestir
         local y = G.spawn({ id = idFor("estalador", 9) })
@@ -673,7 +799,9 @@ return {
         assert(k and k ~= "corredor", "não achou período com outro tipo")
         fogOn(p)
         G.converge()
-        assert(hasItem(z, NOM_VariantLook.LOOKS[k].item), "período novo, visual velho: " .. types(z))
+        local want = NOM_VariantLook.LOOKS[k].item
+        if k == "carpideira" then want = "Base.NOM_CarpideiraLaco" end
+        assert(hasItem(z, want), "período novo, visual velho: " .. types(z))
         assert(not hasItem(z, NOM_VariantLook.LOOKS.corredor.item), "ficou Corredor: " .. types(z))
     end,
 
@@ -1065,8 +1193,7 @@ return {
         fogOn(42)
         G.converge()
         G.ms(NOM_DissolveRules.MS * 2)
-        local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.fx) and z.hv.name == nil, "a peça sumiu: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLacoFx") and z.hv.name == nil, "a peça sumiu: " .. types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z))
         fogOff()
         G.converge()
@@ -1218,9 +1345,9 @@ return {
         fogOn(62)
         G.converge()
         G.ms(NOM_DissolveRules.MS * 2)
-        local look = NOM_VariantLook.LOOKS.carpideira
-        assert(hasItem(z, look.item) and z.hv.name == nil, "o monstro sumiu: " .. types(z))
-        assert(not hasItem(z, SHELL) and hasItem(z, OUTFIT[1]), types(z))
+        assert(hasItem(z, "Base.NOM_CarpideiraLaco") and z.hv.name == nil, "o monstro sumiu: " .. types(z))
+        -- 0064 K1: FULL strip tira a camisa vanilla; o monstro fica com wardrobe K1
+        assert(not hasItem(z, SHELL) and hasItem(z, "Base.Dress_Straps"), types(z))
         assert(z.alpha == 1 and not NOM_Dissolve.busy(z) and NOM_EmberShell.count() == 0)
         fogOff()
         G.converge()

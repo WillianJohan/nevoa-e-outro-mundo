@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gêmeo de NOM_CarpideiraLaco com o shader do dissolve (sprint 0018, ADR-016). -->
+<clothingItem>
+	<m_MaleModel>static\clothes\NOM_M_CarpideiraLaco</m_MaleModel>
+	<m_FemaleModel>static\clothes\NOM_F_CarpideiraLaco</m_FemaleModel>
+	<m_GUID>1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b</m_GUID>
+	<m_Static>true</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_MasksFolder>none</m_MasksFolder>
+	<textureChoices>NOM\NOM_CarpideiraLaco3D</textureChoices>
+	<m_Shader>NOM_Dissolve</m_Shader>
+</clothingItem>

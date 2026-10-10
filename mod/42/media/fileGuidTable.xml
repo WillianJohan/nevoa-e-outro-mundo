@@ -46,6 +46,26 @@
 		<guid>9df17001-f725-484f-ad1d-38f4e1b99256</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraCapuz.xml</path>
+		<guid>e01330b4-b00f-492d-8b48-629be3c6da21</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraCapuzFx.xml</path>
+		<guid>a8f9581c-bad3-46c5-8eea-c5df0fbe015f</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraLaco.xml</path>
+		<guid>f4a91c2e-7b3d-4e8a-9c1f-2d5e6a7b8c9d</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_CarpideiraLacoFx.xml</path>
+		<guid>1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b</guid>
+	</files>
+	<files>
+		<path>media/clothing/clothingItems/NOM_EmbrulhadaCasca.xml</path>
+		<guid>9d8c7b6a-5e4f-3d2c-1b0a-9f8e7d6c5b4a</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_CarpideiraManto.xml</path>
 		<guid>7c4e9f2a-1b83-4d6e-9f01-a2b3c4d5e6f7</guid>
 	</files>

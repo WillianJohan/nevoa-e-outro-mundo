@@ -21,6 +21,7 @@ Encaixe por peça, contra números medidos nos .x vanilla (pz-api-notes §32):
 Uso: python3 tests/test_models.py (o run-tests.sh chama). Exit 0 = passou.
 """
 import importlib.util
+import math
 import os
 import re
 import sys
@@ -40,9 +41,12 @@ PIECES = {
     "CorredorBoca": "NOM_CorredorBoca3D",
     "SemRostoEstatica": "NOM_SemRostoEstatica",
     "CarpideiraCabelo": "NOM_CarpideiraCabelo3D",
+    "CarpideiraCapuz": "NOM_CarpideiraCapuz3D",
+    "CarpideiraLaco": "NOM_CarpideiraLaco3D",
     "TicaoCrosta": "NOM_TicaoCrosta3D",
 }
-MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D", "NOM_TicaoCrosta3D")
+MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D",
+            "NOM_CarpideiraCapuz3D", "NOM_CarpideiraLaco3D", "NOM_TicaoCrosta3D")
 MAX_VERTS = 2500     # a peça tem ~20 px de tela (o HeadBandage vanilla tem 52 vértices)
 
 # Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a cabeça na altura dos
@@ -426,6 +430,53 @@ def test_cabelo_close_to_head():
         assert verts[:, 2].max() <= h["z"][1] + 0.04, "%s: frente abre %.3f" % (sex, verts[:, 2].max())
 
 
+def test_capuz_within_head_plus_5pct():
+    """0064 Embrulhada: capuz ≤ SKULL+5% (não capacete-ovo); topo caído; boca na frente.
+    Pontos internos do crânio ficam dentro; o pano (cloth) respeita o elipsoide;
+    boca/barbante podem sair um pouco na frente (relevo)."""
+    g = generator()
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("CarpideiraCapuz", sex)
+        sk = SKULL[sex]
+        c, r = np.array(sk["c"]), np.array(sk["r"])
+        for th in (0.3, 0.8, 1.2, 1.6):
+            for ps in (0.0, 1.0, 2.0, 3.5):
+                p = c + 0.9 * r * np.array([math.cos(th), math.sin(th) * math.sin(ps),
+                                           math.sin(th) * math.cos(ps)])
+                assert inside_mesh(verts, faces, p), "%s: crânio %s fora" % (sex, p)
+        h = HELMET[sex]
+        m = g.build("CarpideiraCapuz", sex)
+        cloth = np.array(m.verts)[sorted({q for f, p in zip(m.faces, m.parts) if p == "cloth" for q in f})]
+        x, y, z = cloth[:, 0], cloth[:, 1], cloth[:, 2]
+        assert np.abs(y).max() <= sk["r"][1] * 1.05 + 0.001, "%s: capuz largo demais vs SKULL %.3f" % (
+            sex, np.abs(y).max())
+        assert z.max() <= sk["c"][2] + sk["r"][2] * 1.05 + 0.002, "%s: capuz fundo demais %.3f" % (
+            sex, z.max())
+        assert x.max() <= sk["c"][0] + sk["r"][0] * 1.05 + 0.002, "%s: capuz alto demais %.3f" % (
+            sex, x.max())
+        assert x.min() > h["x"][0] - 0.055, "%s: capuz baixo demais %.3f" % (sex, x.min())
+        top = cloth[cloth[:, 0] > 0.14]
+        assert len(top) > 20 and top[:, 2].mean() < 0.01, "%s: topo não caiu pra trás" % sex
+        assert "cloth" in m.parts and "rope" in m.parts and "mouth" in m.parts, \
+            "%s: falta pano/boca/barbante" % sex
+        mouth = [np.array(m.verts)[list(f)].mean(axis=0)
+                 for f, p in zip(m.faces, m.parts) if p == "mouth"]
+        assert len(mouth) >= 8, "%s: sem relevo de boca" % sex
+        mz = np.array(mouth)[:, 2].mean()
+        assert mz > NOSE_Z[sex] - 0.02, "%s: boca atrás do nariz %.3f" % (sex, mz)
+
+
+def test_laco_on_crown():
+    """0064 K1: laço branco no alto da cabeça, largo o bastante pra ler de longe, sem ovo."""
+    for sex in SEXES:
+        verts, _, _, _, _ = load("CarpideiraLaco", sex)
+        h = HELMET[sex]
+        assert verts[:, 0].min() > 0.12, "%s: laço baixo demais" % sex
+        assert verts[:, 0].max() < h["x"][1] + 0.04, "%s: laço alto demais" % sex
+        assert np.abs(verts[:, 1]).max() < 0.060, "%s: laço largo demais" % sex
+        assert np.abs(verts[:, 1]).max() > 0.035, "%s: laço estreito demais (precisa ~cabeça)" % sex
+
+
 def test_cabelo_hides_face():
     g = generator()
     for sex in SEXES:
@@ -491,6 +542,9 @@ COLOURS = {
     "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": lip_skin},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
+    # cloth: lençol + manchas/plástico (não é pale uniforme)
+    "CarpideiraCapuz": {"cloth": cloth, "mouth": dark, "rope": cloth},
+    "CarpideiraLaco": {"bow": pale},
     "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},
 }
 
@@ -528,6 +582,7 @@ def test_generator_deterministic():
 def main():
     tests = [test_format, test_winding_like_vanilla, test_closed, test_consistent_orientation, test_outward, test_venda_fits_head,
              test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face,
+             test_capuz_within_head_plus_5pct, test_laco_on_crown,
              test_ticao_crust_covers_head, test_ticao_eyes_smoke_shards, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]
     fail = 0

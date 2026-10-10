@@ -49,7 +49,8 @@ NOM_VariantLook = {
         },
         -- 0060f A′: remendo 2D no rosto (sem casca-ovo). Censor via ModData NOM_semrosto.
         semrosto = { item = NOM_SemRostoFace.ITEM },
-        -- Carpideira: mechas + manto (K1) ou roupa longa vanilla (K2–K5 via wardrobe).
+        -- Screamer (carpideira): mechas (K1) ou capuz via wardrobe.headItem (K2 Embrulhada).
+        -- body/manto ainda no LOOKS pra K futuras que queiram keepBody; K1/K2 tiram.
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
             body = "Base.NOM_CarpideiraManto",
@@ -205,6 +206,44 @@ local function stripOrphanBrasa(list, w)
     for _, iv in ipairs(gone) do list:remove(iv) end
 end
 
+-- Peças da alma (véu/casca) que sobram se só tirarmos o setSkeleton.
+local ALMA_STRIP = { ["Base.NOM_EcoVeu"] = true, ["Base.NOM_EcoVeuFx"] = true,
+    ["Base.NOM_EcoCasca"] = true, ["Base.NOM_EcoCinza"] = true }
+
+local function stripAlmaItems(list)
+    if not list then return end
+    local gone = {}
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        local t = iv and iv:getItemType()
+        if t and ALMA_STRIP[t] then gone[#gone + 1] = iv end
+    end
+    for _, iv in ipairs(gone) do list:remove(iv) end
+end
+
+-- Print 07: Turn the nearest / lookVariant em alma (SkeletonMuscle) + Capuz = boneco
+-- vermelho de palito. Desfaz esqueleto/crawler e tira o véu da alma antes do look.
+local function clearAlmaBody(z)
+    if not z then return end
+    local md = z.getModData and z:getModData() or nil
+    local alma = md and (md.NOM_alma or md.NOM_almaCrawler)
+    local hv = z.getHumanVisual and z:getHumanVisual()
+    local skin = hv and hv.getSkinTexture and hv:getSkinTexture()
+    local skeletonSkin = skin == "SkeletonMuscle" or skin == "Skeleton"
+    if not alma and not skeletonSkin then return end
+    if md then
+        md.NOM_alma = nil
+        md.NOM_almaCrawler = nil
+    end
+    pcall(function() if z.setSkeleton then z:setSkeleton(false) end end)
+    pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+    pcall(function() if z.setCanWalk then z:setCanWalk(true) end end)
+    if hv and skeletonSkin and hv.setSkinTextureName then
+        hv:setSkinTextureName(nil)
+    end
+    stripAlmaItems(z.getItemVisuals and z:getItemVisuals())
+end
+
 -- Guarda-roupa da variante (lote A/2): tira slot conflitante, põe peças vanilla + tratamento.
 -- Sem-rosto capped: força S5 (roupa própria lavada). NOM_wardForce: índice debug sticky.
 local function applyWardrobe(list, w, id)
@@ -262,14 +301,66 @@ local function applyWardrobe(list, w, id)
         w.bodyIv = nil
         w.body = nil
     end
+    -- Embrulhada (e futuras): cabeça própria no lugar das mechas / LOOKS.item.
+    if variant.headItem then
+        local fxOn = NOM_Dissolve.enabled()
+        local shellOn = fxOn and NOM_EmberShell.can(w._z)
+        local piece = (fxOn and not shellOn and variant.headFx) and variant.headFx or variant.headItem
+        if w.iv then list:remove(w.iv) end
+        local hiv = ItemVisual.new()
+        hiv:setItemType(piece)
+        list:add(hiv)
+        w.iv = hiv
+        w.item = piece
+        w.lookItem = variant.headItem
+        w.lookFx = variant.headFx or variant.headItem
+    end
     w.wardrobe = {}
-    if not variant.pieces then return end
-    for _, piece in ipairs(variant.pieces) do
-        local iv = ItemVisual.new()
-        iv:setItemType(piece.type)
-        NOM_VariantWardrobe.treat(iv, piece, variant)
-        list:add(iv)
-        w.wardrobe[#w.wardrobe + 1] = iv
+    -- Cabelo / pele da variante (K1 cabelo escuro longo; K2 pés acinzentados).
+    -- Evidência: HumanVisual.setHairModel/setHairColor/setSkinColor (javap projectzomboid.jar).
+    local z = w._z
+    if z and z.getHumanVisual then
+        local hv = z:getHumanVisual()
+        if hv then
+            if variant.hairModel and hv.setHairModel then
+                hv:setHairModel(variant.hairModel)
+            end
+            if variant.hairColor and hv.setHairColor and ImmutableColor and ImmutableColor.new then
+                local c = variant.hairColor
+                local col = ImmutableColor.new(c[1], c[2], c[3], 1)
+                hv:setHairColor(col)
+                if hv.setNaturalHairColor then hv:setNaturalHairColor(col) end
+            end
+            if variant.skinColor and hv.setSkinColor and ImmutableColor and ImmutableColor.new then
+                local c = variant.skinColor
+                hv:setSkinColor(ImmutableColor.new(c[1], c[2], c[3], 1))
+            end
+        end
+    end
+    if variant.pieces then
+        for _, piece in ipairs(variant.pieces) do
+            local iv = ItemVisual.new()
+            iv:setItemType(piece.type)
+            NOM_VariantWardrobe.treat(iv, piece, variant)
+            list:add(iv)
+            w.wardrobe[#w.wardrobe + 1] = iv
+        end
+    end
+    -- K3 Rastejante: crawler com canWalk=true (nunca setCanWalk false — almas fazem isso).
+    -- ModData pra grito 2c (NOM_Carpideira.scream) mesmo sem a tabela worn no servidor.
+    if z and z.getModData then
+        local md = z:getModData()
+        if variant.crawler then
+            md.NOM_screamerVar = variant.id
+            md.NOM_screamerCrawler = true
+            pcall(function() if z.setCanWalk then z:setCanWalk(true) end end)
+            pcall(function() if z.setCrawler then z:setCrawler(true) end end)
+            pcall(function() if z.setOnFloor then z:setOnFloor(true) end end)
+        elseif md.NOM_screamerCrawler then
+            md.NOM_screamerVar = nil
+            md.NOM_screamerCrawler = nil
+            pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+        end
     end
 end
 
@@ -279,6 +370,12 @@ local function clearWardrobe(list, w)
     w.wardrobe = nil
     w.wardVar = nil
     w.wardIdx = nil
+    local z = w._z
+    if z and z.getModData and z:hasModData() and z:getModData().NOM_screamerCrawler then
+        z:getModData().NOM_screamerVar = nil
+        z:getModData().NOM_screamerCrawler = nil
+        pcall(function() if z.setCrawler then z:setCrawler(false) end end)
+    end
 end
 
 -- 0060c/e: só com flag lookClean — prova camisa/calça coloridas (não é LookForce).
@@ -370,7 +467,10 @@ local function put(z, kind, id)
     local shell = fx and NOM_EmberShell.can(z)
     local piece = look.item and ((fx and not shell and look.fx) and look.fx or look.item) or nil
     local forceWard = z:hasModData() and z:getModData().NOM_wardForce or nil
-    local w = { kind = kind, id = id, item = piece, _z = z, forceWardIdx = forceWard }
+    local w = {
+        kind = kind, id = id, item = piece, _z = z, forceWardIdx = forceWard,
+        lookItem = look.item, lookFx = look.fx,
+    }
     if look.body then
         w.body = (fx and not shell and look.bodyFx) and look.bodyFx or look.body
     end
@@ -463,7 +563,9 @@ local function leave(z)
     local function done(x)
         if worn[x] == w and w.leaving then strip(x) end
     end
-    if w.item and w.item == LOOKS[w.kind].item and NOM_EmberShell.can(z) then
+    local baseItem = w.lookItem or LOOKS[w.kind].item
+    local fxItem = w.lookFx or LOOKS[w.kind].fx
+    if w.item and w.item == baseItem and NOM_EmberShell.can(z) then
         local function swap(x)
             if worn[x] == w and w.leaving then
                 strip(x)
@@ -476,7 +578,7 @@ local function leave(z)
             return
         end
     end
-    if w.item and w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
+    if w.item and fxItem and w.item == fxItem and NOM_Dissolve.run(z, "out", done) then
         w.leaving = true
         return
     end
@@ -583,6 +685,7 @@ end
 -- NOM_wardForce gruda o índice no ModData (NightStats re-sync não sorteia outra).
 function NOM_VariantLook.forceVariant(z, kind, idx)
     if not z or not kind or not LOOKS[kind] then return nil end
+    clearAlmaBody(z)
     local n = NOM_VariantWardrobe.count(kind)
     if n == 0 then
         NOM_VariantLook.sync(z, kind, z:getPersistentOutfitID())

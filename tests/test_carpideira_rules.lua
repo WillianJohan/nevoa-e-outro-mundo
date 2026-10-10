@@ -70,4 +70,18 @@ return {
         assert(not R.walkFair(0, 0, 0, 5, 0, players), "indo pra cima do jogador valeu")
         assert(R.walkFair(0, 0, 0, -4, 0, players), "afastar falhou")
     end,
+
+    -- 0064 K3: getup 2c pronto / timeout fallback B
+    carpideira_rules_getup_done = function()
+        local ok, why = R.getupDone("zombie.ai.states.ZombieOnGroundState", false, 100)
+        assert(not ok, "OnGround ainda não")
+        ok, why = R.getupDone("zombie.ai.states.ZombieGetUpState", false, 100)
+        assert(not ok, "GetUp ainda não")
+        ok, why = R.getupDone("zombie.ai.states.WalkTowardState", true, 100)
+        assert(not ok, "ainda crawling")
+        ok, why = R.getupDone("zombie.ai.states.WalkTowardState", false, 100)
+        assert(ok and why == "stood", "de pé: " .. tostring(why))
+        ok, why = R.getupDone("zombie.ai.states.ZombieOnGroundState", true, R.GETUP_TIMEOUT_MS)
+        assert(ok and why == "timeout", "fallback B: " .. tostring(why))
+    end,
 }

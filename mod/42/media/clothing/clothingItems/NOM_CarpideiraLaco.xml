@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 0064 K1 Que Nunca Cresceu: laço branco grande no alto da cabeça (peça estática nossa;
+     não há laço de cabelo vanilla). Modelo de scripts/gen_models.py. -->
+<clothingItem>
+	<m_MaleModel>static\clothes\NOM_M_CarpideiraLaco</m_MaleModel>
+	<m_FemaleModel>static\clothes\NOM_F_CarpideiraLaco</m_FemaleModel>
+	<m_GUID>f4a91c2e-7b3d-4e8a-9c1f-2d5e6a7b8c9d</m_GUID>
+	<m_Static>true</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>false</m_AllowRandomTint>
+	<m_AttachBone>Bip01_Head</m_AttachBone>
+	<m_MasksFolder>none</m_MasksFolder>
+	<textureChoices>NOM\NOM_CarpideiraLaco3D</textureChoices>
+</clothingItem>

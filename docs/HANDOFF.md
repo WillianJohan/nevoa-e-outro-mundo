@@ -2,13 +2,18 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
-## Em teste na staging: 0062 lote 2 + 0063 gritos
+## Em curso: sprint 0064 — Screamer variantes (opções 2/3/4)
 
-Merge `--no-ff` #18 (lote 2) e #19 (gritos 60–500 s) na `staging` (2026-10-09).
-Johan aprovou o lote 2 (“não perfeito, mas satisfeito”). **Screamer/Carpideira:**
-redesenho do diretor de arte — não mexer. Gritos: `AmbientGapMinMs`/`MaxMs` no painel
-(seção Tempestade e luz) + Copiar definições. `scripts/dev-sync.sh` + reiniciar.
-[README 0062](sprints/sprint-0062-look-lote2/README.md).
+Branch `feature/0064-screamer-variantes-ca41`. Johan escolheu Embrulhada, Que Nunca
+Cresceu e Rastejante. Ajuste pós-prints 07–09: K1 com laço+vestido médio (sem mechas);
+K2 capuz ≤ SKULL+5% + casca Hazmat; Turn the nearest limpa alma (print 07 palito).
+Pronto pra print de novo. Rasgo no grito e K3 depois. Código continua `carpideira`.
+[README](sprints/sprint-0064-screamer-variantes/README.md).
+
+## Em staging: 0062 lote 2 + 0063 gritos
+
+Merge `--no-ff` #18 e #19. Gritos: `AmbientGapMinMs`/`MaxMs` no painel. Lote 2
+aprovado; Screamer sai daí pra 0064. [README 0062](sprints/sprint-0062-look-lote2/README.md).
 
 ## Em staging: sprint 0060f + proporção Sem-rosto (§7.3)
 

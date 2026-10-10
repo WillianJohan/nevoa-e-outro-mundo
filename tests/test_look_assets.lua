@@ -51,11 +51,15 @@ local SIZE = {
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
+    ["skinned\\clothes\\bob_boilersuit"] = 256,               -- Clothes/BolierSuit/Boilersuit_Grey.png
+    ["skinned\\hair\\m_balaclavafull"] = 128,                 -- NOM_EmbrulhadaBalaclava (K2 caminho A)
     -- modelos nossos (scripts/gen_models.py, sprints 0041 e 0042): textura nossa, 128 como as outras peças
     ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
     ["static\\clothes\\NOM_M_SemRostoEstatica"] = 128,
     ["static\\clothes\\NOM_M_CarpideiraCabelo"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraCapuz"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraLaco"] = 128,
     ["static\\clothes\\NOM_M_TicaoCrosta"] = 128,
 }
 
@@ -63,7 +67,8 @@ local SIZE = {
 -- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
 -- pz-api-notes §32): o caminho tem que bater ignorando caixa.
 local OWN_MODELS = {}
-for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "TicaoCrosta" }) do
+for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo",
+    "CarpideiraCapuz", "CarpideiraLaco", "TicaoCrosta" }) do
     for _, sex in ipairs({ "M", "F" }) do
         OWN_MODELS["static\\clothes\\NOM_" .. sex .. "_" .. piece] = "models_X/Static/Clothes/NOM_" .. sex .. "_" .. piece .. ".x"
     end
@@ -74,7 +79,7 @@ end
 -- I1/I7: só gêmeos *Fx de peça com modelo (sem Manto/Roupa 2D).
 local FX = {
     "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo",
-    "NOM_TicaoCrosta", "NOM_EcoVeu",
+    "NOM_CarpideiraCapuz", "NOM_CarpideiraLaco", "NOM_TicaoCrosta", "NOM_EcoVeu",
 }
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
@@ -100,7 +105,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 18, "esperava 18 itens (+CorredorRisco N4), achou " .. n)
+        assert(n == 23, "esperava 23 itens (+Laco/Casca Embrulhada), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -120,7 +125,8 @@ return {
                 end
             end
         end
-        assert(n == 20, "esperava 5 peças e os gêmeos Fx nos dois sexos, achou " .. n)
+        -- Capuz K2 caminho A = balaclava vanilla (não conta como modelo NOM_); 24 = 6×2×2.
+        assert(n == 24, "esperava 6 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
@@ -155,7 +161,8 @@ return {
     look_assets_deterministic = function()
         local paths = { "textures/Body/NOM_Ticao.png" }
         for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "SemRostoRosto",
-            "CarpideiraCabelo", "CarpideiraManto", "CorredorRisco", "EcoCinza", "EcoVeu", "Brasa" }) do
+            "CarpideiraCabelo", "CarpideiraManto", "CorredorRisco", "EcoCinza", "EcoVeu", "Brasa",
+            "EmbrulhadaCasca" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}
@@ -229,5 +236,25 @@ return {
         assert(body:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a peça)")
         assert(not body:find("BloodLocation", 1, true), "casca com BloodLocation viraria armadura")
         assert(not body:find("Defense", 1, true), "casca com defesa")
+    end,
+
+    -- 0064 K2 caminho A: balaclava vanilla + casca BoilerSuit com máscaras Hazmat (sem hood)
+    look_assets_embrulhada_shell = function()
+        local x = xmlOf("NOM_EmbrulhadaCasca")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
+            "corpo BoilerSuit (Hazmat hood = ovo)")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
+        assert(tag(x, "textureChoices") == "NOM\\NOM_EmbrulhadaCasca")
+        local masks = {}
+        for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
+        assert(#masks == 14, "máscaras corpo (como Hazmat): " .. #masks)
+        assert(items().NOM_EmbrulhadaCasca:find("BodyLocation = base:zeddmg", 1, true))
+        local cap = xmlOf("NOM_CarpideiraCapuz")
+        assert(tag(cap, "m_MaleModel") == "skinned\\hair\\m_balaclavafull", "caminho A: balaclava")
+        assert(tag(cap, "m_FemaleModel") == "skinned\\hair\\f_balaclavafull")
+        assert(tag(cap, "m_Static") == "false", "balaclava é skinned, não static 3D")
+        assert(tag(cap, "textureChoices") == "NOM\\NOM_EmbrulhadaBalaclava")
+        assert(tag(cap, "m_HatCategory") == "nohairnobeard")
+        assert(io.open("mod/42/media/textures/NOM/NOM_EmbrulhadaBalaclava.png", "rb"), "textura balaclava")
     end,
 }

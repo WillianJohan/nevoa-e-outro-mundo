@@ -124,6 +124,7 @@ return {
             "AmbientGapMinMs", "AmbientGapMaxMs",
             "CinzaRateMult", "CinzaDensityMult", "LookForce",
             "GlitchMode", "GlitchIntensity", "SemRostoPct",
+            "ScreamerK1Weight", "ScreamerK2Weight", "ScreamerK3Weight",
         }
         for _, k in ipairs(need) do
             assert(P.SCHEMA[k], "SCHEMA sem " .. k)
@@ -147,6 +148,9 @@ return {
         assert(t:find("GlitchMode=original", 1, true), t)
         assert(t:find("GlitchIntensity=110", 1, true), t)
         assert(t:find("SemRostoPct=12", 1, true), t)
+        assert(t:find("ScreamerK1Weight=1", 1, true), t)
+        assert(t:find("ScreamerK2Weight=1", 1, true), t)
+        assert(t:find("ScreamerK3Weight=1", 1, true), t)
         P.set("AlmaPopMin", 7)
         P.set("SemRostoPct", 20)
         P.set("CinzaRateMult", 1.5)
