@@ -11,6 +11,8 @@ sexo (NOM_M_/NOM_F_<peça>.x):
                     chiado é a de scripts/gen_textures.py)
   CarpideiraCabelo  cortina de mechas pretas caindo da cabeça, densa na frente do rosto, três
                     mechas brancas (0042)
+  CarpideiraCapuz   capuz/pano da Embrulhada (0064): casca de lençol ≤ cabeça+5%, relevo de
+                    boca aberta sob o tecido, barbante no pescoço (sem buraco de olhos)
   TicaoCrosta       crosta de carvão em placas na cabeça inteira, dois olhos de brasa, lascas
                     no alto e atrás, três fitas de fumaça subindo (0043, a versão por script do
                     teste de IA)
@@ -20,6 +22,7 @@ Saída (mod/42/media/):
   textures/NOM/NOM_EstaladorVenda3D.png    128  pano (espelhado), ferrugem do arame no meio
   textures/NOM/NOM_CorredorBoca3D.png      128  dente, lábio, buraco no meio (espelhado)
   textures/NOM/NOM_CarpideiraCabelo3D.png  128  piche com fios, mecha branca no meio (espelhado)
+  textures/NOM/NOM_CarpideiraCapuz3D.png   128  lençol sujo + sombra de boca + barbante (espelhado)
   textures/NOM/NOM_TicaoCrosta3D.png       128  carvão rachado em brasa, fumaça, brasa no meio (espelhado)
 
 Medido nos .x vanilla, só números (pz-api-notes §32):
@@ -110,6 +113,12 @@ STRANDS = 36
 STREAKS = (-0.28, 0.06, 0.34)   # ângulos das três mechas brancas (0 = meio da testa)
 HAIR_V, STREAK_V = (0.05, 0.30), (0.42, 0.58)
 
+# Capuz da Embrulhada (0064): lençol justo ≤ capacete+5%; relevo de boca; barbante no pescoço
+CAPUZ_GAP = 0.0035     # folga ~+4–5% sobre side/nose
+CAPUZ_WRINKLE = 0.0025
+CAPUZ_V = (0.02, 0.40)  # faixa do pano na textura
+CAPUZ_MOUTH_V = (0.44, 0.52)
+CAPUZ_ROPE_V = (0.56, 0.64)
 
 # Crosta do Tição: ≤ cabeça vanilla +5%; contorno irregular (lascas), sem cúpula lisa
 CRUST_GAP = 0.003      # folga máx. ~+4–5% sobre side/nose (anti bola de basquete)
@@ -590,6 +599,79 @@ def crosta(sex):
     return m
 
 
+def capuz(sex):
+    """Capuz/pano da Embrulhada: casca de lençol rente à cabeça (≤+5%), relevo de boca aberta
+    empurrando o tecido (sem olhos), barbante apertando o pescoço."""
+    m = Mesh("NOM_CarpideiraCapuz3D")
+    verts, uvs, faces, cx = shell_grid(sex, CAPUZ_GAP, CAPUZ_V)
+    centre = np.array([cx, 0.0, 0.0])
+    f = FACES[sex]
+    # oval da boca na superfície da frente (raios largos o bastante pra pegar faces da grade)
+    mouth_c = np.array([f["mouth"], 0.0, f["nose"] * 0.95])
+    mouth_r = np.array([f["mouth_half"] * 2.2, 0.038, 0.045])
+
+    def mouth_dist(p):
+        rel = (p - mouth_c) / mouth_r
+        return math.sqrt(max(0.0, (rel ** 2).sum()))
+
+    # ruga por posição (não por índice): a costura do UV tem o mesmo xyz duas vezes
+    for k, p in enumerate(verts):
+        d = unit(p - centre)
+        hx, hy, hz = round(p[0], 5), round(p[1], 5), round(p[2], 5)
+        wrinkle = CAPUZ_WRINKLE * (0.55 + 0.9 * (hash01(hx * 17.1 + hy * 3.7, hz * 11.3, 51) - 0.35))
+        # cincho perto do queixo (amarra no pescoço)
+        chin_t = max(0.0, min(1.0, (f["chin"][0] + 0.04 - p[0]) / 0.06))
+        cinch = 1.0 - 0.035 * chin_t
+        q = centre + (p - centre) * cinch + d * wrinkle
+        dist = mouth_dist(q)
+        if q[2] > 0.02 and dist < 1.6:
+            stretch = 0.006 * max(0.0, 1.0 - dist / 1.6)
+            dent = 0.010 * max(0.0, 1.0 - dist / 0.9) ** 1.3
+            q = q + d * stretch - d * dent
+        verts[k] = q
+    m.add_shell(verts, uvs, faces, "cloth")
+    # relevo escuro da boca: elipsoide fechado no afundamento (sem buraco de olhos)
+    mouth_pt = mouth_c + unit(np.array([0.0, 0.0, 1.0])) * 0.002
+    # projeta na casca deformada: pega o vértice de pano mais perto do oval
+    best, best_d = None, 1e9
+    for p in verts:
+        d = mouth_dist(p)
+        if d < best_d and p[2] > 0.03:
+            best, best_d = p, d
+    if best is not None:
+        mouth_pt = best + unit(best - centre) * 0.0015
+    blob(m, mouth_pt, (0.010, 0.018, 0.007), "mouth", 0,
+         (0.5, (CAPUZ_MOUTH_V[0] + CAPUZ_MOUTH_V[1]) / 2), lat=6, lon=10)
+    # barbante: toro fechado (sweep closed) sob o queixo
+    neck_x = f["chin"][0] + 0.010
+    ry = f["side"] * 0.88 + CAPUZ_GAP
+    rz_front, rz_back = f["nose"] * 0.72, -f["back"] * 0.72
+    nseg = 24
+    r_rope = 0.0020
+    pts, frames, prof = [], [], []
+    for i in range(nseg):
+        th = 2 * math.pi * i / nseg
+        cth, sth = math.cos(th), math.sin(th)
+        rz = rz_front if cth > 0 else rz_back
+        center = np.array([neck_x, ry * sth, rz * cth])
+        out = unit(np.array([0.0, sth / max(ry, 1e-6), cth / max(abs(rz), 1e-6)]))
+        tang = unit(np.array([0.0, ry * cth, -rz * sth]))
+        up = unit(np.cross(out, tang))
+        out = unit(np.cross(tang, up))
+        pts.append(center)
+        frames.append((out, up))
+        ring = []
+        for j in range(6):
+            phi = 2 * math.pi * j / 6
+            ring.append((r_rope * math.cos(phi), r_rope * math.sin(phi)))
+        prof.append(ring)
+    uv_of = lambda u, j, pa, pb, i: (
+        u, CAPUZ_ROPE_V[0] + (CAPUZ_ROPE_V[1] - CAPUZ_ROPE_V[0]) * (0.5 + 0.5 * math.copysign(1, pb)))
+    rv, ruv, rfc = sweep(pts, frames, prof, uv_of, closed=True)
+    m.add_shell(rv, ruv, rfc, "rope")
+    return m
+
+
 def cabelo(sex):
     """Mechas: cada uma sai perto do alto da cabeça, desce pela superfície do HAIR até a altura
     dos olhos e cai reta, abrindo um pouco pra fora. Mais densas na frente (tapam o rosto)."""
@@ -649,6 +731,7 @@ BUILDERS = {
     "CorredorBoca": boca,
     "SemRostoEstatica": semrosto,
     "CarpideiraCabelo": cabelo,
+    "CarpideiraCapuz": capuz,
     "TicaoCrosta": crosta,
 }
 
@@ -781,6 +864,27 @@ def cabelo_texture(size=128):
     return mirrored(rgb, size)
 
 
+def capuz_texture(size=128):
+    """Lençol sujo #CFC6B4 com manchas, faixa escura do relevo da boca e barbante no meio."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    v = y / size
+    u = x / size
+    sheet = np.asarray((207, 198, 180), np.float32)
+    stain = np.asarray((110, 94, 76), np.float32)
+    mouth = np.asarray((42, 36, 32), np.float32)
+    rope = np.asarray((90, 74, 56), np.float32)
+    grain = 0.92 + 0.08 * np.sin(u * 41 + 1.7 * np.sin(v * 29))
+    rgb = sheet[None, None, :] * grain[..., None]
+    blot = (0.55 + 0.45 * np.sin(u * 17.3 + 2.1) * np.sin(v * 23.1 + 0.4))
+    blot = np.clip((blot - 0.62) / 0.25, 0, 1)
+    rgb = rgb * (1 - 0.45 * blot[..., None]) + stain[None, None, :] * (0.45 * blot[..., None])
+    in_mouth = (v >= CAPUZ_MOUTH_V[0] - 0.01) & (v < CAPUZ_MOUTH_V[1] + 0.01)
+    rgb[in_mouth] = mouth
+    in_rope = (v >= CAPUZ_ROPE_V[0] - 0.01) & (v < CAPUZ_ROPE_V[1] + 0.01)
+    rgb[in_rope] = rope * (0.9 + 0.1 * np.sin(x[in_rope] * 0.9))[..., None]
+    return mirrored(rgb.astype(np.float32), size)
+
+
 def crosta_texture(size=128):
     """Carvão com rachaduras finas e poucas (laranja escuro); sem faixa zigue-zague;
     brilho forte só na amostra de brasa dos olhos (meio da textura)."""
@@ -820,6 +924,7 @@ TEXTURES = {
     "NOM_EstaladorVenda3D": venda_texture,
     "NOM_CorredorBoca3D": boca_texture,
     "NOM_CarpideiraCabelo3D": cabelo_texture,
+    "NOM_CarpideiraCapuz3D": capuz_texture,
     "NOM_TicaoCrosta3D": crosta_texture,
 }
 

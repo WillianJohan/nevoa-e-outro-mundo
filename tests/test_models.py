@@ -40,9 +40,11 @@ PIECES = {
     "CorredorBoca": "NOM_CorredorBoca3D",
     "SemRostoEstatica": "NOM_SemRostoEstatica",
     "CarpideiraCabelo": "NOM_CarpideiraCabelo3D",
+    "CarpideiraCapuz": "NOM_CarpideiraCapuz3D",
     "TicaoCrosta": "NOM_TicaoCrosta3D",
 }
-MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D", "NOM_TicaoCrosta3D")
+MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D",
+            "NOM_CarpideiraCapuz3D", "NOM_TicaoCrosta3D")
 MAX_VERTS = 2500     # a peça tem ~20 px de tela (o HeadBandage vanilla tem 52 vértices)
 
 # Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a cabeça na altura dos
@@ -426,6 +428,31 @@ def test_cabelo_close_to_head():
         assert verts[:, 2].max() <= h["z"][1] + 0.04, "%s: frente abre %.3f" % (sex, verts[:, 2].max())
 
 
+def test_capuz_within_head_plus_5pct():
+    """0064 Embrulhada: capuz/pano ≤ cabeça vanilla +5% (capacete fechado); cobre a cabeça;
+    relevo de boca na frente (sem buraco de olhos)."""
+    g = generator()
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("CarpideiraCapuz", sex)
+        for p in HEAD_POINTS[sex]:
+            assert inside_mesh(verts, faces, np.array(p, float)), "%s: ponto da cabeça %s fora" % (sex, p)
+        h = HELMET[sex]
+        x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
+        assert x.max() < h["x"][1] * 1.05 + 0.008, "%s: capuz alto demais %.3f" % (sex, x.max())
+        assert x.min() > h["x"][0] - 0.025, "%s: capuz baixo demais %.3f" % (sex, x.min())
+        assert np.abs(y).max() < h["y"] * 1.05 + 0.012, "%s: capuz largo demais (+5%%)" % sex
+        assert z.min() > h["z"][0] - 0.02 and z.max() < h["z"][1] * 1.05 + 0.012, \
+            "%s: capuz fundo demais" % sex
+        m = g.build("CarpideiraCapuz", sex)
+        assert "cloth" in m.parts and "rope" in m.parts and "mouth" in m.parts, \
+            "%s: falta pano/boca/barbante" % sex
+        mouth = [np.array(m.verts)[list(f)].mean(axis=0)
+                 for f, p in zip(m.faces, m.parts) if p == "mouth"]
+        assert len(mouth) >= 8, "%s: sem relevo de boca" % sex
+        mz = np.array(mouth)[:, 2].mean()
+        assert mz > NOSE_Z[sex] - 0.02, "%s: boca atrás do nariz %.3f" % (sex, mz)
+
+
 def test_cabelo_hides_face():
     g = generator()
     for sex in SEXES:
@@ -491,6 +518,7 @@ COLOURS = {
     "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": lip_skin},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
+    "CarpideiraCapuz": {"cloth": pale, "mouth": dark, "rope": cloth},
     "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},
 }
 
@@ -528,6 +556,7 @@ def test_generator_deterministic():
 def main():
     tests = [test_format, test_winding_like_vanilla, test_closed, test_consistent_orientation, test_outward, test_venda_fits_head,
              test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face,
+             test_capuz_within_head_plus_5pct,
              test_ticao_crust_covers_head, test_ticao_eyes_smoke_shards, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]
     fail = 0

@@ -6,7 +6,7 @@ local W = NOM_VariantWardrobe
 return {
     wardrobe_catalog_five_each = function()
         assert(W.count("estalador") == 5)
-        assert(W.count("carpideira") >= 1, "Screamer: pelo menos Que Nunca Cresceu")
+        assert(W.count("carpideira") >= 2, "Screamer: K1 + K2 Embrulhada")
         assert(W.count("corredor") == 5)
         assert(W.count("ticao") == 5)
         assert(W.count("semrosto") == 5)
@@ -154,6 +154,22 @@ return {
                     and t ~= "Base.PonchoGarbageBag" and t ~= "Base.Dress_SatinNegligee",
                     "viúva ainda no catálogo: " .. t)
             end
+        end
+    end,
+
+    -- 0064: K2 Embrulhada — prova do capuz (headItem) antes do corpo
+    wardrobe_carpideira_embrulhada_capuz = function()
+        local k2 = W.CATALOG.carpideira[2]
+        assert(k2 and k2.id == "K2" and k2.name == "embrulhada")
+        assert(k2.headItem == "Base.NOM_CarpideiraCapuz")
+        assert(k2.headFx == "Base.NOM_CarpideiraCapuzFx")
+        assert(k2.keepBody == false)
+        assert(k2.pieces and #k2.pieces == 0, "corpo Hazmat só depois do print do capuz")
+        assert(W.isLightMass(k2))
+        assert((k2.weight or 1) == 0, "prova: fora do sorteio até o corpo")
+        for id = 0, 39 do
+            local v = W.pick("carpideira", id)
+            assert(v.id == "K1", "sorteio ainda pega K2: " .. v.id)
         end
     end,
 }

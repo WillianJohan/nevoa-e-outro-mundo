@@ -49,8 +49,8 @@ NOM_VariantLook = {
         },
         -- 0060f A′: remendo 2D no rosto (sem casca-ovo). Censor via ModData NOM_semrosto.
         semrosto = { item = NOM_SemRostoFace.ITEM },
-        -- Screamer (carpideira): mechas + wardrobe K* (0064: K1 sem manto via keepBody=false).
-        -- body/manto ainda no LOOKS pra K futuras que queiram keepBody; K1 tira.
+        -- Screamer (carpideira): mechas (K1) ou capuz via wardrobe.headItem (K2 Embrulhada).
+        -- body/manto ainda no LOOKS pra K futuras que queiram keepBody; K1/K2 tiram.
         carpideira = {
             item = "Base.NOM_CarpideiraCabelo", fx = "Base.NOM_CarpideiraCabeloFx",
             body = "Base.NOM_CarpideiraManto",
@@ -263,6 +263,20 @@ local function applyWardrobe(list, w, id)
         w.bodyIv = nil
         w.body = nil
     end
+    -- Embrulhada (e futuras): cabeça própria no lugar das mechas / LOOKS.item.
+    if variant.headItem then
+        local fxOn = NOM_Dissolve.enabled()
+        local shellOn = fxOn and NOM_EmberShell.can(w._z)
+        local piece = (fxOn and not shellOn and variant.headFx) and variant.headFx or variant.headItem
+        if w.iv then list:remove(w.iv) end
+        local hiv = ItemVisual.new()
+        hiv:setItemType(piece)
+        list:add(hiv)
+        w.iv = hiv
+        w.item = piece
+        w.lookItem = variant.headItem
+        w.lookFx = variant.headFx or variant.headItem
+    end
     w.wardrobe = {}
     if not variant.pieces then return end
     for _, piece in ipairs(variant.pieces) do
@@ -371,7 +385,10 @@ local function put(z, kind, id)
     local shell = fx and NOM_EmberShell.can(z)
     local piece = look.item and ((fx and not shell and look.fx) and look.fx or look.item) or nil
     local forceWard = z:hasModData() and z:getModData().NOM_wardForce or nil
-    local w = { kind = kind, id = id, item = piece, _z = z, forceWardIdx = forceWard }
+    local w = {
+        kind = kind, id = id, item = piece, _z = z, forceWardIdx = forceWard,
+        lookItem = look.item, lookFx = look.fx,
+    }
     if look.body then
         w.body = (fx and not shell and look.bodyFx) and look.bodyFx or look.body
     end
@@ -464,7 +481,9 @@ local function leave(z)
     local function done(x)
         if worn[x] == w and w.leaving then strip(x) end
     end
-    if w.item and w.item == LOOKS[w.kind].item and NOM_EmberShell.can(z) then
+    local baseItem = w.lookItem or LOOKS[w.kind].item
+    local fxItem = w.lookFx or LOOKS[w.kind].fx
+    if w.item and w.item == baseItem and NOM_EmberShell.can(z) then
         local function swap(x)
             if worn[x] == w and w.leaving then
                 strip(x)
@@ -477,7 +496,7 @@ local function leave(z)
             return
         end
     end
-    if w.item and w.item == LOOKS[w.kind].fx and NOM_Dissolve.run(z, "out", done) then
+    if w.item and fxItem and w.item == fxItem and NOM_Dissolve.run(z, "out", done) then
         w.leaving = true
         return
     end

@@ -12,6 +12,8 @@
     "Base.NOM_CorredorBocaFx": "Torn Mouth",
     "Base.NOM_SemRostoEstaticaFx": "Blank Face",
     "Base.NOM_CarpideiraCabeloFx": "Matted Hair",
+    "Base.NOM_CarpideiraCapuz": "Cloth Hood",
+    "Base.NOM_CarpideiraCapuzFx": "Cloth Hood",
     "Base.NOM_EcoVeuFx": "Smoke Veil",
     "Base.NOM_EcoCasca": "Ash Shell",
     "Base.NOM_Brasa": "Ember Shell",

@@ -73,7 +73,7 @@ W.CATALOG = {
         },
     },
     -- Screamer (kind carpideira). 0064: opções 2/3/4 substituem manto/viúva.
-    -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada / K3 Rastejante — depois.
+    -- K1 Que Nunca Cresceu (vanilla+tint). K2 Embrulhada (prova capuz). K3 Rastejante — depois.
     carpideira = {
         { id = "K1", name = "nunca_cresceu", lightMass = true,
             -- Dress_Knees / Shirt_FormalTINT: m_AllowRandomTint=true (ClothingItem XML).
@@ -87,6 +87,16 @@ W.CATALOG = {
             dirt = { parts = TORSO, amount = 0.45 },
             holes = { "Torso_Upper", "UpperArm_L" },
             keepBody = false, -- sem manto
+        },
+        -- Prova do capuz (≤ cabeça+5%): só a peça de cabeça; corpo Hazmat + rasgo no grito depois.
+        -- weight=0: não entra no sorteio da névoa até o corpo; forceVariant(2) / lookVariant ainda pega.
+        { id = "K2", name = "embrulhada", lightMass = true, weight = 0,
+            headItem = "Base.NOM_CarpideiraCapuz",
+            headFx = "Base.NOM_CarpideiraCapuzFx",
+            pieces = {},
+            strip = FULL,
+            keepBody = false,
+            dirt = { parts = TORSO, amount = 0.55 },
         },
     },
     -- Corredor C1–C5: tronco escuro N3 + risco claro N4 (LOOKS.corredor.body).

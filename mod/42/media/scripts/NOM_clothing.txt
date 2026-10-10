@@ -63,6 +63,18 @@ module Base
         ClothingItem = NOM_CarpideiraCabelo,
     }
 
+    /* 0064 Embrulhada: capuz/pano estático (prova ≤ cabeça+5% antes do corpo Hazmat). */
+    item NOM_CarpideiraCapuz
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraCapuz,
+    }
+
     /* Sprint 0052: manto penitente (camada corpo; K1 com saia; K2–K5 saem pelo wardrobe). */
     item NOM_CarpideiraManto
     {
@@ -162,6 +174,17 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCabeloFx,
+    }
+
+    item NOM_CarpideiraCapuzFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraCapuzFx,
     }
 
     /* I1/I7: sem *Fx 2D (manto/roupa) — dissolve só em peça com modelo. */

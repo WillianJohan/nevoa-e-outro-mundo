@@ -56,6 +56,7 @@ local SIZE = {
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
     ["static\\clothes\\NOM_M_SemRostoEstatica"] = 128,
     ["static\\clothes\\NOM_M_CarpideiraCabelo"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraCapuz"] = 128,
     ["static\\clothes\\NOM_M_TicaoCrosta"] = 128,
 }
 
@@ -63,7 +64,8 @@ local SIZE = {
 -- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
 -- pz-api-notes §32): o caminho tem que bater ignorando caixa.
 local OWN_MODELS = {}
-for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "TicaoCrosta" }) do
+for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo",
+    "CarpideiraCapuz", "TicaoCrosta" }) do
     for _, sex in ipairs({ "M", "F" }) do
         OWN_MODELS["static\\clothes\\NOM_" .. sex .. "_" .. piece] = "models_X/Static/Clothes/NOM_" .. sex .. "_" .. piece .. ".x"
     end
@@ -74,7 +76,7 @@ end
 -- I1/I7: só gêmeos *Fx de peça com modelo (sem Manto/Roupa 2D).
 local FX = {
     "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo",
-    "NOM_TicaoCrosta", "NOM_EcoVeu",
+    "NOM_CarpideiraCapuz", "NOM_TicaoCrosta", "NOM_EcoVeu",
 }
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
@@ -100,7 +102,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 18, "esperava 18 itens (+CorredorRisco N4), achou " .. n)
+        assert(n == 20, "esperava 20 itens (+Capuz Embrulhada), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -120,7 +122,7 @@ return {
                 end
             end
         end
-        assert(n == 20, "esperava 5 peças e os gêmeos Fx nos dois sexos, achou " .. n)
+        assert(n == 24, "esperava 6 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()

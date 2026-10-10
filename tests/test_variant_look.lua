@@ -504,6 +504,24 @@ return {
         assert(not hasItem(z, look.item), "mechas ficaram: " .. types(z))
     end,
 
+    -- 0064: K2 Embrulhada — capuz no lugar das mechas (prova ≤ cabeça+5%)
+    look_carpideira_embrulhada_capuz = function()
+        local G = setup()
+        local z = G.spawn({ id = idFor("carpideira", 53) })
+        fogOn(53)
+        G.converge()
+        local look = NOM_VariantLook.LOOKS.carpideira
+        NOM_VariantLook.forceVariant(z, "carpideira", 2)
+        local info = NOM_VariantLook.inspect(z)
+        assert(info:find("var=K2", 1, true), "inspect: " .. info)
+        assert(hasItem(z, "Base.NOM_CarpideiraCapuz"), "sem capuz: " .. types(z))
+        assert(not hasItem(z, look.item), "mechas ainda vestidas: " .. types(z))
+        assert(not hasItem(z, look.body), "manto ainda vestido: " .. types(z))
+        fogOff()
+        G.converge()
+        assert(not hasItem(z, "Base.NOM_CarpideiraCapuz"), "capuz ficou: " .. types(z))
+    end,
+
     look_removed_when_fog_ends = function()
         local G = setup()
         local zs = {}

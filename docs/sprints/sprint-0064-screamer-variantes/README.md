@@ -50,8 +50,23 @@ Cada um loga `state/crawl/floor/canWalk` ~3 s. Johan prova no bluefin (SP; MP se
 
 Evidência javap (bluefin): `internal/screamer-rastejante-evidencia-bluefin.md`.
 
+## K2 — Embrulhada: prova do capuz (esta entrega)
+
+- Peça estática `NOM_CarpideiraCapuz` (Bip01_Head, `nohairnobeard`), ≤ capacete vanilla +5%
+- Relevo de boca aberta sob o pano (sem buraco de olhos); barbante no pescoço
+- Wardrobe `K2` com `headItem` (substitui mechas); corpo Hazmat + rasgo no grito **depois** do print
+- `keepBody=false`; `pieces={}` nesta prova (só o capuz); `weight=0` (só via `lookVariant`/force até o corpo)
+
+### Roteiro de print (Johan)
+
+1. `git pull` na branch + `scripts/dev-sync.sh` + **reiniciar**.
+2. Névoa → `NOM.lookVariant("carpideira", 2)` (ou ciclar até `var=K2` no `lookInspect`).
+3. Close + médio + longe; colar `lookInspect` + print.
+4. Conferir: capuz de lençol sujo ≤ cabeça; relevo de boca; sem mechas; sem manto; escala ok.
+
 ## Fora de escopo agora
 
 - Opção 1 (Sirene)
+- Corpo Hazmat + rasgo no grito da Embrulhada (depois do aceite do capuz)
 - Redesign de som (ninar / birra) — depois do visual aprovado
 - Merge na staging só depois do aceite de cada variante (avisar o coordenador a cada uma pronta)

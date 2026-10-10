@@ -213,6 +213,7 @@ mesmo script, casada com o UV. Os XML das peças (e os gêmeos `*Fx.xml`) citam 
 `static\clothes\NOM_M_CorredorBoca`, `static\clothes\NOM_F_CorredorBoca` (`NOM_CorredorBoca.xml`),
 `static\clothes\NOM_M_SemRostoEstatica`, `static\clothes\NOM_F_SemRostoEstatica` (`NOM_SemRostoEstatica.xml`),
 `static\clothes\NOM_M_CarpideiraCabelo`, `static\clothes\NOM_F_CarpideiraCabelo` (`NOM_CarpideiraCabelo.xml`),
+`static\clothes\NOM_M_CarpideiraCapuz`, `static\clothes\NOM_F_CarpideiraCapuz` (`NOM_CarpideiraCapuz.xml`),
 `static\clothes\NOM_M_TicaoCrosta`, `static\clothes\NOM_F_TicaoCrosta` (`NOM_TicaoCrosta.xml`).
 Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do repositório; ADR-020).
 
@@ -225,6 +226,8 @@ Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do reposi
 | `mod/42/media/models_X/Static/Clothes/NOM_M_SemRostoEstatica.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_SemRostoEstatica.x` | ~500 vértices | casca do Sem-rosto (sprint 0042): superelipsoide liso em volta da cabeça inteira, sem nariz, olho nem boca; usa a textura de chiado `NOM_SemRostoEstatica.png` de cima |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCabelo.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCabelo.x` | ~1650 vértices | cabelo da Carpideira em 3D (sprint 0042): 36 mechas em fita saindo do alto da cabeça e caindo como cortina na frente do rosto, três delas brancas; um por sexo |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo3D.png` | 128×128 | textura do cabelo 3D: fios pretos com brilho fraco e a faixa das mechas brancas no meio (espelhado em cima e embaixo) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCapuz.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCapuz.x` | ~600 vértices | capuz da Embrulhada (0064): lençol justo ≤ cabeça+5%, relevo de boca, barbante no pescoço; um por sexo |
+| `mod/42/media/textures/NOM/NOM_CarpideiraCapuz3D.png` | 128×128 | textura do capuz: lençol sujo, faixa da boca e barbante (espelhado) |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_TicaoCrosta.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_TicaoCrosta.x` | ~1500 vértices | crosta do Tição (sprint 0043): casca de carvão em placas de alturas diferentes na cabeça inteira, dois olhos de brasa saindo da frente, 14 lascas no alto e atrás, três fitas de fumaça subindo; um por sexo |
 | `mod/42/media/textures/NOM/NOM_TicaoCrosta3D.png` | 128×128 | textura da crosta: carvão com rachaduras de brasa (Voronoi que fecha na volta da cabeça), faixa de carvão liso, fumaça clara e brasa no meio (espelhado em cima e embaixo) |
 
