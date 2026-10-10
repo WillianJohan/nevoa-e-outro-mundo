@@ -56,6 +56,16 @@ return {
         assert(R.ALPHA_LO == nil and R.ALPHA_HI == nil)
     end,
 
+    brasa_quantize_channel_steps = function()
+        assert(R.CHANNEL_STEPS >= 4)
+        assert(R.quantizeChannel(0) == 0)
+        assert(R.quantizeChannel(1) == 1)
+        local a = R.quantizeChannel(0.51)
+        local b = R.quantizeChannel(0.52)
+        assert(a == b, "vizinhos no mesmo degrau")
+        assert(R.quantizeChannel(0) ~= R.quantizeChannel(1))
+    end,
+
     brasa_core_only_at_peak = function()
         assert(R.coreOn(0.84) == false)
         assert(R.coreOn(0.85) == true)

@@ -16,6 +16,8 @@ NOM_BrasaRules = {
     CORE_GATE = 0.85,
     LIGHT_HOLD_MIN = 0.30,
     LIGHT_HOLD_MAX = 0.45,
+    -- Degraus do canal TintColour (setTint + resetModel); 8 ≈ 300 ms num pulso de 2,4 s.
+    CHANNEL_STEPS = 8,
     ITEM = "Base.NOM_BrasaCasca",
     ITEM_STATIC = "Base.NOM_BrasaCascaStatic",
 }
@@ -57,10 +59,17 @@ function R.pulse(nowMs, periodMs, phase0, lightHold)
     return lo + (hi - lo) * clamp(u, 0, 1)
 end
 
--- Canal 0..1 pro TintColour.r / ModelInstance.tintR (shader remapeia).
+-- Canal 0..1 pro TintColour.r (shader remapeia).
 function R.pulseChannel(intensity)
     intensity = tonumber(intensity) or R.INTENSITY_MIN
     return clamp((intensity - R.INTENSITY_FLOOR) / R.INTENSITY_SPAN, 0, 1)
+end
+
+function R.quantizeChannel(channel)
+    local steps = R.CHANNEL_STEPS
+    if steps < 1 then steps = 1 end
+    channel = clamp(tonumber(channel) or 0, 0, 1)
+    return math.floor(channel * steps + 0.5) / steps
 end
 
 function R.coreOn(pulse)

@@ -1,7 +1,8 @@
 -- Brasa permanente nos Tições na névoa preta (sprint 0067): casca BoilerSuit com
--- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). Pulso via TintColour.r /
--- ModelInstance.tintR — Alpha do personagem fica pro dissolve e pra visibilidade
--- do jogo (ADR-016). Só cliente. Efeitos off → gêmeo estático.
+-- fissuras (Base.NOM_BrasaCasca + shader NOM_Brasa). Pulso via ItemVisual:setTint
+-- (TintColour.r) + resetModelNextFrame quantizado — a instância de modelo da peça
+-- não está no Exposer (console 2026-10-10: index of non-table). Alpha fica pro
+-- dissolve / visibilidade (ADR-016). Só cliente. Efeitos off → gêmeo estático.
 if isServer() then return end
 
 require "NOM_BrasaRules"
@@ -125,28 +126,17 @@ local function lightHold(z)
     return NOM_TicaoFreeze and NOM_TicaoFreeze.frozen and NOM_TicaoFreeze.frozen[z] == true
 end
 
--- Escreve o canal de pulso no ModelInstance (RenderCharacter relê tintR/G/B a cada
--- quadro — spike-dissolve). Fallback: ItemVisual:setTint pro próximo rebuild.
--- Evidência: ModelInstance.tintR public; getReadyModelData() EXISTS (IsoGameCharacter).
+-- TintColour só vai pro ModelInstance no rebuild (postProcessNewItemInstance).
+-- Canal 0..1 quantizado em degraus pra não resetar o modelo a cada quadro.
 local function applyPulseChannel(z, e, channel)
-    local list = z.getReadyModelData and z:getReadyModelData()
-    if list then
-        for i = 0, list:size() - 1 do
-            local mi = list:get(i)
-            if mi then
-                local iv = mi.getItemVisual and mi:getItemVisual()
-                if iv == e.iv then
-                    mi.tintR = channel
-                    mi.tintG = 1
-                    mi.tintB = 1
-                    return
-                end
-            end
-        end
+    if not e.iv or not e.iv.setTint or not ImmutableColor or not ImmutableColor.new then
+        return
     end
-    if e.iv and e.iv.setTint and ImmutableColor and ImmutableColor.new then
-        e.iv:setTint(ImmutableColor.new(channel, 1, 1, 1))
-    end
+    local q = R.quantizeChannel(channel)
+    if e.tintQ == q then return end
+    e.tintQ = q
+    e.iv:setTint(ImmutableColor.new(q, 1, 1, 1))
+    z:resetModelNextFrame()
 end
 
 local function pulseTick(z, e, now)
