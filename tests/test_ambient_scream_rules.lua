@@ -1,4 +1,4 @@
--- Gritos ambiente (sprint 0048): regra pura shared/NOM_AmbientScreamRules.lua.
+-- Gritos ambiente (sprint 0048 + hotfix 0063): regra pura shared/NOM_AmbientScreamRules.lua.
 require "NOM_AmbientScreamRules"
 local A = NOM_AmbientScreamRules
 
@@ -12,18 +12,20 @@ return {
         assert(not A.enabled(true, nil) and not A.enabled(true, "purple"))
     end,
 
-    ambient_gap_white_and_red = function()
-        local w, r = A.GAP.white, A.GAP.red
-        -- playtest: −40% frequência sobre o ×2 (branca 100–300 s → média 200 s)
-        assert(w.min == 100000 and w.max == 300000)
-        assert(r.min == 67000 and r.max == 233000)
-        assert((w.min + w.max) / 2 == 200000, "média branca ~200 s")
-        assert(r.max < w.max, "vermelha um pouco mais apertada")
-        assert(A.gap("white", 0) == w.min)
-        assert(A.gap("white", w.max - w.min) == w.max)
-        assert(A.gap("red", 0) == r.min)
+    -- 0063: intervalo único 60–500 s (uniforme), branca e vermelha iguais; preta off.
+    ambient_gap_uniform_60_to_500s = function()
+        assert(A.GAP_MIN_MS == 60000, "mínimo 60 s")
+        assert(A.GAP_MAX_MS == 500000, "máximo 500 s")
+        assert(A.GAP_ROLL == A.GAP_MAX_MS - A.GAP_MIN_MS + 1)
+        assert(A.gap("white", 0) == A.GAP_MIN_MS)
+        assert(A.gap("white", A.GAP_ROLL - 1) == A.GAP_MAX_MS)
+        assert(A.gap("red", 0) == A.GAP_MIN_MS)
+        assert(A.gap("red", A.GAP_ROLL - 1) == A.GAP_MAX_MS)
         assert(A.gap("black", 0) == nil)
-        assert(A.gap("white", -5) == w.min and A.gap("white", 999999) == w.max)
+        assert(A.gap("white", -5) == A.GAP_MIN_MS)
+        assert(A.gap("white", 999999999) == A.GAP_MAX_MS)
+        local mid = A.gap("white", math.floor(A.GAP_ROLL / 2))
+        assert(mid > A.GAP_MIN_MS and mid < A.GAP_MAX_MS, "meio do intervalo")
     end,
 
     ambient_pick_cycles_bank = function()

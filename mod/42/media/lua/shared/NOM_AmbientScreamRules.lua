@@ -1,7 +1,10 @@
 -- Gritos ambiente da névoa (sprint 0048, produto §3.1.1): “gente” longe, só no cliente,
--- sem horda / sem comando de servidor. Intensidade por cor: branca rarefeita, vermelha um
--- pouco mais perto/frequente, preta off (não compete com Tição). Quem toca é
--- client/NOM_AmbientScream.lua; desliga com FogAmbience.
+-- sem horda / sem comando de servidor. Intensidade por cor: branca e vermelha tocam,
+-- preta off (não compete com Tição). Quem toca é client/NOM_AmbientScream.lua; desliga
+-- com FogAmbience.
+--
+-- Intervalo (hotfix 0063 / playtest Johan): uniforme 60–500 s reais, sorteado de novo
+-- depois de cada grito. Knobs live AmbientGapMinMs/MaxMs no painel (seção de sons).
 NOM_AmbientScreamRules = {
     -- Clips em media/scripts/NOM_sounds.txt (gerados por scripts/gen_sounds.py).
     SOUNDS = {
@@ -10,14 +13,9 @@ NOM_AmbientScreamRules = {
         "NOM_AmbientScream3",
         "NOM_AmbientScream4",
     },
-    -- Intervalo entre gritos (ms reais). Playtest Johan 2026-10-09: ainda frequente
-    -- depois do ×2 → −40% na frequência (gaps × 5/3). Branca média ~200 s; vermelha
-    -- um pouco mais apertada. Preta off (não compete com Tição).
-    GAP = {
-        white = { min = 100000, max = 300000 },
-        red = { min = 67000, max = 233000 },
-        black = nil, -- silêncio: não agenda
-    },
+    -- Intervalo entre gritos (ms reais). Um único intervalo pra branca e vermelha.
+    GAP_MIN_MS = 60000,
+    GAP_MAX_MS = 500000,
     -- Distância do emitter ao jogador (tiles). Longe + passa-baixa no OGG = presença.
     -- Playtest: um pouco mais distante que 40–90 / 28–70.
     DIST = {
@@ -28,22 +26,23 @@ NOM_AmbientScreamRules = {
 
 local A = NOM_AmbientScreamRules
 
+A.GAP_ROLL = A.GAP_MAX_MS - A.GAP_MIN_MS + 1
+
 -- Ambiente toca? fogAmbience = sandbox; color = "white"|"red"|"black"|nil.
 function A.enabled(fogAmbience, color)
     if not fogAmbience then return false end
     if color ~= "white" and color ~= "red" then return false end
-    return A.GAP[color] ~= nil
+    return true
 end
 
--- Gap até o próximo grito. roll = ZombRand(max - min + 1). nil se a cor não tem agenda.
+-- Gap até o próximo grito. roll = ZombRand(GAP_ROLL). nil se a cor não tem agenda.
 function A.gap(color, roll)
-    local g = A.GAP[color]
-    if g == nil then return nil end
-    local span = g.max - g.min + 1
+    if color ~= "white" and color ~= "red" then return nil end
+    local span = A.GAP_MAX_MS - A.GAP_MIN_MS + 1
     if roll == nil then roll = 0 end
     if roll < 0 then roll = 0 end
     if roll >= span then roll = span - 1 end
-    return g.min + roll
+    return A.GAP_MIN_MS + roll
 end
 
 -- Índice do clip (1..#SOUNDS). roll = ZombRand(#SOUNDS).

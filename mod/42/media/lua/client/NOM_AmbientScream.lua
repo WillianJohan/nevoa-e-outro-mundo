@@ -24,7 +24,7 @@ local function color()
 end
 
 local function schedule(now, c)
-    local gap = A.gap(c, ZombRand(A.GAP[c].max - A.GAP[c].min + 1))
+    local gap = A.gap(c, ZombRand(A.GAP_ROLL))
     nextAt = now + gap
 end
 
