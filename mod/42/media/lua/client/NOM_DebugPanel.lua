@@ -194,6 +194,9 @@ P.SECTIONS = {
                 c("UI_NOM_Debug_GapReset", function() NOM.sonarGaps("reset") end) } },
             { title = "UI_NOM_Debug_C_Ambient", desc = "UI_NOM_Debug_C_Ambient_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.ambientScream() end) } },
+            -- 0063: intervalo entre gritos ambiente (live; Copiar definições).
+            sliderCard("UI_NOM_Debug_C_AmbGapMin", "AmbientGapMinMs"),
+            sliderCard("UI_NOM_Debug_C_AmbGapMax", "AmbientGapMaxMs"),
             { title = "UI_NOM_Debug_C_Wander", desc = "UI_NOM_Debug_C_Wander_Desc", choices = {
                 c("UI_NOM_Debug_B_Now", function() NOM.wander() end) } },
             { title = "UI_NOM_Debug_C_CarpWalk", desc = "UI_NOM_Debug_C_CarpWalk_Desc", choices = {

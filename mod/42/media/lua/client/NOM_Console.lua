@@ -508,6 +508,15 @@ local function syncPanelToSystems(which)
             NOM_SonarRules.GAP_ROLL = gmax - gmin + 1
         end
     end
+    -- 0063: intervalo dos gritos ambiente (60–500 s padrão).
+    if (all or which == "sons") and NOM_AmbientScreamRules then
+        local amin, amax = P.get("AmbientGapMinMs"), P.get("AmbientGapMaxMs")
+        if type(amin) == "number" and type(amax) == "number" and amax >= amin then
+            NOM_AmbientScreamRules.GAP_MIN_MS = amin
+            NOM_AmbientScreamRules.GAP_MAX_MS = amax
+            NOM_AmbientScreamRules.GAP_ROLL = amax - amin + 1
+        end
+    end
     if (all or which == "cinzas") and NOM_FlakeRules and NOM_FlakeRules.setDebug then
         NOM_FlakeRules.setDebug(P.get("CinzaDensityMult"), P.get("CinzaRateMult"), nil)
     end
@@ -523,6 +532,7 @@ local function sectionOfParam(key)
     if key == nil then return "all" end
     if key:find("^Alma", 1, false) then return "almas" end
     if key:find("^Estalador", 1, false) then return "estalador" end
+    if key:find("^Ambient", 1, false) then return "sons" end
     if key:find("^Cinza", 1, false) then return "cinzas" end
     if key == "LookForce" or key == "GlitchMode" or key == "GlitchIntensity" then return "look" end
     return nil

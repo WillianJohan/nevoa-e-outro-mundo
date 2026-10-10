@@ -15,6 +15,8 @@ return {
         assert(P.get("EstaladorRhythm") == "rotate")
         assert(P.get("EstaladorGapMinMs") == 5000)
         assert(P.get("EstaladorGapMaxMs") == 30000)
+        assert(P.get("AmbientGapMinMs") == 60000)
+        assert(P.get("AmbientGapMaxMs") == 500000)
         assert(P.get("CinzaRateMult") == 1.0)
         assert(P.get("CinzaDensityMult") == 1.0)
         assert(P.get("LookForce") == "")
@@ -51,6 +53,11 @@ return {
         assert(P.set("EstaladorGapMinMs", 9000) == 8000)
         P.set("EstaladorGapMinMs", 5000)
         assert(P.set("EstaladorGapMaxMs", 4000) == 5000)
+        -- 0063: gritos ambiente 60–500 s
+        P.set("AmbientGapMaxMs", 120000)
+        assert(P.set("AmbientGapMinMs", 200000) == 120000)
+        P.set("AmbientGapMinMs", 60000)
+        assert(P.set("AmbientGapMaxMs", 30000) == 60000)
     end,
 
     panel_params_reset_one_or_all = function()
@@ -114,6 +121,7 @@ return {
             "AlmaPopMin", "AlmaPopMax", "AlmaCrawlerPct",
             "AlmaFogWhite", "AlmaFogRed", "AlmaFogBlack",
             "EstaladorRhythm", "EstaladorGapMinMs", "EstaladorGapMaxMs",
+            "AmbientGapMinMs", "AmbientGapMaxMs",
             "CinzaRateMult", "CinzaDensityMult", "LookForce",
             "GlitchMode", "GlitchIntensity", "SemRostoPct",
         }
@@ -133,6 +141,8 @@ return {
         assert(t:find("AlmaPopMin=4", 1, true), t)
         assert(t:find("AlmaFogWhite=true", 1, true), t)
         assert(t:find("EstaladorRhythm=rotate", 1, true), t)
+        assert(t:find("AmbientGapMinMs=60000", 1, true), t)
+        assert(t:find("AmbientGapMaxMs=500000", 1, true), t)
         assert(t:find('LookForce=""', 1, true), t)
         assert(t:find("GlitchMode=original", 1, true), t)
         assert(t:find("GlitchIntensity=110", 1, true), t)
