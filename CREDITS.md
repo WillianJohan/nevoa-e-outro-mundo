@@ -142,7 +142,8 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 |---|---|---|
 | `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (I5/0060f): carvão quase liso; brasa na crosta 3D |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca do Corredor (lote 2 / bíblia §5): rasgo escuro sem dentes de longe, lábio pálido |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca do Corredor (lote 2): rasgo escuro colado, lábio pele−10%, sem aro claro |
+| `mod/42/media/textures/NOM/NOM_CorredorRisco.png` | 256×256 | risco vertical claro N4 do Corredor (gola→cintura, ≥1/6 do tronco) |
 | `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (aposentada do look 0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
 | `mod/42/media/textures/NOM/NOM_SemRostoRosto.png` | 256×256 | remendo A′ F1 (liso): cinza claro com alfa só no rosto; tint por zumbi |
 | `mod/42/media/textures/NOM/NOM_SemRostoRosto_F2.png` | 256×256 | remendo A′ F2 (vestígio de nariz) |

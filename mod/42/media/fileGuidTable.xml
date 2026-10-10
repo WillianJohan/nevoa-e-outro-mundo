@@ -50,6 +50,10 @@
 		<guid>7c4e9f2a-1b83-4d6e-9f01-a2b3c4d5e6f7</guid>
 	</files>
 	<files>
+		<path>media/clothing/clothingItems/NOM_CorredorRisco.xml</path>
+		<guid>a8c3e1f0-4d2b-4a9e-8c17-6f5e0b9d2a14</guid>
+	</files>
+	<files>
 		<path>media/clothing/clothingItems/NOM_EcoVeuFx.xml</path>
 		<guid>19573452-d035-45e3-9642-0e6665b50005</guid>
 	</files>

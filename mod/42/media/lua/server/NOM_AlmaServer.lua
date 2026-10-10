@@ -230,6 +230,9 @@ NOM_World.onChange(function(flag, on)
     if flag == "fog" or flag == "red" or flag == "black" then
         if not R.active(NOM_World) and #S.alive > 0 then
             S.clear("fim")
+        elseif R.active(NOM_World) then
+            -- névoa (re)ativou nesta cor — repor na hora (preta: almas sumiam no print 04)
+            S.nextAt = getTimestampMs()
         end
     end
 end)

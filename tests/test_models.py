@@ -282,18 +282,28 @@ def part_verts(piece, sex, parts):
 
 
 def test_boca_fits_mouth():
+    g = generator()
     for sex in SEXES:
         verts, _, _, _, _ = load("CorredorBoca", sex)
         b = MOUTH[sex]
         x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
         assert x.min() > b["x"][0] and x.max() < b["x"][1], "%s: x %.3f..%.3f fora da boca" % (sex, x.min(), x.max())
-        assert np.abs(y).max() < 0.06 and z.min() > 0.0 and z.max() < 0.10, "%s: longe do rosto" % sex
+        # colada na face: sem focinho (z max bem perto do nariz)
+        assert np.abs(y).max() < 0.045 and z.min() > 0.0 and z.max() < 0.095, "%s: longe do rosto" % sex
         front = verts[np.argmax(z)]
-        assert abs(front[1]) < 0.03 and front[2] > b["front"], "%s: frente fora de +Z %s" % (sex, front)
+        assert abs(front[1]) < 0.03 and front[2] > b["front"] - 0.01, "%s: frente fora de +Z %s" % (sex, front)
         hole, _ = part_verts("CorredorBoca", sex, ("cavity",))
         wide = np.ptp(hole[:, 1])
         tall = np.ptp(hole[:, 0])
-        assert wide > 2 * tall, "%s: buraco %.3f de largura por %.3f de altura" % (sex, wide, tall)
+        assert wide >= tall, "%s: buraco %.3f de largura por %.3f de altura" % (sex, wide, tall)
+        # −40% vs abertura antiga (~0.08): largura do buraco ≤ 0.05
+        assert 0.030 <= wide < 0.055, "%s: boca fora da faixa (%.3f)" % (sex, wide)
+        m = g.build("CorredorBoca", sex)
+        assert any(p == "tear" for p in m.parts), "%s: sem rasgo" % sex
+        # um rasgo só (não bilateral): verts de tear no mesmo lado Y
+        tear_v, _ = part_verts("CorredorBoca", sex, ("tear",))
+        assert (tear_v[:, 1] > -0.005).mean() > 0.85 or (tear_v[:, 1] < 0.005).mean() > 0.85, \
+            "%s: rasgo bilateral" % sex
 
 
 def inside_mesh(verts, faces, p):
@@ -356,17 +366,21 @@ def test_ticao_crust_covers_head():
     for sex in SEXES:
         verts, faces, _, _, _ = load("TicaoCrosta", sex)
         for p in HEAD_POINTS[sex]:
-            for d in np.eye(3):
-                for sgn in (1, -1):
-                    q = np.array(p, float) + sgn * SHELL_MARGIN * d
-                    assert inside_mesh(verts, faces, q), "%s: ponto da cabeça %s fora da crosta" % (sex, tuple(q))
+            assert inside_mesh(verts, faces, np.array(p, float)), "%s: ponto da cabeça %s fora" % (sex, p)
         m = g.build("TicaoCrosta", sex)
         v = np.array(m.verts)
         crust = v[sorted({q for f, p in zip(m.faces, m.parts) if p == "crust" for q in f})]
-        h, s = HELMET[sex], 0.03
-        assert crust[:, 0].min() > h["x"][0] - s and crust[:, 0].max() < h["x"][1] + s, "%s: crosta alta demais" % sex
-        assert np.abs(crust[:, 1]).max() < h["y"] + s, "%s: crosta larga demais" % sex
-        assert crust[:, 2].min() > h["z"][0] - s and crust[:, 2].max() < h["z"][1] + s, "%s: crosta funda demais" % sex
+        h = HELMET[sex]
+        # ≤ cabeça vanilla + 5% no raio lateral/frente; folga no queixo (placas baixas)
+        assert crust[:, 0].max() < h["x"][1] * 1.05 + 0.012, "%s: crosta alta demais %.3f" % (sex, crust[:, 0].max())
+        assert crust[:, 0].min() > h["x"][0] - 0.035, "%s: crosta baixa demais %.3f" % (sex, crust[:, 0].min())
+        assert np.abs(crust[:, 1]).max() < h["y"] * 1.05 + 0.015, "%s: crosta larga demais (+5%%)" % sex
+        assert crust[:, 2].min() > h["z"][0] - 0.025 and crust[:, 2].max() < h["z"][1] * 1.05 + 0.015, \
+            "%s: crosta funda demais" % sex
+        # contorno irregular: raio das placas tem dispersão (não cúpula lisa)
+        centre = crust.mean(axis=0)
+        radii = np.linalg.norm(crust - centre, axis=1)
+        assert radii.std() > 0.004, "%s: crosta lisa demais (std=%.4f)" % (sex, radii.std())
 
 
 def test_ticao_eyes_smoke_shards():
@@ -391,7 +405,7 @@ def test_ticao_eyes_smoke_shards():
             assert w[:, 0].min() >= HELMET[sex]["x"][1] - 0.04, "%s: fumaça sai baixo" % sex
             assert np.abs(w[:, 1]).max() <= 0.10 and np.abs(w[:, 2]).max() <= 0.10, "%s: fumaça longe" % sex
         shards = part_groups(m, "shard")
-        assert len(shards) >= 10, "%s: %d lascas" % (sex, len(shards))
+        assert len(shards) >= 8, "%s: %d lascas" % (sex, len(shards))
         for idx in shards.values():
             b = v[idx].mean(axis=0)
             assert b[2] < 0.03 or b[0] > 0.14, "%s: lasca no rosto %s" % (sex, b)
@@ -458,6 +472,8 @@ def bright(c): return luminance(c) > 0.6
 def dark(c): return luminance(c) < 0.22  # lote 2: buraco carvão (~L 0,05–0,21), não tinta preta pura
 def red(c): return (c[:, 0] > 2 * c[:, 1]) & (c[:, 0] > 60) & (luminance(c) < 0.4)
 def pale(c): return (luminance(c) > 0.45) & (luminance(c) < 0.90) & ((c.max(axis=1) - c.min(axis=1)) < 90)
+def lip_skin(c):  # pele−10%: médio-escuro, sem aro claro
+    return (luminance(c) > 0.12) & (luminance(c) < 0.40) & ((c.max(axis=1) - c.min(axis=1)) < 70)
 def cloth(c): return np.ones(len(c), bool)
 def ember(c): return (c[:, 0] > 170) & (c[:, 0] > 1.3 * c[:, 1]) & (c[:, 1] > c[:, 2])
 def smoke(c): return (luminance(c) > 0.55) & (c.max(axis=1) - c.min(axis=1) < 40)
@@ -471,8 +487,8 @@ def not_rust(c):
 
 COLOURS = {
     "EstaladorVenda": {"wire": rust, "barb": rust, "band": not_rust},
-    # lote 2: dentes na malha leem buraco escuro; lábio pálido (não vermelho vivo)
-    "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": pale},
+    # ajuste playtest: lábio = pele−10% (não aro claro); buraco/tear escuros
+    "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": lip_skin},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
     "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},

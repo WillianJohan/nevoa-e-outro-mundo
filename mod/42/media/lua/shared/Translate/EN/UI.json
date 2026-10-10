@@ -74,6 +74,7 @@
     "UI_NOM_Debug_LookCycle": "Cycle look",
     "UI_NOM_Debug_LookInspect": "Inspect look",
     "UI_NOM_Debug_LookVariant": "Cycle outfit",
+    "UI_NOM_Debug_LookGroup": "Force group (one of each)",
     "UI_NOM_Debug_LookClean": "Clean look",
     "UI_NOM_Debug_UndoVariant": "Undo",
     "UI_NOM_Debug_Sec_Fog": "Fog",

@@ -42,7 +42,11 @@ NOM_VariantLook = {
     LOOKS = {
         -- 0060f lote A: peça de cabeça + guarda-roupa vanilla por variante (C1).
         estalador = { item = "Base.NOM_EstaladorVenda", fx = "Base.NOM_EstaladorVendaFx" },
-        corredor = { item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx" },
+        -- Corredor: boca 3D + risco claro N4 (NOM_CorredorRisco) sobre tronco escuro.
+        corredor = {
+            item = "Base.NOM_CorredorBoca", fx = "Base.NOM_CorredorBocaFx",
+            body = "Base.NOM_CorredorRisco",
+        },
         -- 0060f A′: remendo 2D no rosto (sem casca-ovo). Censor via ModData NOM_semrosto.
         semrosto = { item = NOM_SemRostoFace.ITEM },
         -- Carpideira: mechas + manto (K1) ou roupa longa vanilla (K2–K5 via wardrobe).
@@ -186,10 +190,29 @@ local function treatOwnClothes(list, w, variant)
     end
 end
 
+-- Casca NOM_Brasa órfã (dissolve parado / mid-reveal) lê como almofada branca/rosa.
+local function stripOrphanBrasa(list, w)
+    if not list then return end
+    local gone = {}
+    for i = 0, list:size() - 1 do
+        local iv = list:get(i)
+        if iv and iv:getItemType() == "Base.NOM_Brasa" then
+            if not (NOM_EmberShell.has and NOM_EmberShell.has(w and w._z)) then
+                gone[#gone + 1] = iv
+            end
+        end
+    end
+    for _, iv in ipairs(gone) do list:remove(iv) end
+end
+
 -- Guarda-roupa da variante (lote A/2): tira slot conflitante, põe peças vanilla + tratamento.
--- Sem-rosto capped: força S5 (roupa própria lavada).
+-- Sem-rosto capped: força S5 (roupa própria lavada). NOM_wardForce: índice debug sticky.
 local function applyWardrobe(list, w, id)
     local variant, idx
+    local forceIdx = w.forceWardIdx
+    if not forceIdx and w._z and w._z.hasModData and w._z:hasModData() then
+        forceIdx = w._z:getModData().NOM_wardForce
+    end
     if w.kind == "semrosto" and w.capped then
         local cat = NOM_VariantWardrobe.CATALOG.semrosto
         if cat then
@@ -198,12 +221,17 @@ local function applyWardrobe(list, w, id)
             end
         end
         if not variant then return end
+    elseif forceIdx then
+        local cat = NOM_VariantWardrobe.CATALOG[w.kind]
+        idx = math.floor(tonumber(forceIdx) or 1)
+        if cat and cat[idx] then variant = cat[idx] else variant, idx = NOM_VariantWardrobe.pick(w.kind, id) end
     else
         variant, idx = NOM_VariantWardrobe.pick(w.kind, id)
     end
     if not variant then return end
     w.wardVar = variant.id
     w.wardIdx = idx
+    stripOrphanBrasa(list, w)
     if variant.keepOwn then
         treatOwnClothes(list, w, variant)
         if not variant.pieces or #variant.pieces == 0 then return end
@@ -220,12 +248,15 @@ local function applyWardrobe(list, w, id)
     local patterns = variant.strip
     for i = 0, list:size() - 1 do
         local iv = list:get(i)
-        if iv ~= w.iv and iv ~= w.bodyIv and NOM_VariantWardrobe.isStrip(iv:getItemType(), patterns) then
-            gone[#gone + 1] = iv
+        local t = iv and iv:getItemType()
+        if iv ~= w.iv and iv ~= w.bodyIv then
+            if t == "Base.NOM_Brasa" or NOM_VariantWardrobe.isStrip(t, patterns) then
+                gone[#gone + 1] = iv
+            end
         end
     end
     for _, iv in ipairs(gone) do list:remove(iv) end
-    -- K2–K5: vestido/capa/roupão longos — tira o manto 2D (C2: evita pintar rosto).
+    -- K2–K5 / Corredor: keepBody=false tira a camada N4 (manto/risco).
     if w.bodyIv and variant.keepBody == false then
         list:remove(w.bodyIv)
         w.bodyIv = nil
@@ -338,7 +369,8 @@ local function put(z, kind, id)
     local fx = NOM_Dissolve.enabled()
     local shell = fx and NOM_EmberShell.can(z)
     local piece = look.item and ((fx and not shell and look.fx) and look.fx or look.item) or nil
-    local w = { kind = kind, id = id, item = piece }
+    local forceWard = z:hasModData() and z:getModData().NOM_wardForce or nil
+    local w = { kind = kind, id = id, item = piece, _z = z, forceWardIdx = forceWard }
     if look.body then
         w.body = (fx and not shell and look.bodyFx) and look.bodyFx or look.body
     end
@@ -346,6 +378,7 @@ local function put(z, kind, id)
     -- a casca de uma volta que ainda queima sai antes do hide (não pode virar roupa
     -- guardada); o efeito dela segue e o reveal abaixo continua do limiar em que estava
     NOM_EmberShell.remove(z)
+    stripOrphanBrasa(z:getItemVisuals(), w)
     if look.skin then z:getHumanVisual():setSkinTextureName(look.skin) end
     local list = z:getItemVisuals()
     if w.item then
@@ -408,6 +441,7 @@ local function strip(z)
         z:getModData().NOM_semrosto_face = nil
     end
     local list = z:getItemVisuals()
+    stripOrphanBrasa(list, w)
     if w.proof then
         for _, iv in ipairs(w.proof) do list:remove(iv) end
     end
@@ -472,7 +506,10 @@ function NOM_VariantLook.sync(z, kind, id)
         return
     end
     if not w and kind == nil then return end
-    if w and kind == nil then return leave(z) end
+    if w and kind == nil then
+        if z:hasModData() then z:getModData().NOM_wardForce = nil end
+        return leave(z)
+    end
     strip(z)
     if kind and LOOKS[kind] then put(z, kind, id) end
 end
@@ -543,6 +580,7 @@ function NOM_VariantLook.inspect(z)
 end
 
 -- Debug: força monstro + índice de variante (1-based). Bíblia §11.
+-- NOM_wardForce gruda o índice no ModData (NightStats re-sync não sorteia outra).
 function NOM_VariantLook.forceVariant(z, kind, idx)
     if not z or not kind or not LOOKS[kind] then return nil end
     local n = NOM_VariantWardrobe.count(kind)
@@ -553,10 +591,10 @@ function NOM_VariantLook.forceVariant(z, kind, idx)
     idx = math.floor(tonumber(idx) or 1)
     if idx < 1 then idx = 1 end
     if idx > n then idx = n end
-    -- pick usa mod(id, n)+1; escolher id ≡ idx-1 (mod n)
+    if z.getModData then z:getModData().NOM_wardForce = idx end
     local base = NOM_VariantRules.baseId(z:getPersistentOutfitID())
-    local id = base - NOM_Math.mod(base, n) + (idx - 1)
-    NOM_VariantLook.sync(z, kind, id)
+    -- id compatível com pick ponderado não é trivial; wardForce manda no applyWardrobe
+    NOM_VariantLook.sync(z, kind, base)
     return kind, idx
 end
 

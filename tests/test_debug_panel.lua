@@ -158,7 +158,7 @@ local function setup(opts)
         end)(...), ",") .. ")" end
     end
     NOM = {}
-    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "lookInspect", "lookVariant", "lookClean",
+    for _, n in ipairs({ "fog", "redFog", "night", "time", "spawn", "variant", "lookCycle", "lookInspect", "lookVariant", "lookGroup", "lookClean",
         "glitch", "glitchIntensity", "eco", "alma", "almaStatus", "almaReset",
         "almaCfg", "arrasto", "ash", "god", "noclip", "invisible",
         "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind", "status",
@@ -387,7 +387,8 @@ return {
             UI_NOM_Debug_C_Ash = { "ash()", "ash(reset)" },
             UI_NOM_Debug_C_Pull = { "getZombie()" },
             UI_NOM_Debug_C_Variant = { "variant(estalador)", "variant(corredor)", "variant(semrosto)",
-                "variant(carpideira)", "lookCycle()", "lookInspect()", "lookVariant()", "lookClean()", "turnZombie(0)" },
+                "variant(carpideira)", "lookCycle()", "lookInspect()", "lookVariant()", "lookGroup()",
+                "lookClean()", "turnZombie(0)" },
             UI_NOM_Debug_C_Thunder = { "thunder()" },
             UI_NOM_Debug_C_Lamp = { "flickerLamp()" },
             UI_NOM_Debug_C_Rain = { "rain()" },

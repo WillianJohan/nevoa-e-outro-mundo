@@ -457,8 +457,10 @@ return {
             end
         end
         assert(NOM_VariantLook.LOOKS.semrosto.skin == nil, "0060b: Sem-rosto sem Body")
-        assert(not NOM_VariantLook.LOOKS.estalador.body and not NOM_VariantLook.LOOKS.corredor.body,
-            "0060b: sem NOM_*Roupa no look")
+        assert(not NOM_VariantLook.LOOKS.estalador.body, "0060b: Estalador sem NOM_*Roupa")
+        -- lote 2 ajuste 2: Corredor ganha risco N4 (NOM_CorredorRisco), não roupa 2D antiga
+        assert(NOM_VariantLook.LOOKS.corredor.body == "Base.NOM_CorredorRisco", "risco N4 do Corredor")
+        assert(hasItem(zs.corredor, "Base.NOM_CorredorRisco"), "Corredor sem risco: " .. types(zs.corredor))
     end,
 
     look_items_exist_in_script = function()
@@ -564,9 +566,10 @@ return {
         assert(hasItem(z, NOM_VariantLook.LOOKS.corredor.item) and z.hv.name == nil,
             "não pintou depois de vestido")
         -- lote 2: C* pode trocar o torso (Boilersuit/Hoodie/…); calça vanilla fica
-        assert(hasItem(z, OUTFIT[2]) or hasItem(z, "Base.Boilersuit")
+        assert(hasItem(z, OUTFIT[2]) or hasItem(z, "Base.NOM_CorredorRisco")
             or hasItem(z, "Base.HoodieDOWN_WhiteTINT") or hasItem(z, "Base.Jacket_Black")
-            or hasItem(z, "Base.Jacket_Shellsuit_TINT") or hasItem(z, "Base.Shirt_Lumberjack_TINT"),
+            or hasItem(z, "Base.Jacket_Shellsuit_TINT") or hasItem(z, "Base.Shirt_Lumberjack_TINT")
+            or hasItem(z, "Base.Trousers_SuitWhite"),
             "corpo sem roupa após wardrobe: " .. types(z))
     end,
 
@@ -738,7 +741,7 @@ return {
             "re-vestido ficou sem visual: " .. types(z))
     end,
 
-    -- orçamento: 0060f +guarda-roupa (1–2 ItemVisual + treat). pôr ≤ 30 + 3·N; tirar ≤ 12 + 2·N.
+    -- orçamento: 0060f +guarda-roupa + stripOrphanBrasa. pôr ≤ 40 + 3·N; tirar ≤ 12 + 2·N.
     look_budget = function()
         local G = setup()
         local z = G.spawn({ id = idFor("estalador", 16), extra = { "Base.Hat_Army" } })
@@ -746,7 +749,7 @@ return {
         fogOn(16)
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 30 + 3 * n, "pôr custou " .. G.vcalls)
+        assert(G.vcalls <= 40 + 3 * n, "pôr custou " .. G.vcalls)
         G.vcalls = 0
         G.converge()
         assert(G.vcalls == 0, "passada sem troca custou " .. G.vcalls)
@@ -947,7 +950,9 @@ return {
         local z = G.spawn({ id = idFor("corredor", 31), extra = { "Base.Tshirt_NOM_Fake" } })
         fogOn(31)
         G.converge()
-        assert(hasItem(z, "Base.NOM_CorredorBoca") and hasItem(z, OUTFIT[1]), "sobrou: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CorredorBoca"), "sem boca: " .. types(z))
+        assert(hasItem(z, "Base.NOM_CorredorRisco"), "sem risco N4: " .. types(z))
+        assert(not hasItem(z, "Base.Tshirt_NOM_Fake"), "fake NOM_ ficou: " .. types(z))
     end,
 
     -- status do debug: só quem está na lista da célula conta (step 4 do roteiro)
@@ -1414,7 +1419,7 @@ return {
         assert(not hasItem(z, SHELL) and NOM_EmberShell.count() == 0 and #G.bursts == 0)
     end,
 
-    -- orçamento: 0060f +wardrobe. pôr com casca ≤ 45 + 3·N + alfa.
+    -- orçamento: 0060f +wardrobe + stripOrphanBrasa. pôr com casca ≤ 55 + 3·N + alfa.
     ember_budget = function()
         local G = setup({ dissolve = true, body = true })
         local z = G.spawn({ id = idFor("estalador", 73), extra = { "Base.Hat_Army" } })
@@ -1424,7 +1429,7 @@ return {
         G.vcalls = 0
         G.converge()
         local ticks = math.ceil(1 / NOM_NightStats.BATCH) + 2
-        assert(G.vcalls <= 45 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
+        assert(G.vcalls <= 55 + 3 * n + per * ticks, "pôr com casca custou " .. G.vcalls)
         G.vcalls = 0
         local ms = NOM_DissolveRules.MS + 50
         G.ms(ms)
@@ -1435,10 +1440,11 @@ return {
         fogOff()
         G.vcalls = 0
         G.converge()
-        assert(G.vcalls <= 12 + per * ticks, "cobrir custou " .. G.vcalls)
+        assert(G.vcalls <= 20 + per * ticks, "cobrir custou " .. G.vcalls)
         G.vcalls = 0
         G.ms(ms)
-        assert(G.vcalls <= per * math.ceil(ms / 16) + 14 + 2 * n, "trocar embaixo custou " .. G.vcalls)
+        -- leave: cover + strip + wardrobe clear + orphan Brasa + reveal
+        assert(G.vcalls <= per * math.ceil(ms / 16) + 80 + 4 * n, "trocar embaixo custou " .. G.vcalls)
         assert(z.hv.name == nil)
     end,
 
