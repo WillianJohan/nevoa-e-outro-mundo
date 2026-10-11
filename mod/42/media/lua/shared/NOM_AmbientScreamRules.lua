@@ -8,15 +8,12 @@
 require "NOM_ScreamGaps"
 
 NOM_AmbientScreamRules = {
-    -- Clips em media/scripts/NOM_sounds.txt (0048 ElevenLabs + 0061 gen_screams.py).
+    -- Clips em media/scripts/NOM_sounds.txt (gerados por scripts/gen_sounds.py).
     SOUNDS = {
         "NOM_AmbientScream1",
         "NOM_AmbientScream2",
         "NOM_AmbientScream3",
         "NOM_AmbientScream4",
-        "NOM_AmbientScream5",
-        "NOM_AmbientScream6",
-        "NOM_AmbientScream7",
     },
     GAP_MIN_MS = 30000,
     GAP_MAX_MS = 500000,

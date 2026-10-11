@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Gritos procedurais sprint 0061 (Johan): monstro, ambiente L4D-like, teste PT.
+"""Experimental — não usado in-game (revertido 2026-10-11).
 
-Saída: mod/42/media/sound/*.ogg (mono 44,1 kHz), mesma pipeline do gen_sounds.write.
-Semente fixa SEED=61061 — regerar: python3 scripts/gen_screams.py
-Ou só alguns: python3 scripts/gen_screams.py NOM_MonsterScream1 NOM_AmbientScream5
+Protótipo sprint 0061: gritos procedurais monstro/ambiente. Saída seria
+mod/42/media/sound/*.ogg (mono 44,1 kHz), mesma pipeline do gen_sounds.write.
+Semente SEED=61061 — regerar localmente: python3 scripts/gen_screams.py
 
-Não sobrescreve slots ElevenLabs da 0048 (Corredor/Carpideira/Ambient 1–4).
-Inspiração de estilo só (L4D coral distante, SH PT metal/arranhão); 100% síntese numpy.
+O mod usa ElevenLabs (0048) + gen_sounds.py nos slots oficiais; este script não entra no build.
 """
 from __future__ import annotations
 
