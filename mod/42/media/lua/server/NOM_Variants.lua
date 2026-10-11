@@ -21,7 +21,11 @@ require "NOM_ScreamGaps"
 
 local MODULE = "NevoaEOutroMundo"
 -- Sprint 0048: banco de gritos (timbre novo); o gameplay (horda + cooldown) não muda.
-local SCREAM_SOUNDS = { "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3" }
+local SCREAM_SOUNDS = {
+    "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3",
+    "NOM_MonsterScream1", "NOM_MonsterScream2", "NOM_MonsterScream3",
+    "NOM_MonsterScream4", "NOM_MonsterScream5",
+}
 local ECO_OUTFIT = "NOM_Eco"
 local CR = NOM_CarpideiraRules
 local SG = NOM_ScreamGateRules
