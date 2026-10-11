@@ -38,17 +38,20 @@ function S.play(p)
     if not A.enabled(NOM_Config.get("FogAmbience"), c) then return "ambiente off" end
     local now = getTimestampMs()
     local gap = SG.claimClient(now, ZombRand(10001) / 10000)
-    if gap == nil then return "ambiente gap" end
+    if gap == nil then
+        SG.logBlocked("ambient", "gate", "nextAt=" .. tostring(SG.clientNextAt))
+        return "ambiente gap"
+    end
     local name = A.pick(ZombRand(#A.SOUNDS))
     local dist = A.distance(c, ZombRand(A.DIST[c].max - A.DIST[c].min + 1))
     local bearing = A.bearing(ZombRand(360))
     local x, y = A.spot(p:getX(), p:getY(), dist, bearing)
     local z = p:getZ()
     getWorld():getFreeEmitter(x, y, z):playSoundImpl(name, false, nil)
-    SG.logPlayed("ambient", gap, SG.clientNextAt)
+    SG.logPlayed("ambient", gap, SG.clientNextAt, { source = "ambient", sound = name, dist = dist })
     sendClientCommand(MODULE, "screamGateBump", { nextAt = SG.clientNextAt })
     if getDebug() then
-        print("[NOM] ambient scream " .. name .. " dist=" .. dist .. " cor=" .. c)
+        print("[NOM] ambient scream cor=" .. c)
     end
     return name .. " dist=" .. math.floor(dist)
 end

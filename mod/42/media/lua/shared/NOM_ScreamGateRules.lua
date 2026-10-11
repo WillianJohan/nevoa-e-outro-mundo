@@ -60,9 +60,27 @@ function R.syncClient(nextAt)
     end
 end
 
-function R.logPlayed(kind, gapMs, nextAt)
-    print("[NOM] scream played kind=" .. tostring(kind)
-        .. " gap=" .. tostring(gapMs) .. "ms next=" .. tostring(nextAt))
+-- kind: corredor | carpideira | ambient (Screamer = carpideira). extra opcional: source, sound, dist, why.
+function R.logPlayed(kind, gapMs, nextAt, extra)
+    extra = type(extra) == "table" and extra or {}
+    local source = extra.source
+    if source == nil then
+        source = (kind == "ambient") and "ambient" or "monster"
+    end
+    local line = "[NOM] scream played kind=" .. tostring(kind)
+        .. " source=" .. source
+        .. " gap=" .. tostring(gapMs) .. "ms next=" .. tostring(nextAt)
+    if extra.sound then line = line .. " sound=" .. tostring(extra.sound) end
+    if extra.dist then line = line .. " dist=" .. tostring(extra.dist) end
+    if extra.why then line = line .. " why=" .. tostring(extra.why) end
+    print(line)
+end
+
+function R.logBlocked(kind, reason, detail)
+    if getDebug == nil or not getDebug() then return end
+    local line = "[NOM] scream blocked kind=" .. tostring(kind) .. " reason=" .. tostring(reason)
+    if detail ~= nil then line = line .. " " .. tostring(detail) end
+    print(line)
 end
 
 return NOM_ScreamGateRules

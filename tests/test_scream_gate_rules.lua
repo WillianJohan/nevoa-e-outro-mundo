@@ -35,4 +35,29 @@ return {
         assert(SG.claim(SG.gate(data), 5000, 0) == nil, "corredor bloqueado pelo grito da carpideira")
         G.setMonster(45000, 180000)
     end,
+
+    scream_log_played_monster_line = function()
+        local lines = {}
+        local oldPrint = print
+        print = function(msg) lines[#lines + 1] = msg end
+        SG.logPlayed("corredor", 45000, 46000, { sound = "NOM_CorredorScream2" })
+        print = oldPrint
+        local line = lines[1] or ""
+        assert(line:find("kind=corredor", 1, true), line)
+        assert(line:find("source=monster", 1, true), line)
+        assert(line:find("gap=45000ms", 1, true), line)
+        assert(line:find("next=46000", 1, true), line)
+        assert(line:find("sound=NOM_CorredorScream2", 1, true), line)
+    end,
+
+    scream_log_played_ambient_line = function()
+        local lines = {}
+        local oldPrint = print
+        print = function(msg) lines[#lines + 1] = msg end
+        SG.logPlayed("ambient", 30000, 33000, { source = "ambient", sound = "NOM_AmbientScream3", dist = 42 })
+        print = oldPrint
+        local line = lines[1] or ""
+        assert(line:find("source=ambient", 1, true), line)
+        assert(line:find("dist=42", 1, true), line)
+    end,
 }
