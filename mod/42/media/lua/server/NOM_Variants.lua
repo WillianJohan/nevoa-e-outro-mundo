@@ -62,7 +62,7 @@ local function scream(z)
     local nowMs = getTimestampMs()
     local gap = CR.scheduleNextScream(data, nowMs, ZombRand(10001) / 10000)
     if gap == nil then
-        debugLog("corredor gap nextAt=" .. tostring(SG.gate(data).nextAt))
+        SG.logBlocked("corredor", "gate", "nextAt=" .. tostring(SG.gate(data).nextAt))
         return
     end
     md.NOM_screamAt = now
@@ -75,7 +75,7 @@ local function scream(z)
     local radius = NOM_Config.get("CorredorScreamRadius")
     NOM_Night.call(z, radius)
     local nextAt = SG.gate(data).nextAt
-    SG.logPlayed("corredor", gap, nextAt)
+    SG.logPlayed("corredor", gap, nextAt, { sound = sound })
     syncScreamGateToClients(nextAt)
     debugLog("grito x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " raio=" .. radius)
 end
@@ -102,8 +102,7 @@ local function carpideira(z, p, why)
     local now = getTimestampMs()
     local gap = CR.scheduleNextScream(data, now, ZombRand(10001) / 10000)
     if gap == nil then
-        debugLog("carpideira gap x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
-            .. " nextAt=" .. tostring(SG.gate(data).nextAt))
+        SG.logBlocked("carpideira", "gate", "nextAt=" .. tostring(SG.gate(data).nextAt))
         return false
     end
     state.pids[pid] = true
@@ -112,13 +111,12 @@ local function carpideira(z, p, why)
     NOM_Night.call(z, radius)
     if isServer() then
         sendServerCommand(MODULE, "carpideiraScream", {
-            pid = pid, id = z:getOnlineID(), pl = p:getOnlineID(), nextAt = nextAt,
+            pid = pid, id = z:getOnlineID(), pl = p:getOnlineID(), nextAt = nextAt, gap = gap, why = why,
         })
     else
         NOM_Carpideira.screamed[pid] = true
-        NOM_Carpideira.scream(z, p)
+        NOM_Carpideira.scream(z, p, { gap = gap, nextAt = nextAt, why = why })
     end
-    SG.logPlayed("carpideira", gap, nextAt)
     syncScreamGateToClients(nextAt)
     debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
         .. " raio=" .. radius .. " gapMs=" .. gap)
