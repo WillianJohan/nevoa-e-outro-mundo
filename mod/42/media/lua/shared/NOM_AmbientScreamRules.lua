@@ -4,7 +4,9 @@
 -- com FogAmbience.
 --
 -- Intervalo (playtest Johan 2026-10-10): uniforme 30–500 s reais, sorteado de novo
--- depois de cada grito. Knobs live AmbientGapMinMs/MaxMs no painel (seção de sons).
+-- depois de cada grito. Knobs live AmbientGapMinMs/MaxMs → NOM_ScreamGaps.
+require "NOM_ScreamGaps"
+
 NOM_AmbientScreamRules = {
     -- Clips em media/scripts/NOM_sounds.txt (gerados por scripts/gen_sounds.py).
     SOUNDS = {
@@ -13,7 +15,6 @@ NOM_AmbientScreamRules = {
         "NOM_AmbientScream3",
         "NOM_AmbientScream4",
     },
-    -- Intervalo entre gritos (ms reais). Um único intervalo pra branca e vermelha.
     GAP_MIN_MS = 30000,
     GAP_MAX_MS = 500000,
     -- Distância do emitter ao jogador (tiles). Longe + passa-baixa no OGG = presença.
@@ -25,8 +26,15 @@ NOM_AmbientScreamRules = {
 }
 
 local A = NOM_AmbientScreamRules
+local G = NOM_ScreamGaps
 
-A.GAP_ROLL = A.GAP_MAX_MS - A.GAP_MIN_MS + 1
+function A.syncGapRoll()
+    A.GAP_MIN_MS = G.ambientMin
+    A.GAP_MAX_MS = G.ambientMax
+    A.GAP_ROLL = G.ambientRollSpan()
+end
+
+A.syncGapRoll()
 
 -- Ambiente toca? fogAmbience = sandbox; color = "white"|"red"|"black"|nil.
 function A.enabled(fogAmbience, color)
@@ -38,11 +46,7 @@ end
 -- Gap até o próximo grito. roll = ZombRand(GAP_ROLL). nil se a cor não tem agenda.
 function A.gap(color, roll)
     if color ~= "white" and color ~= "red" then return nil end
-    local span = A.GAP_MAX_MS - A.GAP_MIN_MS + 1
-    if roll == nil then roll = 0 end
-    if roll < 0 then roll = 0 end
-    if roll >= span then roll = span - 1 end
-    return A.GAP_MIN_MS + roll
+    return G.ambientGapMs(roll)
 end
 
 -- Índice do clip (1..#SOUNDS). roll = ZombRand(#SOUNDS).

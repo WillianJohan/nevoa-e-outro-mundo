@@ -579,18 +579,27 @@ local function syncPanelToSystems(which)
     end
     -- Gritos ambiente 30–500 s; Carpideira/Screamer gap global 45–180 s (padrão).
     if all or which == "sons" then
+        require "NOM_ScreamGaps"
         require "NOM_AmbientScreamRules"
         local amin, amax = P.get("AmbientGapMinMs"), P.get("AmbientGapMaxMs")
-        if type(amin) == "number" and type(amax) == "number" and amax >= amin then
-            NOM_AmbientScreamRules.GAP_MIN_MS = amin
-            NOM_AmbientScreamRules.GAP_MAX_MS = amax
-            NOM_AmbientScreamRules.GAP_ROLL = amax - amin + 1
-        end
-        require "NOM_CarpideiraRules"
         local cmin, cmax = P.get("CarpideiraScreamGapMinMs"), P.get("CarpideiraScreamGapMaxMs")
+        if type(amin) == "number" and type(amax) == "number" and amax >= amin then
+            NOM_ScreamGaps.setAmbient(amin, amax)
+            NOM_AmbientScreamRules.syncGapRoll()
+        end
         if type(cmin) == "number" and type(cmax) == "number" and cmax >= cmin then
+            NOM_ScreamGaps.setMonster(cmin, cmax)
+            require "NOM_CarpideiraRules"
             NOM_CarpideiraRules.SCREAM_GAP_MIN_MS = cmin
             NOM_CarpideiraRules.SCREAM_GAP_MAX_MS = cmax
+        end
+        if getDebug() then
+            sendClientCommand("NevoaEOutroMundo", "panelSonGaps", {
+                ambientMin = NOM_ScreamGaps.ambientMin,
+                ambientMax = NOM_ScreamGaps.ambientMax,
+                monsterMin = NOM_ScreamGaps.monsterMin,
+                monsterMax = NOM_ScreamGaps.monsterMax,
+            })
         end
     end
     if (all or which == "cinzas") and NOM_FlakeRules and NOM_FlakeRules.setDebug then
@@ -769,5 +778,10 @@ NOM.HELP = {
 function NOM.help()
     for _, h in ipairs(NOM.HELP) do NOM_DebugLog.say("[NOM] " .. h[1] .. " - " .. h[2]) end
 end
+
+-- Solo/MP: VM do servidor não vê NOM.param; empurra gaps de gritos no boot (-debug).
+Events.OnGameStart.Add(function()
+    if getDebug() then syncPanelToSystems("sons") end
+end)
 
 return NOM

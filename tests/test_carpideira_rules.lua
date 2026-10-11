@@ -1,8 +1,10 @@
 -- Regras puras da Carpideira (sprint 0011): o que o servidor aceita como "acordou",
 -- o que é barulho alto e perto, e quem já gritou neste período de névoa.
 require "NOM_CarpideiraRules"
+require "NOM_ScreamGateRules"
 
 local R = NOM_CarpideiraRules
+local SG = NOM_ScreamGateRules
 
 return {
     -- proximidade: até o raio do sandbox, com folga pro atraso da rede
@@ -61,18 +63,17 @@ return {
 
     carpideira_rules_global_scream_ready = function()
         local data = {}
-        local st = R.screamState(data, 1)
-        assert(R.globalScreamReady(st, 1000), "primeira grito livre")
-        local gap = R.scheduleNextScream(st, 1000, 0)
+        R.screamState(data, 1)
+        assert(R.globalScreamReady(data, 1000), "primeira grito livre")
+        local gap = R.scheduleNextScream(data, 1000, 0)
         assert(gap == R.SCREAM_GAP_MIN_MS)
-        assert(st.nextAt == 1000 + gap)
-        assert(not R.globalScreamReady(st, 1000 + gap - 1), "ainda no gap")
-        assert(R.globalScreamReady(st, 1000 + gap), "gap acabou")
-        -- nextAt sobrevive à troca de período (espaçamento global)
-        st.pids[99] = true
+        assert(SG.gate(data).nextAt == 1000 + gap)
+        assert(not R.globalScreamReady(data, 1000 + gap - 1), "ainda no gap")
+        assert(R.globalScreamReady(data, 1000 + gap), "gap acabou")
+        data.carpideira.pids[99] = true
         local st2 = R.screamState(data, 2)
         assert(st2.pids[99] == nil, "pids zeram no período novo")
-        assert(st2.nextAt == 1000 + gap, "nextAt global permanece")
+        assert(SG.gate(data).nextAt == 1000 + gap, "nextAt global permanece")
     end,
 
     -- volume do soluço sobe perto (curva do Sem-rosto)

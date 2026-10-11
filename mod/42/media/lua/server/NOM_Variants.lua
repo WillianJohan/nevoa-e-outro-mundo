@@ -16,12 +16,21 @@ require "NOM_CarpideiraRules"
 require "NOM_Carpideira"
 require "NOM_Fog"
 require "NOM_Night"
+require "NOM_ScreamGateRules"
+require "NOM_ScreamGaps"
 
 local MODULE = "NevoaEOutroMundo"
 -- Sprint 0048: banco de gritos (timbre novo); o gameplay (horda + cooldown) não muda.
 local SCREAM_SOUNDS = { "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3" }
 local ECO_OUTFIT = "NOM_Eco"
 local CR = NOM_CarpideiraRules
+local SG = NOM_ScreamGateRules
+local MODULE_DATA = function() return ModData.getOrCreate(MODULE) end
+
+local function syncScreamGateToClients(nextAt)
+    if not isServer() then return end
+    sendServerCommand(MODULE, "screamGateSync", { nextAt = nextAt })
+end
 
 local function corredorScream()
     return SCREAM_SOUNDS[ZombRand(#SCREAM_SOUNDS) + 1]
@@ -49,6 +58,13 @@ local function scream(z)
     local now = getGameTime():getWorldAgeHours()
     local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
     if not NOM_VariantRules.screamReady(md.NOM_screamAt, now, mood) then return end
+    local data = MODULE_DATA()
+    local nowMs = getTimestampMs()
+    local gap = CR.scheduleNextScream(data, nowMs, ZombRand(10001) / 10000)
+    if gap == nil then
+        debugLog("corredor gap nextAt=" .. tostring(SG.gate(data).nextAt))
+        return
+    end
     md.NOM_screamAt = now
     local sound = corredorScream()
     if isServer() then
@@ -58,6 +74,9 @@ local function scream(z)
     end
     local radius = NOM_Config.get("CorredorScreamRadius")
     NOM_Night.call(z, radius)
+    local nextAt = SG.gate(data).nextAt
+    SG.logPlayed("corredor", gap, nextAt)
+    syncScreamGateToClients(nextAt)
     debugLog("grito x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " raio=" .. radius)
 end
 
@@ -76,26 +95,31 @@ end
 -- cada cliente que a tem carregada; o dono solta e caça p.
 local function carpideira(z, p, why)
     if not NOM_World.fog or not isKind(z, "carpideira") then return false end
-    local data = ModData.getOrCreate(MODULE)
+    local data = MODULE_DATA()
     local state = CR.screamState(data, NOM_Fog.period())
     local pid = NOM_VariantRules.baseId(z:getPersistentOutfitID())
     if state.pids[pid] then return false end
     local now = getTimestampMs()
-    if not CR.globalScreamReady(state, now) then
+    local gap = CR.scheduleNextScream(data, now, ZombRand(10001) / 10000)
+    if gap == nil then
         debugLog("carpideira gap x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
-            .. " nextAt=" .. tostring(state.nextAt))
+            .. " nextAt=" .. tostring(SG.gate(data).nextAt))
         return false
     end
     state.pids[pid] = true
-    local gap = CR.scheduleNextScream(state, now, ZombRand(10001) / 10000)
+    local nextAt = SG.gate(data).nextAt
     local radius = NOM_Config.get("CarpideiraScreamRadius")
     NOM_Night.call(z, radius)
     if isServer() then
-        sendServerCommand(MODULE, "carpideiraScream", { pid = pid, id = z:getOnlineID(), pl = p:getOnlineID() })
+        sendServerCommand(MODULE, "carpideiraScream", {
+            pid = pid, id = z:getOnlineID(), pl = p:getOnlineID(), nextAt = nextAt,
+        })
     else
         NOM_Carpideira.screamed[pid] = true
         NOM_Carpideira.scream(z, p)
     end
+    SG.logPlayed("carpideira", gap, nextAt)
+    syncScreamGateToClients(nextAt)
     debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
         .. " raio=" .. radius .. " gapMs=" .. gap)
     return true
@@ -185,9 +209,31 @@ local function byOnlineID(id)
     return nil
 end
 
+local function applySonGaps(args)
+    if type(args) ~= "table" then return end
+    local amin, amax = args.ambientMin, args.ambientMax
+    local cmin, cmax = args.monsterMin, args.monsterMax
+    if type(amin) == "number" and type(amax) == "number" and amax >= amin then
+        NOM_ScreamGaps.setAmbient(amin, amax)
+    end
+    if type(cmin) == "number" and type(cmax) == "number" and cmax >= cmin then
+        NOM_ScreamGaps.setMonster(cmin, cmax)
+        NOM_CarpideiraRules.SCREAM_GAP_MIN_MS = cmin
+        NOM_CarpideiraRules.SCREAM_GAP_MAX_MS = cmax
+    end
+end
+
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE then return end
-    if command == "corredorSaw" then
+    if command == "panelSonGaps" then
+        if not getDebug() then return end
+        applySonGaps(args)
+    elseif command == "screamGateBump" and type(args) == "table" and type(args.nextAt) == "number" then
+        local gate = SG.gate(MODULE_DATA())
+        if gate.nextAt == nil or args.nextAt > gate.nextAt then
+            gate.nextAt = args.nextAt
+        end
+    elseif command == "corredorSaw" then
         if not sawOk(player) then return end
         local z = byOnlineID(args and args.id)
         if z and player:DistTo(z:getX(), z:getY()) <= SENDER_RANGE then scream(z) end

@@ -3,6 +3,8 @@
 -- sorteio da névoa (NOM_VariantRules); aqui fica o que acorda ela, a memória de
 -- quem já gritou, o intervalo/destino da caminhada calma e o volume do soluço.
 require "NOM_FlakeRules"
+require "NOM_ScreamGaps"
+require "NOM_ScreamGateRules"
 
 NOM_CarpideiraRules = {
     -- Lanterna e barulho alcançam até aqui (tiles): "perto" pra quem a acorda de longe.
@@ -24,8 +26,7 @@ NOM_CarpideiraRules = {
     WALK_DIST_MAX = 6,
     WALK_TRIES = 8,
     WALK_TIMEOUT_MS = 15000,
-    -- Playtest 2026-10-10: gap global entre gritos (qualquer Carpideira/Screamer).
-    -- Um grito por PID por período continua; isto evita clusters de várias ao mesmo tempo.
+    -- Gap global: NOM_ScreamGaps (painel live + sync pro servidor).
     SCREAM_GAP_MIN_MS = 45000,
     SCREAM_GAP_MAX_MS = 180000,
     -- Volume do soluço pela distância (mesmo espírito do rádio do Sem-rosto).
@@ -34,6 +35,7 @@ NOM_CarpideiraRules = {
 }
 
 local R = NOM_CarpideiraRules
+local SG = NOM_ScreamGateRules
 R.rng = NOM_FlakeRules.rng
 
 -- O servidor confere o aviso do cliente. why: "near" (jogador a até triggerRadius) ou
@@ -54,12 +56,11 @@ end
 
 -- Quem já gritou no período: { [persistentOutfitID] = true }, dentro de data (o
 -- ModData global do servidor). Período novo, tabela nova: um grito por névoa, e
--- salvar e carregar no meio não deixa gritar de novo. nextAt (gap global) fica.
+-- salvar e carregar no meio não deixa gritar de novo. screamGate (gap global) fica.
 function R.screamed(data, period)
     local s = data.carpideira
     if not s or s.period ~= period then
-        local nextAt = s and s.nextAt
-        s = { period = period, pids = {}, nextAt = nextAt }
+        s = { period = period, pids = {} }
         data.carpideira = s
     end
     return s.pids
@@ -71,17 +72,14 @@ function R.screamState(data, period)
     return data.carpideira
 end
 
--- Pronto pro próximo grito global? nextAt nil = nunca gritou nesta sessão.
-function R.globalScreamReady(state, nowMs)
-    if state == nil or state.nextAt == nil then return true end
-    return (tonumber(nowMs) or 0) >= state.nextAt
+-- Pronto pro próximo grito global (Corredor + Carpideira + sync cliente)?
+function R.globalScreamReady(data, nowMs)
+    return SG.ready(SG.gate(data), nowMs)
 end
 
--- Agenda o próximo grito permitido; u em [0, 1]. Devolve o gap aplicado (ms).
-function R.scheduleNextScream(state, nowMs, u)
-    local gap = R.screamGapMs(u)
-    state.nextAt = (tonumber(nowMs) or 0) + gap
-    return gap
+-- Reserva o slot global; u em [0, 1]. Devolve gap (ms) ou nil se bloqueado.
+function R.scheduleNextScream(data, nowMs, u)
+    return SG.claim(SG.gate(data), nowMs, u)
 end
 
 -- Milissegundos até a próxima caminhada calma; u em [0, 1].
@@ -93,9 +91,7 @@ end
 
 -- Gap global entre gritos de Carpideira/Screamer; u em [0, 1].
 function R.screamGapMs(u)
-    u = math.max(0, math.min(tonumber(u) or 0, 1))
-    local span = R.SCREAM_GAP_MAX_MS - R.SCREAM_GAP_MIN_MS
-    return R.SCREAM_GAP_MIN_MS + math.floor(u * span + 0.5)
+    return NOM_ScreamGaps.monsterGapMs(u)
 end
 
 -- Volume do soluço (0..1) pela distância em tiles até o jogador local mais perto.

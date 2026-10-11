@@ -224,6 +224,7 @@ return {
         for _ = 1, 5 do G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }) end
         assert(#G.played == 1, "gritos: " .. #G.played)
         G.hours = G.hours + NOM_VariantRules.SCREAM_COOLDOWN_HOURS
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 })
         assert(#G.played == 2 and #G.sounds == 2)
         assert(z.md.NOM_screamAt == G.hours)
@@ -285,8 +286,24 @@ return {
         assert(#G.played == 0, "passou do limite")
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, b, 0)
         assert(#G.played == 1, "limite de um jogador travou o outro")
-        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 1500)
-        assert(#G.played == 2, "não liberou depois de 2 s")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 2500)
+        assert(#G.played == 1, "gap global bloqueia o segundo grito")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a)
+        assert(#G.played == 2, "não liberou depois do gap global")
+    end,
+    -- gap global: segundo Corredor não grita até o relógio (independente do cooldown por zumbi)
+    corredor_global_scream_gap = function()
+        local G = setup({ server = true })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 8 })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 9 })
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 })
+        assert(#G.played == 1, "primeiro não gritou")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, nil, 2500)
+        assert(#G.played == 1, "segundo gritou dentro do gap global")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 })
+        assert(#G.played == 2, "segundo não gritou depois do gap")
     end,
     -- névoa vermelha: o servidor reconhece o Corredor da divisão da vermelha, mesmo
     -- com CorredorChance 0
