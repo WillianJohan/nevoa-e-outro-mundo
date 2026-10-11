@@ -40,7 +40,12 @@ local function screamed(args)
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if NOM_VariantRules.baseId(z:getPersistentOutfitID()) == args.pid and z:getOnlineID() == args.id then
-            NOM_Carpideira.scream(z, type(args.pl) == "number" and getPlayerByOnlineID(args.pl) or nil)
+            local pl = type(args.pl) == "number" and getPlayerByOnlineID(args.pl) or nil
+            local meta = {}
+            if type(args.gap) == "number" then meta.gap = args.gap end
+            if type(args.nextAt) == "number" then meta.nextAt = args.nextAt end
+            if type(args.why) == "string" then meta.why = args.why end
+            NOM_Carpideira.scream(z, pl, meta)
             return
         end
     end

@@ -14,6 +14,7 @@ require "NOM_VariantRules"
 require "NOM_NightStats"
 require "NOM_FogState"
 require "NOM_Math"
+require "NOM_ScreamGateRules"
 
 NOM_Carpideira = {
     SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
@@ -210,10 +211,17 @@ function C.onScream(fn)
     screamListeners[#screamListeners + 1] = fn
 end
 
-function C.scream(z, p)
+function C.scream(z, p, meta)
+    meta = type(meta) == "table" and meta or {}
     z:getModData().NOM_furia = NOM_FogState.period
     stopSob(z)
-    z:playSoundLocal(C.SCREAMS[ZombRand(#C.SCREAMS) + 1])
+    local sound = C.SCREAMS[ZombRand(#C.SCREAMS) + 1]
+    z:playSoundLocal(sound)
+    if type(meta.gap) == "number" and type(meta.nextAt) == "number" then
+        NOM_ScreamGateRules.logPlayed("carpideira", meta.gap, meta.nextAt, {
+            sound = sound, why = meta.why,
+        })
+    end
     for _, fn in ipairs(screamListeners) do
         local ok, err = pcall(fn, z)
         if not ok and getDebug() then print("[NOM] grito: erro de quem ouve: " .. tostring(err)) end
