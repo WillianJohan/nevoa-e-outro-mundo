@@ -77,6 +77,15 @@ normaliza e grava ogg mono 44,1 kHz. Os MP3 de origem **não** entram no repo. O
 | `mod/42/media/sound/NOM_AmbientScream2.ogg` | ElevenLabs (Johan): exhausted adult suffering | gritos ambiente |
 | `mod/42/media/sound/NOM_AmbientScream3.ogg` | ElevenLabs (Johan): faint distant cry | gritos ambiente |
 | `mod/42/media/sound/NOM_AmbientScream4.ogg` | ElevenLabs (Johan): several distant screams | gritos ambiente |
+| `mod/42/media/sound/NOM_MonsterScream1.ogg` | grito grave feral procedural (~1,8 s; pulso glotal + eco curto) | rotação Corredor + Carpideira/Screamer (sprint 0061) |
+| `mod/42/media/sound/NOM_MonsterScream2.ogg` | surto agudo seco (~1,1 s) | rotação monstro (0061) |
+| `mod/42/media/sound/NOM_MonsterScream3.ogg` | lamento feminino distorcido (~3,6 s) | rotação monstro (0061) |
+| `mod/42/media/sound/NOM_MonsterScream4.ogg` | rosnado que explode em grito (~2,0 s) | rotação monstro (0061) |
+| `mod/42/media/sound/NOM_MonsterScream5.ogg` | voz oca com micro-soluços (~2,4 s) | rotação monstro (0061) |
+| `mod/42/media/sound/NOM_AmbientScream5.ogg` | coral sintético distante (camadas defasadas + reverb) | gritos ambiente névoa (0061) |
+| `mod/42/media/sound/NOM_AmbientScream6.ogg` | tensão horde-like: grito principal + ecos fracos | gritos ambiente (0061) |
+| `mod/42/media/sound/NOM_AmbientScream7.ogg` | sofrimento + choro distante em camadas | gritos ambiente (0061) |
+| `mod/42/media/sound/NOM_MonsterNoiseTest.ogg` | arranhão metálico + pancada + hum (teste SH PT, ~4,5 s) | só teste / audição (não rota gameplay) |
 | `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
 | `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
 | `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |
@@ -93,8 +102,9 @@ normaliza e grava ogg mono 44,1 kHz. Os MP3 de origem **não** entram no repo. O
 | `mod/42/media/sound/NOM_AlmaDespawn.ogg` | ElevenLabs (Johan): skeletal undead turning to smoke | despawn / TTL da alma |
 
 Pra regerar a síntese: `python3 scripts/gen_sounds.py` (ou só alguns:
-`python3 scripts/gen_sounds.py NOM_DevTv`). Pra regerar os gritos ElevenLabs (com a pasta de
-MP3 do Johan): `python3 scripts/import_elevenlabs_screams.py /caminho/elevenlabs-refs`.
+`python3 scripts/gen_sounds.py NOM_DevTv`). Gritos procedurais da sprint 0061:
+`python3 scripts/gen_screams.py` (semente `61061` no script). Pra regerar os gritos ElevenLabs
+(com a pasta de MP3 do Johan): `python3 scripts/import_elevenlabs_screams.py /caminho/elevenlabs-refs`.
 A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
 são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
 

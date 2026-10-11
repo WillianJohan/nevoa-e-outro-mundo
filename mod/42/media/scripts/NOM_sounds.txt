@@ -40,6 +40,57 @@ module Base
         }
     }
 
+    /* Monstro procedural (sprint 0061): Corredor + Carpideira/Screamer */
+    sound NOM_MonsterScream1
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_MonsterScream1.ogg,
+            distanceMax = 120,
+        }
+    }
+
+    sound NOM_MonsterScream2
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_MonsterScream2.ogg,
+            distanceMax = 120,
+        }
+    }
+
+    sound NOM_MonsterScream3
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_MonsterScream3.ogg,
+            distanceMax = 120,
+        }
+    }
+
+    sound NOM_MonsterScream4
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_MonsterScream4.ogg,
+            distanceMax = 120,
+        }
+    }
+
+    sound NOM_MonsterScream5
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_MonsterScream5.ogg,
+            distanceMax = 120,
+        }
+    }
+
     sound NOM_FogDrone
     {
         category = World,
@@ -508,6 +559,56 @@ module Base
             distanceMin = 20,
             distanceMax = 120,
             volume = 0.55,
+        }
+    }
+
+    /* Ambiente procedural (sprint 0061): coral distante / tensão */
+    sound NOM_AmbientScream5
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream5.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream6
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream6.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream7
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream7.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+    }
+
+    /* Teste SH PT (0061): não entra na rotação de gameplay */
+    sound NOM_MonsterNoiseTest
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_MonsterNoiseTest.ogg,
+            distanceMin = 8,
+            distanceMax = 45,
+            volume = 0.4,
         }
     }
 

@@ -20,7 +20,11 @@ require "NOM_ScreamGateRules"
 NOM_Carpideira = {
     SOB = "NOM_CarpideiraSob",       -- media/scripts/NOM_sounds.txt
     SCREAM = "NOM_CarpideiraScream", -- legado / default
-    SCREAMS = { "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3" },
+    SCREAMS = {
+        "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3",
+        "NOM_MonsterScream1", "NOM_MonsterScream2", "NOM_MonsterScream3",
+        "NOM_MonsterScream4", "NOM_MonsterScream5",
+    },
     SCAN_TICKS = 10,
     -- Soluça só quem está a até SOB_RANGE tiles de um jogador local (o som some a 12):
     -- a célula carregada pode ter dezenas de Carpideiras, e cada uma seria um loop.
