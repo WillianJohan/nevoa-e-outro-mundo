@@ -17,6 +17,7 @@ if isServer() then return end
 
 require "NOM_Config"
 require "NOM_FogState"
+require "NOM_AtmosphereRules"
 require "NOM_DeviceRules"
 require "NOM_SemRosto"
 require "NOM_Carpideira"
@@ -124,6 +125,7 @@ local function semRosto(p, cands, now)
 end
 
 local function call(cands, now)
+    if not NOM_AtmosphereRules.modMusicAllowed(NOM_FogState.on) then return end
     if playing(slot) or not R.callDue(now, nextCall, lastEnd) then return end
     local c, blocked = R.pick(cands, recent, ZombRand(100) / 100)
     if not c and not blocked then return end -- nenhum aparelho na faixa: espera
@@ -133,6 +135,10 @@ local function call(cands, now)
 end
 
 local function fog(p, now)
+    if not NOM_AtmosphereRules.modMusicAllowed(NOM_FogState.on) and slot and slot.kind == "call" then
+        stop(slot)
+        slot, lastEnd = nil, now
+    end
     if slot and (not playing(slot) or R.outOfRange(d2(slot.d, p))) then
         stop(slot)
         slot, lastEnd = nil, now

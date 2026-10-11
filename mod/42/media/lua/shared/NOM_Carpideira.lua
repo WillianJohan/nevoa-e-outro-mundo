@@ -9,6 +9,7 @@
 -- * Quem decide o grito é o servidor (server/NOM_Variants.lua); aqui ficam os
 --   efeitos dele (NOM_Carpideira.scream).
 require "NOM_Config"
+require "NOM_AtmosphereRules"
 require "NOM_CarpideiraRules"
 require "NOM_VariantRules"
 require "NOM_NightStats"
@@ -272,6 +273,9 @@ local function scan(report)
         stopAll()
         return
     end
+    if not NOM_AtmosphereRules.modMusicAllowed(NOM_FogState.on) then
+        stopAll()
+    end
     local found, now, players = {}, getTimestampMs(), localPlayers()
     local radius = NOM_Config.get("CarpideiraTriggerRadius")
     -- Um aviso por varredura: o servidor aceita um por segundo por jogador, e vários
@@ -300,7 +304,8 @@ local function scan(report)
                 end
             end
             -- no solo o aviso decide o grito na hora (NOM_Carpideira.scream): sem soluço
-            if nearest ~= nil and nearest <= C.SOB_RANGE and md.NOM_furia ~= NOM_FogState.period then
+            if NOM_AtmosphereRules.modMusicAllowed(NOM_FogState.on)
+                and nearest ~= nil and nearest <= C.SOB_RANGE and md.NOM_furia ~= NOM_FogState.period then
                 found[z] = true
                 sob(z, R.sobVolume(nearest))
             end

@@ -466,7 +466,6 @@ module Base
     sound NOM_AmbientScream1
     {
         category = World,
-        master = Ambient,
         clip
         {
             file = media/sound/NOM_AmbientScream1.ogg,
@@ -479,7 +478,6 @@ module Base
     sound NOM_AmbientScream2
     {
         category = World,
-        master = Ambient,
         clip
         {
             file = media/sound/NOM_AmbientScream2.ogg,
@@ -492,7 +490,6 @@ module Base
     sound NOM_AmbientScream3
     {
         category = World,
-        master = Ambient,
         clip
         {
             file = media/sound/NOM_AmbientScream3.ogg,
@@ -505,7 +502,6 @@ module Base
     sound NOM_AmbientScream4
     {
         category = World,
-        master = Ambient,
         clip
         {
             file = media/sound/NOM_AmbientScream4.ogg,

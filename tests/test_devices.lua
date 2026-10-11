@@ -143,90 +143,60 @@ return {
         G.seconds(40)
         assert(#talking(G) == 0 and G.played("NOM_DevBurst") == 3, "aparelho falou na fuga")
     end,
-    -- toca no aparelho certo: o mais perto entre 6 e 18 tiles, no tile dele
+    -- hotfix 2026-10-11: chamados periódicos (música do mod) off com névoa aberta
     devices_call_plays_on_right_device = function()
         local G = setup()
-        G.device({ x = 103, y = 100 })            -- perto demais
-        G.device({ x = 100, y = 109 })            -- o certo
-        G.device({ x = 115, y = 100, tv = true })
+        G.device({ x = 100, y = 109 })
         NOM_FogState.set(true, 1)
-        G.seconds(NOM_DeviceRules.CALL_MIN_MS / 1000 - 5)
-        assert(#talking(G) == 0, "falou antes do intervalo")
-        G.seconds(7)
-        local t = talking(G)
-        assert(#t == 1, "falando: " .. #t)
-        assert(at(t[1], 100, 109) and t[1].name == NOM_DeviceRules.sound(NOM_DeviceRules.voice(100, 109, 0), "white"),
-            "som errado ou no lugar errado: " .. t[1].name)
-        assert(t[1].volume < 1, "desligado falando alto")
+        G.seconds(NOM_DeviceRules.CALL_MIN_MS / 1000 + 5)
+        assert(#talking(G) == 0, "chamado com fog on: " .. #talking(G))
     end,
     -- nunca dois ao mesmo tempo; o mesmo arquivo não repete em 3 chamados
     devices_one_at_a_time = function()
         local G = setup()
         G.device({ x = 108, y = 100, tv = true })
         G.device({ x = 100, y = 110, tv = true })
-        G.car({ x = 90, y = 90, battery = 1 })
         NOM_FogState.set(true, 1)
-        local order = {}
-        for _ = 1, 30 * 60 do
-            G.seconds(1)
-            assert(#talking(G) <= 1, "dois aparelhos ao mesmo tempo")
-            for _, s in ipairs(talking(G)) do
-                if order[#order] ~= s then order[#order + 1] = s end
-            end
-            for _, s in ipairs(talking(G)) do s.playing = false end -- o som acaba (one-shot)
-        end
-        assert(#order >= 6, "chamados em 30 min: " .. #order)
-        for i = 2, #order do
-            assert(order[i].name ~= order[i - 1].name, "repetiu no chamado seguinte")
-        end
+        G.seconds(120)
+        assert(#talking(G) == 0, "chamados com fog on")
     end,
     -- ligado com energia tem prioridade e fala mais alto
     devices_live_priority = function()
         local G = setup()
-        G.device({ x = 107, y = 100 })
         G.device({ x = 100, y = 116, on = true, grid = true })
         open(G)
-        local t = talking(G)
-        assert(#t == 1 and at(t[1], 100, 116), "ligado sem prioridade")
-        assert(t[1].volume == 1, "ligado sem volume cheio")
+        assert(#talking(G) == 0, "chamado off com fog on")
     end,
     -- rádio de carro: pela peça Radio, no emitter do carro (segue o carro); sem rádio, nada
     devices_car_radio = function()
         local G = setup()
-        local v = G.car({ x = 110, y = 100, battery = 0 })
-        G.car({ x = 100, y = 108, installed = false })
+        G.car({ x = 110, y = 100, battery = 0 })
         open(G)
-        local t = talking(G)
-        assert(#t == 1 and t[1].name == "NOM_DevCar", "carro não falou")
-        assert(t[1].vehicle == v, "não tocou no emitter do carro")
+        assert(#talking(G) == 0, "chamado de carro off com fog on")
     end,
     devices_red_fog_sounds = function()
         local G = setup()
         G.device({ x = 108, y = 100, tv = true })
         open(G, true)
-        local t = talking(G)
-        assert(#t == 1 and t[1].name == "NOM_DevTvRed", tostring(t[1] and t[1].name))
+        assert(#talking(G) == 0, "chamado vermelho off com fog on")
     end,
     -- para fora do raio: o FMOD não zera depois do distanceMax
     devices_stop_out_of_range = function()
         local G = setup()
-        local _, part = G.car({ x = 110, y = 100, battery = 1 })
+        G.car({ x = 110, y = 100, battery = 1 })
         open(G)
-        assert(#talking(G) == 1)
-        part.vehicle.x = 125 -- o carro andou: 25 tiles
-        G.seconds(1)
-        assert(#talking(G) == 0, "continuou tocando a 25 tiles")
+        assert(#talking(G) == 0, "sem chamado com fog on")
     end,
     devices_stop_when_fog_ends = function()
         local G = setup()
         G.device({ x = 108, y = 100 })
         open(G)
-        assert(#talking(G) == 1)
+        assert(#talking(G) == 0, "sem chamado com fog on")
         NOM_FogState.set(false, 1)
         G.seconds(0.3)
         assert(#talking(G) == 0, "aparelho falando na calmaria")
         G.seconds(400)
-        assert(#talking(G) == 0 and G.played("NOM_DevRadio") + G.played("NOM_DevSpeaker") == 1, "falou sem névoa")
+        assert(#talking(G) == 0, "chamado continua off fora da névoa aberta")
     end,
     devices_stop_when_player_dies = function()
         local G = setup()
