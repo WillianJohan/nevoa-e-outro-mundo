@@ -5,9 +5,15 @@ local FILE = "mod/42/media/lua/client/NOM_AmbientScream.lua"
 local function setup(opts)
     opts = opts or {}
     local G = W.new(opts)
-    G.reload({ "NOM_FogState", "NOM_AmbientScreamRules", "NOM_AmbientScream", "NOM_Config" })
+    G.reload({ "NOM_FogState", "NOM_ScreamGaps", "NOM_ScreamGateRules", "NOM_AmbientScreamRules", "NOM_AmbientScream", "NOM_Config" })
     require "NOM_Config"
+    require "NOM_ScreamGaps"
+    require "NOM_ScreamGateRules"
+    NOM_ScreamGaps.setAmbient(30000, 500000)
+    NOM_ScreamGaps.setMonster(45000, 180000)
+    NOM_ScreamGateRules.clientNextAt = nil
     require "NOM_AmbientScreamRules"
+    NOM_AmbientScreamRules.syncGapRoll()
     -- G.rolls: sorteios em ordem (um por chamada); acabou, G.rand (igual test_sonar).
     ZombRand = function(n)
         if G.rolls and #G.rolls > 0 then return table.remove(G.rolls, 1) % n end
@@ -98,8 +104,11 @@ return {
         -- 1º schedule: roll 0 → min; play usa 3 rolls (pick/dist/bearing); 2º schedule: max
         G.rolls = {
             0, -- schedule 1 (gap min)
+            0, -- claimClient
             0, 0, 0, -- play: pick, dist, bearing
             A.GAP_ROLL - 1, -- schedule 2 (gap max)
+            0, -- claimClient segundo grito
+            0, 0, 0,
         }
         NOM_FogState.set(true, 1)
         ambientTick(G) -- agenda min

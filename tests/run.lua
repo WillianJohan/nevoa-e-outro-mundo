@@ -42,6 +42,8 @@ local FILES = {
     "tests/test_variant_wardrobe.lua",
     "tests/test_color_identity_rules.lua",
     "tests/test_carpideira_rules.lua",
+    "tests/test_scream_gaps.lua",
+    "tests/test_scream_gate_rules.lua",
     "tests/test_variant_ai.lua",
     "tests/test_wander_rules.lua",
     "tests/test_wander.lua",

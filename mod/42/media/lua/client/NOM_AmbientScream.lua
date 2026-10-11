@@ -7,12 +7,15 @@ if isServer() then return end
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_AmbientScreamRules"
+require "NOM_ScreamGateRules"
 
 NOM_AmbientScream = {
     UPDATE_TICKS = 20,
 }
 local S = NOM_AmbientScream
 local A = NOM_AmbientScreamRules
+local SG = NOM_ScreamGateRules
+local MODULE = "NevoaEOutroMundo"
 
 local nextAt -- timestamp do próximo grito (nil = ainda não agendou)
 local ticks = 0
@@ -33,12 +36,17 @@ function S.play(p)
     if not p or p:isDead() then return nil end
     local c = color()
     if not A.enabled(NOM_Config.get("FogAmbience"), c) then return "ambiente off" end
+    local now = getTimestampMs()
+    local gap = SG.claimClient(now, ZombRand(10001) / 10000)
+    if gap == nil then return "ambiente gap" end
     local name = A.pick(ZombRand(#A.SOUNDS))
     local dist = A.distance(c, ZombRand(A.DIST[c].max - A.DIST[c].min + 1))
     local bearing = A.bearing(ZombRand(360))
     local x, y = A.spot(p:getX(), p:getY(), dist, bearing)
     local z = p:getZ()
     getWorld():getFreeEmitter(x, y, z):playSoundImpl(name, false, nil)
+    SG.logPlayed("ambient", gap, SG.clientNextAt)
+    sendClientCommand(MODULE, "screamGateBump", { nextAt = SG.clientNextAt })
     if getDebug() then
         print("[NOM] ambient scream " .. name .. " dist=" .. dist .. " cor=" .. c)
     end
@@ -69,7 +77,9 @@ local function onTick()
         return
     end
     if now < nextAt then return end
-    S.play(p)
+    if not SG.readyClient(now) then return end
+    local msg = S.play(p)
+    if msg == "ambiente gap" then return end
     schedule(now, c)
 end
 

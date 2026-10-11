@@ -1,5 +1,8 @@
 -- Gritos ambiente (sprint 0048 + hotfix 0063): regra pura shared/NOM_AmbientScreamRules.lua.
+require "NOM_ScreamGaps"
+NOM_ScreamGaps.setAmbient(30000, 500000)
 require "NOM_AmbientScreamRules"
+NOM_AmbientScreamRules.syncGapRoll()
 local A = NOM_AmbientScreamRules
 
 local function near(a, b) return math.abs(a - b) < 1e-9 end
