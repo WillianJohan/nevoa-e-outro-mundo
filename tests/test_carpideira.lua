@@ -43,32 +43,21 @@ local function counted(z)
 end
 
 return {
-    -- calma, ela soluça: som local no emitter dela, um loop só (não recomeça a cada varredura)
-    carpideira_sobs_locally_while_calm = function()
+    -- hotfix 2026-10-11: soluço (música do mod) off com névoa aberta; acordar continua
+    carpideira_no_sob_while_fog_open = function()
         local G = setup()
-        local z = G.carpideira({ x = 0, y = 0 })
+        G.carpideira({ x = 0, y = 0 })
         G.player({ x = 10, y = 0 })
         G.scan()
-        local s = G.playing(NOM_Carpideira.SOB)
-        assert(#s == 1 and s[1].src == z, "não soluçou")
+        assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço com fog on")
         G.scan()
-        G.scan()
-        assert(G.played(NOM_Carpideira.SOB) == 1, "recomeçou o loop: " .. G.played(NOM_Carpideira.SOB))
-        -- loop cortado pelo jogo: toca de novo
-        s[1].playing = false
-        G.scan()
-        assert(#G.playing(NOM_Carpideira.SOB) == 1)
-        -- zumbi comum não soluça
-        G.zombie({ x = 3, y = 3, id = ID + 1 })
-        G.scan()
-        assert(#G.playing(NOM_Carpideira.SOB) == 1)
+        assert(G.played(NOM_Carpideira.SOB) == 0)
     end,
     -- o soluço para no grito, no fim da névoa, na morte e quando ela sai do mundo
     carpideira_sob_stops_on_scream_fog_end_and_unload = function()
         local G = setup()
         local z = G.carpideira({ x = 0, y = 0 })
         G.player({ x = 10, y = 0 })
-        G.scan()
         NOM_Carpideira.scream(z, nil)
         assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço depois do grito")
         local screams = 0
@@ -80,7 +69,6 @@ return {
         local G2 = setup()
         G2.carpideira({ x = 0, y = 0 })
         G2.player({ x = 10, y = 0 })
-        G2.scan()
         NOM_FogState.set(false, 1)
         G2.scan()
         assert(#G2.playing(NOM_Carpideira.SOB) == 0, "soluço depois da névoa")
@@ -88,7 +76,6 @@ return {
         local G3 = setup()
         local z3 = G3.carpideira({ x = 0, y = 0 })
         G3.player({ x = 10, y = 0 })
-        G3.scan()
         z3:removeFromWorld() -- foi pro virtual: o emitter não para sozinho
         G3.scan()
         assert(#G3.playing(NOM_Carpideira.SOB) == 0, "loop preso de quem descarregou")
@@ -96,7 +83,6 @@ return {
         local G4 = setup()
         local z4 = G4.carpideira({ x = 0, y = 0 })
         G4.player({ x = 10, y = 0 })
-        G4.scan()
         z4.dead = true
         G4.scan()
         assert(#G4.playing(NOM_Carpideira.SOB) == 0, "morta soluçando")
@@ -188,19 +174,11 @@ return {
     -- Só soluça quem está a até SOB_RANGE de um jogador local; longe, para.
     carpideira_sob_only_near_a_local_player = function()
         local G = setup()
-        local near = G.carpideira({ x = 0, y = 0 })
-        local far = G.carpideira({ x = 40, y = 0, id = ID + 2 })
-        local p = G.player({ x = 10, y = 0 })
+        G.carpideira({ x = 0, y = 0 })
+        G.carpideira({ x = 40, y = 0, id = ID + 2 })
+        G.player({ x = 10, y = 0 })
         G.scan()
-        local s = G.playing(NOM_Carpideira.SOB)
-        assert(#s == 1 and s[1].src == near, "soluçou longe de todo mundo: " .. #s)
-        p.x = 40 - NOM_Carpideira.SOB_RANGE - 1 -- longe das duas
-        G.scan()
-        assert(#G.playing(NOM_Carpideira.SOB) == 0, "não parou quem ficou longe")
-        p.x = 30
-        G.scan()
-        s = G.playing(NOM_Carpideira.SOB)
-        assert(#s == 1 and s[1].src == far)
+        assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço com fog on (hotfix música)")
     end,
     -- review: um aviso por varredura (o servidor aceita um por segundo por jogador:
     -- vários de uma vez atrasariam o enésimo); a outra vai na varredura seguinte
@@ -226,7 +204,7 @@ return {
         NOM_FogState.set(false, 1)
         NOM_FogState.set(true, 2)
         G.scan()
-        assert(#G.playing(NOM_Carpideira.SOB) == 1, "fúria passou pra névoa seguinte")
+        assert(#G.playing(NOM_Carpideira.SOB) == 0, "soluço continua off com fog on")
     end,
 
     -- sprint 0017: o servidor marca o ID sem o bit do chapéu; ela com o bit continua furiosa
@@ -265,19 +243,11 @@ return {
         assert(NOM_Carpideira.walking[z] == nil and z.useless == true, "não parou ao chegar")
     end,
 
-    -- sprint 0052: volume do soluço sobe perto
+    -- volume do soluço: coberto por NOM_CarpideiraRules.sobVolume; loop off com fog on (hotfix)
     carpideira_sob_volume_by_distance = function()
-        local G = setup()
-        local z = G.carpideira({ x = 0, y = 0 })
-        local p = G.player({ x = 10, y = 0 })
-        G.scan()
-        local s = G.playing(NOM_Carpideira.SOB)
-        assert(#s == 1)
-        local farVol = s[1].volume
-        p.x = 2
-        G.scan()
-        s = G.playing(NOM_Carpideira.SOB)
-        assert(#s == 1 and s[1].volume > farVol, "volume não subiu: " .. farVol .. " -> " .. s[1].volume)
+        require "NOM_CarpideiraRules"
+        local R = NOM_CarpideiraRules
+        assert(R.sobVolume(R.SOB_FAR) < R.sobVolume(R.SOB_NEAR))
     end,
 
 }

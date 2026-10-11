@@ -60,6 +60,7 @@ local FILES = {
     "tests/test_variants.lua",
     "tests/test_semrosto_rules.lua",
     "tests/test_atmosphere_rules.lua",
+    "tests/test_atmosphere_mod_music.lua",
     "tests/test_screen_fx_rules.lua",
     "tests/test_glitch_channel.lua",
     "tests/test_semrosto_face.lua",
