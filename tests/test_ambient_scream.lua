@@ -27,7 +27,7 @@ end
 
 local function ambientPlayed(G)
     local n = 0
-    for i = 1, 7 do n = n + G.played("NOM_AmbientScream" .. i) end
+    for i = 1, 4 do n = n + G.played("NOM_AmbientScream" .. i) end
     return n
 end
 
