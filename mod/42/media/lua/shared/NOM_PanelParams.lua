@@ -74,8 +74,9 @@ P.SCHEMA = {
     EstaladorGapMaxMs = { type = "int", min = 500, max = 120000, step = 100, section = "estalador" },
     AmbientGapMinMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
     AmbientGapMaxMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
-    CarpideiraScreamGapMinMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
-    CarpideiraScreamGapMaxMs = { type = "int", min = 1000, max = 900000, step = 1000, section = "sons" },
+    -- Floor = NOM_ScreamGaps.monsterMin (45 s): evita 1 s acidental ao arrastar no painel.
+    CarpideiraScreamGapMinMs = { type = "int", min = 45000, max = 900000, step = 1000, section = "sons" },
+    CarpideiraScreamGapMaxMs = { type = "int", min = 45000, max = 900000, step = 1000, section = "sons" },
     CinzaRateMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     CinzaDensityMult = { type = "float", min = 0, max = 3, step = 0.1, section = "cinzas" },
     LookForce = { type = "enum", values = P.LOOK_ARCHETYPES, section = "look" },

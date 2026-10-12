@@ -70,6 +70,7 @@ return {
         assert(P.set("AmbientGapMinMs", 200000) == 120000)
         P.set("AmbientGapMinMs", 30000)
         assert(P.set("AmbientGapMaxMs", 20000) == 30000)
+        assert(P.set("CarpideiraScreamGapMinMs", 1000) == 45000) -- SCHEMA min = monsterMin
         P.set("CarpideiraScreamGapMaxMs", 90000)
         assert(P.set("CarpideiraScreamGapMinMs", 120000) == 90000)
         P.set("CarpideiraScreamGapMinMs", 45000)
