@@ -123,6 +123,26 @@ return {
         assert(R.loopSound(true) == "NOM_AlmaCrawl")
     end,
 
+    -- Sprint 0069: nascer e sumir de cada alma ficam só no visual; som só no grupo da leva.
+    alma_fx_sound_only_group = function()
+        assert(R.fxSound("group") == "NOM_AlmaGroup")
+        assert(R.fxSound("spawn") == nil, "spawn sem som")
+        assert(R.fxSound("despawn") == nil, "despawn sem som")
+        assert(R.fxSound("outro") == nil)
+    end,
+
+    alma_group_sound_gap = function()
+        assert(R.GROUP_SOUND_GAP_MS >= 30000, "grupo espaçado: " .. R.GROUP_SOUND_GAP_MS)
+        local now = 1000000
+        assert(R.groupSoundDue(nil, now) == true, "primeiro grupo toca")
+        assert(R.groupSoundDue(now - R.GROUP_SOUND_GAP_MS + 1, now) == false, "antes do intervalo")
+        assert(R.groupSoundDue(now - R.GROUP_SOUND_GAP_MS, now) == true, "no intervalo")
+    end,
+
+    alma_event_sound_spaced = function()
+        assert(R.SOUND_EVENT_MS >= 60000, "gemido de evento espaçado: " .. R.SOUND_EVENT_MS)
+    end,
+
     alma_colors_default_all_on = function()
         R.reset()
         assert(R.colorEnabled("white") and R.colorEnabled("red") and R.colorEnabled("black"))

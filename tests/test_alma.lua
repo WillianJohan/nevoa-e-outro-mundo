@@ -294,6 +294,37 @@ return {
         assert(despawn >= n, "despawn fx")
     end,
 
+    -- Sprint 0069: leva a cada TICK_MS, mas o grupo (som) só a cada GROUP_SOUND_GAP_MS.
+    alma_group_fx_spaced = function()
+        local G = setup({ fog = true })
+        G.player(70, 70, 0)
+        G.fillOutside(70, 70, 0)
+        local function groups()
+            local n = 0
+            for _, a in ipairs(G.fx) do if a.kind == "group" then n = n + 1 end end
+            return n
+        end
+        local function emptyAndTick()
+            for _, e in ipairs(NOM_AlmaServer.alive) do e.z.dead = true end
+            NOM_AlmaServer.nextAt = G.time
+            G.fire("OnTick")
+        end
+        G.fire("OnTick")
+        assert(groups() == 1, "primeira leva com grupo: " .. groups())
+        G.time = G.time + NOM_AlmaRules.TICK_MS
+        emptyAndTick()
+        assert(#NOM_AlmaServer.alive > 0, "segunda leva spawnou")
+        assert(groups() == 1, "segunda leva logo depois sem grupo: " .. groups())
+        G.time = G.time + NOM_AlmaRules.GROUP_SOUND_GAP_MS
+        emptyAndTick()
+        assert(groups() == 2, "grupo volta depois do intervalo: " .. groups())
+        -- debug (botão "Leva de almas") sempre toca, pra dar pra ouvir no teste
+        for _, e in ipairs(NOM_AlmaServer.alive) do e.z.dead = true end
+        NOM_AlmaServer.alive = {}
+        NOM_AlmaServer.wave("debug")
+        assert(groups() == 3, "debug ignora o intervalo: " .. groups())
+    end,
+
     alma_interior_despawns = function()
         local G = setup({ fog = true })
         G.player(10, 10, 0)

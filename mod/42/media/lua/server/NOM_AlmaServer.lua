@@ -11,7 +11,8 @@ require "NOM_Players"
 local MODULE = "NevoaEOutroMundo"
 local R = NOM_AlmaRules
 
-NOM_AlmaServer = { nextAt = nil, waves = 0, alive = {}, pendingBorn = {} }
+-- groupAt: quando tocou o último gemido de grupo (R.groupSoundDue).
+NOM_AlmaServer = { nextAt = nil, waves = 0, alive = {}, pendingBorn = {}, groupAt = nil }
 local S = NOM_AlmaServer
 
 local function debugLog(msg)
@@ -116,17 +117,19 @@ local function spawnOne(px, py, pz, now, quiet, world)
     return z
 end
 
-local function spawnForCluster(cluster, n, now, world)
+-- loud: a leva de debug toca o grupo mesmo dentro do intervalo.
+local function spawnForCluster(cluster, n, now, world, loud)
     if n <= 0 or #cluster == 0 then return 0 end
     local spawned = 0
-    local groupFx = false
+    local groupDone = not (loud or R.groupSoundDue(S.groupAt, now))
     for i = 1, n do
         local p = cluster[1 + ((i - 1) % #cluster)]
         if spawnOne(p.x, p.y, p.z, now, true, world) then
             spawned = spawned + 1
-            if not groupFx then
+            if not groupDone then
                 fx("group", math.floor(p.x), math.floor(p.y), math.floor(p.z))
-                groupFx = true
+                groupDone = true
+                S.groupAt = now
             end
         end
     end
@@ -164,7 +167,7 @@ function S.wave(why)
             need = math.min(need, 8)
         end
         if need > 0 then
-            spawned = spawned + spawnForCluster(cluster, need, now, world)
+            spawned = spawned + spawnForCluster(cluster, need, now, world, why == "debug")
         end
     end
     if spawned > 0 then
