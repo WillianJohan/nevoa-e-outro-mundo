@@ -51,11 +51,15 @@ local SIZE = {
     ["skinned\\clothes\\m_weddingveil"] = 128,       -- Clothes/Hat/WeddingVeil.png
     [""] = 256,                                       -- camada no corpo: Dress_Textures/HospitalGown.png
     ["media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X"] = 256, -- Clothes/Hazmat/Hazmat_Yellow.png
+    ["skinned\\clothes\\bob_boilersuit"] = 256,               -- Clothes/BolierSuit/Boilersuit_Grey.png
+    ["skinned\\hair\\m_balaclavafull"] = 128,                 -- NOM_EmbrulhadaBalaclava (K2 caminho A)
     -- modelos nossos (scripts/gen_models.py, sprints 0041 e 0042): textura nossa, 128 como as outras peças
     ["static\\clothes\\NOM_M_EstaladorVenda"] = 128,
     ["static\\clothes\\NOM_M_CorredorBoca"] = 128,
     ["static\\clothes\\NOM_M_SemRostoEstatica"] = 128,
     ["static\\clothes\\NOM_M_CarpideiraCabelo"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraCapuz"] = 128,
+    ["static\\clothes\\NOM_M_CarpideiraLaco"] = 128,
     ["static\\clothes\\NOM_M_TicaoCrosta"] = 128,
 }
 
@@ -63,7 +67,8 @@ local SIZE = {
 -- activeFileMap em minúsculas (FileTask_AbstractLoadModel + ZomboidFileSystem.getString,
 -- pz-api-notes §32): o caminho tem que bater ignorando caixa.
 local OWN_MODELS = {}
-for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "TicaoCrosta" }) do
+for _, piece in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo",
+    "CarpideiraCapuz", "CarpideiraLaco", "TicaoCrosta" }) do
     for _, sex in ipairs({ "M", "F" }) do
         OWN_MODELS["static\\clothes\\NOM_" .. sex .. "_" .. piece] = "models_X/Static/Clothes/NOM_" .. sex .. "_" .. piece .. ".x"
     end
@@ -71,7 +76,11 @@ end
 
 -- Sprint 0018: gêmeo *Fx de cada peça com o shader do dissolve (a original fica sem,
 -- pra opção desligada e pro shader que não compila) e a casca do Eco.
-local FX = { "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo", "NOM_TicaoCrosta", "NOM_EcoVeu" }
+-- I1/I7: só gêmeos *Fx de peça com modelo (sem Manto/Roupa 2D).
+local FX = {
+    "NOM_EstaladorVenda", "NOM_CorredorBoca", "NOM_SemRostoEstatica", "NOM_CarpideiraCabelo",
+    "NOM_CarpideiraCapuz", "NOM_CarpideiraLaco", "NOM_TicaoCrosta", "NOM_EcoVeu",
+}
 local HAZMAT = "/mnt/stuff/steam/steamapps/common/ProjectZomboid/projectzomboid/media/clothing/clothingItems/HazmatSuit.xml"
 
 local function xmlOf(name) return read(MEDIA .. "clothing/clothingItems/" .. name .. ".xml") end
@@ -96,7 +105,7 @@ return {
             local w, h = pngSize(MEDIA .. "textures/" .. tex:gsub("\\", "/") .. ".png")
             assert(w == SIZE[model] and h == SIZE[model], ci .. ": textura " .. w .. "x" .. h)
         end
-        assert(n == 15, "esperava 15 itens, achou " .. n)
+        assert(n == 25, "esperava 25 itens (+BrasaCasca×2), achou " .. n)
     end,
 
     -- sprint 0041: modelo do mod (NOM_ no nome) existe no mod no caminho que o jogo monta
@@ -116,7 +125,8 @@ return {
                 end
             end
         end
-        assert(n == 20, "esperava 5 peças e os gêmeos Fx nos dois sexos, achou " .. n)
+        -- Capuz K2 caminho A = balaclava vanilla (não conta como modelo NOM_); 24 = 6×2×2.
+        assert(n == 24, "esperava 6 peças e os gêmeos Fx nos dois sexos, achou " .. n)
     end,
 
     look_assets_guids_unique = function()
@@ -127,11 +137,14 @@ return {
         end
     end,
 
-    -- pele: mesmo tamanho da pele de zumbi vanilla (Body/M_ZedBody01_level1.png, 256)
+    -- pele em uso (I7): só Tição; mesmo tamanho da pele vanilla (256)
     look_assets_skins = function()
-        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira", "NOM_Ticao" }) do
-            local w, h = pngSize(MEDIA .. "textures/Body/" .. skin .. ".png")
-            assert(w == 256 and h == 256, skin .. " " .. w .. "x" .. h)
+        local w, h = pngSize(MEDIA .. "textures/Body/NOM_Ticao.png")
+        assert(w == 256 and h == 256, "NOM_Ticao " .. w .. "x" .. h)
+        for _, skin in ipairs({ "NOM_Estalador", "NOM_Corredor", "NOM_Carpideira", "NOM_SemRosto" }) do
+            local f = io.open(MEDIA .. "textures/Body/" .. skin .. ".png", "rb")
+            assert(f == nil, skin .. " morta ainda no repo (I7)")
+            if f then f:close() end
         end
     end,
 
@@ -146,9 +159,10 @@ return {
 
     -- rodar o gerador de novo não muda um byte das texturas do visual (semente fixa)
     look_assets_deterministic = function()
-        local paths = {}
-        for _, n in ipairs({ "Estalador", "Corredor", "Carpideira", "Ticao" }) do paths[#paths + 1] = "textures/Body/NOM_" .. n .. ".png" end
-        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "CarpideiraCabelo", "EcoCinza", "EcoVeu", "Brasa" }) do
+        local paths = { "textures/Body/NOM_Ticao.png" }
+        for _, n in ipairs({ "EstaladorVenda", "CorredorBoca", "SemRostoEstatica", "SemRostoRosto",
+            "CarpideiraCabelo", "CarpideiraManto", "CorredorRisco", "EcoCinza", "EcoVeu", "Brasa",
+            "EmbrulhadaCasca" }) do
             paths[#paths + 1] = "textures/NOM/NOM_" .. n .. ".png"
         end
         local before = {}
@@ -205,15 +219,14 @@ return {
         assert(items().NOM_EcoCasca:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a cinza)")
     end,
 
-    -- sprint 0022: a casca de brasa do corpo inteiro na mutação. A mesma malha Hazmat da casca do
-    -- Eco, mas SEM máscara (o buraco da queima tem de mostrar o monstro embaixo, não o fundo),
-    -- textura de carvão e brasa do mod, o shader do dissolve, no lugar multi-item (não expulsa
-    -- nada no DoZombieInventory) e sem BloodLocation (getBodyPartClothingDefense e o som de
-    -- armadura pulam o item: nenhum efeito de jogo enquanto queima).
+    -- sprint 0022 / 0067: casca de brasa da mutação em BoilerSuit (sem hood Hazmat —
+    -- hood empilhava na crosta e inflava a silhueta). SEM máscara (buraco mostra o monstro),
+    -- shader dissolve, zeddmg multi-item, sem BloodLocation.
     look_assets_ember_shell = function()
         local x = xmlOf("NOM_Brasa")
-        assert(tag(x, "m_MaleModel") == "media\\models_X\\Skinned\\Clothes\\Bob_Hazmat.X")
-        assert(tag(x, "m_FemaleModel") == "media\\models_X\\Skinned\\Clothes\\Kate_Hazmat.X")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
+            "mutação também BoilerSuit (sem hood)")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
         assert(tag(x, "m_Shader") == "NOM_Dissolve", "casca sem o shader")
         assert(tag(x, "textureChoices") == "NOM\\NOM_Brasa")
         assert(not x:find("<m_Masks>", 1, true), "máscara esconderia o monstro embaixo da casca")
@@ -222,5 +235,49 @@ return {
         assert(body:find("BodyLocation = base:zeddmg", 1, true), "casca fora do zeddmg (expulsaria a peça)")
         assert(not body:find("BloodLocation", 1, true), "casca com BloodLocation viraria armadura")
         assert(not body:find("Defense", 1, true), "casca com defesa")
+    end,
+
+    -- 0067: casca permanente BoilerSuit + fissuras α + shader NOM_Brasa (+ gêmeo estático).
+    look_assets_brasa_casca = function()
+        local x = xmlOf("NOM_BrasaCasca")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
+        assert(tag(x, "m_Shader") == "NOM_Brasa")
+        assert(tag(x, "textureChoices") == "NOM\\NOM_BrasaCasca")
+        assert(tag(x, "m_AllowRandomTint") == "true", "pulso via TintColour precisa AllowRandomTint")
+        -- Sobreposição (look-brasa): textura ≥70% α0; máscara de corpo furaria o monstro
+        -- (playtest 01/03 transparente). Igual NOM_Brasa da mutação: sem m_Masks.
+        assert(not x:find("<m_Masks>", 1, true),
+            "máscara + fissuras transparentes = monstro vazado")
+        local st = xmlOf("NOM_BrasaCascaStatic")
+        assert(tag(st, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit")
+        assert(not st:find("<m_Shader>", 1, true), "estático não leva shader")
+        assert(not st:find("<m_Masks>", 1, true), "estático também sem máscara")
+        assert(items().NOM_BrasaCasca:find("BodyLocation = base:zeddmg", 1, true))
+        assert(items().NOM_BrasaCascaStatic:find("BodyLocation = base:zeddmg", 1, true))
+        assert(io.open("mod/42/media/textures/NOM/NOM_BrasaCasca.png", "rb"), "textura casca")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa.frag", "r"), "frag")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa.vert", "r"), "vert")
+        assert(io.open("mod/42/media/shaders/NOM_Brasa_static.vert", "r"), "static vert")
+    end,
+
+    -- 0064 K2 caminho A: balaclava vanilla + casca BoilerSuit com máscaras Hazmat (sem hood)
+    look_assets_embrulhada_shell = function()
+        local x = xmlOf("NOM_EmbrulhadaCasca")
+        assert(tag(x, "m_MaleModel") == "skinned\\clothes\\bob_boilersuit",
+            "corpo BoilerSuit (Hazmat hood = ovo)")
+        assert(tag(x, "m_FemaleModel") == "skinned\\clothes\\kate_boilersuit")
+        assert(tag(x, "textureChoices") == "NOM\\NOM_EmbrulhadaCasca")
+        local masks = {}
+        for m in x:gmatch("<m_Masks>(%d+)</m_Masks>") do masks[#masks + 1] = m end
+        assert(#masks == 14, "máscaras corpo (como Hazmat): " .. #masks)
+        assert(items().NOM_EmbrulhadaCasca:find("BodyLocation = base:zeddmg", 1, true))
+        local cap = xmlOf("NOM_CarpideiraCapuz")
+        assert(tag(cap, "m_MaleModel") == "skinned\\hair\\m_balaclavafull", "caminho A: balaclava")
+        assert(tag(cap, "m_FemaleModel") == "skinned\\hair\\f_balaclavafull")
+        assert(tag(cap, "m_Static") == "false", "balaclava é skinned, não static 3D")
+        assert(tag(cap, "textureChoices") == "NOM\\NOM_EmbrulhadaBalaclava")
+        assert(tag(cap, "m_HatCategory") == "nohairnobeard")
+        assert(io.open("mod/42/media/textures/NOM/NOM_EmbrulhadaBalaclava.png", "rb"), "textura balaclava")
     end,
 }

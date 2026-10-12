@@ -11,7 +11,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 
 - Clima dark
 - Noite: mais rápidos (`NightFaster`) · sentidos aguçados (`NightSharperSenses`) · caça ativa (`NightHunt`), todos padrão ligado
-- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`), todos padrão ligado
+- Monstros: Estalador (`EstaladorEnabled`) · Corredor (`CorredorEnabled`) · Sem-rosto (`SemRostoEnabled`) · Carpideira (`CarpideiraEnabled`) · Eco (`EcoEnabled`) · Almas (`AlmaEnabled`, sprint 0055: ciclo 4–20 em qualquer névoa), todos padrão ligado
 - Névoa vermelha (`RedFogEnabled`, padrão ligado): parte das névoas vem vermelha, com sirene própria, e todo zumbi nela é monstro ([monsters.md](monsters.md#regra-geral))
 - Curva de tensão (`FogEscalation`, padrão ligado, sprint 0019): a névoa começa mais rara e a vermelha mais fraca, e as duas apertam com os dias do save ([abaixo](#curva-de-tensão-sprint-0019))
 - Névoa (evento com sirene, sem toggle: `FogDailyChance` baixa e `FogMaxDaysWithout` alto deixam rara): som ambiente (`FogAmbience`) · sangue e erosão no chão e nas paredes (`FogOverlays`; a quantidade é opção de cada jogador, Opções > Mods, sprint 0015; anexado ao mapa e tirado antes do save desde a 0023) · vinheta (`FogVignette`), todos padrão ligado
@@ -27,6 +27,9 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `FogMinHours` (3), `FogMaxHours` (5), faixa 0.5–48 horas de jogo: duração da **branca**, sorteada entre as duas (invertidas, o jogo troca) | [world-states.md](world-states.md) |
 | `RedFogMinHours` (4), `RedFogMaxHours` (6), faixa 0.5–48 horas de jogo: duração da **vermelha** | [world-states.md](world-states.md) |
 | `FogCalmHours` (2, faixa 0–24 horas de jogo): calmaria depois da névoa, com o zumbi comum um degrau mais lento e de sentidos reduzidos; 0 desliga | [world-states.md](world-states.md) |
+| `FogBaseHeight` (1,0, faixa 0,2–1,2 andares): altura do mar de névoa no chão (sprint 0047; playtest Johan) | [proximos-passos-refinamento.md](../proximos-passos-refinamento.md) §3.4 |
+| `FogPocketAggression` (1, faixa 0–2): bolsões densos viajantes — 0 off, 1 raros/brutais, 2 Pesadelo (sprint 0047) | [proximos-passos-refinamento.md](../proximos-passos-refinamento.md) §3.4 |
+| `BlackFogPressure` (2, faixa 1–3): aperto da preta — 1 Leve, 2 Padrão, 3 Pesadelo (piscar, hold, caça, postes; sprint 0051) | [sprint-0051-aperto-preta](../sprints/sprint-0051-aperto-preta/README.md) |
 | `RedFogChance` (20, faixa 0–100 %): das névoas, quantas vêm vermelhas; sorteado uma vez por névoa pelo número dela e pela semente do save (recarregar não muda; cada save tem a sua agenda); **sem subida**: a curva é só da chance do dia (sprint 0033) | [monsters.md](monsters.md#regra-geral), [atmosphere.md](atmosphere.md#clima) |
 | `RedFogGraceDays` (7, faixa 0–60 dias de jogo): nenhuma vermelha antes disso; 0 desliga | [abaixo](#curva-de-tensão-sprint-0019) |
 | ~~`FogThreshold`~~ saiu na sprint 0009: a névoa não é mais lida do clima ([ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md)); save antigo com ela não dá erro (opção desconhecida é pulada) | — |
@@ -35,7 +38,7 @@ quando já decidido. Cada sprint adiciona as opções dos sistemas que entrega.
 | `NightSenseMult` (1.5, faixa 1–3, mesmos degraus; lanterna = 20 × valor tiles, a cada 5 minutos) | [night.md](night.md) |
 | `HuntIntervalMinutes` (90, faixa 10–720 minutos de jogo), `HuntRadius` (25 tiles, faixa 5–100) | [night.md](night.md) |
 | Sem multiplicador de dano: decisão do autor ([night.md](night.md#sem-força-e-sem-dano-à-noite)) | — |
-| `EstaladorChance` (5 %), `CorredorChance` (3 %), `SemRostoChance` (3 %), `CarpideiraChance` (3 %), faixa 0–100 cada, **por névoa** (14% somados): um sorteio só, faixas seguidas nessa ordem: somadas acima de 100, quem vem depois fica espremido (com o resto, ou zero) | [monsters.md](monsters.md#regra-geral) |
+| `EstaladorChance` (10), `CorredorChance` (6), `SemRostoChance` (3), `CarpideiraChance` (6), faixa 0–100 cada: **pesos relativos** na névoa branca (sprint 0049 / bíblia §7.3), renormalizados pra 100% (padrão ~40/24/12/24). Na vermelha o split é 2:3:1:2 (Sem-rosto 1/8; sobra pro Corredor). Tipo desligado → faixa vazia (comum). Painel: `SemRostoPct` live. | [monsters.md](monsters.md#regra-geral) |
 | `CorredorScreamRadius` (40 tiles, faixa 5–100) | [monsters.md](monsters.md#corredor) |
 | `CarpideiraTriggerRadius` (4 tiles, faixa 1–20): jogador a essa distância acorda, mesmo agachado (lanterna e barulho alto: 10 tiles, fixo); `CarpideiraScreamRadius` (50 tiles, faixa 5–100): alcance do grito | [monsters.md](monsters.md#carpideira) |
 | `FogVignetteIntensity` (1.0, faixa 0–2; 0 desliga) | [atmosphere.md](atmosphere.md#vinheta-só-na-névoa) |
@@ -96,16 +99,17 @@ exatos de todas as opções da página "Névoa e Outro Mundo":
 
 - **Padrão — "o mundo tem horário":** névoa em 65% dos dias, subindo até 85% no dia 60, sem
   vermelha até o dia 7 (depois, 1 em 5), com garantia no terceiro dia, de 3 a 5 h (vermelha de
-  4 a 6 h) e 2 h de calmaria depois. 14% de monstros por névoa.
+  4 a 6 h) e 2 h de calmaria depois. Na branca, **100% monstros** com pesos 5:3:3:3
+  (sprint 0049).
 - **Leve — "primeira visita":** a noite muda o jeito de jogar sem virar corrida — os zumbis
   não ganham velocidade, a caça vem a cada 2 horas de perto, a névoa vem em 40% dos dias, sem
-  curva, com garantia só no quinto dia, de 2 a 4 horas e 3 de calmaria, com 9% de monstros;
-  vermelha rara (5%) e só depois de duas semanas.
+  curva, com garantia só no quinto dia, de 2 a 4 horas e 3 de calmaria; 100% monstros com
+  pesos mais leves (4:1:2:2); vermelha rara (5%) e só depois de duas semanas.
 - **Pesadelo — "a cidade é proibida":** dois degraus de velocidade e sentidos (arrastado vira
   corredor), caça a cada 45 minutos de longe, névoa em 85% dos dias e 95% já no dia 30,
-  com garantia no segundo dia e segunda névoa em 30% deles, de 4 a 7 horas e só 1 de calmaria,
-  com 21% de monstros (Carpideiras que acordam a 6 tiles e gritam pra 70); vermelha já no dia 3,
-  mais de uma em cada três, de 5 a 8 horas.
+  com garantia no segundo dia e segunda névoa em 30% deles, de 4 a 7 horas e só 1 de calmaria;
+  100% monstros com pesos mais pesados (6:5:5:5; Carpideiras que acordam a 6 tiles e gritam
+  pra 70); vermelha já no dia 3, mais de uma em cada três, de 5 a 8 horas.
 
 **Como usar:** o jogo não aceita preset vindo de mod. A lista de presets do menu tem
 os 5 vanilla fixos (`client/OptionScreens/SandboxOptions.lua:891-895`) e os `.cfg` da
@@ -190,5 +194,6 @@ histórico.
 | `FogEscalation` (nova) | — | ligado | 7 |
 | `RedFogGraceDays` (nova) | — | 7 | 7 |
 
-Monstros somados: 14% (5/3/3/3). O resto ficou como estava.
+Pesos padrão 5/3/3/3 (sprint 0019); desde a 0049 renormalizados pra **100%** na branca.
+O resto ficou como estava.
 

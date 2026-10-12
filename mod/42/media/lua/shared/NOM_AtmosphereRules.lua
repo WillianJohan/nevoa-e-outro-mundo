@@ -2,6 +2,13 @@
 -- testável com ./run-tests.sh.
 NOM_AtmosphereRules = {}
 
+-- “Música” do mod (chamados de TV/rádio + soluço loop da Carpideira): não compete
+-- com gritos nem com o drone. Decisão Johan 2026-10-11 — com a névoa de jogo aberta
+-- (NOM_FogState.on), só ambiente contínuo (drone, metal, estática) e one-shots.
+function NOM_AtmosphereRules.modMusicAllowed(fogOn)
+    return fogOn ~= true
+end
+
 -- Anda de cur até target em fadeMs de tempo real (fade linear, preso no alvo).
 function NOM_AtmosphereRules.approach(cur, target, dtMs, fadeMs)
     local step = dtMs / fadeMs

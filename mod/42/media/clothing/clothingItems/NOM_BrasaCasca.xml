@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 0067: casca de brasa permanente na preta — BoilerSuit (sem hood Hazmat).
+     Sobreposição: textura ≥70% transparente (só fissuras) + shader NOM_Brasa.
+     SEM m_Masks — máscara + α0 furava o monstro (playtest 01/03). AllowRandomTint
+     pro TintColour no vestir. -->
+<clothingItem>
+	<m_MaleModel>skinned\clothes\bob_boilersuit</m_MaleModel>
+	<m_FemaleModel>skinned\clothes\kate_boilersuit</m_FemaleModel>
+	<m_GUID>b7a6c5d4-e3f2-41a0-9b8c-7d6e5f4a3b21</m_GUID>
+	<m_Static>false</m_Static>
+	<m_AllowRandomHue>false</m_AllowRandomHue>
+	<m_AllowRandomTint>true</m_AllowRandomTint>
+	<m_AttachBone></m_AttachBone>
+	<textureChoices>NOM\NOM_BrasaCasca</textureChoices>
+	<m_Shader>NOM_Brasa</m_Shader>
+</clothingItem>

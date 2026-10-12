@@ -3,7 +3,11 @@
 -- função do persistentOutfitID do zumbi e do número do período de névoa (ADR-006). Servidor
 -- e clientes chegam à mesma resposta sem sincronizar nada, e ela sobrevive a
 -- recarregar o chunk ou o save.
+-- Sprint 0049: na névoa branca todo zumbi com outfit vira monstro; os pesos do
+-- sandbox (EstaladorChance etc.) são renormalizados pra 100%. Vermelha e preta
+-- já eram 100% (ADR-010 / 0038).
 require "NOM_Math"
+require "NOM_ColorIdentityRules"
 
 NOM_VariantRules = {}
 
@@ -13,8 +17,8 @@ NOM_VariantRules = {}
 -- clientes recebem o mesmo, então concordam (ADR-006).
 NOM_VariantRules.forced = {}
 
--- Grito do Corredor: no máximo um por zumbi a cada meia hora de jogo.
-NOM_VariantRules.SCREAM_COOLDOWN_HOURS = 0.5
+-- Grito do Corredor: alias do cooldown branco (identidade por cor, sprint 0049).
+NOM_VariantRules.SCREAM_COOLDOWN_HOURS = NOM_ColorIdentityRules.SCREAM_WHITE
 
 -- Mistura sem operadores de bit (Kahlua): quadrados módulo um primo Q < 2^26.
 -- Todo produto fica abaixo de 2^53 (h < Q + 31337, h² < 4.6e15), então a conta
@@ -36,9 +40,10 @@ end
 
 -- Ordem das faixas do sorteio. Uma variante nova entra NO FIM (a Carpideira entrou
 -- na sprint 0011): as faixas de antes não andam e cada zumbi continua o que era.
--- Na névoa vermelha (sprint 0010) a divisão é por #KINDS: a Carpideira re-dividiu
--- (1/3 virou 1/4), o que é a regra ("todos os tipos, por igual").
+-- Névoa vermelha (bíblia §7.3): pesos 2:3:1:2 (E:C:S:K) — Sem-rosto 1/8, a fatia
+-- que saiu do 1/4 antigo vai pro Corredor (vermelha = caça).
 NOM_VariantRules.KINDS = { "estalador", "corredor", "semrosto", "carpideira" }
+NOM_VariantRules.RED_WEIGHTS = { estalador = 2, corredor = 3, semrosto = 1, carpideira = 2 }
 local CHANCE = { estalador = "estaladorChance", corredor = "corredorChance", semrosto = "semRostoChance",
     carpideira = "carpideiraChance" }
 local ON = { estalador = "estaladorOn", corredor = "corredorOn", semrosto = "semRostoOn", carpideira = "carpideiraOn" }
@@ -57,11 +62,6 @@ end
 -- O mesmo hash serve o sangue do Outro Mundo (shared/NOM_DressingRules.lua, sprint 0015).
 NOM_VariantRules.Q = Q
 NOM_VariantRules.hash = hash
-
--- Sorteio 0–99 do zumbi no período n.
-local function roll(id, n)
-    return math.floor(hash(id, n, 0) / Q * 100)
-end
 
 -- Sais da névoa vermelha (sprint 0010): o sorteio do período e a divisão dos tipos
 -- não se correlacionam com o sorteio normal.
@@ -97,29 +97,94 @@ end
 
 -- Variante do zumbi no período de névoa (decisão do Johan, 05/10: todo monstro,
 -- menos o Eco, só existe na névoa). Um sorteio só, faixas contíguas na ordem de
--- KINDS: os tipos não se sobrepõem e o total é a soma das chances. A faixa de um
--- tipo desligado continua ocupando o lugar (desligar o Estalador não muda quem é
--- Corredor). period = número do período de névoa (nil = desconhecido). ID 0 é
--- zumbi sem outfit: todos iguais, nenhum vira variante.
--- red: névoa vermelha (sprint 0010): todo zumbi é variante, dividido por igual
--- entre KINDS por um segundo hash; a fatia de um tipo desligado fica comum.
+-- KINDS: os tipos não se sobrepõem. A faixa de um tipo desligado continua
+-- ocupando o lugar (desligar o Estalador não muda quem é Corredor). period =
+-- número do período de névoa (nil = desconhecido). ID 0 é zumbi sem outfit:
+-- todos iguais, nenhum vira variante.
+-- white (sprint 0049): 100% monstro; pesos do sandbox renormalizados
+-- (r = floor(hash/Q × soma das chances) nas faixas). Tipo desligado → comum.
+-- red: bíblia §7.3 — pesos RED_WEIGHTS; tipo desligado → comum.
 -- black: névoa preta (sprint 0038): todo zumbi é Tição, nem o forçado do debug vale (o
 -- Tição não está em KINDS: as faixas de sempre não andam).
 -- Devolve "estalador" | "corredor" | "semrosto" | "carpideira" | "ticao" | nil.
+-- LookForce / SemRostoPct do NOM.panel (0058/0061): live. Sem require fixo — o módulo
+-- shared/NOM_PanelParams.lua pode não estar carregado nos testes puros.
+local function panelLookKind()
+    if NOM_PanelParams == nil or NOM_PanelParams.lookKind == nil then return nil end
+    return NOM_PanelParams.lookKind()
+end
+
+-- SemRostoPct live: remapeia semRostoChance mantendo a razão dos outros pesos.
+local function whiteChances(cfg)
+    local out = {}
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        out[kind] = cfg[CHANCE[kind]] or 0
+    end
+    if NOM_PanelParams == nil or NOM_PanelParams.isLive == nil
+        or not NOM_PanelParams.isLive("SemRostoPct") then
+        return out
+    end
+    local pct = tonumber(NOM_PanelParams.get("SemRostoPct")) or 12
+    if pct < 0 then pct = 0 end
+    if pct > 100 then pct = 100 end
+    local others = 0
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        if kind ~= "semrosto" then others = others + out[kind] end
+    end
+    if pct >= 100 then
+        out.semrosto = others > 0 and others or 1
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            if kind ~= "semrosto" then out[kind] = 0 end
+        end
+        return out
+    end
+    if others <= 0 then
+        out.semrosto = pct > 0 and 1 or 0
+        return out
+    end
+    -- Escala inteira: others*(100-pct) + others*pct = others*100 → fração exata.
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        if kind ~= "semrosto" then out[kind] = out[kind] * (100 - pct) end
+    end
+    out.semrosto = others * pct
+    return out
+end
+
 function NOM_VariantRules.variant(id, period, cfg, red, black)
     id = NOM_VariantRules.baseId(id)
     if not id or id == 0 or not period then return nil end
     if black then return "ticao" end
     local f = NOM_VariantRules.forced[id]
     if f then return f end
+    -- Sessão de debug: força o look em todo assign (exceto forçado por ID / Tição).
+    local look = panelLookKind()
+    if look then return look end
     if red then
-        local kinds = NOM_VariantRules.KINDS
-        local kind = kinds[math.floor(hash(id, period, SPLIT_SALT) / Q * #kinds) + 1]
-        return cfg[ON[kind]] and kind or nil
+        local weights = NOM_VariantRules.RED_WEIGHTS
+        local total = 0
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            total = total + (weights[kind] or 0)
+        end
+        if total <= 0 then return nil end
+        local r = math.floor(hash(id, period, SPLIT_SALT) / Q * total)
+        local lo = 0
+        for _, kind in ipairs(NOM_VariantRules.KINDS) do
+            local hi = lo + (weights[kind] or 0)
+            if r < hi then return cfg[ON[kind]] and kind or nil end
+            lo = hi
+        end
+        return nil
     end
-    local r, lo = roll(id, period), 0
+    -- Branca: cobertura 100%. Soma 0 → ninguém (sandbox zerado).
+    local chances = whiteChances(cfg)
+    local total, lo = 0, 0
     for _, kind in ipairs(NOM_VariantRules.KINDS) do
-        local hi = lo + (cfg[CHANCE[kind]] or 0)
+        total = total + chances[kind]
+    end
+    if total <= 0 then return nil end
+    local r = math.floor(hash(id, period, 0) / Q * total)
+    for _, kind in ipairs(NOM_VariantRules.KINDS) do
+        local hi = lo + chances[kind]
         if r < hi then return cfg[ON[kind]] and kind or nil end
         lo = hi
     end
@@ -147,8 +212,10 @@ function NOM_VariantRules.config(get)
 end
 
 -- lastAt/now em horas de jogo (GameTime.getWorldAgeHours).
-function NOM_VariantRules.screamReady(lastAt, now)
-    return lastAt == nil or now - lastAt >= NOM_VariantRules.SCREAM_COOLDOWN_HOURS
+-- mood: "white"|"red"|"black" (sprint 0049); omitido = cooldown branco de sempre.
+function NOM_VariantRules.screamReady(lastAt, now, mood)
+    local cd = NOM_ColorIdentityRules.screamCooldownHours(mood)
+    return lastAt == nil or now - lastAt >= cd
 end
 
 return NOM_VariantRules

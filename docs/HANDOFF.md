@@ -1,6 +1,75 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-07. A `staging` tem até a 0044 (pilha 0039–0044 mergeada, com push, `build-mod3.sh` e sync; o Johan testou: "parece que tudo funcionou"). **A 0045 (luz que pisca e tempestade) e a 0046 (painel de debug novo) estão na `staging` com push e sync: esperam o teste do Johan no jogo** (seção logo abaixo). Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+
+## Em staging: sprint 0070 — gritos e almas somados (2026-10-12)
+
+Pedido do Johan depois da 0069 ("diminuiu"): os 10 gritos viram clips extras das almas e os 5
+gemidos das almas viram clips extras dos gritos. Só o `NOM_sounds.txt` muda, com volume
+compensado por papel. **Playtest Johan:** [README](sprints/sprint-0070-gritos-e-almas/README.md).
+
+## Em staging: sprint 0069 — almas em silêncio (2026-10-12)
+
+O "grito o tempo todo" da névoa vermelha eram as **almas**, não os gritos: no log, 2
+`scream played` contra ~600 gemidos de sumir, um gemido de grupo a cada leva de 5 s e o de
+evento de cada alma a cada 8 s. Agora nascer/sumir é só visual, o grupo toca no máximo 1 vez por
+minuto e o evento a cada 90 s. Estalador intocado (decisão do Johan). **Playtest Johan:**
+[README](sprints/sprint-0069-almas-silencio/README.md).
+
+## Em staging: sprint 0064 — Screamer K1/K2/K3
+
+Merge `--no-ff` `2cd1e68` (PR #20). K1 laço+pinafore; K2 balaclava caminho A (capuz 3D
+aposentado) + casca BoilerSuit; K3 crawler + getup 2c/timeout; pesos `ScreamerK*Weight`.
+`dev-sync` feito. **Playtest Johan** (checklist store `checklist-playtest-manha.md`).
+Rasgo no grito e sons ninar/birra depois do aceite visual. Código continua `carpideira`.
+[README](sprints/sprint-0064-screamer-variantes/README.md).
+
+## Em staging: 0062 lote 2 + 0063 gritos
+
+Merge `--no-ff` #18 e #19. Gritos: `AmbientGapMinMs`/`MaxMs` no painel. Lote 2
+na staging com a 0064. [README 0062](sprints/sprint-0062-look-lote2/README.md).
+
+## Em staging: sprint 0060f + proporção Sem-rosto (§7.3)
+
+Merge `--no-ff` #16 (look real: censor no osso, glitch Opções, remendo A′) e #17
+(proporção ~12% / vermelha 1/8 / teto visual / `SemRostoPct`). `dev-sync` feito.
+[README 0060](sprints/sprint-0060-look-real/README.md).
+
+## Em teste na staging: sprint 0059 — Arrasto / Rastejante
+
+Merge `--no-ff` `f2d77ff` (2026-10-09). Spike §3.5 caminho A: crawler lento só vermelha/preta;
+`NOM.arrasto()` + painel. [README](sprints/sprint-0059-arrasto/README.md). LookForce do painel
+em `f85bd87`. **Bluefin:** `git pull` da `staging` + `scripts/dev-sync.sh` + reiniciar (tip
+passou do `5d0f824` / LookForce).
+
+## Em teste na staging: sprints 0048–0052 (overnight)
+
+Merge overnight 2026-10-09, ordem da fila. Reiniciar o jogo e `dev-sync.sh` depois do pull da `staging`.
+
+| Sprint | O quê | README |
+|--------|-------|--------|
+| 0048 | Sons II — gritos + Estalador clicker | [sons-ii](sprints/sprint-0048-sons-ii/README.md) |
+| 0049 | Transform 100% + identidade por cor | [transform](sprints/sprint-0049-transform-fog/README.md) |
+| 0050 | Almas esqueléticas na névoa branca | [almas](sprints/sprint-0050-almas-esqueletos/README.md) |
+| 0051 | Aperto da névoa preta (`BlackFogPressure`) | [aperto](sprints/sprint-0051-aperto-preta/README.md) |
+| 0052 | Carpideira Witch (piloto) | [witch](sprints/sprint-0052-carpideira-witch/README.md) |
+
+**Pós-review overnight (Important aplicados):** ambiente usa `FogState.color()` (silêncio na fuga preta); alma crawler reaplica `setCanWalk(false)` após `DoZombieStats`; `almaBorn` com retry no servidor/cliente; FX de leva só `group`. Look negro das almas e A/B visual ficam pro playtest do Johan. Almas no MP: melhor, ainda não chamar “MP-ready”.
+
+## Em staging: sprint 0047g — FOG clímax (looks por cor)
+
+[README](sprints/sprint-0047-fog-climax/README.md) · shader da 1ª 0047 (`b012989`) + defaults playtest.
+
+| Param | Branca | Vermelha | Preta |
+|-------|--------|----------|-------|
+| 2 altura | 1,0 | 1,0 | 1,2 |
+| 3 bolsão H | 1,2 | 1,1 | 1,1 |
+| 7 véu | 0,8 | 1,0 | 1,0 |
+| 9 res | 3 | 3 | 3 |
+| 14 cov | 0,1 | 1,0 | 1,0 |
+| 15 boost | 1,1 | 1,0 | 1,2 |
+
+Sync: `NOM_FogClimaxRules.fromConfig(color)` + `onColorChange`. `scripts/dev-sync.sh` na `staging`; reiniciar o jogo.
 
 ## Lançamento v1.0.0 (2026-10-07)
 
@@ -97,13 +166,16 @@ Código em `mod3/`. Evidências, achados e checklist em `docs/sprints/spike-volu
 | `NOMRender_setParam(1, 5)` | fluido: obstáculos (sólido vermelho, árvore verde, interior azul, parede fechada branca) |
 | `NOMRender_setParam(1, 6)` | fluido: densidade |
 | `NOMRender_setParam(1, 7)` | fluido: velocidade |
-| `NOMRender_setParam(2, h)` | altura da camada em andares (padrão 1,2) |
+| `NOMRender_setParam(2, h)` | altura da **base** (branca **1** / vermelha **1** / preta **1,2**; sync por cor) |
+| `NOMRender_setParam(3, h)` | altura no **bolsão** (branca **1,2** / vermelha·preta **1,1**) |
+| `NOMRender_setParam(14, c)` | cobertura dos bolsões (branca **0,1** / vermelha·preta **1**) |
+| `NOMRender_setParam(15, b)` | boost dos bolsões (branca **1,1** / vermelha **1** / preta **1,2**) |
 | `NOMRender_setParam(4, 0)` / `(4, 1)` | desliga / liga a névoa fluida (padrão ligada) |
 | `NOMRender_setParam(5, 0)` / `(5, 1)` | visual antigo / rolos com sombra própria (padrão, sprint 0025) |
 | `NOMRender_setParam(6, q)` | qualidade: 0 baixa, 1 média, 2 alta (padrão; Opções > Mods manda sozinho, sprint 0026) |
-| `NOMRender_setParam(7, v)` | escala do véu de fundo (padrão 1; 0 = só rolos, sprint 0028) |
+| `NOMRender_setParam(7, v)` | escala do véu (branca **0,8** / vermelha·preta **1**; 0 = só rolos) |
 | `NOMRender_setParam(8, 1)` / `(8, 0)` | devolve / tira a névoa vanilla por baixo da nossa (padrão: tirada, sprint 0028) |
-| `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão 2; Opções > Mods manda sozinho, sprint 0030) |
+| `NOMRender_setParam(9, s)` | resolução da névoa fluida: s células por tile, 1 a 3 (padrão **3**; Opções > Mods manda sozinho) |
 | `NOMRender_setParam(10, v)` | vácuo atrás dos prédios: 1 ligado (padrão, escolhido pelo Johan no A/B), 0 a névoa enche o outro lado (sprint 0031) |
 | `NOMRender_setParam(11, 1)` / `(11, 0)` | foco de vento de teste: liga sorteia um ponto a 15–30 tiles do jogador que sopra constante (2,5 tiles/s, raio 4) numa direção aleatória; desliga some; ligar de novo sorteia outro. Padrão 0. Pelo console: `NOM.wind(on)` (sprint 0033) |
 | `NOMRender_setParam(12, 1)` / `(12, 0)` | névoa preta: a luz (lanterna, farol, lampião, poste) empurra a névoa. O Lua manda sozinho na borda da preta (sprint 0039) |
@@ -272,16 +344,11 @@ Na `main` desde o merge `cdc3331`. Névoa sorteada por dia (65% subindo até 85%
 
 ## Próximo passo
 
-1. **Testar a 0035 e a 0036 no jogo:** o Johan reinicia o jogo e segue os roteiros da [0035](sprints/sprint-0035-silent-hill/README.md#roteiro-de-teste-no-jogo) e da [0036](sprints/sprint-0036-equilibrio/README.md). Já confirmado no jogo em 2026-10-06: o congelamento da sirene depois da troca pra `isLocal` (97 de 97 parados), as paredes Silent Hill ("ficaram top"). O chão estranho (metal em bloco na calçada, ferrugem em grade na grama) foi corrigido no hotfix `7149d87`: falta o Johan conferir.
-2. **Fila 0037–0044** ([spec §10](superpowers/specs/2026-10-06-modelo-novo-design.md#10-fila-de-sprints)):
-   - **0037** — sonar do Estalador (feito na branch com o review final corrigido, falta o merge);
-   - **0038** — névoa preta I: escuridão, Tição, luz que congela, lanterna piscando (e o visual preto do Outro Mundo);
-   - **0039** — névoa preta II: névoa preta que a luz empurra (mod3) e Outro Mundo queimado;
-   - **0040** — vermelha nova: tentáculos e cinza no ar;
-   - **0041–0044** — facelift: spike, outros monstros, teste de IA no Tição, rosto censurado.
-   - 0037 e 0038 estão na `staging`; **0039–0044 feitas na pilha de branches, esperando o Johan** (topo deste arquivo).
+1. **Sprint 0047 — FOG clímax (P0):** [README](sprints/sprint-0047-fog-climax/README.md). Design em [proximos-passos-refinamento.md](proximos-passos-refinamento.md) (§3.4). Go 2026-10-08.
+2. **Depois do P0 FOG** (não agora): Sons II (gritos monstro + ambiente + Estalador clicker); transform 100% + identidade por cor; almas esqueléticas na branca; Carpideira Witch/look; aperto da preta — ver §4 do refinamento.
+3. **Operacional:** envio Workshop v1.0.0 e tag ([publicar.md](publicar.md) §2–5) quando o Johan quiser; FOG segue na `staging`.
 
-**Fluxo:** desde 2026-10-06 o code review acontece só no final de cada entrega ([AGENTS.md](../AGENTS.md)). **Branches, desde 2026-10-06 (noite):** sprints saem da `staging` e voltam pra ela; a `main` é só o mod lançado (merge `staging` → `main` quando o Johan lança uma versão). No jogo, o oficial vem do Workshop e o de staging é a cópia local do `dev-sync.sh`, com ID `_Staging`, nome `[STAGING]` e a preview vermelha de pôster (pendente no `dev-sync.sh`, entra na renomeação pra "NOM: Noise of Mist"). Detalhes no [AGENTS.md](../AGENTS.md).
+**Fluxo:** code review só no final de cada entrega ([AGENTS.md](../AGENTS.md)). Sprints saem da `staging` e voltam pra ela; a `main` é o mod lançado. Staging no jogo = `dev-sync.sh` (`*_Staging`, `[STAGING]`, pôster vermelho).
 
 ## Em teste: névoa com altura (sprint 0032)
 

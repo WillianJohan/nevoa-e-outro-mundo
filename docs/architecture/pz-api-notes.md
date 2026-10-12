@@ -204,6 +204,7 @@ Não existe `setSight`, `setHearing`, `setStrength` nem `setSpeedType` públicos
 | `option:setValue(v)` | EXISTS, **seguro** | `IntegerConfigOption.setValue(I)`: ignora fora da faixa, grava o campo, `invokeOnChangeEvent()` só chama callback se houver — e só `Core` registra callback (opções do jogo). **Não sincroniza nem salva**: envio é `SandboxOptions.sendToServer()`, gravação é `saveGameFile`/`saveCurrentGameBinFile`. Fica seguro se a troca e a volta acontecem na mesma chamada Lua |
 | `z:DoZombieStats()` | EXISTS | relê `sight`/`hearing` **sempre** (1..3 do sandbox; 4 = `Rand(3)+1`, 5 = `Rand(2)+2`); `cognition` só se o sandbox é 1 (vira 1) ou 4 (re-sorteia); **`strength` só se o campo ainda é -1**; `memory` com o campo em -1 **ou sempre** que o sandbox é 5/6 (aleatório: `Rand(4)` / `Rand(3)+1` escolhe 1250/800/500/25); termina em `doZombieSpeed()` e `initCanCrawlUnderVehicle()` (re-sorteio) |
 | `z:doZombieSpeed(t)` | EXISTS | `determineZombieSpeed(t)` devolve `t` se `t ≠ -1` (senão relê o sandbox). `doZombieSpeedInternal`: `lore.speed==3 ou t==3` → arrastado; senão 2/3 de chance de `doFakeShambler(t)` (`speedType = t`); senão `lore==2 ou t==2` → rápido; senão `lore==1 ou t==1` → corredor. **O sandbox vence o argumento**: com sandbox "Arrastados" nenhum `t` promove sem trocar `ZombieLore.Speed` |
+| `z:setCrawler(b)` | EXISTS | usado em `NOM_Alma.lua` / `NOM_Arrasto.lua` (sprint 0050/0059); flag de crawler no IsoZombie. Com `addZombiesInOutfit` longa o 7º arg também nasce crawler (CONFIRMED `ISSpawnHordeUI`). Reaplicar após `DoZombieStats` se o stats desfizer (almas: `setCanWalk(false)`) |
 | `z:getSpeedType()` | EXISTS | 1 corredor, 2 rápido, 3 arrastado (`doSprinter/doFastShambler/doShambler`) |
 | `z:isCanCrawlUnderVehicle()` / `setCanCrawlUnderVehicle(b)` | EXISTS | o mod devolve o valor que o `DoZombieStats` re-sorteia |
 | `z:DoZombieSpeeds(f)` | EXISTS, **evitar** | concatena em `walkVariant` a cada chamada (cresce a string) |
@@ -995,6 +996,25 @@ Verificado no bytecode do B42.21 (o instalado). Decisão na [ADR-012](adr-012-vi
   o `load` lê). O mod não pinta quem tem `isReanimatedPlayer()` (EXISTS, `IsoZombie`).
 - Peles vanilla de zumbi (`Body/M_ZedBody01_level1.png`) são RGBA 256×256; as do mod, RGB
   (só o formato foi lido). **UNKNOWN:** o compositor trata igual.
+
+### 14.4a Tinta / sujeira / sangue / buraco no `ItemVisual` (0060f lote A)
+
+Evidência `javap` B42 + `clothing.txt` (2026-10-09):
+
+- `ItemVisual.setTint(ImmutableColor)` EXISTS. `getTint(ClothingItem)` só devolve a tinta
+  se `ClothingItem.m_AllowRandomTint` / script `AllowRandomTint=true`; senão força branco.
+  **U1:** só chamar `setTint` em itens `*TINT` / `AllowRandomTint` (ex.: `Tshirt_WhiteTINT`,
+  `Vest_DefaultTEXTURE_TINT`, `Trousers_SuitWhite`, `Dress_Long`). `HospitalGown` /
+  `Apron_White` / `PonchoGarbageBag` sem tint no catálogo (`NOM_VariantWardrobe`).
+- `setDirt(BloodBodyPartType, float)`, `setBlood(BloodBodyPartType, float)`,
+  `setHole(BloodBodyPartType)` EXISTS (`ItemVisual` no Exposer).
+- Guarda-roupa: `shared/NOM_VariantWardrobe.lua` + `client/NOM_VariantLook.applyWardrobe`.
+- **0067 / console 2026-10-10:** `ModelInstance` **não** está no `LuaManager$Exposer`.
+  `getReadyModelData()` devolve a lista, mas `mi:getItemVisual()` / `mi.tintR = …` quebram
+  com `attempted index: … of non-table: ModelInstance`. `TintColour` no shader só muda no
+  rebuild (`PopTemplateManager.postProcessNewItemInstance` copia `getTint` → `tintR/G/B`;
+  `RenderCharacter` relê do `ModelInstance`). Canal por quadro da peça: `setTint` +
+  `resetModelNextFrame` (quantizado), ou o `Alpha` do personagem (ADR-016).
 
 ### 14.4 Esconder a roupa (sprint 0016)
 
@@ -2007,6 +2027,18 @@ jogo mostrou e por que o tiro não aparecia.
 | Cópia da cor da cena: `glBlitFramebuffer(..., GL_COLOR_BUFFER_BIT, GL_NEAREST)` do FBO do jogador (preso como `GL_READ_FRAMEBUFFER`) pra uma textura RGBA8 nossa | EXISTS | o mesmo blit da profundidade (§26, `RenderContext.render`), com outro bit; GL 3.0. Só roda com rosto censurado na tela |
 | O quadrado aparece na cabeça certa, some atrás de parede e com o zumbi fora da vista, e a névoa cobre ele | UNKNOWN | testar no jogo, item 24 da lista abaixo |
 
+## 33b. Pressão da névoa preta (sprint 0051)
+
+Sem API nova: reusa `addSound` (§2 / caça da noite), `setActivated` local da lanterna (§30) e a
+cor do poste (§34). O sandbox `BlackFogPressure` (1–3) só muda números em
+`shared/NOM_BlackPressureRules.lua`. A caça no piscar chama `addSound` no servidor com o mesmo
+fator de audição do Tição (`NOM_NightRules.HEARING_MULT[1]`), sem pacote extra.
+
+| Fato | Status | Evidência |
+|---|---|---|
+| `addSound` no servidor com hearing do Tição alcança como a caça periódica da preta | EXISTS | `server/NOM_Night.lua` `NOM_Night.call`; a 0051 repete a conta em `NOM_TicaoLight` no piscar |
+| Sandbox integer 1–3 aparece no menu e no `SandboxVars.NevoaEOutroMundo` | EXISTS | padrão das outras opções; `NOM_Config.get` |
+
 ## 34. Luz que pisca e tempestade da preta e da vermelha (sprint 0045)
 
 | Fato | Status | Evidência |
@@ -2020,6 +2052,7 @@ jogo mostrou e por que o tiro não aparecia.
 | `GameWindow.save(Z)` dispara `"OnSave"` antes de gravar o mundo (offset 68, depois do mapa) | CONFIRMED (bytecode) | `javap -c zombie.GameWindow`. O `client/NOM_LampFlickerFx.lua` devolve a cor de todo poste no `OnSave` |
 | `ClimateManager.getThunderStorm()` → `ThunderStorm`; `triggerThunderEvent(x, y, strike, lightning, rumble)` no servidor preenche o `networkThunderEvent` e chama `transmitClimatePacket` (vai pros clientes); no cliente e no solo, `enqueueThunderEvent` | CONFIRMED (bytecode) | `javap -c zombie.iso.weather.ThunderStorm`; vanilla em `media/lua/server/ClientCommands.lua:657-664` (com `true, true, true`) |
 | `enqueueThunderEvent`: sem `strike` e sem `rumble`, sai; clarão (`lightningState = ApplyLightning`) com força 1 − dist/7500 até 7500 tiles; o som espera dist/300·60 frames | CONFIRMED (bytecode) | o mesmo javap. O mod usa `false, true, true` (sem raio caindo), a 40–900 tiles (`shared/NOM_StormRules.lua`) |
+| `PlayerLightningInfo.lightningColor` (público) nasce branco `(1,1,1,1)`; `applyLightningForPlayer` faz lerp de `cmGlobalLight` pra essa cor | CONFIRMED (bytecode) | `javap -c -p ThunderStorm$PlayerLightningInfo` / `applyLightningForPlayer`. Array `lightningInfos` é privado — o mod3 pinta via reflexão (`NOMRender_setLightningColor`, sprint 0053). O som do trovão não tinge. |
 | `ClimateManager.FLOAT_PRECIPITATION_INTENSITY = 3`, criado no `setup()` com `initClimateFloat(3, "PRECIPITATION_INTENSITY")` | CONFIRMED (bytecode) | `javap -constants` e `javap -c -p ClimateManager`; o vanilla usa `getClimateFloat(3)` em `client/ISUI/AdminPanel/ISAdmPanelClimate.lua:236,273` |
 | `getPrecipitationIntensity()` = `finalValue` desse float; `isRaining()` = intensidade > 0 e `!getPrecipitationIsSnow()` | CONFIRMED (bytecode) | o mesmo javap. A chuva do mod vai na camada modded, como a névoa (§11); no frio pode virar neve |
 | O clarão aparece por cima do clima escuro da preta; o trovão se ouve a 900 tiles | UNKNOWN | testar no jogo, item 25 |
@@ -2045,6 +2078,22 @@ jogo mostrou e por que o tiro não aparecia.
 | Som do clique de botão: `getSoundManager():playUISound("UIActivateButton")` | EXISTS | `client/ISUI/ISButton.lua:46, 521` |
 | O clique numa área vazia da janela (cabeçalho) começa a arrastar | EXISTS | `ISCollapsableWindow:onMouseDown` (`:270-280`): os painéis filhos devolvem `true` pra não arrastar a janela |
 | As alças, o recorte e a roda do mouse se comportam no jogo como no vanilla | UNKNOWN | testar no jogo, item 28 |
+| Clipboard Lua oficial (`Clipboard.setClipboard` / similar) pra copiar texto do painel | UNKNOWN | sem uso no vanilla Lua do repo; `NOM.copyParams` (0058b) imprime no `NOM_DebugLog` e tenta `Clipboard.setClipboard` / Java AWT só via `pcall` |
+
+## 36. Vários `clip` num som: o jogo sorteia um por toque (sprint 0070)
+
+Bytecode (`javap -c -p`, `projectzomboid.jar` do jogo instalado):
+
+- `GameSoundScript.Load` (offset 245–275): cada bloco filho chamado `clip` vira um
+  `GameSoundClip` e entra em `GameSound.clips` (`ArrayList.add`). Mais de um bloco = mais clips.
+- `GameSound.getRandomClip()` (0–20): `clips.get(Rand.Next(clips.size()))`, sorteio uniforme.
+- `FMODSoundEmitter.playSoundImpl(String, IsoObject)` chama `GameSounds.getSound` e
+  `getRandomClip`. Chegam nele: `playSound(String)` e os outros `playSound`, o
+  `playSoundImpl(String, boolean, IsoObject)` do emitter livre, o `CharacterSoundEmitter
+  .playSoundImpl` (que é o `playSoundLocal` do personagem) e o `SoundManager.PlayWorldSoundImpl`
+  (via `BaseSoundEmitter.playSoundImpl(String, IsoObject)`).
+- Cada clip tem `volume`, `distanceMin` e `distanceMax` próprios; o alcance do som é o maior
+  dos clips (`GameSound.getMaxDistanceOfClips`).
 
 ## Abordagem recomendada por mecânica (resumo)
 

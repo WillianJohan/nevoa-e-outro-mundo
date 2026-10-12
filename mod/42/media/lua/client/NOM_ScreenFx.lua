@@ -154,7 +154,14 @@ local function layers(el, now)
     local ln = tex(T.lines)
     if ln and l.lines > 0 then
         local jump = NOM_Math.mod(NOM_Math.mod(now, 100000) * 31, h * 0.25) -- as linhas pulam de lugar a cada quadro
-        el:drawTextureScaled(ln, x, y - jump, w, h * 1.25, l.lines, 0.85, 0.85, 0.85)
+        if l.edgeLines then
+            -- I6 bordas: scanline só nas faixas da vinheta (centro limpo).
+            local band = math.floor(h * 0.18 + 0.5)
+            el:drawTextureScaled(ln, x, y - jump, w, band, l.lines, 0.85, 0.85, 0.85)
+            el:drawTextureScaled(ln, x, y + h - band - jump, w, band * 1.25, l.lines, 0.85, 0.85, 0.85)
+        else
+            el:drawTextureScaled(ln, x, y - jump, w, h * 1.25, l.lines, 0.85, 0.85, 0.85)
+        end
     end
     local f = tex(T.white)
     if f and l.dark > 0 then el:drawTextureScaled(f, x, y, w, h, l.dark, 0, 0, 0) end -- tontura
@@ -186,6 +193,12 @@ local function updateStatic()
         v = NOM_SemRostoRules.staticVolume(NOM_SemRosto.nearest(p))
     end
     S.state.static = v
+    -- Sprint 0052: vinheta perto do soluço (ZB-free); 0 se nada soluçando.
+    local sob = 0
+    if p and not p:isDead() and NOM_FogState.on and NOM_Config.get("CarpideiraEnabled") then
+        sob = R.sobStrength(NOM_Carpideira.nearestSob(p))
+    end
+    S.state.sob = sob
 end
 
 -- O pulso: o grito mais perto ganha; um mais fraco no meio do pulso não o corta.

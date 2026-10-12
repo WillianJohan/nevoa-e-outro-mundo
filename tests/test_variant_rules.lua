@@ -50,7 +50,7 @@ return {
     end,
     -- antes da 1ª leitura do clima (ou do nightState no cliente) não há noite: sem variante
     variant_rules_needs_night_number = function()
-        local c = cfg({ estaladorChance = 100 })
+        local c = cfg({ estaladorChance = 100, corredorChance = 0, semRostoChance = 0, carpideiraChance = 0 })
         assert(R.variant(outfitID(3, 17), nil, c) == nil)
         assert(R.variant(0, 3, c) == nil, "ID 0 (sem outfit) virou variante")
         assert(R.variant(nil, 3, c) == nil)
@@ -86,41 +86,48 @@ return {
         assert(R.screamReady(nil, 10))
         assert(not R.screamReady(10, 10 + R.SCREAM_COOLDOWN_HOURS - 0.01))
         assert(R.screamReady(10, 10 + R.SCREAM_COOLDOWN_HOURS))
+        -- sprint 0049: na vermelha o cooldown é mais curto (identidade / agitação)
+        local redCd = NOM_ColorIdentityRules.SCREAM_RED
+        assert(R.screamReady(10, 10 + redCd, "red"))
+        assert(not R.screamReady(10, 10 + redCd - 0.01, "red"))
+        assert(not R.screamReady(10, 10 + redCd, "white"), "branco ainda espera 0,5 h")
     end,
     variant_rules_chance_bounds_and_toggles = function()
         local ids = realIDs()
-        local none = count(ids, 4, cfg({ estaladorChance = 0, corredorChance = 0, semRostoChance = 0 }))
+        local none = count(ids, 4, cfg({ estaladorChance = 0, corredorChance = 0, semRostoChance = 0, carpideiraChance = 0 }))
         assert(none.estalador == 0 and none.corredor == 0 and none.semrosto == 0)
-        local all = count(ids, 4, cfg({ estaladorChance = 100 }))
+        local all = count(ids, 4, cfg({ estaladorChance = 100, corredorChance = 0, semRostoChance = 0, carpideiraChance = 0 }))
         assert(all.estalador == #ids)
         local on = count(ids, 4, cfg({ corredorChance = 50 }))
         local off = count(ids, 4, cfg({ estaladorOn = false, corredorChance = 50 }))
         assert(off.estalador == 0, "toggle desligado ainda sorteou")
         assert(off.corredor == on.corredor, "desligar o Estalador mudou o Corredor")
-        local both = count(ids, 4, cfg({ estaladorChance = 70, corredorChance = 70 }))
-        assert(both.estalador + both.corredor == #ids, "soma > 100 deixou zumbi comum")
-        assert(both.semrosto == 0, "Sem-rosto passou do 100")
+        local both = count(ids, 4, cfg({ estaladorChance = 70, corredorChance = 70, semRostoChance = 0, carpideiraChance = 0 }))
+        assert(both.estalador + both.corredor == #ids, "pesos renormalizados deixaram zumbi comum")
+        assert(both.semrosto == 0, "Sem-rosto com peso 0")
     end,
-    -- a taxa bate com o sandbox nos IDs que o jogo gera de fato
+    -- a taxa bate com os pesos renormalizados nos IDs que o jogo gera de fato
+    -- (cfg do helper: 5+10+5+0 = 20 → 25% / 50% / 25%)
     variant_rules_rate_matches_chance = function()
         local ids = realIDs()
         for period = 1, 3 do
             local n = count(ids, period, cfg())
-            for kind, want in pairs({ estalador = 5, corredor = 10, semrosto = 5 }) do
+            for kind, want in pairs({ estalador = 25, corredor = 50, semrosto = 25 }) do
                 local got = n[kind] / #ids * 100
                 assert(math.abs(got - want) < 1.5, kind .. " " .. got .. "%")
             end
         end
     end,
-    -- um sorteio só, faixas sem sobreposição: o total é a soma, ninguém é duas coisas
+    -- um sorteio só, faixas sem sobreposição: na branca o total é 100%, ninguém é duas coisas
     variant_rules_kinds_exclusive_and_add_up = function()
         local ids = realIDs()
-        local n = count(ids, 3, cfg({ estaladorChance = 20, corredorChance = 20, semRostoChance = 20 }))
+        local c = cfg({ estaladorChance = 20, corredorChance = 20, semRostoChance = 20, carpideiraChance = 0 })
+        local n = count(ids, 3, c)
         local total = (n.estalador + n.corredor + n.semrosto) / #ids * 100
-        assert(math.abs(total - 60) < 2, "total " .. total)
+        assert(math.abs(total - 100) < 2, "total " .. total)
         for _, id in ipairs(ids) do
-            local k = R.variant(id, 3, cfg())
-            assert(R.semRosto(id, 3, cfg()) == (k == "semrosto"))
+            local k = R.variant(id, 3, c)
+            assert(R.semRosto(id, 3, c) == (k == "semrosto"))
         end
     end,
     -- desligar um tipo não muda quem é o outro: as faixas ficam no lugar (a 4ª
@@ -134,23 +141,29 @@ return {
         end
         assert(R.KINDS[1] == "estalador" and R.KINDS[2] == "corredor" and R.KINDS[3] == "semrosto")
     end,
-    -- padrão do Johan (05/10): Estalador 5, Corredor 2, Sem-rosto 5, por névoa
+    -- bíblia §7.3: defaults 10:6:3:6 (= 5:3:1,5:3) → Sem-rosto ≈ 12%
     variant_rules_default_chances = function()
         require "NOM_Config"
         SandboxVars = nil
+        if NOM_PanelParams then NOM_PanelParams.reset() end
         local ids = realIDs()
         local c = R.config(NOM_Config.get)
+        local want = {
+            estalador = 10 / 25 * 100, corredor = 6 / 25 * 100,
+            semrosto = 3 / 25 * 100, carpideira = 6 / 25 * 100,
+        }
         for period = 1, 3 do
             local n = count(ids, period, c)
-            for kind, want in pairs({ estalador = 5, corredor = 3, semrosto = 3, carpideira = 3 }) do
+            for kind, w in pairs(want) do
                 local got = n[kind] / #ids * 100
-                assert(math.abs(got - want) < 1.5, kind .. " " .. got .. "%")
+                assert(math.abs(got - w) < 1.5, kind .. " " .. got .. "%")
             end
         end
+        assert(math.abs(want.semrosto - 12) < 0.01, "bíblia ~12%")
     end,
-    -- sprint 0019 (PO): 5 + 3 + 3 + 3 = 14%, a Carpideira na faixa [11, 14) depois das três
-    -- de antes (quem era Estalador, Corredor ou Sem-rosto continua sendo)
-    variant_rules_default_total_14 = function()
+    -- sprint 0049: branca 100%; Carpideira no fim de KINDS; com peso 0 a faixa some do total
+    -- (quem tinha peso nas três primeiras continua nas mesmas razões entre si)
+    variant_rules_default_total_100 = function()
         require "NOM_Config"
         local c = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
         local old = R.config(function(k) return NOM_Config.DEFAULTS[k] end)
@@ -159,12 +172,14 @@ return {
         for period = 1, 3 do
             local n = count(ids, period, c)
             local total = (n.estalador + n.corredor + n.semrosto + n.carpideira) / #ids * 100
-            assert(math.abs(total - 14) < 1.5, "total " .. total)
+            assert(math.abs(total - 100) < 1.5, "total " .. total)
         end
+        -- sem Carpideira no peso: 100% nas três; a ordem KINDS não muda
+        local n0 = count(ids, 2, old)
+        assert(n0.carpideira == 0)
+        assert(math.abs((n0.estalador + n0.corredor + n0.semrosto) / #ids * 100 - 100) < 1.5)
         for _, id in ipairs(ids) do
-            local k, before = R.variant(id, 2, c), R.variant(id, 2, old)
-            if before then assert(k == before, "a Carpideira mexeu na faixa de " .. before) end
-            if k == "carpideira" then any = any + 1; assert(before == nil) end
+            if R.variant(id, 2, c) == "carpideira" then any = any + 1 end
         end
         assert(any > 0)
         assert(R.KINDS[4] == "carpideira" and #R.KINDS == 4, "Carpideira fora do fim da lista")
@@ -216,8 +231,8 @@ return {
         end
         assert(R.redFog(nil, c) == false, "sem período")
     end,
-    -- na vermelha todo zumbi é variante, dividido por igual entre KINDS
-    variant_rules_red_fog_splits_evenly = function()
+    -- bíblia §7.3: vermelha 2:3:1:2 (E:C:S:K) → Sem-rosto 1/8, sobra pro Corredor
+    variant_rules_red_fog_weighted_split = function()
         local count = {}
         for _, k in ipairs(R.KINDS) do count[k] = 0 end
         local ids = realIDs()
@@ -226,19 +241,39 @@ return {
             assert(k, "zumbi comum na névoa vermelha: " .. id)
             count[k] = count[k] + 1
         end
-        for k, v in pairs(count) do
-            assert(math.abs(v / #ids - 1 / #R.KINDS) < 0.02, string.format("%s %.3f", k, v / #ids))
+        local want = { estalador = 2 / 8, corredor = 3 / 8, semrosto = 1 / 8, carpideira = 2 / 8 }
+        for k, w in pairs(want) do
+            assert(math.abs(count[k] / #ids - w) < 0.02, string.format("%s %.3f want %.3f", k, count[k] / #ids, w))
         end
-        -- sprint 0011: os quatro tipos, 1/4 cada
         assert(#R.KINDS == 4 and count.carpideira and count.carpideira > 0, "Carpideira fora da vermelha")
-        -- mesmo zumbi, mesmo período: mesma resposta (recarga); período novo re-divide
-        local same, diff = 0, 0
+        local same = 0
         for i = 1, 3000 do
             local id = ids[i]
             assert(R.variant(id, 7, cfg(), true) == R.variant(id, 7, cfg(), true))
-            if R.variant(id, 7, cfg(), true) == R.variant(id, 8, cfg(), true) then same = same + 1 else diff = diff + 1 end
+            if R.variant(id, 7, cfg(), true) == R.variant(id, 8, cfg(), true) then same = same + 1 end
         end
         assert(same / 3000 < 0.45, "períodos seguidos correlacionados: " .. same / 3000)
+    end,
+
+    -- Painel SemRostoPct live remapeia o peso branco (outros mantêm razão).
+    variant_rules_panel_semrosto_pct_live = function()
+        require "NOM_PanelParams"
+        NOM_PanelParams.reset()
+        require "NOM_Config"
+        SandboxVars = nil
+        local ids = realIDs()
+        NOM_PanelParams.set("SemRostoPct", 20)
+        local ok, err = pcall(function()
+            local c = R.config(NOM_Config.get)
+            local n = count(ids, 2, c)
+            local got = n.semrosto / #ids * 100
+            assert(math.abs(got - 20) < 1.5, "painel 20%: " .. got)
+            -- os outros guardam a razão 10:6:6 entre si nos 80% restantes
+            local others = n.estalador + n.corredor + n.carpideira
+            assert(math.abs(n.estalador / others - 10 / 22) < 0.02, "estalador razão")
+        end)
+        NOM_PanelParams.reset()
+        assert(ok, err)
     end,
     -- tipo desligado: a fatia dele fica comum, as outras não mudam
     variant_rules_red_fog_disabled_kind_stays_normal = function()
@@ -260,15 +295,36 @@ return {
         assert(R.variant(4242, nil, cfg(), true) == nil)
         assert(R.semRosto(4242, 1, cfg(), true) == (R.variant(4242, 1, cfg(), true) == "semrosto"))
     end,
-    -- red falso/ausente: o sorteio normal não muda (as faixas de antes valem)
+    -- red falso/ausente: o sorteio da branca (100% pesos); red=false == omitido
     variant_rules_red_flag_off_is_normal_roll = function()
         local n = 0
-        for _, id in ipairs(realIDs()) do
+        local ids = realIDs()
+        for _, id in ipairs(ids) do
             local k = R.variant(id, 9, cfg())
             assert(R.variant(id, 9, cfg(), false) == k)
             if k then n = n + 1 end
         end
-        assert(n > 0 and n < #realIDs() / 4, "normal: " .. n)
+        assert(n == #ids, "branca 100%: " .. n .. "/" .. #ids)
+    end,
+    -- sprint 0049: branca cobre todos; pesos 2:1 → ~2/3 e ~1/3
+    variant_rules_white_full_coverage = function()
+        local c = cfg({ estaladorChance = 2, corredorChance = 1, semRostoChance = 0, carpideiraChance = 0 })
+        local ids = realIDs()
+        local n = count(ids, 11, c)
+        assert(n.estalador + n.corredor == #ids, "sobraram comuns")
+        assert(math.abs(n.estalador / #ids - 2 / 3) < 0.02, "estalador " .. n.estalador / #ids)
+        assert(math.abs(n.corredor / #ids - 1 / 3) < 0.02, "corredor " .. n.corredor / #ids)
+    end,
+    variant_rules_white_disabled_kind_stays_normal = function()
+        local off = cfg({ estaladorOn = false, estaladorChance = 50, corredorChance = 50, semRostoChance = 0, carpideiraChance = 0 })
+        local none = 0
+        for _, id in ipairs(realIDs()) do
+            local on = R.variant(id, 3, cfg({ estaladorChance = 50, corredorChance = 50, semRostoChance = 0, carpideiraChance = 0 }))
+            local k = R.variant(id, 3, off)
+            if on == "estalador" then assert(k == nil) else assert(k == on) end
+            if k == nil then none = none + 1 end
+        end
+        assert(none > 0)
     end,
     variant_rules_config_reads_red_fog = function()
         local c = R.config(function(k) return ({ RedFogEnabled = false, RedFogChance = 33 })[k] end)
@@ -352,5 +408,24 @@ return {
         R.forced = {}
         assert(R.variant(0, 5, c, false, true) == nil and R.variant(outfitID(1, 1), nil, c, false, true) == nil)
         assert(not R.semRosto(outfitID(1, 1), 5, cfg({ semRostoChance = 100 }), false, true), "Sem-rosto na preta")
+    end,
+    -- LookForce do painel (0058): força o kind no assign; forçado por ID e preta ganham.
+    variant_rules_look_force_from_panel = function()
+        require "NOM_PanelParams"
+        NOM_PanelParams.reset()
+        local off = cfg({ estaladorOn = false, corredorOn = false, semRostoOn = false, carpideiraOn = false,
+            estaladorChance = 0, corredorChance = 0, semRostoChance = 0, carpideiraChance = 0 })
+        local id = outfitID(3, 17)
+        assert(R.variant(id, 1, off) == nil, "sem force, sandbox off")
+        NOM_PanelParams.set("LookForce", "pale")
+        assert(R.variant(id, 1, off) == "estalador")
+        NOM_PanelParams.set("LookForce", "wrong")
+        assert(R.variant(id, 1, off) == "semrosto")
+        R.forced[id] = "corredor"
+        assert(R.variant(id, 1, off) == "corredor", "forced[id] ganha do LookForce")
+        R.forced[id] = nil
+        assert(R.variant(id, 1, off, false, true) == "ticao", "preta ganha do LookForce")
+        NOM_PanelParams.reset()
+        assert(R.variant(id, 1, off) == nil)
     end,
 }

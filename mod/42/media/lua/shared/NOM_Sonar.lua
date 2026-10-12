@@ -6,23 +6,28 @@
 require "NOM_SonarRules"
 require "NOM_VariantAI"
 
-NOM_Sonar = { CLICK_SOUND = "NOM_EstaladorClick" } -- media/scripts/NOM_sounds.txt
+NOM_Sonar = { CLICK_SOUND = "NOM_EstaladorClick" } -- media/scripts/NOM_sounds.txt (tac curto)
 local R = NOM_SonarRules
 
--- fn(x, y, z) a cada anel que este processo recebe (o desenho, client/NOM_SonarFx.lua). Em
--- pcall: um erro de quem desenha não para o estalo (no solo quem chama é o servidor).
+-- fn(x, y, z, burst) a cada anel que este processo recebe (o desenho, client/NOM_SonarFx.lua).
+-- Em pcall: um erro de quem desenha não para o estalo (no solo quem chama é o servidor).
 local listeners = {}
 function NOM_Sonar.onRing(fn)
     listeners[#listeners + 1] = fn
 end
 
--- O estalo no ponto e o anel. Som local num emitter do pool, sem pacote (pz-api-notes §22):
--- cada cliente toca o seu, como o estalo de antes (playSoundLocal no zumbi); o
--- playSoundImpl(nome, false, nil) cai na versão do IsoObject com nil (a do square dá NPE).
-function NOM_Sonar.ring(x, y, z)
+-- Tac no ponto (um clique). O burst agenda vários via client/NOM_SonarFx.lua.
+function NOM_Sonar.playClick(x, y, z)
     getWorld():getFreeEmitter(x, y, z):playSoundImpl(NOM_Sonar.CLICK_SOUND, false, nil)
+end
+
+-- O estalo no ponto e o anel. Toca o primeiro tac já (beat 0); os demais e os ripples ficam
+-- com o Fx no ritmo da variação `burst` (1=A, 2=B, 3=C). Som local sem pacote (pz-api-notes §22).
+function NOM_Sonar.ring(x, y, z, burst)
+    burst = R.clampBurst(burst or 1)
+    NOM_Sonar.playClick(x, y, z)
     for _, fn in ipairs(listeners) do
-        local ok, err = pcall(fn, x, y, z)
+        local ok, err = pcall(fn, x, y, z, burst)
         if not ok and getDebug() then print("[NOM] sonar: erro de quem desenha: " .. tostring(err)) end
     end
 end
@@ -61,7 +66,7 @@ end
 function NOM_Sonar.command(command, args)
     if command == "sonar" then
         local m = R.valid(args)
-        if m and heard(m.x, m.y) then NOM_Sonar.ring(m.x, m.y, m.z) end
+        if m and heard(m.x, m.y) then NOM_Sonar.ring(m.x, m.y, m.z, m.b) end
     elseif command == "sonarFound" then
         local m = R.validFound(args)
         if not m then return end

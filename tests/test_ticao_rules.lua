@@ -30,7 +30,24 @@ return {
     -- caça mais forte que a da noite (padrão 90 min, 25 tiles) e visão curta menor que a da névoa
     ticao_rules_hunt_and_vision = function()
         require "NOM_Config"
-        assert(R.HUNT_MINUTES < NOM_Config.DEFAULTS.HuntIntervalMinutes and R.HUNT_REACH > NOM_Config.DEFAULTS.HuntRadius)
+        SandboxVars = nil
+        assert(R.huntMinutes() < NOM_Config.DEFAULTS.HuntIntervalMinutes and R.huntReach() > NOM_Config.DEFAULTS.HuntRadius)
         assert(R.VISION_TILES < NOM_Config.DEFAULTS.FogZombieVision)
+    end,
+    -- Pesadelo: mais arrastado rápido que o Padrão; nunca corredor
+    ticao_rules_pesadelo_more_fast = function()
+        require "NOM_Config"
+        SandboxVars = { NevoaEOutroMundo = { BlackFogPressure = 2 } }
+        local n2 = 0
+        for seed = 1, 400 do
+            if R.speed(65536 + seed, 4) == R.FAST_SHAMBLER then n2 = n2 + 1 end
+        end
+        SandboxVars = { NevoaEOutroMundo = { BlackFogPressure = 3 } }
+        local n3 = 0
+        for seed = 1, 400 do
+            if R.speed(65536 + seed, 4) == R.FAST_SHAMBLER then n3 = n3 + 1 end
+        end
+        assert(n3 > n2 + 40, "Pesadelo não acelerou: " .. n2 .. " -> " .. n3)
+        SandboxVars = nil
     end,
 }

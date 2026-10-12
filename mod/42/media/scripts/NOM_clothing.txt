@@ -40,6 +40,18 @@ module Base
         ClothingItem = NOM_SemRostoEstatica,
     }
 
+    /* 0060f A′: remendo 2D no rosto (casca-ovo aposentada). Tint por zumbi. */
+    item NOM_SemRostoRosto
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_SemRostoRosto,
+    }
+
     item NOM_CarpideiraCabelo
     {
         DisplayCategory = Accessory,
@@ -49,6 +61,65 @@ module Base
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_CarpideiraCabelo,
+    }
+
+    /* 0064 Embrulhada: capuz/pano estático (≤ SKULL+5%, anti cabeça-ovo). */
+    item NOM_CarpideiraCapuz
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraCapuz,
+    }
+
+    /* 0064 K1: laço branco grande no alto (não há laço de cabelo vanilla). */
+    item NOM_CarpideiraLaco
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = TieBowBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraLaco,
+    }
+
+    /* 0064 K2: casca BoilerSuit vanilla (sem hood) + textura lençol (corpo embrulhado). */
+    item NOM_EmbrulhadaCasca
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = BoilerSuitBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_EmbrulhadaCasca,
+    }
+
+    /* Sprint 0052: manto penitente (camada corpo; K1 com saia; K2–K5 saem pelo wardrobe). */
+    item NOM_CarpideiraManto
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = HospitalGown,
+        BodyLocation = base:boilersuit,
+        ClothingItem = NOM_CarpideiraManto,
+    }
+
+    /* Lote 2: risco vertical claro do Corredor (N4) sobre tronco escuro.
+       Mesmo caminho do manto (boilersuit + BaseTextures); C1 não usa Boilersuit N3. */
+    item NOM_CorredorRisco
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = ShirtGeneric,
+        BodyLocation = base:boilersuit,
+        ClothingItem = NOM_CorredorRisco,
     }
 
     /* Tição (sprint 0043): crosta de carvão 3D no lugar do véu do Eco que usava desde a 0038. */
@@ -129,6 +200,30 @@ module Base
         ClothingItem = NOM_CarpideiraCabeloFx,
     }
 
+    item NOM_CarpideiraCapuzFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = Balaclava,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraCapuzFx,
+    }
+
+    item NOM_CarpideiraLacoFx
+    {
+        DisplayCategory = Accessory,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = TieBowBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_CarpideiraLacoFx,
+    }
+
+    /* I1/I7: sem *Fx 2D (manto/roupa) — dissolve só em peça com modelo. */
+
     item NOM_TicaoCrostaFx
     {
         DisplayCategory = Accessory,
@@ -163,15 +258,40 @@ module Base
 
     /* Sprint 0022: casca de brasa do corpo inteiro na mutação e na volta. Em base:zeddmg
        (multi-item: não expulsa a peça nem a roupa no DoZombieInventory) e sem BloodLocation
-       nem defesa (getBodyPartClothingDefense pula o item: nenhum efeito de jogo). */
+       nem defesa (getBodyPartClothingDefense pula o item: nenhum efeito de jogo).
+       0067: malha BoilerSuit (sem hood Hazmat). */
     item NOM_Brasa
     {
         DisplayCategory = Clothing,
         ItemType = base:clothing,
         Weight = 0.1,
-        Icon = Hazmatsuit,
+        Icon = BoilerSuitBlack,
         BodyLocation = base:zeddmg,
         CanHaveHoles = false,
         ClothingItem = NOM_Brasa,
+    }
+
+    /* 0067: casca de brasa permanente nos Tições na névoa preta (BoilerSuit + fissuras). */
+    item NOM_BrasaCasca
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = BoilerSuitBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_BrasaCasca,
+    }
+
+    /* 0067: gêmeo sem shader — efeitos desligados (brasa estática na textura). */
+    item NOM_BrasaCascaStatic
+    {
+        DisplayCategory = Clothing,
+        ItemType = base:clothing,
+        Weight = 0.1,
+        Icon = BoilerSuitBlack,
+        BodyLocation = base:zeddmg,
+        CanHaveHoles = false,
+        ClothingItem = NOM_BrasaCascaStatic,
     }
 }

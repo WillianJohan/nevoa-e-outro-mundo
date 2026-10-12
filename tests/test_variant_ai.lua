@@ -595,9 +595,9 @@ return {
         -- comum: só o rodízio da visão curta (sprint 0036), 1 chamada (getTarget) por zumbi
         -- do lote, VISION_BATCH por tick
         assert(sum(by.none) <= 10 * NOM_VariantAI.VISION_BATCH, "comum: " .. sum(by.none))
-        -- Carpideira calma (sprint 0011): 2 por frame (getModData, isLocal) e, no
-        -- primeiro, 3 a mais (getPersistentOutfitID, setUseless, setTarget)
-        assert(sum(by.carpideira) <= 100 * (10 * 2 + 3), "Carpideira: " .. sum(by.carpideira))
+        -- Carpideira calma (sprint 0011/0052): 2 por frame (getModData, isLocal) e, no
+        -- primeiro, 4 a mais (setUseless, setTarget, getPersistentOutfitID×2 agenda)
+        assert(sum(by.carpideira) <= 100 * (10 * 2 + 4), "Carpideira: " .. sum(by.carpideira))
         -- o estalo é do servidor (sprint 0037): o minuto não chama ninguém aqui
         for _, z in ipairs(G.zombies) do z.calls = 0 end
         G.minutes(1)
@@ -639,7 +639,7 @@ return {
         G.frame(2)
         NOM_Carpideira.scream(z, p)
         assert(not z.useless and z.target == p, "não soltou ou não pegou o alvo")
-        assert(z.sounds[1] == NOM_Carpideira.SCREAM and #z.netSounds == 0, "grito não tocou local")
+        assert(z.sounds[1]:find("^NOM_CarpideiraScream") and #z.netSounds == 0, "grito não tocou local: " .. tostring(z.sounds[1]))
         G.frame(40)
         assert(p.bitten > 0, "não caçou quem a acordou")
         assert(z.useless == false, "voltou a ficar parada depois do grito")

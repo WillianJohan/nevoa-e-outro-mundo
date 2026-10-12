@@ -35,28 +35,23 @@
   olhos da Carpideira, posta onde fica o rosto na pele de zumbi vanilla (o layout, visto a
   olho, é o mesmo no masculino e no feminino). A balaclava vanilla é um tricô uniforme, sem
   região de rosto visível: o chiado do Sem-rosto vale na cabeça inteira.
-- **Uma pele e uma peça por variante, e nada da roupa comum (sprint 0016).** ~~A roupa do
-  zumbi fica.~~ Visto no jogo pelo Johan (05/10/2026): "os zombies quando se transformam
-  devem ficar sem roupa ... tudo que contribui pro monstro fica, mas de resto não ... tem
-  monstro que tem coisa na cabeça e fica estranho". Enquanto é variante, a roupa vanilla
-  (camiseta, calça, chapéu, óculos, atadura) some do desenho; ficam a pele e a peça do mod
-  e as feridas do corpo (camadas `ZedDmg_*` e `Wound_*`, que são carne, não roupa). Quando
-  a variante acaba (fim da névoa, troca de tipo, reaproveitamento, morte), a roupa volta, e
-  o corpo e o loot são os do zumbi comum. Exceção de roupa (o Johan gostou de "uma saia
-  estranha", sem saber qual): um padrão na lista `NOM_VariantLook.KEEP`. O Eco não muda (já
-  só veste itens do mod). **O monstro larga tudo** (Johan, 05/10/2026): a roupa escondida
-  também não vale no jogo (morde através de máscara e capacete, sem armadura nem modificador
-  de visão/audição, chapéu não cai), até a variante acabar.
+- **Uma pele e peças do mod por variante, e nada da roupa comum vanilla (sprint 0016;
+  emenda 0060).** Enquanto é variante, a roupa vanilla some; ficam a pele do mod, a peça
+  de cabeça e **a roupa cotidiana/hospitalar do mod** no corpo (`NOM_*Roupa` / manto),
+  mais feridas `ZedDmg_*`/`Wound_*`. A 0054 deixou o corpo nu com pele P&B binária e leu
+  como grade UV no playtest — a 0060 corrige com midtones + camada de tecido. Quando a
+  variante acaba, a roupa vanilla volta. **O monstro larga tudo** no sentido de combate
+  (Johan, 05/10/2026): a roupa vanilla escondida não vale (morde através de máscara, etc.).
 - Texturas: `scripts/gen_textures.py`. Técnica: [ADR-012](../architecture/adr-012-visual-das-variantes.md).
 
 ## Os monstros
 
 | Monstro | Pele | Peça (modelo vanilla, ou nosso desde a 0041) | Cor que lê de longe |
 |---|---|---|---|
-| Estalador | porcelana quase branca em placas grandes, rachaduras grossas pretas | venda de atadura **em 3D** (sprint 0041, modelo nosso de `scripts/gen_models.py`): faixa com volume em volta dos olhos, três voltas branco-sujas com frestas escuras, sangue seco em cada olho, dois arames farpados ferrugem-escuros enrolados por cima com farpas, nó atrás com as duas pontas caindo. Até a 0040 era a mesma ideia pintada nos óculos de esqui (`Glasses_SkiGoggles`) | branco trincado + atadura com arame nos olhos |
-| Corredor | cinza de cinza clara, veias grossas roxo-pretas | boca rasgada **em 3D** (sprint 0042, modelo nosso): buraco quase preto largo demais colado no rosto, lábio vermelho vivo rasgado e irregular, oito dentes em ponta, dois rasgos subindo até perto das orelhas. Até a 0041 era pintada na máscara cirúrgica (`Hat_SurgicalMask`) | cinza com veias + boca vermelha e preta |
-| Sem-rosto | a do zumbi | chiado de TV em blocos preto/branco, faixas de varredura e imagem rasgada na horizontal, quase sem cinza, numa **casca lisa** em volta da cabeça inteira, sem nariz, olho nem boca (sprint 0042, modelo nosso; até a 0041 na balaclava inteira, `Hat_BalaclavaFull`) | cabeça de TV fora do ar |
-| Carpideira | muito pálida, escorridos grossos de fuligem de cima pra baixo, fuligem debaixo dos olhos | cabelo preto de piche **em mechas 3D** (sprint 0042, modelo nosso): 36 fitas saindo do alto da cabeça, cortina mais densa e comprida na frente do rosto, três mechas brancas. Até a 0041 era pintado no véu de noiva (`Hat_WeddingVeil`) | cabeça preta caída sobre corpo quase branco |
+| Estalador | The Pale (0054): cera pálida, rachadura esparsa, órbitas fracas (sem sangue) | venda de atadura **em 3D** (sprint 0041, modelo nosso de `scripts/gen_models.py`): faixa com volume em volta dos olhos, três voltas branco-sujas com frestas escuras, sangue seco em cada olho, dois arames farpados ferrugem-escuros enrolados por cima com farpas, nó atrás com as duas pontas caindo. Até a 0040 era a mesma ideia pintada nos óculos de esqui (`Glasses_SkiGoggles`) | cera trincada + atadura com arame nos olhos |
+| Corredor | The Misaligned (0054): pele clara, placa/veias assimétricas, sombra facial deslocada | boca rasgada **em 3D** (sprint 0042, modelo nosso): buraco quase preto largo demais colado no rosto, lábio vermelho vivo rasgado e irregular, oito dentes em ponta, dois rasgos subindo até perto das orelhas. Até a 0041 era pintada na máscara cirúrgica (`Hat_SurgicalMask`) | assimetria + boca vermelha e preta |
+| Sem-rosto | a do zumbi | Wrong Person (0054): vazios claros + manchas pretas orgânicas e chiado residual numa **casca lisa** sem feição (sprint 0042, modelo nosso; até a 0041 na balaclava, `Hat_BalaclavaFull`) | cabeça vazia que imita gente |
+| Carpideira | Forgotten Patient (0054): pele clínica fria, órbitas suaves, escorridos finos (sem Jeff/sangue) | cabelo preto de piche **em mechas 3D** (sprint 0042) + **manto hospitalar desbotado** orgânico no corpo (0054; camada como `Gown_Hospital` / Eco cinza): capuz escuro + tecido sujo, **sem** blocos/faixas (a 0052 em grade lia como película wrap). Até a 0041 o cabelo era véu de noiva (`Hat_WeddingVeil`); até a 0052 o corpo ficava nu sob as mechas | silhueta errada: capuz escuro + corpo claro + mechas |
 | Eco | coberta: quase branca, salpicos pequenos e esparsos de cinza e poucos escorridos finos na vertical | véu do mesmo jeito, mais escuro só nas bordas (véu de noiva) | o mais claro da névoa: fantasma coberto de cinza |
 | Tição | carvão em placas pequenas, rachaduras finas de brasa viva e apagando (sprint 0038) | **crosta de carvão 3D** (sprint 0043, modelo nosso): a cabeça inteira em placas de alturas diferentes com rachaduras de brasa, dois olhos de brasa acesos na frente, lascas de carvão no alto e atrás, três fitas de fumaça clara subindo. Da 0038 à 0042 usava o véu de fumaça do Eco | preto com fio laranja e dois pontos acesos |
 
@@ -68,9 +63,9 @@
   e a pele esticada com veias diz esforço.
 - **Sem-rosto** — some quando visto, e o rádio chia quando ele está perto: o rosto é o mesmo
   chiado do rádio, o aviso que o jogador já aprendeu a temer.
-- **Carpideira** — parada, chorando, e depois o grito: o cabelo caído sobre o rosto baixo e as
-  mãos e o rosto sujos de fuligem como quem enxugou lágrimas de cinza leem "não chegue perto".
-  O visual é o mesmo quando ela grita (sem animação): a imobilidade e o cabelo bastam.
+- **Carpideira** — chora e às vezes anda (Witch do Outro Mundo, 0052): mechas no rosto, manto
+  hospitalar desbotado (0054) e órbitas frias leem "paciente esquecido / silhueta errada". Sem
+  cruz, sem freira de franquia, sem película wrap. O visual é o mesmo quando ela grita.
 - **Eco** — alma fraca de um morto, some no amanhecer: cinza e fumaça com forma de gente, sem
   rosto, claro no escuro.
 

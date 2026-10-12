@@ -309,4 +309,35 @@ return {
         local st2 = R.new()
         assert(R.air(st2, 0, 0, 0, 0, 1000, rand) == 0 and #st2.parts == 0, "nasceu sem ritmo")
     end,
+
+    -- sprint 0057: cinzas mais constantes (defaults) e knobs de debug (densidade / taxa / ar)
+    flakes_more_constant_defaults = function()
+        R.resetDebug()
+        assert(R.RATE >= 22, "taxa base baixa demais: " .. R.RATE)
+        assert(R.ASH_SHARE >= 0.75, "pouca cinza no sorteio: " .. R.ASH_SHARE)
+        assert(R.AIR_PER_RATE >= 0.45, "ar esporádico: " .. R.AIR_PER_RATE)
+        assert(R.rate(1, 1) >= 22, "ritmo com dens=1 ainda esporádico: " .. R.rate(1, 1))
+    end,
+
+    flakes_debug_knobs_scale_rate_and_air = function()
+        R.resetDebug()
+        local base = R.rate(1, 1)
+        R.setDebug(1.5, 2, nil)
+        assert(R.rate(1, 1) == math.min(R.BIRTHS_PER_S, base * 1.5 * 2), "dens×taxa")
+        R.setDebug(0, nil, nil)
+        assert(R.rate(1, 1) == 0, "densidade 0 não zera")
+        R.resetDebug()
+        -- janela curta: antes do teto AIR_MAX, ar×2 nasce ~o dobro
+        local st, rand = R.new(), seq(7)
+        R.setDebug(nil, nil, 2)
+        local n = 0
+        for _ = 1, 40 do n = n + R.air(st, 10, 0, 0, 0, 16, rand) end
+        R.resetDebug()
+        local st2, n2 = R.new(), 0
+        for _ = 1, 40 do n2 = n2 + R.air(st2, 10, 0, 0, 0, 16, rand) end
+        assert(n2 > 0 and n > n2 * 1.5, "ar×2 não dobra: " .. n .. " vs " .. n2)
+        assert(n < R.AIR_MAX and n2 < R.AIR_MAX, "bateu no teto cedo demais")
+        local d = R.debugMul()
+        assert(d.density == 1 and d.rate == 1 and d.air == 1, "reset incompleto")
+    end,
 }

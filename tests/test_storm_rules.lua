@@ -36,4 +36,17 @@ return {
         assert(R.rains(nil, 1) == false)
         assert(R.RAIN_INTENSITY > 0 and R.RAIN_INTENSITY <= 1)
     end,
+    -- sprint 0053: clarão vermelho só na preta; vermelha/branca brancas
+    storm_lightning_tint_black_only = function()
+        local wr, wg, wb = R.lightningTint(false)
+        assert(wr == 1 and wg == 1 and wb == 1, "vermelha/branca brancas")
+        local br, bg, bb = R.lightningTint(true)
+        assert(br == R.LIGHTNING_BLACK.r and bg == R.LIGHTNING_BLACK.g and bb == R.LIGHTNING_BLACK.b)
+        assert(bg < 0.3 and bb < 0.3, "preta bem vermelha")
+        assert(R.stormFlash(1000, nil) == 0)
+        assert(R.stormFlash(1000, 1000) == 1)
+        assert(R.stormFlash(1000 + R.STORM_FLASH_MS, 1000) == 0)
+        local mid = R.stormFlash(1000 + R.STORM_FLASH_MS / 2, 1000)
+        assert(mid > 0 and mid < 1)
+    end,
 }

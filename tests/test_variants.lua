@@ -69,6 +69,8 @@ local function setup(opts)
     end
     function G.worldSound(x, y, z, radius, volume, src) fire("OnWorldSound", x, y, z, radius, volume, src) end
     instanceof = function(o, cls) return type(o) == "table" and o.class == cls end
+    -- FogEvent.state e o banco de gritos (0048) usam ZombRand; sem isso o setup quebra sozinho.
+    ZombRand = function(n) return 0 end
     sendPlaySound = function(name, loop, obj)
         if not isServer() then return end -- bytecode: só no GameServer
         G.played[#G.played + 1] = { name = name, src = obj, loop = loop }
@@ -168,8 +170,10 @@ end
 -- sandbox em que todo zumbi sorteado é Carpideira (os outros tipos zerados)
 local CARP = { CarpideiraChance = 100, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
 
--- ID (formato do jogo) que dá a variante pedida no período de névoa (except: pula esse)
+-- ID (formato do jogo) que dá a variante pedida no período de névoa (except: pula esse).
+-- Sprint 0049: branca 100%; want nil = ID 0 (sem outfit).
 local function idFor(want, night, sandbox, except)
+    if want == nil then return 0 end
     local c = NOM_VariantRules.config(function(k)
         local v = sandbox[k]
         if v == nil then v = NOM_Config.DEFAULTS[k] end
@@ -189,7 +193,7 @@ return {
         assert(G.aiReport, "solo não instalou a IA das variantes")
         local z = G.zombie({ id = idFor("corredor", 1, G.sandbox) })
         G.aiReport(z)
-        assert(#G.played == 1 and G.played[1].name == "NOM_CorredorScream" and G.played[1].local_)
+        assert(#G.played == 1 and G.played[1].name:find("^NOM_CorredorScream") and G.played[1].local_)
         assert(#G.sounds == 1 and G.sounds[1].src == z and G.sounds[1].x == 10 and G.sounds[1].y == 10)
     end,
     -- alcance efetivo = CorredorScreamRadius, com a audição apurada da noite (×3) compensada
@@ -220,6 +224,7 @@ return {
         for _ = 1, 5 do G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }) end
         assert(#G.played == 1, "gritos: " .. #G.played)
         G.hours = G.hours + NOM_VariantRules.SCREAM_COOLDOWN_HOURS
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 })
         assert(#G.played == 2 and #G.sounds == 2)
         assert(z.md.NOM_screamAt == G.hours)
@@ -281,8 +286,24 @@ return {
         assert(#G.played == 0, "passou do limite")
         G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 }, b, 0)
         assert(#G.played == 1, "limite de um jogador travou o outro")
-        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 1500)
-        assert(#G.played == 2, "não liberou depois de 2 s")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a, 2500)
+        assert(#G.played == 1, "gap global bloqueia o segundo grito")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, a)
+        assert(#G.played == 2, "não liberou depois do gap global")
+    end,
+    -- gap global: segundo Corredor não grita até o relógio (independente do cooldown por zumbi)
+    corredor_global_scream_gap = function()
+        local G = setup({ server = true })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 8 })
+        G.zombie({ id = idFor("corredor", 1, G.sandbox), onlineID = 9 })
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 8 })
+        assert(#G.played == 1, "primeiro não gritou")
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 }, nil, 2500)
+        assert(#G.played == 1, "segundo gritou dentro do gap global")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.clientCommand("NevoaEOutroMundo", "corredorSaw", { id = 9 })
+        assert(#G.played == 2, "segundo não gritou depois do gap")
     end,
     -- névoa vermelha: o servidor reconhece o Corredor da divisão da vermelha, mesmo
     -- com CorredorChance 0
@@ -315,21 +336,40 @@ return {
         NOM_Carpideira.still[z] = true
         local p = G.player(12, 10)
         G.carpReport(z, p, "near")
-        assert(z.local_[1] == "NOM_CarpideiraScream", "grito não tocou")
+        assert(z.local_[1]:find("^NOM_CarpideiraScream"), "grito não tocou: " .. tostring(z.local_[1]))
         assert(#G.sounds == 1 and G.sounds[1].src == z and math.abs(G.reach(G.sounds[1]) - 50) <= 1, "horda não chamada a 50: " .. G.reach(G.sounds[1])) -- raio arredondado: 17 × 3 = 51
         assert(z.useless == false and z.target == p and z.forced == true, "não caçou quem a acordou")
         G.carpReport(z, p, "near")
         assert(#z.local_ == 1 and #G.sounds == 1, "gritou duas vezes na mesma névoa")
         -- névoa seguinte: outro período, ela pode gritar de novo (se ainda for Carpideira)
+        -- depois do gap global (playtest 2026-10-10)
         G.fog = 0
         G.setTime(23)
         G.fog = 0.9
         G.setTime(23)
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
         if NOM_VariantRules.variant(z.id, NOM_Fog.period(), NOM_VariantRules.config(function(k)
             local v = CARP[k]; if v == nil then v = NOM_Config.DEFAULTS[k] end return v end)) == "carpideira" then
             G.carpReport(z, p, "near")
             assert(#z.local_ == 2, "não gritou na névoa seguinte")
         end
+    end,
+
+    -- gap global: segunda Carpideira não grita até nextAt (ZombRand=0 → GAP_MIN)
+    carpideira_global_scream_gap = function()
+        local G = setup({ sandbox = CARP })
+        local id1 = idFor("carpideira", 1, CARP)
+        local z1 = G.zombie({ id = id1 })
+        local id2 = idFor("carpideira", 1, CARP, id1)
+        local z2 = G.zombie({ id = id2, x = 10, y = 12 })
+        local p = G.player(12, 10)
+        G.carpReport(z1, p, "near")
+        assert(#z1.local_ == 1, "primeira não gritou")
+        G.carpReport(z2, p, "near")
+        assert(#z2.local_ == 0, "segunda gritou dentro do gap")
+        G.ms = G.ms + NOM_CarpideiraRules.SCREAM_GAP_MIN_MS
+        G.carpReport(z2, p, "near")
+        assert(#z2.local_ == 1, "segunda não gritou depois do gap")
     end,
     -- salvar e carregar no meio da névoa não deixa gritar de novo (ModData)
     carpideira_scream_survives_reload = function()
@@ -350,7 +390,9 @@ return {
         local dead = G.zombie({ id = id, onlineID = 3 })
         dead.dead = true
         local far = G.zombie({ id = id, onlineID = 4, x = 10, y = 10 })
-        local function woke(onlineID, why, p) G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = onlineID, why = why }, p) end
+        local function woke(onlineID, why, p, gapMs)
+            G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = onlineID, why = why }, p, gapMs)
+        end
         local function screams() return G.commandsSent("carpideiraScream") end
         woke(2, "near", G.player(11, 10))
         woke(3, "near", G.player(11, 10))
@@ -365,11 +407,11 @@ return {
         local s = screams()
         assert(#s == 1 and s[1].args.pid == id and s[1].args.id == 4 and s[1].args.pl == p.onlineID and s[1].player == nil)
         assert(#G.sounds == 1 and G.sounds[1].src == far, "horda não chamada")
-        -- lanterna acesa a 9 tiles vale (outra Carpideira, outro ID)
+        -- lanterna acesa a 9 tiles vale (outra Carpideira, outro ID) — depois do gap global
         local id2 = idFor("carpideira", 1, CARP, id)
         G.zombie({ id = id2, onlineID = 5, x = 10, y = 10 })
         local lit = G.player(10, 19); lit.light = true
-        woke(5, "light", lit)
+        woke(5, "light", lit, NOM_CarpideiraRules.SCREAM_GAP_MIN_MS)
         assert(#screams() == 2, "lanterna acesa não valeu")
         -- zumbi que não é Carpideira (metade é, com 50%)
         local half = { CarpideiraChance = 50, EstaladorChance = 0, CorredorChance = 0, SemRostoChance = 0 }
@@ -395,7 +437,9 @@ return {
         assert(#G.commandsSent("carpideiraScream") == 0, "passou do limite")
         G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 4, why = "near" }, b, 0)
         assert(#G.commandsSent("carpideiraScream") == 1, "limite de um travou o outro")
-        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 5, why = "near" }, a, NOM_CarpideiraRules.RATE_MS)
+        -- RATE_MS libera o jogador a; SCREAM_GAP libera a outra Carpideira
+        local wait = math.max(NOM_CarpideiraRules.RATE_MS, NOM_CarpideiraRules.SCREAM_GAP_MIN_MS)
+        G.clientCommand("NevoaEOutroMundo", "carpideiraWoke", { id = 5, why = "near" }, a, wait)
         assert(#G.commandsSent("carpideiraScream") == 2, "não liberou depois do intervalo")
     end,
     -- barulho: o servidor ouve sozinho (OnWorldSound). Tiro perto acorda e ela caça

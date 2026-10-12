@@ -94,6 +94,18 @@ return {
             end
         end
     end,
+    -- sprint 0053: na preta o servidor avisa o cliente do clarão vermelho
+    storm_black_tells_client_flash = function()
+        local G = setup({ server = true })
+        G.player({ x = 0, y = 0 })
+        fog(true, false, true)
+        NOM_Storm.force(G.players[1])
+        local flashes = G.commands(G.sentServer, "thunderFlash")
+        assert(#flashes == 1, "sem thunderFlash na preta: " .. #flashes)
+        fog(true, true, false)
+        NOM_Storm.force(G.players[1])
+        assert(#G.commands(G.sentServer, "thunderFlash") == 1, "thunderFlash na vermelha")
+    end,
     -- na vermelha não tem Tição: o clarão não congela ninguém
     storm_flash_red_no_freeze = function()
         local G = setup({ ticao = true })

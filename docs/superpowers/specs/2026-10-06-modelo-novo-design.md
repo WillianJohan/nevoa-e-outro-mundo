@@ -19,7 +19,7 @@ acaba, o alívio é tanto que ele aproveita pra sair e explorar, como uma folga.
 |---|---|---|---|
 | Tema | Cegueira (Silent Hill) | O Outro Mundo sangra | A escuridão (Alan Wake) |
 | Regra central | Som é tudo: jogador e zumbi enxergam ~4 tiles | Caçada: todo zumbi é variante, gritos chamam horda | Luz é tudo: o Tição congela no facho |
-| Ameaça | Zumbis perambulando, variantes raras (14%) | As quatro variantes, 1/4 cada | Só o Tição (todo zumbi vira Tição) |
+| Ameaça | 100% variantes (pesos sandbox; perambular) — sprint 0049 | As quatro variantes, 1/4 cada (agitação) | Só o Tição (todo zumbi vira Tição) |
 | Outro Mundo | Erosão, ferrugem, sujeira, pouco sangue; mais Silent Hill (tinta descascando, ferrugem, grade) a partir da 0035; sem sangue no chão | Muito sangue, tentáculos pretos, cinza no ar | Chão queimado, cinzas, brasas apagando |
 | Sirene | Normal, melhorada | Bizarra, com gritos | Fora de sintonia |
 | Duração | 3–5 h de jogo | 4–6 h | 2–3 h |

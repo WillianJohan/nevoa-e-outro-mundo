@@ -206,16 +206,34 @@ return {
         for seed = 1, 40 do NOM_Wander.wave(seed) end
         assert(#walkers(G) == 0, "levantou quem fingia de morto ou estava sentado")
     end,
-    -- sem névoa, na sirene ou com a opção desligada, nada
+    -- sem névoa, na sirene, opção desligada, vermelha ou preta: nada (0049: só branca)
     wander_needs_fog_and_option = function()
-        for _, case in ipairs({ { fog = false }, { siren = true }, { sandbox = { FogWander = false } } }) do
+        for _, case in ipairs({
+            { fog = false }, { siren = true }, { sandbox = { FogWander = false } },
+            { red = true }, { black = true },
+        }) do
             local G = setup(case)
             if case.siren then NOM_SirenFreeze.active = true end
+            if case.red then NOM_FogState.red = true end
+            if case.black then NOM_FogState.black = true end
             G.player(0, 0)
             ring(G, 20)
             for seed = 1, 20 do assert(NOM_Wander.wave(seed) == nil) end
             assert(#walkers(G) == 0, "andou sem poder")
         end
+    end,
+    -- sprint 0049: na branca o Estalador pode perambular (100% variantes)
+    wander_allows_estalador_on_white = function()
+        local G = setup()
+        G.player(0, 0)
+        local z = G.zombie({ x = 10, y = 0 })
+        NOM_NightStats.variants[z] = "estalador"
+        local moved = false
+        for seed = 1, 80 do
+            NOM_Wander.wave(seed)
+            if z.goal then moved = true break end
+        end
+        assert(moved, "Estalador na branca não perambulou")
     end,
     -- destino em parede, água ou fora do carregado não serve
     wander_respects_floor = function()
@@ -347,5 +365,13 @@ return {
         G.sandbox.FogWander = false
         for _ = 1, 40 do G.fire("EveryOneMinute") end
         assert(#G.sent == 0, "onda com a opção desligada")
+        G.sandbox.FogWander = true
+        NOM_World.red = true
+        for _ = 1, 40 do G.fire("EveryOneMinute") end
+        assert(#G.sent == 0, "onda na vermelha")
+        NOM_World.red = false
+        NOM_World.black = true
+        for _ = 1, 40 do G.fire("EveryOneMinute") end
+        assert(#G.sent == 0, "onda na preta")
     end,
 }

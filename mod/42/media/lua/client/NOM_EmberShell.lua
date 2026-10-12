@@ -24,6 +24,7 @@ require "NOM_DissolveRules"
 require "NOM_Dissolve"
 require "NOM_Embers"
 require "NOM_ScreenFxOptions"
+-- NOM_BrasaLook é carregado depois; yieldForShell é opcional (pcall-safe via nil check)
 
 NOM_EmberShell = { ITEM = "Base.NOM_Brasa" }
 
@@ -59,6 +60,10 @@ end
 
 local function wear(z)
     if shells[z] then return end
+    -- 0067: casca permanente BoilerSuit não pode empilhar com a da mutação
+    if NOM_BrasaLook and NOM_BrasaLook.yieldForShell then
+        NOM_BrasaLook.yieldForShell(z)
+    end
     local iv = ItemVisual.new()
     iv:setItemType(S.ITEM)
     z:getItemVisuals():add(iv)

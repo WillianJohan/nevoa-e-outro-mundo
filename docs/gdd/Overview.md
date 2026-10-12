@@ -151,10 +151,11 @@ Só viram escopo por promoção explícita.
   5. `CarpideiraScreamRadius` 60 → **50** (sprint 0011). 60 se ninguém conseguir fugir do
      grito, 40 se ele matar em 2 de 3 névoas (item 5).
 
-  Junto: Eco 20 num raio de 30, caça a cada 90 min num raio de 25, 14% de monstros somados, e
-  duas opções novas: **`FogEscalation`** (ligada: a névoa começa a cada ~3 dias e chega a ~1,5
-  do dia 45; a vermelha sobe do dia 30 até o dobro no dia 90) e **`RedFogGraceDays`** (7:
-  nenhuma vermelha na primeira semana). As chances dos monstros e a noite não seguem a curva.
+  Junto: Eco 20 num raio de 30, caça a cada 90 min num raio de 25, pesos de monstro 5/3/3/3
+  (desde a 0049: 100% na branca, renormalizados), e duas opções novas: **`FogEscalation`**
+  (ligada: a névoa começa a cada ~3 dias e chega a ~1,5 do dia 45; a vermelha sobe do dia 30
+  até o dobro no dia 90) e **`RedFogGraceDays`** (7: nenhuma vermelha na primeira semana).
+  Os pesos dos monstros e a noite não seguem a curva.
   Presets Leve ("primeira visita"), Padrão ("o mundo tem horário") e Pesadelo ("a cidade é
   proibida") revistos ([sandbox.md](sandbox.md#curva-de-tensão-sprint-0019),
   [ADR-009](../architecture/adr-009-nevoa-evento-do-mod.md), [ADR-010](../architecture/adr-010-nevoa-vermelha.md)).

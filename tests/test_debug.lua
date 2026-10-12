@@ -211,6 +211,16 @@ local function has(lines, pattern)
     return false
 end
 
+-- Turn the nearest agora veste o look; testes de rede/alias stubam o VariantLook.
+local function stubLook()
+    package.loaded["NOM_VariantLook"] = {
+        forceVariant = function(_, kind, idx) return kind, idx or 1 end,
+        sync = function() end,
+        inspect = function() return "kind=- var=-" end,
+        count = function() return 0 end,
+    }
+end
+
 local realPrint = print
 
 local function run(fn)
@@ -294,6 +304,12 @@ return {
         G.zombie({ x = 103, y = 100, id = 2 })
         G.zombie({ x = 101, y = 100, id = 3, dead = true })
         G.zombie({ x = 102, y = 100, z = 1, id = 4 }) -- outro andar
+        -- stub: este teste só cobre a rede; o look fica no teste debug_variant_applies_wardrobe
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "estalador", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=estalador var=E1" end,
+        }
         NOM_Debug.variant("estalador")
         local sent = G.sentClient[1]
         assert(sent.command == "debug" and sent.args.op == "variant" and sent.args.id == 2 and sent.args.kind == "estalador",
@@ -312,6 +328,35 @@ return {
         assert(NOM_VariantRules.forced[2] == "estalador", "cliente não gravou")
         G.fire("OnServerCommand", "NevoaEOutroMundo", "debugVariant", { id = 2 })
         assert(NOM_VariantRules.forced[2] == nil, "kind nil não limpou")
+    end) end,
+
+    -- 0064: Turn the nearest veste o guarda-roupa sorteado (não só forcada=kind).
+    debug_variant_applies_picked_wardrobe = function() run(function()
+        local G = setup({ client = true, loadServer = false })
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 101, y = 100, id = 42 })
+        package.loaded["NOM_VariantWardrobe"] = nil
+        package.loaded["NOM_Math"] = nil
+        require "NOM_Math"
+        require "NOM_VariantWardrobe"
+        local calls, syncs = {}, {}
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function(z, kind, idx)
+                calls[#calls + 1] = { z = z, kind = kind, idx = idx }
+                return kind, idx
+            end,
+            sync = function(z, kind)
+                syncs[#syncs + 1] = { z = z, kind = kind }
+            end,
+            inspect = function() return "kind=corredor var=C1" end,
+        }
+        NOM_Debug.variant("corredor")
+        assert(#calls == 1, "Turn the nearest sem forceVariant")
+        assert(calls[1].kind == "corredor")
+        local _, want = NOM_VariantWardrobe.pick("corredor", 42)
+        assert(calls[1].idx == want, "indice != pick: " .. tostring(calls[1].idx) .. " vs " .. tostring(want))
+        NOM_Debug.variant(nil)
+        assert(#syncs >= 1 and syncs[#syncs].kind == nil, "desfazer não limpou o look")
     end) end,
     debug_spawn_eco_at_player_only_at_night = function() run(function()
         local G = setup()
@@ -459,6 +504,11 @@ return {
         local G = setup({ client = true, loadServer = false })
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 2 + 32768 })
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "corredor", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=corredor var=C1" end,
+        }
         NOM_Debug.variant("corredor")
         assert(G.sentClient[1].args.id == 2, "mandou " .. tostring(G.sentClient[1].args.id))
     end) end,
@@ -632,6 +682,12 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        package.loaded["NOM_VariantLook"] = {
+            forceVariant = function() return "corredor", 1 end,
+            sync = function() end,
+            inspect = function() return "kind=corredor var=C1" end,
+            count = function() return 0 end,
+        }
         NOM.variant("corredor")
         assert(NOM_VariantRules.forced[7] == "corredor")
         G.world.tod = 23
@@ -735,6 +791,7 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        stubLook()
         NOM_FogState.on = true
         NOM.turnZombie(2)
         assert(G.sentClient[1].args.op == "variant" and G.sentClient[1].args.kind == "corredor")
@@ -763,6 +820,7 @@ return {
         local G = setup()
         G.player({ x = 100, y = 100 })
         G.zombie({ x = 101, y = 100, id = 7 })
+        stubLook()
         NOM.turnZombie(1)
         assert(has(G.printed, "^%[NOM%] debug variante só aparece com névoa %(NOM.setFog%(true%)%)"), table.concat(G.printed, "\n"))
         assert(#G.sentClient == 1 and NOM_VariantRules.forced[7] == "estalador", "não mandou mesmo assim")
@@ -799,6 +857,33 @@ return {
         assert(#G.moves == 1 and G.moves[1].z == G.zombies[2] and G.moves[1].x == 100 and G.moves[1].y == 100
             and G.moves[1].zz == 0, "não moveu")
         assert(has(G.printed, "^%[NOM%] debug zumbi puxado x=100 y=100"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0059: Arrasto no zumbi mais perto (servidor marca crawler lento)
+    nom_arrasto_asks_server = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        G.zombie({ x = 130, y = 100, id = 1, online = 11 })
+        local near = G.zombie({ x = 103, y = 100, id = 2, online = 12 })
+        local forced = {}
+        NOM_ArrastoServer = {
+            force = function(z, skip)
+                forced[#forced + 1] = { z = z, skip = skip }
+                return true
+            end,
+        }
+        NOM.arrasto()
+        local a = G.sentClient[1].args
+        assert(a.op == "arrasto" and a.id == 12 and a.skip ~= true, "pedido errado")
+        assert(#forced == 1 and forced[1].z == near, "não forçou o mais perto")
+        assert(has(G.printed, "^%[NOM%] debug arrasto id=12"), table.concat(G.printed, "\n"))
+        NOM_ArrastoServer = nil
+    end) end,
+    nom_arrasto_none_near = function() run(function()
+        local G = setup()
+        G.player({ x = 100, y = 100 })
+        NOM.arrasto()
+        assert(#G.sentClient == 0, "pediu sem zumbi")
+        assert(has(G.printed, "^%[NOM%] debug nenhum zumbi perto"), table.concat(G.printed, "\n"))
     end) end,
     nom_get_zombie_none_near = function() run(function()
         local G = setup()
@@ -906,7 +991,7 @@ return {
     nom_help_has_new_commands_on_top_and_30s = function() run(function()
         local G = setup()
         G.player({ x = 0, y = 0 })
-        local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "wind" }
+        local order = { "setFog", "setRedFog", "setBlackFog", "setEndFog", "getZombie", "turnZombie", "godMode", "fogLook", "wind" }
         for i, name in ipairs(order) do
             assert(NOM[name] and NOM.HELP[i][1]:find("^NOM%." .. name .. "%("), "help fora de ordem: " .. name)
         end
@@ -966,6 +1051,19 @@ return {
         NOM_WanderServer = nil
         assert(#waves == 0, "mandou onda com o perambular desligado")
         assert(has(G.printed, "^%[NOM%] debug perambular desligado na opção FogWander"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0049: perambular só na névoa branca
+    nom_wander_refuses_on_red = function() run(function()
+        local G = setup()
+        G.player({ x = 0, y = 0 })
+        local waves = {}
+        NOM_WanderServer = { wave = function(why) waves[#waves + 1] = why; return 77 end }
+        NOM_World.fog, NOM_World.red = true, true
+        SandboxVars.NevoaEOutroMundo = { FogWander = true }
+        NOM.wander()
+        NOM_WanderServer = nil
+        assert(#waves == 0, "mandou onda na vermelha")
+        assert(has(G.printed, "^%[NOM%] debug perambular só na névoa branca"), table.concat(G.printed, "\n"))
     end) end,
     -- sprint 0037: um estalo do sonar agora; quem decide é o servidor (o Estalador mais perto
     -- de quem pediu, ou o anel no próprio jogador)
@@ -1090,6 +1188,40 @@ return {
         NOM_NightStats, NOM_TicaoFreeze, NOM_FogState.black, NOM_TicaoLight = oldNS, oldTF, oldFS, oldTL
         assert(has(G.printed, "^%[NOM%] debug ticao preta=true ticoes=2 congelados=1 luzes_fixas=%-$"), table.concat(G.printed, "\n"))
         assert(has(G.printed, "luzes_fixas=3$"), table.concat(G.printed, "\n"))
+    end) end,
+    -- sprint 0051: pressão da preta (sandbox) no console
+    nom_black_pressure_reports_profile = function() run(function()
+        local G = setup()
+        SandboxVars = nil
+        NOM.blackPressure()
+        assert(has(G.printed, "^%[NOM%] debug pressao preta nivel=2 %(padrao%)"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "piscar_caca=25"), table.concat(G.printed, "\n"))
+        SandboxVars = { NevoaEOutroMundo = { BlackFogPressure = 1 } }
+        G.printed = {}
+        NOM.blackPressure()
+        assert(has(G.printed, "nivel=1 %(leve%)"), table.concat(G.printed, "\n"))
+        assert(has(G.printed, "piscar_caca=0"), table.concat(G.printed, "\n"))
+        SandboxVars = nil
+    end) end,
+    -- sprint 0057: knobs de cinza no console
+    nom_ash_sets_and_resets_debug_knobs = function() run(function()
+        local G = setup()
+        require "NOM_FlakeRules"
+        NOM_FlakeRules.resetDebug()
+        NOM.ash(1.5, 2, 0.5)
+        local d = NOM_FlakeRules.debugMul()
+        assert(d.density == 1.5 and d.rate == 2 and d.air == 0.5, "set incompleto")
+        assert(has(G.printed, "^%[NOM%] debug cinzas dens=1%.50 taxa=2%.00 ar=0%.50"), table.concat(G.printed, "\n"))
+        G.printed = {}
+        NOM.ash("reset")
+        d = NOM_FlakeRules.debugMul()
+        assert(d.density == 1 and d.rate == 1 and d.air == 1)
+        assert(has(G.printed, "reset dens=1"), table.concat(G.printed, "\n"))
+        local found = false
+        for _, h in ipairs(NOM.HELP) do
+            if h[1]:find("^NOM%.ash%(") then found = true break end
+        end
+        assert(found, "HELP sem NOM.ash")
     end) end,
     nom_panel_calls_panel_toggle = function() run(function()
         local G = setup()

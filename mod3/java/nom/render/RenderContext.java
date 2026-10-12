@@ -2,6 +2,7 @@ package nom.render;
 
 import static org.lwjgl.opengl.GL33C.*;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,8 +18,11 @@ import zombie.characters.IsoZombie;
 import zombie.core.Color;
 import zombie.core.Core;
 import zombie.core.SpriteRenderer;
-import zombie.core.skinnedmodel.visual.ItemVisual;
-import zombie.core.skinnedmodel.visual.ItemVisuals;
+import zombie.core.skinnedmodel.animation.AnimationPlayer;
+import zombie.core.skinnedmodel.model.Model;
+import zombie.core.skinnedmodel.model.SkeletonBone;
+import zombie.core.skinnedmodel.model.SkinningBone;
+import zombie.core.skinnedmodel.model.SkinningBoneHierarchy;
 import zombie.core.textures.TextureDraw;
 import zombie.core.textures.TextureFBO;
 import zombie.gameStates.IngameState;
@@ -28,7 +32,11 @@ import zombie.iso.IsoCell;
 import zombie.iso.IsoDepthHelper;
 import zombie.iso.IsoWorld;
 import zombie.iso.Vector2;
+import zombie.iso.Vector3;
+import zombie.iso.weather.ClimateColorInfo;
+import se.krka.kahlua.vm.KahluaTable;
 import zombie.iso.weather.ClimateManager;
+import zombie.iso.weather.ThunderStorm;
 import zombie.iso.weather.fog.ImprovedFog;
 import zombie.scripting.objects.VehicleScript;
 import zombie.vehicles.BaseVehicle;
@@ -70,14 +78,21 @@ public final class RenderContext {
     static final int PARAM_WIND_SOURCE = 11;    // 1 liga um foco de vento aleatório perto do jogador (teste, sprint 0033); padrão 0
     static final int PARAM_BLACK = 12;          // 1 na névoa preta: a luz empurra a névoa (sprint 0039, client/NOM_FogQualitySync.lua)
     static final int PARAM_CENSOR = 13;         // rosto censurado do Sem-rosto: 0 desliga, 1 tamanho normal, 1,5 maior (sprint 0044)
+    static final int PARAM_POCKET_COV = 14;     // cobertura dos bolsões viajantes (0 = off; sprint 0047)
+    static final int PARAM_POCKET_BOOST = 15;   // intensidade do bolsão (altura/densidade; sprint 0047)
+    // PARAM 2 = altura da base (andares); PARAM 3 = altura no bolsão (sprint 0047)
     static {
         luaParams[Flow.PARAM_ON] = 1f;          // névoa fluida ligada por padrão
-        luaParams[PARAM_FLOW_RES] = 2f;
+        luaParams[PARAM_FLOW_RES] = 3f;         // playtest Johan (0047g): setParam(9, 3)
         luaParams[PARAM_VACUUM] = 1f;
         luaParams[PARAM_LOOK] = 1f;             // rolos com sombra própria por padrão
         luaParams[PARAM_QUALITY] = 2f;
-        luaParams[PARAM_HAZE] = 1f;
+        luaParams[2] = 1.0f;                   // altura base (0047g playtest: setParam(2, 1))
+        luaParams[3] = 1.2f;                   // altura no bolsão
+        luaParams[PARAM_HAZE] = 0.8f;           // véu (0047g: setParam(7, 0.8))
         luaParams[PARAM_CENSOR] = 1f;
+        luaParams[PARAM_POCKET_COV] = 0.1f;     // setParam(14, 0.1)
+        luaParams[PARAM_POCKET_BOOST] = 1.1f;   // setParam(15, 1.1)
     }
 
     // ---------- Lua ----------
@@ -105,6 +120,68 @@ public final class RenderContext {
             log("sonar: erro, o anel vai pra tela: " + t);
             return false;
         }
+    }
+
+    /**
+     * Ripple curto do burst do Estalador (sprint 0048). Mesmo contrato do NOMRender_sonar.
+     */
+    @LuaMethod(name = "NOMRender_sonarRipple", global = true)
+    public static boolean sonarRipple(double x, double y, double z) {
+        try {
+            return Flow.addSonarRipple((float) x, (float) y, (int) Math.floor(z));
+        } catch (Throwable t) {
+            log("sonarRipple: erro, o anel vai pra tela: " + t);
+            return false;
+        }
+    }
+
+    // Sprint 0053: cor do clarão do ThunderStorm (PlayerLightningInfo.lightningColor é público;
+    // o array lightningInfos é privado — reflexão uma vez). Vanilla nasce branco (1,1,1);
+    // na névoa preta o Lua pinta vermelho. Nunca derruba o jogo.
+    private static Field lightningInfosField;
+    private static float lightningR = 1f, lightningG = 1f, lightningB = 1f;
+
+    /**
+     * Pinta o clarão do relâmpago vanilla (r,g,b 0..1). client/NOM_StormFx.lua: vermelho
+     * só na névoa preta; branco de volta na vermelha/branca. true se aplicou.
+     */
+    @LuaMethod(name = "NOMRender_setLightningColor", global = true)
+    public static boolean setLightningColor(double r, double g, double b) {
+        try {
+            lightningR = clamp01((float) r);
+            lightningG = clamp01((float) g);
+            lightningB = clamp01((float) b);
+            return paintLightningColor();
+        } catch (Throwable t) {
+            log("setLightningColor: " + t);
+            return false;
+        }
+    }
+
+    private static float clamp01(float v) {
+        return v < 0f ? 0f : (v > 1f ? 1f : v);
+    }
+
+    private static boolean paintLightningColor() throws Exception {
+        ClimateManager cm = ClimateManager.getInstance();
+        if (cm == null) return false;
+        ThunderStorm ts = cm.getThunderStorm();
+        if (ts == null) return false;
+        if (lightningInfosField == null) {
+            lightningInfosField = ThunderStorm.class.getDeclaredField("lightningInfos");
+            lightningInfosField.setAccessible(true);
+        }
+        Object[] infos = (Object[]) lightningInfosField.get(ts);
+        if (infos == null) return false;
+        for (Object info : infos) {
+            if (info == null) continue;
+            Field colorField = info.getClass().getField("lightningColor");
+            ClimateColorInfo col = (ClimateColorInfo) colorField.get(info);
+            if (col == null) continue;
+            col.setExterior(lightningR, lightningG, lightningB, 1f);
+            col.setInterior(lightningR, lightningG, lightningB, 1f);
+        }
+        return true;
     }
 
     /**
@@ -233,12 +310,15 @@ public final class RenderContext {
 
     private static final Censor censor = new Censor();
     private static boolean censorFailed;
+    private static final Vector3 headBone = new Vector3();
+    private static final float[] headEst = new float[3];
 
     /**
-     * Cabeças do Sem-rosto pro quadrado censurado: o zumbi com a peça do visual (a lista de ItemVisual que o
-     * client/NOM_VariantLook.lua preenche; IsoZombie.getItemVisuals, ItemVisual.getItemType, bytecode em
-     * pz-api-notes §33) e o alfa dele pra este jogador (IsoObject.getAlpha(int): 0 fora da vista).
-     * Erro aqui só apaga o quadrado; a névoa segue.
+     * Cabeças do Sem-rosto pro quadrado censurado: ModData {@link Censor#MODDATA_KEY} (o
+     * client/NOM_VariantLook.lua marca ao pintar, sem peça 3D/casca-ovo) e o alfa dele pra
+     * este jogador (IsoObject.getAlpha(int): 0 fora da vista). Posição: osso Bip01_Head
+     * (Model.boneToWorldCoords) quando o AnimationPlayer está pronto; senão estimativa
+     * em pé/prone ({@link Censor#estimateHead}). Erro aqui só apaga o quadrado; a névoa segue.
      */
     private static void collectCensors(Frame f, IsoCell cell, float cx, float cy, int playerIndex) {
         try {
@@ -248,19 +328,61 @@ public final class RenderContext {
                 IsoZombie z = zs.get(i);
                 float dx = z.getX() - cx, dy = z.getY() - cy, d2 = dx * dx + dy * dy;
                 if (d2 > Censor.RANGE * Censor.RANGE) continue;
-                ItemVisuals ivs = z.getItemVisuals();
-                boolean semRosto = false;
-                for (int k = 0; ivs != null && k < ivs.size() && !semRosto; k++) {
-                    ItemVisual iv = ivs.get(k);
-                    semRosto = iv != null && Censor.isSemRostoItem(iv.getItemType());
+                if (!isSemRostoMarked(z)) continue;
+                float hx, hy, hz;
+                if (headFromBone(z)) {
+                    hx = headBone.x;
+                    hy = headBone.y;
+                    hz = headBone.z;
+                } else {
+                    boolean low = z.isProne() || z.isCrawling() || z.isKnockedDown();
+                    Censor.estimateHead(z.getX(), z.getY(), z.getZ(), low,
+                            z.getForwardDirectionX(), z.getForwardDirectionY(), headEst);
+                    hx = headEst[0];
+                    hy = headEst[1];
+                    hz = headEst[2];
                 }
-                if (semRosto) censor.offer(z.getX(), z.getY(), z.getZ(), z.getAlpha(playerIndex), d2);
+                censor.offerHead(hx, hy, hz, z.getAlpha(playerIndex), d2);
             }
             f.censorCount = censor.fill(f.censors, f.originX, f.originY);
         } catch (Throwable t) {
             f.censorCount = 0;
             if (!censorFailed) log("rosto censurado: erro, sem quadrado neste quadro: " + t);
             censorFailed = true;
+        }
+    }
+
+    /** true se o VariantLook marcou este zumbi como Sem-rosto (sem depender da casca 3D). */
+    private static boolean isSemRostoMarked(IsoZombie z) {
+        try {
+            if (!z.hasModData()) return false;
+            KahluaTable md = z.getModData();
+            if (md == null) return false;
+            Object v = md.rawget(Censor.MODDATA_KEY);
+            if (v instanceof Boolean) return (Boolean) v;
+            return v != null && "true".equalsIgnoreCase(String.valueOf(v));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Osso Bip01_Head em coords de mundo; false se o AnimationPlayer ainda não está pronto. */
+    private static boolean headFromBone(IsoZombie z) {
+        try {
+            if (!z.hasAnimationPlayer()) return false;
+            AnimationPlayer ap = z.getAnimationPlayer();
+            if (ap == null) return false;
+            SkinningBoneHierarchy hier = ap.getSkeletonBoneHierarchy();
+            if (hier == null || !hier.isValid()) return false;
+            SkinningBone bone = hier.getBone(SkeletonBone.Bip01_Head);
+            if (bone == null) bone = hier.getBone("Bip01_Head");
+            if (bone == null) return false;
+            Model.boneToWorldCoords(z, bone, headBone);
+            // (0,0,0) absoluto quase nunca é cabeça válida perto da câmera; evita lixo pré-pose
+            if (headBone.x == 0f && headBone.y == 0f && headBone.z == 0f) return false;
+            return true;
+        } catch (Throwable t) {
+            return false;
         }
     }
 

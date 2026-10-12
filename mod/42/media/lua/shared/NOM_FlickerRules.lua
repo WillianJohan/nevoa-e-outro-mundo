@@ -64,19 +64,27 @@ function R.torchMax(darkMs)
 end
 
 -- Poste: gagueira e, às vezes, um escuro no fim.
-function R.lamp(rnd)
+-- opts (sprint 0051, só na preta): lampDarkChance, lampDarkMinMs, lampDarkMaxMs do perfil.
+function R.lamp(rnd, opts)
+    opts = opts or {}
+    local darkChance = opts.lampDarkChance
+    if darkChance == nil then darkChance = R.LAMP_DARK_CHANCE end
+    local darkMin = opts.lampDarkMinMs or R.LAMP_DARK_MIN_MS
+    local darkMax = opts.lampDarkMaxMs or R.LAMP_DARK_MAX_MS
     local segs = {}
     pairsOf(segs, count(R.LAMP_STUTTER, rnd), rnd)
-    if rnd() < R.LAMP_DARK_CHANCE then
-        segs[#segs + 1] = pick(R.LAMP_DARK_MIN_MS, R.LAMP_DARK_MAX_MS, rnd())
+    if rnd() < darkChance then
+        segs[#segs + 1] = pick(darkMin, darkMax, rnd())
     else
         segs[#segs + 1] = short(rnd)
     end
     return segs
 end
 
-function R.lampMax()
-    return 2 * R.LAMP_STUTTER[2] * R.STUTTER_MAX_MS + R.LAMP_DARK_MAX_MS
+function R.lampMax(opts)
+    opts = opts or {}
+    local darkMax = opts.lampDarkMaxMs or R.LAMP_DARK_MAX_MS
+    return 2 * R.LAMP_STUTTER[2] * R.STUTTER_MAX_MS + darkMax
 end
 
 function R.total(segs)

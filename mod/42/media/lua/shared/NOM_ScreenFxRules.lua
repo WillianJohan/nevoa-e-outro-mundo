@@ -6,6 +6,7 @@ require "NOM_AtmosphereRules"
 require "NOM_Math"
 require "NOM_Rules"
 require "NOM_FogEventRules"
+require "NOM_FogClimaxRules"
 
 NOM_ScreenFxRules = {
     FADE_MS = 4000,        -- tempo real do nada à névoa cheia na tela (e de volta)
@@ -44,6 +45,10 @@ NOM_ScreenFxRules = {
     -- DIZZY_BASE · round(tontura · DIZZY_STEPS). Iguais aos NOM_DIZZY_* do screen.frag.
     DIZZY_BASE = 4,
     DIZZY_STEPS = 256,
+    -- Sprint 0052: vinheta que respira perto do soluço da Carpideira (ZB-free, §3.2/§3.3).
+    SOB_NEAR = 3,
+    SOB_FAR = 12,
+    SOB_VIGNETTE = 0.22,
     -- geradas por scripts/gen_textures.py: branco com alfa, pintadas pela cor do desenho
     TEXTURES = {
         grain = {
@@ -65,9 +70,17 @@ local function clamp(v, lo, hi)
 end
 
 -- static: volume do rádio do Sem-rosto (0..1); flashAt/flashStrength: último grito.
+-- sob: proximidade do soluço da Carpideira (0..1, sprint 0052).
 -- fogStatic/staticKind: estática da névoa (R.stepStatic); staticFadeAt/From: o fade do fim.
 function R.new()
-    return { fog = 0, red = 0, static = 0, flashAt = nil, flashStrength = 0, fogStatic = 0, staticKind = "white" }
+    return { fog = 0, red = 0, static = 0, sob = 0, flashAt = nil, flashStrength = 0, fogStatic = 0, staticKind = "white" }
+end
+
+-- Força da vinheta pelo soluço perto (nil / longe = 0). Mesma curva do volume do soluço.
+function R.sobStrength(d)
+    if d == nil or d >= R.SOB_FAR then return 0 end
+    if d <= R.SOB_NEAR then return 1 end
+    return (R.SOB_FAR - d) / (R.SOB_FAR - R.SOB_NEAR)
 end
 
 -- Alfa base da estática da névoa (0..1), sem o fade do fim. w = { omenAt, sirenAt, visible }
@@ -166,17 +179,94 @@ function R.layers(s, now, i, dz)
     local f, r, b = s.fog, s.red, s.black or 0
     local sr, sg, sb = R.staticColor(s.staticKind)
     local pulse = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, R.DIZZY_PULSE_MS) / R.DIZZY_PULSE_MS)
+    -- fallback sem mod3 (sprint 0047): vinheta da base mais fraca; com bolsões ligados, pulso
+    -- raro mais forte (não dá pra amostrar o campo espacial sem o volume)
+    local vigBase = 0.42
+    if f > 0 and NOM_FogClimaxRules then
+        local look = NOM_FogClimaxRules.fromConfig()
+        vigBase = look.fallbackBaseVignette
+        if look.pocketCoverage > 0 then
+            local slow = 0.5 - 0.5 * math.cos(2 * math.pi * NOM_Math.mod(now, 90000) / 90000)
+            vigBase = vigBase + (look.fallbackPocketVignette - look.fallbackBaseVignette) * slow * slow
+        end
+    end
+    local sob = clamp(s.sob or 0, 0, 1)
+    local sobVig = sob * R.SOB_VIGNETTE * i * (0.7 + 0.3 * breath(now))
+    -- 0060c/d: look limpo (flag de debug) — zera tudo pra isolar o ItemVisual.
+    if R.lookClean() then
+        return {
+            grain = 0, vignette = 0, vr = 0, vg = 0, vb = 0,
+            lines = 0, flash = 0, fogStatic = 0,
+            sr = sr, sg = sg, sb = sb, dark = 0, edgeLines = false,
+        }
+    end
+    -- I6: GlitchMode (off/original/bordas) + GlitchIntensity (0..200%). LookForce suaviza.
+    local force = R.lookForceOn()
+    local mode = R.glitchMode()
+    local gI = R.glitchIntensity()
+    local soft = force and 0.4 or 1
+    local vMul = force and 0.45 or 1
+    local fMul = force and 0.35 or 1
+    local sMul = (force and 0.12 or 1) * gI
+    local linesBase = 0
+    local edgeLines = false
+    if mode == "original" then
+        linesBase = clamp(s.static * f * 0.2 * i * soft * gI, 0, 1)
+    elseif mode == "bordas" then
+        linesBase = clamp(s.static * f * 0.2 * i * 0.4 * soft * gI, 0, 1)
+        edgeLines = linesBase > 0
+    end
+    -- off: grain/vinheta da #16 (mais baixos); original/bordas: staging (mais altos)
+    local grainK = (mode == "off") and (0.05 + 0.03 * r + 0.03 * b) or (0.09 + 0.05 * r + 0.04 * b)
     return {
-        grain = clamp(f * (0.09 + 0.05 * r + 0.04 * b) * i, 0, 1),
-        vignette = clamp(f * (0.42 + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i + dz * R.DIZZY_VIGNETTE * pulse, 0, 1),
-        vr = 0.42 * r * (1 - b), vg = 0, vb = 0,
-        lines = clamp(s.static * f * 0.2 * i, 0, 1),
-        flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i, 0, 1),
-        fogStatic = clamp((s.fogStatic or 0) * i, 0, 1),
+        grain = clamp(f * grainK * i * soft, 0, 1),
+        vignette = clamp(f * (vigBase + 0.16 * breath(now)) * (1 + 0.45 * r + 0.8 * b) * i * vMul
+            + dz * R.DIZZY_VIGNETTE * pulse * (force and 0.35 or 1) + sobVig * (force and 0.35 or 1), 0, 1),
+        vr = 0.42 * r * (1 - b) * (force and 0.65 or 1), vg = 0, vb = 0,
+        lines = linesBase,
+        edgeLines = edgeLines,
+        flash = clamp(R.flash(now, s.flashAt, s.flashStrength) * 0.45 * i * fMul, 0, 1),
+        fogStatic = clamp((s.fogStatic or 0) * i * sMul, 0, 1),
         sr = sr, sg = sg, sb = sb,
-        dark = dz * R.DIZZY_DARK,
+        dark = dz * R.DIZZY_DARK * (force and 0.4 or 1),
     }
 end
+
+-- Isolamento debug (NOM.lookClean): não confundir com LookForce do painel.
+function R.setLookClean(on)
+    R._lookClean = on == true
+end
+
+function R.lookClean()
+    return R._lookClean == true
+end
+
+-- LookForce ≠ Auto (horror forçado no painel).
+function R.lookForceOn()
+    if not NOM_PanelParams or not NOM_PanelParams.lookForce then return false end
+    local lf = NOM_PanelParams.lookForce()
+    return lf ~= nil and lf ~= ""
+end
+
+-- I6: modo do seletor "Glitch de tela" (padrão original até o Johan decidir).
+function R.glitchMode()
+    if NOM_PanelParams and NOM_PanelParams.glitchMode then
+        return NOM_PanelParams.glitchMode()
+    end
+    return "original"
+end
+
+-- Multiplicador 0..2 do slider de intensidade.
+function R.glitchIntensity()
+    if NOM_PanelParams and NOM_PanelParams.glitchIntensity then
+        return NOM_PanelParams.glitchIntensity()
+    end
+    return 1
+end
+
+-- Tag no gradiente (ParamInfo) pra o screen.frag saber que é modo bordas.
+-- bloom fica em MARKER..MARKER+0,5; bordas soma BORDAS_TAG (2).
+R.BORDAS_TAG = 2
 
 function R.visible(l)
     return l.grain > 0 or l.vignette > 0 or l.lines > 0 or l.flash > 0 or l.fogStatic > 0 or l.dark > 0
@@ -195,14 +285,32 @@ end
 -- dz (sprint 0035): a tontura (R.dizzyLevel), na parte inteira do darkness; o pulso fica no
 -- resto, preso em 2 (o shader prende igual), longe de DIZZY_BASE. Não depende de i (o sandbox).
 function R.channel(s, now, i, bloom, dz)
+    -- 0060c: look limpo solta o canal (fog/hiss/red/pulse → tear/aberração no screen.frag)
+    if R.lookClean() then
+        return { blur = 0, radius = 0, desat = 0, darkness = 0, gradient = 0 }
+    end
     i = clamp(i or 1, 0, 2)
-    local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i, 0, 2)
+    local force = R.lookForceOn()
+    local mode = R.glitchMode()
+    local gI = R.glitchIntensity()
+    local soft = force and 0.4 or 1
+    -- radius → SearchMode.y → hiss no screen.frag (tear). off=0; original=staging; bordas=reduzido.
+    local radius = 0
+    if mode == "original" then
+        radius = s.static * s.fog * i * soft * gI
+    elseif mode == "bordas" then
+        radius = s.static * s.fog * i * 0.35 * soft * gI
+    end
+    local pulse = clamp(R.flash(now, s.flashAt, s.flashStrength) * i * (force and 0.12 or 1), 0, 2)
+    local bloomV = clamp(bloom or 0, 0, 2) * (force and 0.35 or 1)
+    local grad = R.MARKER + bloomV * R.BLOOM_SCALE
+    if mode == "bordas" then grad = grad + R.BORDAS_TAG end
     return {
-        blur = s.fog * i,
-        radius = s.static * s.fog * i,
-        desat = s.red * i,
+        blur = s.fog * i * soft,
+        radius = clamp(radius, 0, 2),
+        desat = s.red * i * (force and 0.3 or 1),
         darkness = pulse + R.DIZZY_BASE * math.floor(clamp(dz or 0, 0, 1) * R.DIZZY_STEPS + 0.5),
-        gradient = R.MARKER + clamp(bloom or 0, 0, 2) * R.BLOOM_SCALE,
+        gradient = grad,
     }
 end
 

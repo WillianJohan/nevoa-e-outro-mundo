@@ -10,6 +10,7 @@ require "NOM_World"
 require "NOM_Players"
 require "NOM_FlickerRules"
 require "NOM_LightRules"
+require "NOM_BlackPressureRules"
 require "NOM_Math"
 
 NOM_LampFlicker = { off = {} } -- off[chave] = até quando (ms) o poste está no padrão
@@ -94,8 +95,15 @@ local function pick(now)
     return nil
 end
 
+-- Na preta, o perfil de pressão aperta postes (ilhas instáveis); na vermelha ficam os defaults.
+local function lampOpts()
+    if NOM_World.black then return NOM_BlackPressureRules.current() end
+    return nil
+end
+
 local function start(x, y, z, now)
-    local segs = R.lamp(rnd)
+    local opts = lampOpts()
+    local segs = R.lamp(rnd, opts)
     local untilMs = now + R.total(segs)
     L.off[R.lampKey(x, y, z)] = untilMs
     if NOM_TicaoLight then NOM_TicaoLight.lampFlicker(R.lampKey(x, y, z), untilMs) end
@@ -118,10 +126,13 @@ function L.tick()
     end
     local now = getTimestampMs()
     scan(now)
-    if nextCheck == nil then nextCheck = now + R.LAMP_CHECK_MS end
+    local opts = lampOpts()
+    local checkMs = (opts and opts.lampCheckMs) or R.LAMP_CHECK_MS
+    local chance = (opts and opts.lampChance) or R.LAMP_CHANCE
+    if nextCheck == nil then nextCheck = now + checkMs end
     if now < nextCheck then return end
-    nextCheck = now + R.LAMP_CHECK_MS
-    if ZombRand(100) >= R.LAMP_CHANCE or busy(now) >= R.LAMP_MAX then return end
+    nextCheck = now + checkMs
+    if ZombRand(100) >= chance or busy(now) >= R.LAMP_MAX then return end
     local x, y, z = pick(now)
     if x then start(x, y, z, now) end
 end

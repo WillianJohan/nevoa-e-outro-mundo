@@ -1,12 +1,17 @@
 # Créditos
 
-**Nada de terceiros.** Todo arquivo de som, imagem e textura do mod é original, gerado por
-script deste repositório, menos a **arte de lançamento, que é do Johan** (pôster, preview, ícone
-e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md)) e só é redimensionada e
-tingida por script; o resto do que o mod mostra é conteúdo vanilla do Project
-Zomboid **referenciado por nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum
-código, som ou imagem de outro mod foi usado. Licença de tudo que está aqui:
-[MIT](LICENSE), a mesma do mod.
+**Nada de terceiros (com exceções do autor).** Todo arquivo de som, imagem e textura do
+mod é original, gerado por script deste repositório, menos: (1) a **arte de lançamento, que é
+do Johan** (pôster, preview, ícone e banner; [ADR-019](docs/architecture/adr-019-arte-de-lancamento.md))
+e só é redimensionada e tingida por script; (2) os **gritos Corredor / Carpideira / Ambient da
+sprint 0048**, gerados pelo Johan com ElevenLabs Sound Effects e convertidos por
+[`scripts/import_elevenlabs_screams.py`](scripts/import_elevenlabs_screams.py) (MP3 fonte fora do
+repo); (3) os **sons de almas esqueléticas (sprint 0050)**, gerados pelo Johan com ElevenLabs
+Sound Effects e convertidos por
+[`scripts/import_elevenlabs_almas.py`](scripts/import_elevenlabs_almas.py) (MP3 fonte fora do
+repo). O resto do que o mod mostra é conteúdo vanilla do Project Zomboid **referenciado por
+nome ou GUID**, sem nenhum arquivo do jogo copiado. Nenhum código, som ou imagem de outro mod
+foi usado. Licença de tudo que está aqui: [MIT](LICENSE), a mesma do mod.
 
 `tests/test_credits.lua` falha se aparecer no mod qualquer arquivo que não seja
 código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
@@ -14,15 +19,22 @@ código ou texto (`.lua .txt .xml .json .info`, `.gitkeep`), ou uma imagem em
 
 ## Sons
 
-Gerados por síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/gen_sounds.py)
-(numpy + ffmpeg, semente fixa). Nenhuma amostra de terceiros, do jogo ou de outro mod. A
-síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Johan aprovou); o
-`gen_sounds.py` as encurta sem mudar o tom e põe a distância e o eco de cidade.
+A maior parte é síntese procedural pelo script [`scripts/gen_sounds.py`](scripts/gen_sounds.py)
+(numpy + ffmpeg, semente fixa). Nenhuma amostra do jogo ou de outro mod. A síntese das sirenes
+está em `scripts/sirenes/` (os protótipos nossos que o Johan aprovou); o `gen_sounds.py` as
+encurta sem mudar o tom e põe a distância e o eco de cidade.
+
+**Gritos da sprint 0048 (Johan + ElevenLabs Sound Effects):** o autor gerou os SFX; o script
+[`scripts/import_elevenlabs_screams.py`](scripts/import_elevenlabs_screams.py) corta silêncio,
+normaliza e grava ogg mono 44,1 kHz. Os MP3 de origem **não** entram no repo. O
+`gen_sounds.py` não sobrescreve esses slots.
 
 | Arquivo | Som | Uso |
 |---|---|---|
-| `mod/42/media/sound/NOM_EstaladorClick.ogg` | três estalos secos (ruído filtrado em ressonância) | estalo de aviso do Estalador |
-| `mod/42/media/sound/NOM_CorredorScream.ogg` | grito rasgado (onda serra com formantes e saturação) | grito do Corredor |
+| `mod/42/media/sound/NOM_EstaladorClick.ogg` | burst clicker rítmico (~12 cliques secos em ~1,4 s; último mais forte) | estalo/sonar do Estalador (sprint 0048) |
+| `mod/42/media/sound/NOM_CorredorScream.ogg` | ElevenLabs (Johan): sudden sharp scream (~1,7 s) | grito do Corredor (sprint 0048) |
+| `mod/42/media/sound/NOM_CorredorScream2.ogg` | ElevenLabs (Johan): fast-moving infected (surto inicial) | grito do Corredor |
+| `mod/42/media/sound/NOM_CorredorScream3.ogg` | ElevenLabs (Johan): feral infected | grito do Corredor |
 | `mod/42/media/sound/NOM_FogDrone.ogg` | drone grave em loop (senos graves + ronco filtrado) | ambiente da névoa |
 | `mod/42/media/sound/NOM_FogMetal.ogg` | pancada metálica distante (parciais inarmônicos + ecos) | ruídos metálicos da névoa |
 | `mod/42/media/sound/NOM_RadioStatic.ogg` | chiado de rádio em loop (ruído filtrado, estalos, zumbido de 60 Hz) | rádio "na cabeça" perto do Sem-rosto |
@@ -58,7 +70,13 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_SirenBlack12.ogg` | "o gerador" (11,8 s): sirene ligada num gerador a diesel que tosse três vezes, dá tiros no escapamento e afoga; sobram os tiques do metal esfriando | sirene da névoa preta |
 | `mod/42/media/sound/NOM_SirenBlack13.ogg` | "uma por uma" (11,8 s): três sirenes graves de bairros diferentes; os transformadores estouram de fora pra dentro e o zumbido da rede some | sirene da névoa preta |
 | `mod/42/media/sound/NOM_CarpideiraSob.ogg` | choro baixo em loop (~7 s): soluços de voz aguda que treme e cai, com ar e inspirações chiadas (harmônicos filtrados em formantes + ruído) | Carpideira calma, perto dela |
-| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | grito agudo que sobe até um guincho e rasga (~3,5 s): duas vozes desafinadas, formantes, saturação forte, ecos curtos | grito da Carpideira acordada |
+| `mod/42/media/sound/NOM_CarpideiraScream.ogg` | ElevenLabs (Johan): mysterious female scream (~4 s) | grito da Carpideira acordada (sprint 0048) |
+| `mod/42/media/sound/NOM_CarpideiraScream2.ogg` | ElevenLabs (Johan): distant woman scream | grito da Carpideira |
+| `mod/42/media/sound/NOM_CarpideiraScream3.ogg` | ElevenLabs (Johan): mysterious female (trecho suave) | grito da Carpideira |
+| `mod/42/media/sound/NOM_AmbientScream1.ogg` | ElevenLabs (Johan): distant man scream | gritos ambiente da névoa (sprint 0048) |
+| `mod/42/media/sound/NOM_AmbientScream2.ogg` | ElevenLabs (Johan): exhausted adult suffering | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream3.ogg` | ElevenLabs (Johan): faint distant cry | gritos ambiente |
+| `mod/42/media/sound/NOM_AmbientScream4.ogg` | ElevenLabs (Johan): several distant screams | gritos ambiente |
 | `mod/42/media/sound/NOM_DevTv.ogg` | TV fora do ar (8 s): neve no alto-falante, quase-palavras formadas pela estática, tom de teste de 1 kHz que corta com estalo | TV na névoa branca |
 | `mod/42/media/sound/NOM_DevTvRed.ogg` | TV áspera (8 s): respiração rouca por baixo da neve, sirene tocada ao contrário, corte seco pro silêncio | TV na névoa vermelha |
 | `mod/42/media/sound/NOM_DevTvBlack.ogg` | TV no escuro (8 s): zumbido do tubo, neve caindo em degraus, motivo de três bipes, a TV desligando sozinha | TV na névoa preta (sprint 0038) |
@@ -68,10 +86,21 @@ síntese das sirenes está em `scripts/sirenes/` (os protótipos nossos que o Jo
 | `mod/42/media/sound/NOM_DevSpeaker.ogg` | caixa de som de poste (7 s): zumbido de terra na corneta, pulsos graves de passada, microfonia cortada seca, eco de rua | caixa de som na névoa |
 | `mod/42/media/sound/NOM_DevCar.ogg` | rádio de carro ligando sozinho, ouvido de fora (8 s): relé, busca de estação, contagem de cinco sílabas, abafado pela lataria | rádio de carro na névoa |
 | `mod/42/media/sound/NOM_DevBurst.ogg` | estouro de estática de aparelho (3 s): chiado na banda AM que cresce, crepitação e rajadas de arco, corte seco | presságio da sirene e aparelho perto do Sem-rosto |
+| `mod/42/media/sound/NOM_AlmaSpawn.ogg` | ElevenLabs (Johan): skeletal undead rising from ground (~4,5 s) | spawn de alma esquelética (sprint 0050) |
+| `mod/42/media/sound/NOM_AlmaCrawl.ogg` | ElevenLabs (Johan): skeletal undead crawling / joints | alma crawler (evento) |
+| `mod/42/media/sound/NOM_AlmaShamble.ogg` | ElevenLabs (Johan): skeletal undead shambling | alma shambler (evento) |
+| `mod/42/media/sound/NOM_AlmaGroup.ogg` | ElevenLabs (Johan): several skeletal undead in fog | leva / grupo na névoa |
+| `mod/42/media/sound/NOM_AlmaDespawn.ogg` | ElevenLabs (Johan): skeletal undead turning to smoke | despawn / TTL da alma |
 
-Pra regerar: `python3 scripts/gen_sounds.py` (ou só alguns: `python3 scripts/gen_sounds.py NOM_DevTv`).
+Pra regerar a síntese: `python3 scripts/gen_sounds.py` (ou só alguns:
+`python3 scripts/gen_sounds.py NOM_DevTv`). Pra regerar os gritos ElevenLabs
+(com a pasta de MP3 do Johan): `python3 scripts/import_elevenlabs_screams.py /caminho/elevenlabs-refs`.
 A síntese dos aparelhos usa as peças de [`scripts/nom_synth.py`](scripts/nom_synth.py). Os sons
 são declarados em `mod/42/media/scripts/NOM_sounds.txt`.
+
+**Almas (sprint 0050):** com a pasta de MP3 do Johan,
+`python3 scripts/import_elevenlabs_almas.py /caminho/elevenlabs-skeleton-refs`.
+Os MP3 **não** entram no repo.
 
 ## Imagens
 
@@ -91,6 +120,7 @@ nada de outro mod.
 | `mod/42/poster.png` | 512×512 | painel de informações do mod no jogo (`mod.info`, `poster=`) |
 | `mod/42/icon.png` | 64×64 | ícone na lista de mods (`mod.info`, `icon=`) |
 | `docs/workshop/preview.png` | 512×512 | imagem do item no Steam Workshop (copiada pelo `scripts/build-workshop.sh`) |
+| `docs/workshop/release-v1.0.0.md` | texto | notas de release da v1.0.0 (Workshop / GitHub); não é asset |
 | `mod2/42/poster.png`, `mod3/42/poster.png` | 512×512 | painel dos mods opcionais (shader e volumétrica): o pôster com as cores separadas |
 | `mod2/42/icon.png`, `mod3/42/icon.png` | 64×64 | ícone dos mods opcionais: o ícone com as cores separadas |
 | `docs/art/staging/poster.png` | 512×512 | pôster do mod de staging (a preview vermelha), aplicado só na cópia do `scripts/dev-sync.sh` |
@@ -110,17 +140,21 @@ Direção de arte em [docs/gdd/art-direction.md](docs/gdd/art-direction.md).
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
-| `mod/42/media/textures/Body/NOM_Estalador.png` | 256×256 | pele do Estalador: porcelana quase branca, rachaduras grossas pretas |
-| `mod/42/media/textures/Body/NOM_Corredor.png` | 256×256 | pele do Corredor: cinza clara, veias grossas quase pretas |
-| `mod/42/media/textures/Body/NOM_Carpideira.png` | 256×256 | pele da Carpideira: muito pálida, escorridos de fuligem, fuligem nos olhos |
-| `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (sprint 0038): carvão em placas pequenas, rachaduras finas de brasa viva e apagando |
+| `mod/42/media/textures/Body/NOM_Ticao.png` | 256×256 | pele do Tição (I5/0060f): carvão quase liso; brasa na crosta 3D |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda.png` | 128×128 | venda do Estalador até a 0040 (nos óculos de esqui vanilla): atadura em faixas, arame farpado ferrugem, sangue seco. Fica pra voltar a venda 3D da 0041 com três linhas por XML |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca rasgada do Corredor até a 0041 (na máscara cirúrgica vanilla): vermelho escuro, rasgo preto, dentes brancos. Fica pra voltar a boca 3D da 0042 pelo XML |
-| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | rosto do Sem-rosto: chiado de TV em blocos preto/branco, faixas rasgadas (na balaclava vanilla até a 0041; na casca 3D desde a 0042) |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca.png` | 128×128 | boca do Corredor (lote 2): rasgo escuro colado, lábio pele−10%, sem aro claro |
+| `mod/42/media/textures/NOM/NOM_CorredorRisco.png` | 256×256 | risco vertical claro N4 do Corredor (gola→cintura, ≥1/6 do tronco) |
+| `mod/42/media/textures/NOM/NOM_SemRostoEstatica.png` | 128×128 | casca do Sem-rosto (aposentada do look 0060f): cera lisa sem feição nem chiado (modelo 3D desde a 0042) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto.png` | 256×256 | remendo A′ F1 (liso): cinza claro com alfa só no rosto; tint por zumbi |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F2.png` | 256×256 | remendo A′ F2 (vestígio de nariz) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F3.png` | 256×256 | remendo A′ F3 (pálpebras seladas) |
+| `mod/42/media/textures/NOM/NOM_SemRostoRosto_F4.png` | 256×256 | remendo A′ F4 (repuxado) |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo.png` | 128×128 | cabelo preto da Carpideira com mechas brancas, caindo no rosto (no véu de noiva vanilla até a 0041). Fica pra voltar o cabelo 3D da 0042 pelo XML |
+| `mod/42/media/textures/NOM/NOM_CarpideiraManto.png` | 256×256 | manto (C2/0060f): tecido escuro; alfa 0 em rosto/mãos/pés (K1; K2–K5 usam roupa vanilla) |
 | `mod/42/media/textures/NOM/NOM_EcoCinza.png` | 256×256 | quase branco com salpicos pequenos e escorridos finos de cinza, no corpo todo do Eco |
 | `mod/42/media/textures/NOM/NOM_EcoVeu.png` | 128×128 | véu quase branco do Eco, salpicado, mais escuro nas bordas |
 | `mod/42/media/textures/NOM/NOM_Brasa.png` | 256×256 | casca de brasa da mutação (sprint 0022): carvão quase preto em placas, rachaduras largas em brasa laranja |
+| `mod/42/media/textures/NOM/NOM_BrasaCasca.png` | 256×256 | 0067: fissuras de brasa ≥70% transparentes (casca BoilerSuit permanente na preta) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Grain1.png` … `NOM_Grain4.png` (`mod/42/media/textures/NOM/ScreenFx/NOM_Grain2.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain3.png`, `mod/42/media/textures/NOM/ScreenFx/NOM_Grain4.png`) | 256×256 | grão de filme da névoa, quatro quadros de ruído (efeitos de tela, sprint 0013) |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Vignette.png` | 512×512 | vinheta da tela: transparente no centro, opaca nas bordas |
 | `mod/42/media/textures/NOM/ScreenFx/NOM_Lines.png` | 512×256 | linhas horizontais de chiado (perto do Sem-rosto) |
@@ -180,6 +214,7 @@ mesmo script, casada com o UV. Os XML das peças (e os gêmeos `*Fx.xml`) citam 
 `static\clothes\NOM_M_CorredorBoca`, `static\clothes\NOM_F_CorredorBoca` (`NOM_CorredorBoca.xml`),
 `static\clothes\NOM_M_SemRostoEstatica`, `static\clothes\NOM_F_SemRostoEstatica` (`NOM_SemRostoEstatica.xml`),
 `static\clothes\NOM_M_CarpideiraCabelo`, `static\clothes\NOM_F_CarpideiraCabelo` (`NOM_CarpideiraCabelo.xml`),
+`static\clothes\NOM_M_CarpideiraLaco`, `static\clothes\NOM_F_CarpideiraLaco` (`NOM_CarpideiraLaco.xml`),
 `static\clothes\NOM_M_TicaoCrosta`, `static\clothes\NOM_F_TicaoCrosta` (`NOM_TicaoCrosta.xml`).
 Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do repositório; ADR-020).
 
@@ -188,10 +223,16 @@ Nenhum modelo aqui foi gerado por IA (o teste de IA da 0043 ficou fora do reposi
 | `mod/42/media/models_X/Static/Clothes/NOM_M_EstaladorVenda.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_EstaladorVenda.x` | ~1900 vértices | venda do Estalador em 3D: atadura com volume em volta dos olhos, dois arames farpados enrolados por cima, nó atrás com as duas pontas caindo; um por sexo |
 | `mod/42/media/textures/NOM/NOM_EstaladorVenda3D.png` | 128×128 | textura da venda 3D: pano em faixas com sangue seco nos olhos (espelhado em cima e embaixo) e a ferrugem do arame numa faixa no meio |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CorredorBoca.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CorredorBoca.x` | ~700 vértices | boca do Corredor em 3D (sprint 0042): cavidade escura em lente colada no rosto, lábio em tubo rasgado e irregular, oito dentes em ponta, dois rasgos subindo pras orelhas; um por sexo |
-| `mod/42/media/textures/NOM/NOM_CorredorBoca3D.png` | 128×128 | textura da boca 3D: dente sujo, lábio vermelho vivo, carne escura e o fundo quase preto em faixas (espelhado em cima e embaixo) |
+| `mod/42/media/textures/NOM/NOM_CorredorBoca3D.png` | 128×128 | textura da boca 3D (lote 2): buraco escuro, lábio pálido, sem dentes de longe (espelhado) |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_SemRostoEstatica.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_SemRostoEstatica.x` | ~500 vértices | casca do Sem-rosto (sprint 0042): superelipsoide liso em volta da cabeça inteira, sem nariz, olho nem boca; usa a textura de chiado `NOM_SemRostoEstatica.png` de cima |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCabelo.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCabelo.x` | ~1650 vértices | cabelo da Carpideira em 3D (sprint 0042): 36 mechas em fita saindo do alto da cabeça e caindo como cortina na frente do rosto, três delas brancas; um por sexo |
 | `mod/42/media/textures/NOM/NOM_CarpideiraCabelo3D.png` | 128×128 | textura do cabelo 3D: fios pretos com brilho fraco e a faixa das mechas brancas no meio (espelhado em cima e embaixo) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraCapuz.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraCapuz.x` | ~600 vértices | capuz 3D aposentado (0064 caminho A: balaclava vanilla; v1–v3 leram ovo/urso) |
+| `mod/42/media/textures/NOM/NOM_CarpideiraCapuz3D.png` | 128×128 | textura do capuz 3D aposentado (ainda gerada por `gen_models.py`) |
+| `mod/42/media/models_X/Static/Clothes/NOM_M_CarpideiraLaco.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_CarpideiraLaco.x` | ~200 vértices | laço branco da Que Nunca Cresceu (0064); um por sexo |
+| `mod/42/media/textures/NOM/NOM_CarpideiraLaco3D.png` | 128×128 | textura do laço branco-sujo (espelhado) |
+| `mod/42/media/textures/NOM/NOM_EmbrulhadaCasca.png` | 256×256 | casca BoilerSuit da Embrulhada: lençol+plástico+três amarras (sem hood Hazmat) |
+| `mod/42/media/textures/NOM/NOM_EmbrulhadaBalaclava.png` | 128×128 | textura da balaclava vanilla da Embrulhada (caminho A): lençol, boca úmida, nó |
 | `mod/42/media/models_X/Static/Clothes/NOM_M_TicaoCrosta.x`, `mod/42/media/models_X/Static/Clothes/NOM_F_TicaoCrosta.x` | ~1500 vértices | crosta do Tição (sprint 0043): casca de carvão em placas de alturas diferentes na cabeça inteira, dois olhos de brasa saindo da frente, 14 lascas no alto e atrás, três fitas de fumaça subindo; um por sexo |
 | `mod/42/media/textures/NOM/NOM_TicaoCrosta3D.png` | 128×128 | textura da crosta: carvão com rachaduras de brasa (Voronoi que fecha na volta da cabeça), faixa de carvão liso, fumaça clara e brasa no meio (espelhado em cima e embaixo) |
 
@@ -203,6 +244,7 @@ Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_
 |---|---|
 | `mod2/42/media/shaders/screen.frag` | pós-processo de tela do mod opcional `NevoaEOutroMundo_Shader` (sprint 0013): **código original**, escrito pro mod (MIT). Do jogo só a interface: nomes e tipos dos uniforms que o `WeatherShader` manda, a entrada `vUV` do `screen.vert` vanilla e a saída `gl_FragColor`. Nenhuma linha do `screen.frag` da The Indie Stone (`tests/test_shader.lua` confere contra o arquivo instalado) |
 | `mod/42/media/shaders/NOM_Dissolve.vert`, `mod/42/media/shaders/NOM_Dissolve_static.vert`, `mod/42/media/shaders/NOM_Dissolve.frag` | dissolve das peças do mod (sprint 0018, ADR-016), pelo `<m_Shader>` dos itens `*Fx`, da casca do Eco e da casca de brasa (sprint 0022): **código original**, escrito pro mod (MIT). Do jogo só a interface: atributos pelo índice, paleta de ossos, nomes e tipos dos uniforms que o Java do `skinnedmodel.Shader` manda e a saída `gl_FragColor`. Nenhuma linha do `basicEffect*.vert/.frag` da The Indie Stone (`tests/test_dissolve_shader.lua` confere contra os arquivos instalados) |
+| `mod/42/media/shaders/NOM_Brasa.vert`, `mod/42/media/shaders/NOM_Brasa_static.vert`, `mod/42/media/shaders/NOM_Brasa.frag` | brasa permanente na casca BoilerSuit (sprint 0067): **código original** (MIT). Mesma interface do item-model; Alpha modula pulso e tremida ≤0,6%; fissuras na textura com alfa |
 
 ## Conteúdo vanilla referenciado (nada copiado)
 
@@ -212,8 +254,11 @@ Pra regerar: `python3 scripts/gen_models.py` (prévia: `python3 scripts/preview_
 | `mod/42/media/clothing/clothing.xml` (outfit `NOM_Eco`) | véu de fumaça (item do mod) | GUID `82f80e18-a7cf-4312-949c-23879a1e3820` (`NOM_EcoVeu`, do mod) |
 | `clothingItems/NOM_EcoVeu.xml` | modelo do véu de noiva (`Hat_WeddingVeil`) | `skinned\clothes\m_weddingveil`, `skinned\clothes\f_weddingveil` |
 | `clothingItems/NOM_EcoVeuFx.xml` (sprint 0018) | gêmeo do véu do Eco com o shader do dissolve | o mesmo modelo vanilla do véu, pelo nome (as peças dos monstros usam modelos do mod desde a 0041 e a 0042) |
-| `clothingItems/NOM_Brasa.xml` (sprint 0022) | modelo da roupa de proteção (`HazmatSuit`), casca de brasa do corpo inteiro na mutação, sem máscara | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
+| `clothingItems/NOM_Brasa.xml` (sprint 0022; 0067 BoilerSuit) | macacão (`Boilersuit`) sem hood — casca de brasa da mutação (Hazmat hood inflava silhueta) | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
+| `clothingItems/NOM_BrasaCasca.xml` / `NOM_BrasaCascaStatic.xml` (0067) | mesmo macacão + fissuras α; shader `NOM_Brasa` ou estático | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
 | `clothingItems/NOM_EcoCasca.xml` (sprint 0018) | modelo da roupa de proteção (`HazmatSuit`), casca de cinza do Eco na morte, e a lista de máscaras de corpo dele (números) | `media\models_X\Skinned\Clothes\Bob_Hazmat.X`, `media\models_X\Skinned\Clothes\Kate_Hazmat.X` |
+| `clothingItems/NOM_EmbrulhadaCasca.xml` (0064) | macacão (`Boilersuit`) sem hood — corpo embrulhado da Screamer K2 (Hazmat tem capuz ~1,6×) | `skinned\clothes\bob_boilersuit`, `skinned\clothes\kate_boilersuit` |
+| `clothingItems/NOM_CarpideiraCapuz.xml` (0064 caminho A) | balaclava justa + textura nossa (capuz 3D aposentado: ovo/urso) | `skinned\hair\m_balaclavafull`, `skinned\hair\f_balaclavafull` |
 | `clothingItems/NOM_*.xml` (menos `NOM_EcoCinza`) | máscaras de corpo dos chapéus | pasta `media/textures/Clothes/Hat/Masks`, pelo caminho |
 | `scripts/NOM_clothing.txt` | ícones dos itens | `SkiGogglesWhite`, `SurgicalMaskBlue`, `Balaclava`, `VeilWedding`, `HospitalGown`, `Hazmatsuit`, pelo nome |
 | `NOM_FogOverlays.lua` | sujeira tingida de ferrugem | sprites `overlay_grime_floor_01_0` a `_95`, por nome |

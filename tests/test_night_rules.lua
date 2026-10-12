@@ -111,6 +111,15 @@ return {
         assert(off.speed == 2 and off.sight == 3 and off.hearing == 1 and off.key ~= "day")
         assert(off.key ~= R.wanted(true, "corredor", 2, cfg()).key)
     end,
+    -- sprint 0049: na vermelha o Estalador fica rápido (agitação), visão/audição iguais
+    night_rules_wanted_estalador_red_fast = function()
+        local R = NOM_NightRules
+        local w = R.wanted(false, "estalador", 3, cfg(), false, nil, "red")
+        assert(w.speed == 2 and w.sight == 3 and w.hearing == 1, "vermelha: " .. tostring(w.speed))
+        local white = R.wanted(false, "estalador", 3, cfg(), false, nil, "white")
+        assert(white.speed == 3 and white.sight == 3, "branca não força velocidade")
+        assert(w.key ~= white.key)
+    end,
     night_rules_countdown = function()
         local m, due = 0, false
         for _ = 1, 59 do
@@ -159,5 +168,16 @@ return {
             end
         end
         assert(R.wanted(true, "ticao", 1, cfg()).speed == 3, "sem sorteio: arrastado")
+    end,
+    -- Alma (sprint 0050): sempre arrastada, visão ruim; noite/calmaria não mexem
+    night_rules_wanted_alma = function()
+        local R = NOM_NightRules
+        for _, night in ipairs({ true, false }) do
+            for _, calm in ipairs({ true, false }) do
+                local w = R.wanted(night, "alma", 1, cfg(), calm)
+                assert(w.speed == 3 and w.sight == 3 and w.hearing == 2, "alma")
+                assert(w.key == "alma:3,3,2", w.key)
+            end
+        end
     end,
 }

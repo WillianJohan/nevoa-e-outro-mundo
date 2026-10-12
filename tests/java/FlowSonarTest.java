@@ -204,14 +204,15 @@ public class FlowSonarTest {
         }
     }
 
-    /** Pior caso: 8 anéis no fim (maior faixa) num passo da grade de 128 tiles na escala do jogo. */
+    /** Pior caso histórico: 8 anéis grandes num passo (o teto de ripples 0048 é maior; custo separado). */
     static void cost() {
         FlowGrid g = new FlowGrid(128, S);
         g.reset(0, 0);
         int reps = 400;
+        int n = 8; // custo do anel de achado; MAX_RINGS agora é teto de ripples
         long t0 = System.nanoTime();
         for (int k = 0; k < reps; k++)
-            for (int q = 0; q < Sonar.MAX_RINGS; q++) g.sonar(30f + q * 9, 64f, Sonar.RANGE - 0.3f, Sonar.RANGE);
+            for (int q = 0; q < n; q++) g.sonar(30f + q * 9, 64f, Sonar.RANGE - 0.3f, Sonar.RANGE);
         double ms = (System.nanoTime() - t0) / 1e6 / reps;
         System.out.printf("  custo: 8 anéis num passo (128 tiles, escala %d): %.3f ms%n", S, ms);
         check(ms < 1.0, "8 anéis custam " + ms + " ms por passo");

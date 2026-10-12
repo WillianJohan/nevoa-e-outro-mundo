@@ -10,12 +10,110 @@ module Base
         }
     }
 
+    /* Gritos e almas (sprint 0070): cada grito também sorteia os gemidos das almas e cada alma
+       os gritos (GameSound.getRandomClip). O 1º clip é o próprio; o emprestado leva o volume
+       do papel compensado em 4 dB (gritos -14 dB de média, gemidos -18 dB). */
     sound NOM_CorredorScream
     {
         category = Zombie,
         clip
         {
             file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 80,
+        }
+    }
+
+    sound NOM_CorredorScream2
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 80,
+        }
+    }
+
+    sound NOM_CorredorScream3
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 80,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
             distanceMax = 80,
         }
     }
@@ -405,10 +503,11 @@ module Base
         {
             file = media/sound/NOM_CarpideiraSob.ogg,
             distanceMax = 12,
-            volume = 0.5,
+            volume = 0.28,
         }
     }
 
+    /* Screamer (sprint 0053): ElevenLabs mysterious female — volume sutil como ambiente */
     sound NOM_CarpideiraScream
     {
         category = Zombie,
@@ -416,6 +515,307 @@ module Base
         {
             file = media/sound/NOM_CarpideiraScream.ogg,
             distanceMax = 150,
+            volume = 0.35,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_CarpideiraScream2
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 150,
+            volume = 0.35,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_CarpideiraScream3
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 150,
+            volume = 0.35,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 150,
+            volume = 0.55,
+        }
+    }
+
+    sound NOM_AmbientScream1
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+    }
+
+    sound NOM_AmbientScream2
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+    }
+
+    sound NOM_AmbientScream3
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+    }
+
+    sound NOM_AmbientScream4
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.55,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
+        }
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMin = 20,
+            distanceMax = 120,
+            volume = 0.87,
         }
     }
 
@@ -533,6 +933,374 @@ module Base
             distanceMin = 2,
             distanceMax = 18,
             volume = 0.5,
+        }
+    }
+
+    /* Almas (sprint 0050→0053): gemidos de sofrimento sutis — import_elevenlabs_almas.py */
+    sound NOM_AlmaSpawn
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaSpawn.ogg,
+            distanceMax = 28,
+            volume = 0.18,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMax = 28,
+            volume = 0.11,
+        }
+    }
+
+    sound NOM_AlmaCrawl
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaCrawl.ogg,
+            distanceMax = 22,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+    }
+
+    sound NOM_AlmaShamble
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaShamble.ogg,
+            distanceMax = 22,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMax = 22,
+            volume = 0.09,
+        }
+    }
+
+    sound NOM_AlmaGroup
+    {
+        category = World,
+        master = Ambient,
+        clip
+        {
+            file = media/sound/NOM_AlmaGroup.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.22,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMin = 8,
+            distanceMax = 50,
+            volume = 0.14,
+        }
+    }
+
+    sound NOM_AlmaDespawn
+    {
+        category = Zombie,
+        clip
+        {
+            file = media/sound/NOM_AlmaDespawn.ogg,
+            distanceMax = 28,
+            volume = 0.16,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream2.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_CorredorScream3.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream2.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_CarpideiraScream3.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream1.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream2.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream3.ogg,
+            distanceMax = 28,
+            volume = 0.1,
+        }
+        clip
+        {
+            file = media/sound/NOM_AmbientScream4.ogg,
+            distanceMax = 28,
+            volume = 0.1,
         }
     }
 }

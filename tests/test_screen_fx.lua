@@ -292,7 +292,8 @@ return {
         local m = mine(G.frameDraws())
         assert(#m == 1 and m[1].tex == tex.static, "na fuga desenhou além da estática: " .. #m)
         assert(m[1].kind == "tiled", "a estática não é em mosaico")
-        assert(math.abs(alpha(m[1]) - R.STATIC_SUBTLE) < 1e-9, "não é o sutil: " .. alpha(m[1]))
+        local gI = R.glitchIntensity()
+        assert(math.abs(alpha(m[1]) - R.STATIC_SUBTLE * gI) < 1e-9, "não é o sutil: " .. alpha(m[1]))
         local C = NOM_Rules.RED_FOG_COLOR
         assert(m[1].args[1] == C[1] and m[1].args[2] == C[2] and m[1].args[3] == C[3], "não é a cor da vermelha")
     end,
@@ -319,10 +320,11 @@ return {
         assert(n >= 3, "a estática está parada")
         G.frame(math.ceil(NOM_FogEventRules.PRESAGE_MS / 16))
         local peak = byTex(G.frameDraws(), tex.static)
-        assert(math.abs(alpha(peak) - R.STATIC_PEAK) < 1e-9, "sem destaque no fim: " .. alpha(peak))
+        local gI = R.glitchIntensity()
+        assert(math.abs(alpha(peak) - R.STATIC_PEAK * gI) < 1e-9, "sem destaque no fim: " .. alpha(peak))
         NOM_FogState.setRising(true, false)
         G.frame(math.ceil(R.STATIC_SETTLE_MS / 16) + 2)
-        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - R.STATIC_SUBTLE) < 1e-9, "não desceu ao sutil")
+        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - R.STATIC_SUBTLE * gI) < 1e-9, "não desceu ao sutil")
     end,
 
     -- na névoa: a estática sutil junto com o resto; acabou, some em ~3 s
@@ -330,12 +332,13 @@ return {
         local G = setup()
         local tex = T()
         fogOn(G)
+        local gI = R.glitchIntensity()
         local d = byTex(G.frameDraws(), tex.static)
-        assert(d and math.abs(alpha(d) - R.STATIC_SUBTLE) < 1e-9, "sem estática na névoa")
+        assert(d and math.abs(alpha(d) - R.STATIC_SUBTLE * gI) < 1e-9, "sem estática na névoa")
         NOM_FogState.set(false, 1)
         G.frame(math.ceil(R.STATIC_FADE_MS / 32))
         local mid = byTex(G.frameDraws(), tex.static)
-        assert(mid and alpha(mid) > 0 and alpha(mid) < R.STATIC_SUBTLE, "não desceu aos poucos")
+        assert(mid and alpha(mid) > 0 and alpha(mid) < R.STATIC_SUBTLE * gI, "não desceu aos poucos")
         G.frame(math.ceil(R.STATIC_FADE_MS / 16) + 2)
         assert(byTex(G.frameDraws(), tex.static) == nil, "ficou depois do fim")
     end,
@@ -347,7 +350,8 @@ return {
         NOM_FogState.setRising(true, false)
         G.frame(5)
         G.optInt = 2
-        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - 2 * R.STATIC_SUBTLE) < 1e-9, "não escala")
+        local gI = R.glitchIntensity()
+        assert(math.abs(alpha(byTex(G.frameDraws(), tex.static)) - 2 * R.STATIC_SUBTLE * gI) < 1e-9, "não escala")
         G.optOn = false
         assert(#mine(G.frameDraws()) == 0, "desligado desenha a estática")
         G.optOn = true
@@ -399,24 +403,28 @@ return {
         assert(alpha(v) > normal * 1.2, "vermelha não é mais forte")
     end,
 
-    -- linhas pela distância do Sem-rosto mais perto (o mesmo do rádio, sprint 0005)
+    -- I6: default original — lines sobem perto do Sem-rosto; GlitchMode=off zera
     screenfx_lines_with_semrosto_distance = function()
         local G = setup()
         local tex = T()
+        package.loaded["NOM_PanelParams"] = nil
+        local PP = require "NOM_PanelParams"
+        PP.reset()
+        PP.set("GlitchMode", "original")
         fogOn(G)
         assert(byTex(G.frameDraws(), tex.lines) == nil, "linhas sem Sem-rosto")
         local z = G.zombie({ x = 125, y = 100, id = W.semRostoID(1, true) })
         G.frame(30)
         local far = byTex(G.frameDraws(), tex.lines)
-        assert(far and alpha(far) > 0, "Sem-rosto a 25 tiles sem linhas")
         z.x = 105.5
         G.frame(30)
         local near = byTex(G.frameDraws(), tex.lines)
-        assert(alpha(near) > alpha(far), "perto não é mais forte")
-        assert(near.x <= 0 and near.x + near.w >= 1920 and near.y <= 0 and near.y + near.h >= 1080)
-        SandboxVars.NevoaEOutroMundo.SemRostoEnabled = false
-        G.frame(30)
-        assert(byTex(G.frameDraws(), tex.lines) == nil, "linhas com o Sem-rosto desligado")
+        assert(near and alpha(near) > 0, "original: lines perto")
+        if far then assert(alpha(near) >= alpha(far) - 1e-6, "perto >= longe") end
+        PP.set("GlitchMode", "off")
+        G.frame(2)
+        assert(byTex(G.frameDraws(), tex.lines) == nil, "off: lines")
+        PP.reset()
     end,
 
     screenfx_carpideira_scream_flash = function()

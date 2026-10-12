@@ -137,17 +137,20 @@ local function torches(ps)
 end
 
 -- Caça do Tição (sprint 0038): na preta, de dia ou de noite, mais forte que a da noite.
+-- Intervalo e alcance: NOM_BlackPressureRules via NOM_TicaoRules (sprint 0051).
 local function ticaoHunt()
     if not NOM_World.black then
         ticaoMinutes = 0
         return
     end
     local due
-    ticaoMinutes, due = NOM_NightRules.countdown(ticaoMinutes, NOM_TicaoRules.HUNT_MINUTES)
+    local minutes = NOM_TicaoRules.huntMinutes()
+    local reach = NOM_TicaoRules.huntReach()
+    ticaoMinutes, due = NOM_NightRules.countdown(ticaoMinutes, minutes)
     if not due then return end
     local ps = alive()
-    for _, p in ipairs(ps) do NOM_Night.call(p, NOM_TicaoRules.HUNT_REACH, NOM_TicaoRules.HEARING) end
-    debugLog("caca do ticao jogadores=" .. #ps .. " alcance=" .. NOM_TicaoRules.HUNT_REACH)
+    for _, p in ipairs(ps) do NOM_Night.call(p, reach, NOM_TicaoRules.HEARING) end
+    debugLog("caca do ticao jogadores=" .. #ps .. " alcance=" .. reach)
 end
 
 local function everyMinute()

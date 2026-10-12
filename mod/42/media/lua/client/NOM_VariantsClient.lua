@@ -10,6 +10,7 @@ require "NOM_VariantRules"
 require "NOM_Carpideira"
 require "NOM_Wander"
 require "NOM_Sonar"
+require "NOM_ScreamGateRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -31,12 +32,20 @@ end)
 -- virtual, fica furioso); o grito e o spot vão no zumbi com esse onlineID.
 -- getPlayerByOnlineID: client/ServerCommands.lua:10 (nil se não estiver carregado).
 local function screamed(args)
+    if type(args.nextAt) == "number" then
+        NOM_ScreamGateRules.syncClient(args.nextAt)
+    end
     NOM_Carpideira.screamed[args.pid] = true
     local list = getCell():getZombieList()
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if NOM_VariantRules.baseId(z:getPersistentOutfitID()) == args.pid and z:getOnlineID() == args.id then
-            NOM_Carpideira.scream(z, type(args.pl) == "number" and getPlayerByOnlineID(args.pl) or nil)
+            local pl = type(args.pl) == "number" and getPlayerByOnlineID(args.pl) or nil
+            local meta = {}
+            if type(args.gap) == "number" then meta.gap = args.gap end
+            if type(args.nextAt) == "number" then meta.nextAt = args.nextAt end
+            if type(args.why) == "string" then meta.why = args.why end
+            NOM_Carpideira.scream(z, pl, meta)
             return
         end
     end
@@ -52,5 +61,7 @@ Events.OnServerCommand.Add(function(module, command, args)
         NOM_Wander.wave(args.seed) -- o servidor decidiu a onda; os zumbis daqui andam (sprint 0036)
     elseif command == "sonar" or command == "sonarFound" then
         NOM_Sonar.command(command, args) -- estalo, anel e achado do sonar (sprint 0037)
+    elseif command == "screamGateSync" and type(args.nextAt) == "number" then
+        NOM_ScreamGateRules.syncClient(args.nextAt)
     end
 end)

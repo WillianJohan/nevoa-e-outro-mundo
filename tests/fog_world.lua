@@ -330,12 +330,35 @@ function W.new(opts)
             return { cancel = function() zz.pathCancelled = true end }
         end
         function z:isMoving() return self.vars.bMoving == true or self.vars.bPathfind == true end
+        -- Sprint 0052 / 0036: IsoZombie.pathToLocationF → PathFindBehavior2 (pz-api-notes §27).
+        function z:pathToLocationF(x, y, zz)
+            self.goal = { x = x, y = y, z = zz }
+            self.vars.bPathfind, self.vars.bMoving = true, true
+            self.path = self.path or {}
+        end
         function z:getTarget() return self.target end
         function z:spotted(p, forced)
             if self.useless then self.target = nil return end
             self.target = p
             self.forcedSpot = forced
         end
+        -- 0064 K3 Rastejante / Arrasto: crawler + getup 2c (setFallOnFront…).
+        z.crawler = o.crawler == true
+        z.onFloor = o.onFloor == true
+        z.fallOnFront = o.fallOnFront == true
+        z.knockedDown = o.knockedDown == true
+        z.canWalk = o.canWalk ~= false
+        z.stateName = o.stateName
+        function z:isCrawling() return self.crawler == true end
+        function z:setCrawler(b) self.crawler = b == true end
+        function z:setOnFloor(b) self.onFloor = b == true end
+        function z:isOnFloor() return self.onFloor == true end
+        function z:setFallOnFront(b) self.fallOnFront = b == true end
+        function z:isFallOnFront() return self.fallOnFront == true end
+        function z:setKnockedDown(b) self.knockedDown = b == true end
+        function z:setCanWalk(b) self.canWalk = b == true end
+        function z:isCanWalk() return self.canWalk == true end
+        function z:getCurrentStateName() return self.stateName end
         G.zombies[#G.zombies + 1] = z
         return z
     end
@@ -410,6 +433,22 @@ function W.new(opts)
     getTimestampMs = function() return G.now end
     -- GameTime.isGamePaused: solo = velocidade 0; dedicado = vazio com PauseEmpty
     isGamePaused = function() return G.paused == true end
+    -- addSound do mundo (caça, lanterna, gritos; sprint 0051: caça no piscar da preta).
+    -- G.sounds já guarda emitters de personagem — estes vão em G.worldSounds.
+    G.worldSounds = {}
+    addSound = function(src, x, y, z, radius, volume)
+        G.worldSounds[#G.worldSounds + 1] = { src = src, x = x, y = y, z = z, radius = radius, volume = volume }
+    end
+    -- Lore do zumbi (NOM_NightStats quando NOM_Night carrega com a caça no piscar da 0051).
+    G.lore = { speed = 2, sight = 2, hearing = 2 }
+    getSandboxOptions = function()
+        return {
+            getOptionByName = function(_, name)
+                local key = (name:match("ZombieLore%.(%w+)$") or name):lower()
+                return { getValue = function() return G.lore[key] or 2 end }
+            end,
+        }
+    end
     G.rand = opts.rand or 0
     ZombRand = function(n) return G.rand % n end
     getNumActivePlayers = function() return #G.players end
@@ -505,7 +544,8 @@ function W.new(opts)
     getGameTime = function()
         -- horas de mundo: G.world.hours quando o teste usa (evento de névoa), senão a hora do dia
         return { getTimeOfDay = function() return G.world.tod end,
-            getWorldAgeHours = function() return G.world.hours or G.world.tod end }
+            getWorldAgeHours = function() return G.world.hours or G.world.tod end,
+            isZombieInactivityPhase = function() return false end }
     end
     -- ThunderStorm.triggerThunderEvent(x, y, strike, lightning, rumble) (sprint 0045, §34): no servidor
     -- o jogo transmite sozinho; G.thunders guarda as chamadas.
@@ -558,12 +598,17 @@ function W.semRostoID(period, want, chance, redOnly)
     require "NOM_Config"
     local c = NOM_VariantRules.config(function(k) return NOM_Config.DEFAULTS[k] end)
     c.semRostoChance = chance or c.semRostoChance
-    for seed = 1, 500 do
+    -- sprint 0049: branca 100%. Comum (want false) = ID 0.
+    -- redOnly: não é Sem-rosto na branca (pesos), mas é na vermelha (split 1/4).
+    if not want and not redOnly then return 0 end
+    for seed = 1, 20000 do
         local id = 7 * 65536 + seed
         local v = NOM_VariantRules.variant(id, period, c)
         if redOnly then
-            if v == nil and NOM_VariantRules.variant(id, period, c, true) == "semrosto" then return id end
-        elseif (want and v == "semrosto") or (not want and v == nil) then
+            if v ~= "semrosto" and NOM_VariantRules.variant(id, period, c, true) == "semrosto" then
+                return id
+            end
+        elseif want and v == "semrosto" then
             return id
         end
     end

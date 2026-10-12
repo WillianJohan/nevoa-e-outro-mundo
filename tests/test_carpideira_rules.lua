@@ -1,8 +1,10 @@
 -- Regras puras da Carpideira (sprint 0011): o que o servidor aceita como "acordou",
 -- o que é barulho alto e perto, e quem já gritou neste período de névoa.
 require "NOM_CarpideiraRules"
+require "NOM_ScreamGateRules"
 
 local R = NOM_CarpideiraRules
+local SG = NOM_ScreamGateRules
 
 return {
     -- proximidade: até o raio do sandbox, com folga pro atraso da rede
@@ -40,4 +42,60 @@ return {
         assert(R.screamed(data, 4)[123] == nil, "grito passou pra névoa seguinte")
         assert(R.screamed(data, nil)[123] == nil)
     end,
+
+    -- sprint 0052: intervalo da caminhada calma em 20–60 s reais
+    carpideira_rules_walk_gap_ms = function()
+        assert(R.walkGapMs(0) == R.WALK_GAP_MIN_MS)
+        assert(R.walkGapMs(1) == R.WALK_GAP_MAX_MS)
+        local mid = R.walkGapMs(0.5)
+        assert(mid > R.WALK_GAP_MIN_MS and mid < R.WALK_GAP_MAX_MS)
+    end,
+
+    -- playtest 2026-10-10: gap global entre gritos (qualquer Carpideira/Screamer)
+    carpideira_rules_scream_gap_ms = function()
+        assert(R.SCREAM_GAP_MIN_MS == 45000, "mínimo 45 s")
+        assert(R.SCREAM_GAP_MAX_MS == 180000, "máximo 180 s")
+        assert(R.screamGapMs(0) == R.SCREAM_GAP_MIN_MS)
+        assert(R.screamGapMs(1) == R.SCREAM_GAP_MAX_MS)
+        local mid = R.screamGapMs(0.5)
+        assert(mid > R.SCREAM_GAP_MIN_MS and mid < R.SCREAM_GAP_MAX_MS)
+    end,
+
+    carpideira_rules_global_scream_ready = function()
+        local data = {}
+        R.screamState(data, 1)
+        assert(R.globalScreamReady(data, 1000), "primeira grito livre")
+        local gap = R.scheduleNextScream(data, 1000, 0)
+        assert(gap == R.SCREAM_GAP_MIN_MS)
+        assert(SG.gate(data).nextAt == 1000 + gap)
+        assert(not R.globalScreamReady(data, 1000 + gap - 1), "ainda no gap")
+        assert(R.globalScreamReady(data, 1000 + gap), "gap acabou")
+        data.carpideira.pids[99] = true
+        local st2 = R.screamState(data, 2)
+        assert(st2.pids[99] == nil, "pids zeram no período novo")
+        assert(SG.gate(data).nextAt == 1000 + gap, "nextAt global permanece")
+    end,
+
+    -- volume do soluço sobe perto (curva do Sem-rosto)
+    carpideira_rules_sob_volume = function()
+        assert(R.sobVolume(nil) == 0 and R.sobVolume(R.SOB_FAR) == 0)
+        assert(R.sobVolume(R.SOB_NEAR) == 1)
+        local mid = R.sobVolume((R.SOB_NEAR + R.SOB_FAR) / 2)
+        assert(mid > 0 and mid < 1)
+        assert(R.sobVolume(R.SOB_NEAR - 1) == 1)
+    end,
+
+    -- destino da caminhada não aproxima o jogador
+    carpideira_rules_pick_walk_away_from_player = function()
+        local players = { { x = 10, y = 0, z = 0 } }
+        local rand = R.rng(42)
+        local d = R.pickWalk(0, 0, 0, players, rand, nil)
+        assert(d, "não sorteou destino")
+        local before = (10 - 0) * (10 - 0)
+        local after = (10 - d.x) * (10 - d.x) + (0 - d.y) * (0 - d.y)
+        assert(after >= before, "andou na direção do jogador: " .. d.x .. "," .. d.y)
+        assert(not R.walkFair(0, 0, 0, 5, 0, players), "indo pra cima do jogador valeu")
+        assert(R.walkFair(0, 0, 0, -4, 0, players), "afastar falhou")
+    end,
+
 }

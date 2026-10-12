@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Casca de brasa da mutação (sprint 0022, emenda da ADR-016): malha Hazmat vanilla citada pelo nome,
-     SEM máscara (o buraco da queima mostra o monstro ou o zumbi embaixo, não o fundo), textura de carvão e
-     brasa do mod e o shader do dissolve. Vestida só no cliente, por ~1 s, na lista de ItemVisual do zumbi
-     vivo (client/NOM_EmberShell.lua). -->
+<!-- Casca de brasa da mutação (sprint 0022, emenda da ADR-016; 0067: BoilerSuit sem hood).
+     Hazmat hood empilhava na crosta/K2 e inflava a silhueta. Sem máscara (o buraco da
+     queima mostra o monstro embaixo). Textura carvão+brasa + shader dissolve. ~1 s no
+     ItemVisual (client/NOM_EmberShell.lua). -->
 <clothingItem>
-	<m_MaleModel>media\models_X\Skinned\Clothes\Bob_Hazmat.X</m_MaleModel>
-	<m_FemaleModel>media\models_X\Skinned\Clothes\Kate_Hazmat.X</m_FemaleModel>
+	<m_MaleModel>skinned\clothes\bob_boilersuit</m_MaleModel>
+	<m_FemaleModel>skinned\clothes\kate_boilersuit</m_FemaleModel>
 	<m_GUID>fe983ae1-0282-4519-8c3c-b49642d89d42</m_GUID>
 	<m_Static>false</m_Static>
 	<m_AllowRandomHue>false</m_AllowRandomHue>

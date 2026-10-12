@@ -88,6 +88,8 @@ end
 
 NOM_Debug.nearest = nearest -- NOM.getZombie (client/NOM_Console.lua)
 
+-- Turn the nearest: força o tipo no servidor E veste o guarda-roupa sorteado pelo id
+-- (mesmo pick da névoa). Sem look na hora o monstro ficava "nu" / roupa vanilla (prints 05/06).
 function NOM_Debug.variant(kind)
     local p = getSpecificPlayer(0)
     local z = p and nearest(p)
@@ -98,6 +100,24 @@ function NOM_Debug.variant(kind)
     local id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- o forçado é pelo ID sem o chapéu caído
     NOM_DebugLog.say("[NOM] debug variante x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " id=" .. id)
     send({ op = "variant", id = id, kind = kind })
+    local VL = require "NOM_VariantLook"
+    if type(VL) ~= "table" then VL = NOM_VariantLook end
+    if not VL then return end
+    if not kind then
+        if z.getModData then z:getModData().NOM_wardForce = nil end
+        VL.sync(z, nil)
+        NOM_DebugLog.say("[NOM] debug look desfeito → " .. VL.inspect(z))
+        return
+    end
+    local VW = require "NOM_VariantWardrobe"
+    if type(VW) ~= "table" then VW = NOM_VariantWardrobe end
+    local idx = 1
+    if VW and VW.count(kind) > 0 then
+        local _, i = VW.pick(kind, id)
+        if i and i >= 1 then idx = i end
+    end
+    VL.forceVariant(z, kind, idx)
+    NOM_DebugLog.say("[NOM] debug look → " .. VL.inspect(z))
 end
 
 -- Linha local (quem simula e quem vê) e pedido da linha do servidor.

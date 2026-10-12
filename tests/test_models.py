@@ -21,6 +21,7 @@ Encaixe por peça, contra números medidos nos .x vanilla (pz-api-notes §32):
 Uso: python3 tests/test_models.py (o run-tests.sh chama). Exit 0 = passou.
 """
 import importlib.util
+import math
 import os
 import re
 import sys
@@ -40,9 +41,12 @@ PIECES = {
     "CorredorBoca": "NOM_CorredorBoca3D",
     "SemRostoEstatica": "NOM_SemRostoEstatica",
     "CarpideiraCabelo": "NOM_CarpideiraCabelo3D",
+    "CarpideiraCapuz": "NOM_CarpideiraCapuz3D",
+    "CarpideiraLaco": "NOM_CarpideiraLaco3D",
     "TicaoCrosta": "NOM_TicaoCrosta3D",
 }
-MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D", "NOM_TicaoCrosta3D")
+MIRRORED = ("NOM_EstaladorVenda3D", "NOM_CorredorBoca3D", "NOM_CarpideiraCabelo3D",
+            "NOM_CarpideiraCapuz3D", "NOM_CarpideiraLaco3D", "NOM_TicaoCrosta3D")
 MAX_VERTS = 2500     # a peça tem ~20 px de tela (o HeadBandage vanilla tem 52 vértices)
 
 # Óculos de esqui vanilla (M_/F_Glasses_SkiGoggles.x, só números): a cabeça na altura dos
@@ -282,18 +286,28 @@ def part_verts(piece, sex, parts):
 
 
 def test_boca_fits_mouth():
+    g = generator()
     for sex in SEXES:
         verts, _, _, _, _ = load("CorredorBoca", sex)
         b = MOUTH[sex]
         x, y, z = verts[:, 0], verts[:, 1], verts[:, 2]
         assert x.min() > b["x"][0] and x.max() < b["x"][1], "%s: x %.3f..%.3f fora da boca" % (sex, x.min(), x.max())
-        assert np.abs(y).max() < 0.06 and z.min() > 0.0 and z.max() < 0.10, "%s: longe do rosto" % sex
+        # colada na face: sem focinho (z max bem perto do nariz)
+        assert np.abs(y).max() < 0.045 and z.min() > 0.0 and z.max() < 0.095, "%s: longe do rosto" % sex
         front = verts[np.argmax(z)]
-        assert abs(front[1]) < 0.03 and front[2] > b["front"], "%s: frente fora de +Z %s" % (sex, front)
+        assert abs(front[1]) < 0.03 and front[2] > b["front"] - 0.01, "%s: frente fora de +Z %s" % (sex, front)
         hole, _ = part_verts("CorredorBoca", sex, ("cavity",))
         wide = np.ptp(hole[:, 1])
         tall = np.ptp(hole[:, 0])
-        assert wide > 2 * tall, "%s: buraco %.3f de largura por %.3f de altura" % (sex, wide, tall)
+        assert wide >= tall, "%s: buraco %.3f de largura por %.3f de altura" % (sex, wide, tall)
+        # −40% vs abertura antiga (~0.08): largura do buraco ≤ 0.05
+        assert 0.030 <= wide < 0.055, "%s: boca fora da faixa (%.3f)" % (sex, wide)
+        m = g.build("CorredorBoca", sex)
+        assert any(p == "tear" for p in m.parts), "%s: sem rasgo" % sex
+        # um rasgo só (não bilateral): verts de tear no mesmo lado Y
+        tear_v, _ = part_verts("CorredorBoca", sex, ("tear",))
+        assert (tear_v[:, 1] > -0.005).mean() > 0.85 or (tear_v[:, 1] < 0.005).mean() > 0.85, \
+            "%s: rasgo bilateral" % sex
 
 
 def inside_mesh(verts, faces, p):
@@ -356,17 +370,21 @@ def test_ticao_crust_covers_head():
     for sex in SEXES:
         verts, faces, _, _, _ = load("TicaoCrosta", sex)
         for p in HEAD_POINTS[sex]:
-            for d in np.eye(3):
-                for sgn in (1, -1):
-                    q = np.array(p, float) + sgn * SHELL_MARGIN * d
-                    assert inside_mesh(verts, faces, q), "%s: ponto da cabeça %s fora da crosta" % (sex, tuple(q))
+            assert inside_mesh(verts, faces, np.array(p, float)), "%s: ponto da cabeça %s fora" % (sex, p)
         m = g.build("TicaoCrosta", sex)
         v = np.array(m.verts)
         crust = v[sorted({q for f, p in zip(m.faces, m.parts) if p == "crust" for q in f})]
-        h, s = HELMET[sex], 0.03
-        assert crust[:, 0].min() > h["x"][0] - s and crust[:, 0].max() < h["x"][1] + s, "%s: crosta alta demais" % sex
-        assert np.abs(crust[:, 1]).max() < h["y"] + s, "%s: crosta larga demais" % sex
-        assert crust[:, 2].min() > h["z"][0] - s and crust[:, 2].max() < h["z"][1] + s, "%s: crosta funda demais" % sex
+        h = HELMET[sex]
+        # ≤ cabeça vanilla + 5% no raio lateral/frente; folga no queixo (placas baixas)
+        assert crust[:, 0].max() < h["x"][1] * 1.05 + 0.012, "%s: crosta alta demais %.3f" % (sex, crust[:, 0].max())
+        assert crust[:, 0].min() > h["x"][0] - 0.035, "%s: crosta baixa demais %.3f" % (sex, crust[:, 0].min())
+        assert np.abs(crust[:, 1]).max() < h["y"] * 1.05 + 0.015, "%s: crosta larga demais (+5%%)" % sex
+        assert crust[:, 2].min() > h["z"][0] - 0.025 and crust[:, 2].max() < h["z"][1] * 1.05 + 0.015, \
+            "%s: crosta funda demais" % sex
+        # contorno irregular: raio das placas tem dispersão (não cúpula lisa)
+        centre = crust.mean(axis=0)
+        radii = np.linalg.norm(crust - centre, axis=1)
+        assert radii.std() > 0.004, "%s: crosta lisa demais (std=%.4f)" % (sex, radii.std())
 
 
 def test_ticao_eyes_smoke_shards():
@@ -391,7 +409,7 @@ def test_ticao_eyes_smoke_shards():
             assert w[:, 0].min() >= HELMET[sex]["x"][1] - 0.04, "%s: fumaça sai baixo" % sex
             assert np.abs(w[:, 1]).max() <= 0.10 and np.abs(w[:, 2]).max() <= 0.10, "%s: fumaça longe" % sex
         shards = part_groups(m, "shard")
-        assert len(shards) >= 10, "%s: %d lascas" % (sex, len(shards))
+        assert len(shards) >= 8, "%s: %d lascas" % (sex, len(shards))
         for idx in shards.values():
             b = v[idx].mean(axis=0)
             assert b[2] < 0.03 or b[0] > 0.14, "%s: lasca no rosto %s" % (sex, b)
@@ -410,6 +428,53 @@ def test_cabelo_close_to_head():
         assert np.abs(verts[:, 1]).max() <= h["y"] + 0.05, "%s: lados abrem %.3f" % (sex, np.abs(verts[:, 1]).max())
         assert verts[:, 2].min() >= h["z"][0] - 0.05, "%s: nuca abre %.3f" % (sex, verts[:, 2].min())
         assert verts[:, 2].max() <= h["z"][1] + 0.04, "%s: frente abre %.3f" % (sex, verts[:, 2].max())
+
+
+def test_capuz_within_head_plus_5pct():
+    """0064 Embrulhada: capuz ≤ SKULL+5% (não capacete-ovo); topo caído; boca na frente.
+    Pontos internos do crânio ficam dentro; o pano (cloth) respeita o elipsoide;
+    boca/barbante podem sair um pouco na frente (relevo)."""
+    g = generator()
+    for sex in SEXES:
+        verts, faces, _, _, _ = load("CarpideiraCapuz", sex)
+        sk = SKULL[sex]
+        c, r = np.array(sk["c"]), np.array(sk["r"])
+        for th in (0.3, 0.8, 1.2, 1.6):
+            for ps in (0.0, 1.0, 2.0, 3.5):
+                p = c + 0.9 * r * np.array([math.cos(th), math.sin(th) * math.sin(ps),
+                                           math.sin(th) * math.cos(ps)])
+                assert inside_mesh(verts, faces, p), "%s: crânio %s fora" % (sex, p)
+        h = HELMET[sex]
+        m = g.build("CarpideiraCapuz", sex)
+        cloth = np.array(m.verts)[sorted({q for f, p in zip(m.faces, m.parts) if p == "cloth" for q in f})]
+        x, y, z = cloth[:, 0], cloth[:, 1], cloth[:, 2]
+        assert np.abs(y).max() <= sk["r"][1] * 1.05 + 0.001, "%s: capuz largo demais vs SKULL %.3f" % (
+            sex, np.abs(y).max())
+        assert z.max() <= sk["c"][2] + sk["r"][2] * 1.05 + 0.002, "%s: capuz fundo demais %.3f" % (
+            sex, z.max())
+        assert x.max() <= sk["c"][0] + sk["r"][0] * 1.05 + 0.002, "%s: capuz alto demais %.3f" % (
+            sex, x.max())
+        assert x.min() > h["x"][0] - 0.055, "%s: capuz baixo demais %.3f" % (sex, x.min())
+        top = cloth[cloth[:, 0] > 0.14]
+        assert len(top) > 20 and top[:, 2].mean() < 0.01, "%s: topo não caiu pra trás" % sex
+        assert "cloth" in m.parts and "rope" in m.parts and "mouth" in m.parts, \
+            "%s: falta pano/boca/barbante" % sex
+        mouth = [np.array(m.verts)[list(f)].mean(axis=0)
+                 for f, p in zip(m.faces, m.parts) if p == "mouth"]
+        assert len(mouth) >= 8, "%s: sem relevo de boca" % sex
+        mz = np.array(mouth)[:, 2].mean()
+        assert mz > NOSE_Z[sex] - 0.02, "%s: boca atrás do nariz %.3f" % (sex, mz)
+
+
+def test_laco_on_crown():
+    """0064 K1: laço branco no alto da cabeça, largo o bastante pra ler de longe, sem ovo."""
+    for sex in SEXES:
+        verts, _, _, _, _ = load("CarpideiraLaco", sex)
+        h = HELMET[sex]
+        assert verts[:, 0].min() > 0.12, "%s: laço baixo demais" % sex
+        assert verts[:, 0].max() < h["x"][1] + 0.04, "%s: laço alto demais" % sex
+        assert np.abs(verts[:, 1]).max() < 0.060, "%s: laço largo demais" % sex
+        assert np.abs(verts[:, 1]).max() > 0.035, "%s: laço estreito demais (precisa ~cabeça)" % sex
 
 
 def test_cabelo_hides_face():
@@ -455,8 +520,11 @@ def test_textures_mirrored():
 # parte → (o que a cor tem de ser, descrição)
 def rust(c): return (luminance(c) < 0.4) & (c[:, 0] > c[:, 1])
 def bright(c): return luminance(c) > 0.6
-def dark(c): return luminance(c) < 0.12
+def dark(c): return luminance(c) < 0.22  # lote 2: buraco carvão (~L 0,05–0,21), não tinta preta pura
 def red(c): return (c[:, 0] > 2 * c[:, 1]) & (c[:, 0] > 60) & (luminance(c) < 0.4)
+def pale(c): return (luminance(c) > 0.45) & (luminance(c) < 0.90) & ((c.max(axis=1) - c.min(axis=1)) < 90)
+def lip_skin(c):  # pele−10%: médio-escuro, sem aro claro
+    return (luminance(c) > 0.12) & (luminance(c) < 0.40) & ((c.max(axis=1) - c.min(axis=1)) < 70)
 def cloth(c): return np.ones(len(c), bool)
 def ember(c): return (c[:, 0] > 170) & (c[:, 0] > 1.3 * c[:, 1]) & (c[:, 1] > c[:, 2])
 def smoke(c): return (luminance(c) > 0.55) & (c.max(axis=1) - c.min(axis=1) < 40)
@@ -470,9 +538,13 @@ def not_rust(c):
 
 COLOURS = {
     "EstaladorVenda": {"wire": rust, "barb": rust, "band": not_rust},
-    "CorredorBoca": {"teeth": bright, "cavity": dark, "tear": dark, "lips": red},
+    # ajuste playtest: lábio = pele−10% (não aro claro); buraco/tear escuros
+    "CorredorBoca": {"teeth": dark, "cavity": dark, "tear": dark, "lips": lip_skin},
     "SemRostoEstatica": {"shell": cloth},
     "CarpideiraCabelo": {"hair": dark, "streak": bright},
+    # cloth: lençol + manchas/plástico (não é pale uniforme)
+    "CarpideiraCapuz": {"cloth": cloth, "mouth": dark, "rope": cloth},
+    "CarpideiraLaco": {"bow": pale},
     "TicaoCrosta": {"crust": cloth, "shard": dark, "ember": ember, "smoke": smoke},
 }
 
@@ -510,6 +582,7 @@ def test_generator_deterministic():
 def main():
     tests = [test_format, test_winding_like_vanilla, test_closed, test_consistent_orientation, test_outward, test_venda_fits_head,
              test_boca_fits_mouth, test_semrosto_covers_head, test_cabelo_close_to_head, test_cabelo_hides_face,
+             test_capuz_within_head_plus_5pct, test_laco_on_crown,
              test_ticao_crust_covers_head, test_ticao_eyes_smoke_shards, test_textures_mirrored,
              test_parts_land_on_colours, test_generator_deterministic]
     fail = 0

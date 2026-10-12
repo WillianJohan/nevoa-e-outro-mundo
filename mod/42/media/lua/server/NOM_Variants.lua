@@ -10,16 +10,31 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_VariantAI"
 require "NOM_CarpideiraRules"
 require "NOM_Carpideira"
 require "NOM_Fog"
 require "NOM_Night"
+require "NOM_ScreamGateRules"
+require "NOM_ScreamGaps"
 
 local MODULE = "NevoaEOutroMundo"
-local SCREAM_SOUND = "NOM_CorredorScream" -- media/scripts/NOM_sounds.txt
+-- Sprint 0048: banco de gritos (timbre novo); o gameplay (horda + cooldown) não muda.
+local SCREAM_SOUNDS = { "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3" }
 local ECO_OUTFIT = "NOM_Eco"
 local CR = NOM_CarpideiraRules
+local SG = NOM_ScreamGateRules
+local MODULE_DATA = function() return ModData.getOrCreate(MODULE) end
+
+local function syncScreamGateToClients(nextAt)
+    if not isServer() then return end
+    sendServerCommand(MODULE, "screamGateSync", { nextAt = nextAt })
+end
+
+local function corredorScream()
+    return SCREAM_SOUNDS[ZombRand(#SCREAM_SOUNDS) + 1]
+end
 
 local function debugLog(msg)
     if getDebug() then print("[NOM] variantes " .. msg) end
@@ -28,6 +43,7 @@ end
 local function isKind(z, kind)
     if z:isDead() then return false end
     if z:getModData().NOM_eco or z:getOutfitName() == ECO_OUTFIT then return false end
+    if z:getModData().NOM_alma then return false end -- almas (sprint 0050): além das variantes
     local cfg = NOM_VariantRules.config(NOM_Config.get)
     return NOM_VariantRules.variant(z:getPersistentOutfitID(), NOM_Fog.period(), cfg, NOM_World.red, NOM_World.black) == kind
 end
@@ -40,15 +56,27 @@ local function scream(z)
     if not NOM_World.fog or not isKind(z, "corredor") then return end
     local md = z:getModData()
     local now = getGameTime():getWorldAgeHours()
-    if not NOM_VariantRules.screamReady(md.NOM_screamAt, now) then return end
+    local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
+    if not NOM_VariantRules.screamReady(md.NOM_screamAt, now, mood) then return end
+    local data = MODULE_DATA()
+    local nowMs = getTimestampMs()
+    local gap = CR.scheduleNextScream(data, nowMs, ZombRand(10001) / 10000)
+    if gap == nil then
+        SG.logBlocked("corredor", "gate", "nextAt=" .. tostring(SG.gate(data).nextAt))
+        return
+    end
     md.NOM_screamAt = now
+    local sound = corredorScream()
     if isServer() then
-        sendPlaySound(SCREAM_SOUND, false, z)
+        sendPlaySound(sound, false, z)
     else
-        z:getEmitter():playSound(SCREAM_SOUND)
+        z:getEmitter():playSound(sound)
     end
     local radius = NOM_Config.get("CorredorScreamRadius")
     NOM_Night.call(z, radius)
+    local nextAt = SG.gate(data).nextAt
+    SG.logPlayed("corredor", gap, nextAt, { sound = sound })
+    syncScreamGateToClients(nextAt)
     debugLog("grito x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " raio=" .. radius)
 end
 
@@ -61,24 +89,37 @@ local function screamedNow()
     return CR.screamed(ModData.getOrCreate(MODULE), NOM_Fog.period())
 end
 
--- p acordou a Carpideira z (why: "near", "light" ou "noise"). Um grito por névoa:
--- marca, chama a horda (alcance CarpideiraScreamRadius, audição compensada) e
--- espalha. O grito toca local em cada cliente que a tem carregada (o comando vai a
--- todos; sendPlaySound só alcança os perto), e o dono solta e caça p.
+-- p acordou a Carpideira z (why: "near", "light" ou "noise"). Um grito por névoa
+-- por PID + gap global entre qualquer grito (playtest 2026-10-10: evita clusters).
+-- Marca, chama a horda (CarpideiraScreamRadius) e espalha. O grito toca local em
+-- cada cliente que a tem carregada; o dono solta e caça p.
 local function carpideira(z, p, why)
     if not NOM_World.fog or not isKind(z, "carpideira") then return false end
-    local pids, pid = screamedNow(), NOM_VariantRules.baseId(z:getPersistentOutfitID())
-    if pids[pid] then return false end
-    pids[pid] = true
+    local data = MODULE_DATA()
+    local state = CR.screamState(data, NOM_Fog.period())
+    local pid = NOM_VariantRules.baseId(z:getPersistentOutfitID())
+    if state.pids[pid] then return false end
+    local now = getTimestampMs()
+    local gap = CR.scheduleNextScream(data, now, ZombRand(10001) / 10000)
+    if gap == nil then
+        SG.logBlocked("carpideira", "gate", "nextAt=" .. tostring(SG.gate(data).nextAt))
+        return false
+    end
+    state.pids[pid] = true
+    local nextAt = SG.gate(data).nextAt
     local radius = NOM_Config.get("CarpideiraScreamRadius")
     NOM_Night.call(z, radius)
     if isServer() then
-        sendServerCommand(MODULE, "carpideiraScream", { pid = pid, id = z:getOnlineID(), pl = p:getOnlineID() })
+        sendServerCommand(MODULE, "carpideiraScream", {
+            pid = pid, id = z:getOnlineID(), pl = p:getOnlineID(), nextAt = nextAt, gap = gap, why = why,
+        })
     else
         NOM_Carpideira.screamed[pid] = true
-        NOM_Carpideira.scream(z, p)
+        NOM_Carpideira.scream(z, p, { gap = gap, nextAt = nextAt, why = why })
     end
-    debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY()) .. " raio=" .. radius)
+    syncScreamGateToClients(nextAt)
+    debugLog("carpideira grito por=" .. why .. " x=" .. math.floor(z:getX()) .. " y=" .. math.floor(z:getY())
+        .. " raio=" .. radius .. " gapMs=" .. gap)
     return true
 end
 
@@ -166,9 +207,31 @@ local function byOnlineID(id)
     return nil
 end
 
+local function applySonGaps(args)
+    if type(args) ~= "table" then return end
+    local amin, amax = args.ambientMin, args.ambientMax
+    local cmin, cmax = args.monsterMin, args.monsterMax
+    if type(amin) == "number" and type(amax) == "number" and amax >= amin then
+        NOM_ScreamGaps.setAmbient(amin, amax)
+    end
+    if type(cmin) == "number" and type(cmax) == "number" and cmax >= cmin then
+        NOM_ScreamGaps.setMonster(cmin, cmax)
+        NOM_CarpideiraRules.SCREAM_GAP_MIN_MS = cmin
+        NOM_CarpideiraRules.SCREAM_GAP_MAX_MS = cmax
+    end
+end
+
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= MODULE then return end
-    if command == "corredorSaw" then
+    if command == "panelSonGaps" then
+        if not getDebug() then return end
+        applySonGaps(args)
+    elseif command == "screamGateBump" and type(args) == "table" and type(args.nextAt) == "number" then
+        local gate = SG.gate(MODULE_DATA())
+        if gate.nextAt == nil or args.nextAt > gate.nextAt then
+            gate.nextAt = args.nextAt
+        end
+    elseif command == "corredorSaw" then
         if not sawOk(player) then return end
         local z = byOnlineID(args and args.id)
         if z and player:DistTo(z:getX(), z:getY()) <= SENDER_RANGE then scream(z) end

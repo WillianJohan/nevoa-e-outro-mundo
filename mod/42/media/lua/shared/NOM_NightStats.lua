@@ -12,6 +12,7 @@
 -- (IntegerConfigOption.setValue só grava o campo).
 require "NOM_NightRules"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_TicaoRules"
@@ -98,6 +99,12 @@ local function isEco(z, md)
 end
 NOM_NightStats.isEco = isEco
 
+-- Alma esquelética (sprint 0050): marca NOM_alma; nunca vira variante.
+local function isAlma(z, md)
+    return md.NOM_alma == true
+end
+NOM_NightStats.isAlma = isAlma
+
 -- inactive: fase inativa do ActiveOnly. A velocidade fica com o jogo:
 -- doZombieSpeed(t) ignora o inactive com t ≠ -1 (determineZombieSpeed) e acordaria
 -- o zumbi. O doZombieSpeed() de dentro do DoZombieStats usa o speedType atual (3).
@@ -129,8 +136,18 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
         md.NOM_night = key
         md.NOM_dayTier = dayTier
         -- Lido pelo NOM_VariantAI (cego, estalo, grito). Só em memória, como o resto.
-        md.NOM_variant = kind ~= "eco" and kind or nil
+        md.NOM_variant = kind ~= "eco" and kind ~= "alma" and kind or nil
         NOM_NightStats.variants[z] = md.NOM_variant
+    end
+    -- Alma crawler: DoZombieStats pode soltar; reaplica se a API existir (spike §3.9.1).
+    if kind == "alma" and md.NOM_almaCrawler then
+        pcall(function()
+            if z.setCrawler then z:setCrawler(true) end
+            if z.setCanWalk then z:setCanWalk(false) end
+        end)
+    end
+    if kind == "alma" then
+        pcall(function() z:setSkeleton(true) end)
     end
 end
 
@@ -165,12 +182,14 @@ local function process(z, c)
     local kind, id = nil, nil
     if isEco(z, md) then
         kind = "eco"
+    elseif isAlma(z, md) then
+        kind = "alma"
     elseif fog then
         id = NOM_VariantRules.baseId(z:getPersistentOutfitID()) -- sem o chapéu caído (sprint 0017)
         kind = NOM_VariantRules.variant(id, NOM_FogState.period, c.variants, NOM_FogState.red, NOM_FogState.black)
     end
-    -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit
-    look(z, kind ~= "eco" and kind or nil, id)
+    -- o Sem-rosto tem visual mas não stats; o Eco tem o visual no outfit; alma = setSkeleton
+    look(z, kind ~= "eco" and kind ~= "alma" and kind or nil, id)
     if kind == "semrosto" then kind = nil end
     -- Speed aleatória: o degrau do dia é o do zumbi, mas inativo ele está sempre
     -- em 3 (makeInactive). Aí fica desconhecido (nil) e não é guardado.
@@ -179,7 +198,9 @@ local function process(z, c)
         dayTier = NOM_NightRules.dayTier(c.speed, z:getSpeedType())
     end
     local ticaoSpeed = kind == "ticao" and NOM_TicaoRules.speed(id, NOM_FogState.period) or nil
-    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm, ticaoSpeed)
+    -- Identidade por cor (sprint 0049): só na névoa; fora dela mood nil.
+    local mood = fog and NOM_ColorIdentityRules.mood(NOM_FogState.red, NOM_FogState.black) or nil
+    local w = NOM_NightRules.wanted(NOM_NightStats.night, kind, dayTier or z:getSpeedType(), c, calm, ticaoSpeed, mood)
     -- A fase entra na chave: quando ela vira, o jogo re-rola (makeInactive(false)
     -- chama DoZombieStats) e o mod reaplica.
     local key = w.key

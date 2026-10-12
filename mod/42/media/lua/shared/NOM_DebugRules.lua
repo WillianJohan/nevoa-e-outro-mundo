@@ -74,9 +74,48 @@ function NOM_DebugRules.parse(args)
             if type(c) ~= "number" or c ~= c or c == math.huge or c == -math.huge then return nil end
         end
         return { op = op, id = args.id, x = math.floor(args.x), y = math.floor(args.y), z = math.floor(args.z) }
+    elseif op == "arrasto" then
+        -- Arrasto / Rastejante (sprint 0059): id = OnlineID do zumbi (-1 no solo);
+        -- skip = true ignora a cor da névoa (só debug).
+        if type(args.id) ~= "number" or args.id ~= args.id then return nil end
+        if args.skip ~= nil and type(args.skip) ~= "boolean" then return nil end
+        return { op = op, id = args.id, skip = args.skip == true }
     elseif op == "spawnEco" or op == "status" or op == "wander" or op == "sonar" or op == "thunder"
-        or op == "lampFlicker" or op == "rain" then
+        or op == "lampFlicker" or op == "rain" or op == "alma" or op == "almaStatus"
+        or op == "almaReset" then
         return { op = op }
+    elseif op == "almaCfg" then
+        -- params das almas (0055/0066): pop*/crawler/white/red/black
+        local field = args.field
+        if field ~= "popMin" and field ~= "popMax"
+            and field ~= "popMinRed" and field ~= "popMaxRed"
+            and field ~= "popMinBlack" and field ~= "popMaxBlack"
+            and field ~= "crawler"
+            and field ~= "white" and field ~= "red" and field ~= "black" then
+            return nil
+        end
+        local v = args.value
+        if field == "popMin" or field == "popMax"
+            or field == "popMinRed" or field == "popMaxRed"
+            or field == "popMinBlack" or field == "popMaxBlack"
+            or field == "crawler" then
+            if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return nil end
+        elseif v ~= nil and type(v) ~= "boolean" then
+            return nil
+        end
+        return { op = op, field = field, value = v }
+    elseif op == "sonarBurst" then
+        -- mode: nil/"auto"/1/2/3/"A"/"B"/"C" (sprint 0056)
+        local mode = args.mode
+        if mode ~= nil and type(mode) ~= "string" and type(mode) ~= "number" then return nil end
+        if type(mode) == "number" and (mode ~= mode or mode == math.huge or mode == -math.huge) then return nil end
+        return { op = op, mode = mode }
+    elseif op == "sonarGaps" then
+        -- reset=true devolve defaults; senão delta ms (inteiro) nos gaps do alvo
+        if args.reset == true then return { op = op, reset = true } end
+        local d = args.delta
+        if type(d) ~= "number" or d ~= d or d == math.huge or d == -math.huge or d == 0 then return nil end
+        return { op = op, delta = math.floor(d), reset = false }
     end
     return nil
 end

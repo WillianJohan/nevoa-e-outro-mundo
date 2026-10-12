@@ -285,21 +285,26 @@ return {
         assert(high <= R().MAX)
     end,
 
-    -- review da 0039: a preta veste o Outro Mundo ×1,4 e as lascas acompanham
+    -- review da 0039: a preta veste o Outro Mundo ×1,4 e as lascas do chão/parede acompanham
+    -- (0057: a cinza no ar é igual nas cores; contar só F/N/W, e antes do teto MAX)
     flakes_black_denser = function()
         local function alive(black)
             local G = setup()
             NOM_FogState.set(true, 3, false, black)
-            G.secs(6)
-            return F().count()
+            G.secs(2)
+            local n = 0
+            for _, p in ipairs(F().parts()) do
+                if p.from ~= "A" then n = n + 1 end
+            end
+            return n
         end
         local white, black = alive(false), alive(true)
         assert(black > white * 1.2, "branca " .. white .. " preta " .. black)
     end,
 
-    -- cinza no ar (sprint 0040): só na vermelha, em volta do jogador, a meia altura, com a cor da
-    -- paleta vermelha; some com os efeitos de tela desligados; na branca e na preta, não
-    flakes_red_air = function()
+    -- cinza no ar (0040 na vermelha; 0057 em toda névoa ativa): em volta do jogador, a meia
+    -- altura, cor da paleta da névoa; some com os efeitos de tela desligados
+    flakes_air_all_fog_colors = function()
         local function air(red, black, opts)
             local G = setup(opts)
             NOM_FogState.set(true, 3, red, black)
@@ -326,8 +331,8 @@ return {
             end
         end
         assert(seen > 0, "cinza não desenhada")
-        assert(air(false, false) == 0, "cinza no ar na branca")
-        assert(air(false, true) == 0, "cinza no ar na preta")
+        assert(air(false, false) > 5, "cinza no ar na branca")
+        assert(air(false, true) > 5, "cinza no ar na preta")
         assert(air(true, false, { intensity = 0 }) == 0, "cinza no ar com os efeitos desligados")
     end,
 
@@ -397,14 +402,18 @@ return {
         for _, o in pairs(G.objs) do
             if #G.attachedNames(o, "mod") > 0 then dressed[o.x .. "," .. o.y .. "," .. o.kind] = true end
         end
-        local walls = 0
+        local walls, ground = 0, 0
         for _, p in ipairs(F().parts()) do
-            local x, y = math.floor(p.x), math.floor(p.y)
-            assert(dressed[x .. "," .. y .. "," .. p.from], "nasceu em " .. x .. "," .. y .. " " .. p.from .. " sem anexo")
-            assert(math.sqrt((x - 100) ^ 2 + (y - 100) ^ 2) <= R().RADIUS + 1, "longe demais")
-            if p.from ~= "F" then walls = walls + 1 end
+            if p.from == "A" then
+                -- cinza no ar (0057): solta, sem anexo
+            else
+                local x, y = math.floor(p.x), math.floor(p.y)
+                assert(dressed[x .. "," .. y .. "," .. p.from], "nasceu em " .. x .. "," .. y .. " " .. p.from .. " sem anexo")
+                assert(math.sqrt((x - 100) ^ 2 + (y - 100) ^ 2) <= R().RADIUS + 1, "longe demais")
+                if p.from ~= "F" then walls = walls + 1 else ground = ground + 1 end
+            end
         end
-        assert(walls > 0, "nenhuma lasca de parede")
+        assert(walls > 0 and ground > 0, "nenhuma lasca de parede/chão")
     end,
 
     -- vermelha: a cor do desenho é a da paleta vermelha

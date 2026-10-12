@@ -13,6 +13,7 @@ if isClient() then return end
 require "NOM_World"
 require "NOM_Config"
 require "NOM_VariantRules"
+require "NOM_ColorIdentityRules"
 require "NOM_DebugRules"
 require "NOM_DebugLog"
 require "NOM_NightCount"
@@ -22,6 +23,7 @@ require "NOM_Eco"
 require "NOM_SemRosto"
 require "NOM_FlickerRules"
 require "NOM_StormRules"
+require "NOM_AlmaRules"
 
 local MODULE = "NevoaEOutroMundo"
 
@@ -173,10 +175,13 @@ function ops.pull(player, a)
 end
 
 -- Uma onda de perambular agora (sprint 0036; NOM_WanderServer, lido na hora: carrega depois
--- deste arquivo). Só com a névoa aberta e a opção FogWander ligada, como a de verdade.
+-- deste arquivo). Só com a névoa branca aberta e a opção FogWander ligada (sprint 0049:
+-- identidade cotidiano; vermelha/preta não perambulam).
 function ops.wander()
     if not NOM_World.fog then return "perambular precisa de névoa aberta" end
     if not NOM_Config.get("FogWander") then return "perambular desligado na opção FogWander" end
+    local mood = NOM_ColorIdentityRules.mood(NOM_World.red, NOM_World.black)
+    if not NOM_ColorIdentityRules.wanderAllowed(mood) then return "perambular só na névoa branca" end
     if not NOM_WanderServer then return "perambular não carregou" end
     return "perambular onda semente=" .. NOM_WanderServer.wave("debug")
 end
@@ -185,6 +190,72 @@ end
 function ops.sonar(player)
     if not NOM_SonarServer then return "sonar não carregou" end
     return NOM_SonarServer.force(player)
+end
+
+-- Ritmo do Estalador (sprint 0056): forçar A/B/C ou auto (rodízio); editar gaps.
+function ops.sonarBurst(_, args)
+    require "NOM_SonarRules"
+    NOM_SonarRules.setForceBurst(args.mode)
+    local f = NOM_SonarRules.forceBurst()
+    return "sonar ritmo " .. NOM_SonarRules.burstStatus() ..
+        (f and (" (forçado " .. NOM_SonarRules.burstId(f) .. ")") or " (rodízio)")
+end
+
+function ops.sonarGaps(_, args)
+    require "NOM_SonarRules"
+    if args.reset then
+        NOM_SonarRules.resetGaps()
+        return "sonar gaps reset " .. NOM_SonarRules.burstStatus()
+    end
+    if not NOM_SonarRules.nudgeGaps(args.delta) then return "sonar gaps: delta inválido" end
+    return "sonar gaps " .. (args.delta > 0 and "+" or "") .. tostring(args.delta) ..
+        " alvo=" .. NOM_SonarRules.burstId(NOM_SonarRules.gapTarget()) .. " " .. NOM_SonarRules.burstStatus()
+end
+
+-- Arrasto / Rastejante (sprint 0059): marca o zumbi mais perto (ou o id) como crawler lento.
+-- Só vermelha/preta, a menos que a.skip. Solo: id -1 = mais perto de quem pede.
+function ops.arrasto(player, a)
+    if not NOM_ArrastoServer then return "arrasto não carregou" end
+    local z
+    if a.id == -1 then
+        if isServer() then return "zumbi sem ID de rede" end
+        z = nearestTo(player)
+    else
+        z = byOnlineId(a.id)
+    end
+    if not z then return "zumbi não achado" end
+    local ok, why = NOM_ArrastoServer.force(z, a.skip)
+    if not ok then return "arrasto: " .. tostring(why) end
+    return "arrasto id=" .. tostring(z:getOnlineID()) .. " crawler lento"
+end
+
+-- Repor almas agora (sprint 0055; NOM_AlmaServer). Qualquer névoa com a cor ligada.
+function ops.alma()
+    if not NOM_AlmaServer then return "almas não carregaram" end
+    local n, why = NOM_AlmaServer.wave("debug")
+    if why then return "almas: " .. why end
+    return "almas repor spawn=" .. tostring(n) .. " vivas=" .. tostring(#NOM_AlmaServer.alive)
+        .. " (" .. NOM_AlmaRules.describe() .. ")"
+end
+
+function ops.almaStatus()
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    local alive = (NOM_AlmaServer and #NOM_AlmaServer.alive) or 0
+    return "almas " .. NOM_AlmaRules.describe() .. " vivas=" .. tostring(alive)
+end
+
+function ops.almaReset()
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    NOM_AlmaRules.apply("reset")
+    return "almas reset: " .. NOM_AlmaRules.describe()
+end
+
+function ops.almaCfg(player, args)
+    if not NOM_AlmaRules then return "almas regras não carregaram" end
+    local got = NOM_AlmaRules.apply(args.field, args.value)
+    if got == nil then return "almas cfg campo inválido" end
+    return "almas cfg " .. tostring(args.field) .. "=" .. tostring(got)
+        .. " | " .. NOM_AlmaRules.describe()
 end
 
 -- Tempestade e poste que pisca (sprint 0045; NOM_Storm e NOM_LampFlicker, lidos na hora).
