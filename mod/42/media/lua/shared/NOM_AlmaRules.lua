@@ -21,7 +21,12 @@ NOM_AlmaRules = {
     SPAWN_MIN = 12,
     SPAWN_MAX = 50,
     SEEK_MS = 2500,
-    SOUND_EVENT_MS = 8000,
+    -- Gemido de evento por alma. Com dezenas de almas vivas, intervalo curto vira coro
+    -- contínuo; com TTL de 5–15 s, a maioria fica calada a vida toda.
+    SOUND_EVENT_MS = 90000,
+    -- Gemido de grupo no máximo a cada isto (a leva sai a cada TICK_MS). Um relógio só
+    -- pro servidor: no MP, a zona que não ouviu o último grupo espera o mesmo intervalo.
+    GROUP_SOUND_GAP_MS = 60000,
     FEMALE_CHANCE = 50,
     COLOR_WHITE = true,
     COLOR_RED = true,
@@ -235,6 +240,17 @@ end
 function R.loopSound(crawler)
     if crawler then return R.SOUND.crawl end
     return R.SOUND.shamble
+end
+
+-- Som do FX (almaFx kind) ou nil: nascer e sumir de cada alma são só visuais (sprint 0069).
+function R.fxSound(kind)
+    if kind == "group" then return R.SOUND.group end
+    return nil
+end
+
+-- O gemido de grupo pode tocar agora? lastAt: quando tocou o último (nil: nunca).
+function R.groupSoundDue(lastAt, now)
+    return lastAt == nil or now - lastAt >= R.GROUP_SOUND_GAP_MS
 end
 
 -- Distância ao quadrado entre dois pontos {x,y}.

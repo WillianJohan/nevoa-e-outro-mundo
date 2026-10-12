@@ -54,14 +54,13 @@ function C.fx(args)
     local kind, x, y, z = args.kind, args.x, args.y, args.z
     if type(x) ~= "number" or type(y) ~= "number" then return end
     z = z or 0
+    local sound = R.fxSound(kind)
+    if sound then playAt(sound, x, y, z) end
     if kind == "spawn" then
-        playAt(R.SOUND.spawn, x, y, z)
         burst(x, y, z, 8)
     elseif kind == "despawn" then
-        playAt(R.SOUND.despawn, x, y, z)
         burst(x, y, z, 10)
     elseif kind == "group" then
-        playAt(R.SOUND.group, x, y, z)
         burst(x, y, z, 4)
     end
 end

@@ -2,6 +2,14 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
+## Em staging: sprint 0069 — almas em silêncio (2026-10-12)
+
+O "grito o tempo todo" da névoa vermelha eram as **almas**, não os gritos: no log, 2
+`scream played` contra ~600 gemidos de sumir, um gemido de grupo a cada leva de 5 s e o de
+evento de cada alma a cada 8 s. Agora nascer/sumir é só visual, o grupo toca no máximo 1 vez por
+minuto e o evento a cada 90 s. Estalador intocado (decisão do Johan). **Playtest Johan:**
+[README](sprints/sprint-0069-almas-silencio/README.md).
+
 ## Em staging: sprint 0064 — Screamer K1/K2/K3
 
 Merge `--no-ff` `2cd1e68` (PR #20). K1 laço+pinafore; K2 balaclava caminho A (capuz 3D
