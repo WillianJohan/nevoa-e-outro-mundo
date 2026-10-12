@@ -212,6 +212,50 @@ return {
         local block = txt:match("option NevoaEOutroMundo%.EcoRadius = {(.-)}")
         assert(block and block:match("max = (%d+)") == "60", "max do EcoRadius")
     end,
+    -- Sprint 0070: gritos e gemidos das almas somados nos dois sentidos. O jogo sorteia um clip
+    -- por toque (GameSound.getRandomClip). Cada som mantém o próprio arquivo como 1º clip, e o
+    -- clip emprestado leva o volume do papel compensado pela diferença de nível dos arquivos.
+    config_screams_and_almas_share_clips = function()
+        local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
+        local txt = f:read("*a")
+        f:close()
+        local screams = { "NOM_CorredorScream", "NOM_CorredorScream2", "NOM_CorredorScream3",
+            "NOM_CarpideiraScream", "NOM_CarpideiraScream2", "NOM_CarpideiraScream3",
+            "NOM_AmbientScream1", "NOM_AmbientScream2", "NOM_AmbientScream3", "NOM_AmbientScream4" }
+        local almas = { "NOM_AlmaSpawn", "NOM_AlmaCrawl", "NOM_AlmaShamble", "NOM_AlmaGroup", "NOM_AlmaDespawn" }
+        local function clips(name)
+            local body = assert(txt:match("sound%s+" .. name .. "%s*(%b{})"), "sem declaração: " .. name)
+            local out = {}
+            for clip in body:gmatch("clip%s*(%b{})") do
+                out[#out + 1] = {
+                    file = clip:match("file%s*=%s*media/sound/([%w_]+)%.ogg"),
+                    volume = tonumber(clip:match("volume%s*=%s*([%d%.]+)")) or 1,
+                }
+            end
+            return out
+        end
+        local function check(name, others)
+            local list = clips(name)
+            assert(list[1] and list[1].file == name, name .. ": 1º clip é o próprio arquivo")
+            local has = {}
+            for i = 2, #list do has[list[i].file] = list[i] end
+            assert(#list == 1 + #others, name .. ": clips " .. #list)
+            for _, o in ipairs(others) do
+                local c = assert(has[o], name .. " sem o clip " .. o)
+                assert(c.volume > 0 and c.volume <= 1, name .. "/" .. o .. ": volume " .. c.volume)
+            end
+            return list
+        end
+        for _, name in ipairs(almas) do
+            local list = check(name, screams)
+            assert(list[2].volume < list[1].volume, name .. ": grito emprestado mais baixo")
+        end
+        for _, name in ipairs(screams) do
+            local list = check(name, almas)
+            assert(list[2].volume >= list[1].volume, name .. ": gemido emprestado não mais baixo")
+        end
+    end,
+
     -- todo som tocado pelo Lua está declarado e aponta pra arquivo que existe no mod
     config_sound_scripts_point_to_files = function()
         local f = assert(io.open("mod/42/media/scripts/NOM_sounds.txt"))
@@ -220,12 +264,13 @@ return {
         local declared, n = {}, 0
         for name, body in txt:gmatch("sound%s+([%w_]+)%s*(%b{})") do
             declared[name] = true
-            local file = body:match("file%s*=%s*([^,%s]+)")
-            assert(file, "som sem arquivo: " .. name)
-            local h = io.open("mod/42/" .. file, "rb")
-            assert(h, "arquivo do som não existe: " .. file)
-            assert(#h:read("*a") > 1000, "arquivo vazio: " .. file)
-            h:close()
+            assert(body:match("file%s*=%s*([^,%s]+)"), "som sem arquivo: " .. name)
+            for file in body:gmatch("file%s*=%s*([^,%s]+)") do
+                local h = io.open("mod/42/" .. file, "rb")
+                assert(h, "arquivo do som não existe: " .. file)
+                assert(#h:read("*a") > 1000, "arquivo vazio: " .. file)
+                h:close()
+            end
             n = n + 1
         end
         assert(n >= 5, "sons declarados: " .. n)

@@ -2080,6 +2080,21 @@ fator de audição do Tição (`NOM_NightRules.HEARING_MULT[1]`), sem pacote ext
 | As alças, o recorte e a roda do mouse se comportam no jogo como no vanilla | UNKNOWN | testar no jogo, item 28 |
 | Clipboard Lua oficial (`Clipboard.setClipboard` / similar) pra copiar texto do painel | UNKNOWN | sem uso no vanilla Lua do repo; `NOM.copyParams` (0058b) imprime no `NOM_DebugLog` e tenta `Clipboard.setClipboard` / Java AWT só via `pcall` |
 
+## 36. Vários `clip` num som: o jogo sorteia um por toque (sprint 0070)
+
+Bytecode (`javap -c -p`, `projectzomboid.jar` do jogo instalado):
+
+- `GameSoundScript.Load` (offset 245–275): cada bloco filho chamado `clip` vira um
+  `GameSoundClip` e entra em `GameSound.clips` (`ArrayList.add`). Mais de um bloco = mais clips.
+- `GameSound.getRandomClip()` (0–20): `clips.get(Rand.Next(clips.size()))`, sorteio uniforme.
+- `FMODSoundEmitter.playSoundImpl(String, IsoObject)` chama `GameSounds.getSound` e
+  `getRandomClip`. Chegam nele: `playSound(String)` e os outros `playSound`, o
+  `playSoundImpl(String, boolean, IsoObject)` do emitter livre, o `CharacterSoundEmitter
+  .playSoundImpl` (que é o `playSoundLocal` do personagem) e o `SoundManager.PlayWorldSoundImpl`
+  (via `BaseSoundEmitter.playSoundImpl(String, IsoObject)`).
+- Cada clip tem `volume`, `distanceMin` e `distanceMax` próprios; o alcance do som é o maior
+  dos clips (`GameSound.getMaxDistanceOfClips`).
+
 ## Abordagem recomendada por mecânica (resumo)
 
 | Mecânica | Caminho principal | Fallback |

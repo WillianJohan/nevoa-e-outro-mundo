@@ -71,6 +71,7 @@ pra ver no jogo. Uma pasta por sprint, `sprint-NNNN-slug/README.md`.
 | [0060](sprint-0060-look-real/README.md) | Look real: peles com midtones + roupa cotidiana no corpo (anti grid P&B da 0054); ScreenFx grain/lines mais baixos | `em staging` — merge #16; proporção §7.3 em #17 |
 | [0062](sprint-0062-look-lote2/README.md) | Look lote 2: Corredor C1–C5 + boca, Tição T1–T5, Almas A1–A5, Sem-rosto S1–S5 + F1–F4 | `em curso` — [roteiro](sprint-0062-look-lote2/README.md) |
 | [0069](sprint-0069-almas-silencio/README.md) | Almas em silêncio: sem som ao nascer/sumir, grupo ≤ 1/min, gemido de evento a cada 90 s | `em staging` |
+| [0070](sprint-0070-gritos-e-almas/README.md) | Gritos e almas somados: cada grito também sorteia os gemidos das almas e vice-versa | `em staging` |
 | [spike](spike-shader/README.md) | Shader próprio na névoa | `concluída` (estática) — vinheta via SearchMode feita na 0005; grão e override do `screen.frag` feitos na 0013 (mod opcional) |
 | [spike](spike-dissolve/README.md) | Dissolve na morte do Eco e na mutação das variantes | `concluída` (estática) — `m_Shader` na peça + `Alpha` como limiar; virou a [0018](sprint-0018-dissolve-bloom/README.md), probes no roteiro dela |
 | [spike](spike-motor-visual/README.md) | Motor visual: estender o render (bloom, dissolver, fogo, luz, sombra) via ZombieBuddy | `concluída` (estática) — Java só cliente e opcional; bloom e dissolver são os únicos alvos que valem; sombra e luz do sol ficam com o ShadowZ. Corrigida na [0018](sprint-0018-dissolve-bloom/README.md): shader novo por peça sai sem Java |

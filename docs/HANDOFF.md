@@ -2,6 +2,12 @@
 
 Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
 
+## Em staging: sprint 0070 — gritos e almas somados (2026-10-12)
+
+Pedido do Johan depois da 0069 ("diminuiu"): os 10 gritos viram clips extras das almas e os 5
+gemidos das almas viram clips extras dos gritos. Só o `NOM_sounds.txt` muda, com volume
+compensado por papel. **Playtest Johan:** [README](sprints/sprint-0070-gritos-e-almas/README.md).
+
 ## Em staging: sprint 0069 — almas em silêncio (2026-10-12)
 
 O "grito o tempo todo" da névoa vermelha eram as **almas**, não os gritos: no log, 2
