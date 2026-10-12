@@ -1,8 +1,22 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-09. Clímax fog **0047g** aprovado na `staging`. **Overnight merge:** sprints **0048–0052** mergeadas `--no-ff` na `staging` (PRs #4, #8, #5, #7, #6). Esperam playtest do Johan. v1.0.0 na `main`. Vale pra quem continuar: Cursor, Claude ou humano. As regras do repo estão em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-12. **`main` = v1.0.0** (merge `15f3544`, tag `v1.0.0`, tip de staging `27e1bf3`). **Falta só o Johan:** `scripts/build-workshop.sh` na máquina dele (jar assinado + JDK 25) e envio pelo jogo pro item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) — checklist em [publicar.md](publicar.md) e no Context (`docs/lancamento-v1.0.0-workshop.md`). A **`staging` volta a ser desenvolvimento** (mesmo tip `27e1bf3` até a próxima sprint). Vale pra quem continuar: Cursor, Claude ou humano. Regras em [AGENTS.md](../AGENTS.md).
 
-## Em staging: sprint 0070 — gritos e almas somados (2026-10-12)
+## Lançamento v1.0.0 (2026-10-12)
+
+Autorizado pelo Johan após playtest da staging (0069/0070, looks, almas v2, gritos, brasa na preta, painel de parâmetros, etc.).
+
+- **Git:** merge `--no-ff` `staging` → `main`, commit `15f35448380595e6deed89e56ec27ea7ffff3089`, mensagem *Lançamento v1.0.0: looks dos variantes, almas v2 (0068–0069), gritos e gemidos (0070), brasa na preta, sliders de gap, hotfixes de música e relógio de gritos, descrição Workshop/ZombieBuddy*.
+- **Versão:** `modversion=1.0.0` nos três `mod.info` (`NoiseOfMist`, `NoiseOfMist_Shader`, `NoiseOfMist_Volumetrica`).
+- **Tag:** `v1.0.0` no commit de merge; push `main` + tag feitos.
+- **Testes (agente, staging tip `27e1bf3`):** 1432 Lua, 12 contraste — verdes; **`test_om_tiles.py::test_generator_deterministic`** falhou (`NOM_OM_Grade_F_02.png` muda ao regerar — conhecido/flaky no ambiente cloud, não bloqueou o merge autorizado). Restante do `./run-tests.sh` não rodou após essa falha; `test_mod3_depth.py` ok; **`build-workshop.sh` / jar mod3** não rodaram no cloud (sem chave ZBS em `~/.signing/`, JDK 21 sem `--release 25`).
+- **Notas de release:** [docs/workshop/release-v1.0.0.md](workshop/release-v1.0.0.md) (texto longo GitHub + curto Steam).
+
+## O que entrou na v1.0.0 (desde a `main` anterior)
+
+Sprints **0047–0070** e hotfixes acumulados na staging: clímax da névoa (0047), sons II e transform (0048–0049), almas esqueléticas e ciclo (0050, 0055, 0068–0070), aperto preta (0051), Carpideira witch / screamer looks (0052, 0064–0066), playtest e painel de parâmetros (0053, 0058–0059), looks horror/real e Sem-rosto (0054, 0060, 0062), gritos ambiente/monstro e gaps (0061 revert proc, 0063, 0067–0070), brasa/Tição na preta (0067), arrasto (0059), cinzas (0057), estalador ritmos (0056), hotfixes música na névoa aberta e relógio global de gritos.
+
+## Em staging (dev): sprint 0070 — gritos e almas somados (2026-10-12)
 
 Pedido do Johan depois da 0069 ("diminuiu"): os 10 gritos viram clips extras das almas e os 5
 gemidos das almas viram clips extras dos gritos. Só o `NOM_sounds.txt` muda, com volume
@@ -70,14 +84,6 @@ Merge overnight 2026-10-09, ordem da fila. Reiniciar o jogo e `dev-sync.sh` depo
 | 15 boost | 1,1 | 1,0 | 1,2 |
 
 Sync: `NOM_FogClimaxRules.fromConfig(color)` + `onColorChange`. `scripts/dev-sync.sh` na `staging`; reiniciar o jogo.
-
-## Lançamento v1.0.0 (2026-10-07)
-
-O Johan testou a 0045 e a 0046 no jogo ("tá ótimo") e decidiu: a `staging` vira a **v1.0.0**, com os
-três mods em `modversion=1.0.0` (a Volumétrica subiu de 0.1.0). Merge `--no-ff` da `staging` na
-`main` e push feitos. **Falta:** o envio pelo jogo e a tag `v1.0.0` no commit enviado
-([publicar.md](publicar.md) §2–5). O envio leva os IDs novos (`NoiseOfMist*`) pro item
-3814379207.
 
 ## Em teste no jogo: sprint 0046 (painel de debug novo)
 
