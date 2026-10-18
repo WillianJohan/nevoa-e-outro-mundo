@@ -5,14 +5,15 @@ public class BallisticsGuardTest {
     static int passed, failed;
 
     public static void main(String[] args) {
-        run("contagem válida passa", () -> check(BallisticsGuard.bonesOk(false, 60, 60, 60 * 7, 60), "60 ossos"));
-        run("alvo novo sem initialize (-1) não passa", () -> check(!BallisticsGuard.bonesOk(false, -1, 60, 420, 60), "-1"));
-        run("zero ossos não passa", () -> check(!BallisticsGuard.bonesOk(false, 0, 0, 420, 60), "0"));
-        run("contagem velha de outro personagem não passa", () -> check(!BallisticsGuard.bonesOk(false, 60, 72, 72 * 7, 60), "60 vs 72"));
-        run("array curto não passa", () -> check(!BallisticsGuard.bonesOk(false, 60, 60, 60 * 7 - 1, 60), "curto"));
-        run("Java escreve mais ossos que cabem não passa", () -> check(!BallisticsGuard.bonesOk(false, 60, 60, 60 * 7, 61), "61 escritos"));
-        run("zumbi esqueleto não passa, mesmo com contagem coerente (playtest 18/10)",
-            () -> check(!BallisticsGuard.bonesOk(true, 45, 45, 315, 35), "esqueleto 45"));
+        run("zumbi normal (35 = 35) manda os 35", () -> eq(35, BallisticsGuard.bonesToSend(35, 35, 315, 35)));
+        run("zumbi esqueleto (45 no modelo) manda só os 35 escritos (playtest 18/10)",
+            () -> eq(35, BallisticsGuard.bonesToSend(45, 45, 315, 35)));
+        run("esqueleto já ajustado no quadro anterior (35 contra 45) segue com 35",
+            () -> eq(35, BallisticsGuard.bonesToSend(35, 45, 315, 35)));
+        run("alvo novo sem initialize (-1) pula", () -> eq(-1, BallisticsGuard.bonesToSend(-1, 35, 315, 35)));
+        run("zero ossos pula", () -> eq(-1, BallisticsGuard.bonesToSend(0, 0, 315, 35)));
+        run("contagem velha de outro personagem pula", () -> eq(-1, BallisticsGuard.bonesToSend(40, 45, 315, 35)));
+        run("array menor que os ossos escritos pula", () -> eq(-1, BallisticsGuard.bonesToSend(35, 35, 35 * 7 - 1, 35)));
         System.out.println("mod3 balística: " + passed + " ok, " + failed + " falharam");
         if (failed > 0) System.exit(1);
     }
@@ -24,5 +25,5 @@ public class BallisticsGuardTest {
         catch (Throwable t) { failed++; System.out.println("FALHOU: " + name + ": " + t); }
     }
 
-    static void check(boolean ok, String msg) { if (!ok) throw new AssertionError(msg); }
+    static void eq(int want, int got) { if (want != got) throw new AssertionError("esperava " + want + ", veio " + got); }
 }
