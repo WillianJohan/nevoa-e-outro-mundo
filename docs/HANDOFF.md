@@ -1,6 +1,16 @@
 # Handoff — onde paramos
 
-Atualizado em 2026-10-12. **`main` = v1.0.0** (merge `15f3544`, tag `v1.0.0`, tip de staging `27e1bf3`). **Falta só o Johan:** `scripts/build-workshop.sh` na máquina dele (jar assinado + JDK 25) e envio pelo jogo pro item [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) — checklist em [publicar.md](publicar.md) e no Context (`docs/lancamento-v1.0.0-workshop.md`). A **`staging` volta a ser desenvolvimento** (mesmo tip `27e1bf3` até a próxima sprint). Vale pra quem continuar: Cursor, Claude ou humano. Regras em [AGENTS.md](../AGENTS.md).
+Atualizado em 2026-10-18. **`main` = v1.0.2** (merge `e832608`, tag `v1.0.2`, enviada pro Workshop [3814379207](https://steamcommunity.com/sharedfiles/filedetails/?id=3814379207) pelo Johan). A `staging` tem o mesmo conteúdo e volta a ser desenvolvimento. Vale pra quem continuar: Cursor, Claude ou humano. Regras em [AGENTS.md](../AGENTS.md).
+
+## Hotfixes v1.0.1 e v1.0.2 (2026-10-17/18)
+
+- **v1.0.1** (`817804c`, tag `v1.0.1`): o clarão vermelho do relâmpago na névoa preta nunca pintava pelo mod3. `PlayerLightningInfo` é package-private; faltava `setAccessible(true)` no `RenderContext.paintLightningColor` (log `setLightningColor: IllegalAccessException`).
+- **v1.0.2** (`e832608`, tag `v1.0.2`): **crash nativo ao mirar arma de fogo perto das almas** (SIGSEGV em `libPZBullet64.so`, `PZBallisticsTarget::updateSkeletonBoneTransforms`, vindo de `CombatManager.updateReticle`). Causa: o `BallisticsTarget` vanilla conta os ossos pelo modelo, mas só escreve os 35 de `SkeletonBone.all()`; zumbi esqueleto (`setSkeleton(true)`) tem 45 e o C++ lê além do fim. Conserto em duas camadas:
+  - mod3: `Patches.BallisticsSkeleton` + `BallisticsGuard` baixam o `numberOfBones` pros 35 escritos (e pulam alvo sem ossos). Log `[NOM-Render] balística:`.
+  - mod base: `NOM_Alma.skeletonAllowed()` — sem o mod3, a alma não vira esqueleto no cliente/solo (decisão do Johan, opção 1). Servidor dedicado mantém; o `isSkeleton` não vai pela rede.
+  - Detalhes e evidência: `pz-api-notes.md`, linha do `BallisticsTarget`.
+- **Origem:** relato de jogador no Workshop (Hunk), achado no playtest do Johan. O erro do True Moozic (`TCLootControl.lua:84`) no log do jogador é de outro mod.
+- **Pendências abertas:** o `print` do `glitch apply` (`client/NOM_FogVignette.lua`) ainda imprime a cada ~10 quadros em transição; tirar ou deixar só em debug. A médio prazo, avaliar o visual de esqueleto por roupa/textura (sem `setSkeleton`) pra quem joga sem o mod3.
 
 ## Lançamento v1.0.0 (2026-10-12)
 
