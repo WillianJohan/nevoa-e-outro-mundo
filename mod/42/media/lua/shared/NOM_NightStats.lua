@@ -16,6 +16,7 @@ require "NOM_ColorIdentityRules"
 require "NOM_Config"
 require "NOM_FogState"
 require "NOM_TicaoRules"
+require "NOM_Alma"
 
 -- variants: { [zumbi] = "estalador" | "corredor" } das cópias locais. O
 -- NOM_VariantAI olha só esta tabela no OnZombieUpdate (por zumbi, por frame)
@@ -146,7 +147,7 @@ local function apply(z, md, w, dayTier, key, inactive, kind)
             if z.setCanWalk then z:setCanWalk(false) end
         end)
     end
-    if kind == "alma" then
+    if kind == "alma" and NOM_Alma.skeletonAllowed() then
         pcall(function() z:setSkeleton(true) end)
     end
 end

@@ -18,7 +18,16 @@ function NOM_Alma.is(z)
     return md and md.NOM_alma == true
 end
 
--- Look mínimo: esqueleto vanilla (setSkeleton) + vida baixa. Crawler veio no spawn.
+-- Modelo de esqueleto vanilla (45 ossos) crasha o Bullet nativo quando entra na mira de arma
+-- de fogo (pz-api-notes, BallisticsTarget). O mod3 conserta isso (Patches.BallisticsSkeleton);
+-- sem ele, a alma fica com o corpo normal. O isSkeleton não vai pela rede: cada cliente decide.
+-- Servidor dedicado não desenha nem mira: mantém.
+function NOM_Alma.skeletonAllowed()
+    if isServer() then return true end
+    return NOMRender_setParam ~= nil
+end
+
+-- Look mínimo: esqueleto vanilla (setSkeleton, só com o mod3) + vida baixa. Crawler veio no spawn.
 -- Evidência: pz-api-notes (setSkeleton queimado; addZombiesInOutfit longa com crawler).
 -- Lote 2: variantes A1–A5 (bíblia §9). A2–A4 tentam ItemVisual; falha → fica A1.
 function NOM_Alma.dress(z, crawler)
@@ -26,8 +35,10 @@ function NOM_Alma.dress(z, crawler)
     md.NOM_alma = true
     md.NOM_almaCrawler = crawler == true
     z:setHealth(R.HEALTH)
-    local ok, err = pcall(function() z:setSkeleton(true) end)
-    if not ok then debugLog("setSkeleton falhou: " .. tostring(err)) end
+    if NOM_Alma.skeletonAllowed() then
+        local ok, err = pcall(function() z:setSkeleton(true) end)
+        if not ok then debugLog("setSkeleton falhou: " .. tostring(err)) end
+    end
     if crawler then
         local ok2, err2 = pcall(function()
             if z.setCrawler then z:setCrawler(true) end
