@@ -30,4 +30,17 @@ public class Patches {
             try { RenderContext.afterVanillaFogUpdate(); } catch (Throwable t) { }
         }
     }
+
+    /**
+     * BallisticsTarget.updateSkeleton() manda os ossos pro Bullet nativo (Bullet
+     * .updateBallisticsTargetSkeleton). O add() vanilla chama mesmo com initialize() falho e o
+     * C++ crasha (hs_err 18/10). skipOn: advice devolve true = o método não roda.
+     */
+    @Patch(className = "zombie.core.physics.BallisticsTarget", methodName = "updateSkeleton")
+    public static class BallisticsSkeleton {
+        @Patch.OnEnter(skipOn = true)
+        public static boolean enter(@Patch.This Object self) {
+            try { return RenderContext.ballisticsSkip(self); } catch (Throwable t) { return false; }
+        }
+    }
 }
