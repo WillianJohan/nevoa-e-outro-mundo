@@ -187,6 +187,48 @@ public final class RenderContext {
         return true;
     }
 
+    // Guarda da balística (BallisticsGuard): campos privados do BallisticsTarget, reflexão uma vez.
+    private static Field ballisticsBonesField, ballisticsCharField;
+    private static final java.util.HashSet<String> ballisticsSeen = new java.util.HashSet<>();
+
+    /**
+     * Chamado pelo Patches.BallisticsSkeleton antes do updateSkeleton. true = pula (sem o
+     * esqueleto novo o alvo fica com o do quadro anterior, em vez de crashar no C++).
+     * Loga cada combinação nova de personagem e contagem de ossos, pra achar quem dispara.
+     */
+    public static boolean ballisticsSkip(Object target) {
+        try {
+            if (ballisticsBonesField == null) {
+                Class<?> c = target.getClass();
+                ballisticsCharField = c.getDeclaredField("isoGameCharacter");
+                ballisticsCharField.setAccessible(true);
+                Field f = c.getDeclaredField("numberOfBones");
+                f.setAccessible(true);
+                ballisticsBonesField = f;
+            }
+            int n = ballisticsBonesField.getInt(target);
+            IsoGameCharacter ch = (IsoGameCharacter) ballisticsCharField.get(target);
+            AnimationPlayer ap = ch == null ? null : ch.getAnimationPlayer();
+            int playerBones = ap == null || ap.boneTransforms == null || ap.boneTransforms.length == 0
+                    || ap.boneTransforms[0] == null ? -1 : ap.boneTransforms.length;
+            float[] data = zombie.core.physics.BallisticsTarget.boneTransformData;
+            int dataLength = data == null ? 0 : data.length;
+            boolean ok = BallisticsGuard.bonesOk(n, playerBones, dataLength, SkeletonBone.all().length);
+            String who = ch == null ? "null" : ch.getClass().getSimpleName()
+                    + (ch instanceof IsoZombie z && z.isSkeleton() ? " esqueleto" : "");
+            String key = who + "|" + n + "|" + playerBones + "|" + ok;
+            if (ballisticsSeen.size() < 64 && ballisticsSeen.add(key)) {
+                log("balística: " + (ok ? "ok" : "PULADO") + " " + who + " ossos=" + n
+                        + " animação=" + playerBones + " dados=" + dataLength
+                        + " escritos=" + SkeletonBone.all().length);
+            }
+            return !ok;
+        } catch (Throwable t) {
+            log("balística: erro na guarda, segue vanilla: " + t);
+            return false;
+        }
+    }
+
     /**
      * A névoa vanilla para antes da borda de baixo da tela (maxYOffset -5) e com zoom afastado vira
      * uma faixa limpa; a nossa cobre a tela toda, com véu de fundo. Se o passe morreu, a vanilla fica.
