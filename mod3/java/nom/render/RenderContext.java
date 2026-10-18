@@ -192,9 +192,10 @@ public final class RenderContext {
     private static final java.util.HashSet<String> ballisticsSeen = new java.util.HashSet<>();
 
     /**
-     * Chamado pelo Patches.BallisticsSkeleton antes do updateSkeleton. true = pula (sem o
-     * esqueleto novo o alvo fica com o do quadro anterior, em vez de crashar no C++).
-     * Loga cada combinação nova de personagem e contagem de ossos, pra achar quem dispara.
+     * Chamado pelo Patches.BallisticsSkeleton antes do updateSkeleton. true = pula (alvo sem
+     * ossos prontos: fica com o esqueleto do quadro anterior em vez de crashar no C++). Com
+     * mais ossos no modelo que os escritos (zumbi esqueleto), baixa o numberOfBones pros
+     * escritos e deixa seguir. Loga cada combinação nova de personagem e contagem.
      */
     public static boolean ballisticsSkip(Object target) {
         try {
@@ -213,16 +214,18 @@ public final class RenderContext {
                     || ap.boneTransforms[0] == null ? -1 : ap.boneTransforms.length;
             float[] data = zombie.core.physics.BallisticsTarget.boneTransformData;
             int dataLength = data == null ? 0 : data.length;
+            int written = SkeletonBone.all().length;
+            int send = BallisticsGuard.bonesToSend(n, playerBones, dataLength, written);
+            if (send > 0 && send != n) ballisticsBonesField.setInt(target, send);
             boolean skeleton = ch instanceof IsoZombie z && z.isSkeleton();
-            boolean ok = BallisticsGuard.bonesOk(skeleton, n, playerBones, dataLength, SkeletonBone.all().length);
             String who = ch == null ? "null" : ch.getClass().getSimpleName() + (skeleton ? " esqueleto" : "");
-            String key = who + "|" + n + "|" + playerBones + "|" + ok;
+            String what = send < 0 ? "PULADO" : send != n ? "ajustado pra " + send : "ok";
+            String key = who + "|" + n + "|" + playerBones + "|" + what;
             if (ballisticsSeen.size() < 64 && ballisticsSeen.add(key)) {
-                log("balística: " + (ok ? "ok" : "PULADO") + " " + who + " ossos=" + n
-                        + " animação=" + playerBones + " dados=" + dataLength
-                        + " escritos=" + SkeletonBone.all().length);
+                log("balística: " + what + " " + who + " ossos=" + n + " animação=" + playerBones
+                        + " dados=" + dataLength + " escritos=" + written);
             }
-            return !ok;
+            return send < 0;
         } catch (Throwable t) {
             log("balística: erro na guarda, segue vanilla: " + t);
             return false;

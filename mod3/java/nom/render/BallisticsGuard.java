@@ -2,17 +2,16 @@ package nom.render;
 
 /**
  * Crash nativo ao mirar arma de fogo (hs_err 18/10, SIGSEGV em
- * {@code PZBallisticsTarget::updateSkeletonBoneTransforms}). O
- * {@code BallisticsTarget.add()} vanilla ignora o retorno de {@code initialize()}: se o
- * personagem ainda não tem ossos prontos, o {@code numberOfBones} fica em -1 (alvo novo do
- * pool) ou com o valor de outro personagem, e o C++ lê fora do array. Java puro, sem o jogo:
- * BallisticsGuardTest. O RenderContext lê os campos por reflexão e pula o updateSkeleton
- * quando a regra diz não.
+ * {@code PZBallisticsTarget::updateSkeletonBoneTransforms}). Java puro, sem o jogo:
+ * BallisticsGuardTest. O RenderContext lê os campos do BallisticsTarget por reflexão antes
+ * do updateSkeleton e aplica a resposta daqui.
  *
- * Playtest 18/10 13:10: o primeiro alvo da mira foi uma alma ({@code setSkeleton(true)}) com
- * contagem coerente (45 ossos no AnimationPlayer, 35 escritos pelo Java) e mesmo assim o C++
- * crashou. Nos três hs_err o deslocamento é 0x1680 = 45 × 128 bytes: o esqueleto vanilla do
- * zumbi esqueleto não serve pro Bullet. Zumbi esqueleto fica fora do updateSkeleton.
+ * Causa (playtests 18/10 13:10 e 13:18): o {@code initialize()} vanilla tira
+ * {@code numberOfBones} do AnimationPlayer (ossos do modelo), mas o
+ * {@code getBoneTransforms()} só escreve os {@code SkeletonBone.all()} (35) e o Bullet espera
+ * isso. Zumbi normal: 35 = 35. Zumbi esqueleto ({@code setSkeleton(true)}, as almas): 45 no
+ * modelo, o C++ lê 10 ossos além do fim (0x1680 = 45 × 128 nos três hs_err). Mandar só os
+ * ossos escritos deixa o esqueleto igual a um zumbi normal pro Bullet.
  */
 public final class BallisticsGuard {
     private BallisticsGuard() { }
@@ -21,14 +20,14 @@ public final class BallisticsGuard {
     public static final int FLOATS_PER_BONE = 7;
 
     /**
-     * true se dá pra mandar o esqueleto pro Bullet: não é zumbi esqueleto, contagem positiva,
-     * igual à do AnimationPlayer de agora e com espaço no array pra todos os ossos que o Java
-     * escreve.
+     * Quantos ossos mandar pro Bullet, ou -1 pra pular o updateSkeleton (alvo sem ossos
+     * prontos: o add() vanilla ignora o initialize() falho). Nunca mais que os escritos.
      */
-    public static boolean bonesOk(boolean skeleton, int numberOfBones, int playerBones, int dataLength, int writtenBones) {
-        if (skeleton) return false;
-        if (numberOfBones <= 0 || playerBones != numberOfBones) return false;
-        int needed = Math.max(numberOfBones, writtenBones) * FLOATS_PER_BONE;
-        return dataLength >= needed;
+    public static int bonesToSend(int numberOfBones, int playerBones, int dataLength, int writtenBones) {
+        if (numberOfBones <= 0 || writtenBones <= 0 || playerBones <= 0) return -1;
+        // a contagem do modelo, ou a que este guard já baixou num quadro anterior
+        if (numberOfBones != playerBones && numberOfBones != Math.min(playerBones, writtenBones)) return -1;
+        if (dataLength < writtenBones * FLOATS_PER_BONE) return -1;
+        return Math.min(numberOfBones, writtenBones);
     }
 }
