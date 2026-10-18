@@ -135,7 +135,7 @@ public final class RenderContext {
         }
     }
 
-    // Sprint 0053: cor do clarão do ThunderStorm (PlayerLightningInfo.lightningColor é público;
+    // Sprint 0053: cor do clarão do ThunderStorm (PlayerLightningInfo.lightningColor é público, a classe não;
     // o array lightningInfos é privado — reflexão uma vez). Vanilla nasce branco (1,1,1);
     // na névoa preta o Lua pinta vermelho. Nunca derruba o jogo.
     private static Field lightningInfosField;
@@ -175,7 +175,10 @@ public final class RenderContext {
         if (infos == null) return false;
         for (Object info : infos) {
             if (info == null) continue;
+            // O campo é público, mas a classe aninhada é package-private: sem setAccessible
+            // o get estoura IllegalAccessException (javap -p ThunderStorm$PlayerLightningInfo).
             Field colorField = info.getClass().getField("lightningColor");
+            colorField.setAccessible(true);
             ClimateColorInfo col = (ClimateColorInfo) colorField.get(info);
             if (col == null) continue;
             col.setExterior(lightningR, lightningG, lightningB, 1f);
