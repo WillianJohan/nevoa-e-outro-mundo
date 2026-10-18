@@ -27,6 +27,9 @@ local function setup(opts)
             return e
         end,
     })
+    -- mod3 (Volumetrica) carregado: só com ele a alma vira esqueleto no cliente/solo
+    NOMRender_setParam = nil
+    if not opts.noMod3 then NOMRender_setParam = function() end end
     isClient = function() return opts.client == true end
     isServer = function() return opts.server == true end
     getDebug = function() return false end
@@ -361,6 +364,30 @@ return {
         NOM_Alma.dress(z, true)
         assert(z.md.NOM_alma and z.md.NOM_almaCrawler and z.skeleton and z.health == NOM_AlmaRules.HEALTH)
         assert(NOM_Alma.seek(z) and z.goal.x == p.x and z.goal.y == p.y)
+    end,
+
+    -- Esqueleto vanilla crasha o Bullet na mira de arma (hs_err 18/10); sem mod3 fica corpo normal.
+    alma_without_mod3_no_skeleton = function()
+        setup({ fog = true, noMod3 = true })
+        local z = { md = {}, dead = false, health = 1, skeleton = false }
+        function z:isDead() return self.dead end
+        function z:getModData() return self.md end
+        function z:setHealth(h) self.health = h end
+        function z:setSkeleton(v) self.skeleton = v end
+        NOM_Alma.dress(z, true)
+        assert(z.md.NOM_alma and z.md.NOM_almaCrawler, "continua alma")
+        assert(not z.skeleton, "sem mod3 não vira esqueleto")
+    end,
+
+    alma_dedicated_server_keeps_skeleton_without_mod3 = function()
+        setup({ fog = true, noMod3 = true, server = true })
+        local z = { md = {}, dead = false, health = 1, skeleton = false }
+        function z:isDead() return self.dead end
+        function z:getModData() return self.md end
+        function z:setHealth(h) self.health = h end
+        function z:setSkeleton(v) self.skeleton = v end
+        NOM_Alma.dress(z, true)
+        assert(z.skeleton, "servidor dedicado não mira")
     end,
 
     alma_mark_remote_sets_moddata = function()
