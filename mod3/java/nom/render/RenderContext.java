@@ -213,9 +213,9 @@ public final class RenderContext {
                     || ap.boneTransforms[0] == null ? -1 : ap.boneTransforms.length;
             float[] data = zombie.core.physics.BallisticsTarget.boneTransformData;
             int dataLength = data == null ? 0 : data.length;
-            boolean ok = BallisticsGuard.bonesOk(n, playerBones, dataLength, SkeletonBone.all().length);
-            String who = ch == null ? "null" : ch.getClass().getSimpleName()
-                    + (ch instanceof IsoZombie z && z.isSkeleton() ? " esqueleto" : "");
+            boolean skeleton = ch instanceof IsoZombie z && z.isSkeleton();
+            boolean ok = BallisticsGuard.bonesOk(skeleton, n, playerBones, dataLength, SkeletonBone.all().length);
+            String who = ch == null ? "null" : ch.getClass().getSimpleName() + (skeleton ? " esqueleto" : "");
             String key = who + "|" + n + "|" + playerBones + "|" + ok;
             if (ballisticsSeen.size() < 64 && ballisticsSeen.add(key)) {
                 log("balística: " + (ok ? "ok" : "PULADO") + " " + who + " ossos=" + n
